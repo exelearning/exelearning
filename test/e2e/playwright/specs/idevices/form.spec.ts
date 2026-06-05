@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -59,7 +60,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -68,6 +69,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -92,7 +94,7 @@ async function addFormIdeviceFromPanel(page: Page): Promise<void> {
         if (isCollapsed) {
             const label = assessmentCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -134,14 +136,14 @@ async function addTrueFalseQuestion(page: Page, questionText: string, answer: bo
     // Click add True/False button
     const addBtn = page.locator('#buttonAddTrueFalseQuestionTop');
     await addBtn.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Wait for TinyMCE to initialize - the textarea container should be visible
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
     // Wait for TinyMCE iframe to appear
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Find the TinyMCE editor iframe within the question container
     const tinyMceIframe = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
@@ -190,7 +192,7 @@ async function addTrueFalseQuestion(page: Page, questionText: string, answer: bo
             await altSaveBtn.click();
         }
     }
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Close any alert modals that might appear
     await closeAlertModals(page);
@@ -210,14 +212,14 @@ async function addSelectionQuestion(
     // Click add Selection button
     const addBtn = page.locator('#buttonAddSelectionQuestionTop');
     await addBtn.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Wait for the question container to appear
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
     // Wait for TinyMCE to initialize
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Find the TinyMCE editor iframe for the question text
     const tinyMceIframes = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
@@ -268,7 +270,7 @@ async function addSelectionQuestion(
         // Click add option button
         const addOptionBtn = page.locator('#formPreview_buttonAddOption');
         await addOptionBtn.click();
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(500);
 
         // Fill the new option (it should be the last TinyMCE)
         const optionFrames = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
@@ -304,7 +306,7 @@ async function addSelectionQuestion(
             await altSaveBtn.click();
         }
     }
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Close any alert modals that might appear
     await closeAlertModals(page);
@@ -334,6 +336,7 @@ async function saveFormIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.form');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -361,18 +364,9 @@ test.describe('Form iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Form Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a form iDevice
             await addFormIdeviceFromPanel(page);
@@ -390,18 +384,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TrueFalse Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -423,18 +408,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Selection Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -456,18 +432,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Multiple Questions Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -502,18 +469,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -526,7 +484,7 @@ test.describe('Form iDevice', () => {
 
             await saveFormIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -535,9 +493,9 @@ test.describe('Form iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify form renders correctly
             await verifyFormRendered(iframe);
@@ -553,18 +511,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Buttons Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -572,7 +521,7 @@ test.describe('Form iDevice', () => {
 
             await saveFormIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -580,9 +529,9 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify check button exists
             const checkBtn = iframe.locator('[id^="form-button-check-"]').first();
@@ -603,18 +552,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TF Interaction Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -622,7 +562,7 @@ test.describe('Form iDevice', () => {
 
             await saveFormIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -630,9 +570,9 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Find and click on "True" radio button
             const trueRadio = iframe.locator('input[type="radio"][value="true"], label:has-text("True") input');
@@ -644,7 +584,7 @@ test.describe('Form iDevice', () => {
             const checkBtn = iframe.locator('[id^="form-button-check-"]').first();
             await checkBtn.click();
 
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify score is shown
             const scoreText = iframe.locator('[id^="form-score-"], .score-text').first();
@@ -658,18 +598,9 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addFormIdeviceFromPanel(page);
 
@@ -678,21 +609,10 @@ test.describe('Form iDevice', () => {
 
             await saveFormIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             await selectPageNode(page);
 

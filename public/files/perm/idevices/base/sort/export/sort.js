@@ -53,8 +53,9 @@ var $eXeOrdena = {
         $eXeOrdena.options = [];
 
         $eXeOrdena.activities.each(function (i) {
-            const dl = $('.ordena-DataGame', this),
-                mOption = $eXeOrdena.loadDataGame(dl, this);
+            const dl = $('.ordena-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeOrdena.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeOrdena.idevicePath;
@@ -213,11 +214,8 @@ var $eXeOrdena = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions
-            );
-        mOptions.phrasesGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame
+                mOptions.percentajeQuestions,
+                true
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.gameColumns =
@@ -280,7 +278,7 @@ var $eXeOrdena = {
         }
 
         $eXeOrdena.randomPhrase(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeOrdena.addCards(mOptions.phrase.cards, instance);
         $eXeOrdena.initCards(instance);
 
@@ -303,6 +301,7 @@ var $eXeOrdena = {
 
         let $cards = $ordenaMultimedia.find('.ODNP-NewCard');
         $cards.css('cursor', 'default');
+        $cards.removeClass('ODNP-HeaderCard');
         let $activeCard = $cards;
 
         if (mOptions.orderedColumns) {
@@ -320,7 +319,7 @@ var $eXeOrdena = {
                     parseInt(child.data('order'), 10) < mOptions.gameColumns
                 );
             });
-            $header.css({ border: '2px solid #555555' });
+            $header.addClass('ODNP-HeaderCard');
         }
         $activeCard.css('cursor', 'pointer');
         if (num > 0) {
@@ -331,8 +330,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -420,12 +418,11 @@ var $eXeOrdena = {
             e.preventDefault();
             const audio = $(this).data('audio');
             if (audio && audio.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
             }
         });
+
+        $eXeOrdena.setupTouchDragAndDrop(instance);
     },
 
     randomPhrase: function (instance) {
@@ -449,17 +446,121 @@ var $eXeOrdena = {
         }
     },
 
+    normalizeMediaValue: function (value) {
+        return typeof value === 'string' ? value.trim() : '';
+    },
+
+    sanitizeComparableValue: function (value) {
+        const normalized = $eXeOrdena.normalizeMediaValue(value);
+        if (normalized === '') {
+            return '';
+        }
+
+        // Clean HTML in a detached wrapper to compare stable plain-text content.
+        return $('<div></div>').html(normalized).text().trim();
+    },
+
+    getCardContentSignature: function (url, text, audio) {
+        return JSON.stringify([
+            $eXeOrdena.sanitizeComparableValue(url),
+            $eXeOrdena.sanitizeComparableValue(text),
+            $eXeOrdena.sanitizeComparableValue(audio),
+        ]);
+    },
+
+    isCardContentSignatureEmpty: function (signature) {
+        if (typeof signature !== 'string' || signature.length === 0) {
+            return true;
+        }
+
+        try {
+            const parts = JSON.parse(signature);
+            return (
+                !Array.isArray(parts) ||
+                parts.length !== 3 ||
+                parts.every(function (part) {
+                    return $eXeOrdena.normalizeMediaValue(part) === '';
+                })
+            );
+        } catch (_error) {
+            // Backward compatibility if a legacy signature format appears.
+            return $eXeOrdena.normalizeMediaValue(signature) === '';
+        }
+    },
+
+    getCardContentByOrder: function (phrase, order) {
+        if (!phrase || !Array.isArray(phrase.cards)) {
+            return '';
+        }
+
+        const expectedCard = phrase.cards.find(function (card) {
+            return parseInt(card.order, 10) === order;
+        });
+
+        return $eXeOrdena.getCardContentSignature(
+            expectedCard?.url,
+            expectedCard?.eText,
+            expectedCard?.audio
+        );
+    },
+
+    getCardContentByDraw: function ($cardDraw, phrase) {
+        const currentOrder = parseInt($cardDraw.data('order'), 10);
+        if (isNaN(currentOrder)) {
+            return '';
+        }
+
+        return $eXeOrdena.getCardContentByOrder(phrase, currentOrder);
+    },
+
+    cardMatchesImagePosition: function ($cardDraw, phrase, validOrders) {
+        const currentCardContent = $eXeOrdena.getCardContentByDraw(
+            $cardDraw,
+            phrase
+        );
+
+        if ($eXeOrdena.isCardContentSignatureEmpty(currentCardContent)) {
+            return false;
+        }
+
+        if (Array.isArray(validOrders)) {
+            return validOrders.some(function (order) {
+                return (
+                    currentCardContent ===
+                    $eXeOrdena.getCardContentByOrder(phrase, order)
+                );
+            });
+        }
+
+        return (
+            currentCardContent ===
+            $eXeOrdena.getCardContentByOrder(phrase, validOrders)
+        );
+    },
+
     checkPhrase: function (instance) {
+        const mOptions = $eXeOrdena.options[instance],
+            useContentValidation = mOptions?.type === 1;
+
         let correct = true,
             valids = [];
         $('#ordenaMultimedia-' + instance)
             .find('.ODNP-CardDraw')
             .each(function (i) {
-                const order = parseInt($(this).data('order'));
-                if (i !== order) {
+                const $cardDraw = $(this),
+                    order = parseInt($cardDraw.data('order'), 10),
+                    isValid = useContentValidation
+                        ? $eXeOrdena.cardMatchesImagePosition(
+                              $cardDraw,
+                              mOptions.phrase,
+                              i
+                          )
+                        : i === order;
+
+                if (!isValid) {
                     correct = false;
                 } else {
-                    valids.push(i);
+                    valids.push(order);
                 }
             });
         return {
@@ -474,17 +575,55 @@ var $eXeOrdena = {
             validsPos = $eXeOrdena.getPostionsColumns(
                 mOptions.gameColumns,
                 mOptions.phrase.cards.length
-            );
+            ),
+            useContentValidation = mOptions?.type === 1;
+
+        const expectedByColumn = useContentValidation
+            ? validsPos.map(function (orders) {
+                  const counter = new Map();
+                  orders.forEach(function (order) {
+                      const signature = $eXeOrdena.getCardContentByOrder(
+                          mOptions.phrase,
+                          order
+                      );
+                      counter.set(signature, (counter.get(signature) || 0) + 1);
+                  });
+                  return counter;
+              })
+            : [];
 
         let correct = true;
         $('#ordenaMultimedia-' + instance)
             .find('.ODNP-CardDraw')
             .each(function (i) {
                 if (i >= mOptions.gameColumns) {
-                    const order = parseInt($(this).data('order')),
+                    const $cardDraw = $(this),
+                        order = parseInt($cardDraw.data('order'), 10),
                         number = i,
                         col = number % mOptions.gameColumns;
-                    if (!validsPos[col].includes(order)) {
+
+                    let isValid = false;
+
+                    if (useContentValidation) {
+                        const signature = $eXeOrdena.getCardContentByDraw(
+                                $cardDraw,
+                                mOptions.phrase
+                            ),
+                            remaining =
+                                expectedByColumn[col].get(signature) || 0;
+
+                        if (
+                            !$eXeOrdena.isCardContentSignatureEmpty(signature) &&
+                            remaining > 0
+                        ) {
+                            expectedByColumn[col].set(signature, remaining - 1);
+                            isValid = true;
+                        }
+                    } else {
+                        isValid = validsPos[col].includes(order);
+                    }
+
+                    if (!isValid) {
                         correct = false;
                     } else {
                         valids.push(order);
@@ -690,7 +829,7 @@ var $eXeOrdena = {
         }
         const shuffledWords = [...words].sort(() => Math.random() - 0.5);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeOrdena.addCardsPhrase(shuffledWords, instance);
 
         const html = $('#ordenaPhrasesContainer-' + instance).html(),
@@ -698,7 +837,7 @@ var $eXeOrdena = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `ordenaPhrasesContainer-${instance}`
+                `#ordenaPhrasesContainer-${instance}`
             );
 
         // pass num to allow initializePhraseDragAndDrop to react to "num>0" cases
@@ -814,13 +953,15 @@ var $eXeOrdena = {
             }
         }
 
+        if (window.innerWidth <= 500 && fontSize > 16) fontSize = 16;
+
         $text.css({ 'font-size': `${fontSize}px` });
     },
     adjustFontSize: function ($card) {
         const $container = $card.find('.ODNP-EText'),
             $text = $container.find('.ODNP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
+            maxFontSize = window.innerWidth <= 500 ? 16 : 26,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 
@@ -1019,7 +1160,7 @@ var $eXeOrdena = {
                 response = $eXeOrdena.checkPhraseText(instance);
             } else {
                 response =
-                    mOptions.columns > 1 && mOptions.orderedColumns
+                    mOptions.gameColumns > 1 && mOptions.orderedColumns
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
@@ -1039,8 +1180,7 @@ var $eXeOrdena = {
                     mOptions.phrase.audioHit.length > 4
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        mOptions.phrase.audioHit,
-                        mOptions
+                        mOptions.phrase.audioHit
                     );
                 }
                 $eXeOrdena.nextPhrase(instance);
@@ -1053,8 +1193,7 @@ var $eXeOrdena = {
                     mOptions.phrase.audioError.length > 4
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        mOptions.phrase.audioError,
-                        mOptions
+                        mOptions.phrase.audioError
                     );
                 }
             }
@@ -1110,6 +1249,9 @@ var $eXeOrdena = {
         $(`#ordenaValidatePhrase-${instance}`).off('click');
 
         $(window).off('unload.eXeOrdena beforeunload.eXeOrdena');
+
+        $eXeOrdena.removeTouchDragAndDrop(instance);
+        $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
     },
 
     moveCard: function ($dragged, $target, instance) {
@@ -1179,8 +1321,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -1231,6 +1372,8 @@ var $eXeOrdena = {
                 $eXeOrdena.moveCard($dragged, $target, instance);
             },
         });
+
+        $eXeOrdena.setupTouchPhraseDragAndDrop(instance);
     },
 
     moveCardPharse: function ($dragged, $target, instance) {
@@ -1282,7 +1425,7 @@ var $eXeOrdena = {
         const audio = $(card).find('.ODNP-LinkAudio').data('audio'),
             mOptions = $eXeOrdena.options[instance];
         if (audio && audio.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 
@@ -1294,7 +1437,7 @@ var $eXeOrdena = {
 
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');
@@ -1788,8 +1931,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -1929,7 +2071,7 @@ var $eXeOrdena = {
             mOptions.obtainedClue = true;
         }
         clearInterval(mOptions.counterClock);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#ordenaCubierta-' + instance).show();
         $('#ordenaPhrasesContainer-' + instance).hide();
         $eXeOrdena.showScoreGame(type, instance);
@@ -2105,6 +2247,199 @@ var $eXeOrdena = {
                 color: color,
             });
         }
+    },
+
+    setupTouchDragAndDrop: function (instance) {
+        $eXeOrdena.removeTouchDragAndDrop(instance);
+        const mOptions = $eXeOrdena.options[instance];
+        const container = document.querySelector(`#ordenaMultimedia-${instance}`);
+        if (!container) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $draggable = $(element).closest('.ODNP-NewCard');
+            if (!$draggable.length) return;
+            // Respect orderedColumns: header cards (order < gameColumns) are not draggable
+            if (mOptions.orderedColumns) {
+                const ord = parseInt($draggable.find('.ODNP-CardDraw').data('order'), 10);
+                if (ord < mOptions.gameColumns) return;
+            }
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+            touchHelper = $draggable.clone()
+                .addClass('ODNP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 10000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+            const $target = $(elementBelow).closest('.ODNP-NewCard');
+            $(`#ordenaMultimedia-${instance} .ODNP-NewCard`).removeClass('ODNP-Over');
+            if ($target.length && $target[0] !== touchedEl) $target.addClass('ODNP-Over');
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(`#ordenaMultimedia-${instance} .ODNP-NewCard`).removeClass('ODNP-Over');
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $target = $(elementBelow).closest('.ODNP-NewCard');
+            if ($target.length && $target[0] !== touchedEl) {
+                $eXeOrdena.moveCard($(touchedEl), $target, instance);
+            }
+            touchedEl = null;
+        };
+
+        container.addEventListener('touchstart', touchStartHandler, { passive: false });
+        container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        container.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        mOptions._touchDragStart = touchStartHandler;
+        mOptions._touchDragMove = touchMoveHandler;
+        mOptions._touchDragEnd = touchEndHandler;
+        mOptions._touchDragContainer = container;
+    },
+
+    removeTouchDragAndDrop: function (instance) {
+        const mOptions = $eXeOrdena.options && $eXeOrdena.options[instance];
+        if (!mOptions) return;
+        const container = mOptions._touchDragContainer;
+        if (!container) return;
+        if (mOptions._touchDragStart) {
+            container.removeEventListener('touchstart', mOptions._touchDragStart);
+            mOptions._touchDragStart = null;
+        }
+        if (mOptions._touchDragMove) {
+            container.removeEventListener('touchmove', mOptions._touchDragMove);
+            mOptions._touchDragMove = null;
+        }
+        if (mOptions._touchDragEnd) {
+            container.removeEventListener('touchend', mOptions._touchDragEnd);
+            mOptions._touchDragEnd = null;
+        }
+        mOptions._touchDragContainer = null;
+    },
+
+    setupTouchPhraseDragAndDrop: function (instance) {
+        $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
+        const mOptions = $eXeOrdena.options[instance];
+        const container = document.querySelector(`#ordenaPhrasesContainer-${instance}`);
+        if (!container) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $draggable = $(element).closest('.ODNP-Word');
+            if (!$draggable.length) return;
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+            touchHelper = $draggable.clone()
+                .addClass('ODNP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 10000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+            const $target = $(elementBelow).closest('.ODNP-WordTarget');
+            $(`#ordenaPhrasesContainer-${instance} .ODNP-WordTarget`).removeClass('ODNP-WordOver');
+            if ($target.length) $target.addClass('ODNP-WordOver');
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(`#ordenaPhrasesContainer-${instance} .ODNP-WordTarget`).removeClass('ODNP-WordOver');
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $target = $(elementBelow).closest('.ODNP-WordTarget');
+            if ($target.length) {
+                $eXeOrdena.moveCard($(touchedEl), $target, instance);
+            }
+            touchedEl = null;
+        };
+
+        container.addEventListener('touchstart', touchStartHandler, { passive: false });
+        container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        container.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        mOptions._touchPhraseDragStart = touchStartHandler;
+        mOptions._touchPhraseDragMove = touchMoveHandler;
+        mOptions._touchPhraseDragEnd = touchEndHandler;
+        mOptions._touchPhraseContainer = container;
+    },
+
+    removeTouchPhraseDragAndDrop: function (instance) {
+        const mOptions = $eXeOrdena.options && $eXeOrdena.options[instance];
+        if (!mOptions) return;
+        const container = mOptions._touchPhraseContainer;
+        if (!container) return;
+        if (mOptions._touchPhraseDragStart) {
+            container.removeEventListener('touchstart', mOptions._touchPhraseDragStart);
+            mOptions._touchPhraseDragStart = null;
+        }
+        if (mOptions._touchPhraseDragMove) {
+            container.removeEventListener('touchmove', mOptions._touchPhraseDragMove);
+            mOptions._touchPhraseDragMove = null;
+        }
+        if (mOptions._touchPhraseDragEnd) {
+            container.removeEventListener('touchend', mOptions._touchPhraseDragEnd);
+            mOptions._touchPhraseDragEnd = null;
+        }
+        mOptions._touchPhraseContainer = null;
     },
 };
 $(function () {

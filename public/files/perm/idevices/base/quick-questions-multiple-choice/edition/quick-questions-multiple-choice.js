@@ -59,6 +59,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initQuestions();
 
+        const root = document.getElementById('quickMultipleQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
@@ -136,7 +139,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgVideoIntro: c_('Video Intro'),
             msgClose: c_('Close'),
@@ -209,9 +212,6 @@ var $exeDevice = {
         );
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
@@ -981,9 +981,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type !== 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#seleccionaEURLAudio').val(p.audio);
@@ -1226,11 +1226,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="quickMultipleQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -1365,7 +1364,7 @@ var $exeDevice = {
                                 </div>
                                 <div class="mb-0 d-flex align-items-center gap-2">
                                     <input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <label for="seleccionaEPercentajeFB">${_('&percnt; right to see the feedback')}</label>
+                                    <label for="seleccionaEPercentajeFB">${_('% right to see the feedback')}</label>
                                 </div>
                             </div>
                             <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3">
@@ -1409,24 +1408,8 @@ var $exeDevice = {
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="seleccionaEEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="seleccionaEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="seleccionaEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 SLCNE-EEvaluationFields">
-                                    <label for="seleccionaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1591,7 +1574,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="seleccionaETitleAudio">${_('Audio')}:</span>
-                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEInputAudio">
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEInputAudio" data-voice-recorder data-voice-input="#seleccionaEURLAudio">
                                         <label class="sr-av" for="seleccionaEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker w-100 form-control me-0" id="seleccionaEURLAudio"/>
                                         <a href="#" id="seleccionaEPlayAudio" class="SLCNE-ENavigationButton" title="${_('Play audio')}">
@@ -1990,11 +1973,12 @@ var $exeDevice = {
             game.gameMode == 0 && game.useLives
         );
         $('#seleccionaEPercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#seleccionaEEvaluation').prop('checked', game.evaluation);
-        $('#seleccionaEEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#seleccionaEGlobalTimes').val(game.globalTime);
 
-        $('#seleccionaEEvaluationID').prop('disabled', !game.evaluation);
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(
             game.order,
@@ -2077,7 +2061,7 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         $exeDevice.stopVideoIntro();
 
@@ -2172,7 +2156,7 @@ var $exeDevice = {
         p.msgHit = $('#seleccionaEMessageOK').val();
         p.msgError = $('#seleccionaEMessageKO').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type == 2) {
@@ -2352,23 +2336,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.selectsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('test')}.txt`;
-
-        document.getElementById('quickMultipleQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document
-                .getElementById('quickMultipleQEIdeviceForm')
-                .removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('test')}.txt`,
+            'quickMultipleQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questions) {
@@ -2431,12 +2403,13 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#seleccionaEPercentajeQuestionsValue').val())
             ),
-            evaluation = $('#seleccionaEEvaluation').is(':checked'),
-            evaluationID = $('#seleccionaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if ((gameMode == 2 || feedBack) && textFeedBack.trim().length == 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -2444,10 +2417,6 @@ var $exeDevice = {
         }
         if (showSolution && timeShowSolution.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         const selectsGame = $exeDevice.selectsGame;
@@ -2548,8 +2517,8 @@ var $exeDevice = {
             percentajeQuestions: percentajeQuestions,
             audioFeedBach: audioFeedBach,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
             globalTime: globalTime,
         };
@@ -2626,33 +2595,11 @@ var $exeDevice = {
                     )
                 )
                     return;
-                // No alternar si el clic proviene del campo identificador de evaluación o su enlace de ayuda
-                if (
-                    $(e.target).is('#seleccionaEEvaluationID') ||
-                    $(e.target).closest('#seleccionaEEvaluationHelpLnk').length
-                )
-                    return;
                 const $input = $(this).find('input.toggle-input').first();
                 if ($input.length) {
                     const newVal = !$input.prop('checked');
                     $input.prop('checked', newVal).trigger('change');
                 }
-            }
-        );
-
-        // Evitar que el clic dentro del campo de evaluación dispare el toggle del contenedor
-        $quickMultipleQEIdeviceForm.on(
-            'click',
-            '#seleccionaEEvaluationID',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
-        $quickMultipleQEIdeviceForm.on(
-            'click',
-            '#seleccionaEEvaluationHelpLnk, #seleccionaEEvaluationHelpLnk *',
-            function (e) {
-                e.stopPropagation();
             }
         );
 
@@ -3030,8 +2977,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#seleccionaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3042,8 +2988,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3128,15 +3073,7 @@ var $exeDevice = {
             }
         });
 
-        $('#seleccionaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#seleccionaEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#seleccionaEEvaluationHelpLnk').on('click', function () {
-            $('#seleccionaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

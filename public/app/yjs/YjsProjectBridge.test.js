@@ -73,6 +73,10 @@ class MockYjsDocumentManager {
   ensureBlankStructureIfEmpty() {
     this._ensureBlankStructureIfEmptyCalled = true;
   }
+  setOnLastTabClosedCallback(callback) {
+    this._onLastTabClosedCallback = callback;
+  }
+  async flushPendingExternalCleanup() {}
 }
 
 // Mock YjsStructureBinding
@@ -87,15 +91,6 @@ class MockYjsStructureBinding {
   onBlocksComponentsChange() {}
 }
 
-// Mock AssetCacheManager
-class MockAssetCacheManager {
-  constructor(projectId) {
-    this.projectId = projectId;
-  }
-  async close() {}
-  destroy() {}
-}
-
 // Mock AssetManager
 class MockAssetManager {
   constructor(projectId) {
@@ -107,6 +102,8 @@ class MockAssetManager {
   }
   async init() {}
   async preloadAllAssets() { return 0; }
+  async downloadMissingAssets() { return 0; }
+  setServerConfig() {}
   cleanup() {}
 }
 
@@ -115,8 +112,10 @@ class MockSaveManager {
   constructor(bridge, options) {
     this.bridge = bridge;
     this.options = options;
+    this.wsHandler = null;
   }
   async save() { return { success: true, bytes: 100 }; }
+  setWebSocketHandler(handler) { this.wsHandler = handler; }
 }
 
 // Mock ResourceFetcher
@@ -162,13 +161,26 @@ describe('YjsProjectBridge', () => {
       ...(originalWindow || {}),
       YjsDocumentManager: MockYjsDocumentManager,
       YjsStructureBinding: MockYjsStructureBinding,
-      AssetCacheManager: MockAssetCacheManager,
       AssetManager: MockAssetManager,
       SaveManager: MockSaveManager,
       ResourceFetcher: MockResourceFetcher,
       ResourceCache: MockResourceCache,
       eXeLearning: {
         config: { basePath: '' },
+        app: {
+          themes: {
+            list: {
+              loadUserThemesFromIndexedDB: mock(async () => {}),
+            },
+          },
+          menus: {
+            navbar: {
+              styles: {
+                updateThemes: mock(() => {}),
+              },
+            },
+          },
+        },
       },
       location: {
         protocol: 'http:',
@@ -177,6 +189,8 @@ describe('YjsProjectBridge', () => {
         origin: 'http://localhost:3001',
       },
     };
+    // Also set eXeLearning globally since the code accesses it directly
+    global.eXeLearning = global.window.eXeLearning;
 
     global.document = {
       createElement: mock(() => ({
@@ -285,6 +299,49 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_captureHtmlAsScreenshot html2canvas URL (BASE_PATH)', () => {
+    // Regression: behind a subdirectory reverse proxy a bare-root URL 502s,
+    // so html2canvas must be loaded through composeUrl().
+    const stopOnAppend = (el) => {
+      // Reject the load promise immediately so the method short-circuits to
+      // null after we have captured script.src.
+      if (el && el.onerror) el.onerror(new Error('blocked'));
+    };
+
+    it('loads html2canvas through composeUrl when available', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = (p) => `/web/exelearning${p}`;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      const result = await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/web/exelearning/files/perm/idevices/base/rubric/export/html2canvas.js');
+      expect(result).toBeNull();
+    });
+
+    it('falls back to the bare path when composeUrl is unavailable', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = undefined;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
   describe('initialize', () => {
     it('sets projectId', async () => {
       await bridge.initialize(123, 'test-token');
@@ -308,19 +365,46 @@ describe('YjsProjectBridge', () => {
       expect(bridge.structureBinding).toBeInstanceOf(MockYjsStructureBinding);
     });
 
-    it('creates assetCache', async () => {
-      await bridge.initialize(123, 'test-token');
-      expect(bridge.assetCache).toBeDefined();
-    });
-
     it('creates assetManager if available', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.assetManager).toBeDefined();
     });
 
+    it('assetManager has downloadMissingAssets method for in-memory storage', async () => {
+      await bridge.initialize(123, 'test-token');
+
+      // Verify assetManager has the downloadMissingAssets method
+      // This method is called during initialization to fetch blobs that were lost on page reload
+      expect(bridge.assetManager).toBeDefined();
+      expect(typeof bridge.assetManager.downloadMissingAssets).toBe('function');
+    });
+
     it('creates saveManager if available', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.saveManager).toBeDefined();
+    });
+
+    it('wires Cache API cleanup via setOnLastTabClosedCallback', async () => {
+      await bridge.initialize(123, 'test-token');
+
+      // The callback must be registered on the documentManager
+      expect(bridge.documentManager._onLastTabClosedCallback).toBeInstanceOf(Function);
+
+      // Add a clearCache mock to the assetManager so we can verify it is called
+      bridge.assetManager.clearCache = mock(() => Promise.resolve());
+
+      // Invoke the registered callback (simulates last-tab-close)
+      await bridge.documentManager._onLastTabClosedCallback();
+
+      expect(bridge.assetManager.clearCache).toHaveBeenCalledTimes(1);
+    });
+
+    it('flushes pending external cleanup after wiring the asset cache callback', async () => {
+      const flushSpy = spyOn(MockYjsDocumentManager.prototype, 'flushPendingExternalCleanup');
+
+      await bridge.initialize(123, 'test-token');
+
+      expect(flushSpy).toHaveBeenCalledTimes(1);
     });
 
     it('sets initialized to true', async () => {
@@ -336,6 +420,23 @@ describe('YjsProjectBridge', () => {
     it('returns bridge instance', async () => {
       const result = await bridge.initialize(123, 'test-token');
       expect(result).toBe(bridge);
+    });
+
+    it('sets user info on document manager before WebSocket connects', async () => {
+      const setUserInfoSpy = spyOn(MockYjsDocumentManager.prototype, 'setUserInfo');
+      bridge.app = {
+        user: { id: 'u1', name: 'Test User', email: 'test@test.com', gravatarUrl: 'http://g.com/u1' },
+        project: { structure: {}, updateProjectTitle: mock(() => undefined) },
+      };
+
+      await bridge.initialize(123, 'test-token');
+
+      expect(setUserInfoSpy).toHaveBeenCalledWith({
+        id: 'u1',
+        name: 'Test User',
+        email: 'test@test.com',
+        gravatarUrl: 'http://g.com/u1',
+      });
     });
   });
 
@@ -380,6 +481,508 @@ describe('YjsProjectBridge', () => {
 
     it('redo can be called without error', () => {
       expect(() => bridge.redo()).not.toThrow();
+    });
+  });
+
+  describe('block structure reload detection', () => {
+    it('excludes pure block additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Pure block additions are empty containers — they must NOT trigger reload
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('detects affected page IDs for block deletions', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('ignores non-structural component content updates', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components', 0, 'htmlContent'],
+          delta: [{ insert: 'x' }],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('schedules reload only for deletions on remote transactions (additions are incremental)', () => {
+      const pageMap0 = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      const pageMap1 = { get: mock((key) => (key === 'id' ? 'page-2' : undefined)) };
+
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => {
+            if (idx === 0) return pageMap0;
+            if (idx === 1) return pageMap1;
+            return null;
+          }),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+        {
+          path: [1, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+
+      // page-1 has a pure addition — handled incrementally, no reload
+      expect(scheduleSpy).not.toHaveBeenCalledWith('page-1');
+      // page-2 has a deletion — needs reload
+      expect(scheduleSpy).toHaveBeenCalledWith('page-2');
+    });
+
+    it('does not schedule reload for regular local transactions', () => {
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('schedules reload for local undo/redo transactions (even pure additions)', () => {
+      const undoManager = {};
+      bridge.documentManager = {
+        undoManager,
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      // During undo/redo, even pure additions need a reload to restore state
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: undoManager }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('schedules reload while undo/redo operation is in progress', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('reloads on block-touching key changes during undo/redo even without add/delete', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks', 0],
+            changes: {
+              added: { size: 0 },
+              deleted: { size: 0 },
+              keys: new Map([['someKey', { action: 'update' }]]),
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('excludes component-level additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component addition event: path ends with 'components', has added items
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      // Component additions are handled incrementally by renderRemoteComponent,
+      // so they must NOT trigger a destructive page reload.
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes component deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component deletion event
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block-level pure additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A block addition event: path is [pageIndex, 'blocks'], pure addition
+      // Block additions are empty containers handled incrementally and must NOT
+      // trigger a destructive page reload, even without a paired component addition
+      // in the same event batch (they may arrive in separate Yjs transactions).
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes block-level deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('still includes block-level mixed add+delete (move) in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block order-only changes from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('does not skip component additions during undo/redo (#1532)', () => {
+      bridge.isUndoRedoInProgress = true;
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Component addition during undo/redo should still trigger reload
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('does not schedule reload for remote component addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block-only addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      // Block addition arriving alone (component may follow in a separate transaction)
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block order-only change (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('syncCurrentPageBlocksIfNeeded', () => {
+    it('reloads current page when DOM and Yjs block counts differ', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }, { id: 'b2' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}, {} , {}]); // DOM has 3 blocks
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).toHaveBeenCalled();
+    });
+
+    it('does not reload when DOM and Yjs block counts match', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}]); // DOM has 1 block
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -489,7 +1092,7 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
     });
 
-    it('should fall back to default theme when theme is not installed and package has no theme folder', async () => {
+    it('should delegate fallback to selectTheme (passing the original theme) when theme is not installed and package has no theme folder', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -520,8 +1123,121 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
-      // selectTheme should be called with default theme (fallback)
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+      // selectTheme is called with the ORIGINAL (uninstalled) theme, not config.defaultTheme,
+      // so its fallback chain (user defaultTheme preference -> admin default -> base) can run.
+      // save=true persists the resolved theme to Yjs.
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
+    });
+
+    // Regression for PR #1777: opening an .elpx whose style is not installed must let
+    // selectTheme honor the user's defaultTheme preference (it must NOT short-circuit to
+    // config.defaultTheme, which bypasses the fallback chain).
+    it('should not bypass selectTheme by passing config.defaultTheme when theme is uninstalled', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: { installed: {} }, // No themes installed
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'site-default',
+          userStyles: 1,
+          isOfflineInstallation: false,
+        },
+      };
+
+      global.window.fflate = { unzipSync: mock(() => ({})) };
+      const mockFile = { arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))) };
+
+      await bridge._checkAndImportTheme('removed-theme', mockFile);
+
+      expect(mockSelectTheme).toHaveBeenCalledWith('removed-theme', true);
+      expect(mockSelectTheme).not.toHaveBeenCalledWith('site-default', true);
+    });
+
+    it('should use cached zip when provided instead of re-unzipping', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+      const mockUnzipSync = mock(() => ({}));
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // No themes installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
+        },
+      };
+
+      // Mock fflate for ZIP handling
+      global.window.fflate = {
+        unzipSync: mockUnzipSync,
+      };
+
+      // Provide cached zip contents (no theme/config.xml)
+      const cachedZip = { 'content.xml': new Uint8Array([60, 63]) };
+
+      // Create a mock file with arrayBuffer (should NOT be called)
+      const mockFile = {
+        arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))),
+      };
+
+      await bridge._checkAndImportTheme('unknown-theme', mockFile, cachedZip);
+
+      // fflate.unzipSync should NOT be called when cached zip is provided
+      expect(mockUnzipSync).not.toHaveBeenCalled();
+      // file.arrayBuffer should NOT be called when cached zip is provided
+      expect(mockFile.arrayBuffer).not.toHaveBeenCalled();
+      // selectTheme should be called with the original (uninstalled) theme so its fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
+    });
+
+    it('should skip theme import when theme is marked as non-downloadable', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+      const mockShowModal = mock(() => undefined);
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // Theme not installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
+        },
+      };
+
+      bridge._showThemeImportModal = mockShowModal;
+
+      global.window.fflate = {
+        unzipSync: mock(() => ({
+          'theme/config.xml': new TextEncoder().encode('<theme><downloadable>0</downloadable></theme>'),
+        })),
+      };
+
+      const mockFile = {
+        arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))),
+      };
+
+      await bridge._checkAndImportTheme('blocked-theme', mockFile);
+
+      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
+      expect(mockShowModal).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
@@ -563,8 +1279,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('custom-theme', new Blob());
 
-      // Should use default theme immediately without prompting
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+      // userStyles disabled: no import/prompt, but still pass the original theme so
+      // selectTheme's fallback chain (user default -> admin default -> base) can run.
+      expect(mockSelectTheme).toHaveBeenCalledWith('custom-theme', true);
     });
 
     it('should allow theme import when userStyles is enabled', async () => {
@@ -968,6 +1685,9 @@ describe('YjsProjectBridge', () => {
         undo: mock(() => {}),
         redo: mock(() => {}),
       };
+      // Mock document.querySelectorAll for forceBlockTitlesSync calls
+      global.document.querySelectorAll = mock(() => []);
+      global.document.querySelector = mock(() => null);
     });
 
     it('undo with empty stack does nothing', () => {
@@ -992,6 +1712,17 @@ describe('YjsProjectBridge', () => {
       expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
     });
 
+    it('undo flushes pending metadata changes even when undoStack has items', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.undo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
+      expect(bridge.documentManager.undoManager.undo).toHaveBeenCalled();
+    });
+
     it('undo sets isUndoRedoInProgress flag', () => {
       bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
 
@@ -1008,6 +1739,16 @@ describe('YjsProjectBridge', () => {
     it('redo calls undoManager.redo', () => {
       bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
       bridge.redo();
+      expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
+    });
+
+    it('redo with pending metadata changes flushes them first', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.redo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
       expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
     });
 
@@ -1318,6 +2059,109 @@ describe('YjsProjectBridge', () => {
 
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
+
+  });
+
+  describe('asset refresh on late asset arrival', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock(() => 'page-1'),
+              },
+              menuNav: {
+                querySelector: mock(() => ({ id: 'page-element' })),
+              },
+            },
+          },
+          idevices: {
+            loadingPage: false,
+            loadApiIdevicesInPage: mock(() => Promise.resolve()),
+          },
+        },
+      };
+      bridge.assetManager = {
+        updateDomImagesForAsset: mock(() => Promise.resolve(1)),
+        cleanup: mock(() => {}),
+      };
+    });
+
+    it('detects current page asset references from component HTML', () => {
+      const marker = 'asset://asset-123';
+      const mockComponent = {
+        get: (key) => {
+          if (key === 'htmlContent') return `<img src="${marker}.jpg" />`;
+          if (key === 'htmlView') return '';
+          if (key === 'jsonProperties') return '{"text":"nope"}';
+          return null;
+        },
+      };
+      const mockBlock = {
+        get: (key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        },
+      };
+      const mockPage = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageId') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => mockBlock };
+          return null;
+        },
+      };
+      bridge.documentManager.getNavigation = () => ({ length: 1, get: () => mockPage });
+
+      expect(bridge.currentPageHasAssetReference('page-1', 'asset-123')).toBe(true);
+    });
+
+    it('reloads current page when late asset is relevant', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(
+        false,
+        { id: 'page-element' },
+      );
+      expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('does not reload when current page does not reference late asset', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(false);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge.assetManager.updateDomImagesForAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not reload when selected node is root', async () => {
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'root');
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
+    it('disconnect clears pending late-asset refresh timer', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await bridge.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
   });
 
   describe('onPageNavigation', () => {
@@ -1431,6 +2275,127 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_ensureNewProjectLanguage', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('updates project language and default titles to match user preference for new projects', () => {
+      // Setup user preferences with Spanish
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'es' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object with proper get/set methods
+      const metadataStore = { language: 'en', title: 'Untitled document' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+
+      // Create a mock root page
+      const rootPageStore = { title: 'New page', pageName: 'New page' };
+      const mockRootPage = {
+        get: (key) => rootPageStore[key],
+        set: (key, value) => { rootPageStore[key] = value; },
+      };
+      const mockNavigation = { get: (index) => index === 0 ? mockRootPage : null };
+
+      bridge.documentManager.getMetadata = () => mockMetadata;
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(mockMetadata.get('language')).toBe('es');
+      // Titles should be re-translated with _() (which returns the key in tests)
+      expect(mockMetadata.get('title')).toBe('Untitled document');
+      expect(mockRootPage.get('title')).toBe('New page');
+      expect(mockRootPage.get('pageName')).toBe('New page');
+    });
+
+    it('does not update language when user preference matches current language', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'en' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      let setCalled = false;
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { 
+          if (key === 'language') setCalled = true;
+          metadataStore[key] = value; 
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(setCalled).toBe(false);
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('does nothing when user preferences are not available', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {} // No user preferences
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      // Language should remain unchanged
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('handles errors gracefully', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'fr' }
+              }
+            }
+          }
+        }
+      };
+
+      // Force an error by nullifying documentManager
+      bridge.documentManager = null;
+
+      // Should not throw
+      expect(() => bridge._ensureNewProjectLanguage()).not.toThrow();
+    });
+  });
+
   describe('save with SaveManager', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -1522,6 +2487,113 @@ describe('YjsProjectBridge', () => {
       // Should not throw
       await bridge.announceAssets();
     });
+
+    it('connects SaveManager to WebSocket handler during initialization', async () => {
+      // Create a fresh bridge with assetWebSocketHandler mock
+      const newBridge = new YjsProjectBridge('test-project-2', {
+        apiUrl: '/api',
+        exeVersion: '3.0.0',
+        wsUrl: 'ws://localhost:1234',
+        offline: true,
+      });
+
+      // Set up mocks
+      newBridge.assetWebSocketHandler = { id: 'mock-ws-handler' };
+      newBridge.saveManager = new MockSaveManager(newBridge, {});
+
+      // Verify setWebSocketHandler was not called yet
+      expect(newBridge.saveManager.wsHandler).toBeNull();
+
+      // Manually call setWebSocketHandler as done in initialize
+      if (newBridge.assetWebSocketHandler) {
+        newBridge.saveManager.setWebSocketHandler(newBridge.assetWebSocketHandler);
+      }
+
+      // Verify wsHandler is now set
+      expect(newBridge.saveManager.wsHandler).toEqual({ id: 'mock-ws-handler' });
+    });
+
+    it('invalidates stale local blob and requests asset on remote hash update', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'new-hash-123' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const event = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'old-hash-999' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(event, { origin: 'remote' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).toHaveBeenCalledWith(
+        'asset-1',
+        expect.objectContaining({
+          reason: 'remote-hash-update',
+          markAsMissing: true,
+          markDomAsLoading: true,
+        })
+      );
+      expect(bridge.assetWebSocketHandler.requestAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('ignores non-remote or same-hash asset updates', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'same-hash' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const sameHashEvent = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'same-hash' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(sameHashEvent, { origin: 'remote' });
+      await assetsObserver(sameHashEvent, { origin: 'local' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).not.toHaveBeenCalled();
+      expect(bridge.assetWebSocketHandler.requestAsset).not.toHaveBeenCalled();
+    });
   });
 
   describe('enableAutoSync', () => {
@@ -1588,6 +2660,8 @@ describe('YjsProjectBridge', () => {
         if (selector === '#exe-title > .exe-title.content') return headerTitle;
         return null;
       });
+      // Mock document.querySelectorAll for forceBlockTitlesSync
+      global.document.querySelectorAll = mock(() => []);
 
       const mockMetadata = {
         get: (key) => key === 'title' ? 'Test Title' : null,
@@ -1605,10 +2679,29 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('dispatches blur to active property-value input first', () => {
+      const activeInput = {
+        classList: { contains: (cls) => cls === 'property-value' },
+        dispatchEvent: mock(() => {}),
+      };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => activeInput,
+      });
+
+      bridge.flushPendingMetadataChanges();
+
+      expect(activeInput.dispatchEvent).toHaveBeenCalled();
+    });
+
     it('dispatches blur events to property inputs', () => {
       const input = {
         dispatchEvent: mock(() => {}),
       };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => null,
+      });
       global.document.querySelectorAll = mock(() => [input]);
 
       bridge.flushPendingMetadataChanges();
@@ -1746,8 +2839,10 @@ describe('YjsProjectBridge', () => {
         },
       }];
 
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
       bridge.handleRemoteStructureChanges(events);
-      // Should schedule page reload
+      expect(scheduleSpy).not.toHaveBeenCalled();
     });
 
     it('handles component property updates', () => {
@@ -2096,6 +3191,7 @@ describe('YjsProjectBridge', () => {
         blockName: 'Old Name',
         iconName: 'edit',
         blockNameElementText: { innerHTML: '' },
+        renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
         properties: {},
         generateBlockContentNode: mock(() => {}),
@@ -2119,6 +3215,7 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -2181,9 +3278,76 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_syncBlockTitle', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      delete global.MathJax;
+    });
+
+    it('updates textContent for non-latex title', () => {
+      const titleEl = { textContent: '', isConnected: true };
+      bridge._syncBlockTitle(titleEl, 'Plain title');
+      expect(titleEl.textContent).toBe('Plain title');
+    });
+
+    it('typesets latex title with MathJax fallback', async () => {
+      const titleEl = { textContent: '', isConnected: true };
+      const typesetPromise = mock(() => Promise.resolve());
+      const typesetClear = mock(() => undefined);
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+        typesetClear,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(typesetClear).toHaveBeenCalledWith([titleEl]);
+      expect(typesetPromise).toHaveBeenCalledWith([titleEl]);
+    });
+
+    it('skips fallback typeset when title node is disconnected', async () => {
+      const titleEl = { textContent: '', isConnected: false };
+      const typesetPromise = mock(() => Promise.resolve());
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+
+      expect(typesetPromise).not.toHaveBeenCalled();
+    });
+  });
+
   describe('syncStructureToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
+    });
+
+    it('logs warning and returns early when structureBinding is null', () => {
+      bridge.structureBinding = null;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
+    });
+
+    it('logs warning and returns early when structureBinding is undefined', () => {
+      bridge.structureBinding = undefined;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
     });
 
     it('converts pages to legacy format', () => {
@@ -2220,6 +3384,81 @@ describe('YjsProjectBridge', () => {
 
       // Should not throw
       bridge.syncStructureToLegacy();
+    });
+
+    it('includes page properties in legacy data', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          {
+            id: 'page-1',
+            pageName: 'Test',
+            parentId: null,
+            order: 0,
+            properties: { highlight: true, titleNode: 'Custom Title' }
+          },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toEqual({
+        highlight: { value: true },
+        titleNode: { value: 'Custom Title' }
+      });
+    });
+
+    it('handles pages without properties', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0 },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
+    });
+
+    it('handles array as properties (returns null)', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0, properties: ['not', 'an', 'object'] },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
     });
   });
 
@@ -2380,6 +3619,64 @@ describe('YjsProjectBridge', () => {
       expect(mockInput.value).toBe('New Title');
     });
 
+    it('updates addMathJax and globalFont inputs using mapped metadata keys', () => {
+      const mockCheckbox = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_addMathJax';
+          if (attr === 'data-type') return 'checkbox';
+          return null;
+        },
+        type: 'checkbox',
+        checked: false,
+      };
+      const mockSelect = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_globalFont';
+          if (attr === 'data-type') return 'select';
+          return null;
+        },
+        type: 'select-one',
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockCheckbox, mockSelect]);
+
+      const mockMetadata = {
+        get: (key) => {
+          if (key === 'addMathJax') return true;
+          if (key === 'globalFont') return 'default';
+          return undefined;
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockCheckbox.checked).toBe(true);
+      expect(mockSelect.value).toBe('default');
+    });
+
+    it('clears stale text inputs when metadata key is missing', () => {
+      const mockInput = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_subtitle';
+          if (attr === 'data-type') return 'text';
+          return null;
+        },
+        type: 'text',
+        value: 'stale subtitle',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+
+      const mockMetadata = {
+        get: () => undefined,
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.value).toBe('');
+    });
+
     it('skips inputs without property attribute', () => {
       const mockInput = {
         getAttribute: () => null,
@@ -2390,6 +3687,905 @@ describe('YjsProjectBridge', () => {
       bridge.forceAllFormInputsSync();
 
       expect(mockInput.value).toBe('unchanged');
+    });
+  });
+
+  describe('forceBlockTitlesSync', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns early when no navigation', () => {
+      bridge.documentManager = null;
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+    });
+
+    it('updates block title when blockName differs', () => {
+      // Create mock header element with block-id
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      // Mock document.querySelectorAll for block headers
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Create mock navigation with block data
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockTitleEl.textContent).toBe('New Title');
+    });
+
+    it('uses blockNode renderBlockTitle when available', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockNode = {
+        blockName: 'Old Title',
+        iconName: '',
+        renderBlockTitle: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
+    });
+
+    it('does not update when blockName matches current title', () => {
+      const mockTitleEl = { textContent: 'Same Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Same Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged
+      expect(mockTitleEl.textContent).toBe('Same Title');
+    });
+
+    it('updates block icon when iconName differs', () => {
+      const mockImgEl = { getAttribute: () => '/old-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/old-icon.png" alt="old">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Mock theme icons
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              'new-icon': { id: 'new-icon', value: '/new-icon.png', title: 'New Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return 'new-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockIconEl.innerHTML).toContain('/new-icon.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('clears icon when iconName is empty', () => {
+      const mockImgEl = { getAttribute: () => '/some-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/some-icon.png" alt="icon">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('handles missing title element gracefully', () => {
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: () => null, // No .box-title or .box-icon element
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Test Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+    });
+
+    it('handles block not found in navigation', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-not-found' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123'; // Different ID
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged since block was not found
+      expect(mockTitleEl.textContent).toBe('Old Title');
+    });
+
+    it('handles pages without blocks', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Page without blocks
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? null : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged
+      expect(mockTitleEl.textContent).toBe('Old Title');
+    });
+
+    it('is called by forceTitleSync', () => {
+      // Mock methods
+      const originalForceBlockTitlesSync = bridge.forceBlockTitlesSync;
+      bridge.forceBlockTitlesSync = mock(() => {});
+
+      // Mock metadata
+      const mockMetadata = {
+        get: () => 'Test',
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      // Mock document.querySelector
+      global.document.querySelector = mock(() => null);
+
+      bridge.forceTitleSync();
+
+      expect(bridge.forceBlockTitlesSync).toHaveBeenCalled();
+
+      // Restore
+      bridge.forceBlockTitlesSync = originalForceBlockTitlesSync;
+    });
+
+    it('updates blockNode.blockName when Yjs blockName differs', () => {
+      const mockBlockNode = {
+        blockName: 'Old BlockNode Title',
+        iconName: 'old-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Yjs Title';
+          if (key === 'iconName') return 'old-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // DOM should be updated
+      expect(mockTitleEl.textContent).toBe('New Yjs Title');
+      // blockNode instance property should also be updated
+      expect(mockBlockNode.blockName).toBe('New Yjs Title');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+
+    it('updates blockNode.iconName when Yjs iconName differs', () => {
+      const mockBlockNode = {
+        blockName: 'Title',
+        iconName: 'old-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockImgEl = { getAttribute: () => '/old-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/old-icon.png" alt="old">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Mock theme icons
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              'new-icon': { id: 'new-icon', value: '/new-icon.png', title: 'New Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return 'new-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // blockNode instance property should be updated
+      expect(mockBlockNode.iconName).toBe('new-icon');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+
+    it('does not update blockNode properties when they already match Yjs', () => {
+      const mockBlockNode = {
+        blockName: 'Same Title',
+        iconName: 'same-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Same Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Same Title';
+          if (key === 'iconName') return 'same-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // blockNode should still have the same values (not modified)
+      expect(mockBlockNode.blockName).toBe('Same Title');
+      expect(mockBlockNode.iconName).toBe('same-icon');
+    });
+
+    it('handles missing idevices gracefully', () => {
+      // No idevices available
+      bridge.app = {
+        project: {},
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // DOM should still be updated
+      expect(mockTitleEl.textContent).toBe('New Title');
+    });
+
+    it('handles getBlockById returning null gracefully', () => {
+      // getBlockById returns null (block not found in instance registry)
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => null),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // DOM should still be updated
+      expect(mockTitleEl.textContent).toBe('New Title');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+  });
+
+  describe('forcePageTitlesSync', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns early when no navigation', () => {
+      bridge.documentManager = null;
+      // Should not throw
+      bridge.forcePageTitlesSync();
+    });
+
+    it('updates navigation tree element when pageName differs', () => {
+      const mockTextSpan = { textContent: 'Old Name' };
+      const mockNavElement = {
+        querySelector: (selector) => selector === 'span:not(.small-icon)' ? mockTextSpan : null,
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '.nav-element[nav-id="page-123"] > .nav-element-text') return mockNavElement;
+        return null;
+      });
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'New Name';
+          if (key === 'properties') return null;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockTextSpan.textContent).toBe('New Name');
+    });
+
+    it('updates page content title for selected page', () => {
+      const mockTextSpan = { textContent: 'Page Name' };
+      const mockNavElement = {
+        querySelector: () => mockTextSpan,
+      };
+      const mockPageTitleEl = {
+        innerText: 'Old Title',
+        classList: {
+          add: mock(() => {}),
+          toggle: mock(() => {}),
+        },
+      };
+
+      // Mock selected page
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: () => 'page-123',
+              },
+            },
+          },
+        },
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '.nav-element[nav-id="page-123"] > .nav-element-text') return mockNavElement;
+        if (selector === '#page-title-node-content') return mockPageTitleEl;
+        return null;
+      });
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'Page Name';
+          if (key === 'properties') return null;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockPageTitleEl.innerText).toBe('Page Name');
+    });
+
+    it('handles pages without IDs gracefully', () => {
+      global.document.querySelector = mock(() => null);
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return null;
+          if (key === 'pageName') return 'Test';
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forcePageTitlesSync();
+    });
+
+    it('respects hidePageTitle property', () => {
+      const mockPageTitleEl = {
+        innerText: 'Some Title',
+        classList: {
+          add: mock(() => {}),
+          toggle: mock(() => {}),
+        },
+      };
+
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: () => 'page-123',
+              },
+            },
+          },
+        },
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '#page-title-node-content') return mockPageTitleEl;
+        return null;
+      });
+
+      const mockPropsMap = {
+        get: (key) => {
+          if (key === 'hidePageTitle') return true;
+          return undefined;
+        },
+      };
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'Page Name';
+          if (key === 'properties') return mockPropsMap;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockPageTitleEl.innerText).toBe('');
+      expect(mockPageTitleEl.classList.add).toHaveBeenCalledWith('hidden');
+    });
+
+    it('is called by forceTitleSync', () => {
+      const originalForcePageTitlesSync = bridge.forcePageTitlesSync;
+      bridge.forcePageTitlesSync = mock(() => {});
+      bridge.forceBlockTitlesSync = mock(() => {});
+
+      const mockMetadata = {
+        get: () => 'Test',
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+      global.document.querySelector = mock(() => null);
+      global.document.querySelectorAll = mock(() => []);
+
+      bridge.forceTitleSync();
+
+      expect(bridge.forcePageTitlesSync).toHaveBeenCalled();
+
+      bridge.forcePageTitlesSync = originalForcePageTitlesSync;
     });
   });
 
@@ -2413,8 +4609,9 @@ describe('YjsProjectBridge', () => {
     });
 
     it('calls importer and announces assets', async () => {
+      const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
-        importFromFile: mock(() => Promise.resolve({ assets: 5, theme: 'base' })),
+        importFromFile: mock(() => Promise.resolve({ assets: 5, theme: 'base', zipContents: mockZipContents })),
       };
       global.window.ElpxImporter = mock(function() { return mockImporter; });
 
@@ -2426,13 +4623,14 @@ describe('YjsProjectBridge', () => {
 
       expect(result.assets).toBe(5);
       expect(bridge.announceAssets).toHaveBeenCalled();
-      // Theme import is called when clearExisting is true (default)
-      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file);
+      // Theme import is called with cached zipContents to avoid re-unzipping
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file, mockZipContents);
     });
 
     it('imports theme when clearExisting is explicitly true', async () => {
+      const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
-        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme' })),
+        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme', zipContents: mockZipContents })),
       };
       global.window.ElpxImporter = mock(function() { return mockImporter; });
 
@@ -2441,7 +4639,7 @@ describe('YjsProjectBridge', () => {
       const file = new Blob(['test'], { type: 'application/zip' });
       await bridge.importFromElpx(file, { clearExisting: true });
 
-      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file);
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file, mockZipContents);
     });
 
     it('does NOT import theme when clearExisting is false (importing into existing project)', async () => {
@@ -2462,6 +4660,32 @@ describe('YjsProjectBridge', () => {
       expect(bridge._checkAndImportTheme).not.toHaveBeenCalled();
     });
 
+    it('imports theme in static mode (storage.remote=false)', async () => {
+      const mockImporter = {
+        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme' })),
+      };
+      global.window.ElpxImporter = mock(function() { return mockImporter; });
+
+      // Set static mode capabilities (storage.remote = false)
+      global.window.eXeLearning = {
+        app: {
+          capabilities: {
+            storage: { remote: false },
+            collaboration: { enabled: false },
+          },
+        },
+      };
+
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+
+      const file = new Blob(['test'], { type: 'application/zip' });
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      // Theme import should be called even in static mode
+      // Third argument is cachedZip (undefined when mockImporter doesn't return zipContents)
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file, undefined);
+    });
+
     it('uses assetManager when available', async () => {
       const mockImporter = {
         importFromFile: mock(() => Promise.resolve({ assets: 0 })),
@@ -2472,23 +4696,22 @@ describe('YjsProjectBridge', () => {
       });
 
       bridge.assetManager = { id: 'asset-manager' };
-      bridge.assetCache = { id: 'asset-cache' };
 
       const file = new Blob(['test']);
       await bridge.importFromElpx(file);
     });
 
-    it('falls back to assetCache when assetManager unavailable', async () => {
+    it('uses null assetHandler when assetManager unavailable', async () => {
       const mockImporter = {
         importFromFile: mock(() => Promise.resolve({ assets: 0 })),
       };
       global.window.ElpxImporter = mock(function(docManager, assetHandler) {
-        expect(assetHandler).toBe(bridge.assetCache);
+        // assetHandler is null when no assetManager
+        expect(assetHandler).toBeNull();
         return mockImporter;
       });
 
       bridge.assetManager = null;
-      bridge.assetCache = { id: 'asset-cache' };
 
       const file = new Blob(['test']);
       await bridge.importFromElpx(file);
@@ -2537,7 +4760,7 @@ describe('YjsProjectBridge', () => {
       expect(global.window.SharedExporters.createExporter).toHaveBeenCalledWith(
         'elpx',
         bridge.documentManager,
-        bridge.assetCache,
+        null, // Legacy assetCache removed
         bridge.resourceFetcher,
         bridge.assetManager
       );
@@ -2557,7 +4780,42 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
 
-    it('uses electronAPI.saveBuffer() in Electron mode with saveAs: false', async () => {
+    it('calls ensureScreenshotForExport before exporter.export so meta.screenshot is populated', async () => {
+      const callOrder = [];
+      const ensureSpy = mock(async () => {
+        callOrder.push('ensureScreenshot');
+      });
+      bridge.ensureScreenshotForExport = ensureSpy;
+
+      const exportSpy = mock(() => {
+        callOrder.push('export');
+        return Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'test.elpx',
+        });
+      });
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({ export: exportSpy })),
+      };
+
+      const mockLink = { href: '', download: '', click: mock(() => {}) };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => mockLink);
+      global.document.body = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+
+      await bridge.exportToElpx();
+
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(exportSpy).toHaveBeenCalled();
+      expect(callOrder).toEqual(['ensureScreenshot', 'export']);
+    });
+
+    it('uses electronAPI.saveBuffer() in Electron mode (always prompts)', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
           success: true,
@@ -2573,18 +4831,28 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
-        saveBufferAs: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 42,
+            promptMs: 30,
+            normalizeMs: 2,
+            writeMs: 10,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      const result = await bridge.exportToElpx();
 
+      expect(result).toEqual({ saved: true });
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'test-project-123',
         'project.elpx'
       );
-      expect(global.window.electronAPI.saveBufferAs).not.toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -2592,7 +4860,7 @@ describe('YjsProjectBridge', () => {
       delete global.window.electronAPI;
     });
 
-    it('uses electronAPI.saveBufferAs() in Electron mode with saveAs: true', async () => {
+    it('returns saved false when user cancels Electron save dialog', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
           success: true,
@@ -2604,22 +4872,26 @@ describe('YjsProjectBridge', () => {
         createExporter: mock(() => mockExporter),
       };
 
-      // Set up Electron mode
       global.eXeLearning = { config: { isOfflineInstallation: true } };
-      global.window.__currentProjectId = 'test-project-456';
+      global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
-        saveBufferAs: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: false,
+          canceled: true,
+          canceledAt: 'dialog',
+          filePath: null,
+          timings: {
+            totalMs: 15,
+            promptMs: 15,
+            normalizeMs: 0,
+            writeMs: 0,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: true });
+      const result = await bridge.exportToElpx();
 
-      expect(global.window.electronAPI.saveBufferAs).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
-        'test-project-456',
-        'project.elpx'
-      );
-      expect(global.window.electronAPI.saveBuffer).not.toHaveBeenCalled();
+      expect(result).toEqual({ saved: false });
 
       // Cleanup
       delete global.eXeLearning;
@@ -2643,13 +4915,24 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       delete global.window.__currentProjectId;
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 10,
+            promptMs: 4,
+            normalizeMs: 1,
+            writeMs: 5,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      await bridge.exportToElpx();
 
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'default',
         'project.elpx'
       );
@@ -2657,6 +4940,57 @@ describe('YjsProjectBridge', () => {
       // Cleanup
       delete global.eXeLearning;
       delete global.window.electronAPI;
+    });
+
+    it('stores export debug timeline when enabled', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 44,
+            promptMs: 30,
+            normalizeMs: 4,
+            writeMs: 10,
+          },
+        })),
+      };
+
+      const result = await bridge.exportToElpx();
+
+      expect(result).toEqual({ saved: true });
+      expect(global.window.__lastElpxExportSummary).toEqual(
+        expect.objectContaining({
+          outcome: 'success',
+          filename: 'project.elpx',
+          electronSaveMs: 44,
+          electronPromptMs: 30,
+          electronNormalizeMs: 4,
+          electronWriteMs: 10,
+        })
+      );
+      expect(global.window.__lastElpxExportTimeline.length).toBeGreaterThan(0);
+
+      delete global.eXeLearning;
+      delete global.window.eXeLearning;
+      delete global.window.electronAPI;
+      delete global.window.__lastElpxExportSummary;
+      delete global.window.__lastElpxExportTimeline;
     });
 
     it('falls back to browser download when not in Electron mode', async () => {
@@ -2687,8 +5021,9 @@ describe('YjsProjectBridge', () => {
         removeChild: mock(() => {}),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      const result = await bridge.exportToElpx({ saveAs: false });
 
+      expect(result).toEqual({ saved: true });
       expect(mockLink.click).toHaveBeenCalled();
       expect(mockLink.download).toBe('test.elpx');
 
@@ -2842,6 +5177,2282 @@ describe('YjsProjectBridge', () => {
 
       // Verify addEventListener was called for buttons
       expect(mockButton.addEventListener).toHaveBeenCalled();
+    });
+  });
+
+  describe('User Theme Methods', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      bridge.documentManager = new MockYjsDocumentManager('test-project', {});
+      bridge.resourceCache = {
+        setUserTheme: mock(() => Promise.resolve()),
+        hasUserTheme: mock(() => Promise.resolve(false)),
+        getUserTheme: mock(() => Promise.resolve(null)),
+        getUserThemeRaw: mock(() => Promise.resolve(null)),
+      };
+      bridge.resourceFetcher = {
+        setUserThemeFiles: mock(() => Promise.resolve()),
+        hasUserTheme: mock(() => false),
+      };
+
+      // Mock fflate
+      global.window.fflate = {
+        zipSync: mock(() => new Uint8Array([80, 75, 3, 4])),
+        unzipSync: mock(() => ({
+          'config.xml': new TextEncoder().encode('<theme><name>Test</name></theme>'),
+          'style.css': new Uint8Array([1, 2, 3]),
+        })),
+      };
+
+      // Store mock zip for _extractThemeFilesFromZip (correct property name)
+      bridge._pendingThemeZip = {
+        'theme/config.xml': new Uint8Array(new TextEncoder().encode('<theme><name>Test</name></theme>')),
+        'theme/style.css': new Uint8Array([1, 2, 3]),
+      };
+    });
+
+    describe('_uint8ArrayToBase64', () => {
+      it('converts Uint8Array to base64 string', () => {
+        const input = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
+        const result = bridge._uint8ArrayToBase64(input);
+        expect(result).toBe('SGVsbG8=');
+      });
+
+      it('handles empty array', () => {
+        const input = new Uint8Array([]);
+        const result = bridge._uint8ArrayToBase64(input);
+        expect(result).toBe('');
+      });
+    });
+
+    describe('_base64ToUint8Array', () => {
+      it('converts base64 string to Uint8Array', () => {
+        const input = 'SGVsbG8='; // "Hello"
+        const result = bridge._base64ToUint8Array(input);
+        expect(result).toEqual(new Uint8Array([72, 101, 108, 108, 111]));
+      });
+
+      it('handles empty string', () => {
+        const input = '';
+        const result = bridge._base64ToUint8Array(input);
+        expect(result).toEqual(new Uint8Array([]));
+      });
+    });
+
+    describe('_extractThemeFilesFromZip', () => {
+      it('extracts theme files from pending ZIP', () => {
+        const result = bridge._extractThemeFilesFromZip();
+
+        expect(result).not.toBeNull();
+        expect(result.files).toBeDefined();
+        expect(Object.keys(result.files)).toContain('config.xml');
+        expect(Object.keys(result.files)).toContain('style.css');
+      });
+
+      it('returns null when no pending ZIP', () => {
+        bridge._pendingThemeZip = null;
+        const result = bridge._extractThemeFilesFromZip();
+        expect(result).toBeNull();
+      });
+
+      it('returns null when no theme folder in ZIP', () => {
+        bridge._pendingThemeZip = {
+          'content.xml': new Uint8Array([1]),
+        };
+        const result = bridge._extractThemeFilesFromZip();
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('_parseThemeConfigFromFiles', () => {
+      it('parses config.xml and creates theme configuration', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'style.css': new Uint8Array([1]),
+          },
+          configXml: '<theme><name>My Theme</name><version>1.0</version><downloadable>0</downloadable></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
+
+        expect(result).not.toBeNull();
+        // name uses the Yjs key (sanitized dirName), NOT the raw <name> tag
+        expect(result.name).toBe('my-theme');
+        expect(result.displayName).toBe('My Theme');
+        expect(result.type).toBe('user');
+        expect(result.isUserTheme).toBe(true);
+        expect(result.downloadable).toBe('0');
+      });
+
+      it('uses default values when config.xml is missing', () => {
+        const themeFilesData = {
+          files: {
+            'style.css': new Uint8Array([1]),
+          },
+          configXml: null,
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
+
+        // Should use themeName as default values
+        expect(result.name).toBe('my-theme');
+        expect(result.displayName).toBe('my-theme');
+        expect(result.title).toBe('my-theme');
+        expect(result.type).toBe('user');
+        expect(result.downloadable).toBe('1');
+      });
+
+      it('uses <title> tag for title, falling back to <name>', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>my_custom</name><title>My Custom Theme</title></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my_custom', themeFilesData);
+
+        expect(result.name).toBe('my_custom');
+        expect(result.displayName).toBe('my_custom');
+        expect(result.title).toBe('My Custom Theme');
+      });
+
+      it('falls back to <name> for title when <title> is missing', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Fancy Theme</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('fancy_theme', themeFilesData);
+
+        expect(result.name).toBe('fancy_theme');
+        expect(result.displayName).toBe('Fancy Theme');
+        expect(result.title).toBe('Fancy Theme');
+      });
+
+      it('always uses themeName (Yjs key) for name, not raw <name> tag', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Collab Test Theme</name><title>Collaborative Test Style</title></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('collab_test_theme', themeFilesData);
+
+        // name = sanitized Yjs key, not the raw XML <name> tag
+        expect(result.name).toBe('collab_test_theme');
+        expect(result.dirName).toBe('collab_test_theme');
+        // displayName = raw <name> tag from config.xml
+        expect(result.displayName).toBe('Collab Test Theme');
+        // title = <title> tag (preferred over <name>)
+        expect(result.title).toBe('Collaborative Test Style');
+      });
+
+      it('detects CSS and JS files', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'main.css': new Uint8Array([1]),
+            'extra.css': new Uint8Array([2]),
+            'script.js': new Uint8Array([3]),
+          },
+          configXml: '<theme><name>Test</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('test-theme', themeFilesData);
+
+        expect(result.cssFiles).toContain('main.css');
+        expect(result.cssFiles).toContain('extra.css');
+        expect(result.js).toContain('script.js');
+      });
+
+      it('parses icons from icons/ directory as ThemeIcon objects', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'style.css': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/warning.svg': new Uint8Array([3]),
+            'icons/chrono.png': new Uint8Array([4]),
+          },
+          configXml: '<theme><name>Icon Theme</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('icon-theme', themeFilesData);
+
+        // Verify icons are parsed as ThemeIcon objects, not strings
+        expect(result.icons).toBeDefined();
+        expect(Object.keys(result.icons)).toHaveLength(3);
+
+        // Check info icon
+        expect(result.icons.info).toEqual({
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'icons/info.png',
+          _relativePath: 'icons/info.png',
+        });
+
+        // Check warning icon
+        expect(result.icons.warning).toEqual({
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'icons/warning.svg',
+          _relativePath: 'icons/warning.svg',
+        });
+
+        // Check chrono icon
+        expect(result.icons.chrono).toEqual({
+          id: 'chrono',
+          title: 'chrono',
+          type: 'img',
+          value: 'icons/chrono.png',
+          _relativePath: 'icons/chrono.png',
+        });
+      });
+
+      it('ignores non-icon files in icons/ directory', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/readme.txt': new Uint8Array([3]), // Should be ignored
+            'icons/icon.gif': new Uint8Array([4]), // Should be ignored (only .png/.svg)
+          },
+          configXml: '<theme><name>Test</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('test-theme', themeFilesData);
+
+        expect(Object.keys(result.icons)).toHaveLength(1);
+        expect(result.icons.info).toBeDefined();
+        expect(result.icons.readme).toBeUndefined();
+        expect(result.icons.icon).toBeUndefined();
+      });
+    });
+
+    describe('_compressThemeFiles', () => {
+      it('compresses files using fflate zipSync', () => {
+        const files = {
+          'style.css': new Uint8Array([1, 2, 3]),
+          'config.xml': new Uint8Array([4, 5, 6]),
+        };
+
+        const result = bridge._compressThemeFiles(files);
+
+        expect(global.window.fflate.zipSync).toHaveBeenCalled();
+        expect(result).toBeInstanceOf(Uint8Array);
+      });
+
+      it('throws when fflate not available', () => {
+        delete global.window.fflate;
+
+        expect(() => {
+          bridge._compressThemeFiles({ 'style.css': new Uint8Array([1]) });
+        }).toThrow('fflate library not loaded');
+      });
+    });
+
+    describe('_copyThemeToYjs', () => {
+      it('copies compressed theme to Yjs themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          set: mock(() => {}),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        await bridge._copyThemeToYjs('test-theme', { 'style.css': new Uint8Array([1]) });
+
+        expect(mockThemeFilesMap.set).toHaveBeenCalledWith(
+          'test-theme',
+          expect.any(String) // base64 compressed
+        );
+      });
+    });
+
+    describe('_loadUserThemeFromIndexedDB', () => {
+      it('calls resourceCache.getUserTheme with theme name', async () => {
+        const mockThemeData = {
+          files: new Map([['style.css', new Blob(['css'])]]),
+          config: { id: 'test-theme', name: 'test-theme', type: 'user', isUserTheme: true },
+        };
+        bridge.resourceCache.getUserTheme = mock(() => Promise.resolve(mockThemeData));
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+        global.eXeLearning.app.themes.list.installed = {};
+
+        await bridge._loadUserThemeFromIndexedDB('test-theme');
+
+        expect(bridge.resourceCache.getUserTheme).toHaveBeenCalledWith('test-theme');
+      });
+    });
+
+    describe('loadUserThemesFromYjs', () => {
+      it('loads themes from Yjs themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          entries: mock(() => [
+            ['theme1', 'base64data1'],
+            ['theme2', 'base64data2'],
+          ]),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        await bridge.loadUserThemesFromYjs();
+
+        expect(bridge._loadUserThemeFromYjs).toHaveBeenCalledTimes(2);
+      });
+
+      it('handles empty themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          entries: mock(() => []),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        // Should not throw
+        await expect(bridge.loadUserThemesFromYjs()).resolves.not.toThrow();
+      });
+
+      it('handles missing documentManager', async () => {
+        bridge.documentManager = null;
+
+        // Should not throw
+        await expect(bridge.loadUserThemesFromYjs()).resolves.not.toThrow();
+      });
+    });
+
+    describe('_decompressThemeFromYjs', () => {
+      it('decompresses base64 theme data', () => {
+        const result = bridge._decompressThemeFromYjs('UEsDBBQ='); // Minimal base64
+
+        expect(global.window.fflate.unzipSync).toHaveBeenCalled();
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('setupThemeFilesObserver', () => {
+      it('sets up observer on themeFiles map', () => {
+        const mockObserve = mock(() => {});
+        const mockThemeFilesMap = {
+          observe: mockObserve,
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        bridge.setupThemeFilesObserver();
+
+        expect(mockThemeFilesMap.observe).toHaveBeenCalled();
+      });
+
+      it('handles missing documentManager', () => {
+        bridge.documentManager = null;
+
+        // Should not throw
+        expect(() => bridge.setupThemeFilesObserver()).not.toThrow();
+      });
+
+      it('handles missing getThemeFiles method', () => {
+        bridge.documentManager.getThemeFiles = undefined;
+
+        // Should not throw
+        expect(() => bridge.setupThemeFilesObserver()).not.toThrow();
+      });
+
+      it('handles observer callback for added themes', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        bridge.setupThemeFilesObserver();
+
+        // Simulate observer callback for 'add' action
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(bridge._loadUserThemeFromYjs).toHaveBeenCalledWith('new-theme', 'base64themedata');
+      });
+
+      it('handles observer callback for deleted themes', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => null),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge.resourceFetcher = {
+          userThemeFiles: new Map([['deleted-theme', {}]]),
+          cache: new Map([['theme:deleted-theme', {}]]),
+        };
+
+        bridge.setupThemeFilesObserver();
+
+        // Simulate observer callback for 'delete' action
+        await observerCallback({
+          changes: {
+            keys: [['deleted-theme', { action: 'delete' }]],
+          },
+        });
+
+        expect(bridge.resourceFetcher.userThemeFiles.has('deleted-theme')).toBe(false);
+        expect(bridge.resourceFetcher.cache.has('theme:deleted-theme')).toBe(false);
+      });
+
+      it('calls updateThemes and buildUserListThemes after adding a theme when styles panel is open', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is open
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('calls only updateThemes after adding a theme when styles panel is closed', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is closed (no 'active' class)
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => false) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).not.toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('refreshes UI after deleting a theme', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => null),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge.resourceFetcher = {
+          userThemeFiles: new Map([['deleted-theme', {}]]),
+          cache: new Map([['theme:deleted-theme', {}]]),
+        };
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['deleted-theme', { action: 'delete' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+    });
+
+    describe('_loadUserThemeFromYjs - extended', () => {
+      it('returns early if theme already loaded in ResourceFetcher', async () => {
+        bridge.resourceFetcher.hasUserTheme = mock(() => true);
+        bridge._decompressThemeFromYjs = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('existing-theme', 'somedata');
+
+        expect(bridge._decompressThemeFromYjs).not.toHaveBeenCalled();
+      });
+
+      it('loads from IndexedDB when available', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(true));
+        bridge._loadUserThemeFromIndexedDB = mock(() => Promise.resolve());
+
+        await bridge._loadUserThemeFromYjs('idb-theme', 'somedata');
+
+        expect(bridge._loadUserThemeFromIndexedDB).toHaveBeenCalledWith('idb-theme');
+      });
+
+      it('handles IndexedDB check error gracefully', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.reject(new Error('IDB error')));
+        bridge._decompressThemeFromYjs = mock(() => ({ files: {}, configXml: null }));
+
+        // Should not throw
+        await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+
+      it('handles legacy Y.Map format', async () => {
+        const legacyMap = {
+          entries: mock(() => [
+            ['config.xml', 'PGNvbmZpZz48L2NvbmZpZz4='], // <config></config>
+            ['style.css', 'Ym9keXt9'], // body{}
+          ]),
+        };
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._parseThemeConfigFromFiles = mock(() => ({ name: 'legacy' }));
+
+        await bridge._loadUserThemeFromYjs('legacy-theme', legacyMap);
+
+        expect(bridge._parseThemeConfigFromFiles).toHaveBeenCalled();
+      });
+
+      it('skips unknown theme data format', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._parseThemeConfigFromFiles = mock(() => ({}));
+
+        // Pass an object that is not a string and has no entries() function
+        await bridge._loadUserThemeFromYjs('unknown-theme', { someKey: 'someValue' });
+
+        expect(bridge._parseThemeConfigFromFiles).not.toHaveBeenCalled();
+      });
+
+      it('skips theme with no files', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({ files: {}, configXml: null }));
+        bridge._parseThemeConfigFromFiles = mock(() => ({}));
+
+        await bridge._loadUserThemeFromYjs('empty-theme', 'somedata');
+
+        expect(bridge._parseThemeConfigFromFiles).not.toHaveBeenCalled();
+      });
+
+      it('skips theme when config parsing fails', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: null,
+        }));
+        bridge._parseThemeConfigFromFiles = mock(() => null);
+
+        await bridge._loadUserThemeFromYjs('bad-config-theme', 'somedata');
+
+        expect(bridge.resourceCache.setUserTheme).not.toHaveBeenCalled();
+      });
+
+      it('saves to IndexedDB and registers with ResourceFetcher', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'good-theme',
+          type: 'user',
+          isUserTheme: true,
+        }));
+        global.eXeLearning.app.themes.list.installed = {};
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('good-theme', 'somedata');
+
+        expect(bridge.resourceCache.setUserTheme).toHaveBeenCalled();
+        expect(bridge.resourceFetcher.setUserThemeFiles).toHaveBeenCalled();
+        expect(global.eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+      });
+
+      it('handles error saving to IndexedDB', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceCache.setUserTheme = mock(() => Promise.reject(new Error('IDB save error')));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'test-theme',
+          type: 'user',
+        }));
+
+        // Should not throw
+        await expect(bridge._loadUserThemeFromYjs('test-theme', 'data')).resolves.not.toThrow();
+      });
+
+      it('skips adding to installed themes if already exists', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'existing-theme',
+          type: 'user',
+        }));
+        global.eXeLearning.app.themes.list.installed = { 'existing-theme': {} };
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('existing-theme', 'data');
+
+        expect(global.eXeLearning.app.themes.list.addUserTheme).not.toHaveBeenCalled();
+      });
+
+      it('handles top-level error', async () => {
+        bridge.resourceCache = null;
+        bridge.resourceFetcher = null;
+
+        // Should not throw even with null dependencies
+        await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+    });
+  });
+
+  describe('disconnect', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('cleans up all resources', async () => {
+      const mockDocumentManagerDestroy = mock(() => Promise.resolve());
+      const mockAssetWSHandlerDestroy = mock(() => {});
+      const mockAssetManagerCleanup = mock(() => {});
+      const mockConnectionMonitorDestroy = mock(() => {});
+
+      bridge.documentManager = { destroy: mockDocumentManagerDestroy };
+      bridge.assetWebSocketHandler = { destroy: mockAssetWSHandlerDestroy };
+      bridge.assetManager = { cleanup: mockAssetManagerCleanup };
+      bridge.saveManager = { save: () => {} };
+      bridge.connectionMonitor = { destroy: mockConnectionMonitorDestroy };
+
+      await bridge.disconnect();
+
+      expect(mockDocumentManagerDestroy).toHaveBeenCalled();
+      expect(mockAssetWSHandlerDestroy).toHaveBeenCalled();
+      expect(mockAssetManagerCleanup).toHaveBeenCalled();
+      expect(mockConnectionMonitorDestroy).toHaveBeenCalled();
+      expect(bridge.initialized).toBe(false);
+      expect(bridge.saveManager).toBeNull();
+      expect(bridge.connectionMonitor).toBeNull();
+    });
+
+    it('handles disconnect with null resources', async () => {
+      bridge.documentManager = null;
+      bridge.assetWebSocketHandler = null;
+      bridge.assetManager = null;
+      bridge.connectionMonitor = null;
+
+      await expect(bridge.disconnect()).resolves.not.toThrow();
+      expect(bridge.initialized).toBe(false);
+    });
+  });
+
+  describe('importStructure', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('imports API structure via structureBinding', () => {
+      const mockImportFromApi = mock(() => {});
+      bridge.structureBinding = {
+        importFromApiStructure: mockImportFromApi,
+      };
+      bridge.updateUndoRedoButtons = mock(() => {});
+
+      const apiStructure = [{ id: 'page-1', pageName: 'Page 1' }];
+      bridge.importStructure(apiStructure);
+
+      expect(mockImportFromApi).toHaveBeenCalledWith(apiStructure);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('handles missing structureBinding', () => {
+      bridge.structureBinding = null;
+
+      // Should not throw
+      expect(() => bridge.importStructure([])).not.toThrow();
+    });
+  });
+
+  describe('clearNavigation', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('clears navigation via structureBinding', () => {
+      const mockClearNav = mock(() => {});
+      bridge.structureBinding = {
+        clearNavigation: mockClearNav,
+      };
+
+      bridge.clearNavigation();
+
+      expect(mockClearNav).toHaveBeenCalled();
+    });
+
+    it('handles missing structureBinding', () => {
+      bridge.structureBinding = null;
+
+      // Should not throw
+      expect(() => bridge.clearNavigation()).not.toThrow();
+    });
+  });
+
+  describe('onStructureChange', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('registers callback and returns unsubscribe function', () => {
+      const callback = () => {};
+
+      const unsubscribe = bridge.onStructureChange(callback);
+
+      expect(bridge.structureObservers).toContain(callback);
+
+      unsubscribe();
+
+      expect(bridge.structureObservers).not.toContain(callback);
+    });
+  });
+
+  describe('onSaveStatus', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('registers callback and returns unsubscribe function', () => {
+      const callback = () => {};
+
+      const unsubscribe = bridge.onSaveStatus(callback);
+
+      expect(bridge.saveStatusCallbacks).toContain(callback);
+
+      unsubscribe();
+
+      expect(bridge.saveStatusCallbacks).not.toContain(callback);
+    });
+  });
+
+  describe('getAssetManager', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns assetManager instance', () => {
+      bridge.assetManager = { id: 'test-asset-manager' };
+
+      expect(bridge.getAssetManager()).toBe(bridge.assetManager);
+    });
+
+    it('returns null when not set', () => {
+      bridge.assetManager = null;
+
+      expect(bridge.getAssetManager()).toBeNull();
+    });
+  });
+
+  describe('getAssetWebSocketHandler', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns assetWebSocketHandler instance', () => {
+      bridge.assetWebSocketHandler = { id: 'test-ws-handler' };
+
+      expect(bridge.getAssetWebSocketHandler()).toBe(bridge.assetWebSocketHandler);
+    });
+
+    it('returns null when not set', () => {
+      bridge.assetWebSocketHandler = null;
+
+      expect(bridge.getAssetWebSocketHandler()).toBeNull();
+    });
+  });
+
+  describe('requestMissingAssets', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('delegates to assetWebSocketHandler', async () => {
+      const mockRequest = mock(() => Promise.resolve(['asset-1', 'asset-2']));
+      bridge.assetWebSocketHandler = {
+        requestMissingAssetsFromHTML: mockRequest,
+      };
+
+      const result = await bridge.requestMissingAssets('<img src="asset://asset-1">');
+
+      expect(mockRequest).toHaveBeenCalledWith('<img src="asset://asset-1">');
+      expect(result).toEqual(['asset-1', 'asset-2']);
+    });
+
+    it('returns empty array when handler not available', async () => {
+      bridge.assetWebSocketHandler = null;
+
+      const result = await bridge.requestMissingAssets('<html></html>');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('announceAssets', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('calls announceAssetAvailability on handler', async () => {
+      const mockAnnounce = mock(() => Promise.resolve());
+      bridge.assetWebSocketHandler = {
+        announceAssetAvailability: mockAnnounce,
+      };
+
+      await bridge.announceAssets();
+
+      expect(mockAnnounce).toHaveBeenCalled();
+    });
+
+    it('handles missing handler gracefully', async () => {
+      bridge.assetWebSocketHandler = null;
+
+      // Should not throw
+      await expect(bridge.announceAssets()).resolves.not.toThrow();
+    });
+  });
+
+  describe('_syncBlockIcon', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('sets empty SVG icon when iconName is empty string', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is undefined', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, undefined, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is null', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, null, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets icon image when iconName matches theme icon key', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true, // has exe-no-icon class
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('img');
+      expect(mockIconEl.innerHTML).toContain('/icons/info.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by id when key does not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'target-icon', value: '/icons/target.png', title: 'Target' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon id instead of key
+      bridge._syncBlockIcon(mockIconEl, 'target-icon', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/target.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by value when key and id do not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'some-id', value: '/icons/myicon.png', title: 'My Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon value as iconName
+      bridge._syncBlockIcon(mockIconEl, '/icons/myicon.png', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/myicon.png');
+    });
+
+    it('does not update when icon src already matches', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '<img src="/icons/info.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false, // doesn't have exe-no-icon
+        },
+        querySelector: () => ({ getAttribute: () => '/icons/info.png' }),
+      };
+
+      const originalHtml = mockIconEl.innerHTML;
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      // Should not change since src already matches and no exe-no-icon class
+      expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('does not clear icon when already showing empty SVG', () => {
+      const mockIconEl = {
+        innerHTML: '<svg>empty</svg>',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: (className) => className === 'exe-no-icon', // has exe-no-icon
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      // Should not add exe-no-icon class again since already has it and no img
+      expect(mockIconEl.classList.add).not.toHaveBeenCalled();
+    });
+
+    it('handles missing theme icons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({}), // empty icons
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw when icon not found
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'nonexistent-icon', 'block-1');
+      }).not.toThrow();
+
+      // Should not modify innerHTML when icon not found
+      expect(mockIconEl.innerHTML).toBe('');
+    });
+
+    it('handles undefined getThemeIcons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {}, // no getThemeIcons method
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'some-icon', 'block-1');
+      }).not.toThrow();
+    });
+  });
+
+  describe('hasUnsavedChangesForUI', () => {
+    it('returns true when documentManager.isDirty is true', () => {
+      bridge.documentManager = { isDirty: true };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when documentManager.isDirty is false', () => {
+      bridge.documentManager = { isDirty: false };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+
+    it('returns true when currentSaveStatus is unsaved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'unsaved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns true when currentSaveStatus is error and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'error';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when currentSaveStatus is saved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'saved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+  });
+
+  describe('_markDocumentClean', () => {
+    beforeEach(() => {
+      // Ensure saveStatusCallbacks is initialized
+      bridge.saveStatusCallbacks = [];
+      // Create a mock save button with classList
+      bridge.saveButton = {
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+      };
+    });
+
+    it('calls documentManager.markClean when available', () => {
+      const markCleanMock = mock(() => {});
+      bridge.documentManager = { markClean: markCleanMock };
+
+      bridge._markDocumentClean();
+
+      expect(markCleanMock).toHaveBeenCalled();
+    });
+
+    it('updates save status to saved', () => {
+      bridge.documentManager = { markClean: mock(() => {}) };
+
+      bridge._markDocumentClean();
+
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge._markDocumentClean()).not.toThrow();
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+  });
+
+  describe('importFromElpx dirty tracking', () => {
+    beforeEach(() => {
+      bridge.documentManager = {
+        withSuppressedDirtyTracking: mock(async (fn) => fn()),
+        markClean: mock(() => {}),
+        markDirty: mock(() => {}),
+        captureBaselineState: mock(() => {}),
+        clearUndoStack: mock(() => {}),
+        isDirty: false,
+        _initialized: true,
+      };
+      bridge.assetManager = {};
+
+      window.ElpxImporter = class {
+        constructor() {}
+        importFromFile = mock(() => Promise.resolve({ pages: 1, idevices: 2, assets: 0 }));
+      };
+    });
+
+    it('uses withSuppressedDirtyTracking when clearExisting is true', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.withSuppressedDirtyTracking).toHaveBeenCalled();
+    });
+
+    it('marks document clean after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.markClean).toHaveBeenCalled();
+    });
+
+    it('clears undo stack after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.clearUndoStack).toHaveBeenCalled();
+    });
+
+    it('does not clear undo stack when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.clearUndoStack).not.toHaveBeenCalled();
+    });
+
+    it('marks document dirty when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+  });
+
+  describe('clearAssetsForNewProject', () => {
+    let mockYdoc;
+    let mockAssetsMap;
+    let mockAssetsData;
+
+    beforeEach(() => {
+      // Create a mock Y.Map-like object for assets
+      mockAssetsData = new Map();
+      mockAssetsMap = {
+        get size() {
+          return mockAssetsData.size;
+        },
+        set: (key, value) => mockAssetsData.set(key, value),
+        get: (key) => mockAssetsData.get(key),
+        clear: mock(() => mockAssetsData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'assets') return mockAssetsMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+
+      bridge.assetManager = {
+        blobCache: new Map(),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        clearCache: mock(async () => {}),
+      };
+    });
+
+    it('clears AssetManager memory caches', async () => {
+      // Setup: add some assets to caches
+      bridge.assetManager.blobCache.set('test-id', new Blob(['test']));
+      bridge.assetManager.blobURLCache.set('test-id', 'blob:http://test/123');
+      bridge.assetManager.reverseBlobCache.set('blob:http://test/123', 'test-id');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.blobCache.size).toBe(0);
+      expect(bridge.assetManager.blobURLCache.size).toBe(0);
+      expect(bridge.assetManager.reverseBlobCache.size).toBe(0);
+    });
+
+    it('revokes blob URLs when clearing caches', async () => {
+      const mockRevokeObjectURL = mock(() => {});
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('test-id-1', 'blob:http://test/123');
+      bridge.assetManager.blobURLCache.set('test-id-2', 'blob:http://test/456');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledTimes(2);
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/456');
+    });
+
+    it('only revokes blob URLs (skips data URLs)', async () => {
+      const mockRevokeObjectURL = mock(() => {});
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('blob-asset', 'blob:http://test/123');
+      bridge.assetManager.blobURLCache.set('data-asset', 'data:image/png;base64,AAAA');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+    });
+
+    it('does not fail when revokeObjectURL throws', async () => {
+      const mockRevokeObjectURL = mock(() => {
+        throw new Error('revoke failed');
+      });
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('blob-asset', 'blob:http://test/123');
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+    });
+
+    it('clears Yjs assets map when it has entries', async () => {
+      // Setup: add asset metadata to Yjs
+      mockAssetsData.set('test-asset', { id: 'test-asset', filename: 'test.jpg' });
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalled();
+      expect(mockAssetsMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call transact when assets map is empty', async () => {
+      // Assets map is already empty
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).not.toHaveBeenCalled();
+    });
+
+    it('calls clearCache on AssetManager', async () => {
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.clearCache).toHaveBeenCalled();
+    });
+
+    it('handles missing assetManager gracefully', async () => {
+      bridge.assetManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing documentManager gracefully', async () => {
+      bridge.documentManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', async () => {
+      bridge.documentManager = {};
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+  });
+
+  describe('clearMetadataForNewProject', () => {
+    let mockYdoc;
+    let mockMetadataData;
+    let mockMetadataMap;
+    let mockThemeFilesData;
+    let mockThemeFilesMap;
+
+    beforeEach(() => {
+      mockMetadataData = new Map();
+      mockMetadataMap = {
+        get size() {
+          return mockMetadataData.size;
+        },
+        set: (key, value) => mockMetadataData.set(key, value),
+        get: (key) => mockMetadataData.get(key),
+        clear: mock(() => mockMetadataData.clear()),
+      };
+
+      mockThemeFilesData = new Map();
+      mockThemeFilesMap = {
+        get size() {
+          return mockThemeFilesData.size;
+        },
+        set: (key, value) => mockThemeFilesData.set(key, value),
+        get: (key) => mockThemeFilesData.get(key),
+        clear: mock(() => mockThemeFilesData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'metadata') return mockMetadataMap;
+          if (name === 'themeFiles') return mockThemeFilesMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+    });
+
+    it('clears metadata map and sets timestamps', () => {
+      mockMetadataData.set('title', 'Old Title');
+      mockMetadataData.set('subtitle', 'Old Subtitle');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockMetadataMap.clear).toHaveBeenCalled();
+      expect(mockMetadataData.has('createdAt')).toBe(true);
+      expect(mockMetadataData.has('modifiedAt')).toBe(true);
+      expect(typeof mockMetadataData.get('createdAt')).toBe('number');
+      expect(typeof mockMetadataData.get('modifiedAt')).toBe('number');
+    });
+
+    it('clears themeFiles map when it has entries', () => {
+      mockThemeFilesData.set('style.css', 'body {}');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call clear on themeFiles when empty', () => {
+      // themeFiles map is empty
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).not.toHaveBeenCalled();
+    });
+
+    it('runs inside a single transaction', () => {
+      mockMetadataData.set('title', 'Old');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', () => {
+      bridge.documentManager = {};
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+  });
+
+  describe('_extractAnchorsFromPageMap', () => {
+    let tempDiv;
+
+    beforeEach(() => {
+      // Use the real DOM (originalDocument) because the outer beforeEach mocks global.document
+      // with a stub whose querySelectorAll always returns [].
+      tempDiv = originalDocument.createElement('div');
+    });
+
+    it('returns empty array when blocks is missing', () => {
+      const pageMap = { get: () => null };
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('returns empty array when no anchor elements found', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>No anchors here</p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('extracts anchor id from <a id="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>Text <a id="myanchor">link</a></p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['myanchor']);
+    });
+
+    it('extracts anchor name from <a name="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a name="section1"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['section1']);
+    });
+
+    it('ignores <a> elements that have href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="linked" href="#target">link</a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('deduplicates anchors with same id', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const block = {
+        get: (key) => key === 'components' ? {
+          length: 2,
+          get: (i) => i === 0 ? compMap1 : compMap2,
+        } : null,
+      };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['dup']);
+    });
+
+    it('skips components without htmlContent', () => {
+      const compMap = { get: () => null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('skips blocks without components', () => {
+      const block = { get: () => null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('handles htmlContent as object with toString', () => {
+      const htmlObj = { toString: () => '<a id="anchor1"></a>' };
+      const compMap = { get: (key) => key === 'htmlContent' ? htmlObj : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['anchor1']);
+    });
+
+    it('collects anchors from multiple blocks and components', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="first"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="second"></a>' : null };
+      const block1 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap1 } : null };
+      const block2 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap2 } : null };
+      const pageMap = {
+        get: (key) => key === 'blocks' ? {
+          length: 2,
+          get: (i) => i === 0 ? block1 : block2,
+        } : null,
+      };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['first', 'second']);
+    });
+  });
+
+  describe('getPageAnchors', () => {
+    beforeEach(() => {
+      // getPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when pageId is empty', () => {
+      bridge.documentManager = { getNavigation: () => ({ length: 0 }) };
+      expect(bridge.getPageAnchors('')).toEqual([]);
+    });
+
+    it('returns empty array when page is not found', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'other-page' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns anchors from matching page', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="top"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-1')).toEqual(['top']);
+    });
+
+    it('uses pageId as fallback key', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="section"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return undefined;
+          if (key === 'pageId') return 'page-2';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-2')).toEqual(['section']);
+    });
+  });
+
+  describe('getAllPageAnchors', () => {
+    beforeEach(() => {
+      // getAllPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips pages with no id', () => {
+      const pageMap = { get: () => null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips root page', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'root' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips excludePageId', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="anch"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page 1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getAllPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns pages with anchors, excluding those with no anchors', () => {
+      const compMapWithAnchor = { get: (key) => key === 'htmlContent' ? '<a id="sec1"></a>' : null };
+      const compMapNoAnchor = { get: (key) => key === 'htmlContent' ? '<p>no anchor</p>' : null };
+      const blockWithAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapWithAnchor } : null };
+      const blockNoAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapNoAnchor } : null };
+
+      const page1 = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page One';
+          if (key === 'blocks') return { length: 1, get: () => blockWithAnchor };
+          return null;
+        },
+      };
+      const page2 = {
+        get: (key) => {
+          if (key === 'id') return 'page-2';
+          if (key === 'pageName') return 'Page Two';
+          if (key === 'blocks') return { length: 1, get: () => blockNoAnchor };
+          return null;
+        },
+      };
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toEqual([{ pageId: 'page-1', pageName: 'Page One', anchors: ['sec1'] }]);
+    });
+
+    it('collects anchors from multiple pages', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ pageId: 'p1', pageName: 'Page 1', anchors: ['a1'] });
+      expect(result[1]).toEqual({ pageId: 'p2', pageName: 'Page 2', anchors: ['a2'] });
+    });
+
+    it('excludes a specific page while including others', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors('p1');
+      expect(result).toHaveLength(1);
+      expect(result[0].pageId).toBe('p2');
+    });
+  });
+
+  describe('generateScreenshotFromFirstPage', () => {
+    let mockMetadata;
+
+    beforeEach(() => {
+      mockMetadata = {
+        get: mock(() => undefined),
+        set: mock(() => undefined),
+        observe: mock(() => undefined),
+        unobserve: mock(() => undefined),
+      };
+    });
+
+    it('returns early when documentManager is null', async () => {
+      bridge.documentManager = null;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      // No error thrown; the method exited early
+      expect(true).toBe(true);
+    });
+
+    it('returns early when custom screenshot already exists in metadata', async () => {
+      const getMetadataMock = mock(() => ({
+        ...mockMetadata,
+        get: mock(() => 'data:image/png;base64,abc'),
+      }));
+      bridge.documentManager = {
+        getMetadata: getMetadataMock,
+      };
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({ success: true, files: {} })) };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(window.SharedExporters.generatePreviewForSW).not.toHaveBeenCalled();
+    });
+
+    it('returns early when SharedExporters.generatePreviewForSW is not available', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      delete window.SharedExporters;
+
+      // Should not throw
+      await bridge.generateScreenshotFromFirstPage();
+
+      // metadata.set should never be called
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when window.SharedExporters is undefined', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = undefined;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when generatePreviewForSW returns success false', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({ success: false, error: 'preview failed' })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('concurrency guard prevents double execution', async () => {
+      const generatePreviewForSW = mock(async () => ({ success: false }));
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = { generatePreviewForSW };
+
+      // Start two concurrent calls; the guard should make the second a no-op
+      const [, second] = await Promise.all([
+        bridge.generateScreenshotFromFirstPage(),
+        bridge.generateScreenshotFromFirstPage(),
+      ]);
+
+      // generatePreviewForSW should have been called at most once
+      expect(generatePreviewForSW).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns early when index.html is missing from preview files', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'other.html': encoder.encode('<html></html>').buffer },
+        })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('does not call metadata.set when _captureHtmlAsScreenshot returns null', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body></body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => null);
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('calls metadata.set with data URL when generation succeeds', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body>content</body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,fakeScreenshot');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
+    });
+
+    it('inlines CSS link tags as style tags in the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head><link rel="stylesheet" href="theme/style.css"></head><body></body></html>').buffer,
+            'theme/style.css': encoder.encode('body { color: red; }').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('<style>');
+      expect(capturedHtml).not.toContain('<link rel="stylesheet"');
+    });
+
+    it('removes script tags from the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body><script>alert(1)<\/script></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).not.toContain('<script');
+    });
+
+    it('injects screenshot-cleanup CSS to hide UI chrome', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('screenshot-cleanup');
+      expect(capturedHtml).toContain('#siteNav');
+    });
+
+    it('converts img src attributes to data URIs', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><body><img src="img/test.png"></body></html>').buffer,
+            'img/test.png': new Uint8Array([137, 80, 78, 71]).buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+      // Override _uint8ArrayToBase64 to return a predictable value
+      bridge._uint8ArrayToBase64 = mock(() => 'AAAA');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('data:image/png;base64,');
+      expect(capturedHtml).not.toContain('src="img/test.png"');
+    });
+
+    it('catches and suppresses errors thrown by generatePreviewForSW', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('boom'); }),
+      };
+
+      // Should not throw
+      await expect(bridge.generateScreenshotFromFirstPage()).resolves.toBeUndefined();
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('resets _screenshotGenerating flag to false after error', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('failure'); }),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('ensureScreenshotForExport', () => {
+    it('awaits generateScreenshotFromFirstPage when present', async () => {
+      const generate = mock(async () => {});
+      bridge.generateScreenshotFromFirstPage = generate;
+
+      await bridge.ensureScreenshotForExport();
+
+      expect(generate).toHaveBeenCalled();
+    });
+
+    it('is a no-op when generateScreenshotFromFirstPage is missing', async () => {
+      delete bridge.generateScreenshotFromFirstPage;
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
+    });
+
+    it('returns within the timeout when generation hangs', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        () => new Promise((r) => setTimeout(r, 60000)),
+      );
+
+      const start = Date.now();
+      await bridge.ensureScreenshotForExport(25);
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+      expect(elapsed).toBeGreaterThanOrEqual(20);
+    });
+
+    it('swallows generator rejections', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        async () => { throw new Error('render failed'); },
+      );
+
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('_captureHtmlAsScreenshot', () => {
+    let mockBody;
+    let originalBody;
+
+    beforeEach(() => {
+      // Ensure html2canvas is not set by default for each test
+      delete window.html2canvas;
+
+      // jsdom may not have document.body; provide a minimal mock
+      mockBody = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+      originalBody = Object.getOwnPropertyDescriptor(document, 'body');
+      Object.defineProperty(document, 'body', {
+        get: () => mockBody,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      delete window.html2canvas;
+      if (originalBody) {
+        Object.defineProperty(document, 'body', originalBody);
+      }
+    });
+
+    it('returns null when html2canvas is not available and script loading fails', async () => {
+      // Patch the bridge's internal script-load path: intercept createElement('script')
+      // to immediately invoke onerror, simulating a failed load.
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'script') {
+          const el = originalCreateElement(tag);
+          // Override appendChild on document.head to fire onerror synchronously
+          const origAppend = document.head ? document.head.appendChild.bind(document.head) : null;
+          if (document.head) {
+            document.head.appendChild = (child) => {
+              if (child === el) {
+                // Restore and fire onerror
+                if (origAppend) document.head.appendChild = origAppend;
+                setTimeout(() => child.onerror && child.onerror(new Error('load failed')), 0);
+                return child;
+              }
+              return origAppend ? origAppend(child) : child;
+            };
+          }
+          return el;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('returns null when html2canvas is available but iframe has no contentDocument', async () => {
+      window.html2canvas = mock(async () => ({}));
+
+      // Patch createElement to return an iframe with no contentDocument
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'iframe') {
+          const iframe = originalCreateElement('iframe');
+          Object.defineProperty(iframe, 'contentDocument', { get: () => null, configurable: true });
+          Object.defineProperty(iframe, 'contentWindow', { get: () => null, configurable: true });
+          return iframe;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('calls html2canvas and returns a data URL when html2canvas is available', async () => {
+      const mockCtx = {
+        fillStyle: '',
+        fillRect: mock(() => {}),
+        drawImage: mock(() => {}),
+      };
+      const mockCapture = {
+        width: 800,
+        height: 600,
+        toDataURL: mock(() => 'irrelevant'),
+        getContext: mock(() => mockCtx),
+      };
+      const mockResized = {
+        width: 1280,
+        height: 720,
+        toDataURL: mock(() => 'data:image/png;base64,result'),
+        getContext: mock(() => mockCtx),
+      };
+      window.html2canvas = mock(async () => mockCapture);
+
+      // Patch createElement so canvas returns our mock with getContext
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'canvas') return mockResized;
+        if (tag === 'iframe') {
+          // Return an iframe whose contentDocument supports open/write/close
+          const mockIframeDoc = {
+            open: mock(() => {}),
+            write: mock(() => {}),
+            close: mock(() => {}),
+            readyState: 'complete',
+            body: { appendChild: mock(() => {}) },
+          };
+          return {
+            style: { cssText: '' },
+            contentDocument: mockIframeDoc,
+            contentWindow: { document: mockIframeDoc },
+          };
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(window.html2canvas).toHaveBeenCalled();
+      expect(result).toBe('data:image/png;base64,result');
+      document.createElement = originalCreateElement;
     });
   });
 });

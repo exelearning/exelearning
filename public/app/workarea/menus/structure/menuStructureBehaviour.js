@@ -5,9 +5,29 @@
  */
 
 import ImportProgress from '../../interface/importProgress.js';
+import { exportPageAndDownload } from './pageExportHelper.js';
 
 // Use global AppLogger for debug-controlled logging
-const Logger = window.AppLogger || console;
+// Use global AppLogger for debug-controlled logging
+const Logger = (typeof window !== 'undefined' && window.AppLogger) || console;
+
+// Module-level flag to ensure only one document-level context menu listener is added
+let _contextMenuDelegationAdded = false;
+// Store the current handler reference so it can be called with the active instance
+let _contextMenuHandler = null;
+let _activeMenuStructureBehaviour = null;
+
+/**
+ * Reset the context menu delegation state (for testing purposes)
+ */
+export function resetContextMenuDelegation() {
+    if (_contextMenuHandler) {
+        document.removeEventListener('click', _contextMenuHandler);
+        _contextMenuHandler = null;
+    }
+    _contextMenuDelegationAdded = false;
+    _activeMenuStructureBehaviour = null;
+}
 
 export default class MenuStructureBehaviour {
     constructor(structureEngine) {
@@ -15,9 +35,10 @@ export default class MenuStructureBehaviour {
         this.menuNav = document.querySelector('#main #menu_nav');
         this.menuNavList = this.menuNav.querySelector('#main #nav_list');
         this.nodeSelected = null;
+        this.selectedNodeIds = new Set();
+        this.lastRangeAnchorId = null;
         this.nodeDrag = null;
         this.enterDragMenuStructureCount = 0;
-        this.dbclickNode = false;
         // Add object to engine
         this.structureEngine.menuStructureBehaviour = this;
     }
@@ -42,7 +63,6 @@ export default class MenuStructureBehaviour {
         this.addNavTestIds();
         // Nav elements drag&drop events
         this.addEventNavElementOnclick();
-        this.addEventNavElementOnDbclick();
         this.addEventNavElementIconOnclick();
         this.addEventNavElementOnMenuIconClic();
         this.addEventNavElementOnAddIconClick();
@@ -89,14 +109,41 @@ export default class MenuStructureBehaviour {
         );
         navLabelElements.forEach((element) => {
             element.addEventListener('click', (event) => {
+                // Ignore clicks from dropdown menu or trigger (let them bubble to menuNav delegation)
+                if (event.target.closest('.dropdown-menu') || event.target.closest('.page-settings-trigger')) return;
+                
+                // Ignore clicks when inline editing is active
+                if (event.target.closest('.node-text-span[contenteditable="true"]')) return;
+
+                // Close any open dropdowns before checking iDevice or stopping propagation
+                const openDropdowns = document.querySelectorAll('.dropdown-menu.show');
+                openDropdowns.forEach(menu => {
+                     const toggle = menu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+                     if (toggle && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                         const dd = bootstrap.Dropdown.getInstance(toggle);
+                         if (dd) dd.hide();
+                     }
+                });
+
                 event.stopPropagation();
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.selectNode(element.parentElement).then((nodeElement) => {
+
+                const navElement = element.parentElement;
+                const isRangeSelection = event.shiftKey;
+                const isToggleSelection = event.ctrlKey || event.metaKey;
+
+                if (isRangeSelection || isToggleSelection) {
+                    this.handleMultiSelectionClick(navElement, event);
+                    return;
+                }
+
+                const wasAlreadySelected = this.nodeSelected &&
+                    navElement.getAttribute('nav-id') === this.nodeSelected.getAttribute('nav-id');
+
+                this.selectNode(navElement).then((nodeElement) => {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
-                    // Check dbclick
-                    if (nodeElement && this.dbclickNode) {
-                        this.showModalPropertiesNode();
-                        this.dbclickNode = false;
+                    if (wasAlreadySelected && nodeElement) {
+                        this.startInlinePageRename(nodeElement);
                     }
                 });
             });
@@ -104,35 +151,249 @@ export default class MenuStructureBehaviour {
     }
 
     /**
+     * Handle Shift/Ctrl/Cmd click selection for multi-select.
      *
+     * @param {Element} navElement
+     * @param {MouseEvent} event
      */
-    addEventNavElementOnDbclick() {
-        var navLabelElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text`
-        );
-        navLabelElements.forEach((element) => {
-            element.addEventListener('dblclick', (event) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                event.stopPropagation();
-                this.dbclickNode = true;
-            });
-        });
+    handleMultiSelectionClick(navElement, event) {
+        if (!navElement) return;
+
+        const clickedId = navElement.getAttribute('nav-id');
+        if (!clickedId) return;
+
+        const isRangeSelection = event.shiftKey;
+        const isAdditiveSelection = event.ctrlKey || event.metaKey;
+        const currentSelection = new Set(this.getSelectedNodeIds({ excludeRoot: false }));
+        let nextSelection = new Set(currentSelection);
+
+        if (isRangeSelection) {
+            const anchorId =
+                this.lastRangeAnchorId ||
+                this.nodeSelected?.getAttribute('nav-id') ||
+                clickedId;
+            const rangeIds = this.getNavIdsInRange(anchorId, clickedId);
+            nextSelection = isAdditiveSelection ? new Set([...currentSelection, ...rangeIds]) : new Set(rangeIds);
+        } else if (isAdditiveSelection) {
+            if (nextSelection.has(clickedId)) {
+                // Keep at least one selected element to avoid an unusable empty state.
+                if (nextSelection.size > 1) {
+                    nextSelection.delete(clickedId);
+                }
+            } else {
+                nextSelection.add(clickedId);
+            }
+        }
+
+        if (nextSelection.size === 0) {
+            nextSelection.add(clickedId);
+        }
+
+        this.lastRangeAnchorId = clickedId;
+        this.setNodeSelected(navElement, nextSelection);
+    }
+
+    /**
+     * Get nav IDs between two nodes following current visible DOM order.
+     *
+     * @param {string} anchorId
+     * @param {string} targetId
+     * @returns {Array<string>}
+     */
+    getNavIdsInRange(anchorId, targetId) {
+        const navElements = Array.from(this.menuNav.querySelectorAll('.nav-element[nav-id]'));
+        const navIds = navElements.map((el) => el.getAttribute('nav-id')).filter(Boolean);
+        const anchorIndex = navIds.indexOf(anchorId);
+        const targetIndex = navIds.indexOf(targetId);
+
+        if (anchorIndex === -1 || targetIndex === -1) {
+            return [targetId];
+        }
+
+        const start = Math.min(anchorIndex, targetIndex);
+        const end = Math.max(anchorIndex, targetIndex);
+        return navIds.slice(start, end + 1);
     }
 
     addEventNavElementOnMenuIconClic() {
-        var navLabelMenuElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text .node-menu-button`
+        // 1. Handle Trigger Button (Toggle Dropdown)
+        var navTriggers = this.menuNav.querySelectorAll(
+            `.nav-element .page-settings-trigger`
         );
-        navLabelMenuElements.forEach((element) => {
+        navTriggers.forEach((element) => {
+            // FIX: Handle Z-Index dynamically on show/hide to prevent overlap by subsequent elements
+            const container = element.closest('.dropdown');
+            if (container) {
+                container.addEventListener('show.bs.dropdown', () => {
+                    const navEl = container.closest('.nav-element');
+                    if (navEl) navEl.style.zIndex = '1005'; // Higher than siblings (next rows)
+                    
+                    // FIX: Also elevate this container (textElement) so it sits above its own 
+                    // 'children-container' (which follows it in DOM).
+                    container.style.position = 'relative'; 
+                    container.style.zIndex = '1006';
+                });
+                container.addEventListener('hide.bs.dropdown', () => {
+                    const navEl = container.closest('.nav-element');
+                    if (navEl) navEl.style.zIndex = '';
+
+                    container.style.zIndex = '';
+                    container.style.position = '';
+                });
+            }
+
+            element.addEventListener('click', (event) => {
+                // We rely on Bootstrap's data-bs-toggle="dropdown" to handle the toggle.
+                // We ONLY need to stop propagation so the row doesn't get selected.
+                event.stopPropagation();
+            });
+            // Prevent double click on trigger
+            // Prevent double click on trigger
+            element.addEventListener('dblclick', (event) => {
+                event.stopPropagation();
+            });
+        });
+
+        // 2. Handle Properties Menu Item (and any legacy buttons)
+        // Note: The new Properties item has class 'node-menu-button' and 'page-settings'
+        var navPropertiesItems = this.menuNav.querySelectorAll(
+            `.nav-element .node-menu-button`
+        );
+        navPropertiesItems.forEach((element) => {
+            // Avoid adding this handler to the trigger itself if it still has node-menu-button class (it does, but we can check)
+            if (element.classList.contains('page-settings-trigger')) return;
+
             element.addEventListener('click', (event) => {
                 event.stopPropagation();
                 let node = this.structureEngine.getNode(
                     element.getAttribute('data-menunavid')
                 );
-                node.showModalProperties();
-                this.mutationForModalProperties();
+                if (node) {
+                    node.showModalProperties();
+                    this.mutationForModalProperties();
+                }
+                // Close dropdown if open (Bootstrap usually does this, but good to ensure)
             });
         });
+
+        // 3. Delegation for other Context Menu Actions (Import, Clone, Delete)
+        // Using document-level listener since dropdown menus are appended to body (data-bs-container="body")
+        // Update the active instance reference so the handler always uses the current behaviour
+        _activeMenuStructureBehaviour = this;
+
+        if (!_contextMenuDelegationAdded) {
+            _contextMenuHandler = (e) => {
+                // Only handle dropdown items from nav page menus (identified by aria-labelledby pattern)
+                const target = e.target.closest('.dropdown-item');
+                if (!target) return;
+
+                // Check if this dropdown menu belongs to a nav page menu
+                const dropdownMenu = target.closest('.dropdown-menu[aria-labelledby^="dropdownMenuButtonPage"]');
+                if (!dropdownMenu) return;
+
+                // Use the active behaviour instance
+                const self = _activeMenuStructureBehaviour;
+                if (!self) return;
+
+                // Stop propagation immediately if we hit a dropdown item!
+                e.stopPropagation();
+
+                // Helper to close dropdown - find button via aria-labelledby
+                const closeDropdown = () => {
+                    const labelledBy = dropdownMenu.getAttribute('aria-labelledby');
+                    const dropdownBtn = labelledBy ? document.getElementById(labelledBy) : null;
+                    if (dropdownBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                        const dd = bootstrap.Dropdown.getInstance(dropdownBtn);
+                        if (dd) dd.hide();
+                    }
+                };
+
+                // Import Page
+                if (target.classList.contains('action_import_idevices')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        self.importTargetNodeId = nodeId;
+                        const input = self.menuNav.querySelector('input.local-ode-file-upload-input');
+                        if (input) input.click();
+                    }
+                }
+
+                // Clone Page
+                if (target.classList.contains('action_clone')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                         // User requested revert: Clone directly, then Rename.
+                         self.structureEngine.cloneNodeAndReload(nodeId).then(() => {
+                             self.showModalRenameNode();
+                         });
+                    }
+                }
+
+                // Export Page (client-side export to include IndexedDB assets)
+                if (target.classList.contains('action_export_page')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        exportPageAndDownload(nodeId, self.structureEngine).catch(
+                            (error) => {
+                                console.error(
+                                    '[MenuStructure] Page export failed:',
+                                    error
+                                );
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Download error'),
+                                    body: error.message,
+                                    contentId: 'error',
+                                });
+                            }
+                        );
+                    }
+                }
+
+
+                // Delete Page
+                if (target.classList.contains('action_delete')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        self.showModalRemoveNode(nodeId);
+                    }
+                }
+
+                // Properties
+                if (target.classList.contains('page-settings')) {
+                     e.stopPropagation();
+                     closeDropdown();
+                     const nodeId = target.getAttribute('data-menunavid');
+                     let node = self.structureEngine.getNode(nodeId);
+                     if (node) {
+                        node.showModalProperties();
+                        self.mutationForModalProperties();
+                     }
+                }
+
+                // Add Subpage
+                if (target.classList.contains('page-add')) {
+                     e.stopPropagation();
+                     closeDropdown();
+                     if (eXeLearning.app.project.checkOpenIdevice()) return;
+                     const parentNodeId = target.getAttribute('data-parentnavid');
+                     self.showModalNewNode(parentNodeId);
+                }
+            };
+            document.addEventListener('click', _contextMenuHandler);
+            _contextMenuDelegationAdded = true;
+        }
     }
 
     /**
@@ -202,27 +463,31 @@ export default class MenuStructureBehaviour {
      * Add click event for main "New page" button - always creates at root level
      */
     addEventNavNewNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_add')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_add');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // Always create at root level (pass null explicitly)
                 this.showModalNewNode(null);
             });
+        }
     }
 
     /**
      *
      */
     addEventNavPropertiesNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_properties')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_properties'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.showModalPropertiesNode();
                 }
             });
+        }
     }
 
     /**
@@ -230,23 +495,24 @@ export default class MenuStructureBehaviour {
      * Uses Yjs Awareness to check for other users on the page
      */
     addEventNavRemoveNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_delete')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_delete');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
+                if (this.getSelectedNodeIds({ excludeRoot: true }).length > 0) {
                     this.showModalRemoveNode();
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavCloneNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_clone')
-            .addEventListener('click', async (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_clone');
+        if (btn) {
+            btn.addEventListener('click', async (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     await this.structureEngine.cloneNodeAndReload(
@@ -255,6 +521,7 @@ export default class MenuStructureBehaviour {
                     this.showModalRenameNode();
                 }
             });
+        }
     }
 
     /**
@@ -296,8 +563,13 @@ export default class MenuStructureBehaviour {
                 const selectedNav =
                     this.nodeSelected &&
                     this.nodeSelected.getAttribute('nav-id');
+                // Use importTargetNodeId if set (from context menu), otherwise fallback to selection
+                const targetNodeId = this.importTargetNodeId || selectedNav;
                 // If root or no selection, parentId is null (import at root level)
-                const parentId = (!selectedNav || selectedNav === 'root') ? null : selectedNav;
+                const parentId = (!targetNodeId || targetNodeId === 'root') ? null : targetNodeId;
+                
+                // Reset target
+                this.importTargetNodeId = null;
 
                 Logger.log('[MenuStructure] Importing via Yjs, parentId:', parentId);
 
@@ -361,16 +633,24 @@ export default class MenuStructureBehaviour {
      */
     addEventNavImportIdevicesOnclick() {
         this.createIdevicesUploadInput();
-        this.menuNav
-            .querySelector('.button_nav_action.action_import_idevices')
-            .addEventListener('click', async (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_import_idevices'
+        );
+        if (btn) {
+            btn.addEventListener('click', async (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // If main button clicked, use selected node
                 if (this.nodeSelected) {
-                    this.menuNav
-                        .querySelector('input.local-ode-file-upload-input')
-                        .click();
+                    this.importTargetNodeId = this.nodeSelected.getAttribute(
+                        'nav-id'
+                    );
+                    const input = this.menuNav.querySelector(
+                        'input.local-ode-file-upload-input'
+                    );
+                    if (input) input.click();
                 }
             });
+        }
     }
 
     /**
@@ -387,95 +667,196 @@ export default class MenuStructureBehaviour {
      *
      */
     addEventNavCheckOdePageBrokenLinksOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_check_broken_links')
-            .addEventListener('click', (e) => {
+        // Safe check in case element is missing
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_check_broken_links'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
-                        '#main .toggle-on .selected'
+                        '.toggle-on .selected'
                     );
+                    if (!selectedNav) return; // robustness
                     let pageId = selectedNav.getAttribute('page-id');
                     this.getOdePageBrokenLinksEvent(pageId).then((response) => {
                         if (!response.responseMessage) {
                             // Show eXe OdeBrokenList modal
-                            eXeLearning.app.modals.odebrokenlinks.show(
-                                response
-                            );
+                            eXeLearning.app.modals.odebrokenlinks.show(response);
                         } else {
                             // Open eXe alert modal
                             eXeLearning.app.modals.alert.show({
                                 title: _('Broken links'),
-                                body: 'No broken links found.',
+                                body: _('No broken links found.'),
                             });
                         }
                     });
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovPrevOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_prev')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_prev'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodePrev(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('prev', selectedIds);
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovNextOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_next')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_next'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeNext(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('next', selectedIds);
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovUpOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_up')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_up'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeUp(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('left', selectedIds);
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovDownOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_down')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_down'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeDown(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('right', selectedIds);
                 }
             });
+        }
+    }
+
+    /**
+     * Move all selected nodes in a direction with one final structure refresh.
+     *
+     * @param {'prev'|'next'|'left'|'right'} direction
+     * @param {Array<string>} selectedIds
+     */
+    moveSelectedNodes(direction, selectedIds) {
+        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+        const topMostIds = this.filterTopMostNodeIds(selectedIds);
+        const orderedIds = this.orderSelectedIdsForMove(topMostIds);
+        const primarySelectionId =
+            this.nodeSelected?.getAttribute('nav-id') ||
+            orderedIds[0] ||
+            false;
+        let moved = false;
+
+        const bindingMoves = {
+            prev: 'movePagePrev',
+            next: 'movePageNext',
+            left: 'movePageLeft',
+            right: 'movePageRight',
+        };
+        const bindingGroupMoves = {
+            prev: 'movePageGroupPrev',
+            next: 'movePageGroupNext',
+            left: 'movePageGroupLeft',
+            right: 'movePageGroupRight',
+        };
+        const engineMoves = {
+            prev: 'moveNodePrev',
+            next: 'moveNodeNext',
+            left: 'moveNodeUp',
+            right: 'moveNodeDown',
+        };
+        const legacyOrderedIds =
+            direction === 'next' || direction === 'right'
+                ? [...orderedIds].reverse()
+                : [...orderedIds];
+
+        if (binding && typeof binding[bindingGroupMoves[direction]] === 'function') {
+            moved = binding[bindingGroupMoves[direction]](orderedIds) === true;
+            if (moved && typeof this.structureEngine.resetStructureData === 'function') {
+                this.structureEngine.resetStructureData(primarySelectionId);
+            }
+            return;
+        }
+
+        if (binding && typeof binding[bindingMoves[direction]] === 'function') {
+            orderedIds.forEach((id) => {
+                if (binding[bindingMoves[direction]](id)) {
+                    moved = true;
+                }
+            });
+            if (moved && typeof this.structureEngine.resetStructureData === 'function') {
+                this.structureEngine.resetStructureData(primarySelectionId);
+            }
+            return;
+        }
+
+        // Legacy fallback (non-Yjs): execute existing single-node engine methods
+        legacyOrderedIds.forEach((id) => {
+            if (typeof this.structureEngine[engineMoves[direction]] === 'function') {
+                this.structureEngine[engineMoves[direction]](id);
+                moved = true;
+            }
+        });
+    }
+
+    /**
+     * Stable ordering for multi-move operations.
+     * For moving down/right we reverse to keep relative ordering.
+     *
+     * @param {Array<string>} selectedIds
+     * @returns {Array<string>}
+     */
+    orderSelectedIdsForMove(selectedIds) {
+        const domOrder = Array.from(
+            this.menuNav.querySelectorAll('.nav-element[nav-id]')
+        ).map((el) => el.getAttribute('nav-id'));
+
+        const orderMap = new Map(domOrder.map((id, index) => [id, index]));
+        const sorted = [...selectedIds].sort((a, b) => {
+            const orderA = orderMap.get(a) ?? Number.MAX_SAFE_INTEGER;
+            const orderB = orderMap.get(b) ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
+
+        return sorted;
     }
 
     /*******************************************************************************
@@ -559,8 +940,109 @@ export default class MenuStructureBehaviour {
     }
 
     /**
+     * Activate inline contenteditable editing on a page title in the navigation tree.
+     * Follows the same pattern as block title editing (IdeviceBlockNode.makeBlockTitleElementText).
      *
+     * @param {Element} navElement - The .nav-element to rename
      */
+    startInlinePageRename(navElement) {
+        const navId = navElement.getAttribute('nav-id');
+        if (navId === 'root') return;
+
+        const textSpan = navElement.querySelector('.node-text-span');
+        if (!textSpan || textSpan.getAttribute('contenteditable') === 'true') return;
+
+        const node = this.structureEngine.getNode(navId);
+        if (!node) return;
+
+        const originalText = node.pageName;
+        const textElement = navElement.querySelector('.nav-element-text');
+
+        // Restore raw title text before editing (the span may contain rendered MathJax DOM)
+        const rawTitle = textElement?.getAttribute('title') || originalText;
+        textSpan.textContent = rawTitle;
+
+        textSpan.setAttribute('contenteditable', 'true');
+        textSpan.focus();
+
+        const range = document.createRange();
+        range.selectNodeContents(textSpan);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        if (textElement) {
+            textElement.setAttribute('draggable', 'false');
+        }
+
+        let finished = false;
+
+        const finishEditing = (save) => {
+            if (finished) return;
+            finished = true;
+
+            const newTitle = textSpan.textContent.trim();
+            textSpan.removeAttribute('contenteditable');
+            textSpan.removeEventListener('blur', onBlur);
+            textSpan.removeEventListener('keydown', onKeydown);
+
+            if (textElement) {
+                textElement.setAttribute('draggable', 'true');
+            }
+
+            if (save && newTitle && newTitle !== rawTitle) {
+                this.structureEngine.renameNodeAndReload(navId, newTitle);
+                // Eagerly update in-memory property so the modal shows the new title
+                if (node.properties?.titleNode) {
+                    node.properties.titleNode.value = newTitle;
+                }
+                // Only update page title h1 if "Título diferente en la página" is NOT active
+                const editableInPage = node.properties?.editableInPage?.value;
+                const isEditableInPage = editableInPage === true || editableInPage === 'true';
+                const pageTitle = document.querySelector('#page-title-node-content');
+                if (pageTitle && !isEditableInPage) {
+                    pageTitle.textContent = newTitle;
+                }
+                if (textElement) {
+                    textElement.setAttribute('title', newTitle);
+                }
+                // Update properties modal input if it exists
+                const propInput = document.querySelector('input[property="titleNode"]');
+                if (propInput) {
+                    propInput.value = newTitle;
+                }
+                // Typeset LaTeX in both page title and nav span
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    const elementsToTypeset = [textSpan];
+                    if (pageTitle && !isEditableInPage) elementsToTypeset.push(pageTitle);
+                    MathJax.typesetPromise(elementsToTypeset).catch(() => {});
+                }
+            } else {
+                textSpan.textContent = originalText;
+                // Re-typeset nav span to restore rendered LaTeX
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([textSpan]).catch(() => {});
+                }
+            }
+        };
+
+        const onBlur = () => finishEditing(true);
+
+        const onKeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEditing(true);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                finishEditing(false);
+            }
+        };
+
+        textSpan.addEventListener('blur', onBlur);
+        textSpan.addEventListener('keydown', onKeydown);
+    }
+
     showModalPropertiesNode() {
         let node = this.structureEngine.getNode(
             this.nodeSelected.getAttribute('nav-id')
@@ -614,44 +1096,82 @@ export default class MenuStructureBehaviour {
      * Show confirmation modal for removing a node
      * Checks for other users via Yjs Awareness and shows appropriate warning
      */
-    showModalRemoveNode() {
-        const nodeId = this.nodeSelected.getAttribute('nav-id');
-        const pageId = this.nodeSelected.getAttribute('page-id') || nodeId;
-        const nodeName = this.nodeSelected.querySelector('.node-text-span')?.textContent || _('this page');
+    showModalRemoveNode(explicitNodeId = null) {
+        const selectedIds = explicitNodeId
+            ? [explicitNodeId]
+            : this.getSelectedNodeIds({ excludeRoot: true });
+        const nodeIds = this.filterTopMostNodeIds(selectedIds);
+        if (nodeIds.length === 0) return;
 
-        // Check for other users on this page or descendants using Yjs
-        const affectedUsers = this._getAffectedUsersForDeletion(pageId);
-        const hasDescendants = this._nodeHasDescendants(nodeId);
+        const isBatchDelete = !explicitNodeId && nodeIds.length > 1;
+        const firstNodeElement = this.menuNav.querySelector(
+            `.nav-element[nav-id="${nodeIds[0]}"]`
+        );
+        const firstNodeName =
+            firstNodeElement?.querySelector('.node-text-span')?.textContent ||
+            _('this page');
+        const hasDescendants = nodeIds.some((id) => this._nodeHasDescendants(id));
+
+        const affectedUsersByEmail = new Map();
+        nodeIds.forEach((id) => {
+            const element = this.menuNav.querySelector(`.nav-element[nav-id="${id}"]`);
+            if (!element) return;
+            const pageId = element.getAttribute('page-id') || id;
+            this._getAffectedUsersForDeletion(pageId).forEach((user) => {
+                const userKey = user.email || user.name || JSON.stringify(user);
+                affectedUsersByEmail.set(userKey, user);
+            });
+        });
+
+        const affectedUsers = Array.from(affectedUsersByEmail.values());
+        const userNames = affectedUsers.map((u) => u.name || _('Unknown user')).join(', ');
 
         let modalBody = '';
-        let modalTitle = _('Delete page');
-
-        if (affectedUsers.length > 0) {
-            // Build warning message with user names
-            const userNames = affectedUsers.map(u => u.name || _('Unknown user')).join(', ');
-            modalBody = `<p><strong>${_('Warning')}:</strong> ${affectedUsers.length === 1
-                ? _('Another user is viewing this page or its children')
-                : _('Other users are viewing this page or its children')}:</p>
-                <p class="text-primary fw-bold">${userNames}</p>
-                <p>${_('They will be automatically redirected to the parent page.')}</p>
-                <p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"${hasDescendants ? ' ' + _('and all its children') : ''}?</p>`;
+        if (isBatchDelete) {
+            modalBody = `<p>${_('Do you want to delete')} <strong>${nodeIds.length}</strong> ${_(
+                'selected pages'
+            )}${hasDescendants ? ' ' + _('and their children') : ''}?</p>
+                <p class="text-muted small">${_('You can undo this action.')}</p>`;
         } else if (hasDescendants) {
-            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>" ${_('and all its children')}?</p>
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${firstNodeName}</strong>" ${_('and all its children')}?</p>
                 <p class="text-muted small">${_('You can undo this action.')}</p>`;
         } else {
-            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"?</p>
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${firstNodeName}</strong>"?</p>
                 <p class="text-muted small">${_('You can undo this action.')}</p>`;
         }
 
+        if (affectedUsers.length > 0) {
+            modalBody =
+                `<p><strong>${_('Warning')}:</strong> ${
+                    affectedUsers.length === 1
+                        ? _('Another user is viewing this page or its children')
+                        : _('Other users are viewing this page or its children')
+                }:</p>
+                <p class="text-primary fw-bold">${userNames}</p>
+                <p>${_('They will be automatically redirected to the parent page.')}</p>` +
+                modalBody;
+        }
+
         eXeLearning.app.modals.confirm.show({
-            title: modalTitle,
+            title: _('Delete page'),
             contentId: 'delete-node-modal',
             body: modalBody,
             confirmButtonText: _('Delete'),
             cancelButtonText: _('Cancel'),
-            focusCancelButton: affectedUsers.length > 0, // Focus cancel if users affected
+            focusCancelButton: affectedUsers.length > 0,
             confirmExec: () => {
-                this.structureEngine.removeNodeCompleteAndReload(nodeId);
+                if (
+                    nodeIds.length > 1 &&
+                    typeof this.structureEngine.removeNode === 'function' &&
+                    typeof this.structureEngine.resetStructureData === 'function'
+                ) {
+                    nodeIds.forEach((id) => this.structureEngine.removeNode(id));
+                    this.structureEngine.resetStructureData(false);
+                    return;
+                }
+                nodeIds.forEach((id) =>
+                    this.structureEngine.removeNodeCompleteAndReload(id)
+                );
             },
         });
     }
@@ -705,9 +1225,14 @@ export default class MenuStructureBehaviour {
             body: _('Do you want to clone the page?'),
             confirmButtonText: _('Yes'),
             confirmExec: () => {
-                this.structureEngine.cloneNodeAndReload(
-                    this.nodeSelected.getAttribute('nav-id')
-                );
+                this.structureEngine.cloneNodeAndReload(nodeId).then(() => {
+                    // After cloning, we might want to rename the NEW node, but cloneNodeAndReload 
+                    // usually selects the new node. We can call showModalRenameNode then.
+                    // Ideally we should catch the new ID from cloneNodeAndReload but it might not return it directly.
+                    // For now, let's just clone as per original logic. User asked for "confirm then clone".
+                    // The renaming issue described by user ("clones directly") is fixed by this modal.
+                    // If they want to rename AFTER, they can use the rename option on the new node.
+                });
             },
         });
     }
@@ -851,7 +1376,10 @@ export default class MenuStructureBehaviour {
         let navElements = this.menuNav.querySelectorAll('.nav-element');
         navElements.forEach((e) => {
             e.classList.remove('selected');
+            e.setAttribute('data-selected', 'false');
+            e.setAttribute('aria-selected', 'false');
         });
+        this.selectedNodeIds.clear();
     }
 
     /**
@@ -1100,12 +1628,25 @@ export default class MenuStructureBehaviour {
      *
      * @param {Node} element
      */
-    setNodeSelected(element) {
+    setNodeSelected(element, selectedIds = null) {
         Logger.log('[MenuStructureBehaviour] setNodeSelected START, element:', element?.getAttribute('nav-id'));
+        if (!element) return;
+
+        const selectedIdSet = new Set(
+            selectedIds ? Array.from(selectedIds) : [element.getAttribute('nav-id')]
+        );
+        const selectedNavId = element.getAttribute('nav-id');
+        selectedIdSet.add(selectedNavId);
+        this.selectedNodeIds = new Set(
+            Array.from(selectedIdSet).filter((id) =>
+                this.menuNav.querySelector(`.nav-element[nav-id="${id}"]`)
+            )
+        );
         this.nodeSelected = element;
         this.nodeSelected?.classList.add('selected'); // Collaborative
         Logger.log('[MenuStructureBehaviour] Added selected class, classList:', this.nodeSelected?.classList.toString());
         this.structureEngine.nodeSelected = this.nodeSelected;
+        this.lastRangeAnchorId = selectedNavId;
         this.setNodeIdToNodeContentElement();
         this.createAddTextBtn();
         this.enabledActionButtons();
@@ -1116,7 +1657,7 @@ export default class MenuStructureBehaviour {
         const selNavId = this.nodeSelected?.getAttribute('nav-id');
         Logger.log('[MenuStructureBehaviour] Found', allNodes.length, 'nodes to update data-selected, selNavId:', selNavId);
         allNodes.forEach((n) => {
-            const isSel = n.getAttribute('nav-id') === selNavId;
+            const isSel = this.selectedNodeIds.has(n.getAttribute('nav-id'));
             n.setAttribute('data-selected', isSel ? 'true' : 'false');
             n.setAttribute('aria-selected', isSel ? 'true' : 'false');
             // Also update CSS class (elements may be recreated by compose())
@@ -1223,44 +1764,84 @@ export default class MenuStructureBehaviour {
      */
     enabledActionButtons() {
         this.disableActionButtons();
-        if (!this.nodeSelected) return;
-
-        const nodeId = this.nodeSelected.getAttribute('nav-id');
-        const node = this.structureEngine.getNode(nodeId);
-        if (!node) return;
+        const selectedIds = this.getSelectedNodeIds({ excludeRoot: false });
+        const nonRootSelectedIds = selectedIds.filter((id) => id !== 'root');
+        const topMostNonRootSelectedIds = this.filterTopMostNodeIds(nonRootSelectedIds);
 
         // "Add" button is always enabled
         this.menuNav.querySelector('.button_nav_action.action_add').disabled = false;
 
-        if (node.id === 'root') {
-            // Root node: only "Add" is enabled
+        if (selectedIds.length === 0 || nonRootSelectedIds.length === 0) {
             return;
         }
 
-        // Non-root nodes: enable standard buttons
-        this.menuNav.querySelector('.button_nav_action.action_properties').disabled = false;
+        const isSingleNonRootSelection = nonRootSelectedIds.length === 1 && selectedIds.length === 1;
+        this.menuNav.querySelector('.button_nav_action.action_properties').disabled = !isSingleNonRootSelection;
         this.menuNav.querySelector('.button_nav_action.action_delete').disabled = false;
-        this.menuNav.querySelector('.button_nav_action.action_clone').disabled = false;
-        this.menuNav.querySelector('.button_nav_action.action_import_idevices').disabled = false;
+        this.menuNav.querySelector('.button_nav_action.action_clone').disabled = !isSingleNonRootSelection;
+        this.menuNav.querySelector('.button_nav_action.action_import_idevices').disabled = !isSingleNonRootSelection;
 
         // Movement buttons: enable based on actual possibilities via Yjs
         const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
         if (binding) {
-            // ↑ Move up: enabled if has previous sibling
-            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = !binding.canMoveUp(nodeId);
-            // ↓ Move down: enabled if has next sibling
-            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = !binding.canMoveDown(nodeId);
-            // ← Move left: enabled if has parent (not at root level)
-            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = !binding.canMoveLeft(nodeId);
-            // → Move right: enabled if has previous sibling to become child of
-            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = !binding.canMoveRight(nodeId);
+            const canMoveGroup = (groupMethodName, fallbackMethodName) => {
+                if (typeof binding[groupMethodName] === 'function') {
+                    return binding[groupMethodName](topMostNonRootSelectedIds);
+                }
+                return topMostNonRootSelectedIds.every(
+                    (id) => typeof binding[fallbackMethodName] === 'function' && binding[fallbackMethodName](id)
+                );
+            };
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = !canMoveGroup('canMoveGroupPrev', 'canMoveUp');
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = !canMoveGroup('canMoveGroupNext', 'canMoveDown');
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = !canMoveGroup('canMoveGroupLeft', 'canMoveLeft');
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = !canMoveGroup('canMoveGroupRight', 'canMoveRight');
         } else {
-            // Fallback: enable all movement buttons
-            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = false;
+            const noMovableSelection = topMostNonRootSelectedIds.length === 0;
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = noMovableSelection;
         }
+    }
+
+    /**
+     * Get currently selected node IDs, falling back to primary selection.
+     *
+     * @param {{excludeRoot?: boolean}} options
+     * @returns {Array<string>}
+     */
+    getSelectedNodeIds({ excludeRoot = true } = {}) {
+        let ids = Array.from(this.selectedNodeIds);
+        if (ids.length === 0 && this.nodeSelected) {
+            const selectedId = this.nodeSelected.getAttribute('nav-id');
+            if (selectedId) ids = [selectedId];
+        }
+        if (excludeRoot) {
+            ids = ids.filter((id) => id !== 'root');
+        }
+        return ids;
+    }
+
+    /**
+     * Remove selected descendants when an ancestor is already selected.
+     *
+     * @param {Array<string>} ids
+     * @returns {Array<string>}
+     */
+    filterTopMostNodeIds(ids) {
+        const selectedSet = new Set(ids);
+        const structureData = this.structureEngine.data || {};
+        return ids.filter((id) => {
+            let currentParent = structureData[id]?.parent;
+            while (currentParent) {
+                if (selectedSet.has(currentParent)) {
+                    return false;
+                }
+                currentParent = structureData[currentParent]?.parent;
+            }
+            return true;
+        });
     }
 
     /**

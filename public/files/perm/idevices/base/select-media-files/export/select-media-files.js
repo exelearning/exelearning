@@ -80,8 +80,9 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.options = [];
 
         $eXeSeleccionaMedias.activities.each(function (i) {
-            const dl = $('.seleccionamedias-DataGame', this),
-                mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
+            const dl = $('.seleccionamedias-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeSeleccionaMedias.idevicePath;
@@ -255,11 +256,8 @@ var $eXeSeleccionaMedias = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions
-            );
-        mOptions.phrasesGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame
+                mOptions.percentajeQuestions,
+                true
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.fullscreen = false;
@@ -281,23 +279,27 @@ var $eXeSeleccionaMedias = {
         mOptions.intentos = mOptions.attempsNumber;
         mOptions.phrase = mOptions.phrasesGame[num];
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeSeleccionaMedias.addCards(mOptions.phrase.cards, instance);
         $eXeSeleccionaMedias.showMessage(1, '', instance);
 
         $(`#slcmpAudioDef-${instance}`).hide();
         $(`#slcmpQuestion-${instance}`).html(mOptions.phrase.definition).show();
 
-        if (num > 0) {
-            if (
-                mOptions.phrase.audioDefinition &&
-                mOptions.phrase.audioDefinition.length > 4
-            ) {
+        if (
+            mOptions.phrase.audioDefinition &&
+            mOptions.phrase.audioDefinition.length > 4
+        ) {
+            // Always expose the speaker icon when the statement has audio so
+            // the learner can play/replay it at will. Autoplay is reserved for
+            // navigation to a later question (num > 0); the first question
+            // (num === 0, also on page load and "play again") stays silent
+            // until the icon is clicked.
+            $(`#slcmpAudioDef-${instance}`).css('display', 'block');
+            if (num > 0) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
-                $(`#slcmpAudioDef-${instance}`).css('display', 'block');
             }
         }
         $eXeSeleccionaMedias.showImage(num, instance);
@@ -596,10 +598,7 @@ var $eXeSeleccionaMedias = {
                 );
                 $sonidoEnlace.on('click', (e) => {
                     e.preventDefault();
-                    $exeDevices.iDevice.gamification.media.playSound(
-                        card.audio,
-                        mOptions
-                    );
+                    $exeDevices.iDevice.gamification.media.playSound(card.audio);
                 });
                 $divImage.append($sonidoEnlace);
             }
@@ -621,10 +620,13 @@ var $eXeSeleccionaMedias = {
             (t) => t.url && t.url.trim() !== ''
         ).length;
 
+        const effectiveModeTable =
+            mOptions.modeTable || $eXeSeleccionaMedias.isSmallViewport();
+
         const $viewModeIcon = $(`#slcViewMode-${instance}`).find(
             'div.exeQuextIcons'
         );
-        if (mOptions.modeTable) {
+        if (effectiveModeTable) {
             $viewModeIcon
                 .removeClass('exeQuextIcons-ModeTable')
                 .addClass('exeQuextIcons-ModeMansory');
@@ -634,7 +636,7 @@ var $eXeSeleccionaMedias = {
             '.SLCMP-Multimedia'
         );
         if (totalImages === 0) {
-            if (mOptions.modeTable) {
+            if (effectiveModeTable) {
                 $viewModeIcon
                     .removeClass('exeQuextIcons-ModeTable')
                     .addClass('exeQuextIcons-ModeMansory');
@@ -646,7 +648,7 @@ var $eXeSeleccionaMedias = {
             $multimedia.find('img.SLCMP-Image').on('load error', () => {
                 imagesLoaded++;
                 if (imagesLoaded === totalImages) {
-                    if (mOptions.modeTable) {
+                    if (effectiveModeTable) {
                         $gameContainer.addClass('SLCMP-ModeTable');
                     } else {
                         $eXeSeleccionaMedias.initializeMasonry(instance);
@@ -654,6 +656,8 @@ var $eXeSeleccionaMedias = {
                 }
             });
         }
+
+        $eXeSeleccionaMedias.applyResponsiveLayout(instance);
     },
 
     checkQuestion(instance) {
@@ -928,6 +932,12 @@ var $eXeSeleccionaMedias = {
 
         $('#slcViewMode-' + instance).click(function (e) {
             e.preventDefault();
+
+            if ($eXeSeleccionaMedias.isSmallViewport()) {
+                $eXeSeleccionaMedias.applyResponsiveLayout(instance);
+                return;
+            }
+
             $('#slcViewMode-' + instance)
                 .find('div.exeQuextIcons')
                 .removeClass(
@@ -950,6 +960,12 @@ var $eXeSeleccionaMedias = {
                 mOptions.modeTable = true;
             }
         });
+
+        $(window)
+            .off('resize.sLcmpResponsive' + instance)
+            .on('resize.sLcmpResponsive' + instance, function () {
+                $eXeSeleccionaMedias.applyResponsiveLayout(instance);
+            });
 
         $('#slcmpMainContainer-' + instance)
             .closest('article')
@@ -974,7 +990,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpAudioDef-' + instance).on('click', function (e) {
             e.preventDefault();
             const sound = mOptions.phrasesGame[mOptions.active].audioDefinition;
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         });
 
         const config = {
@@ -1020,6 +1036,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpReboot-' + instance).off('click');
         $('#slcViewMode-' + instance).off('click');
         $('#slcmpAudioDef-' + instance).off('click');
+        $(window).off('resize.sLcmpResponsive' + instance);
     },
 
     refreshGames: function (instance) {
@@ -1032,6 +1049,37 @@ var $eXeSeleccionaMedias = {
             !document.webkitFullscreenElement &&
             !document.msFullscreenElement
         );
+    },
+
+    isSmallViewport: function () {
+        return window.matchMedia('(max-width: 550px)').matches;
+    },
+
+    applyResponsiveLayout: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance];
+        if (!mOptions) return;
+
+        const $multimediaContainer = $('#slcmpMultimedia-' + instance);
+        const $icon = $('#slcViewMode-' + instance).find('div.exeQuextIcons');
+        if (!$multimediaContainer.length) return;
+
+        // On small screens we force table mode to avoid Masonry absolute positioning overlaps.
+        if ($eXeSeleccionaMedias.isSmallViewport()) {
+            $multimediaContainer.addClass('SLCMP-ModeTable');
+            $eXeSeleccionaMedias.destroyMasonry(instance);
+            $icon
+                .removeClass('exeQuextIcons-ModeTable')
+                .addClass('exeQuextIcons-ModeMansory');
+            return;
+        }
+
+        if (mOptions.modeTable) {
+            $multimediaContainer.addClass('SLCMP-ModeTable');
+            $eXeSeleccionaMedias.destroyMasonry(instance);
+            $icon
+                .removeClass('exeQuextIcons-ModeTable')
+                .addClass('exeQuextIcons-ModeMansory');
+        }
     },
 
     initializeMasonry: function (instance) {
@@ -1055,13 +1103,13 @@ var $eXeSeleccionaMedias = {
     checkAudio: function (card) {
         const audio = $(card).find('.SLCMP-LinkAudio').data('audio');
         if (typeof audio != 'undefined' && audio.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 
     nextPhrase: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         setTimeout(function () {
             mOptions.active++;
             if (mOptions.active < mOptions.phrasesGame.length) {
@@ -1162,15 +1210,10 @@ var $eXeSeleccionaMedias = {
             $eXeSeleccionaMedias.uptateTime(mOptions.time * 60, instance);
         }
 
-        if (
-            typeof mOptions.phrase.audioDefinition != 'undefined' &&
-            mOptions.phrase.audioDefinition.length > 4
-        ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.phrase.audioDefinition,
-                mOptions
-            );
-        }
+        // The statement audio is never auto-played on game start. The learner
+        // triggers it with the speaker icon (shown by showPhrase). This stops
+        // the first question from blasting its audio on page load, since the
+        // game auto-starts here when there is no timer and no access code.
 
         mOptions.gameStarted = true;
         $eXeSeleccionaMedias.activateHover(instance);
@@ -1196,7 +1239,7 @@ var $eXeSeleccionaMedias = {
         mOptions.gameOver = true;
         clearInterval(mOptions.counterClock);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#slcmpCubierta-' + instance).show();
         $eXeSeleccionaMedias.showScoreGame(type, instance);

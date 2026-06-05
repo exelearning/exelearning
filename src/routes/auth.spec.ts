@@ -9,12 +9,21 @@ import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import * as bcrypt from 'bcryptjs';
 import type { Database } from '../db/types';
 import { up } from '../db/migrations/001_initial';
+import {
+    up as migration005Up,
+    configure as configure005,
+    resetDependencies as reset005,
+} from '../db/migrations/005_user_id_nullable';
+import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
-import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
+import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
+
+// Default temp email domain used by auth routes (read from env like production code)
+const DEFAULT_TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 // Helper to create test app with DI
 function createTestApp(db: Kysely<Database>) {
@@ -45,6 +54,7 @@ describe('Auth Routes', () => {
             API_JWT_SECRET: process.env.API_JWT_SECRET,
             CAS_URL: process.env.CAS_URL,
             OIDC_AUTHORIZATION_ENDPOINT: process.env.OIDC_AUTHORIZATION_ENDPOINT,
+            AUTH_TEMP_EMAIL_DOMAIN: process.env.AUTH_TEMP_EMAIL_DOMAIN,
         };
 
         // Set test environment
@@ -55,6 +65,11 @@ describe('Auth Routes', () => {
             dialect: new BunSqliteDialect({ url: ':memory:' }),
         });
         await up(testDb);
+        // Run migration 005 to make user_id nullable (required for guest users)
+        configure005({ getDialect: () => 'sqlite', columnExists: async () => true });
+        await migration005Up(testDb);
+        reset005();
+        await migration006Up(testDb);
         app = createTestApp(testDb);
     });
 
@@ -190,6 +205,41 @@ describe('Auth Routes', () => {
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('auth=');
         });
+
+        it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
+            const hashedPw = await hashPassword('correct-password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'disabled@example.com',
+                    user_id: 'disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'disabled@example.com',
+                        password: 'correct-password',
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Forbidden');
+            expect(data.message).toBe('Account deactivated');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
+        });
     });
 
     describe('POST /api/auth/logout', () => {
@@ -320,6 +370,128 @@ describe('Auth Routes', () => {
         });
     });
 
+    describe('POST /api/auth/impersonation/stop', () => {
+        it('should restore original session and close audit session', async () => {
+            const adminPassword = await hashPassword('admin-pass');
+            const userPassword = await hashPassword('user-pass');
+
+            await testDb
+                .insertInto('users')
+                .values([
+                    {
+                        email: 'admin-stop@example.com',
+                        user_id: 'admin-stop',
+                        password: adminPassword,
+                        roles: '["ROLE_USER","ROLE_ADMIN"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: now(),
+                        updated_at: now(),
+                    },
+                    {
+                        email: 'target-stop@example.com',
+                        user_id: 'target-stop',
+                        password: userPassword,
+                        roles: '["ROLE_USER"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: now(),
+                        updated_at: now(),
+                    },
+                ])
+                .execute();
+
+            const adminUser = await testDb
+                .selectFrom('users')
+                .select(['id', 'email'])
+                .where('email', '=', 'admin-stop@example.com')
+                .executeTakeFirstOrThrow();
+            const targetUser = await testDb
+                .selectFrom('users')
+                .select(['id', 'email'])
+                .where('email', '=', 'target-stop@example.com')
+                .executeTakeFirstOrThrow();
+
+            const adminLogin = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin-stop@example.com',
+                        password: 'admin-pass',
+                    }),
+                }),
+            );
+            const userLogin = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'target-stop@example.com',
+                        password: 'user-pass',
+                    }),
+                }),
+            );
+
+            const adminToken = ((await adminLogin.json()) as { access_token: string }).access_token;
+            const impersonatedToken = ((await userLogin.json()) as { access_token: string }).access_token;
+            const sessionId = 'impersonation-session-stop-1';
+
+            await testDb
+                .insertInto('impersonation_audit_logs')
+                .values({
+                    session_id: sessionId,
+                    impersonator_user_id: adminUser.id,
+                    impersonated_user_id: targetUser.id,
+                    started_at: now(),
+                    ended_at: null,
+                    started_by_ip: '127.0.0.1',
+                    started_user_agent: 'bun-test',
+                    ended_by_ip: null,
+                    ended_user_agent: null,
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/impersonation/stop', {
+                    method: 'POST',
+                    headers: {
+                        Cookie: `auth=${impersonatedToken}; impersonator_auth=${adminToken}; impersonation_session=${sessionId}`,
+                    },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = (await response.json()) as { success: boolean; user: { email: string } };
+            expect(data.success).toBe(true);
+            expect(data.user.email).toBe('admin-stop@example.com');
+
+            const setCookie = response.headers.get('set-cookie') || '';
+            expect(setCookie).toContain('auth=');
+
+            const auditRow = await testDb
+                .selectFrom('impersonation_audit_logs')
+                .select(['session_id', 'ended_at'])
+                .where('session_id', '=', sessionId)
+                .executeTakeFirst();
+
+            expect(auditRow?.session_id).toBe(sessionId);
+            expect(auditRow?.ended_at).not.toBeNull();
+        });
+
+        it('should return 400 when not impersonating', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/impersonation/stop', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = (await response.json()) as { error: string };
+            expect(data.error).toBe('BAD_REQUEST');
+        });
+    });
+
     describe('GET /api/session/check', () => {
         it('should return active: false when not authenticated', async () => {
             const response = await app.handle(new Request('http://localhost/api/session/check'));
@@ -375,6 +547,59 @@ describe('Auth Routes', () => {
     // Form-based login routes
     // =========================================================================
 
+    describe('POST /login_check Origin guard', () => {
+        it('redirects with error when Origin header does not match the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'https://evil.example.com',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('/login');
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('redirects with error when Referer header cannot be parsed as a URL', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Referer: 'not-a-url',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('accepts Origin that matches the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'http://localhost',
+                    },
+                    body: '_username=nobody@example.com&_password=irrelevant',
+                }),
+            );
+            // Origin check passes; flow continues to the "invalid credentials"
+            // redirect (302 to /login?error=...), not the origin-error redirect.
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).not.toContain('Invalid%20request%20origin');
+        });
+    });
+
     describe('POST /login_check', () => {
         it('should redirect to login with error for invalid credentials', async () => {
             const response = await app.handle(
@@ -417,6 +642,39 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('/workarea');
+        });
+
+        it('should redirect to login with "Account deactivated" error for disabled user', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'form-disabled@example.com',
+                    user_id: 'form-disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_username=form-disabled@example.com&_password=password',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/login');
+            expect(location).toContain(`error=${encodeURIComponent('Account deactivated')}`);
+            expect(location).not.toContain('/workarea');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
         });
     });
 
@@ -518,6 +776,37 @@ describe('Auth Routes', () => {
             const location = response.headers.get('location');
             expect(location).toContain('cas.example.com');
         });
+
+        it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
+            // Note: Full proxy header processing requires a real server context with requestIP()
+            // The proxy URL logic is fully tested in proxy-url.util.spec.ts
+            // This test verifies the auth route handles proxy headers without errors
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevTrustedProxies = process.env.TRUSTED_PROXIES;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            process.env.TRUSTED_PROXIES = 'REMOTE_ADDR';
+
+            const response = await app.handle(
+                new Request('http://internal:8080/login/cas', {
+                    headers: {
+                        'X-Forwarded-Host': 'public.example.org',
+                        'X-Forwarded-Proto': 'https',
+                    },
+                }),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            process.env.TRUSTED_PROXIES = prevTrustedProxies;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('service=');
+            expect(location).toContain('cas.example.com');
+        });
     });
 
     describe('GET /login/openid', () => {
@@ -549,6 +838,40 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
+            expect(location).toContain('oidc.example.com');
+        });
+
+        it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
+            // Note: Full proxy header processing requires a real server context with requestIP()
+            // The proxy URL logic is fully tested in proxy-url.util.spec.ts
+            // This test verifies the auth route handles proxy headers without errors
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevEndpoint = process.env.OIDC_AUTHORIZATION_ENDPOINT;
+            const prevClientId = process.env.OIDC_CLIENT_ID;
+            const prevTrustedProxies = process.env.TRUSTED_PROXIES;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = 'https://oidc.example.com/auth';
+            process.env.OIDC_CLIENT_ID = 'test-client-id';
+            process.env.TRUSTED_PROXIES = 'REMOTE_ADDR';
+
+            const response = await app.handle(
+                new Request('http://internal:8080/login/openid', {
+                    headers: {
+                        'X-Forwarded-Host': 'public.example.org',
+                        'X-Forwarded-Proto': 'https',
+                    },
+                }),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = prevEndpoint;
+            process.env.OIDC_CLIENT_ID = prevClientId;
+            process.env.TRUSTED_PROXIES = prevTrustedProxies;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('redirect_uri=');
             expect(location).toContain('oidc.example.com');
         });
     });
@@ -988,7 +1311,7 @@ describe('Auth Routes', () => {
             expect(user).toBeDefined();
         });
 
-        it('should add @cas.local suffix when casUser is just a username', async () => {
+        it('should add temp email domain suffix when casUser is just a username', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevCasUrl = process.env.CAS_URL;
 
@@ -1013,7 +1336,7 @@ describe('Auth Routes', () => {
 
             const user = await testDb
                 .selectFrom('users')
-                .where('email', '=', 'justusername@cas.local')
+                .where('email', '=', `justusername@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeDefined();
@@ -1081,12 +1404,12 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            // Create existing user
+            // Create existing user with temp email domain
             const hashedPw = await hashPassword('existing');
             await testDb
                 .insertInto('users')
                 .values({
-                    email: 'existing@cas.local',
+                    email: `existing@${DEFAULT_TEMP_EMAIL_DOMAIN}`,
                     user_id: 'existing-cas-user',
                     password: hashedPw,
                     roles: '["ROLE_USER"]',
@@ -1116,7 +1439,7 @@ describe('Auth Routes', () => {
             // Should not create duplicate user
             const users = await testDb
                 .selectFrom('users')
-                .where('email', '=', 'existing@cas.local')
+                .where('email', '=', `existing@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .execute();
             expect(users.length).toBe(1);
@@ -1378,7 +1701,7 @@ describe('Auth Routes', () => {
             expect(user).toBeDefined();
         });
 
-        it('should generate oidc.local email when no email available', async () => {
+        it('should generate temp email domain email when no email available', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
 
@@ -1409,10 +1732,10 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
 
-            // Should create user with oidc_ prefix email
+            // Should create user with subject@domain.local email (no prefix)
             const user = await testDb
                 .selectFrom('users')
-                .where('email', 'like', 'oidc_%@oidc.local')
+                .where('email', '=', `user-no-email@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeDefined();
@@ -1604,7 +1927,7 @@ describe('Auth Routes', () => {
     // =========================================================================
 
     describe('POST /login/guest (additional coverage)', () => {
-        it('should create new guest user in database', async () => {
+        it('should create new guest user in database with null user_id', async () => {
             const response = await app.handle(
                 new Request('http://localhost/login/guest', {
                     method: 'POST',
@@ -1613,14 +1936,17 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
 
-            // Verify a guest user was created
+            // Verify a guest user was created with temp email domain (no guest_ prefix)
             const guestUsers = await testDb
                 .selectFrom('users')
-                .where('email', 'like', 'guest_%@guest.local')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('roles', 'like', '%ROLE_GUEST%')
                 .selectAll()
                 .execute();
             expect(guestUsers.length).toBeGreaterThan(0);
             expect(guestUsers[0].roles).toContain('ROLE_GUEST');
+            // Guest users should have null user_id (they're not SSO)
+            expect(guestUsers[0].user_id).toBeNull();
         });
 
         it('should redirect to returnUrl when provided', async () => {
@@ -1830,6 +2156,610 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('sso_return_url=');
+        });
+    });
+
+    // =========================================================================
+    // DEFAULT_QUOTA Assignment Tests for SSO Users
+    // =========================================================================
+
+    describe('DEFAULT_QUOTA assignment for SSO users', () => {
+        const originalFetch = globalThis.fetch;
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
+
+        it('should assign DEFAULT_QUOTA to new CAS users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            process.env.DEFAULT_QUOTA = '2048';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>cas_quota_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-quota'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `cas_quota_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(2048);
+        });
+
+        it('should assign DEFAULT_QUOTA to new OIDC users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+            process.env.DEFAULT_QUOTA = '1024';
+
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'oidc_quota_user',
+                    email: 'oidc_quota@example.com',
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-quota',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=quota-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'oidc_quota@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(1024);
+        });
+
+        it('should assign DEFAULT_QUOTA to new guest users', async () => {
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+            process.env.DEFAULT_QUOTA = '512';
+
+            const response = await app.handle(
+                new Request('http://localhost/login/guest', {
+                    method: 'POST',
+                }),
+            );
+
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            // Find the most recently created guest user
+            const guestUser = await testDb
+                .selectFrom('users')
+                .where('roles', 'like', '%ROLE_GUEST%')
+                .orderBy('id', 'desc')
+                .selectAll()
+                .executeTakeFirst();
+
+            expect(guestUser).toBeDefined();
+            expect(guestUser?.quota_mb).toBe(512);
+        });
+
+        it('should use default 4096 quota when DEFAULT_QUOTA env is not set', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            delete process.env.DEFAULT_QUOTA;
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>cas_default_quota_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-default-quota'),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `cas_default_quota_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(4096);
+        });
+    });
+
+    // =========================================================================
+    // AUTH_TEMP_EMAIL_DOMAIN Tests
+    // =========================================================================
+
+    describe('AUTH_TEMP_EMAIL_DOMAIN configuration', () => {
+        it('should use domain.local as default temp email domain for CAS users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>tempdomain_cas_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-tempdomain'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+
+            expect(response.status).toBe(302);
+
+            // Verify email uses the default temp email domain (domain.local)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `tempdomain_cas_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.user_id).toBe('cas:tempdomain_cas_user');
+        });
+
+        it('should use domain.local as default temp email domain for OIDC users without email', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            // ID token with subject but no email
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'tempdomain_oidc_user',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-tempdomain',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/login/openid/callback?code=tempdomain-code'),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+
+            expect(response.status).toBe(302);
+
+            // Verify email uses the default temp email domain (no oidc_ prefix)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `tempdomain_oidc_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.user_id).toBe('oidc:tempdomain_oidc_user');
+        });
+
+        it('should use domain.local as default temp email domain for guest users', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login/guest', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+
+            // Verify guest user was created with temp email domain (no guest_ prefix)
+            const guestUser = await testDb
+                .selectFrom('users')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('roles', 'like', '%ROLE_GUEST%')
+                .selectAll()
+                .executeTakeFirst();
+
+            expect(guestUser).toBeDefined();
+            // Email should be 8 hex chars + @domain.local (no guest_ prefix)
+            expect(guestUser?.email).toMatch(/^[0-9a-f]{8}@domain\.local$/);
+        });
+
+        it('should use random hex for OIDC fallback email when subject is missing', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            // ID token with no subject and no email
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-nosub',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=nosub-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+
+            expect(response.status).toBe(302);
+
+            // Verify user was created with random hex email (16 hex chars for 8 bytes)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('user_id', 'like', 'oidc:%')
+                .selectAll()
+                .execute();
+
+            // Should have at least one user with random hex email
+            const randomHexUser = user.find(u => /^[0-9a-f]{16}@domain\.local$/.test(u.email));
+            expect(randomHexUser).toBeDefined();
+        });
+    });
+
+    // =========================================================================
+    // AUTH_CREATE_USERS Gating Tests
+    // =========================================================================
+
+    describe('shouldAutoCreateUsers helper', () => {
+        let prevAuthCreate: string | undefined;
+
+        beforeEach(() => {
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+        });
+
+        afterEach(() => {
+            if (prevAuthCreate === undefined) {
+                delete process.env.AUTH_CREATE_USERS;
+            } else {
+                process.env.AUTH_CREATE_USERS = prevAuthCreate;
+            }
+        });
+
+        it('returns true when unset (documented default)', () => {
+            delete process.env.AUTH_CREATE_USERS;
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for empty string', () => {
+            process.env.AUTH_CREATE_USERS = '';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for "true"', () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns false for "false"', () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns false for "0"', () => {
+            process.env.AUTH_CREATE_USERS = '0';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns true for "1"', () => {
+            process.env.AUTH_CREATE_USERS = '1';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns false for "NO" (case-insensitive)', () => {
+            process.env.AUTH_CREATE_USERS = 'NO';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns true for "On" (case-insensitive)', () => {
+            process.env.AUTH_CREATE_USERS = 'On';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for "yes"', () => {
+            process.env.AUTH_CREATE_USERS = 'yes';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for unknown values (permissive default)', () => {
+            process.env.AUTH_CREATE_USERS = 'unknown-value';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+    });
+
+    describe('AUTH_CREATE_USERS gating for CAS callback', () => {
+        const originalFetch = globalThis.fetch;
+        let prevMethods: string | undefined;
+        let prevCasUrl: string | undefined;
+        let prevAuthCreate: string | undefined;
+
+        beforeEach(() => {
+            prevMethods = process.env.APP_AUTH_METHODS;
+            prevCasUrl = process.env.CAS_URL;
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>newcasuser@example.com</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            if (prevMethods === undefined) delete process.env.APP_AUTH_METHODS;
+            else process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevCasUrl === undefined) delete process.env.CAS_URL;
+            else process.env.CAS_URL = prevCasUrl;
+            if (prevAuthCreate === undefined) delete process.env.AUTH_CREATE_USERS;
+            else process.env.AUTH_CREATE_USERS = prevAuthCreate;
+        });
+
+        it('creates unknown CAS user when AUTH_CREATE_USERS=true', async () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-create-true'),
+            );
+
+            expect(response.status).toBe(302);
+            expect(createUserCalls).toBe(1);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newcasuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+        });
+
+        it('rejects unknown CAS user when AUTH_CREATE_USERS=false', async () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-create-false'),
+            );
+
+            expect(response.status).toBe(401);
+            expect(createUserCalls).toBe(0);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Unauthorized');
+            expect(data.message).toBe('CAS authentication failed.');
+
+            // No user row was written
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newcasuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
+        });
+    });
+
+    describe('AUTH_CREATE_USERS gating for OpenID callback', () => {
+        const originalFetch = globalThis.fetch;
+        let prevMethods: string | undefined;
+        let prevTokenEndpoint: string | undefined;
+        let prevAuthCreate: string | undefined;
+
+        // ID token carrying a brand-new user (so auto-create path is the only way in).
+        const mockIdToken = (() => {
+            const payload = Buffer.from(
+                JSON.stringify({
+                    sub: 'new-oidc-sub',
+                    email: 'newoidcuser@example.com',
+                    iat: Math.floor(Date.now() / 1000),
+                    exp: Math.floor(Date.now() / 1000) + 3600,
+                }),
+            ).toString('base64url');
+            return `header.${payload}.signature`;
+        })();
+
+        beforeEach(() => {
+            prevMethods = process.env.APP_AUTH_METHODS;
+            prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-gating',
+                        id_token: mockIdToken,
+                    }),
+                );
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            if (prevMethods === undefined) delete process.env.APP_AUTH_METHODS;
+            else process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint === undefined) delete process.env.OIDC_TOKEN_ENDPOINT;
+            else process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevAuthCreate === undefined) delete process.env.AUTH_CREATE_USERS;
+            else process.env.AUTH_CREATE_USERS = prevAuthCreate;
+        });
+
+        it('creates unknown OpenID user when AUTH_CREATE_USERS=true', async () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/openid/callback?code=oidc-create-true'),
+            );
+
+            expect(response.status).toBe(302);
+            expect(createUserCalls).toBe(1);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newoidcuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+        });
+
+        it('rejects unknown OpenID user when AUTH_CREATE_USERS=false', async () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/openid/callback?code=oidc-create-false'),
+            );
+
+            expect(response.status).toBe(401);
+            expect(createUserCalls).toBe(0);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Unauthorized');
+            expect(data.message).toBe('OpenID authentication failed.');
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newoidcuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
         });
     });
 });

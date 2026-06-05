@@ -16,34 +16,16 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS } from '../constants';
-
-/**
- * Navigation button translations by language
- */
-const NAV_TRANSLATIONS: Record<string, { previous: string; next: string }> = {
-    es: { previous: 'Anterior', next: 'Siguiente' },
-    en: { previous: 'Previous', next: 'Next' },
-    ca: { previous: 'Anterior', next: 'Següent' },
-    eu: { previous: 'Aurrekoa', next: 'Hurrengoa' },
-    gl: { previous: 'Anterior', next: 'Seguinte' },
-    pt: { previous: 'Anterior', next: 'Próximo' },
-    fr: { previous: 'Précédent', next: 'Suivant' },
-    de: { previous: 'Zurück', next: 'Weiter' },
-    it: { previous: 'Precedente', next: 'Successivo' },
-    nl: { previous: 'Vorige', next: 'Volgende' },
-    zh: { previous: '上一页', next: '下一页' },
-    ja: { previous: '前へ', next: '次へ' },
-    ar: { previous: 'السابق', next: 'التالي' },
-};
-
-/**
- * Get navigation button translations for a language
- */
-function getNavTranslations(language: string): { previous: string; next: string } {
-    return NAV_TRANSLATIONS[language] || NAV_TRANSLATIONS.en;
-}
-
+import {
+    LIBRARY_PATTERNS,
+    ELPX_DOWNLOAD_ONCLICK,
+    getLicenseClass,
+    formatLicenseText,
+    shouldShowLicenseFooter,
+    getLicenseUrl,
+    formatShortLicenseText,
+} from '../constants';
+import { trans } from '../../../services/translation';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -56,6 +38,34 @@ export class PageRenderer {
      */
     constructor(ideviceRenderer: IdeviceRenderer | null = null) {
         this.ideviceRenderer = ideviceRenderer || new IdeviceRenderer();
+    }
+
+    /**
+     * Build the HTML <title> value for a page.
+     * Index page uses the project title alone. Inner pages use
+     * "Page title | Project title" (falling back to the project title
+     * when the page title is empty or duplicates it).
+     */
+    private buildDocumentTitle(page: ExportPage, projectTitle: string, isIndex: boolean): string {
+        if (isIndex) return projectTitle;
+        const pageTitle = (page.title || '').trim();
+        if (!pageTitle) return projectTitle;
+        if (!projectTitle || pageTitle === projectTitle) return pageTitle;
+        return `${pageTitle} | ${projectTitle}`;
+    }
+
+    /**
+     * Check if a property value is truthy (handles both boolean and string "true")
+     */
+    private isTruthyProperty(value: unknown): boolean {
+        return value === true || value === 'true';
+    }
+
+    /**
+     * Check if a property value is falsy (handles both boolean and string "false")
+     */
+    private isFalsyProperty(value: unknown): boolean {
+        return value === false || value === 'false';
     }
 
     /**
@@ -73,9 +83,9 @@ export class PageRenderer {
             basePath = '',
             isIndex = false,
             usedIdevices = [],
-            license = 'creative commons: attribution - share alike 4.0',
+            license = '',
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             // Page counter options
             totalPages,
             currentPageIndex,
@@ -95,13 +105,33 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
+            detectedLibraries: providedDetectedLibraries,
+            // Theme files (CSS/JS from theme root directory)
+            themeFiles = [],
+            // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+            hideNavigation = false,
+            hideNavButtons = false,
+            // Asset URL transformation map
+            assetExportPathMap,
+            // Application version for generator meta tag
+            version,
         } = options;
 
-        const pageTitle = isIndex ? projectTitle : page.title || 'Page';
+        const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
 
-        // Detect content-based libraries from page content
-        const pageContent = this.renderPageContent(page, basePath);
-        const detectedLibraries = this.detectContentLibraries(pageContent);
+        // Detect libraries from ORIGINAL content (before transformation)
+        // This is important for exe-package:elp links which get transformed during rendering
+        const originalContent = this.collectPageContent(page);
+        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
+
+        // Render page content (includes exe-package:elp → onclick transformation)
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
+            author: options.author,
+            description: options.description,
+            license: options.license,
+            language: options.language,
+            translatedLicense: options.navLabels?.license,
+        });
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -115,9 +145,11 @@ export class PageRenderer {
         // Build page header (with optional page counter)
         const pageHeaderHtml = this.renderPageHeader(page, {
             projectTitle,
+            projectSubtitle: options.projectSubtitle,
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
+            pageLabel: options.navLabels?.page,
         });
 
         // Build search box div (only if enabled)
@@ -130,18 +162,29 @@ export class PageRenderer {
         // Build "Made with eXeLearning" link (only if enabled)
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
 
+        // Extract page filename map for navigation links (handles title collisions)
+        const pageFilenameMap = options.pageFilenameMap;
+
+        // Build navigation HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navHtml = hideNavigation ? '' : this.renderNavigation(allPages, page.id, basePath, pageFilenameMap);
+
+        // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navButtonsHtml = hideNavButtons
+            ? ''
+            : this.renderNavButtons(page, allPages, basePath, options.navLabels, pageFilenameMap);
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
-<body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
+<body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden">${bodyClassStr.includes('exe-web-site') ? `<a href="#${page.id}" id="skipNav">${trans('Skip to content', {}, language)}</a> ` : ''}${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
-</div></main>${this.renderNavButtons(page, allPages, basePath, language)}
-${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
+</div></main>${navButtonsHtml}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels: options.navLabels })}
 </div>
 ${madeWithExeHtml}
 </body>
@@ -169,6 +212,11 @@ ${madeWithExeHtml}
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
+        themeFiles?: string[];
+        faviconPath?: string;
+        faviconType?: string;
+        version?: string;
+        isEpub?: boolean;
     }): string {
         const {
             pageTitle,
@@ -178,20 +226,27 @@ ${madeWithExeHtml}
             extraHeadScripts = '',
             isScorm: _isScorm = false,
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             addAccessibilityToolbar = false,
             addMathJax = false,
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
+            themeFiles = [],
+            faviconPath = 'libs/favicon.ico',
+            faviconType = 'image/x-icon',
+            version,
+            isEpub = false,
         } = options;
 
         // Meta tags
         let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="license" type="text/html" href="${licenseUrl}">
-<title>${this.escapeHtml(pageTitle)}</title>`;
+${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
+
+        // Favicon
+        head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
 
         // Description meta if provided
         if (description) {
@@ -201,6 +256,11 @@ ${madeWithExeHtml}
         // SCRIPTS FIRST (legacy order requirement)
         head += `
 <script>document.querySelector("html").classList.add("js");</script>`;
+
+        // EPUB guard script (must load before any libraries to prevent duplicate execution errors)
+        if (isEpub) {
+            head += `<script src="${basePath}libs/exe_epub_guards.js"> </script>`;
+        }
 
         // Core library scripts
         head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
@@ -214,11 +274,9 @@ ${madeWithExeHtml}
         }
 
         head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
-        head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> </script>`;
 
         // CSS AFTER scripts (legacy order)
         head += `<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">`;
-        head += `\n<link rel="stylesheet" href="${basePath}libs/exe_lightbox/exe_lightbox.css">`;
 
         // iDevice-specific scripts and CSS (script before CSS for each)
         const jsScripts = this.ideviceRenderer.getJsScripts(usedIdevices, basePath);
@@ -230,12 +288,8 @@ ${madeWithExeHtml}
             }
         }
 
-        // Content-detected libraries (e.g., exe_highlighter for highlighted-code class)
-        // Skip libraries already included above (exe_lightbox is hardcoded)
-        const alreadyIncluded = new Set(['exe_lightbox', 'exe_lightbox_gallery']);
+        // Content-detected libraries (e.g., exe_lightbox, exe_highlighter, etc.)
         for (const libName of detectedLibraries) {
-            if (alreadyIncluded.has(libName)) continue;
-
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
             if (!libPattern) continue;
 
@@ -250,21 +304,39 @@ ${madeWithExeHtml}
                 head += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
             }
         }
-
-        // Base CSS and theme
-        head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
-        head += `<script src="${basePath}theme/default.js"> </script>`;
-        head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
-
-        // Custom styles
-        if (customStyles) {
-            head += `\n<style>\n${customStyles}\n</style>`;
-        }
-
         // Accessibility toolbar (JS first, then CSS)
         if (addAccessibilityToolbar) {
             head += `\n<script src="${basePath}libs/exe_atools/exe_atools.js"> </script>`;
             head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
+        }
+        // Base CSS and theme
+        head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
+
+        // Theme files: include all JS first, then all CSS, in alphabetical order
+        // If themeFiles is empty, fall back to legacy names for backwards compatibility
+        if (themeFiles.length > 0) {
+            // Sort files alphabetically and separate JS from CSS
+            const sortedFiles = [...themeFiles].sort();
+            const jsFiles = sortedFiles.filter(f => f.endsWith('.js'));
+            const cssFiles = sortedFiles.filter(f => f.endsWith('.css'));
+
+            // JS first (legacy order: scripts before CSS)
+            for (const jsFile of jsFiles) {
+                head += `<script src="${basePath}theme/${jsFile}"> </script>`;
+            }
+            // Then CSS
+            for (const cssFile of cssFiles) {
+                head += `<link rel="stylesheet" href="${basePath}theme/${cssFile}">`;
+            }
+        } else {
+            // Legacy fallback for backwards compatibility
+            head += `<script src="${basePath}theme/default.js"> </script>`;
+            head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+        }
+
+        // Custom styles
+        if (customStyles) {
+            head += `\n<style>\n${customStyles}\n</style>`;
         }
 
         // MathJax library (for math formulas with accessibility features)
@@ -292,12 +364,17 @@ ${madeWithExeHtml}
      * @param basePath - Base path for links
      * @returns Navigation HTML
      */
-    renderNavigation(allPages: ExportPage[], currentPageId: string, basePath: string): string {
+    renderNavigation(
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const rootPages = allPages.filter(p => !p.parentId);
 
         let html = '<nav id="siteNav">\n<ul>\n';
         for (const page of rootPages) {
-            html += this.renderNavItem(page, allPages, currentPageId, basePath);
+            html += this.renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap);
         }
         html += '</ul>\n</nav>';
 
@@ -310,9 +387,16 @@ ${madeWithExeHtml}
      * @param allPages - All pages
      * @param currentPageId - Current page ID
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional)
      * @returns Navigation item HTML
      */
-    renderNavItem(page: ExportPage, allPages: ExportPage[], currentPageId: string, basePath: string): string {
+    renderNavItem(
+        page: ExportPage,
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         // Skip hidden pages (except we check at parent level to preserve hierarchy)
         if (!this.isPageVisible(page, allPages)) {
             return '';
@@ -326,8 +410,8 @@ ${madeWithExeHtml}
         const isFirstPage = page.id === allPages[0]?.id;
 
         // Build li class attribute
-        const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : '';
-        const link = this.getPageLink(page, allPages, basePath);
+        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
 
         // Build link classes: main-node for first page, daddy/no-ch for children, active if current
         const linkClasses: string[] = [];
@@ -346,7 +430,7 @@ ${madeWithExeHtml}
         if (hasChildren) {
             html += '<ul class="other-section">\n';
             for (const child of children) {
-                html += this.renderNavItem(child, allPages, currentPageId, basePath);
+                html += this.renderNavItem(child, allPages, currentPageId, basePath, pageFilenameMap);
             }
             html += '</ul>\n';
         }
@@ -384,8 +468,7 @@ ${madeWithExeHtml}
         }
 
         // Check this page's visibility property
-        const visibility = page.properties?.visibility;
-        if (visibility === false || visibility === 'false') {
+        if (this.isFalsyProperty(page.properties?.visibility)) {
             return false;
         }
 
@@ -415,8 +498,7 @@ ${madeWithExeHtml}
      * @returns True if page should be highlighted in navigation
      */
     isPageHighlighted(page: ExportPage): boolean {
-        const highlight = page.properties?.highlight;
-        return highlight === true || highlight === 'true';
+        return this.isTruthyProperty(page.properties?.highlight);
     }
 
     /**
@@ -425,8 +507,7 @@ ${madeWithExeHtml}
      * @returns True if page title should be hidden
      */
     shouldHidePageTitle(page: ExportPage): boolean {
-        const hideTitle = page.properties?.hidePageTitle;
-        return hideTitle === true || hideTitle === 'true';
+        return this.isTruthyProperty(page.properties?.hidePageTitle);
     }
 
     /**
@@ -437,8 +518,7 @@ ${madeWithExeHtml}
      * @returns Effective title string
      */
     getEffectivePageTitle(page: ExportPage): string {
-        const editableInPage = page.properties?.editableInPage;
-        if (editableInPage === true || editableInPage === 'true') {
+        if (this.isTruthyProperty(page.properties?.editableInPage)) {
             const titlePage = page.properties?.titlePage as string;
             if (titlePage) return titlePage;
         }
@@ -450,15 +530,24 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param allPages - All pages
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns Link URL
      */
-    getPageLink(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+    getPageLink(
+        page: ExportPage,
+        allPages: ExportPage[],
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const isFirstPage = page.id === allPages[0]?.id;
         if (isFirstPage) {
             return basePath ? `${basePath}index.html` : 'index.html';
         }
-        const filename = this.sanitizeFilename(page.title);
-        return `${basePath}html/${filename}.html`;
+        // Use unique filename from map if available (already includes .html),
+        // otherwise generate from title (need to add .html)
+        const mapFilename = pageFilenameMap?.get(page.id);
+        const filename = mapFilename || `${this.sanitizeFilename(page.title)}.html`;
+        return `${basePath}html/${filename}`;
     }
 
     /**
@@ -478,7 +567,7 @@ ${madeWithExeHtml}
     }
 
     /**
-     * Render page header with page counter, package title (h1), and page title (h2)
+     * Render page header with page counter, package title (h1), subtitle, and page title (h2)
      * @param page - Page
      * @param options - Header options including counter info
      * @returns Header HTML
@@ -487,82 +576,225 @@ ${madeWithExeHtml}
         page: ExportPage,
         options: {
             projectTitle: string;
+            projectSubtitle?: string;
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
+            pageLabel?: string;
         },
     ): string {
-        const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
+        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination, pageLabel } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
-            ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            ? ` <p class="page-counter"> <span class="page-counter-label">${pageLabel || 'Page'} </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
             : '';
 
         // Check if page title should be hidden and get effective title
         const hideTitle = this.shouldHidePageTitle(page);
         const effectiveTitle = this.getEffectivePageTitle(page);
-        const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+        // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+        // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+        // moves the .page-title element out of .page-header via movePageTitle()
+        const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
-        // Use separate header elements so exe_export.js teacherMode can find them
-        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
-        return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-<header class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
+        // Render subtitle if present
+        const subtitleHtml = projectSubtitle
+            ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>`
+            : '';
+
+        // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
+        // Theme JS looks for '.main-header .page-header' to move title into .page-content
+        // Note: page-counter is inside main-header for CSS compatibility with legacy themes
+        return `<header class="main-header">${pageCounterHtml}
+<div class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${subtitleHtml}</div>
+<div class="page-header"><h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1></div>
+</header>`;
     }
 
     /**
      * Render page content (blocks with iDevices)
      * @param page - Page
      * @param basePath - Base path
+     * @param projectTitle - Project title (for exe-package:elp transformation)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      * @returns Content HTML
      */
-    renderPageContent(page: ExportPage, basePath: string): string {
+    renderPageContent(
+        page: ExportPage,
+        basePath: string,
+        projectTitle?: string,
+        assetExportPathMap?: Map<string, string>,
+        metadata?: {
+            author?: string;
+            description?: string;
+            license?: string;
+            language?: string;
+            translatedLicense?: string;
+        },
+    ): string {
         let html = '';
 
         for (const block of page.blocks || []) {
             html += this.ideviceRenderer.renderBlock(block, {
                 basePath,
                 includeDataAttributes: true,
+                assetExportPathMap,
             });
+        }
+
+        // Transform exe-package:elp protocol to onclick handler (for download-source-file)
+        // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
+        if (projectTitle) {
+            html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
+        // Sync project properties for download-source-file and similar iDevices
+        if (html.includes('exe-prop-')) {
+            const safeTitle = this.escapeHtml(projectTitle || '-');
+            const safeAuthor = this.escapeHtml(metadata?.author || '-');
+            const safeDesc = this.escapeHtml(metadata?.description || '-');
+            const safeLicense = this.escapeHtml(metadata?.license ? formatShortLicenseText(metadata.license) : '-');
+
+            let safeLicenseHtml = safeLicense;
+            if (metadata?.license) {
+                const shortText = formatShortLicenseText(metadata.license);
+                const isStandardCC = shortText.startsWith('Creative Commons');
+
+                if (isStandardCC) {
+                    const licenseUrl = getLicenseUrl(metadata.license);
+                    if (licenseUrl) {
+                        const cssClass = getLicenseClass(metadata.license);
+                        const classAttr = cssClass ? ` class="${cssClass}"` : '';
+                        safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                    }
+                } else if (
+                    ['propietary license', 'not appropriate', 'public domain'].includes(
+                        metadata.license.toLowerCase().trim(),
+                    )
+                ) {
+                    let displayName = metadata.license;
+                    if (metadata.license.toLowerCase().trim() === 'propietary license')
+                        displayName = 'Proprietary license';
+                    if (metadata.license.toLowerCase().trim() === 'not appropriate') displayName = 'Not appropriate';
+                    if (metadata.license.toLowerCase().trim() === 'public domain') displayName = 'Public domain';
+                    safeLicenseHtml = this.escapeHtml(
+                        metadata.translatedLicense || trans(displayName, {}, metadata.language),
+                    );
+                }
+            }
+
+            // Strip out the read-only classes from the <td> wrappers just in case they slipped through
+            html = html.replace(/<td class="mceNonEditable exe-prop-locked\s*"[^>]*>/g, '<td>');
+
+            html = html.replace(
+                /<span class="exe-prop-title[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-title">${safeTitle}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-author[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-author">${safeAuthor}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-description[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-description">${safeDesc}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-license[^>]*>[\s\S]*?(?=<\/td>|<\/p>|<\/div>|<\/li>|$)/g,
+                `<span class="exe-prop-license">${safeLicenseHtml}</span>`,
+            );
         }
 
         return html;
     }
 
     /**
-     * Render navigation buttons (prev/next links)
+     * Collect all content from a page's components (for library detection)
+     * @param page - Page to collect content from
+     * @returns Combined HTML content from all components
+     */
+    collectPageContent(page: ExportPage): string {
+        const parts: string[] = [];
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                if (component.content) {
+                    parts.push(component.content);
+                }
+            }
+        }
+        return parts.join('\n');
+    }
+
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * This enables the download-source-file iDevice to generate ELPX files on-the-fly
+     *
+     * @param content - HTML content
+     * @param projectTitle - Project title for the download filename
+     * @returns Content with exe-package:elp replaced with onclick handler
+     */
+    replaceElpxProtocol(content: string, projectTitle: string): string {
+        if (!content || !content.includes('exe-package:elp')) {
+            return content;
+        }
+
+        // Replace href="exe-package:elp" with onclick handler
+        let result = content.replace(/href="exe-package:elp"/g, `href="#" onclick="${ELPX_DOWNLOAD_ONCLICK}"`);
+
+        // Replace download="exe-package:elp-name" with actual filename
+        const safeTitle = this.escapeHtml(projectTitle);
+        result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+
+        return result;
+    }
+
+    /**
+     * Render navigation buttons (prev/next links).
+     * Uses pre-translated labels resolved at export time from XLF translations,
+     * so the exported HTML already contains the correct text for the content language.
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
-     * @param language - Language for button text translation
+     * @param navLabels - Translated labels ({ previous, next }); defaults to English
+     * @param pageFilenameMap - Optional map for collision-safe filenames
      * @returns Navigation buttons HTML
      */
-    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
+    renderNavButtons(
+        page: ExportPage,
+        allPages: ExportPage[],
+        basePath: string,
+        navLabels?: { previous: string; next: string },
+        pageFilenameMap?: Map<string, string>,
+    ): string {
+        const prevLabel = navLabels?.previous || 'Previous';
+        const nextLabel = navLabels?.next || 'Next';
+
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
-        const t = getNavTranslations(language);
-        let html = '<div class="nav-buttons">';
+        const parts: string[] = ['<div class="nav-buttons">'];
 
-        // Previous button - span if disabled, anchor if enabled
         if (prevPage) {
-            const link = this.getPageLink(prevPage, allPages, basePath);
-            html += ` <a href="${link}" title="${t.previous}" class="nav-button nav-button-left"> <span>${t.previous}</span></a>`;
+            const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
+            parts.push(
+                `<a href="${link}" title="${prevLabel}" class="nav-button nav-button-left"><span>${prevLabel}</span></a>`,
+            );
         } else {
-            html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>${t.previous}</span></span>`;
+            parts.push(`<span class="nav-button nav-button-left" aria-hidden="true"><span>${prevLabel}</span></span>`);
         }
 
-        // Next button - span if disabled, anchor if enabled
         if (nextPage) {
-            const link = this.getPageLink(nextPage, allPages, basePath);
-            html += `<a href="${link}" title="${t.next}" class="nav-button nav-button-right"> <span>${t.next}</span></a>`;
+            const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
+            parts.push(
+                `<a href="${link}" title="${nextLabel}" class="nav-button nav-button-right"><span>${nextLabel}</span></a>`,
+            );
         } else {
-            html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>${t.next}</span></span>`;
+            parts.push(`<span class="nav-button nav-button-right" aria-hidden="true"><span>${nextLabel}</span></span>`);
         }
 
-        html += '\n</div>';
-        return html;
+        parts.push('</div>');
+        return parts.join('\n');
     }
 
     /**
@@ -574,8 +806,8 @@ ${madeWithExeHtml}
      * @returns Pagination HTML
      * @deprecated Use renderNavButtons instead
      */
-    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
-        return this.renderNavButtons(page, allPages, basePath, language);
+    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+        return this.renderNavButtons(page, allPages, basePath);
     }
 
     /**
@@ -583,15 +815,37 @@ ${madeWithExeHtml}
      * @param options - Footer options
      * @returns Footer HTML with siteFooter wrapper
      */
-    renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+    renderFooterSection(options: {
+        license: string;
+        licenseUrl?: string;
+        userFooterContent?: string;
+        language?: string;
+        navLabels?: { license?: string };
+    }): string {
+        const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+        // Skip license section for:
+        // - Empty license (no license specified, legacy content with unknown license)
+        // - "propietary license" and "not appropriate" (no meaningful license to display)
+        if (!shouldShowLicenseFooter(license)) {
+            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
+        }
+
+        const licenseText = formatLicenseText(license);
+        const translatedLicenseText = navLabels?.license || trans(licenseText, {}, language);
+        const licenseClass = getLicenseClass(license);
+
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a href="${licenseUrl}" class="license">${translatedLicenseText}</a>`
+            : `<span class="license">${translatedLicenseText}</span>`;
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -611,10 +865,20 @@ ${userFooterHtml}</div></footer>`;
      * @deprecated Use renderFooterSection instead
      */
     renderLicense(options: { author: string; license: string; licenseUrl?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/' } = options;
+        const { license, licenseUrl = '' } = options;
 
-        return `<div id="packageLicense" class="cc cc-by-sa">
-<p><span>Licensed under the</span> <a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a></p>
+        // Skip license for empty, "propietary license", and "not appropriate"
+        if (!shouldShowLicenseFooter(license)) {
+            return '';
+        }
+
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a>`
+            : `<span>${this.escapeHtml(license)}</span>`;
+
+        return `<div id="packageLicense" class="${getLicenseClass(license)}">
+<p><span>Licensed under the</span> ${licenseContent}</p>
 </div>`;
     }
 
@@ -631,10 +895,11 @@ ${userFooterHtml}</div></footer>`;
     /**
      * Generate search data JSON for client-side search functionality
      * @param allPages - All pages in the project
-     * @param basePath - Base path for URLs
+     * @param _basePath - Base path for URLs (unused but kept for API compatibility)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JSON string with page structure
      */
-    generateSearchData(allPages: ExportPage[], _basePath: string): string {
+    generateSearchData(allPages: ExportPage[], _basePath: string, pageFilenameMap?: Map<string, string>): string {
         const pagesData: Record<string, unknown> = {};
 
         for (let i = 0; i < allPages.length; i++) {
@@ -643,7 +908,9 @@ ${userFooterHtml}</div></footer>`;
             const prevPage = i > 0 ? allPages[i - 1] : null;
             const nextPage = i < allPages.length - 1 ? allPages[i + 1] : null;
 
-            const fileName = isIndex ? 'index.html' : `${this.sanitizeFilename(page.title)}.html`;
+            // Use unique filename from map if available, otherwise generate from title
+            const mapFilename = pageFilenameMap?.get(page.id);
+            const fileName = isIndex ? 'index.html' : mapFilename || `${this.sanitizeFilename(page.title)}.html`;
             const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
 
             const blocksData: Record<string, unknown> = {};
@@ -682,11 +949,28 @@ ${userFooterHtml}</div></footer>`;
      * Generate the content for search_index.js file
      * @param allPages - All pages in the project
      * @param basePath - Base path for URLs
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JavaScript file content with window.exeSearchData assignment
      */
-    generateSearchIndexFile(allPages: ExportPage[], basePath: string): string {
-        const searchDataJson = this.generateSearchData(allPages, basePath);
+    generateSearchIndexFile(allPages: ExportPage[], basePath: string, pageFilenameMap?: Map<string, string>): string {
+        const searchDataJson = this.generateSearchData(allPages, basePath, pageFilenameMap);
         return `window.exeSearchData = ${searchDataJson};`;
+    }
+
+    /**
+     * Render favicon link tag
+     * @param basePath - Base path for links
+     * @param faviconPath - Path to favicon file
+     * @param faviconType - MIME type of favicon
+     * @returns Link tag HTML
+     */
+    renderFavicon(
+        basePath: string,
+        faviconPath: string = 'libs/favicon.ico',
+        faviconType: string = 'image/x-icon',
+    ): string {
+        const faviconHref = `${basePath}${faviconPath}`;
+        return `<link rel="icon" type="${this.escapeAttr(faviconType)}" href="${this.escapeAttr(faviconHref)}">`;
     }
 
     /**
@@ -699,35 +983,73 @@ ${userFooterHtml}</div></footer>`;
         allPages: ExportPage[],
         options: {
             projectTitle?: string;
+            projectSubtitle?: string;
             language?: string;
             customStyles?: string;
             usedIdevices?: string[];
             author?: string;
             license?: string;
+            licenseUrl?: string;
+            description?: string;
+            faviconPath?: string;
+            faviconType?: string;
+            detectedLibraries?: string[];
+            addMathJax?: boolean;
+            addAccessibilityToolbar?: boolean;
+            version?: string;
+            addExeLink?: boolean;
+            userFooterContent?: string;
+            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
         } = {},
     ): string {
         const {
             projectTitle = 'eXeLearning',
+            projectSubtitle = '',
             language = 'en',
             customStyles = '',
             usedIdevices = [],
-            author = '',
-            license = 'CC-BY-SA',
+            license = '',
+            licenseUrl = '',
+            description = '',
+            faviconPath = 'libs/favicon.ico',
+            faviconType = 'image/x-icon',
+            addExeLink = true,
+            userFooterContent = '',
+            version,
+            detectedLibraries = [],
+            addMathJax = false,
+            addAccessibilityToolbar = false,
+            navLabels,
         } = options;
 
         let contentHtml = '';
+        const effectiveDetectedLibraries =
+            detectedLibraries.length > 0 ? detectedLibraries : this.detectContentLibrariesForPages(allPages);
+
         for (const page of allPages) {
             // Check if page title should be hidden and get effective title
             const hideTitle = this.shouldHidePageTitle(page);
             const effectiveTitle = this.getEffectivePageTitle(page);
-            const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+            // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+            // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+            // moves the .page-title element out of .page-header via movePageTitle()
+            const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
-            contentHtml += `<section id="section-${page.id}" class="single-page-section">
-<header class="page-header"${pageHeaderStyle}>
-<h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
+            // Single-page sections use main-header > page-header structure for CSS compatibility
+            contentHtml += `<section id="section-${page.id}">
+<header class="main-header">
+<div class="page-header">
+<h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1>
+</div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '')}
+${this.renderPageContent(page, '', projectTitle, undefined, {
+    author: options.author,
+    description: options.description,
+    license: options.license,
+    language: options.language,
+    translatedLicense: navLabels?.license,
+})}
 </div>
 </section>\n`;
         }
@@ -745,10 +1067,10 @@ ${this.renderPageContent(page, '')}
         }
 
         return `<!DOCTYPE html>
-<html lang="${language}">
+<html lang="${language}" id="exe-index">
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)}</title>
 <script>document.querySelector("html").classList.add("js");</script>
@@ -757,23 +1079,26 @@ ${this.renderPageContent(page, '')}
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<script src="libs/exe_lightbox/exe_lightbox.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
-<link rel="stylesheet" href="libs/exe_lightbox/exe_lightbox.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
+${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
+${this.renderDetectedLibraries(effectiveDetectedLibraries, '')}
+${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
+${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
-<body class="exe-export exe-single-page" lang="${language}">
+<body class="exe-export exe-single-page">
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
-<main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<main class="page">
+<header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderLicense({ author, license })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
 </div>
+${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>
 </html>`;
     }
@@ -858,13 +1183,15 @@ ${this.renderLicense({ author, license })}
                     break;
 
                 case 'rel':
-                    // Look for rel="pattern"
-                    found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
+                    // Look for rel="pattern" or rel="pattern[X]" (e.g., lightbox, lightbox[gallery1])
+                    found =
+                        new RegExp(`rel="[^"]*${lib.pattern as string}[^"]*"`, 'i').test(html) ||
+                        new RegExp(`rel='[^']*${lib.pattern as string}[^']*'`, 'i').test(html);
                     break;
 
-                case 'data':
-                    // Look for data-pattern or data-pattern="..."
-                    found = html.includes(`data-${lib.pattern}`) || html.includes(`data-${lib.pattern}=`);
+                case 'regex':
+                    // Use provided regex pattern (e.g., for exe-package:elp protocol)
+                    found = (lib.pattern as RegExp).test(html);
                     break;
             }
 
@@ -873,6 +1200,16 @@ ${this.renderLicense({ author, license })}
             }
         }
 
+        return Array.from(detectedLibs);
+    }
+
+    private detectContentLibrariesForPages(pages: ExportPage[]): string[] {
+        const detectedLibs = new Set<string>();
+        for (const page of pages) {
+            for (const libName of this.detectContentLibraries(this.collectPageContent(page))) {
+                detectedLibs.add(libName);
+            }
+        }
         return Array.from(detectedLibs);
     }
 
@@ -901,5 +1238,30 @@ ${this.renderLicense({ author, license })}
     escapeAttr(str: string): string {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Render detected libraries scripts and CSS
+     * @param detectedLibraries - List of detected library names
+     * @param basePath - Base path for URLs
+     * @returns HTML for library includes
+     */
+    private renderDetectedLibraries(detectedLibraries: string[], basePath: string): string {
+        let html = '';
+        for (const libName of detectedLibraries) {
+            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
+            if (!libPattern) continue;
+
+            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
+            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
+
+            for (const jsFile of jsFiles) {
+                html += `\n<script src="${basePath}libs/${jsFile}"> </script>`;
+            }
+            for (const cssFile of cssFiles) {
+                html += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
+            }
+        }
+        return html;
     }
 }

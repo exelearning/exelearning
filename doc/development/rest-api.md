@@ -1,180 +1,678 @@
-# eXeLearning REST API — Quick Reference
+# eXeLearning REST API Documentation
 
-**Base URL:** `/api`
-**Auth:** `Authorization: Bearer <JWT>`
-**Roles:** `ROLE_USER` (projects, pages, blocks, iDevices) · `ROLE_ADMIN` (user management, quotas)
+This document describes the REST APIs available in eXeLearning.
+
+## API Versions Overview
+
+| Version | Base Path | Purpose | Status |
+|---------|-----------|---------|--------|
+| **API v1** | `/api/v1` | External integrations (LMS, mobile apps, automation) | **Current** |
+| Legacy API | `/api` | Internal use, compatibility | Deprecated |
 
 ---
 
-## Get a JWT
+# API v1 — External Integration API
 
-### Option A — via API (needs an authenticated browser session)
+**Base URL:** `/api/v1`
+**Auth:** `Authorization: Bearer <JWT>`
+**Real-time:** Changes propagate to WebSocket clients via Yjs CRDTs
+
+## Purpose
+
+API v1 is designed for **external integrations**:
+- Learning Management Systems (LMS)
+- Mobile applications
+- Automation scripts
+- Third-party tools
+
+All changes made via the REST API are automatically synchronized with connected WebSocket clients using Yjs CRDTs for conflict resolution.
+
+---
+
+## Authentication
+
+**Important:** API v1 is only accessible to **registered users** (`ROLE_USER` or `ROLE_ADMIN`). **Guest users are not allowed** and will receive a `403 FORBIDDEN` error.
+
+### Get a JWT Token
+
+#### Option A — via CLI (development/automation)
 
 ```bash
-curl -s -X POST \
-  -H 'Accept: application/json' \
-  -b cookies.txt -c cookies.txt \
-  http://localhost:8080/api/auth/token
-# → { "token":"<JWT>", "ttl":3600 }
+bun run cli generate-jwt user@example.com --ttl=3600
 ```
 
-### Option B — via CLI (development)
+#### Option B — via Login API
 
 ```bash
-bin/console app:jwt:generate 'user@example.com' --ttl=3600
+curl -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com","password":"secret"}'
+# → { "access_token": "<JWT>", "token_type": "bearer" }
 ```
 
-Use the token:
+### Using the Token
 
 ```bash
 export TOKEN='<JWT>'
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/projects
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/projects
 ```
 
 ---
 
-## Core resources (REST)
+## Response Format
 
-| Resource     | List                                                                                           | Get                                                                              | Create                                                                                                           | Update                                                                                                                                                                                                                          | Delete                                                         | Reorder / Move                                                                                                                                                                                              | Notes                               |                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| **Projects** | `GET /projects`                                                                                | `GET /projects/{projectId}`                                                      | `POST /projects` body: `{ "title":"My project" }`                                                                | \`PUT                                                                                                                                                                                                                           | PATCH /projects/{projectId}`body:`{ "title":"New title" }\`    | `DELETE /projects/{projectId}`                                                                                                                                                                              | —                                   | Also properties: `GET/PUT/PATCH /projects/{projectId}/properties` |
-| **Pages**    | `GET /projects/{projectId}/pages` (tree) · `GET /projects/{projectId}/pages/{pageId}/children` | `GET /projects/{projectId}/pages/{pageId}`                                       | `POST /projects/{projectId}/pages` body: `{ "title":"Intro", "parentId":null }`                                  | `PATCH /projects/{projectId}/pages/{pageId}` body: `{ "title":"..." }`                                                                                                                                                          | `DELETE /projects/{projectId}/pages/{pageId}`                  | Reorder children: `PATCH /projects/{projectId}/pages/{pageId}/children` body: `{ "order":[...] }` · Move page: `PATCH /projects/{projectId}/pages/{pageId}/move` body: `{ "parentId":"...", "position":0 }` | —                                   |                                                                   |
-| **Blocks**   | `GET /projects/{projectId}/pages/{pageId}/blocks`                                              | `GET /projects/{projectId}/pages/{pageId}/blocks/{blockId}`                      | `POST /projects/{projectId}/pages/{pageId}/blocks` body: `{ "type":"text","data":{...} }`                        | Reorder in page: `PATCH /projects/{projectId}/pages/{pageId}/blocks` body: `{ "order":[...] }` · Update by move: `PATCH /projects/{projectId}/pages/{pageId}/blocks/{blockId}/move` body: `{ "newPageId":"...", "position":0 }` | `DELETE /projects/{projectId}/pages/{pageId}/blocks/{blockId}` | Move block to another page: `PATCH .../blocks/{blockId}/move`                                                                                                                                               | `type` defaults to `"generic"`      |                                                                   |
-| **iDevices** | `GET /projects/{projectId}/pages/{pageId}/blocks/{blockId}/idevices`                           | `GET /projects/{projectId}/pages/{pageId}/blocks/{blockId}/idevices/{ideviceId}` | `POST /projects/{projectId}/pages/{pageId}/blocks/{blockId}/idevices` body: `{ "ideviceId":"opt","data":{...} }` | `PUT /projects/{projectId}/pages/{pageId}/blocks/{blockId}/idevices/{ideviceId}` body: `{...}`                                                                                                                                  | —                                                              | —                                                                                                                                                                                                           | Returns block-scoped subobject data |                                                                   |
+All API v1 endpoints return consistent JSON responses:
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Project not found"
+  }
+}
+```
+
+### Common HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad request / Validation error |
+| 401 | Unauthorized (missing/invalid token) |
+| 403 | Forbidden (no permission, or guest user attempting access) |
+| 404 | Not found |
+| 422 | Unprocessable entity (schema validation) |
+| 500 | Internal server error |
 
 ---
 
-## Access Model (Visibility)
+## Projects
 
-- Unprivileged (`ROLE_USER`):
-  - `GET /users`: returns only the current user (exactly one entry).
-  - `GET /projects`: returns only projects owned by the current user.
-  - `GET /projects/{projectId}`: 403 if the project is not owned by the user.
+### List Projects
 
-- Admin (`ROLE_ADMIN`):
-  - `GET /users`: returns all users; supports filters (see below).
-  - `GET /projects`: returns all projects; supports filters (see below).
-
-Notes:
-- All requests require `Authorization: Bearer <JWT>`.
-- For JWT-based auth where the security user is not a Doctrine entity, the system matches by email.
-
----
-
-## Projects — Listing, Filters, Owner Fields
-
-Endpoint: `GET /projects`
-
-- Always includes owner information: `owner_id` and `owner_email`.
-- Sorted by `updatedAt.timestamp` (desc).
-
-Supported filters (query params):
-- `id`: exact match by project id.
-- `title`: exact match by title.
-- `title_like`: case-insensitive substring in title.
-- `updated_after`: `updatedAt.timestamp` strictly greater than the value.
-- `updated_before`: `updatedAt.timestamp` strictly less than the value.
-- `search`: case-insensitive substring in `id`, `title`, or `fileName`.
-- `owner_id` (admin only): exact match by owner userId.
-- `owner_email` (admin only): exact match by owner email.
-
-Example:
-```bash
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/projects?title_like=tutorial&updated_after=1700000000'
+```
+GET /api/v1/projects
 ```
 
-Single project: `GET /projects/{projectId}`
+Returns projects owned by the authenticated user (or all projects for admins).
 
-- Includes `owner_id` and `owner_email` in the response.
-- Non-admins get 403 if not the owner.
+**Query Parameters:**
+- `limit` (number): Max results (default: 50)
+- `offset` (number): Pagination offset
+- `search` (string): Search in title
 
----
-
-## Users — Listing, Filters, and Lookups
-
-List: `GET /users`
-
-- Unprivileged: returns only the current user (1 element).
-- Admin: returns all users. Filters supported:
-  - `email` (exact)
-  - `role` (partial; e.g., `ROLE_ADMIN`)
-  - `search` (partial in `email` or `userId`)
-
-Get by numeric id: `GET /users/{id}`
-
-- Access: admin or the owner (the same user).
-
-Lookups (convenience):
-- `GET /users/by-email/{email}`
-- `GET /users/by-userid/{userId}`
-
-Both endpoints:
-- Access: admin or the owner.
-- Tip: URL-encode the email when using `/by-email/...`.
-
-Examples:
-```bash
-# Admin listing with filter
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/users?search=@example.com'
-
-# Lookup by userId
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/users/by-userid/user2
-
-# Lookup by email (URL-encoded)
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/users/by-email/user%40exelearning.net'
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "uuid": "abc-123-def",
+      "title": "My Course",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-16T14:20:00Z"
+    }
+  ]
+}
 ```
 
----
+### Get Project
 
-## Minimal cURL examples
-
-List projects:
-
-```bash
-curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/projects
+```
+GET /api/v1/projects/:uuid
 ```
 
-Create a page:
+### Create Project
 
-```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{ "title":"Intro", "parentId": null }' \
-  http://localhost:8080/api/projects/<projectId>/pages
+```
+POST /api/v1/projects
+Content-Type: application/json
+
+{
+  "title": "New Course"
+}
 ```
 
-Add a text block:
+### Update Project
 
-```bash
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{ "type":"text", "data": { "content":"Hello" } }' \
-  http://localhost:8080/api/projects/<projectId>/pages/<pageId>/blocks
+```
+PUT /api/v1/projects/:uuid
+Content-Type: application/json
+
+{
+  "title": "Updated Title"
+}
 ```
 
-Move a block:
+### Delete Project
 
-```bash
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{ "newPageId":"<targetPageId>", "position": 0 }' \
-  http://localhost:8080/api/projects/<projectId>/pages/<pageId>/blocks/<blockId>/move
+```
+DELETE /api/v1/projects/:uuid
+```
+
+### Duplicate Project
+
+```
+POST /api/v1/projects/:uuid/duplicate
+Content-Type: application/json
+
+{
+  "title": "Copy of My Course"
+}
 ```
 
 ---
 
-## ELP Conversion & Export Endpoints
+## Pages
+
+### List Pages
+
+```
+GET /api/v1/projects/:uuid/pages
+```
+
+Returns all pages in the project as a flat array, sorted by order.
+
+### Get Page
+
+```
+GET /api/v1/projects/:uuid/pages/:pageId
+```
+
+### Create Page
+
+```
+POST /api/v1/projects/:uuid/pages
+Content-Type: application/json
+
+{
+  "name": "Introduction",
+  "parentId": null,
+  "order": 0
+}
+```
+
+**Parameters:**
+- `name` (required): Page name
+- `parentId` (optional): Parent page ID for nested pages (null for root level)
+- `order` (optional): Position in the page list
+
+### Update Page
+
+```
+PATCH /api/v1/projects/:uuid/pages/:pageId
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "properties": {
+    "customKey": "customValue"
+  }
+}
+```
+
+### Delete Page
+
+```
+DELETE /api/v1/projects/:uuid/pages/:pageId
+```
+
+Deletes the page and all its descendants.
+
+### Move Page
+
+```
+POST /api/v1/projects/:uuid/pages/:pageId/move
+Content-Type: application/json
+
+{
+  "parentId": "target-page-id",
+  "position": 0
+}
+```
+
+---
+
+## Blocks
+
+Blocks are containers within pages that hold components (iDevices).
+
+### List Blocks
+
+```
+GET /api/v1/projects/:uuid/pages/:pageId/blocks
+```
+
+### Get Block
+
+```
+GET /api/v1/projects/:uuid/blocks/:blockId
+```
+
+### Create Block
+
+```
+POST /api/v1/projects/:uuid/pages/:pageId/blocks
+Content-Type: application/json
+
+{
+  "name": "Content Section",
+  "order": 0
+}
+```
+
+### Update Block
+
+```
+PATCH /api/v1/projects/:uuid/blocks/:blockId
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "iconName": "icon-text",
+  "properties": {
+    "visibility": "true",
+    "teacherOnly": "false"
+  }
+}
+```
+
+### Delete Block
+
+```
+DELETE /api/v1/projects/:uuid/blocks/:blockId
+```
+
+### Move Block
+
+```
+POST /api/v1/projects/:uuid/blocks/:blockId/move
+Content-Type: application/json
+
+{
+  "targetPageId": "page-xyz",
+  "position": 0
+}
+```
+
+---
+
+## Components (iDevices)
+
+Components are the content elements within blocks.
+
+### List Components
+
+```
+GET /api/v1/projects/:uuid/blocks/:blockId/components
+```
+
+### Get Component
+
+```
+GET /api/v1/projects/:uuid/components/:componentId
+```
+
+### Create Component
+
+```
+POST /api/v1/projects/:uuid/blocks/:blockId/components
+Content-Type: application/json
+
+{
+  "ideviceType": "text",
+  "initialData": {
+    "title": "My Text",
+    "htmlContent": "<p>Hello world</p>"
+  },
+  "order": 0
+}
+```
+
+**Parameters:**
+- `ideviceType` (required): Type of iDevice (text, quiz, image, etc.)
+- `initialData` (optional): Initial content and properties
+- `order` (optional): Position within the block
+
+### Update Component
+
+```
+PUT /api/v1/projects/:uuid/components/:componentId
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "htmlContent": "<p>Updated content</p>",
+  "properties": {
+    "customProp": "value"
+  }
+}
+```
+
+### Set Component HTML
+
+Convenience endpoint to update only the HTML content:
+
+```
+PUT /api/v1/projects/:uuid/components/:componentId/html
+Content-Type: application/json
+
+{
+  "html": "<p>New HTML content</p>"
+}
+```
+
+### Delete Component
+
+```
+DELETE /api/v1/projects/:uuid/components/:componentId
+```
+
+---
+
+## Metadata
+
+### Get Project Metadata
+
+```
+GET /api/v1/projects/:uuid/metadata
+```
+
+Returns project metadata (title, author, description, language, etc.).
+
+### Update Project Metadata
+
+```
+PATCH /api/v1/projects/:uuid/metadata
+Content-Type: application/json
+
+{
+  "title": "Course Title",
+  "author": "John Doe",
+  "description": "Course description",
+  "language": "en"
+}
+```
+
+---
+
+## Export
+
+### Export Project
+
+```
+GET /api/v1/projects/:uuid/export/:format
+```
+
+**Formats:**
+- `html5` - HTML5 website
+- `html5-sp` - HTML5 single page
+- `scorm12` - SCORM 1.2 package
+- `scorm2004` - SCORM 2004 package
+- `ims` - IMS Content Package
+- `epub3` - EPUB3 ebook
+- `elp` / `elpx` - eXeLearning project file
+
+**Response:** ZIP file download
+
+### List Available Formats
+
+```
+GET /api/v1/export/formats
+```
+
+---
+
+## Assets
+
+Manage project assets (images, media files, documents).
+
+**Note:** Changes are automatically broadcast to connected WebSocket clients via Yjs.
+
+### List Assets
+
+```
+GET /api/v1/projects/:uuid/assets
+```
+
+Returns all assets in the project.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "clientId": "abc-123-uuid",
+      "filename": "image.jpg",
+      "mimeType": "image/jpeg",
+      "size": 102400,
+      "folderPath": "images",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-16T14:20:00Z"
+    }
+  ]
+}
+```
+
+### Upload Asset
+
+```
+POST /api/v1/projects/:uuid/assets
+Content-Type: multipart/form-data
+
+file: <binary>
+clientId: (optional) UUID for the asset
+folderPath: (optional) Virtual folder path
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "clientId": "generated-uuid",
+    "filename": "image.jpg",
+    "mimeType": "image/jpeg",
+    "size": 102400,
+    "folderPath": "",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Download Asset
+
+```
+GET /api/v1/projects/:uuid/assets/:assetId
+```
+
+Returns the asset file with appropriate Content-Type header.
+
+### Get Asset Metadata
+
+```
+GET /api/v1/projects/:uuid/assets/:assetId/metadata
+```
+
+Returns asset metadata without downloading the file.
+
+### Delete Asset
+
+```
+DELETE /api/v1/projects/:uuid/assets/:assetId
+```
+
+Deletes the asset from disk and database.
+
+### Bulk Delete Assets
+
+```
+POST /api/v1/projects/:uuid/assets/bulk-delete
+Content-Type: application/json
+
+{
+  "clientIds": ["uuid-1", "uuid-2", "uuid-3"]
+}
+```
+
+Deletes multiple assets by their client IDs.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "deleted": 3
+  }
+}
+```
+
+---
+
+## Users (Admin Only)
+
+These endpoints require `ROLE_ADMIN`.
+
+### List Users
+
+```
+GET /api/v1/users
+```
+
+### Get User
+
+```
+GET /api/v1/users/:id
+```
+
+### Create User
+
+```
+POST /api/v1/users
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "password": "securepassword",
+  "roles": ["ROLE_USER"]
+}
+```
+
+### Update User
+
+```
+PATCH /api/v1/users/:id
+Content-Type: application/json
+
+{
+  "roles": ["ROLE_USER", "ROLE_ADMIN"],
+  "is_active": true
+}
+```
+
+### Delete User
+
+```
+DELETE /api/v1/users/:id
+```
+
+---
+
+## Real-time Synchronization
+
+All changes made via the REST API are automatically broadcast to connected WebSocket clients:
+
+1. REST request modifies the Y.Doc (Yjs document)
+2. Server calculates the delta update
+3. Delta is broadcast to all WebSocket clients in the project room
+4. Clients apply the update via Yjs CRDT merge
+
+This ensures:
+- **Consistency**: All clients see the same state
+- **Conflict resolution**: Yjs CRDTs handle concurrent edits
+- **Real-time updates**: WebSocket clients update instantly
+
+---
+
+## Examples
+
+### Create a Complete Page with Content
+
+```bash
+# 1. Create a page
+PAGE=$(curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Chapter 1"}' \
+  http://localhost:8080/api/v1/projects/$UUID/pages)
+
+PAGE_ID=$(echo $PAGE | jq -r '.data.id')
+
+# 2. Create a block
+BLOCK=$(curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Introduction"}' \
+  http://localhost:8080/api/v1/projects/$UUID/pages/$PAGE_ID/blocks)
+
+BLOCK_ID=$(echo $BLOCK | jq -r '.data.id')
+
+# 3. Add a text component
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ideviceType": "text",
+    "initialData": {
+      "title": "Welcome",
+      "htmlContent": "<p>Welcome to Chapter 1!</p>"
+    }
+  }' \
+  http://localhost:8080/api/v1/projects/$UUID/blocks/$BLOCK_ID/components
+```
+
+### Export a Project to SCORM
+
+```bash
+curl -L -o course.zip \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/projects/$UUID/export/scorm12
+```
+
+---
+
+# Legacy API (Deprecated)
+
+The legacy API at `/api` is maintained for backwards compatibility but should not be used for new integrations. See the sections below for reference only.
+
+---
+
+## Legacy: ELP Conversion & Export Endpoints
 
 These endpoints allow you to convert legacy ELP files to the current format and export ELP files to various output formats (HTML5, SCORM, EPUB, etc.).
 
 **Authentication:** All endpoints require `ROLE_USER` and `Authorization: Bearer <JWT>`.
 
 **Request Format:** `multipart/form-data` with file upload.
-
----
 
 ### Convert ELP File
 
@@ -190,40 +688,9 @@ These endpoints allow you to convert legacy ELP files to the current format and 
 **Query Parameters:**
 - `download` (optional): Set to `1` to download the converted file directly instead of returning JSON metadata.
 
-**Success Response (201):**
-
-Without `download=1`:
-```json
-{
-  "status": "success",
-  "fileName": "converted_202501051234_ABC12.elpx",
-  "size": 1024000,
-  "message": "Conversion completed. Use ?download=1 to download the file directly."
-}
-```
-
-With `download=1`:
-- Returns the converted `.elpx` file as binary download with appropriate `Content-Disposition` header.
-
-**Error Responses:**
-- `400 MISSING_FILE`: No file uploaded
-- `400 UPLOAD_ERROR`: File upload failed
-- `401 UNAUTHORIZED`: Authentication required
-- `413 UPLOAD_TOO_LARGE`: File exceeds size limit (see `ELP_API_MAX_UPLOAD_SIZE_MB` config)
-- `415 UNSUPPORTED_MEDIA_TYPE`: Expected `multipart/form-data`
-- `422 INVALID_FILE_TYPE`: Invalid file extension or MIME type
-- `422 INVALID_ELP`: File is not a valid ELP archive
-- `500 CONVERSION_FAILED`: Conversion process failed
-- `500 INTERNAL_ERROR`: Unexpected error
-
 **Example:**
 
 ```bash
-# Convert and get JSON metadata
-curl -X POST "http://localhost:8080/api/convert/elp" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/legacy.elp"
-
 # Convert and download directly
 curl -X POST "http://localhost:8080/api/convert/elp?download=1" \
   -H "Authorization: Bearer $TOKEN" \
@@ -231,182 +698,37 @@ curl -X POST "http://localhost:8080/api/convert/elp?download=1" \
   -o converted.elpx
 ```
 
----
-
 ### Export ELP File (Stateless)
 
 **Endpoints:**
-- `POST /api/convert/export/elp` — Export to ELP/ELPX format
 - `POST /api/convert/export/html5` — Export to HTML5 web format
-- `POST /api/convert/export/html5-sp` — Export to HTML5 single page format
 - `POST /api/convert/export/scorm12` — Export to SCORM 1.2 format
 - `POST /api/convert/export/scorm2004` — Export to SCORM 2004 format
-- `POST /api/convert/export/ims` — Export to IMS Content Package format
 - `POST /api/convert/export/epub3` — Export to EPUB3 format
-- `POST /api/convert/export/elpx` — Export to ELPX format (alias for elp)
+- `POST /api/convert/export/ims` — Export to IMS Content Package format
 
-**Description:** Exports an ELP file to the specified format.
-
-**Request:**
-- **Content-Type:** `multipart/form-data`
-- **Body Parameters:**
-  - `file` (required): The ELP file to export
-  - `baseUrl` (optional): Base URL for links in exported content (e.g., `https://cdn.example.com/content`)
-  - `theme` (optional): Theme name to use (overrides the theme specified in the ELP metadata). Available themes: `base`, `zen`, `flux`, etc.
-
-**Query Parameters:**
-- `download` (optional): Set to `1` to download the exported content as a ZIP file instead of returning JSON metadata.
-
-**Success Response (201):**
-
-Without `download=1`:
-```json
-{
-  "status": "success",
-  "format": "html5",
-  "exportPath": "/tmp/exe_export_abc123",
-  "files": [
-    "index.html",
-    "html/page1.html",
-    "html/page2.html",
-    "libs/jquery/jquery.min.js",
-    "libs/bootstrap/bootstrap.min.css",
-    "theme/style.css"
-  ],
-  "filesCount": 42
-}
-```
-
-With `download=1`:
-- Returns a ZIP archive containing the exported content as binary download.
-- **Content-Type:** `application/zip`
-- **Content-Disposition:** `attachment; filename="export_{format}_{timestamp}_{random}.zip"`
-- For `elp`/`elpx` formats: streams the generated `.elp`/`.elpx` archive directly.
-- For formats that produce a single ZIP (e.g., SCORM packages): streams that ZIP file.
-- For other formats: creates and streams a ZIP containing all exported files.
-
-**Error Responses:**
-- `400 INVALID_FORMAT`: Invalid export format specified
-- `400 MISSING_FILE`: No file uploaded
-- `400 UPLOAD_ERROR`: File upload failed
-- `401 UNAUTHORIZED`: Authentication required
-- `413 UPLOAD_TOO_LARGE`: File exceeds size limit
-- `415 UNSUPPORTED_MEDIA_TYPE`: Expected `multipart/form-data`
-- `422 INVALID_FILE_TYPE`: Invalid file extension or MIME type
-- `422 INVALID_ELP`: File is not a valid ELP archive
-- `500 EXPORT_FAILED`: Export process failed
-- `500 INTERNAL_ERROR`: Unexpected error
-
-**Examples:**
+**Example:**
 
 ```bash
-# Export to HTML5 and get JSON metadata
-curl -X POST "http://localhost:8080/api/convert/export/html5" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp"
-
-# Export to HTML5 and download as ZIP
-curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp" \
-  -o export_html5.zip
-
-# Export to HTML5 with custom base URL and download
-curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp" \
-  -F "baseUrl=https://cdn.example.com/courses" \
-  -o export_html5.zip
-
-# Export to HTML5 with a specific theme (overrides ELP metadata)
-curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp" \
-  -F "theme=zen" \
-  -o export_html5_zen.zip
-
 # Export to SCORM 1.2 and download
 curl -L -X POST "http://localhost:8080/api/convert/export/scorm12?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
   -o export_scorm12.zip
-
-# Export to EPUB3 and download
-curl -L -X POST "http://localhost:8080/api/convert/export/epub3?download=1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp" \
-  -o export_epub3.epub
-
-# Export to ELP format and download
-curl -L -X POST "http://localhost:8080/api/convert/export/elp?download=1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp" \
-  -o exported.elpx
 ```
 
 ---
 
-### Configuration
+## Configuration
 
-The ELP API endpoints are configured through environment variables:
+### Environment Variables
 
-- **Upload size limit:** Configured via `MAX_UPLOAD_SIZE` environment variable (default: 100MB)
-- **Temporary storage:** Uses the configured `FILES_DIR` with automatic cleanup
-- **No additional configuration required for most deployments**
+- **`MAX_UPLOAD_SIZE`**: Maximum upload size (default: 100MB)
+- **`FILES_DIR`**: Base directory for file storage
+- **`JWT_SECRET`**: Secret for JWT token signing
 
-To adjust the maximum upload size, set the environment variable:
+### Upload Size Limit
 
 ```bash
 MAX_UPLOAD_SIZE=200M  # or 200000000 for bytes
 ```
-
----
-
-### Get Available Formats
-
-**Endpoint:** `GET /api/convert/formats`
-
-**Description:** Returns a list of available export formats with metadata.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "formats": [
-    { "id": "html5", "name": "HTML5 Website", "extension": "zip", "mimeType": "application/zip" },
-    { "id": "html5-sp", "name": "HTML5 Single Page", "extension": "zip", "mimeType": "application/zip" },
-    { "id": "scorm12", "name": "SCORM 1.2", "extension": "zip", "mimeType": "application/zip" },
-    { "id": "scorm2004", "name": "SCORM 2004", "extension": "zip", "mimeType": "application/zip" },
-    { "id": "ims", "name": "IMS Content Package", "extension": "zip", "mimeType": "application/zip" },
-    { "id": "epub3", "name": "EPUB3", "extension": "epub", "mimeType": "application/epub+zip" },
-    { "id": "elp", "name": "eXeLearning Project", "extension": "elpx", "mimeType": "application/x-exelearning" },
-    { "id": "elpx", "name": "eXeLearning Project", "extension": "elpx", "mimeType": "application/x-exelearning" }
-  ]
-}
-```
-
----
-
-### Implementation Notes
-
-1. **Stateless Operation:** The convert/export API is fully stateless. Each request processes the uploaded file independently using temporary directories that are cleaned up immediately after the response.
-
-2. **Temporary Files:** Uploaded files are extracted to a temporary directory (`FILES_DIR/tmp/convert-{uuid}`) and cleaned up automatically after each operation.
-
-3. **File Validation:** All uploaded files are validated for:
-   - File size (`MAX_UPLOAD_SIZE` limit, default 100MB)
-   - File extension (must be `.elp`, `.elpx`, or `.zip`)
-   - Valid ELP/ELPX structure (checked by the document adapter)
-
-4. **Authentication:** All endpoints require JWT authentication. The token can be provided via `Authorization: Bearer <token>` header or the `auth` cookie.
-
-5. **Unified Export System:** Uses the shared export system (`src/shared/export/`) which is also used by the CLI and frontend, ensuring consistent output across all interfaces.
-
----
-
-## Status & errors (shape)
-
-* Success: standard JSON bodies as above, typical codes `200/201/204`.
-* Validation errors: `400` with `{ "title", "detail", "type" }` or `{ "code", "detail" }`.
-* Not found: `404` with `{ "title":"Not found", ... }`.
-* Auth: include `Authorization: Bearer <JWT>` on every request.

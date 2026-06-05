@@ -157,6 +157,7 @@ const createMockDocumentManager = (pages = []) => {
   }
 
   const mockDoc = {
+    clientID: 'test-client-id',
     transact: vi.fn((fn) => fn()),
   };
 
@@ -305,6 +306,67 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('No content.xml found in component file');
     });
 
+    it('should rewrite embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
+      // Component XML carries an ideviceId inside jsonProperties (text/quiz
+      // iDevices store it for self-reference). ComponentImporter always mints
+      // a fresh component id on import; the embedded value must follow so the
+      // Y.Map field and the JSON payload stay in sync.
+      const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-1</odeBlockId>
+    <blockName>Embedded id</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-1</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+        <jsonProperties>{"ideviceId":"idevice-orig-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_EMBEDDED_ID);
+      const importer = new ComponentImporter(docManager, assetManager);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      // Inspect the inserted component on page-1.
+      const navigation = docManager._navigation;
+      const pageMap = navigation.get(0);
+      const blocks = pageMap.get('blocks');
+      const blockMap = blocks.get(blocks.length - 1); // last appended
+      const components = blockMap.get('components');
+      const compMap = components.get(0);
+      const newCompId = compMap.get('id');
+      const jsonStr = compMap.get('jsonProperties');
+      const parsed = JSON.parse(jsonStr);
+
+      // Outer id was regenerated AND the embedded one followed.
+      expect(newCompId).not.toBe('idevice-orig-1');
+      expect(newCompId).toMatch(/^idevice-/);
+      expect(parsed.ideviceId).toBe(newCompId);
+      expect(parsed.ideviceId).not.toBe('idevice-orig-1');
+    });
+
     it('should generate new IDs for imported block and components', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();
@@ -342,6 +404,18 @@ describe('ComponentImporter', () => {
 
       expect(result.success).toBe(true);
       expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
+    });
+
+    it('should use local clientID as transaction origin for undo tracking', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(docManager.getDoc().transact).toHaveBeenCalled();
+      expect(docManager.getDoc().transact.mock.calls[0][1]).toBe(docManager.getDoc().clientID);
     });
   });
 
@@ -410,6 +484,13 @@ describe('ComponentImporter', () => {
       expect(id3).toMatch(/^idevice-/);
       expect(id1).not.toBe(id2); // Should be unique
     });
+
+    it('should throw on empty prefix (mirrors src/shared/ids.ts)', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      expect(() => importer.generateId('')).toThrow('generateId: prefix is required');
+      expect(() => importer.generateId(undefined)).toThrow('generateId: prefix is required');
+    });
   });
 
   describe('convertAssetPaths', () => {
@@ -427,7 +508,8 @@ describe('ComponentImporter', () => {
       const content = '<img src="asset://old-uuid-123/image.jpg">';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('<img src="asset://new-uuid-456/image.jpg">');
+      // New format: asset://uuid.ext (extension from filename in assetMap path)
+      expect(result).toBe('<img src="asset://new-uuid-456.jpg">');
     });
 
     it('should return unchanged content when no assets match', () => {
@@ -563,34 +645,60 @@ describe('ComponentImporter', () => {
   });
 
   describe('convertAssetPathsInObject', () => {
-    it('should process arrays recursively', () => {
+    it('should process arrays recursively with {{context_path}} URLs', () => {
       const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
+        ['old-uuid-123/image.jpg', 'new-uuid-456'],
       ]);
 
       const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
+      // Create assetManager that converts {{context_path}} to asset://
+      const assetManager = {
+        convertContextPathToAssetRefs: vi.fn((content, map) => {
+          // Simulate conversion of {{context_path}} to asset://
+          return content.replace(
+            /\{\{context_path\}\}\/([^\s"']+)/g,
+            (match, path) => {
+              for (const [origPath, newId] of map.entries()) {
+                if (path.includes(origPath.split('/')[0])) {
+                  return `asset://${newId}/${origPath.split('/').pop()}`;
+                }
+              }
+              return match;
+            }
+          );
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, assetManager);
       importer.assetMap = assetMap;
 
-      const obj = ['asset://old-uuid-123/image.jpg', 'plain text'];
+      const obj = ['{{context_path}}/old-uuid-123/image.jpg', 'plain text'];
       const result = importer.convertAssetPathsInObject(obj);
 
-      expect(result).toEqual(['asset://new-uuid-456/image.jpg', 'plain text']);
+      expect(assetManager.convertContextPathToAssetRefs).toHaveBeenCalled();
+      expect(result[1]).toBe('plain text');
     });
 
-    it('should process nested objects recursively', () => {
+    it('should process nested objects recursively with {{context_path}} URLs', () => {
       const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
+        ['old-uuid-123/image.jpg', 'new-uuid-456'],
       ]);
 
       const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
+      const assetManager = {
+        convertContextPathToAssetRefs: vi.fn((content, map) => {
+          // Simulate conversion
+          return content.replace('{{context_path}}/old-uuid-123/image.jpg', 'asset://new-uuid-456/image.jpg');
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, assetManager);
       importer.assetMap = assetMap;
 
       const obj = {
         level1: {
           level2: {
-            url: 'asset://old-uuid-123/image.jpg',
+            url: '{{context_path}}/old-uuid-123/image.jpg',
           },
         },
         name: 'test',
@@ -599,6 +707,17 @@ describe('ComponentImporter', () => {
 
       expect(result.level1.level2.url).toBe('asset://new-uuid-456/image.jpg');
       expect(result.name).toBe('test');
+    });
+
+    it('should return strings without {{context_path}} unchanged', () => {
+      const docManager = createMockDocumentManager();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      importer.assetMap = new Map();
+
+      // Strings without {{context_path}} should not be converted
+      const result = importer.convertAssetPathsInObject('regular string');
+      expect(result).toBe('regular string');
     });
 
     it('should return primitive values unchanged', () => {
@@ -623,11 +742,12 @@ describe('ComponentImporter', () => {
       const importer = new ComponentImporter(docManager, null);
       importer.assetMap = assetMap;
 
-      // Asset URL without suffix - should extract filename from assetMap path
+      // Asset URL without suffix - should extract extension from assetMap path
       const content = 'url: asset://old-uuid-123';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('url: asset://new-uuid-456/image.jpg');
+      // New format: asset://uuid.ext
+      expect(result).toBe('url: asset://new-uuid-456.jpg');
     });
 
     it('should handle multiple asset URLs in content', () => {
@@ -643,7 +763,8 @@ describe('ComponentImporter', () => {
       const content = '<img src="asset://uuid-1/img1.jpg"><img src="asset://uuid-2/img2.png">';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('<img src="asset://new-1/img1.jpg"><img src="asset://new-2/img2.png">');
+      // New format: asset://uuid.ext
+      expect(result).toBe('<img src="asset://new-1.jpg"><img src="asset://new-2.png">');
     });
 
     it('should handle non-string content', () => {

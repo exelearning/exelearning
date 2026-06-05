@@ -49,7 +49,12 @@ export type AssetMessageType =
     | 'slot-available'
     | 'navigation-hint'
     // Access control message types
-    | 'access-revoked';
+    | 'access-revoked'
+    // Upload session message types (optimized batch upload)
+    | 'upload-session-create'
+    | 'upload-session-ready'
+    | 'upload-file-progress'
+    | 'upload-batch-complete';
 
 /**
  * Union type for all asset message data payloads
@@ -66,6 +71,10 @@ export type AssetMessageData =
     | PreemptUploadData
     | ResumeUploadData
     | SlotAvailableData
+    | UploadSessionCreateData
+    | UploadSessionReadyData
+    | UploadFileProgressData
+    | UploadBatchCompleteData
     | Record<string, unknown>; // For extensibility of future message types
 
 /**
@@ -232,4 +241,70 @@ export interface PriorityQueueStats {
     maxSlots: number;
     highestPriority: number;
     lowestActivePriority: number;
+}
+
+// ==========================================
+// Upload Session Types (Optimized Batch Upload)
+// ==========================================
+
+/**
+ * Asset manifest entry for upload session
+ */
+export interface UploadSessionManifestEntry {
+    clientId: string;
+    filename: string;
+    size: number;
+    mimeType: string;
+}
+
+/**
+ * Upload session create message data (client -> server)
+ */
+export interface UploadSessionCreateData {
+    projectId: string;
+    totalFiles: number;
+    totalBytes: number;
+    manifest: UploadSessionManifestEntry[];
+}
+
+/**
+ * Upload session ready message data (server -> client)
+ */
+export interface UploadSessionReadyData {
+    sessionToken: string;
+    expiresAt: number;
+    config: {
+        maxBatchSize: number;
+        maxBatchBytes: number;
+        endpoints: {
+            batch: string;
+            cancel: string;
+        };
+    };
+}
+
+/**
+ * Upload file progress message data (server -> client)
+ * Streamed in real-time as files are written to disk
+ */
+export interface UploadFileProgressData {
+    clientId: string;
+    bytesWritten: number;
+    totalBytes: number;
+    status: 'writing' | 'complete' | 'error';
+    error?: string;
+}
+
+/**
+ * Upload batch complete message data (server -> client)
+ */
+export interface UploadBatchCompleteData {
+    uploaded: number;
+    failed: number;
+    results: Array<{
+        clientId: string;
+        success: boolean;
+        serverId?: number;
+        error?: string;
+    }>;
 }

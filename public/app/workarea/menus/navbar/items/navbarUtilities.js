@@ -26,6 +26,12 @@ export default class NavbarFile {
         this.projectPreferencesButton = document.querySelector(
             '#head-top-settings-button'
         );
+        this.imageOptimizerButton = this.menu.navbar.querySelector(
+            '#navbar-button-imageoptimizer'
+        );
+        this.globalSearchButton = this.menu.navbar.querySelector(
+            '#navbar-button-global-search'
+        );
     }
 
     /**
@@ -40,6 +46,8 @@ export default class NavbarFile {
         this.setOdeUsedFilesEvent();
         this.setPreviewEvent();
         this.setProjectPreferencesEvent();
+        this.setImageOptimizerEvent();
+        this.setGlobalSearchEvent();
     }
 
     /**************************************************************************************
@@ -139,6 +147,32 @@ export default class NavbarFile {
         });
     }
 
+    /**
+     * Image Optimizer
+     * Utilities -> Image Optimizer
+     *
+     */
+    setImageOptimizerEvent() {
+        if (this.imageOptimizerButton) {
+            this.imageOptimizerButton.addEventListener('click', () => {
+                this.imageOptimizerEvent();
+            });
+        }
+    }
+
+    /**
+     * Global Search
+     * Utilities -> Search...
+     *
+     */
+    setGlobalSearchEvent() {
+        if (this.globalSearchButton) {
+            this.globalSearchButton.addEventListener('click', () => {
+                this.globalSearchEvent();
+            });
+        }
+    }
+
     /**************************************************************************************
      * EVENTS
      **************************************************************************************/
@@ -165,6 +199,22 @@ export default class NavbarFile {
      */
     fileManagerEvent() {
         eXeLearning.app.modals.filemanager.show();
+    }
+
+    /**
+     * Show Image Optimizer modal
+     *
+     */
+    imageOptimizerEvent() {
+        eXeLearning.app.modals.imageoptimizer.show();
+    }
+
+    /**
+     * Show Global Search modal
+     *
+     */
+    globalSearchEvent() {
+        eXeLearning.app.modals.globalsearch.show();
     }
 
     /**
@@ -295,7 +345,7 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
         // Get ode used files
         this.getOdeSessionUsedFilesEvent().then((response) => {
-            if (response.responseMessage == 'OK' && response.usedFiles) {
+            if (response.responseMessage == 'OK' && response.usedFiles?.length > 0) {
                 // Show eXe UsedFilesList modal
                 eXeLearning.app.modals.odeusedfiles.show(response);
             } else {
@@ -488,38 +538,13 @@ export default class NavbarFile {
             if (handled) return;
         }
 
-        // Fall back to server-side preview (legacy mode)
-        let toastData = {
-            title: _('Preview'),
-            body: _('Generating preview...'),
-            icon: 'preview',
-        };
-        let toast = eXeLearning.app.toasts.createToast(toastData);
-        let odeSessionId = eXeLearning.app.project.odeSession;
-        let response = await eXeLearning.app.api.getOdePreviewUrl(odeSessionId);
-        if (response['responseMessage'] == 'OK') {
-            toast.toastBody.innerHTML = _('The preview has been generated.');
-            setTimeout(() => {
-                window.open(response['urlPreviewIndex']);
-            }, 100);
-        } else {
-            toast.toastBody.innerHTML = _(
-                'An error occurred while generating the preview.'
-            );
-            toast.toastBody.classList.add('error');
-            eXeLearning.app.modals.alert.show({
-                title: _('Error'),
-                body: response['responseMessage']
-                    ? response['responseMessage']
-                    : _('Unknown error.'),
-                contentId: 'error',
-            });
-        }
-
-        // Remove message
-        setTimeout(() => {
-            toast.remove();
-        }, 1000);
+        // No preview method available
+        console.error('[NavbarUtilities] No preview method available');
+        eXeLearning.app.modals.alert.show({
+            title: _('Error'),
+            body: _('Preview is not available. Please reload the page.'),
+            contentId: 'error',
+        });
     }
 
     /**
@@ -558,8 +583,8 @@ export default class NavbarFile {
             // Build preview options
             const previewOptions = {
                 baseUrl: window.location.origin,
-                basePath: eXeLearning.app.config?.basePath || '',
-                version: eXeLearning.app.config?.version || 'v1',
+                basePath: window.eXeLearning?.config?.basePath || '',
+                version: window.eXeLearning?.config?.version || 'v1.0.0',
             };
 
             // Generate preview using SharedExporters (unified TypeScript pipeline)

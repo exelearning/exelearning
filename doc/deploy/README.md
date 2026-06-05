@@ -49,7 +49,7 @@ You can customize the deployment by setting these environment variables:
 ### Common Variables
 - `APP_PORT`: Port to access the application (default: 8080)
 - `APP_SECRET`: Secret key for JWT authentication (required for production)
-- `TEST_USER_EMAIL`, `TEST_USER_USERNAME`, `TEST_USER_PASSWORD`: Credentials for the first test user
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`: Admin user credentials (created/updated when ADMIN_PASSWORD is set)
 - `ONLINE_THEMES_INSTALL`: Allow users to import/install styles
 - `ONLINE_IDEVICES_INSTALL`: Allow users to import/install iDevices
 

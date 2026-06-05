@@ -5,12 +5,80 @@
 <meta name="robots" content="noindex" />
 <meta name="google" content="notranslate"/>
 <title>mindmaps for eXeLearning</title>
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/common.css">
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/app.css">
-<link rel="stylesheet" href="css/custom.css">
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/Aristo/jquery-ui-1.8.7.custom.css" />
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/minicolors/jquery.miniColors.css">
-<script src="js/langs/all.js"></script>
+<script>
+// Compute base paths FIRST, before any resources load
+// Pattern: handles both static mode (direct file path) and server mode (API endpoint)
+(function() {
+    var path = window.location.pathname;
+    var deployBase, editorBase;
+
+    // Check if loaded via direct file path (static mode) or API endpoint (server mode)
+    var libsIndex = path.indexOf('/libs/');
+    var isDirectPath = libsIndex !== -1;
+
+    if (isDirectPath) {
+        // Static mode: URL like /libs/tinymce_5/.../editor/index.html
+        deployBase = libsIndex > 0 ? path.substring(0, libsIndex) : '';
+
+        // Compute editor base for local resources
+        var editorIndex = path.lastIndexOf('/editor/');
+        if (editorIndex === -1) {
+            editorIndex = path.lastIndexOf('/editor');
+            if (editorIndex !== -1 && path.length === editorIndex + 7) {
+                path = path + '/';
+                editorIndex = path.lastIndexOf('/editor/');
+            }
+        }
+        editorBase = editorIndex !== -1
+            ? path.substring(0, editorIndex + 8)
+            : path.substring(0, path.lastIndexOf('/') + 1);
+
+        // Create <base> tag for relative paths
+        var base = document.createElement('base');
+        base.href = editorBase;
+        document.head.appendChild(base);
+    } else {
+        // Server mode: URL like /api/exemindmap-editor/index.html
+        // Use parent window config (handles BASE_PATH correctly)
+        try {
+            deployBase = window.parent.eXeLearning.symfony.fullURL || '';
+        } catch (e) {
+            deployBase = '';
+        }
+        editorBase = deployBase + '/api/exemindmap-editor/';
+    }
+
+    // Store globally for use in body scripts
+    window.__EDITOR_BASE__ = editorBase;
+    window.__DEPLOY_BASE__ = deployBase;
+
+    // Load external CSS (mindmaps library)
+    var externalCss = [
+        '/app/common/mindmaps/src/css/common.css',
+        '/app/common/mindmaps/src/css/app.css',
+        '/app/common/mindmaps/src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        '/app/common/mindmaps/src/css/minicolors/jquery.miniColors.css'
+    ];
+    externalCss.forEach(function(file) {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = deployBase + file;
+        document.head.appendChild(link);
+    });
+
+    // Load local CSS
+    var localLink = document.createElement('link');
+    localLink.rel = 'stylesheet';
+    localLink.href = editorBase + 'css/custom.css';
+    document.head.appendChild(localLink);
+
+    // Load langs script
+    var langsScript = document.createElement('script');
+    langsScript.src = editorBase + 'js/langs/all.js';
+    document.head.appendChild(langsScript);
+})();
+</script>
+<!-- CSS and initial JS loaded dynamically above to avoid speculative prefetch issues -->
 
 <script id="template-float-panel" type="text/x-jquery-tmpl">
 <div class="ui-widget ui-dialog ui-corner-all ui-widget-content float-panel no-select">
@@ -174,10 +242,21 @@
     </div>
   </div>
 
-  <script src="js/jquery.min.js"></script>
-  <script src="js/FileSaver.min.js"></script>
+  <!-- Load local JS with correct base path (dynamic loading avoids speculative prefetch) -->
+  <script>
+  (function() {
+      var base = window.__EDITOR_BASE__;
+      var scripts = ['js/jquery.min.js', 'js/FileSaver.min.js'];
+      scripts.forEach(function(src) {
+          document.write('<script src="' + base + src + '"><\/script>');
+      });
+  })();
+  </script>
 
-  <script src="../../../../../../../app/common/mindmaps/min/js/script.js"></script>
+  <!-- Load external mindmaps library -->
+  <script>
+  document.write('<script src="' + window.__DEPLOY_BASE__ + '/app/common/mindmaps/min/js/script.js"><\/script>');
+  </script>
   <!-- Use these scripts instead of /tools/mindmaps/min/js/script.js for developing:
   <script src="/tools/mindmaps/src/js/libs/jquery-ui-1.8.11.custom.min.js"></script>
   <script src="/tools/mindmaps/src/js/libs/dragscrollable.js"></script>
@@ -226,8 +305,15 @@
   <script src="/tools/mindmaps/src/js/FilePicker.js"></script>
   -->  
   
-  <script src="js/cropper.js"></script>
-  <script src="js/jquery-cropper.js"></script>
-  <script src="js/custom.js"></script>
+  <!-- Load remaining local JS -->
+  <script>
+  (function() {
+      var base = window.__EDITOR_BASE__;
+      var scripts = ['js/cropper.js', 'js/jquery-cropper.js', 'js/custom.js'];
+      scripts.forEach(function(src) {
+          document.write('<script src="' + base + src + '"><\/script>');
+      });
+  })();
+  </script>
 </body>
 </html>

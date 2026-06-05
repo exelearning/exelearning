@@ -25,6 +25,7 @@ class YjsProjectBridge {
     this.assetCache = null;  // Legacy - kept for backward compatibility
     this.assetManager = null; // New asset manager with asset:// URLs
     this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
+    this.resourceCache = null; // ResourceCache for persistent IndexedDB storage (themes, libs, iDevices)
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
@@ -47,6 +48,235 @@ class YjsProjectBridge {
 
     // Flag to prevent form recreation cascade during undo/redo operations
     this.isUndoRedoInProgress = false;
+
+    // Current save status for UI tracking
+    this.currentSaveStatus = 'saved';
+
+    // Asset refresh coordination (for late asset arrivals during first page render)
+    this._assetRefreshTimer = null;
+    this._pendingAssetRefreshIds = new Set();
+
+    // Asset metadata observer references (for hash-change invalidation)
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
+    this._assetsMapDebugCalls = 0;
+    this._activeElpxExportTrace = null;
+  }
+
+  getElpxExportDebugConfig() {
+    const runtime = globalThis.window || globalThis;
+    const config = runtime.eXeLearning?.config || globalThis.eXeLearning?.config || {};
+    return {
+      enabled: config.debugElpxExport === true,
+      includeCaller: config.debugElpxExportIncludeCaller !== false,
+    };
+  }
+
+  isElpxExportDebugEnabled() {
+    return this.getElpxExportDebugConfig().enabled;
+  }
+
+  getElpxExportDebugNow() {
+    if (globalThis.performance?.now) {
+      return globalThis.performance.now();
+    }
+    return Date.now();
+  }
+
+  createElpxExportTrace() {
+    if (!this.isElpxExportDebugEnabled()) {
+      this._activeElpxExportTrace = null;
+      return null;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const trace = {
+      startedAt: new Date().toISOString(),
+      startedMs: this.getElpxExportDebugNow(),
+      entries: [],
+    };
+    this._assetsMapDebugCalls = 0;
+    runtime.__currentElpxExportTrace = trace;
+    this._activeElpxExportTrace = trace;
+    return trace;
+  }
+
+  getElpxExportCallerFrame() {
+    if (!this.getElpxExportDebugConfig().includeCaller) {
+      return null;
+    }
+
+    try {
+      const stack = new Error().stack?.split('\n') || [];
+      const caller = stack.find(line =>
+        line &&
+        !line.includes('getElpxExportCallerFrame') &&
+        !line.includes('logElpxExportPhase') &&
+        !line.includes('getAssetsMap')
+      );
+      return caller ? caller.trim() : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  logElpxExportPhase(phase, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  appendElpxExportPhaseEntry(phase, elapsedMs, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(elapsedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  getElpxExportPhaseEntry(trace, phase, mode = 'first') {
+    if (!trace?.entries?.length) {
+      return null;
+    }
+
+    if (mode === 'last') {
+      for (let i = trace.entries.length - 1; i >= 0; i--) {
+        if (trace.entries[i]?.phase === phase) {
+          return trace.entries[i];
+        }
+      }
+      return null;
+    }
+
+    return trace.entries.find(entry => entry?.phase === phase) || null;
+  }
+
+  getElpxExportPhaseDuration(trace, startPhase, endPhase) {
+    const start = this.getElpxExportPhaseEntry(trace, startPhase, 'first');
+    const end = this.getElpxExportPhaseEntry(trace, endPhase, 'last');
+
+    if (!start || !end) {
+      return null;
+    }
+
+    return Math.max(0, end.elapsedMs - start.elapsedMs);
+  }
+
+  buildElpxExportDerivedSummary(trace) {
+    if (!trace?.entries?.length) {
+      return {};
+    }
+
+    const zipEnd = this.getElpxExportPhaseEntry(trace, 'exporter:zip-generate:end', 'last');
+    const electronEnd = this.getElpxExportPhaseEntry(trace, 'bridge:electron:save-buffer:end', 'last');
+
+    return {
+      zipGenerateMs: this.getElpxExportPhaseDuration(trace, 'exporter:zip-generate:start', 'exporter:zip-generate:end'),
+      electronSaveMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:save-buffer:start', 'bridge:electron:save-buffer:end'),
+      electronPromptMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:dialog:start', 'bridge:electron:dialog:end'),
+      electronNormalizeMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:buffer-normalize:start', 'bridge:electron:buffer-normalize:end'),
+      electronWriteMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:write:start', 'bridge:electron:write:end'),
+      deflatedFiles: zipEnd?.deflatedFiles ?? null,
+      storedFiles: zipEnd?.storedFiles ?? null,
+      deflatedBytes: zipEnd?.deflatedBytes ?? null,
+      storedBytes: zipEnd?.storedBytes ?? null,
+      electronSaved: electronEnd?.saved ?? null,
+      electronCanceledAt: electronEnd?.canceledAt ?? null,
+    };
+  }
+
+  normalizeElectronSaveResult(result) {
+    if (typeof result === 'boolean') {
+      return {
+        saved: result,
+        canceled: !result,
+        canceledAt: result ? null : 'dialog',
+        filePath: null,
+        error: null,
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    if (!result || typeof result !== 'object') {
+      return {
+        saved: false,
+        canceled: false,
+        canceledAt: 'write',
+        filePath: null,
+        error: 'Invalid saveBuffer response',
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    const timings = result.timings || {};
+    const canceledAt = result.canceledAt ?? result.cancelledAt ?? null;
+
+    return {
+      saved: result.saved === true,
+      canceled: result.canceled === true || result.cancelled === true,
+      canceledAt,
+      filePath: result.filePath || null,
+      error: result.error || null,
+      timings: {
+        totalMs: Number.isFinite(timings.totalMs) ? timings.totalMs : 0,
+        promptMs: Number.isFinite(timings.promptMs) ? timings.promptMs : 0,
+        normalizeMs: Number.isFinite(timings.normalizeMs) ? timings.normalizeMs : 0,
+        writeMs: Number.isFinite(timings.writeMs) ? timings.writeMs : 0,
+      },
+    };
+  }
+
+  finalizeElpxExportTrace(outcome, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const summary = {
+      outcome,
+      startedAt: trace.startedAt,
+      totalElapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      entries: trace.entries.length,
+      ...this.buildElpxExportDerivedSummary(trace),
+      ...context,
+    };
+
+    runtime.__lastElpxExportTimeline = trace.entries;
+    runtime.__lastElpxExportSummary = summary;
+    delete runtime.__currentElpxExportTrace;
+    this._activeElpxExportTrace = null;
+    console.log('[ELPX Export DEBUG] Summary', summary);
   }
 
   /**
@@ -63,6 +293,11 @@ class YjsProjectBridge {
     this.authToken = authToken;
     this.isNewProject = options.isNewProject || false;
 
+    // Build config for YjsDocumentManager
+    // IMPORTANT: options.enableWebSocket and options.offline should be derived by the caller
+    // from app.capabilities (via RuntimeConfig) as single source of truth:
+    //   enableWebSocket: app.capabilities.collaboration.enabled
+    //   offline: !app.capabilities.collaboration.enabled
     const config = {
       wsUrl: options.wsUrl || this.getWebSocketUrl(),
       apiUrl: options.apiUrl || this.getApiUrl(),
@@ -93,28 +328,35 @@ class YjsProjectBridge {
       // Connect AssetManager to Yjs bridge for metadata storage
       this.assetManager.setYjsBridge(this);
       await this.assetManager.init();
-      // Preload all assets from IndexedDB into memory cache
+      // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
-      Logger.log(`[YjsProjectBridge] AssetManager initialized with Yjs metadata, preloaded ${preloadedAssetCount} assets`);
+      Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
+
+      // Wire Cache API cleanup: when the last tab for this project closes, clear the asset cache
+      this.documentManager.setOnLastTabClosedCallback(() => {
+        this.assetManager?.clearCache().catch(() => {});
+      });
+      await this.documentManager.flushPendingExternalCleanup?.();
     }
 
-    // Create legacy asset cache (for backward compatibility)
-    this.assetCache = new window.AssetCacheManager(projectId);
+    // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
+    // Assets are now stored in memory via AssetManager.blobCache
+    // The property is kept as null for backward compatibility with any code checking for it
+    this.assetCache = null;
 
     // Create ResourceCache for persistent caching of themes, libraries, iDevices
-    let resourceCache = null;
     if (window.ResourceCache) {
-      resourceCache = new window.ResourceCache();
+      this.resourceCache = new window.ResourceCache();
       try {
-        await resourceCache.init();
+        await this.resourceCache.init();
         Logger.log('[YjsProjectBridge] ResourceCache initialized');
 
         // Clean old version entries on startup
         const currentVersion = window.eXeLearning?.version || 'v0.0.0';
-        await resourceCache.clearOldVersions(currentVersion);
+        await this.resourceCache.clearOldVersions(currentVersion);
       } catch (e) {
         console.warn('[YjsProjectBridge] ResourceCache initialization failed:', e);
-        resourceCache = null;
+        this.resourceCache = null;
       }
     }
 
@@ -122,7 +364,11 @@ class YjsProjectBridge {
     if (window.ResourceFetcher) {
       this.resourceFetcher = new window.ResourceFetcher();
       // Initialize with ResourceCache for persistent caching
-      await this.resourceFetcher.init(resourceCache);
+      await this.resourceFetcher.init(this.resourceCache);
+      // Also expose on eXeLearning.app for access from Theme class
+      if (this.app) {
+        this.app.resourceFetcher = this.resourceFetcher;
+      }
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
@@ -146,12 +392,29 @@ class YjsProjectBridge {
       this.assetWebSocketHandler.on('assetReceived', async ({ assetId }) => {
         Logger.log('[YjsProjectBridge] Asset received from peer:', assetId.substring(0, 8) + '...');
         // Update any DOM images waiting for this asset
-        await this.assetManager.updateDomImagesForAsset(assetId);
+        const updated = await this.assetManager.updateDomImagesForAsset(assetId);
+        // If nothing was updated, the asset likely arrived before the page finished rendering.
+        // Queue a single debounced refresh of the current page to avoid requiring a second manual click.
+        if (updated === 0) {
+          this.scheduleAssetRefreshForCurrentPage(assetId);
+        }
         // Also preload into cache for future use
         await this.assetManager.preloadAllAssets();
       });
 
       Logger.log('[YjsProjectBridge] AssetWebSocketHandler initialized');
+    }
+
+    // Set user info in awareness EARLY, before WebSocket connects
+    // This ensures correct user data is broadcast during the Yjs sync handshake,
+    // not placeholder { id: null, name: 'User' }
+    if (this.app?.user && this.documentManager) {
+      this.documentManager.setUserInfo({
+        id: this.app.user.id,
+        name: this.app.user.name || this.app.user.username,
+        email: this.app.user.email,
+        gravatarUrl: this.app.user.gravatarUrl,
+      });
     }
 
     // NOW start the WebSocket connection - AFTER AssetWebSocketHandler is ready
@@ -169,10 +432,44 @@ class YjsProjectBridge {
       // By deferring to after sync, we ensure only the first client creates the page.
       this.documentManager.ensureBlankStructureIfEmpty();
 
+      // For NEW projects only: ensure project language matches user preference
+      // This is a defensive check - the language should be set correctly in createBlankProjectStructure,
+      // but user preferences may not be fully loaded at that point in some edge cases.
+      // For existing projects, we preserve the original language set at creation time.
+      if (this.isNewProject) {
+        this._ensureNewProjectLanguage();
+      }
+
       // Announce assets after WebSocket is connected
       if (this.assetWebSocketHandler && preloadedAssetCount > 0) {
         Logger.log(`[YjsProjectBridge] Announcing ${preloadedAssetCount} assets to server...`);
         await this.assetWebSocketHandler.announceAssetAvailability();
+      }
+
+      // Download missing assets from server (blobs not in memory after page reload)
+      // This is critical for in-memory storage: blobs are lost on refresh but metadata syncs from Yjs
+      if (this.assetManager) {
+        const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+        const token = authToken || '';
+
+        // Store server config so getBlobForExport() can fall back to server
+        // when Cache API entries are evicted during long editing sessions (#1685)
+        if (token) {
+          this.assetManager.setServerConfig(apiBaseUrl, token);
+        }
+
+        if (token && projectId) {
+          // Don't await - download in background to avoid blocking UI
+          this.assetManager.downloadMissingAssets(apiBaseUrl, token)
+            .then(downloaded => {
+              if (downloaded > 0) {
+                Logger.log(`[YjsProjectBridge] Downloaded ${downloaded} missing assets from server`);
+              }
+            })
+            .catch(err => {
+              console.warn('[YjsProjectBridge] Failed to download missing assets:', err);
+            });
+        }
       }
 
       // Create ConnectionMonitor for connection failure handling
@@ -186,6 +483,11 @@ class YjsProjectBridge {
         this.connectionMonitor.start();
         Logger.log('[YjsProjectBridge] ConnectionMonitor initialized');
       }
+    } else if (this.isNewProject) {
+      // OFFLINE/LOCAL mode: For new projects, ensure language matches user preference
+      // In offline mode, createBlankProjectStructure is called during initialize(),
+      // but user preferences may not be fully loaded at that point.
+      this._ensureNewProjectLanguage();
     }
 
     // Create SaveManager for saving to server with progress modal
@@ -194,12 +496,19 @@ class YjsProjectBridge {
         apiUrl: config.apiUrl,
         token: authToken,
       });
+
+      // Connect SaveManager to WebSocket handler for optimized upload sessions
+      if (this.assetWebSocketHandler) {
+        this.saveManager.setWebSocketHandler(this.assetWebSocketHandler);
+      }
+
       Logger.log('[YjsProjectBridge] SaveManager initialized');
     }
 
     // Set up observers
     this.setupStructureObserver();
     this.setupMetadataObserver();
+    this.setupAssetsObserver();
     this.setupUndoRedoHandlers();
 
     // Inject save status indicator
@@ -210,6 +519,27 @@ class YjsProjectBridge {
 
     // Trigger initial structure load for observers (in case blank structure was created)
     this.triggerInitialStructureLoad();
+
+    // Load user themes from Yjs (for collaborator sync and project re-open)
+    await this.loadUserThemesFromYjs();
+
+    // Load user themes from IndexedDB (global themes that persist across projects)
+    // Pass resourceCache directly since _yjsBridge may not be set on the project yet
+    if (eXeLearning.app?.themes?.list?.loadUserThemesFromIndexedDB) {
+      try {
+        // Pass this.resourceCache directly to avoid timing issues with _yjsBridge reference
+        await eXeLearning.app.themes.list.loadUserThemesFromIndexedDB(this.resourceCache);
+      } catch (err) {
+        console.error('[YjsProjectBridge] loadUserThemesFromIndexedDB error:', err);
+      }
+      // Refresh NavbarStyles UI to show loaded themes
+      if (eXeLearning.app.menus?.navbar?.styles) {
+        eXeLearning.app.menus.navbar.styles.updateThemes();
+      }
+    }
+
+    // Set up observer for theme files changes (collaborator theme sync)
+    this.setupThemeFilesObserver();
 
     return this;
   }
@@ -268,6 +598,54 @@ class YjsProjectBridge {
   }
 
   /**
+   * Ensure new project's language matches user's locale preference.
+   * This is a defensive check for new projects only - existing projects keep their original language.
+   * 
+   * The language should be set correctly in createBlankProjectStructure(), but user preferences
+   * may not be fully loaded at that point in some edge cases (async timing, static mode, etc.)
+   * 
+   * @private
+   */
+  _ensureNewProjectLanguage() {
+    try {
+      const userLocale = window.eXeLearning?.app?.user?.preferences?.preferences?.locale?.value;
+      
+      if (!userLocale) {
+        // No user preference available, nothing to do
+        return;
+      }
+
+      const metadata = this.documentManager?.getMetadata();
+      if (!metadata) {
+        return;
+      }
+
+      const currentLanguage = metadata.get('language');
+
+      // Only update if different from user preference
+      if (currentLanguage !== userLocale) {
+        Logger.log(`[YjsProjectBridge] Updating new project language: ${currentLanguage} → ${userLocale}`);
+        metadata.set('language', userLocale);
+
+        // Re-translate default titles to match the corrected language.
+        // At this point _() already uses the user's preferred locale translations.
+        // Since this only runs for brand-new projects, titles are always the defaults.
+        metadata.set('title', _('Untitled document'));
+
+        const navigation = this.documentManager?.getNavigation();
+        const rootPage = navigation?.get(0);
+        if (rootPage) {
+          rootPage.set('title', _('New page'));
+          rootPage.set('pageName', _('New page'));
+        }
+      }
+    } catch (err) {
+      // Non-critical - log and continue
+      console.warn('[YjsProjectBridge] Failed to ensure project language:', err);
+    }
+  }
+
+  /**
    * Set up observer for structure changes (pages/blocks/components)
    */
   setupStructureObserver() {
@@ -285,6 +663,13 @@ class YjsProjectBridge {
         if (isRemote) {
           this.handleRemoteStructureChanges(events);
         }
+
+        // Refresh page structure only when needed:
+        // - remote structural changes from collaborators
+        // - local undo/redo transactions
+        // This avoids reloading during normal local inserts, which can close
+        // a newly opened iDevice editor unexpectedly.
+        this.scheduleReloadForBlockStructureChanges(events, transaction);
 
         // Notify all registered observers
         for (const observer of this.structureObservers) {
@@ -317,6 +702,131 @@ class YjsProjectBridge {
         console.error('[YjsProjectBridge] Error in structure observer:', e);
       }
     });
+  }
+
+  /**
+   * Schedule page reloads for block-level structural changes (add/delete/move/reorder).
+   * This handles local transactions too (including undo/redo), which previously left
+   * the content area stale until manual page navigation.
+   *
+   * @param {Array} events - Yjs deep observe events
+   */
+  scheduleReloadForBlockStructureChanges(events, transaction) {
+    if (!this.shouldReloadForBlockStructureChange(transaction)) {
+      return;
+    }
+
+    // For undo/redo transactions, include ALL block touches (even pure additions)
+    // because we need to restore the exact state. For remote changes, skip pure
+    // additions since they're handled incrementally by renderRemoteComponent.
+    const undoManager = this.documentManager?.undoManager;
+    const isUndoRedo = this.isUndoRedoInProgress ||
+      (undoManager != null && transaction?.origin === undoManager);
+    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events, isUndoRedo);
+    if (affectedPageIds.size === 0) return;
+
+    affectedPageIds.forEach((pageId) => this.schedulePageReloadIfCurrent(pageId));
+  }
+
+  /**
+   * Decide if block-structure events should trigger a page reload.
+   * We reload for remote changes and for local undo/redo transactions.
+   *
+   * @param {Object} transaction - Yjs transaction object
+   * @returns {boolean}
+   */
+  shouldReloadForBlockStructureChange(transaction) {
+    if (!transaction) return false;
+
+    // Remote collaborator change
+    if (transaction.local === false) return true;
+
+    // Local transaction triggered while executing undo/redo in this bridge
+    if (this.isUndoRedoInProgress) return true;
+
+    // Local undo/redo change
+    return transaction.origin === this.documentManager?.undoManager;
+  }
+
+  /**
+   * Extract page IDs affected by block structural mutations from Yjs events.
+   * We intentionally ignore regular component content edits (e.g. htmlContent typing)
+   * to avoid unnecessary full-page reloads.
+   *
+   * @param {Array} events - Yjs deep observe events
+   * @returns {Set<string>}
+   */
+  getAffectedPageIdsForBlockStructureChanges(events, includeAllBlockTouches) {
+    const affectedPageIds = new Set();
+    const navigation = this.documentManager?.getNavigation?.();
+    const includeAnyBlockTouch = includeAllBlockTouches === true || this.isUndoRedoInProgress === true;
+    if (!navigation || !events || !Array.isArray(events)) {
+      return affectedPageIds;
+    }
+
+    for (const event of events) {
+      if (!event || !Array.isArray(event.path)) continue;
+
+      const path = event.path;
+      const pageIndex = path[0];
+      if (typeof pageIndex !== 'number') continue;
+
+      // Block-only filter: path must include 'blocks'
+      const touchesBlocks = path.includes('blocks');
+      if (!touchesBlocks) continue;
+
+      // Structural mutations to react to:
+      // - Y.Array additions/deletions (create/delete/move across pages)
+      // - Block order key changes (in-page reorder)
+      const hasAdded = event.changes?.added?.size > 0;
+      const hasDeleted = event.changes?.deleted?.size > 0;
+
+      let hasBlockOrderChange = false;
+      if (path.length === 3 && path[1] === 'blocks' && event.changes?.keys) {
+        try {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          hasBlockOrderChange = changedKeys.includes('order');
+        } catch {
+          hasBlockOrderChange = false;
+        }
+      }
+
+      if (!includeAnyBlockTouch && !hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        continue;
+      }
+
+      // Pure additions (no deletions, no reorder) are handled incrementally by
+      // handleRemoteStructureChanges → renderRemoteComponent (#1532).
+      // Block and component additions may arrive in separate Yjs transaction
+      // batches (separate WebSocket messages), so we must skip BOTH independently
+      // rather than requiring them in the same event batch.
+      // Deletions and mixed events (moves) still need a full page reload.
+      if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        const isComponentLevel = path.length >= 4 && path[3] === 'components';
+        const isBlockLevelAddition = path.length === 2 && path[1] === 'blocks';
+        if (isComponentLevel || isBlockLevelAddition) {
+          continue;
+        }
+      }
+
+      // Block order-only changes that accompany additions are also incremental
+      if (!includeAnyBlockTouch && hasBlockOrderChange && !hasAdded && !hasDeleted) {
+        if (path.length === 3 && path[1] === 'blocks') {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          if (changedKeys.length === 1 && changedKeys[0] === 'order') {
+            continue;
+          }
+        }
+      }
+
+      const pageMap = navigation.get(pageIndex);
+      const pageId = pageMap?.get?.('id') || pageMap?.get?.('pageId');
+      if (pageId) {
+        affectedPageIds.add(pageId);
+      }
+    }
+
+    return affectedPageIds;
   }
 
   /**
@@ -358,6 +868,7 @@ class YjsProjectBridge {
                   id: compMap.get('id'),
                   ideviceType: compMap.get('ideviceType'),
                   htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+                  jsonProperties: compMap.get('jsonProperties'),
                   lockedBy: compMap.get('lockedBy'),
                   lockUserName: compMap.get('lockUserName'),
                   lockUserColor: compMap.get('lockUserColor'),
@@ -379,8 +890,6 @@ class YjsProjectBridge {
             if (pageMap) {
               const pageId = pageMap.get('id') || pageMap.get('pageId');
               Logger.log('[YjsProjectBridge] Remote block added to page:', pageId);
-              // If we're currently viewing this page, reload it
-              this.schedulePageReloadIfCurrent(pageId);
             }
           }
         }
@@ -392,7 +901,7 @@ class YjsProjectBridge {
 
           // Check if htmlContent, lockedBy, or other relevant keys changed
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['htmlContent', 'lockedBy', 'lockUserName', 'lockUserColor'];
+          const relevantKeys = ['htmlContent', 'jsonProperties', 'lockedBy', 'lockUserName', 'lockUserColor'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -420,6 +929,7 @@ class YjsProjectBridge {
               id: compMap.get('id'),
               ideviceType: compMap.get('ideviceType'),
               htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+              jsonProperties: compMap.get('jsonProperties'),
               lockedBy: compMap.get('lockedBy'),
               lockUserName: compMap.get('lockUserName'),
               lockUserColor: compMap.get('lockUserColor'),
@@ -460,6 +970,7 @@ class YjsProjectBridge {
             id: compMap.get('id'),
             ideviceType: compMap.get('ideviceType'),
             htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+            jsonProperties: compMap.get('jsonProperties'),
             lockedBy: compMap.get('lockedBy'),
             lockUserName: compMap.get('lockUserName'),
             lockUserColor: compMap.get('lockUserColor'),
@@ -606,6 +1117,123 @@ class YjsProjectBridge {
         }
       }, 100); // Small debounce
     }
+  }
+
+  /**
+   * Schedule a debounced refresh of the current page when an asset arrives
+   * but no waiting DOM elements were found yet.
+   * This fixes "first click shows no image, second click shows image" timing races.
+   *
+   * @param {string} assetId
+   */
+  scheduleAssetRefreshForCurrentPage(assetId) {
+    if (!assetId) return;
+
+    this._pendingAssetRefreshIds.add(assetId);
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+    }
+
+    this._assetRefreshTimer = setTimeout(async () => {
+      const pendingIds = Array.from(this._pendingAssetRefreshIds);
+      this._pendingAssetRefreshIds.clear();
+
+      const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+      if (!currentPageId || currentPageId === 'root') {
+        return;
+      }
+
+      const idevicesEngine = this.app?.project?.idevices;
+      if (!idevicesEngine) return;
+
+      // If page is still being rendered, retry shortly.
+      if (idevicesEngine.loadingPage) {
+        pendingIds.forEach((id) => this._pendingAssetRefreshIds.add(id));
+        this.scheduleAssetRefreshForCurrentPage(pendingIds[0]);
+        return;
+      }
+
+      // Reload only when current page actually references one of the pending assets.
+      const hasRelevantAsset = pendingIds.some((id) => this.currentPageHasAssetReference(currentPageId, id));
+      if (!hasRelevantAsset) {
+        return;
+      }
+
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${currentPageId}"]`
+      );
+      if (!pageElement) return;
+
+      Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
+      await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
+
+      // One more patch pass after reload in case elements are now in DOM.
+      if (this.assetManager) {
+        for (const id of pendingIds) {
+          await this.assetManager.updateDomImagesForAsset(id);
+        }
+      }
+    }, 180);
+  }
+
+  /**
+   * Check whether the currently selected page references the given asset ID.
+   * Looks at htmlContent, htmlView, and serialized jsonProperties.
+   *
+   * @param {string} pageId
+   * @param {string} assetId
+   * @returns {boolean}
+   */
+  currentPageHasAssetReference(pageId, assetId) {
+    if (!this.documentManager || !pageId || !assetId) return false;
+
+    const navigation = this.documentManager.getNavigation?.();
+    if (!navigation) return false;
+
+    let pageMap = null;
+    for (let i = 0; i < navigation.length; i++) {
+      const page = navigation.get(i);
+      if (!page) continue;
+      const id = page.get('id') || page.get('pageId');
+      if (id === pageId) {
+        pageMap = page;
+        break;
+      }
+    }
+    if (!pageMap) return false;
+
+    const marker = `asset://${assetId}`;
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return false;
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks.get(i);
+      const components = block?.get('components');
+      if (!components) continue;
+
+      for (let j = 0; j < components.length; j++) {
+        const component = components.get(j);
+        if (!component) continue;
+
+        const htmlContent = component.get('htmlContent');
+        const htmlView = component.get('htmlView');
+        const jsonProperties = component.get('jsonProperties');
+        const values = [htmlContent, htmlView, jsonProperties];
+
+        for (const value of values) {
+          const stringValue =
+            typeof value === 'string'
+              ? value
+              : (value && typeof value.toString === 'function' ? value.toString() : '');
+          if (stringValue && stringValue.includes(marker)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -777,9 +1405,7 @@ class YjsProjectBridge {
       // Update block title if changed
       if (blockData.blockName !== undefined && blockNode.blockName !== blockData.blockName) {
         blockNode.blockName = blockData.blockName;
-        if (blockNode.blockNameElementText) {
-          blockNode.blockNameElementText.innerHTML = blockData.blockName;
-        }
+        this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
       // Update icon if changed
@@ -837,6 +1463,66 @@ class YjsProjectBridge {
       // Update undo/redo button states after metadata changes
       this.updateUndoRedoButtons();
     });
+  }
+
+  /**
+   * Set up observer for assets metadata changes.
+   * When a remote client updates an existing asset hash (same assetId),
+   * invalidate local stale blobs and request a fresh copy.
+   */
+  setupAssetsObserver() {
+    const assetsMap = this.documentManager?.getAssets?.();
+    if (!assetsMap || typeof assetsMap.observe !== 'function') {
+      return;
+    }
+
+    this._assetsMap = assetsMap;
+
+    this._onAssetsMapChange = async (event, transaction) => {
+      const isRemote = transaction?.origin === 'remote';
+      if (!isRemote || !this.assetManager) {
+        return;
+      }
+
+      const changedHashes = [];
+
+      for (const [assetId, change] of event.changes.keys) {
+        if (change.action !== 'update') {
+          continue;
+        }
+
+        const oldHash = change.oldValue?.hash || '';
+        const newHash = assetsMap.get(assetId)?.hash || '';
+
+        if (!oldHash || !newHash || oldHash === newHash) {
+          continue;
+        }
+
+        changedHashes.push(assetId);
+      }
+
+      if (changedHashes.length === 0) {
+        return;
+      }
+
+      for (const assetId of changedHashes) {
+        Logger.log(`[YjsProjectBridge] Remote hash update detected for asset ${assetId.substring(0, 8)}...`);
+
+        await this.assetManager.invalidateLocalBlob(assetId, {
+          markAsMissing: true,
+          markDomAsLoading: true,
+          reason: 'remote-hash-update',
+        });
+
+        if (this.assetWebSocketHandler?.requestAsset) {
+          this.assetWebSocketHandler.requestAsset(assetId).catch((err) => {
+            console.warn(`[YjsProjectBridge] Failed requesting updated asset ${assetId.substring(0, 8)}...`, err);
+          });
+        }
+      }
+    };
+
+    assetsMap.observe(this._onAssetsMapChange);
   }
 
   /**
@@ -963,40 +1649,17 @@ class YjsProjectBridge {
     const undoRedoContainer = document.createElement('div');
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
+    // Use formatShortcut() to display platform-appropriate shortcuts (⌘Z on Mac, Ctrl+Z elsewhere)
+    const undoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+z') : 'Ctrl+Z';
+    const redoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+shift+z') : 'Ctrl+Shift+Z';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="Undo (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (${undoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="Redo (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (${redoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;
-
-    // Add styles for undo/redo buttons only
-    const style = document.createElement('style');
-    style.textContent = `
-      .yjs-undo-redo {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-left: 8px;
-      }
-      .btn-undo, .btn-redo {
-        padding: 4px 8px;
-        background: transparent;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .btn-undo:hover:not(:disabled), .btn-redo:hover:not(:disabled) {
-        background: rgba(0,0,0,0.05);
-      }
-      .btn-undo:disabled, .btn-redo:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-    `;
-    document.head.appendChild(style);
 
     // Insert after existing elements
     navbar.appendChild(undoRedoContainer);
@@ -1014,8 +1677,8 @@ class YjsProjectBridge {
     this.updateUndoRedoButtons();
 
     // Set initial save status based on document state
-    // New projects or dirty documents should show 'unsaved'
-    if (this.documentManager?.isDirty || this.isNewProject) {
+    // Only mark unsaved when the document is actually dirty
+    if (this.documentManager?.isDirty) {
       this.updateSaveStatus('unsaved');
     } else {
       this.updateSaveStatus('saved');
@@ -1025,10 +1688,13 @@ class YjsProjectBridge {
   /**
    * Update save status on the save button
    * Uses classes 'saved' (green dot) and 'unsaved' (red dot)
-   * @param {'saving'|'saved'|'error'|'offline'} status
+   * @param {'saving'|'saved'|'error'|'offline'|'unsaved'} status
    * @param {string} message - Optional message
    */
   updateSaveStatus(status, message = null) {
+    // Track current status
+    this.currentSaveStatus = status;
+
     // Get the save button if not already cached
     if (!this.saveButton) {
       this.saveButton = document.getElementById('head-top-save-button');
@@ -1048,6 +1714,7 @@ class YjsProjectBridge {
           break;
         case 'error':
         case 'offline':
+        case 'unsaved':
         default:
           this.saveButton.classList.add('unsaved');
           break;
@@ -1062,6 +1729,32 @@ class YjsProjectBridge {
         console.error('[YjsProjectBridge] Save status callback error:', e);
       }
     }
+  }
+
+  /**
+   * Check if there are unsaved changes that should trigger UI warnings.
+   * This is the primary method for UI components to check save state.
+   *
+   * @returns {boolean} True if there are unsaved changes
+   */
+  hasUnsavedChangesForUI() {
+    if (this.documentManager) {
+      return this.documentManager.isDirty === true;
+    }
+
+    return this.currentSaveStatus === 'unsaved' || this.currentSaveStatus === 'error';
+  }
+
+  /**
+   * Mark the document as clean (no unsaved changes).
+   * Called after a successful save.
+   * @private
+   */
+  _markDocumentClean() {
+    if (this.documentManager) {
+      this.documentManager.markClean();
+    }
+    this.updateSaveStatus('saved');
   }
 
   /**
@@ -1134,6 +1827,12 @@ class YjsProjectBridge {
     if (propertiesForm || document.querySelector('.property-value')) {
       this.forceAllFormInputsSync();
     }
+
+    // Sync iDevice block titles
+    this.forceBlockTitlesSync();
+
+    // Sync page titles (navigation tree and content area)
+    this.forcePageTitlesSync();
   }
 
   /**
@@ -1156,6 +1855,8 @@ class YjsProjectBridge {
       'pp_addPagination': 'addPagination',
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
+      'pp_addMathJax': 'addMathJax',
+      'pp_globalFont': 'globalFont',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -1169,9 +1870,19 @@ class YjsProjectBridge {
 
       const metadataKey = propertyKeyMap[propertyKey] || propertyKey;
       const value = metadata.get(metadataKey);
-      if (value === undefined) return;
 
       const inputType = input.getAttribute('data-type') || input.type;
+
+      // Missing metadata keys can happen after undo (e.g., subtitle returning
+      // to initial empty state). Clear stale UI values explicitly.
+      if (value === undefined) {
+        if (inputType === 'checkbox') {
+          input.checked = false;
+        } else {
+          input.value = '';
+        }
+        return;
+      }
 
       switch (inputType) {
         case 'checkbox':
@@ -1191,16 +1902,246 @@ class YjsProjectBridge {
   }
 
   /**
+   * Force synchronization of all visible iDevice block titles and icons from Yjs
+   * Updates .box-title and .box-icon elements with current blockName/iconName from Yjs navigation
+   * This is called after undo/redo to ensure visual state matches Yjs data
+   */
+  forceBlockTitlesSync() {
+    const navigation = this.documentManager?.getNavigation();
+    if (!navigation) return;
+
+    // Get idevices to access blockNode instances
+    const idevices = this.app?.project?.idevices;
+
+    // Find all block headers with block-id attribute
+    const blockHeaders = document.querySelectorAll('header[block-id]');
+
+    blockHeaders.forEach(header => {
+      const blockId = header.getAttribute('block-id');
+      if (!blockId) return;
+
+      // Find the title and icon elements inside this header
+      const titleEl = header.querySelector('.box-title');
+      const iconEl = header.querySelector('.box-icon');
+
+      // Search for this block in navigation to get current blockName and iconName
+      for (let i = 0; i < navigation.length; i++) {
+        const pageMap = navigation.get(i);
+        const blocks = pageMap.get('blocks');
+        if (!blocks) continue;
+
+        for (let j = 0; j < blocks.length; j++) {
+          const blockMap = blocks.get(j);
+          // Check both 'id' and 'blockId' to match how blocks are stored/searched elsewhere
+          if (blockMap.get('id') === blockId || blockMap.get('blockId') === blockId) {
+            // Sync title
+            const blockName = blockMap.get('blockName');
+            if (titleEl && blockName !== undefined && titleEl.textContent !== blockName) {
+              this._syncBlockTitle(titleEl, blockName);
+              Logger.log(`[YjsProjectBridge] Synced block title: ${blockId} -> ${blockName}`);
+            }
+
+            // Sync icon - update both DOM and blockNode state
+            const iconName = blockMap.get('iconName');
+
+            // Update DOM directly using _syncBlockIcon (handles icon.id vs key mismatch)
+            if (iconEl) {
+              this._syncBlockIcon(iconEl, iconName, blockId);
+            }
+
+            // Also update blockNode instance properties so internal state matches Yjs
+            const blockNode = idevices?.getBlockById(blockId);
+            if (blockNode) {
+              // Update blockNode.blockName if needed
+              if (blockName !== undefined && blockNode.blockName !== blockName) {
+                blockNode.blockName = blockName;
+                this._syncBlockTitle(titleEl || blockNode.blockNameElementText, blockName, blockNode);
+                Logger.log(`[YjsProjectBridge] Synced blockNode.blockName: ${blockId} -> ${blockName}`);
+              }
+
+              // Update blockNode.iconName to match Yjs
+              if (iconName !== undefined && blockNode.iconName !== iconName) {
+                blockNode.iconName = iconName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${iconName}'`);
+              }
+
+              // Update blockNode.iconElement reference if needed
+              if (iconEl && blockNode.iconElement !== iconEl) {
+                blockNode.iconElement = iconEl;
+              }
+            }
+
+            return; // Found the block, exit search
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Sync a block title and render LaTeX when applicable.
+   * Prefer blockNode.renderBlockTitle() to keep raw LaTeX/edit state consistent.
+   * @param {HTMLElement|null} titleEl
+   * @param {string} blockName
+   * @param {Object|null} blockNode
+   */
+  _syncBlockTitle(titleEl, blockName, blockNode = null) {
+    if (blockNode?.renderBlockTitle) {
+      blockNode.renderBlockTitle();
+      return;
+    }
+
+    if (!titleEl) return;
+    titleEl.textContent = blockName || '';
+
+    if (!blockName || !/(?:\\\(|\\\[|\\begin\{)/.test(blockName)) return;
+    if (typeof MathJax === 'undefined' || !MathJax.typesetPromise) return;
+    if (Object.prototype.hasOwnProperty.call(titleEl, 'isConnected') && titleEl.isConnected === false) return;
+
+    const startup = MathJax.startup?.promise || Promise.resolve();
+    startup
+      .then(() => {
+        if (typeof MathJax.typesetClear === 'function') {
+          MathJax.typesetClear([titleEl]);
+        }
+        return MathJax.typesetPromise([titleEl]);
+      })
+      .catch((err) => {
+        Logger.log('[YjsProjectBridge] Block title MathJax typeset error:', err);
+      });
+  }
+
+  /**
+   * Sync a block's icon element with the current iconName from Yjs
+   * @param {HTMLElement} iconEl - The .box-icon button element
+   * @param {string} iconName - The icon name/id from Yjs
+   * @param {string} blockId - The block ID for logging
+   */
+  _syncBlockIcon(iconEl, iconName, blockId) {
+    const imgEl = iconEl.querySelector('img');
+    const currentIconSrc = imgEl?.getAttribute('src') || '';
+
+    // Get theme icons to find the icon URL
+    const themeIcons = window.eXeLearning?.app?.themes?.getThemeIcons?.() || {};
+
+    if (!iconName || iconName === '') {
+      // No icon - check if we need to clear it
+      // Only clear if there's currently an img (not already showing empty SVG)
+      if (imgEl || !iconEl.classList.contains('exe-no-icon')) {
+        // Set empty icon SVG
+        iconEl.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
+</svg>`;
+        iconEl.classList.add('exe-no-icon');
+        Logger.log(`[YjsProjectBridge] Synced block icon to empty: ${blockId}`);
+      }
+    } else {
+      // Has icon - find it in theme icons
+      // First try direct lookup (iconName is the key in themeIcons)
+      let iconData = themeIcons[iconName];
+
+      // If not found, search by icon.id or icon.value
+      if (!iconData) {
+        for (const [, icon] of Object.entries(themeIcons)) {
+          if (icon.id === iconName || icon.value === iconName) {
+            iconData = icon;
+            break;
+          }
+        }
+      }
+
+      if (iconData && iconData.value) {
+        // Always set the icon if we have valid icon data
+        // Check if we actually need to change (avoid unnecessary DOM updates)
+        if (currentIconSrc !== iconData.value || iconEl.classList.contains('exe-no-icon')) {
+          iconEl.innerHTML = `<img src="${iconData.value}" alt="${iconData.title || iconName}">`;
+          iconEl.classList.remove('exe-no-icon');
+          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${iconName}`);
+        }
+      } else {
+        Logger.log(`[YjsProjectBridge] Icon data not found for: ${iconName}`);
+      }
+    }
+  }
+
+  /**
+   * Force synchronization of all page titles from Yjs
+   * Updates:
+   * - #page-title-node-content (the currently selected page's content title)
+   * - .nav-element-text in navigation tree (page names in sidebar)
+   * This is called after undo/redo to ensure visual state matches Yjs data
+   */
+  forcePageTitlesSync() {
+    const navigation = this.documentManager?.getNavigation();
+    if (!navigation) return;
+
+    // Get currently selected page ID
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+
+    // Sync all page names in navigation tree
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id');
+      const pageName = pageMap.get('pageName');
+
+      if (!pageId || pageName === undefined) continue;
+
+      // Update navigation tree element
+      const navElement = document.querySelector(`.nav-element[nav-id="${pageId}"] > .nav-element-text`);
+      if (navElement) {
+        // The nav-element-text contains a span with the actual text
+        const textSpan = navElement.querySelector('span:not(.small-icon)');
+        if (textSpan && textSpan.textContent !== pageName) {
+          textSpan.textContent = pageName;
+          Logger.log(`[YjsProjectBridge] Synced nav tree page: ${pageId} -> ${pageName}`);
+        }
+      }
+
+      // If this is the currently selected page, also update the content area title
+      if (pageId === currentPageId) {
+        const pageTitleEl = document.querySelector('#page-title-node-content');
+        if (pageTitleEl) {
+          // Get page properties to determine which title to show
+          const props = pageMap.get('properties');
+          const hidePageTitle = props?.get?.('hidePageTitle') === true || props?.get?.('hidePageTitle') === 'true';
+
+          if (hidePageTitle) {
+            pageTitleEl.innerText = '';
+            pageTitleEl.classList.add('hidden');
+          } else {
+            const editableInPage = props?.get?.('editableInPage') === true || props?.get?.('editableInPage') === 'true';
+            const titlePage = props?.get?.('titlePage') || '';
+            const titleNode = props?.get?.('titleNode') || pageName || '';
+            const title = editableInPage ? titlePage : titleNode;
+
+            if (pageTitleEl.innerText !== title) {
+              pageTitleEl.innerText = title;
+              pageTitleEl.classList.toggle('hidden', !title);
+              Logger.log(`[YjsProjectBridge] Synced page content title: ${pageId} -> ${title}`);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Undo last action
    */
   undo() {
     if (!this.documentManager?.undoManager) return;
+    if (this.app?.project?.checkOpenIdevice?.()) return;
 
     const undoManager = this.documentManager.undoManager;
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    const blockCountBeforeUndo =
+      currentPageId && currentPageId !== 'root'
+        ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+        : null;
 
-    // If there are pending metadata changes but nothing in undoStack yet,
-    // flush the pending changes first so they can be undone
-    if (this.hasPendingMetadataChanges && undoManager.undoStack.length === 0) {
+    // Always flush pending metadata changes before undo so we don't leave
+    // debounced field edits (e.g. subtitle typing) committing after undo.
+    if (this.hasPendingMetadataChanges) {
       this.flushPendingMetadataChanges();
     }
 
@@ -1218,8 +2159,24 @@ class YjsProjectBridge {
 
       this.updateUndoRedoButtons();
 
-      // Force sync all UI elements (title header, form inputs) from Yjs
+      // Force sync all UI elements from Yjs (title header, form inputs, page titles, block titles/icons)
       this.forceTitleSync();
+      this.forcePageTitlesSync();
+      this.forceBlockTitlesSync();
+      const blockCountAfterUndo =
+        currentPageId && currentPageId !== 'root'
+          ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+          : null;
+
+      if (
+        typeof blockCountBeforeUndo === 'number' &&
+        typeof blockCountAfterUndo === 'number' &&
+        blockCountBeforeUndo !== blockCountAfterUndo
+      ) {
+        this.reloadCurrentPage();
+      } else {
+        this.syncCurrentPageBlocksIfNeeded();
+      }
 
       Logger.log('[YjsProjectBridge] Undo performed');
     } finally {
@@ -1235,6 +2192,17 @@ class YjsProjectBridge {
    */
   redo() {
     if (!this.documentManager?.undoManager) return;
+    if (this.app?.project?.checkOpenIdevice?.()) return;
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    const blockCountBeforeRedo =
+      currentPageId && currentPageId !== 'root'
+        ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+        : null;
+
+    // Flush pending metadata edits first to avoid replaying redo over stale UI state
+    if (this.hasPendingMetadataChanges) {
+      this.flushPendingMetadataChanges();
+    }
 
     // Clear pending changes flag
     this.hasPendingMetadataChanges = false;
@@ -1246,8 +2214,24 @@ class YjsProjectBridge {
       this.documentManager.undoManager.redo();
       this.updateUndoRedoButtons();
 
-      // Force sync all UI elements (title header, form inputs) from Yjs
+      // Force sync all UI elements from Yjs (title header, form inputs, page titles, block titles/icons)
       this.forceTitleSync();
+      this.forcePageTitlesSync();
+      this.forceBlockTitlesSync();
+      const blockCountAfterRedo =
+        currentPageId && currentPageId !== 'root'
+          ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+          : null;
+
+      if (
+        typeof blockCountBeforeRedo === 'number' &&
+        typeof blockCountAfterRedo === 'number' &&
+        blockCountBeforeRedo !== blockCountAfterRedo
+      ) {
+        this.reloadCurrentPage();
+      } else {
+        this.syncCurrentPageBlocksIfNeeded();
+      }
 
       Logger.log('[YjsProjectBridge] Redo performed');
     } finally {
@@ -1263,10 +2247,18 @@ class YjsProjectBridge {
    * This commits any debounced changes immediately to Yjs
    */
   flushPendingMetadataChanges() {
-    // Find all property inputs and trigger their blur to flush debounced changes
+    const activeElement = document.activeElement;
+    if (activeElement?.classList?.contains('property-value')) {
+      // Blur the active field first. This flushes the pending debounce timer of
+      // the field currently being edited and closes its undo capture group.
+      activeElement.dispatchEvent(new Event('blur', { bubbles: true }));
+      Logger.log('[YjsProjectBridge] Flushed pending metadata changes from active input');
+      return;
+    }
+
+    // Fallback when focus is not in a property field
     const inputs = document.querySelectorAll('.property-value');
     inputs.forEach(input => {
-      // Dispatch blur event to trigger the blur listener which flushes pending changes
       input.dispatchEvent(new Event('blur', { bubbles: true }));
     });
     Logger.log('[YjsProjectBridge] Flushed pending metadata changes');
@@ -1296,6 +2288,62 @@ class YjsProjectBridge {
         this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
       }
     }, 50); // Small debounce
+  }
+
+  /**
+   * If current page block count in DOM differs from Yjs, trigger a content reload.
+   * This keeps undo/redo for block structural changes visually in sync without
+   * forcing reloads for pure metadata/title edits.
+   */
+  syncCurrentPageBlocksIfNeeded() {
+    if (this._syncCurrentPageBlocksTimer) {
+      clearTimeout(this._syncCurrentPageBlocksTimer);
+    }
+
+    if (this._syncCurrentPageBlocksInterval) {
+      clearInterval(this._syncCurrentPageBlocksInterval);
+      this._syncCurrentPageBlocksInterval = null;
+    }
+
+    // Run multiple short checks because some undo/redo structural updates are
+    // applied asynchronously and may not be visible on the first tick.
+    let attempts = 0;
+    const maxAttempts = 8;
+    const checkEveryMs = 120;
+
+    const checkAndReloadIfNeeded = () => {
+      const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+      if (!currentPageId || currentPageId === 'root') return false;
+
+      const expectedBlockCount = this.structureBinding?.getBlocks?.(currentPageId)?.length;
+      if (typeof expectedBlockCount !== 'number') return false;
+
+      if (typeof document?.querySelectorAll !== 'function') return false;
+      const actualBlockCount = document.querySelectorAll('#node-content article.box').length;
+      if (actualBlockCount !== expectedBlockCount) {
+        Logger.log(
+          `[YjsProjectBridge] Block count mismatch after undo/redo on page ${currentPageId}: DOM=${actualBlockCount}, Yjs=${expectedBlockCount}. Reloading page content.`
+        );
+        this.reloadCurrentPage();
+        return true;
+      }
+      return false;
+    };
+
+    this._syncCurrentPageBlocksTimer = setTimeout(() => {
+      if (checkAndReloadIfNeeded()) {
+        return;
+      }
+
+      this._syncCurrentPageBlocksInterval = setInterval(() => {
+        attempts += 1;
+        const reloaded = checkAndReloadIfNeeded();
+        if (reloaded || attempts >= maxAttempts) {
+          clearInterval(this._syncCurrentPageBlocksInterval);
+          this._syncCurrentPageBlocksInterval = null;
+        }
+      }, checkEveryMs);
+    }, 60);
   }
 
   /**
@@ -1331,8 +2379,13 @@ class YjsProjectBridge {
     });
 
     // Set initial status based on document dirty state
+    // After captureBaselineState(), isDirty reflects actual unsaved changes
+    // (including restored state from localStorage for page reloads)
     if (this.documentManager.isDirty) {
       this.updateSaveStatus('unsaved');
+    } else {
+      // Document is clean - show saved status
+      this.updateSaveStatus('saved');
     }
 
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
@@ -1342,10 +2395,26 @@ class YjsProjectBridge {
    * Sync Yjs structure to legacy structure engine
    */
   syncStructureToLegacy() {
+    if (!this.structureBinding) {
+      console.warn('[YjsProjectBridge] Cannot sync structure: structureBinding not initialized');
+      return;
+    }
+
     const pages = this.structureBinding.getPages();
     const legacyData = [];
 
     for (const page of pages) {
+      // Convert Yjs flat properties to API schema format: { key: { value: X } }
+      // The wrapper allows properties to carry additional metadata (type, heritable)
+      // which is merged from the config layer in StructureNode
+      let odeNavStructureSyncProperties = null;
+      if (page.properties && typeof page.properties === 'object' && !Array.isArray(page.properties)) {
+        odeNavStructureSyncProperties = {};
+        for (const [key, value] of Object.entries(page.properties)) {
+          odeNavStructureSyncProperties[key] = { value };
+        }
+      }
+
       legacyData.push({
         id: page.id,
         pageId: page.id,
@@ -1353,6 +2422,7 @@ class YjsProjectBridge {
         parent: page.parentId || 'root',
         order: page.order,
         icon: 'edit_note',
+        odeNavStructureSyncProperties,
       });
     }
 
@@ -1417,7 +2487,7 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] SaveManager not available, using flush only');
       await this.documentManager.flush();
       this.updateSaveStatus('saved');
-      return { success: true, message: 'Project saved (flush only)' };
+      return { success: true, message: _('Project saved') };
     } catch (e) {
       console.error('[YjsProjectBridge] Save error:', e);
       this.updateSaveStatus('error', e.message);
@@ -1454,6 +2524,93 @@ class YjsProjectBridge {
   getPage(pageId) {
     if (!this.structureBinding) return null;
     return this.structureBinding.getPage(pageId);
+  }
+
+  /**
+   * Extract anchor IDs from all components in a Yjs page map.
+   * Finds <a id="..."> and <a name="..."> elements (without href, i.e. anchor bookmarks).
+   *
+   * @param {Y.Map} pageMap - Yjs page map
+   * @param {HTMLElement} tempDiv - Reusable temporary div for HTML parsing
+   * @returns {string[]} - Array of unique anchor IDs found on the page
+   */
+  _extractAnchorsFromPageMap(pageMap, tempDiv) {
+    const anchors = [];
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return anchors;
+
+    for (let j = 0; j < blocks.length; j++) {
+      const blockMap = blocks.get(j);
+      const components = blockMap.get('components');
+      if (!components) continue;
+
+      for (let k = 0; k < components.length; k++) {
+        const compMap = components.get(k);
+        const htmlContent = compMap.get('htmlContent');
+        if (!htmlContent) continue;
+
+        const html = typeof htmlContent === 'string' ? htmlContent : (htmlContent.toString?.() || '');
+        if (!html || !html.includes('<a')) continue;
+
+        tempDiv.innerHTML = html;
+        tempDiv.querySelectorAll('a[id], a[name]').forEach((a) => {
+          const id = a.id || a.getAttribute('name');
+          if (id && !a.hasAttribute('href') && !anchors.includes(id)) anchors.push(id);
+        });
+      }
+    }
+
+    return anchors;
+  }
+
+  /**
+   * Get all named anchors from a single page's Yjs content.
+   * Used by the exelink dialog to find same-page anchors in other components.
+   *
+   * @param {string} pageId - The page to scan
+   * @returns {string[]} - Array of anchor IDs found on the page
+   */
+  getPageAnchors(pageId) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation || !pageId) return [];
+
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const id = pageMap.get('id') || pageMap.get('pageId');
+      if (id === pageId) return this._extractAnchorsFromPageMap(pageMap, tempDiv);
+    }
+
+    return [];
+  }
+
+  /**
+   * Get all named anchors from all pages except an optional excluded page.
+   * Used by the exelink dialog to populate cross-page anchor links (exe-node:pageId#anchorName).
+   *
+   * @param {string} [excludePageId] - Page ID to exclude (typically the currently edited page)
+   * @returns {Array<{pageId: string, pageName: string, anchors: string[]}>}
+   */
+  getAllPageAnchors(excludePageId = null) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation) return [];
+
+    const result = [];
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id') || pageMap.get('pageId');
+      const pageName = pageMap.get('pageName') || '';
+
+      if (!pageId || pageId === 'root' || pageId === excludePageId) continue;
+
+      const anchors = this._extractAnchorsFromPageMap(pageMap, tempDiv);
+      if (anchors.length > 0) result.push({ pageId, pageName, anchors });
+    }
+
+    return result;
   }
 
   /**
@@ -1744,25 +2901,302 @@ class YjsProjectBridge {
     if (!this.documentManager) {
       throw new Error('[YjsProjectBridge] Not initialized');
     }
-    return this.documentManager.getAssets();
+    const assetsMap = this.documentManager.getAssets();
+    if (this._activeElpxExportTrace) {
+      this._assetsMapDebugCalls += 1;
+      this.logElpxExportPhase('assets-map:read', {
+        call: this._assetsMapDebugCalls,
+        initialized: !!this.documentManager,
+        mapSize: assetsMap?.size || 0,
+        caller: this.getElpxExportCallerFrame(),
+      });
+    }
+    return assetsMap;
+  }
+
+  /**
+   * Ensure metadata has a screenshot before an .elpx export runs.
+   *
+   * Without this, exporting an imported project that lacks `screenshot.png`
+   * at the archive root (or a brand-new project that hasn't been saved yet)
+   * produces an .elpx with no screenshot — Omeka and other consumers then
+   * fall back to a generic placeholder. Wrapped in a Promise.race timeout so
+   * a slow html2canvas render never blocks an export.
+   *
+   * `generateScreenshotFromFirstPage` already short-circuits when a
+   * screenshot exists, so subsequent exports are free.
+   *
+   * @param {number} [timeoutMs=8000]
+   */
+  async ensureScreenshotForExport(timeoutMs = 8000) {
+    if (typeof this.generateScreenshotFromFirstPage !== 'function') return;
+    // Skip the timeout/race allocation when a screenshot is already present.
+    const metadata = this.documentManager?.getMetadata?.();
+    if (metadata?.get('screenshot')) return;
+    let timer;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => {
+        Logger.log('[YjsProjectBridge] Pre-export screenshot generation timed out');
+        resolve();
+      }, timeoutMs);
+    });
+    try {
+      await Promise.race([
+        Promise.resolve(this.generateScreenshotFromFirstPage()).catch((err) => {
+          console.warn('[YjsProjectBridge] Pre-export screenshot generation failed:', err);
+        }),
+        timeout,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Auto-generate screenshot from the first page HTML and store in Yjs metadata.
+   * Uses SharedExporters to generate a full preview (HTML + CSS + theme),
+   * inlines all CSS into the HTML for self-contained rendering, then captures
+   * with html2canvas in a hidden iframe. Skips if a custom screenshot already exists.
+   * Called before save and export to keep the screenshot up-to-date.
+   */
+  async generateScreenshotFromFirstPage() {
+    if (this._screenshotGenerating) return;
+    this._screenshotGenerating = true;
+    try {
+      if (!this.documentManager) {
+        console.warn('[YjsProjectBridge] Screenshot: no documentManager');
+        return;
+      }
+      const metadata = this.documentManager.getMetadata();
+      // Skip if user has set a custom screenshot
+      if (metadata.get('screenshot')) {
+        Logger.log('[YjsProjectBridge] Screenshot: custom screenshot already set, skipping');
+        return;
+      }
+
+      if (!window.SharedExporters?.generatePreviewForSW) {
+        console.warn('[YjsProjectBridge] Screenshot: SharedExporters.generatePreviewForSW not available');
+        return;
+      }
+
+      Logger.log('[YjsProjectBridge] Screenshot: generating preview files...');
+      // Generate all preview files (HTML + CSS + theme + libs)
+      const result = await window.SharedExporters.generatePreviewForSW(
+        this.documentManager,
+        this.assetCache || null,
+        this.resourceFetcher || null,
+        this.assetManager || null,
+      );
+      if (!result?.success || !result.files) {
+        console.warn('[YjsProjectBridge] Screenshot: preview generation failed', result?.error);
+        return;
+      }
+
+      const indexHtml = result.files['index.html'];
+      if (!indexHtml) {
+        console.warn('[YjsProjectBridge] Screenshot: no index.html in preview files');
+        return;
+      }
+      Logger.log(`[YjsProjectBridge] Screenshot: got ${Object.keys(result.files).length} preview files, rendering...`);
+
+      const decoder = new TextDecoder();
+      let htmlString = decoder.decode(indexHtml);
+
+      // Helper: convert a file path to a data URI using the generated files map
+      const MIME_MAP = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+        woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf',
+        eot: 'application/vnd.ms-fontobject', ico: 'image/x-icon',
+      };
+      const toDataUri = (filePath) => {
+        const buffer = result.files[filePath];
+        if (!buffer) return null;
+        const ext = filePath.split('.').pop().toLowerCase();
+        const mime = MIME_MAP[ext] || 'application/octet-stream';
+        const base64 = this._uint8ArrayToBase64(new Uint8Array(buffer));
+        return `data:${mime};base64,${base64}`;
+      };
+
+      // Helper: resolve url() references inside CSS text relative to the CSS file's directory
+      const resolveCssUrls = (cssText, cssPath) => {
+        const cssDir = cssPath.includes('/') ? cssPath.substring(0, cssPath.lastIndexOf('/') + 1) : '';
+        return cssText.replace(/url\(["']?(?!data:)([^"')]+)["']?\)/gi, (match, urlPath) => {
+          // Resolve relative path from CSS file's directory
+          const resolvedPath = cssDir + urlPath;
+          const dataUri = toDataUri(resolvedPath);
+          return dataUri ? `url("${dataUri}")` : match;
+        });
+      };
+
+      // Inline CSS: replace <link rel="stylesheet"> with <style> tags
+      // This handles both href-before-rel and rel-before-href attribute orders
+      htmlString = htmlString.replace(
+        /<link\s+[^>]*(?:rel=["']stylesheet["'][^>]*href=["']([^"']+)["']|href=["']([^"']+)["'][^>]*rel=["']stylesheet["'])[^>]*\/?>/gi,
+        (match, href1, href2) => {
+          const href = href1 || href2;
+          const cssBuffer = result.files[href];
+          if (cssBuffer) {
+            let cssText = decoder.decode(cssBuffer);
+            cssText = resolveCssUrls(cssText, href);
+            return `<style>/* ${href} */\n${cssText}</style>`;
+          }
+          return match;
+        },
+      );
+
+      // Convert <img src> to data URIs for self-contained rendering
+      htmlString = htmlString.replace(
+        /(<img\s+[^>]*src=["'])([^"']+)(["'][^>]*>)/gi,
+        (match, prefix, src, suffix) => {
+          const dataUri = toDataUri(src);
+          return dataUri ? `${prefix}${dataUri}${suffix}` : match;
+        },
+      );
+
+      // Inject CSS to hide navigation chrome — screenshot should show only content
+      const hideUiCss = `<style id="screenshot-cleanup">
+        #siteNav, .single-page-nav { display: none !important; }
+        .nav-buttons, .nav-button { display: none !important; }
+        #made-with-eXe { display: none !important; }
+        .exe-search-form, #exe-search-form, [id*="search"] form { display: none !important; }
+        #skipNav { display: none !important; }
+        .exe-pagination { display: none !important; }
+        .box-toggle { display: none !important; }
+        .exe-content { margin: 0 !important; padding: 16px !important; }
+        main.page, .exe-web-site main.page { padding-left: 16px !important; padding-right: 16px !important; max-width: 100% !important; }
+        #siteFooter, .exe-web-site #siteFooter { padding-left: 0 !important; display: none !important; }
+        body, .exe-content.exe-export { padding-left: 0 !important; padding-right: 0 !important; }
+      </style>`;
+      htmlString = htmlString.replace('</head>', `${hideUiCss}\n</head>`);
+
+      // Remove all <script> tags — JS is not needed for a static screenshot
+      // and would cause 404 errors since paths are relative to the main page
+      htmlString = htmlString.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+      // Capture screenshot using html2canvas in a hidden iframe
+      const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
+      if (dataUrl) {
+        metadata.set('screenshot', dataUrl);
+        // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
+        // so it should not trigger "unsaved changes" guards on navigation
+        if (this.documentManager?.markClean) {
+          this.documentManager.markClean();
+        }
+        Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
+      }
+    } catch (error) {
+      console.warn('[YjsProjectBridge] Screenshot auto-generation failed:', error);
+    } finally {
+      this._screenshotGenerating = false;
+    }
+  }
+
+  /**
+   * Render HTML string in a hidden iframe and capture as PNG data URL.
+   * @param {string} html - Self-contained HTML with inlined CSS
+   * @returns {Promise<string|null>} PNG data URL or null on failure
+   */
+  async _captureHtmlAsScreenshot(html) {
+    // Load html2canvas if not available
+    if (!window.html2canvas) {
+      try {
+        const script = document.createElement('script');
+        // BASE_PATH-aware: behind a subdirectory reverse proxy a bare-root URL
+        // 502s, so route through composeUrl() (the canonical client helper).
+        const html2canvasPath = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        script.src =
+          window.eXeLearning && window.eXeLearning.app && typeof window.eXeLearning.app.composeUrl === 'function'
+            ? window.eXeLearning.app.composeUrl(html2canvasPath)
+            : html2canvasPath;
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch {
+        return null;
+      }
+    }
+    if (!window.html2canvas) return null;
+
+    // Create hidden iframe for rendering
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:900px;border:none;opacity:0;';
+    document.body.appendChild(iframe);
+
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) return null;
+
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+
+      // Wait for content to render
+      await new Promise((resolve) => {
+        if (iframeDoc.readyState === 'complete') {
+          setTimeout(resolve, 500);
+        } else {
+          iframe.onload = () => setTimeout(resolve, 500);
+        }
+      });
+
+      const body = iframeDoc.body;
+      const canvas = await window.html2canvas(body, {
+        backgroundColor: '#ffffff',
+        scale: 1,
+        useCORS: true,
+        width: 1280,
+        height: 720,
+        windowWidth: 1280,
+        logging: false,
+      });
+
+      // Force exact 1280×720 output
+      const resized = document.createElement('canvas');
+      resized.width = 1280;
+      resized.height = 720;
+      const ctx = resized.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1280, 720);
+        ctx.drawImage(canvas, 0, 0, 1280, 720);
+      }
+
+      return resized.toDataURL('image/png');
+    } finally {
+      document.body.removeChild(iframe);
+    }
   }
 
   /**
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
-   * @param {Object} options - Export options
-   * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+   * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
-  async exportToElpx(options = {}) {
+  async exportToElpx() {
+    const trace = this.createElpxExportTrace();
+
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
+      this.logElpxExportPhase('bridge:version-metadata:start', {}, trace);
       await this.documentManager._updateVersionMetadata();
+      this.logElpxExportPhase('bridge:version-metadata:end', {}, trace);
     }
+
+    // Ensure metadata has a screenshot so the export embeds screenshot.png at
+    // the archive root. Required for projects imported from .elpx files that
+    // lacked screenshot.png, and for first-export-before-first-save flows.
+    this.logElpxExportPhase('bridge:ensure-screenshot:start', {}, trace);
+    await this.ensureScreenshotForExport();
+    this.logElpxExportPhase('bridge:ensure-screenshot:end', {}, trace);
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
       try {
+        this.logElpxExportPhase('bridge:create-exporter:start', {}, trace);
         const exporter = window.SharedExporters.createExporter(
           'elpx',
           this.documentManager,
@@ -1770,7 +3204,22 @@ class YjsProjectBridge {
           this.resourceFetcher,
           this.assetManager
         );
-        const result = await exporter.export();
+        this.logElpxExportPhase('bridge:create-exporter:end', {
+          exporter: exporter?.constructor?.name || 'unknown',
+        }, trace);
+        
+        // Get Mermaid pre-renderer hook if available
+        const exportOptions = {};
+        if (window.MermaidPreRenderer) {
+          exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
+        }
+        this.logElpxExportPhase('bridge:exporter:run:start', {}, trace);
+        const result = await exporter.export(exportOptions);
+        this.logElpxExportPhase('bridge:exporter:run:end', {
+          success: !!result?.success,
+          bytes: result?.data?.byteLength ?? null,
+          filename: result?.filename || null,
+        }, trace);
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';
@@ -1778,26 +3227,68 @@ class YjsProjectBridge {
           // Check if Electron mode - use Electron save API for desktop behavior
           // eslint-disable-next-line no-undef
           if (eXeLearning?.config?.isOfflineInstallation && window.electronAPI?.saveBuffer) {
-            // Convert ArrayBuffer to base64 for IPC transfer
             const uint8Array = new Uint8Array(result.data);
-            let binary = '';
-            for (let i = 0; i < uint8Array.length; i++) {
-              binary += String.fromCharCode(uint8Array[i]);
-            }
-            const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
+            const saveBufferStartElapsed = trace
+              ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
+              : 0;
+            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+              filename: exportFilename,
+              bytes: uint8Array.byteLength,
+            }, trace);
+            this.logElpxExportPhase('bridge:electron:dialog:start', {
+              filename: exportFilename,
+            }, trace);
+            // saveBuffer returns false when the user cancels the OS save dialog
+            const rawSaveResult = await window.electronAPI.saveBuffer(uint8Array, key, exportFilename);
+            const saveResult = this.normalizeElectronSaveResult(rawSaveResult);
+            const promptEndElapsed = saveBufferStartElapsed + saveResult.timings.promptMs;
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:end', promptEndElapsed, {
+              filename: exportFilename,
+              filePath: saveResult.filePath,
+              canceled: saveResult.canceled,
+            }, trace);
 
-            if (options.saveAs) {
-              // Save As: always prompt for new location
-              await window.electronAPI.saveBufferAs(base64Data, key, exportFilename);
-            } else {
-              // Save: use remembered path or prompt first time
-              // If opened from legacy .elp, main.js will prompt for new .elpx location
-              await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            if (saveResult.timings.normalizeMs > 0 || saveResult.timings.writeMs > 0 || saveResult.saved) {
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:start', promptEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+              const normalizeEndElapsed = promptEndElapsed + saveResult.timings.normalizeMs;
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:end', normalizeEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+
+              this.appendElpxExportPhaseEntry('bridge:electron:write:start', normalizeEndElapsed, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+              }, trace);
+              this.appendElpxExportPhaseEntry('bridge:electron:write:end', normalizeEndElapsed + saveResult.timings.writeMs, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+                error: saveResult.error,
+              }, trace);
             }
+
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:end', saveBufferStartElapsed + saveResult.timings.totalMs, {
+              filename: exportFilename,
+              saved: saveResult.saved,
+              canceled: saveResult.canceled,
+              canceledAt: saveResult.canceledAt,
+              filePath: saveResult.filePath,
+              error: saveResult.error,
+              timings: saveResult.timings,
+            }, trace);
+            this.finalizeElpxExportTrace(saveResult.saved ? 'success' : 'cancelled', {
+              filename: exportFilename,
+            }, trace);
+            if (!saveResult.saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
+            this.logElpxExportPhase('bridge:browser-download:start', {
+              filename: exportFilename,
+              bytes: result.data.byteLength || null,
+            }, trace);
             const blob = new Blob([result.data], { type: 'application/zip' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -1807,16 +3298,35 @@ class YjsProjectBridge {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            this.logElpxExportPhase('bridge:browser-download:end', {
+              filename: exportFilename,
+            }, trace);
+            this.finalizeElpxExportTrace('success', {
+              filename: exportFilename,
+            }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          return { saved: true };
         } else {
+          this.finalizeElpxExportTrace('error', {
+            error: result.error || 'Export failed',
+          }, trace);
           throw new Error(result.error || 'Export failed');
         }
       } catch (error) {
+        this.logElpxExportPhase('bridge:error', {
+          message: error?.message || String(error),
+        }, trace);
+        this.finalizeElpxExportTrace('error', {
+          error: error?.message || String(error),
+        }, trace);
         console.error('[YjsProjectBridge] SharedExporters ELPX export failed:', error);
         throw error; // Don't hide errors - let them bubble up for debugging
       }
     } else {
+      this.finalizeElpxExportTrace('error', {
+        error: 'SharedExporters not available',
+      }, trace);
       throw new Error('SharedExporters not available - ELPX export requires exporters.bundle.js');
     }
   }
@@ -1832,19 +3342,50 @@ class YjsProjectBridge {
     // Use new AssetManager if available, otherwise fall back to legacy assetCache
     const assetHandler = this.assetManager || this.assetCache;
     const importer = new window.ElpxImporter(this.documentManager, assetHandler);
-    const stats = await importer.importFromFile(file, options);
+    const clearExisting = options.clearExisting !== false; // default is true
+    let stats;
+
+    if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+      stats = await this.documentManager.withSuppressedDirtyTracking(() =>
+        importer.importFromFile(file, options)
+      );
+    } else {
+      stats = await importer.importFromFile(file, options);
+    }
 
     // Announce imported assets to server for peer-to-peer collaboration
-    if (stats && stats.assets > 0) {
+    // Skip only when collaboration is explicitly disabled (capabilities available and disabled)
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    const collaborationEnabled = !capabilities || capabilities.collaboration?.enabled;
+    if (stats && stats.assets > 0 && collaborationEnabled) {
       Logger.log(`[YjsProjectBridge] Announcing ${stats.assets} imported assets to peers...`);
       await this.announceAssets();
     }
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
-    const clearExisting = options.clearExisting !== false; // default is true
+    // Theme import works in all modes - _checkAndImportTheme handles mode-specific behavior internally
     if (stats && stats.theme && clearExisting) {
-      await this._checkAndImportTheme(stats.theme, file);
+      const importTheme = () => this._checkAndImportTheme(stats.theme, file, stats.zipContents);
+      if (typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+        await this.documentManager.withSuppressedDirtyTracking(importTheme);
+      } else {
+        await importTheme();
+      }
+    }
+
+    if (clearExisting) {
+      if (typeof this.documentManager?.markClean === 'function') {
+        this.documentManager.markClean();
+      }
+      if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
+        this.documentManager.captureBaselineState();
+      }
+      if (typeof this.documentManager?.clearUndoStack === 'function') {
+        this.documentManager.clearUndoStack();
+      }
+    } else if (this.documentManager && !this.documentManager.isDirty) {
+      this.documentManager.markDirty();
     }
 
     return stats;
@@ -1860,11 +3401,17 @@ class YjsProjectBridge {
    * theme will be used. Administrators should be aware that enabling this feature
    * allows users to run custom JavaScript in exported content.
    *
+   * Priority for finding themes:
+   * 1. Server themes (base/site) - always available
+   * 2. IndexedDB user themes - persistent local storage
+   * 3. Package theme folder - requires user confirmation
+   *
    * @param {string} themeName - Name of the theme from the package
    * @param {File} file - The original .elpx file to check for /theme/ folder
+   * @param {Record<string, Uint8Array>} [cachedZip] - Pre-extracted ZIP contents (avoids re-unzipping)
    * @private
    */
-  async _checkAndImportTheme(themeName, file) {
+  async _checkAndImportTheme(themeName, file, cachedZip = null) {
     if (!themeName) return;
 
     Logger.log(`[YjsProjectBridge] Checking theme: ${themeName}`);
@@ -1875,33 +3422,78 @@ class YjsProjectBridge {
     const userStylesEnabled = eXeLearning.config?.userStyles === 1 || eXeLearning.config?.userStyles === true;
 
     if (!isOfflineInstallation && !userStylesEnabled) {
-      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using default theme');
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using fallback theme');
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
       return;
     }
 
-    // Check if theme is installed
+    // 1. Check if theme is installed on server (base/site themes)
     const installedThemes = eXeLearning.app.themes?.list?.installed || {};
     if (Object.keys(installedThemes).includes(themeName)) {
-      Logger.log(`[YjsProjectBridge] Theme "${themeName}" already installed, selecting it`);
+      Logger.log(`[YjsProjectBridge] Theme "${themeName}" already installed (server), selecting it`);
       await eXeLearning.app.themes.selectTheme(themeName, true);
       return;
     }
 
+    // 2. Check if theme exists in IndexedDB (persistent user themes)
+    if (this.resourceCache) {
+      try {
+        const hasUserTheme = await this.resourceCache.hasUserTheme(themeName);
+        if (hasUserTheme) {
+          Logger.log(`[YjsProjectBridge] Theme "${themeName}" found in IndexedDB, loading it`);
+          // Load theme from IndexedDB and register
+          await this._loadUserThemeFromIndexedDB(themeName);
+          await eXeLearning.app.themes.selectTheme(themeName, true);
+          return;
+        }
+      } catch (e) {
+        console.warn('[YjsProjectBridge] Error checking IndexedDB for theme:', e);
+      }
+    }
+
     // Theme not installed - check if package has /theme/ folder
     try {
-      const fflateLib = window.fflate;
-      if (!fflateLib) {
-        throw new Error('fflate library not loaded');
+      let zip;
+      if (cachedZip) {
+        // Use cached zip from import (avoids re-unzipping large files)
+        zip = cachedZip;
+        Logger.log('[YjsProjectBridge] Using cached zip contents for theme check');
+      } else {
+        // Fallback: unzip file (should rarely happen now)
+        const fflateLib = window.fflate;
+        if (!fflateLib) {
+          throw new Error('fflate library not loaded');
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Data = new Uint8Array(arrayBuffer);
+        zip = fflateLib.unzipSync(uint8Data);
+        Logger.log('[YjsProjectBridge] Unzipped file for theme check (fallback path)');
       }
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Data = new Uint8Array(arrayBuffer);
-      const zip = fflateLib.unzipSync(uint8Data);
       const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {
-        Logger.log(`[YjsProjectBridge] No theme folder in package, using default`);
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+        Logger.log(`[YjsProjectBridge] No theme folder in package, using fallback theme`);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base). Save=true persists the
+        // resolved theme to Yjs metadata, replacing the imported theme.
+        eXeLearning.app.themes.selectTheme(themeName, true);
+        return;
+      }
+
+      const configXml = new TextDecoder().decode(themeConfig);
+      const getValue = (tag) => {
+        const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+        return match ? match[1].trim() : '';
+      };
+      const downloadable = getValue('downloadable');
+      if (downloadable === '0') {
+        Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base).
+        eXeLearning.app.themes.selectTheme(themeName, true);
         return;
       }
 
@@ -1913,12 +3505,18 @@ class YjsProjectBridge {
       this._showThemeImportModal(themeName);
     } catch (error) {
       console.error('[YjsProjectBridge] Error checking theme in package:', error);
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
     }
   }
 
   /**
    * Show modal to confirm theme import
+   * User themes from .elpx files are stored:
+   * 1. IndexedDB (persistent local storage, available across all projects)
+   * 2. Yjs (compressed ZIP, for collaboration and export)
    * @param {string} themeName - Name of the theme to import
    * @private
    */
@@ -1932,36 +3530,55 @@ class YjsProjectBridge {
       body: text,
       confirmExec: async () => {
         try {
-          // Package theme files from the stored ZIP
-          const themeZip = await this._packageThemeFromZip(themeName);
-          if (!themeZip) {
+          // Extract theme files from the stored ZIP
+          const themeFilesData = this._extractThemeFilesFromZip();
+          if (!themeFilesData || Object.keys(themeFilesData.files).length === 0) {
             throw new Error('Could not extract theme files from package');
           }
 
-          const params = {
-            themeDirname: themeName,
-            themeZip: themeZip,
-          };
-
           Logger.log('[YjsProjectBridge] Importing theme:', themeName);
-          const response = await eXeLearning.app.api.postOdeImportTheme(params);
+
+          // Parse config.xml to create theme configuration
+          const themeConfig = this._parseThemeConfigFromFiles(themeName, themeFilesData);
+          if (!themeConfig) {
+            throw new Error('Could not parse theme configuration');
+          }
+
+          // 1. Compress theme files and save to IndexedDB (persistent local storage)
+          if (this.resourceCache) {
+            const compressedFiles = this._compressThemeFiles(themeFilesData.files);
+            await this.resourceCache.setUserTheme(themeName, compressedFiles, themeConfig);
+            Logger.log(`[YjsProjectBridge] Saved theme to IndexedDB: ${themeName}`);
+          }
+
+          // 2. Copy compressed theme to Yjs for collaboration/export
+          await this._copyThemeToYjs(themeName, themeFilesData.files);
+
+          // 3. Register theme files with ResourceFetcher for export and preview
+          if (this.resourceFetcher) {
+            await this.resourceFetcher.setUserThemeFiles(themeName, themeFilesData.files);
+          }
+
+          // 4. Add theme to local installed list
+          eXeLearning.app.themes.list.addUserTheme(themeConfig);
+
+          // 5. Refresh NavbarStyles UI to show the new theme immediately
+          if (eXeLearning.app.menus?.navbar?.styles) {
+            eXeLearning.app.menus.navbar.styles.updateThemes();
+            // If styles panel is open, rebuild the list
+            const stylesPanel = document.getElementById('stylessidenav');
+            if (stylesPanel?.classList.contains('active')) {
+              eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+            }
+          }
 
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
 
-          if (response.responseMessage === 'OK' && response.themes) {
-            // Reload theme list and select imported theme
-            eXeLearning.app.themes.list.loadThemes(response.themes.themes);
-            await eXeLearning.app.themes.selectTheme(themeName, true);
-            Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
-          } else {
-            console.error('[YjsProjectBridge] Theme import failed:', response.responseMessage || response.error);
-            eXeLearning.app.modals.alert.show({
-              title: _('Error'),
-              body: response.error || response.responseMessage || _('Failed to import style'),
-            });
-          }
+          // Select the theme and save to metadata
+          await eXeLearning.app.themes.selectTheme(themeName, true);
+          Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
@@ -1977,19 +3594,18 @@ class YjsProjectBridge {
         // Clean up stored references
         this._pendingThemeFile = null;
         this._pendingThemeZip = null;
-        // Use default theme
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+        // Use default theme and save to Yjs (replacing imported theme in metadata)
+        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
       },
     });
   }
 
   /**
-   * Package theme files from stored ZIP into a new ZIP blob
-   * @param {string} themeName - Name of the theme
-   * @returns {Promise<Blob|null>} Theme ZIP blob or null if failed
+   * Extract theme files from stored ZIP
+   * @returns {{files: Object<string, Uint8Array>, configXml: string|null}|null}
    * @private
    */
-  async _packageThemeFromZip(themeName) {
+  _extractThemeFilesFromZip() {
     try {
       const zip = this._pendingThemeZip;
       if (!zip) {
@@ -1997,37 +3613,447 @@ class YjsProjectBridge {
         return null;
       }
 
-      const fflateLib = window.fflate;
-      if (!fflateLib) {
-        console.error('[YjsProjectBridge] fflate library not loaded');
-        return null;
-      }
-
       // Extract all files from theme/ folder
-      const themeFiles = {};
+      const files = {};
+      let configXml = null;
+
       for (const [filePath, fileData] of Object.entries(zip)) {
         if (filePath.startsWith('theme/') && !filePath.endsWith('/')) {
           // Remove 'theme/' prefix to get relative path
           const relativePath = filePath.substring(6); // 'theme/'.length = 6
           if (relativePath) {
-            themeFiles[relativePath] = fileData;
+            files[relativePath] = fileData;
+            // Capture config.xml content
+            if (relativePath === 'config.xml') {
+              configXml = new TextDecoder().decode(fileData);
+            }
           }
         }
       }
 
-      if (Object.keys(themeFiles).length === 0) {
+      if (Object.keys(files).length === 0) {
         console.error('[YjsProjectBridge] No theme files found in package');
         return null;
       }
 
-      Logger.log(`[YjsProjectBridge] Packaging ${Object.keys(themeFiles).length} theme files`);
-
-      // Create ZIP
-      const zipped = fflateLib.zipSync(themeFiles);
-      return new Blob([zipped], { type: 'application/zip' });
+      Logger.log(`[YjsProjectBridge] Extracted ${Object.keys(files).length} theme files`);
+      return { files, configXml };
     } catch (error) {
-      console.error('[YjsProjectBridge] Error packaging theme:', error);
+      console.error('[YjsProjectBridge] Error extracting theme:', error);
       return null;
+    }
+  }
+
+  /**
+   * Parse theme configuration from extracted files
+   * @param {string} themeName - Theme name/directory
+   * @param {{files: Object, configXml: string|null}} themeFilesData
+   * @returns {Object|null} Theme configuration object
+   * @private
+   */
+  _parseThemeConfigFromFiles(themeName, themeFilesData) {
+    try {
+      const { files, configXml } = themeFilesData;
+
+      // Default config values
+      const config = {
+        name: themeName,
+        dirName: themeName,
+        displayName: themeName,
+        title: themeName,
+        type: 'user', // User themes from .elpx
+        version: '1.0',
+        author: '',
+        license: '',
+        description: '',
+        downloadable: '1',
+        cssFiles: [],
+        js: [],
+        icons: {},
+        valid: true,
+        isUserTheme: true, // Flag to indicate this is a client-side theme
+      };
+
+      // Parse config.xml if available
+      if (configXml) {
+        const getValue = (tag) => {
+          const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+          return match ? match[1].trim() : '';
+        };
+
+        config.name = themeName; // Use the Yjs key (sanitized dirName), NOT raw <name> tag
+        config.displayName = getValue('name') || themeName;
+        config.title = getValue('title') || getValue('name') || themeName;
+        config.version = getValue('version') || '1.0';
+        config.author = getValue('author') || '';
+        config.license = getValue('license') || '';
+        config.description = getValue('description') || '';
+        config.downloadable = getValue('downloadable') || '1';
+      }
+
+      // Scan for CSS files
+      for (const filePath of Object.keys(files)) {
+        if (filePath.endsWith('.css') && !filePath.includes('/')) {
+          config.cssFiles.push(filePath);
+        }
+      }
+      if (config.cssFiles.length === 0) {
+        config.cssFiles.push('style.css');
+      }
+
+      // Scan for JS files
+      for (const filePath of Object.keys(files)) {
+        if (filePath.endsWith('.js') && !filePath.includes('/')) {
+          config.js.push(filePath);
+        }
+      }
+
+      // Scan for icons - store as ThemeIcon objects with relative paths
+      // Blob URLs will be resolved when theme is selected
+      for (const filePath of Object.keys(files)) {
+        if (filePath.startsWith('icons/') && (filePath.endsWith('.png') || filePath.endsWith('.svg'))) {
+          const iconName = filePath.replace('icons/', '').replace(/\.(png|svg)$/, '');
+          config.icons[iconName] = {
+            id: iconName,
+            title: iconName,
+            type: 'img',
+            value: filePath, // Will be converted to blob URL on theme select
+            _relativePath: filePath, // Keep original path for blob URL resolution
+          };
+        }
+      }
+
+      return config;
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error parsing theme config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Convert Uint8Array to base64 string
+   * @param {Uint8Array} uint8Array
+   * @returns {string}
+   * @private
+   */
+  _uint8ArrayToBase64(uint8Array) {
+    const CHUNK = 0x8000;
+    const parts = [];
+    for (let i = 0; i < uint8Array.byteLength; i += CHUNK) {
+      parts.push(String.fromCharCode.apply(null, uint8Array.subarray(i, Math.min(i + CHUNK, uint8Array.byteLength))));
+    }
+    return btoa(parts.join(''));
+  }
+
+  /**
+   * Convert base64 string to Uint8Array
+   * @param {string} base64
+   * @returns {Uint8Array}
+   * @private
+   */
+  _base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  /**
+   * Compress theme files to ZIP format using fflate
+   * @param {Object<string, Uint8Array>} files - Map of relativePath -> file content
+   * @returns {Uint8Array} Compressed ZIP data
+   * @private
+   */
+  _compressThemeFiles(files) {
+    if (!window.fflate) {
+      throw new Error('fflate library not loaded');
+    }
+
+    // fflate.zipSync expects {filename: Uint8Array} format
+    const toCompress = {};
+    for (const [path, uint8Array] of Object.entries(files)) {
+      toCompress[path] = uint8Array;
+    }
+
+    return window.fflate.zipSync(toCompress, { level: 6 });
+  }
+
+  /**
+   * Copy theme to Yjs for collaboration and export
+   * Stores the theme as a compressed ZIP in base64
+   * @param {string} themeName - Theme name
+   * @param {Object<string, Uint8Array>} files - Map of relativePath -> file content
+   * @private
+   */
+  async _copyThemeToYjs(themeName, files) {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+
+      // Compress files to ZIP
+      const compressed = this._compressThemeFiles(files);
+
+      // Convert to base64 for Yjs storage
+      const base64Compressed = this._uint8ArrayToBase64(compressed);
+
+      // Store as single compressed string in Yjs (NOT a Y.Map with individual files)
+      themeFilesMap.set(themeName, base64Compressed);
+
+      Logger.log(`[YjsProjectBridge] Copied theme '${themeName}' to Yjs (${Math.round(compressed.length / 1024)}KB compressed)`);
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error copying theme to Yjs:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load a user theme from IndexedDB and register it
+   * @param {string} themeName - Theme name
+   * @private
+   */
+  async _loadUserThemeFromIndexedDB(themeName) {
+    try {
+      if (!this.resourceCache) {
+        throw new Error('ResourceCache not initialized');
+      }
+
+      const userTheme = await this.resourceCache.getUserTheme(themeName);
+      if (!userTheme) {
+        throw new Error(`Theme '${themeName}' not found in IndexedDB`);
+      }
+
+      const { files, config } = userTheme;
+
+      // Convert Map<string, Blob> to Object<string, Uint8Array> for ResourceFetcher
+      const filesObject = {};
+      for (const [path, blob] of files) {
+        const arrayBuffer = await blob.arrayBuffer();
+        filesObject[path] = new Uint8Array(arrayBuffer);
+      }
+
+      // Register with ResourceFetcher
+      if (this.resourceFetcher) {
+        await this.resourceFetcher.setUserThemeFiles(themeName, filesObject);
+      }
+
+      // Add to installed themes if not already there
+      if (eXeLearning.app?.themes?.list?.installed && !eXeLearning.app.themes.list.installed[themeName]) {
+        eXeLearning.app.themes.list.addUserTheme(config);
+      }
+
+      Logger.log(`[YjsProjectBridge] Loaded user theme '${themeName}' from IndexedDB`);
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error loading theme from IndexedDB:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load user themes from Yjs into ResourceFetcher and theme list
+   * This is called on initialization to restore user themes for:
+   * - Reopening a project with user themes
+   * - Joining a collaborative session where another user imported a theme
+   *
+   * Priority:
+   * 1. Check if theme exists in local IndexedDB - use that if available
+   * 2. If not in IndexedDB, decompress from Yjs and save to IndexedDB
+   */
+  async loadUserThemesFromYjs() {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+      if (!themeFilesMap || themeFilesMap.size === 0) {
+        Logger.log('[YjsProjectBridge] No user themes in Yjs to load');
+        return;
+      }
+
+      Logger.log(`[YjsProjectBridge] Loading ${themeFilesMap.size} user theme(s) from Yjs...`);
+
+      // Iterate over each theme in the themeFiles map
+      for (const [themeName, themeData] of themeFilesMap.entries()) {
+        await this._loadUserThemeFromYjs(themeName, themeData);
+      }
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error loading user themes from Yjs:', error);
+    }
+  }
+
+  /**
+   * Load a single user theme from Yjs
+   * Handles both new compressed format (base64 ZIP) and legacy format (Y.Map)
+   *
+   * @param {string} themeName - Theme name
+   * @param {string|Y.Map} themeData - Either base64 compressed ZIP (new) or Y.Map (legacy)
+   * @private
+   */
+  async _loadUserThemeFromYjs(themeName, themeData) {
+    try {
+      // 1. Check if theme is already loaded in ResourceFetcher (memory)
+      if (this.resourceFetcher?.hasUserTheme(themeName)) {
+        Logger.log(`[YjsProjectBridge] User theme '${themeName}' already loaded in memory`);
+        return;
+      }
+
+      // 2. Check if theme exists in IndexedDB - load from there if available
+      if (this.resourceCache) {
+        try {
+          const hasInIndexedDB = await this.resourceCache.hasUserTheme(themeName);
+          if (hasInIndexedDB) {
+            Logger.log(`[YjsProjectBridge] User theme '${themeName}' found in IndexedDB, loading from there`);
+            await this._loadUserThemeFromIndexedDB(themeName);
+            return;
+          }
+        } catch (e) {
+          console.warn(`[YjsProjectBridge] Error checking IndexedDB for theme '${themeName}':`, e);
+        }
+      }
+
+      // 3. Theme not in IndexedDB - extract from Yjs
+      let files = {};
+      let configXml = null;
+
+      // Check if new compressed format (base64 string) or legacy format (Y.Map)
+      if (typeof themeData === 'string') {
+        // New compressed format - decompress ZIP
+        const decompressed = this._decompressThemeFromYjs(themeData);
+        files = decompressed.files;
+        configXml = decompressed.configXml;
+      } else if (themeData && typeof themeData.entries === 'function') {
+        // Legacy format - Y.Map with individual base64 files
+        for (const [relativePath, base64Content] of themeData.entries()) {
+          const uint8Array = this._base64ToUint8Array(base64Content);
+          files[relativePath] = uint8Array;
+          if (relativePath === 'config.xml') {
+            configXml = new TextDecoder().decode(uint8Array);
+          }
+        }
+      } else {
+        Logger.log(`[YjsProjectBridge] Unknown theme data format for '${themeName}', skipping`);
+        return;
+      }
+
+      if (Object.keys(files).length === 0) {
+        Logger.log(`[YjsProjectBridge] User theme '${themeName}' has no files, skipping`);
+        return;
+      }
+
+      Logger.log(`[YjsProjectBridge] Extracted ${Object.keys(files).length} files for user theme '${themeName}' from Yjs`);
+
+      // Parse theme configuration
+      const themeConfig = this._parseThemeConfigFromFiles(themeName, { files, configXml });
+      if (!themeConfig) {
+        console.warn(`[YjsProjectBridge] Could not parse config for theme '${themeName}'`);
+        return;
+      }
+
+      // 4. Save to IndexedDB for persistence (so we don't need to extract from Yjs again)
+      if (this.resourceCache) {
+        try {
+          const compressedFiles = this._compressThemeFiles(files);
+          await this.resourceCache.setUserTheme(themeName, compressedFiles, themeConfig);
+          Logger.log(`[YjsProjectBridge] Saved theme '${themeName}' to IndexedDB`);
+        } catch (e) {
+          console.warn(`[YjsProjectBridge] Could not save theme '${themeName}' to IndexedDB:`, e);
+        }
+      }
+
+      // 5. Register with ResourceFetcher
+      if (this.resourceFetcher) {
+        await this.resourceFetcher.setUserThemeFiles(themeName, files);
+      }
+
+      // 6. Add to installed themes if not already there
+      if (eXeLearning.app?.themes?.list?.installed && !eXeLearning.app.themes.list.installed[themeName]) {
+        eXeLearning.app.themes.list.addUserTheme(themeConfig);
+        Logger.log(`[YjsProjectBridge] Added user theme '${themeName}' to installed themes`);
+      }
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error loading user theme '${themeName}':`, error);
+    }
+  }
+
+  /**
+   * Decompress theme files from Yjs (base64 ZIP format)
+   * @param {string} base64Compressed - Base64 encoded ZIP data
+   * @returns {{files: Object<string, Uint8Array>, configXml: string|null}}
+   * @private
+   */
+  _decompressThemeFromYjs(base64Compressed) {
+    if (!window.fflate) {
+      throw new Error('fflate library not loaded');
+    }
+
+    // Decode base64 to Uint8Array
+    const compressed = this._base64ToUint8Array(base64Compressed);
+
+    // Decompress ZIP
+    const decompressed = window.fflate.unzipSync(compressed);
+
+    const files = {};
+    let configXml = null;
+
+    for (const [path, data] of Object.entries(decompressed)) {
+      files[path] = data;
+      if (path === 'config.xml') {
+        configXml = new TextDecoder().decode(data);
+      }
+    }
+
+    return { files, configXml };
+  }
+
+  /**
+   * Set up observer for theme files changes (for collaborator sync)
+   * When a collaborator imports a theme, this observer will load it locally
+   * and save it to IndexedDB for persistence
+   */
+  setupThemeFilesObserver() {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+
+      themeFilesMap.observe(async (event) => {
+        // Process added themes
+        for (const [themeName, change] of event.changes.keys) {
+          if (change.action === 'add') {
+            const themeData = themeFilesMap.get(themeName);
+            if (themeData) {
+              Logger.log(`[YjsProjectBridge] Collaborator added theme '${themeName}', loading...`);
+              await this._loadUserThemeFromYjs(themeName, themeData);
+
+              // Refresh NavbarStyles UI so the new theme appears in the "Imported" tab
+              if (eXeLearning.app?.menus?.navbar?.styles) {
+                eXeLearning.app.menus.navbar.styles.updateThemes();
+                const stylesPanel = document.getElementById('stylessidenav');
+                if (stylesPanel?.classList.contains('active')) {
+                  eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+                }
+              }
+            }
+          } else if (change.action === 'delete') {
+            Logger.log(`[YjsProjectBridge] Theme '${themeName}' removed from Yjs`);
+            // Theme was removed - we leave it in IndexedDB (user may want to keep it)
+            // But we should remove it from ResourceFetcher cache
+            if (this.resourceFetcher?.userThemeFiles) {
+              this.resourceFetcher.userThemeFiles.delete(themeName);
+              this.resourceFetcher.cache.delete(`theme:${themeName}`);
+            }
+
+            // Refresh NavbarStyles UI to reflect the removal
+            if (eXeLearning.app?.menus?.navbar?.styles) {
+              eXeLearning.app.menus.navbar.styles.updateThemes();
+              const stylesPanel = document.getElementById('stylessidenav');
+              if (stylesPanel?.classList.contains('active')) {
+                eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+              }
+            }
+          }
+        }
+      });
+
+      Logger.log('[YjsProjectBridge] Theme files observer set up');
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error setting up theme files observer:', error);
     }
   }
 
@@ -2130,6 +4156,20 @@ class YjsProjectBridge {
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
 
+    if (this._assetsMap && this._onAssetsMapChange && typeof this._assetsMap.unobserve === 'function') {
+      this._assetsMap.unobserve(this._onAssetsMapChange);
+    }
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+      this._assetRefreshTimer = null;
+    }
+    if (this._pendingAssetRefreshIds) {
+      this._pendingAssetRefreshIds.clear();
+    }
+
     if (this.documentManager) {
       await this.documentManager.destroy();
     }
@@ -2167,6 +4207,91 @@ class YjsProjectBridge {
     this.assetWebSocketHandler = null;
 
     Logger.log('[YjsProjectBridge] Disconnected');
+  }
+
+  /**
+   * Clear all assets for importing a new project (static mode)
+   * This clears asset caches and Yjs assets map without disconnecting the bridge
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  async clearAssetsForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing assets for new project...');
+
+    // Clear AssetManager caches (memory + Cache API)
+    if (this.assetManager) {
+      // Revoke only blob: URLs. Some environments may fallback to data: URLs,
+      // which must not be passed to revokeObjectURL.
+      for (const blobURL of this.assetManager.blobURLCache.values()) {
+        if (typeof blobURL === 'string' && blobURL.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(blobURL);
+          } catch (e) {
+            Logger.warn?.('[YjsProjectBridge] Failed to revoke blob URL:', e);
+          }
+        }
+      }
+      this.assetManager.blobURLCache.clear();
+      this.assetManager.reverseBlobCache.clear();
+      this.assetManager.blobCache.clear();
+
+      // Clear Cache API storage (best-effort)
+      try {
+        await this.assetManager.clearCache();
+      } catch (e) {
+        Logger.warn?.('[YjsProjectBridge] Failed to clear asset cache:', e);
+      }
+
+      Logger.log('[YjsProjectBridge] AssetManager caches cleared');
+    }
+
+    // Clear Yjs assets Y.Map (metadata storage)
+    const assetsMap = this.documentManager?.ydoc?.getMap('assets');
+    if (assetsMap && assetsMap.size > 0) {
+      this.documentManager.ydoc.transact(() => {
+        assetsMap.clear();
+      });
+      Logger.log('[YjsProjectBridge] Yjs assets map cleared');
+    }
+
+    Logger.log('[YjsProjectBridge] Assets cleared for new project');
+  }
+
+  /**
+   * Clear metadata and themeFiles for importing a new project (static mode)
+   * This prevents stale metadata from a previous project leaking into the new one
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  clearMetadataForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing metadata for new project...');
+
+    const ydoc = this.documentManager?.ydoc;
+    if (!ydoc) {
+      Logger.warn('[YjsProjectBridge] No Y.Doc available to clear metadata');
+      return;
+    }
+
+    ydoc.transact(() => {
+      // Clear metadata Y.Map so no stale values remain
+      const metadataMap = ydoc.getMap('metadata');
+      if (metadataMap && metadataMap.size > 0) {
+        metadataMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs metadata map cleared');
+      }
+
+      // Re-set timestamps (not set by the importer)
+      const now = Date.now();
+      metadataMap.set('createdAt', now);
+      metadataMap.set('modifiedAt', now);
+
+      // Clear themeFiles Y.Map to prevent custom theme data leaking
+      const themeFilesMap = ydoc.getMap('themeFiles');
+      if (themeFilesMap && themeFilesMap.size > 0) {
+        themeFilesMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs themeFiles map cleared');
+      }
+    });
+
+    Logger.log('[YjsProjectBridge] Metadata cleared for new project');
   }
 }
 

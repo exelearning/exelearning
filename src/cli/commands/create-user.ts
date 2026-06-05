@@ -3,13 +3,12 @@
  * Creates a new user with bcrypt-hashed password
  *
  * Usage:
- *   bun cli create-user --email <email> --password <pass> --username <name> [options]
- *   bun cli create-user <email> <password> <username> [options]
+ *   bun cli create-user --email <email> --password <pass> [options]
+ *   bun cli create-user <email> <password> [options]
  *
  * Options:
  *   --email      User email address (required)
  *   --password   User password (will be bcrypt hashed)
- *   --username   User identifier string (alias: --user-id)
  *   --no-fail    Do not fail if user already exists
  *   --roles      Comma-separated roles (default: ROLE_USER)
  *   --quota      Quota in MB (default: 4096)
@@ -67,14 +66,12 @@ export async function execute(
     // Flags take precedence over positional
     const email = getString(flags, 'email') || positional[0];
     const password = getString(flags, 'password') || positional[1];
-    const username = getString(flags, 'username') || getString(flags, 'user-id') || positional[2];
 
     // Validate required arguments
-    if (!email || !password || !username) {
+    if (!email || !password) {
         return {
             success: false,
-            message:
-                'Missing required arguments. Use: --email, --password, --username (or positional: email password username)',
+            message: 'Missing required arguments. Use: --email, --password',
         };
     }
 
@@ -114,7 +111,7 @@ export async function execute(
     // Create user
     const user = await queries.createUser(database, {
         email,
-        user_id: username,
+        // user_id: not set for local users (null)
         password: hashedPassword,
         roles: stringifyRoles(roles),
         is_lopd_accepted: 1,
@@ -134,13 +131,12 @@ export function printHelp(): void {
 ${colors.bold('create-user')} - Create a new user
 
 ${colors.cyan('Usage:')}
-  bun cli create-user --email <email> --password <pass> --username <name> [options]
-  bun cli create-user <email> <password> <username> [options]
+  bun cli create-user --email <email> --password <pass> [options]
+  bun cli create-user <email> <password> [options]
 
 ${colors.cyan('Required (as flags or positional):')}
   --email      User email address (must be unique)
   --password   User password (will be bcrypt hashed)
-  --username   User identifier string (alias: --user-id)
 
 ${colors.cyan('Options:')}
   --no-fail   Do not fail if user already exists
@@ -149,10 +145,10 @@ ${colors.cyan('Options:')}
   -h, --help  Show this help message
 
 ${colors.cyan('Examples:')}
-  bun cli create-user --email admin@example.com --password secret123 --username admin
-  bun cli create-user admin@example.com secret123 admin
-  bun cli create-user --email user@test.com --password pass123 --username testuser --roles=ROLE_USER,ROLE_EDITOR
-  bun cli create-user --email demo@test.com --password demo --username demo --no-fail --quota=1024
+  bun cli create-user --email admin@example.com --password secret123
+  bun cli create-user admin@example.com secret123
+  bun cli create-user --email user@test.com --password pass123 --roles=ROLE_USER,ROLE_EDITOR
+  bun cli create-user --email demo@test.com --password demo --no-fail --quota=1024
 `);
 }
 

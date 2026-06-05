@@ -12,6 +12,7 @@ export default class ThemesManager {
 
         // Yjs binding for theme sync
         this.metadataObserver = null;
+        this._boundMetadata = null; // Store reference for cleanup on project switch
         this.isApplyingRemoteTheme = false;
     }
 
@@ -19,17 +20,31 @@ export default class ThemesManager {
      * Initialize Yjs binding for real-time theme sync
      */
     initYjsBinding() {
+        // Clean up previous binding before setting up new one
+        this.cleanup();
+
         const project = this.app.project;
         if (project?._yjsBridge) {
             const documentManager = project._yjsBridge.getDocumentManager();
             if (documentManager) {
                 const metadata = documentManager.getMetadata();
 
+                // Store reference for cleanup
+                this._boundMetadata = metadata;
+
                 // Load initial theme from Yjs
+                // Always load the project's theme (this.selected is null after cleanup)
                 const initialTheme = metadata.get('theme');
-                if (initialTheme && initialTheme !== this.selected?.id) {
+                if (initialTheme) {
                     this.selectTheme(initialTheme, false, false, false);
                     getLogger().log('[ThemesManager] Loaded initial theme from Yjs:', initialTheme);
+                } else {
+                    // If project has no theme, use the default
+                    // Don't save to Yjs during initialization - this is not a user change
+                    // The theme will be saved when the user makes their first actual change
+                    const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
+                    this.selectTheme(defaultTheme, false, false, false);
+                    getLogger().log('[ThemesManager] No theme in project, using default:', defaultTheme);
                 }
 
                 // Observe metadata changes for remote theme updates
@@ -51,6 +66,24 @@ export default class ThemesManager {
                 getLogger().log('[ThemesManager] Yjs theme binding initialized');
             }
         }
+    }
+
+    /**
+     * Clean up Yjs bindings when switching projects.
+     * Must be called before initializing a new project.
+     */
+    cleanup() {
+        // Remove previous observer if exists
+        if (this._boundMetadata && this.metadataObserver) {
+            this._boundMetadata.unobserve(this.metadataObserver);
+            getLogger().log('[ThemesManager] Cleaned up previous Yjs binding');
+        }
+
+        // Reset state
+        this.metadataObserver = null;
+        this._boundMetadata = null;
+        this.selected = null;
+        this.isApplyingRemoteTheme = false;
     }
 
     /**
@@ -94,6 +127,74 @@ export default class ThemesManager {
     }
 
     /**
+     * Ensure user theme is copied to Yjs themeFiles for collaboration/export
+     * Only copies if the theme is not already in Yjs
+     * @param {string} themeId - Theme ID
+     * @param {Object} theme - Theme instance
+     * @private
+     */
+    async _ensureUserThemeInYjs(themeId, theme) {
+        const project = this.app.project;
+        if (!project?._yjsBridge) return;
+
+        const documentManager = project._yjsBridge.getDocumentManager();
+        if (!documentManager) return;
+
+        // Check if theme already exists in Yjs themeFiles
+        const themeFilesMap = documentManager.getThemeFiles();
+        if (themeFilesMap.has(themeId)) {
+            getLogger().log(`[ThemesManager] User theme '${themeId}' already in Yjs`);
+            return;
+        }
+
+        // Get theme files from ResourceCache (IndexedDB)
+        const resourceCache = project._yjsBridge.resourceCache;
+        if (!resourceCache) {
+            console.warn('[ThemesManager] ResourceCache not available for copying theme to Yjs');
+            return;
+        }
+
+        try {
+            // Get raw compressed data from IndexedDB
+            const rawTheme = await resourceCache.getUserThemeRaw(themeId);
+            if (!rawTheme) {
+                console.warn(`[ThemesManager] Theme '${themeId}' not found in IndexedDB`);
+                return;
+            }
+
+            // Convert compressed Uint8Array to base64 for Yjs storage
+            const base64Compressed = project._yjsBridge._uint8ArrayToBase64(rawTheme.compressedFiles);
+
+            // Store compressed theme in Yjs (single string, not Y.Map)
+            themeFilesMap.set(themeId, base64Compressed);
+            getLogger().log(`[ThemesManager] Copied user theme '${themeId}' to Yjs for collaboration`);
+        } catch (error) {
+            console.error(`[ThemesManager] Error copying theme '${themeId}' to Yjs:`, error);
+        }
+    }
+
+    /**
+     * Remove user theme from Yjs themeFiles (but keep in IndexedDB)
+     * Called when user selects a different theme.
+     * The theme remains in IndexedDB for the user to use in other projects.
+     * @param {string} themeId - Theme ID to remove from Yjs
+     * @private
+     */
+    async _removeUserThemeFromYjs(themeId) {
+        const project = this.app.project;
+        if (!project?._yjsBridge) return;
+
+        const documentManager = project._yjsBridge.getDocumentManager();
+        if (!documentManager) return;
+
+        const themeFilesMap = documentManager.getThemeFiles();
+        if (themeFilesMap.has(themeId)) {
+            themeFilesMap.delete(themeId);
+            getLogger().log(`[ThemesManager] Removed user theme '${themeId}' from Yjs (kept in IndexedDB)`);
+        }
+    }
+
+    /**
      * Select a theme
      * @param {string} id - Theme ID
      * @param {boolean} save - Save to Yjs
@@ -102,13 +203,56 @@ export default class ThemesManager {
      */
     async selectTheme(id, save, forceReload, isSync = false) {
         let themeSelected = this.getTheme(id);
+        // When the requested theme is missing (e.g. opening a file whose
+        // embedded style isn't installed), honor the user's "Default style
+        // for the new documents" preference before falling back to the
+        // site/admin default. Keeps precedence in sync with the
+        // resolveDefaultThemeForNewProject helper on the server.
+        if (!themeSelected) {
+            const userPref =
+                this.app?.user?.preferences?.preferences?.defaultTheme?.value;
+            if (userPref && userPref !== id) {
+                const userThemeSelected = this.getTheme(userPref);
+                if (userThemeSelected) {
+                    themeSelected = userThemeSelected;
+                    console.warn(
+                        `[ThemesManager] Theme '${id}' unavailable; `
+                        + `falling back to user default '${userPref}'.`
+                    );
+                }
+            }
+        }
         // Try to load the default theme if can't get the selected theme
         if (!themeSelected) {
             themeSelected = this.getTheme(eXeLearning.config.defaultTheme);
         }
+        // Host integrations may supply a fallback via themeRegistryOverride
+        // so projects referencing a style that the admin has disabled or
+        // never installed still open instead of silently failing.
+        if (!themeSelected) {
+            const fallbackId =
+                window.eXeLearning?.config?.themeRegistryOverride?.fallbackTheme;
+            if (fallbackId && fallbackId !== id) {
+                themeSelected = this.getTheme(fallbackId);
+                if (themeSelected) {
+                    console.warn(
+                        `[ThemesManager] Theme '${id}' unavailable; `
+                        + `falling back to '${fallbackId}'.`
+                    );
+                }
+            }
+        }
         // Select the theme and apply it
         if (themeSelected) {
             let prevThemeSelected = this.selected;
+
+            // Clean up previous theme's icon blob URLs to prevent memory leaks
+            if (prevThemeSelected && prevThemeSelected !== themeSelected) {
+                if (prevThemeSelected.revokeIconBlobUrls) {
+                    prevThemeSelected.revokeIconBlobUrls();
+                }
+            }
+
             this.selected = themeSelected;
             if (
                 !prevThemeSelected ||
@@ -122,7 +266,21 @@ export default class ThemesManager {
                     await this.selected.select(true);
                 }
             }
-            // Save to Yjs instead of userPreferences
+
+            // If previous theme was a user theme and we're selecting a different theme,
+            // remove the previous theme from Yjs (but keep in IndexedDB)
+            if (save && prevThemeSelected && prevThemeSelected.id !== id) {
+                if (prevThemeSelected.isUserTheme || prevThemeSelected.type === 'user') {
+                    await this._removeUserThemeFromYjs(prevThemeSelected.id);
+                }
+            }
+
+            // If saving and this is a user theme, ensure it's in Yjs for collaboration
+            if (save && (themeSelected.isUserTheme || themeSelected.type === 'user')) {
+                await this._ensureUserThemeInYjs(themeSelected.id, themeSelected);
+            }
+
+            // Save to Yjs metadata
             if (save) {
                 this.saveThemeToYjs(id);
             }
@@ -133,12 +291,10 @@ export default class ThemesManager {
      *
      */
     getThemeIcons() {
-        if (this.selected.icons) {
+        if (this.selected?.icons) {
             return this.selected.icons;
-        } else {
-            //return this.iconsDefault;
-            return {};
         }
+        return {};
     }
 
     /**

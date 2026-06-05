@@ -83,6 +83,14 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
@@ -114,6 +122,10 @@ class MockZipProvider implements ZipProvider {
 
     hasFile(path: string): boolean {
         return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -517,12 +529,12 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<ode');
         });
 
-        it('should include theme files in ZIP', async () => {
+        it('should include theme files in ZIP with original names', async () => {
             const result = await exporter.export();
             const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            // ELPX now uses HTML5 export structure: theme/content.css instead of style/base/content.css
-            expect(loadedZip['theme/content.css']).toBeDefined();
+            // Theme file names are preserved as-is (style.css, not renamed to content.css)
+            expect(loadedZip['theme/style.css']).toBeDefined();
         });
 
         it('should include library files in ZIP', async () => {
@@ -731,7 +743,6 @@ describe('ElpxExporter', () => {
                                 teacherOnly: true,
                                 allowToggle: true,
                                 minimized: false,
-                                identifier: 'custom-id',
                                 cssClass: 'custom-class',
                             },
                             components: [],
@@ -750,8 +761,6 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<key>teacherOnly</key>');
             expect(contentXml).toContain('<key>allowToggle</key>');
             expect(contentXml).toContain('<key>minimized</key>');
-            expect(contentXml).toContain('<key>identifier</key>');
-            expect(contentXml).toContain('<value>custom-id</value>');
             expect(contentXml).toContain('<key>cssClass</key>');
             expect(contentXml).toContain('<value>custom-class</value>');
         });
@@ -779,7 +788,6 @@ describe('ElpxExporter', () => {
                                     structureProperties: {
                                         visibility: true,
                                         teacherOnly: false,
-                                        identifier: 'comp-custom-id',
                                         cssClass: 'comp-custom-class',
                                     },
                                 },
@@ -798,8 +806,6 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<odeComponentsProperties>');
             expect(contentXml).toContain('<key>visibility</key>');
             expect(contentXml).toContain('<key>teacherOnly</key>');
-            expect(contentXml).toContain('<key>identifier</key>');
-            expect(contentXml).toContain('<value>comp-custom-id</value>');
             expect(contentXml).toContain('<key>cssClass</key>');
             expect(contentXml).toContain('<value>comp-custom-class</value>');
         });
@@ -903,16 +909,299 @@ describe('ElpxExporter', () => {
         });
     });
 
-    describe('Theme File Renaming', () => {
-        it('should rename style.css to content.css and style.js to default.js', async () => {
+    describe('Theme File Name Preservation', () => {
+        it('should preserve original theme file names (style.css, style.js)', async () => {
             await exporter.export();
 
-            // Original names should be renamed
-            expect(zip.files.has('theme/content.css')).toBe(true);
-            expect(zip.files.has('theme/default.js')).toBe(true);
-            // Original names should NOT exist
-            expect(zip.files.has('theme/style.css')).toBe(false);
-            expect(zip.files.has('theme/style.js')).toBe(false);
+            // Original names should be preserved
+            expect(zip.files.has('theme/style.css')).toBe(true);
+            expect(zip.files.has('theme/style.js')).toBe(true);
+            // Old renamed names should NOT exist
+            expect(zip.files.has('theme/content.css')).toBe(false);
+            expect(zip.files.has('theme/default.js')).toBe(false);
+        });
+    });
+
+    describe('Download Source File (ELPX Manifest)', () => {
+        // Pages with download-source-file iDevice on the second page
+        const pagesWithDownloadSourceFile: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Introduction',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Content Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'comp-1',
+                                type: 'FreeTextIdevice',
+                                order: 0,
+                                content: '<p>Welcome to the course.</p>',
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: 'page-2',
+                title: 'Download Page',
+                parentId: null,
+                order: 1,
+                blocks: [
+                    {
+                        id: 'block-2',
+                        name: 'Download Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'comp-2',
+                                type: 'download-source-file',
+                                order: 0,
+                                content:
+                                    '<a class="exe-download-package-link" href="exe-package:elp">Download source file</a>',
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        it('should generate elpx-manifest.js when download-source-file iDevice is present', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = zip.files.get('libs/elpx-manifest.js') as string;
+            expect(manifest).toContain('__ELPX_MANIFEST__');
+        });
+
+        it('should not generate elpx-manifest.js when no download-source-file iDevice', async () => {
+            // Default samplePages have no download-source-file
+            await exporter.export();
+
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(false);
+        });
+
+        it('should inject manifest script tag into pages that have download-source-file', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Page 2 has download-source-file — should get the script tag
+            const page2Html = zip.files.get('html/download-page.html') as string;
+            expect(page2Html).toContain('elpx-manifest.js');
+            expect(page2Html).toContain('<script src="../libs/elpx-manifest.js">');
+        });
+
+        it('should not inject manifest script tag into pages without download-source-file', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Page 1 (index.html) does NOT have download-source-file — no script tag
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('elpx-manifest.js');
+        });
+
+        it('should track all files in manifest when download-source-file is present', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('libs/elpx-manifest.js') as string;
+            // Manifest should reference key files like CSS, libs, theme, and HTML pages
+            expect(manifest).toContain('content/css/base.css');
+            expect(manifest).toContain('theme/style.css');
+            expect(manifest).toContain('index.html');
+        });
+
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should use correct base path for manifest script on index page', async () => {
+            // Put download-source-file on the first page (index.html)
+            const pagesWithDownloadOnIndex: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Download Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<a class="exe-download-package-link" href="exe-package:elp">Download</a>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownloadOnIndex);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // index.html is at root level — base path should be empty (no ../)
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<script src="libs/elpx-manifest.js">');
+            expect(indexHtml).not.toContain('../libs/elpx-manifest.js');
+        });
+    });
+
+    // =========================================================================
+    // Screenshot / Thumbnail Tests
+    // =========================================================================
+    describe('screenshot support', () => {
+        // Minimal valid 1x1 red PNG (base64)
+        const MINIMAL_PNG_BASE64 =
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+        const MINIMAL_PNG_DATA_URL = `data:image/png;base64,${MINIMAL_PNG_BASE64}`;
+
+        it('should include screenshot.png in archive when metadata has screenshot', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            const screenshotData = zip.files.get('screenshot.png');
+            expect(screenshotData).toBeDefined();
+            // Verify PNG signature
+            const bytes = new Uint8Array(screenshotData as Buffer);
+            expect(bytes[0]).toBe(0x89);
+            expect(bytes[1]).toBe(0x50); // P
+            expect(bytes[2]).toBe(0x4e); // N
+            expect(bytes[3]).toBe(0x47); // G
+        });
+
+        it('should include screenshot.png when metadata has raw base64 (no data URL prefix)', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_BASE64 }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+        });
+
+        it('should NOT include screenshot.png when metadata has no screenshot', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should NOT include screenshot.png when screenshot data is invalid (not PNG)', async () => {
+            const invalidBase64 = btoa('not a png file');
+            document = new MockDocument({ screenshot: `data:image/png;base64,${invalidBase64}` }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should still export successfully even if screenshot is malformed', async () => {
+            document = new MockDocument({ screenshot: 'totally-invalid-data' }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should place screenshot.png at archive root (not in subdirectory)', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Verify it's at root, not in content/ or any subdirectory
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            expect(zip.files.has('content/screenshot.png')).toBe(false);
+            expect(zip.files.has('content/resources/screenshot.png')).toBe(false);
+        });
+
+        it('should auto-generate screenshot via generateScreenshot hook when no custom screenshot', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            // Mock generateScreenshot hook that returns a valid PNG data URL
+            const generateScreenshot = async (_html: string) => MINIMAL_PNG_DATA_URL;
+
+            await exporter.export({ generateScreenshot });
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+        });
+
+        it('should prefer custom screenshot over generateScreenshot hook', async () => {
+            // Different minimal PNG for custom (just use same base64 — testing priority logic)
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            let hookCalled = false;
+            const generateScreenshot = async (_html: string) => {
+                hookCalled = true;
+                return MINIMAL_PNG_DATA_URL;
+            };
+
+            await exporter.export({ generateScreenshot });
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            expect(hookCalled).toBe(false); // Hook should NOT be called when custom exists
+        });
+
+        it('should handle generateScreenshot hook failure gracefully', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            const generateScreenshot = async () => {
+                throw new Error('html2canvas failed');
+            };
+
+            const result = await exporter.export({ generateScreenshot });
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('screenshot.png')).toBe(false);
         });
     });
 });

@@ -774,10 +774,17 @@ describe('Convert Routes', () => {
 
     describe('Internal Error Handling', () => {
         it('should handle internal error when temp directory creation fails', async () => {
-            // Create a mock that will cause writeUploadedFile to fail
+            // Create a mock fs that throws error
+            const mockFs = {
+                ...fs,
+                ensureDir: async () => {
+                    throw new Error('Filesystem error');
+                },
+            };
+
             const brokenDeps = {
                 ...mockDeps,
-                tempDir: '/nonexistent/path/that/cannot/exist/convert-test-' + Date.now(),
+                fs: mockFs as any,
             };
 
             const brokenApp = new Elysia().use(createConvertRoutes(brokenDeps));

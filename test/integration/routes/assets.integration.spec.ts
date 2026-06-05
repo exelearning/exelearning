@@ -75,9 +75,10 @@ describe('Assets Routes Integration', () => {
                 const projectId = parseInt(params.id, 10);
                 const assets = testAssets.get(projectId) || new Map();
 
+                // Match real server format: { success: true, data: [...] }
                 return {
-                    assets: Array.from(assets.values()),
-                    total: assets.size,
+                    success: true,
+                    data: Array.from(assets.values()),
                 };
             })
             // POST /api/projects/:id/assets - Upload asset (mock)
@@ -147,8 +148,9 @@ describe('Assets Routes Integration', () => {
             });
 
             expect(response.status).toBe(200);
-            const body = await parseJsonResponse<{ assets: unknown[]; total: number }>(response);
-            expect(body.total).toBe(0);
+            const body = await parseJsonResponse<{ success: boolean; data: unknown[] }>(response);
+            expect(body.success).toBe(true);
+            expect(body.data).toHaveLength(0);
         });
     });
 

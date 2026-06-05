@@ -80,6 +80,18 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
+
+    setLibraryFiles(files: Map<string, Buffer>): void {
+        this.libraryFiles = files;
+    }
 }
 
 // Mock asset provider
@@ -88,16 +100,20 @@ class MockAssetProvider implements AssetProvider {
         id: string;
         filename: string;
         path: string;
+        folderPath: string;
         mimeType: string;
+        mime: string;
         data: Buffer;
     }> = [];
 
-    addAsset(id: string, filename: string, mimeType: string, data: Buffer): void {
+    addAsset(id: string, filename: string, mimeType: string, data: Buffer, folderPath = ''): void {
         this.assets.push({
             id,
             filename,
             path: `${id}/${filename}`,
+            folderPath,
             mimeType,
+            mime: mimeType,
             data,
         });
     }
@@ -112,11 +128,39 @@ class MockAssetProvider implements AssetProvider {
             id: string;
             filename: string;
             path: string;
+            folderPath: string;
             mimeType: string;
+            mime: string;
             data: Buffer;
         }>
     > {
         return this.assets;
+    }
+}
+
+// Mock asset provider with forEachAsset support (for memory-efficient export tests)
+class MockAssetProviderWithForEach extends MockAssetProvider {
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
+        const assets = await this.getAllAssets();
+        for (const asset of assets) {
+            await callback({
+                id: asset.id,
+                filename: asset.filename,
+                originalPath: asset.path,
+                folderPath: asset.folderPath,
+                mime: asset.mime,
+                data: asset.data,
+            });
+        }
     }
 }
 
@@ -126,6 +170,14 @@ class MockZipProvider implements ZipProvider {
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -151,6 +203,29 @@ class TestExporter extends BaseExporter {
     // Expose protected methods for testing
     testGenerateElpxManifestFile(fileList: string[]): string {
         return this.generateElpxManifestFile(fileList);
+    }
+
+    testBuildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
+        return this.buildPageFilenameMap(pages);
+    }
+
+    testPreprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        return this.preprocessPagesForExport(pages);
+    }
+
+    testEnsureElpxDownloadLibraries(
+        addFile: (path: string, content: Uint8Array | string) => void,
+        commonFiles?: string[],
+    ): Promise<void> {
+        return this.ensureElpxDownloadLibraries(addFile, commonFiles);
+    }
+
+    testAddElpxManifestToZip(fileList: string[], pageFileUrls: string[], commonFiles?: string[]): void {
+        this.addElpxManifestToZip(fileList, pageFileUrls, commonFiles);
+    }
+
+    testInjectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
+        return this.injectElpxScripts(html, page, isIndex);
     }
 }
 
@@ -505,16 +580,34 @@ describe('BaseExporter', () => {
 
             const xml = exporter.generateContentXml();
 
+            // Check XML declaration and DOCTYPE
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
             expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
+
+            // Check ODE structure sections
+            expect(xml).toContain('<userPreferences>');
+            expect(xml).toContain('<odeResources>');
             expect(xml).toContain('<odeProperties>');
-            expect(xml).toContain('<pp_title>Test Project</pp_title>');
-            expect(xml).toContain('<odeNavStructure');
-            expect(xml).toContain('odeNavStructureId="p1"');
-            expect(xml).toContain('<odePagStructure');
-            expect(xml).toContain('<odeComponent');
-            expect(xml).toContain('FreeTextIdevice');
-            expect(xml).toContain('<![CDATA[<p>Test content</p>]]>');
+            expect(xml).toContain('<key>pp_title</key>');
+            expect(xml).toContain('<value>Test Project</value>');
+
+            // Check navigation structure (pages)
+            expect(xml).toContain('<odeNavStructures>');
+            expect(xml).toContain('<odeNavStructure>');
+            expect(xml).toContain('<odePageId>p1</odePageId>');
+            expect(xml).toContain('<pageName>Page 1</pageName>');
+
+            // Check block structure
+            expect(xml).toContain('<odePagStructures>');
+            expect(xml).toContain('<odePagStructure>');
+            expect(xml).toContain('<odeBlockId>b1</odeBlockId>');
+
+            // Check component structure
+            expect(xml).toContain('<odeComponents>');
+            expect(xml).toContain('<odeComponent>');
+            expect(xml).toContain('<odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>');
+            expect(xml).toContain('<htmlView><![CDATA[<p>Test content</p>]]></htmlView>');
         });
 
         it('should escape special characters in XML', () => {
@@ -615,23 +708,39 @@ describe('BaseExporter', () => {
             expect(count).toBe(0);
         });
 
-        it('should add filenames to asset URLs', async () => {
+        it('should convert asset://uuid.ext to {{context_path}} format when resolved', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/image.jpg">');
+        });
+
+        it('should convert asset://uuid without extension when resolved', async () => {
             assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
 
             const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
+            expect(result).toBe('<img src="{{context_path}}/content/resources/image.jpg">');
         });
 
-        it('should replace existing paths with correct export path based on folderPath', async () => {
-            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
-
-            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/existing.png">';
+        it('should convert unresolved asset://uuid.ext preserving UUID as filename', async () => {
+            // Asset not in map
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012.png">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            // Should replace with correct export path (folderPath/filename or just filename if no folderPath)
-            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
+            expect(result).toBe(
+                '<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.png">',
+            );
+        });
+
+        it('should convert unresolved asset://uuid without extension', async () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012">');
         });
 
         it('should return empty string for empty content', async () => {
@@ -639,20 +748,388 @@ describe('BaseExporter', () => {
             expect(result).toBe('');
         });
 
-        it('should return content unchanged when no assets', async () => {
+        it('should return content unchanged when no asset:// URLs', async () => {
             const content = '<p>No assets here</p>';
             const result = await exporter.addFilenamesToAssetUrls(content);
             expect(result).toBe(content);
         });
 
-        it('should not modify unknown asset UUIDs', async () => {
-            assets.addAsset('known-uuid', 'file.txt', 'text/plain', Buffer.from(''));
+        it('should handle multiple asset URLs in same content', async () => {
+            assets.addAsset('11111111-1111-1111-1111-111111111111', 'img1.jpg', 'image/jpeg', Buffer.from(''));
+            assets.addAsset('22222222-2222-2222-2222-222222222222', 'img2.png', 'image/png', Buffer.from(''));
 
-            const content = '<img src="asset://unknown-uuid-here">';
+            const content =
+                '<img src="asset://11111111-1111-1111-1111-111111111111.jpg"><img src="asset://22222222-2222-2222-2222-222222222222.png">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            // Should not modify unknown UUID
-            expect(result).toBe(content);
+            expect(result).not.toContain('asset://');
+            expect(result).toContain('{{context_path}}/content/resources/img1.jpg');
+            expect(result).toContain('{{context_path}}/content/resources/img2.png');
+        });
+
+        it('should use folderPath in export path when available', async () => {
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+        });
+
+        describe('unknown filename handling', () => {
+            it('should replace "unknown" filename with MIME-derived name', async () => {
+                assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'unknown', 'image/jpeg', Buffer.from(''));
+
+                const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should use MIME-derived name instead of "unknown"
+                expect(result).toContain('asset-a1b2c3d4.jpg');
+                expect(result).not.toContain('unknown');
+            });
+
+            it('should replace "unknown" filename with "bin" extension for unknown MIME', async () => {
+                assets.addAsset(
+                    'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    'unknown',
+                    'application/octet-stream',
+                    Buffer.from(''),
+                );
+
+                const content = '<img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('asset-b2c3d4e5.bin');
+                expect(result).not.toContain('unknown');
+            });
+
+            it('should use pdf extension for application/pdf with unknown filename', async () => {
+                assets.addAsset('c3d4e5f6-a7b8-9012-cdef-123456789012', 'unknown', 'application/pdf', Buffer.from(''));
+
+                const content = '<a href="asset://c3d4e5f6-a7b8-9012-cdef-123456789012">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('asset-c3d4e5f6.pdf');
+                expect(result).not.toContain('unknown');
+            });
+        });
+
+        describe('asset path duplication fix', () => {
+            it('should fix folderPath that equals filename (file.pdf → root)', async () => {
+                // This simulates corrupted ELPX where folderPath was set to the filename
+                // e.g., content/resources/contrato.pdf/contrato.pdf → content/resources/contrato.pdf
+                assets.addAsset(
+                    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                    'contrato.pdf',
+                    'application/pdf',
+                    Buffer.from(''),
+                    'contrato.pdf', // folderPath incorrectly set to filename
+                );
+
+                const content = '<a href="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/contrato.pdf/contrato.pdf
+                expect(result).not.toContain('contrato.pdf/contrato.pdf');
+                // Should produce content/resources/contrato.pdf
+                expect(result).toBe('<a href="{{context_path}}/content/resources/contrato.pdf">Download</a>');
+            });
+
+            it('should fix folderPath that ends with /filename', async () => {
+                // This simulates a path like images/photo.jpg/photo.jpg
+                assets.addAsset(
+                    'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images/photo.jpg', // folderPath incorrectly includes the filename
+                );
+
+                const content = '<img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/images/photo.jpg/photo.jpg
+                expect(result).not.toContain('photo.jpg/photo.jpg');
+                // Should produce content/resources/images/photo.jpg
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should fix existing duplicated paths in content', async () => {
+                // Content already has duplicated paths (from corrupted ELPX content.xml)
+                const content =
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf/contrato-de-trabajo.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should fix the duplicated path
+                expect(result).not.toContain('contrato-de-trabajo.pdf/contrato-de-trabajo.pdf');
+                expect(result).toBe(
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf">Download</a>',
+                );
+            });
+
+            it('should fix multiple duplicated paths in same content', async () => {
+                const content = `
+                    <a href="{{context_path}}/content/resources/file1.pdf/file1.pdf">Download 1</a>
+                    <img src="{{context_path}}/content/resources/image.jpg/image.jpg">
+                    <a href="{{context_path}}/content/resources/doc.docx/doc.docx">Download 2</a>
+                `;
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).not.toContain('file1.pdf/file1.pdf');
+                expect(result).not.toContain('image.jpg/image.jpg');
+                expect(result).not.toContain('doc.docx/doc.docx');
+                expect(result).toContain('content/resources/file1.pdf"');
+                expect(result).toContain('content/resources/image.jpg"');
+                expect(result).toContain('content/resources/doc.docx"');
+            });
+
+            it('should not affect valid nested paths', async () => {
+                // Valid path: content/resources/images/photo.jpg (images ≠ photo.jpg)
+                assets.addAsset(
+                    'c3d4e5f6-a7b8-9012-cdef-123456789012',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images', // Valid folderPath
+                );
+
+                const content = '<img src="asset://c3d4e5f6-a7b8-9012-cdef-123456789012.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should handle root-level assets correctly (empty folderPath)', async () => {
+                assets.addAsset(
+                    'd4e5f6a7-b8c9-0123-def0-123456789012',
+                    'readme.txt',
+                    'text/plain',
+                    Buffer.from(''),
+                    '', // Empty folderPath - asset at root of content/resources
+                );
+
+                const content = '<a href="asset://d4e5f6a7-b8c9-0123-def0-123456789012.txt">Read</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<a href="{{context_path}}/content/resources/readme.txt">Read</a>');
+            });
+        });
+    });
+
+    describe('addAssetsToZipWithResourcePath', () => {
+        it('should use forEachAsset when available for memory-efficient export', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-a', 'img.png', 'image/png', Buffer.from('png-data'));
+            forEachAssets.addAsset('uuid-b', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            const count = await forEachExporter.addAssetsToZipWithResourcePath();
+
+            expect(count).toBe(2);
+            expect(forEachZip.files.has('content/resources/img.png')).toBe(true);
+            expect(forEachZip.files.has('content/resources/doc.pdf')).toBe(true);
+        });
+
+        it('should fall back to getAllAssets when forEachAsset is not available', async () => {
+            assets.addAsset('uuid-c', 'style.css', 'text/css', Buffer.from('css'));
+
+            const count = await exporter.addAssetsToZipWithResourcePath();
+
+            expect(count).toBe(1);
+            expect(zip.files.has('content/resources/style.css')).toBe(true);
+        });
+
+        it('should populate tracking list when provided', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-d', 'track.txt', 'text/plain', Buffer.from('txt'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            const trackingList: string[] = [];
+            const count = await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            expect(count).toBe(1);
+            expect(trackingList).toContain('content/resources/track.txt');
+        });
+
+        it('should warn and skip assets with no export path in forEachAsset path', async () => {
+            // Create a forEachAsset provider with an asset that won't have an export path
+            const customForEachAssets = new MockAssetProviderWithForEach();
+            customForEachAssets.addAsset('uuid-known', 'known.png', 'image/png', Buffer.from('png'));
+
+            // Override forEachAsset to also yield an unknown asset not in the export path map
+            const origForEach = customForEachAssets.forEachAsset.bind(customForEachAssets);
+            customForEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
+                await origForEach(callback);
+                // Yield an extra asset that has no metadata (won't be in export path map)
+                await callback({
+                    id: 'uuid-orphan',
+                    filename: 'orphan.txt',
+                    originalPath: 'orphan.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan'),
+                });
+            };
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(
+                forEachDoc,
+                new MockResourceProvider(),
+                customForEachAssets,
+                forEachZip,
+            );
+
+            const count = await forEachExporter.addAssetsToZipWithResourcePath();
+
+            // Only the known asset should be added (orphan has no export path)
+            expect(count).toBe(1);
+            expect(forEachZip.files.has('content/resources/known.png')).toBe(true);
+        });
+
+        it('should warn and skip assets with no export path in getAllAssets fallback', async () => {
+            // Create a regular asset provider (no forEachAsset)
+            const regularAssets = new MockAssetProvider();
+            regularAssets.addAsset('uuid-ok', 'ok.png', 'image/png', Buffer.from('ok'));
+
+            const regularZip = new MockZipProvider();
+            const regularDoc = new MockDocument({}, []);
+            const regularExporter = new TestExporter(regularDoc, new MockResourceProvider(), regularAssets, regularZip);
+
+            // First call builds the export path map from getAllAssets (which has uuid-ok)
+            // Then override getAllAssets to also return an orphan that isn't in the map
+            await regularExporter.buildAssetExportPathMap(); // Cache the map with only uuid-ok
+            const origGetAll = regularAssets.getAllAssets.bind(regularAssets);
+            regularAssets.getAllAssets = async () => {
+                const result = await origGetAll();
+                result.push({
+                    id: 'uuid-orphan2',
+                    filename: 'orphan2.txt',
+                    path: 'orphan2.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan2'),
+                });
+                return result;
+            };
+
+            const count = await regularExporter.addAssetsToZipWithResourcePath();
+
+            // Only the known asset should be added (orphan has no export path in cached map)
+            expect(count).toBe(1);
+            expect(regularZip.files.has('content/resources/ok.png')).toBe(true);
+        });
+
+        it('should populate tracking list in getAllAssets fallback path', async () => {
+            const regularAssets = new MockAssetProvider();
+            regularAssets.addAsset('uuid-track', 'track.css', 'text/css', Buffer.from('css'));
+
+            const regularZip = new MockZipProvider();
+            const regularDoc = new MockDocument({}, []);
+            const regularExporter = new TestExporter(regularDoc, new MockResourceProvider(), regularAssets, regularZip);
+
+            const trackingList: string[] = [];
+            const count = await regularExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            expect(count).toBe(1);
+            expect(trackingList).toContain('content/resources/track.css');
+        });
+
+        // Regression coverage for exelearning/exelearning#1769 (hotfix/duplicate-assets):
+        // saving and exporting must NOT write each asset twice (once under the friendly
+        // filename and again under the literal `<assetId><ext>` UUID path). The earlier
+        // "defensive" fallback (PR #1740) did exactly that, leaving every saved .elpx and
+        // every .html5/.scorm/.ims/.epub3 export with duplicated `content/resources/`
+        // entries. The fix in this PR keeps a single, friendly entry per asset.
+        it('should not duplicate each asset under the <id><ext> UUID path', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset(
+                '12345678-1234-1234-1234-123456789012',
+                'pie_pagina_FEDER_2027.png',
+                'image/png',
+                Buffer.from('png-data'),
+            );
+            forEachAssets.addAsset(
+                '49d44e76-3d6a-4b21-b911-41746ab60814',
+                'photo_2024-09-05_12-31-44.jpg',
+                'image/jpeg',
+                Buffer.from('jpg-data'),
+            );
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            const trackingList: string[] = [];
+            const count = await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            // Each asset must be written exactly once, under its friendly path.
+            expect(count).toBe(2);
+            expect(forEachZip.files.size).toBe(2);
+            expect(forEachZip.files.has('content/resources/pie_pagina_FEDER_2027.png')).toBe(true);
+            expect(forEachZip.files.has('content/resources/photo_2024-09-05_12-31-44.jpg')).toBe(true);
+
+            // The UUID-named duplicates that PR #1740 used to write must NOT be present.
+            expect(forEachZip.files.has('content/resources/12345678-1234-1234-1234-123456789012.png')).toBe(false);
+            expect(forEachZip.files.has('content/resources/49d44e76-3d6a-4b21-b911-41746ab60814.jpg')).toBe(false);
+
+            // Tracking list (used by the ELPX manifest) must list each entry exactly once.
+            expect(trackingList).toEqual([
+                'content/resources/pie_pagina_FEDER_2027.png',
+                'content/resources/photo_2024-09-05_12-31-44.jpg',
+            ]);
+        });
+
+        it('should write a single entry when an asset filename equals its UUID', async () => {
+            // Edge case: the asset metadata already yields a UUID-shaped filename. Before
+            // the fix this branch happened to write a single entry only because the
+            // resolved path matched the fallback path; the test still pins the invariant.
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset(
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
+                'image/png',
+                Buffer.from('png'),
+            );
+
+            const trackingList: string[] = [];
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            const hits = trackingList.filter(p => p === 'content/resources/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png');
+            expect(hits.length).toBe(1);
+            expect(forEachZip.files.size).toBe(1);
+        });
+
+        it('should not write a UUID-named copy when the filename is missing', async () => {
+            // Even when only the MIME type is available to derive the export filename,
+            // the export must still produce a single `content/resources/<derived>` entry
+            // and never the UUID-suffixed duplicate.
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('99999999-1111-2222-3333-444444444444', '', 'image/jpeg', Buffer.from('jpg'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            await forEachExporter.addAssetsToZipWithResourcePath();
+
+            const uuidPath = 'content/resources/99999999-1111-2222-3333-444444444444.jpg';
+            expect(forEachZip.files.has(uuidPath)).toBe(false);
+            expect(forEachZip.files.size).toBe(1);
         });
     });
 
@@ -674,7 +1151,9 @@ describe('BaseExporter', () => {
             const content = '<a download="exe-package:elp-name" href="exe-package:elp">Download</a>';
             const result = exporter.replaceElpxProtocol(content, 'My Project');
 
-            expect(result).toContain('onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"');
+            expect(result).toContain('var p=window.parent');
+            expect(result).toContain("p.postMessage({type:'exe-download-elpx'},'*')");
+            expect(result).toContain("if(typeof downloadElpx==='function')downloadElpx()");
             expect(result).not.toContain('href="exe-package:elp"');
         });
 
@@ -760,13 +1239,7 @@ describe('BaseExporter', () => {
             });
 
             it('should include all files in manifest', () => {
-                const fileList = [
-                    'index.html',
-                    'html/page2.html',
-                    'content.xml',
-                    'theme/content.css',
-                    'libs/jquery.js',
-                ];
+                const fileList = ['index.html', 'html/page2.html', 'content.xml', 'theme/style.css', 'libs/jquery.js'];
                 const result = exporter.testGenerateElpxManifestFile(fileList);
 
                 for (const file of fileList) {
@@ -800,6 +1273,134 @@ describe('BaseExporter', () => {
                 expect(result).toContain('\n');
                 // Should have 2-space indentation
                 expect(result).toMatch(/"files": \[/);
+            });
+        });
+
+        describe('ensureElpxDownloadLibraries', () => {
+            it('should fetch missing ELPX libraries and call addFile', async () => {
+                const addedFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {
+                    addedFiles.push(path);
+                };
+                resources.setLibraryFiles(
+                    new Map([
+                        ['fflate/fflate.umd.js', Buffer.from('fflate')],
+                        ['exe_elpx_download/exe_elpx_download.js', Buffer.from('elpx')],
+                    ]),
+                );
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile);
+                expect(addedFiles).toContain('libs/fflate/fflate.umd.js');
+                expect(addedFiles).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+            });
+
+            it('should update commonFiles when provided', async () => {
+                const commonFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {};
+                resources.setLibraryFiles(
+                    new Map([
+                        ['fflate/fflate.umd.js', Buffer.from('fflate')],
+                        ['exe_elpx_download/exe_elpx_download.js', Buffer.from('elpx')],
+                    ]),
+                );
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile, commonFiles);
+                expect(commonFiles).toContain('libs/fflate/fflate.umd.js');
+                expect(commonFiles).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+            });
+
+            it('should skip libraries already in the ZIP', async () => {
+                zip.addFile('libs/fflate/fflate.umd.js', Buffer.from('already'));
+                zip.addFile('libs/exe_elpx_download/exe_elpx_download.js', Buffer.from('already'));
+                const addedFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {
+                    addedFiles.push(path);
+                };
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile);
+                expect(addedFiles).toEqual([]);
+            });
+        });
+
+        describe('addElpxManifestToZip', () => {
+            it('should generate manifest and add to ZIP', () => {
+                const fileList = ['content/css/base.css', 'theme/style.css'];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html', 'html/page.html']);
+
+                expect(zip.hasFile('libs/elpx-manifest.js')).toBe(true);
+                expect(fileList).toContain('index.html');
+                expect(fileList).toContain('html/page.html');
+                expect(fileList).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should update commonFiles when provided', () => {
+                const fileList = ['content/css/base.css'];
+                const commonFiles: string[] = [];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html'], commonFiles);
+                expect(commonFiles).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should not duplicate page URLs already in fileList', () => {
+                const fileList = ['index.html', 'content/css/base.css'];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html']);
+                const count = fileList.filter(f => f === 'index.html').length;
+                expect(count).toBe(1);
+            });
+        });
+
+        describe('injectElpxScripts', () => {
+            const pageWithDownload: ExportPage = {
+                id: 'p1',
+                title: 'Page',
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'c1',
+                                type: 'download-source-file',
+                                order: 0,
+                                content: '<a href="exe-package:elp">Download</a>',
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const pageWithoutDownload: ExportPage = {
+                id: 'p2',
+                title: 'Normal',
+                blocks: [
+                    {
+                        id: 'b2',
+                        name: 'Block',
+                        order: 0,
+                        components: [{ id: 'c2', type: 'text', order: 0, content: '<p>Hello</p>' }],
+                    },
+                ],
+            };
+
+            it('should inject scripts for pages with download-source-file', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithDownload, true);
+                expect(result).toContain('libs/fflate/fflate.umd.js');
+                expect(result).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+                expect(result).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should use relative paths for non-index pages', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithDownload, false);
+                expect(result).toContain('../libs/fflate/fflate.umd.js');
+                expect(result).toContain('../libs/elpx-manifest.js');
+            });
+
+            it('should return HTML unchanged for pages without download-source-file', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithoutDownload, true);
+                expect(result).toBe(html);
             });
         });
     });
@@ -922,6 +1523,483 @@ describe('BaseExporter', () => {
 
                 expect(result).toBe('<a href="html/about.html">About</a>');
             });
+
+            it('should preserve anchor fragment from index page', () => {
+                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
+
+                const content = '<a href="exe-node:page-2#section1">About Section 1</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+                expect(result).toBe('<a href="html/about.html#section1">About Section 1</a>');
+            });
+
+            it('should preserve anchor fragment from subpage', () => {
+                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
+
+                const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
+
+                expect(result).toBe('<a href="../index.html#intro">Go to Intro</a>');
+            });
+
+            it('should leave anchor fragment link unchanged when page not found', () => {
+                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
+
+                const content = '<a href="exe-node:unknown-page#section">Unknown</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+                expect(result).toBe('<a href="exe-node:unknown-page#section">Unknown</a>');
+            });
+        });
+    });
+
+    describe('buildPageFilenameMap', () => {
+        it('should map first page to index.html', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+        });
+
+        it('should generate unique filenames for pages with same title', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Nueva página', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Nueva página', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Nueva página', parentId: null, order: 3, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('nueva-pagina.html');
+            expect(map.get('page-3')).toBe('nueva-pagina-2.html');
+            expect(map.get('page-4')).toBe('nueva-pagina-3.html');
+        });
+
+        it('should append numbers in order (-2, -3, -4...)', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-0', title: 'Index', parentId: null, order: 0, blocks: [] },
+                { id: 'page-1', title: 'Test', parentId: null, order: 1, blocks: [] },
+                { id: 'page-2', title: 'Test', parentId: null, order: 2, blocks: [] },
+                { id: 'page-3', title: 'Test', parentId: null, order: 3, blocks: [] },
+                { id: 'page-4', title: 'Test', parentId: null, order: 4, blocks: [] },
+                { id: 'page-5', title: 'Test', parentId: null, order: 5, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('test.html');
+            expect(map.get('page-2')).toBe('test-2.html');
+            expect(map.get('page-3')).toBe('test-3.html');
+            expect(map.get('page-4')).toBe('test-4.html');
+            expect(map.get('page-5')).toBe('test-5.html');
+        });
+
+        it('should handle mixed titles (some duplicates, some unique)', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Chapter 1', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Activity', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Chapter 2', parentId: null, order: 3, blocks: [] },
+                { id: 'page-5', title: 'Activity', parentId: null, order: 4, blocks: [] },
+                { id: 'page-6', title: 'Activity', parentId: null, order: 5, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('chapter-1.html');
+            expect(map.get('page-3')).toBe('activity.html');
+            expect(map.get('page-4')).toBe('chapter-2.html');
+            expect(map.get('page-5')).toBe('activity-2.html');
+            expect(map.get('page-6')).toBe('activity-3.html');
+        });
+
+        it('should use "page" for empty titles', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: '', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: '', parentId: null, order: 2, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('page.html');
+            expect(map.get('page-3')).toBe('page-2.html');
+        });
+
+        it('should normalize special characters in titles', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Capítulo 1: Introducción', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Capítulo 1: Introducción', parentId: null, order: 2, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-2')).toBe('capitulo-1-introduccion.html');
+            expect(map.get('page-3')).toBe('capitulo-1-introduccion-2.html');
+        });
+
+        it('should handle case where first page has duplicate title', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Nueva página', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Nueva página', parentId: null, order: 1, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            // First page is always index.html regardless of title
+            expect(map.get('page-1')).toBe('index.html');
+            // Second page gets the normal filename
+            expect(map.get('page-2')).toBe('nueva-pagina.html');
+        });
+
+        it('should work correctly with buildPageUrlMap integration', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Test', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Test', parentId: null, order: 2, blocks: [] },
+            ];
+
+            // buildPageUrlMap internally uses buildPageFilenameMap
+            const urlMap = (exporter as any).buildPageUrlMap(pages);
+
+            expect(urlMap.get('page-1')).toEqual({
+                url: 'index.html',
+                urlFromSubpage: '../index.html',
+            });
+            expect(urlMap.get('page-2')).toEqual({
+                url: 'html/test.html',
+                urlFromSubpage: 'test.html',
+            });
+            expect(urlMap.get('page-3')).toEqual({
+                url: 'html/test-2.html',
+                urlFromSubpage: 'test-2.html',
+            });
+        });
+
+        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
+            // Create 23 pages: 1 index + 22 pages all titled "Test"
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+
+            for (let i = 1; i <= 22; i++) {
+                pages.push({
+                    id: `page-${i}`,
+                    title: 'Test',
+                    parentId: null,
+                    order: i,
+                    blocks: [],
+                });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            // First page is index.html
+            expect(map.get('page-0')).toBe('index.html');
+
+            // First "Test" page gets test.html (no suffix)
+            expect(map.get('page-1')).toBe('test.html');
+
+            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
+            for (let i = 2; i <= 21; i++) {
+                expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
+            }
+
+            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
+            // This is intentional - after 20 attempts, the algorithm gives up
+            expect(map.get('page-22')).toBe('test-21.html');
+        });
+
+        it('should increment trailing numbers in filename on collision', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'New page 1', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'New page 1', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'New page 1', parentId: null, order: 3, blocks: [] },
+                { id: 'page-5', title: 'New page 1', parentId: null, order: 4, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('new-page-1.html');
+            expect(map.get('page-3')).toBe('new-page-2.html'); // Increment, not "new-page-11"
+            expect(map.get('page-4')).toBe('new-page-3.html');
+            expect(map.get('page-5')).toBe('new-page-4.html');
+        });
+
+        it('should handle titles ending with numbers without hyphen', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Chapter5', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Chapter5', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Chapter5', parentId: null, order: 3, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('chapter5.html');
+            expect(map.get('page-3')).toBe('chapter-6.html'); // Increment from 5
+            expect(map.get('page-4')).toBe('chapter-7.html');
+        });
+    });
+
+    describe('preprocessPagesForExport', () => {
+        it('should convert asset URLs to {{context_path}} format in component content', async () => {
+            // Setup mock asset provider that returns assets with folderPath
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe(
+                '<img src="{{context_path}}/content/resources/images/photo.jpg">',
+            );
+        });
+
+        it('should convert asset URLs to {{context_path}} format in component properties', async () => {
+            // Setup mock asset provider that returns assets with folderPath
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'gallery',
+                                    order: 0,
+                                    content: '',
+                                    properties: {
+                                        imageUrl: 'asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            // Properties should have the {{context_path}} format
+            expect(processed[0].blocks[0].components[0].properties.imageUrl).toBe(
+                '{{context_path}}/content/resources/images/photo.jpg',
+            );
+        });
+
+        it('should process multiple assets in properties', async () => {
+            assets.addAsset(
+                '11111111-2222-3333-4444-555555555555',
+                'img1.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'gallery',
+            );
+            assets.addAsset(
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                'img2.png',
+                'image/png',
+                Buffer.from(''),
+                'gallery',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'image-gallery',
+                                    order: 0,
+                                    content: '',
+                                    properties: {
+                                        images: [
+                                            { img: 'asset://11111111-2222-3333-4444-555555555555.jpg' },
+                                            { img: 'asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            const images = processed[0].blocks[0].components[0].properties.images;
+            expect(images[0].img).toBe('{{context_path}}/content/resources/gallery/img1.jpg');
+            expect(images[1].img).toBe('{{context_path}}/content/resources/gallery/img2.png');
+        });
+
+        it('should not modify original pages (immutability)', async () => {
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const originalPages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">',
+                                    properties: {
+                                        imageUrl: 'asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            // Keep a copy of original content and properties
+            const originalContent = originalPages[0].blocks[0].components[0].content;
+            const originalImageUrl = originalPages[0].blocks[0].components[0].properties?.imageUrl;
+
+            await exporter.testPreprocessPagesForExport(originalPages);
+
+            // Original pages should not be modified
+            expect(originalPages[0].blocks[0].components[0].content).toBe(originalContent);
+            expect(originalPages[0].blocks[0].components[0].properties?.imageUrl).toBe(originalImageUrl);
+        });
+
+        it('should handle empty properties', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>No assets</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe('<p>No assets</p>');
+            expect(processed[0].blocks[0].components[0].properties).toEqual({});
+        });
+
+        it('should handle component with undefined properties', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>No properties</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe('<p>No properties</p>');
         });
     });
 });

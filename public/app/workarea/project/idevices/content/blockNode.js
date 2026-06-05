@@ -3,6 +3,7 @@ import {
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+import { parseCssClassList } from './cssClassHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -15,9 +16,11 @@ const Logger = window.AppLogger || console;
 export default class IdeviceBlockNode {
     constructor(parent, data) {
         this.engine = parent;
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         this.id = data.id
             ? data.id
-            : eXeLearning.app.api.parameters.generateNewItemKey;
+            : (eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey());
         // Use Yjs-style IDs when Yjs is enabled for consistency with Yjs structure
         const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
         this.blockId = data.blockId
@@ -25,6 +28,11 @@ export default class IdeviceBlockNode {
             : yjsEnabled
                 ? `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
                 : this.engine.generateId();
+        // In Yjs mode, ensure this.id matches this.blockId for consistency
+        // This is important because putSaveBlock uses this.id, but Yjs stores blocks by blockId
+        if (yjsEnabled && !data.id) {
+            this.id = this.blockId;
+        }
         // Set api params
         this.setParams(data);
         // Idevices
@@ -35,6 +43,7 @@ export default class IdeviceBlockNode {
         this.canHaveHeirs = true;
         // Content parameters
         this.blockContent = null;
+        this.boxContent = null;
         this.headElement = null;
         this.idevicesContainerElement = null;
         this.iconElement = null;
@@ -51,13 +60,17 @@ export default class IdeviceBlockNode {
     emptyIcon = 'block';
 
     /**
-     * Idevice properties
+     * Block properties
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? app?.api?.staticData?.parameters?.odePagStructureSyncPropertiesConfig
+            : app?.api?.parameters?.odePagStructureSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params
@@ -104,6 +117,37 @@ export default class IdeviceBlockNode {
      */
     isYjsEnabled() {
         return eXeLearning.app?.project?._yjsEnabled === true;
+    }
+
+    /**
+     * Get info about iDevices in this block that are locked by other users
+     * Used to warn before deleting a block containing iDevices being edited by others
+     * @returns {Array<{name: string, color: string}>} Array of unique locked user info objects
+     */
+    getLockedIdevicesInfo() {
+        if (!this.isYjsEnabled()) return [];
+
+        const lockedUsers = [];
+        const seenNames = new Set();
+        const myIdevices = this.idevices.filter(
+            (idevice) => idevice.blockId === this.blockId
+        );
+
+        for (const idevice of myIdevices) {
+            if (idevice.isLockedByOtherUser && idevice.isLockedByOtherUser()) {
+                const lockInfo = idevice.getLockInfo ? idevice.getLockInfo() : null;
+                const userName = lockInfo?.lockUserName || _('Another user');
+                if (!seenNames.has(userName)) {
+                    seenNames.add(userName);
+                    lockedUsers.push({
+                        name: userName,
+                        color: lockInfo?.lockUserColor || '#999',
+                    });
+                }
+            }
+        }
+
+        return lockedUsers;
     }
 
     /**
@@ -197,6 +241,10 @@ export default class IdeviceBlockNode {
         if (newNode) {
             this.blockContent.appendChild(this.makeBlockHeadElement());
             this.addBehaviourChangeIcon();
+            // Box content wrapper (mirrors the export HTML structure)
+            this.boxContent = document.createElement('div');
+            this.boxContent.classList.add('box-content');
+            this.blockContent.appendChild(this.boxContent);
         }
         // Properties attributes/classes
         this.setPropertiesClassesToElement();
@@ -210,13 +258,6 @@ export default class IdeviceBlockNode {
      *
      */
     setPropertiesClassesToElement() {
-        // identifier
-        if (this.properties.identifier.value != '') {
-            this.blockContent.setAttribute(
-                'identifier',
-                this.properties.identifier.value
-            );
-        }
         // visibility
         if (this.properties.visibility.value == 'true') {
             this.blockContent.setAttribute(
@@ -224,15 +265,16 @@ export default class IdeviceBlockNode {
                 this.properties.visibility.value
             );
         }
+        this.updateVisibilityIndicator();
         // css classes
-        if (this.properties.cssClass.value != '') {
-            let cssClasses = this.properties.cssClass.value
-                ? this.properties.cssClass.value.split(' ')
-                : [];
-            cssClasses.forEach((cls) => {
-                this.blockContent.classList.add(cls);
-            });
+        parseCssClassList(this.properties.cssClass.value).forEach((cls) => {
+            this.blockContent.classList.add(cls);
+        });
+        // teacher only - workarea visual indicator (separate class to avoid export hide rule)
+        if (this.properties.teacherOnly?.value == 'true') {
+            this.blockContent.classList.add('exe-teacher-highlight');
         }
+        this.updateTeacherOnlyIndicator();
         // allow toggle
         if (this.properties.allowToggle.value != 'true') {
             // This should always be available while editing:
@@ -241,6 +283,116 @@ export default class IdeviceBlockNode {
         // minimized
         if (this.properties.minimized.value == 'true') {
             this.toggleOff();
+        }
+    }
+
+    /**
+     * Update the visibility indicator based on the visibility property
+     */
+    updateVisibilityIndicator() {
+        if (!this.headElement) return;
+        
+        let indicator = this.headElement.querySelector('.visibility-off-indicator');
+        const visibilityValue = this.properties.visibility?.value;
+        const isVisible = visibilityValue !== 'false' && visibilityValue !== false;
+        
+        if (isVisible) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('visibility-off-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Hidden from export'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+
+                const icon = document.createElement('i');
+                icon.classList.add('small-icon', 'exe-visibility-off-green-icon');
+                icon.setAttribute('aria-hidden', 'true');
+                indicator.appendChild(icon);
+
+                const srText = document.createElement('span');
+                srText.classList.add('visually-hidden');
+                srText.textContent = _('Hidden from export');
+                indicator.appendChild(srText);
+
+                // Make indicator absolutely positioned to the left so it doesn't displace other items
+                indicator.style.position = 'absolute';
+                indicator.style.left = '-32px';
+                this.headElement.style.position = 'relative';
+
+                // Insert it into the header
+                this.headElement.appendChild(indicator);
+            }
+        }
+        this._repositionBlockIndicators();
+    }
+
+    /**
+     * Update the teacher-only indicator based on the teacherOnly property
+     */
+    updateTeacherOnlyIndicator() {
+        if (!this.headElement) return;
+
+        let indicator = this.headElement.querySelector('.teacher-only-indicator');
+        const isTeacherOnly = this.properties.teacherOnly?.value === 'true';
+
+        if (!isTeacherOnly) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('teacher-only-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Teacher only'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+
+                const icon = document.createElement('i');
+                icon.classList.add('small-icon', 'exe-teacher-only-icon');
+                icon.setAttribute('aria-hidden', 'true');
+                indicator.appendChild(icon);
+
+                const srText = document.createElement('span');
+                srText.classList.add('visually-hidden');
+                srText.textContent = _('Teacher only');
+                indicator.appendChild(srText);
+
+                indicator.style.position = 'absolute';
+                indicator.style.left = '-32px';
+                this.headElement.style.position = 'relative';
+
+                this.headElement.appendChild(indicator);
+            }
+        }
+        this._repositionBlockIndicators();
+    }
+
+    /**
+     * Reposition block status indicators so they stack vertically when both are present
+     */
+    _repositionBlockIndicators() {
+        if (!this.headElement) return;
+        const visIndicator = this.headElement.querySelector('.visibility-off-indicator');
+        const teacherIndicator = this.headElement.querySelector('.teacher-only-indicator');
+
+        if (visIndicator && teacherIndicator) {
+            visIndicator.style.top = '2px';
+            visIndicator.style.transform = '';
+            teacherIndicator.style.top = '26px';
+            teacherIndicator.style.transform = '';
+        } else {
+            if (visIndicator) {
+                visIndicator.style.top = '50%';
+                visIndicator.style.transform = 'translateY(-50%)';
+            }
+            if (teacherIndicator) {
+                teacherIndicator.style.top = '50%';
+                teacherIndicator.style.transform = 'translateY(-50%)';
+            }
         }
     }
 
@@ -267,7 +419,7 @@ export default class IdeviceBlockNode {
         const spanIcon = document.createElement('span');
         spanIcon.className = 'auto-icon';
         spanIcon.setAttribute('aria-hidden', 'true');
-        spanIcon.textContent = 'keyboard_arrow_down';
+        spanIcon.textContent = 'keyboard_arrow_up';
         const spanHidden = document.createElement('span');
         spanHidden.className = 'visually-hidden';
         spanHidden.textContent = _('Hide');
@@ -309,8 +461,19 @@ export default class IdeviceBlockNode {
         let iconData = false;
         // Get icon id
         if (this.iconName) {
-            // Get theme icon
-            iconData = eXeLearning.app.themes.getThemeIcons()[this.iconName];
+            // Get theme icons object
+            const themeIcons = eXeLearning.app.themes.getThemeIcons() || {};
+            // First try direct lookup (iconName is the key in themeIcons)
+            iconData = themeIcons[this.iconName];
+            // If not found, search by icon.id or icon.value (same fallback as _syncBlockIcon)
+            if (!iconData) {
+                for (const icon of Object.values(themeIcons)) {
+                    if (icon.id === this.iconName || icon.value === this.iconName) {
+                        iconData = icon;
+                        break;
+                    }
+                }
+            }
             if (iconData) {
                 // Icon exists in actual theme
                 let newIconValue = this.makeIconValueElement(iconData);
@@ -340,18 +503,20 @@ export default class IdeviceBlockNode {
      */
     makeIconValueElement(icon) {
         let iconValue = document.createElement('img');
-        iconValue.setAttribute('src', icon.value);
-        iconValue.setAttribute('alt', icon.title);
-        /* To review (icon.type?)
-        switch (icon.type) {
-            case 'exe':
-                iconValue.innerHTML = icon.value;
-                break;
-            case 'img':
-                iconValue.style.backgroundImage = `url("${icon.value}")`;
-                break;
+        let iconSrc = icon.value;
+        // In static mode, convert absolute paths to relative for subdirectory support
+        if (iconSrc.startsWith('/') && window.eXeLearning?.config) {
+            let config = window.eXeLearning.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                // Remove leading slash to make path relative to current location
+                iconSrc = '.' + iconSrc;
+            }
         }
-        */
+        iconValue.setAttribute('src', iconSrc);
+        iconValue.setAttribute('alt', icon.title);
         return iconValue;
     }
 
@@ -367,7 +532,7 @@ export default class IdeviceBlockNode {
         this.blockNameElementText = document.createElement('h1');
         this.blockNameElementText.classList.add('box-title');
         this.blockNameElementText.classList.add('idevice-element-in-content');
-        this.blockNameElementText.innerHTML = this.blockName;
+        this.blockNameElementText.textContent = this.blockName || '';
 
         const btnEdit = document.createElement('button');
         btnEdit.classList.add(
@@ -384,7 +549,8 @@ export default class IdeviceBlockNode {
 
         btnEdit.appendChild(icon);
 
-        btnEdit.addEventListener('click', () => {
+        const startTitleEditing = () => {
+            if (this.blockNameElementText.hasAttribute('contenteditable')) return;
             // To review (see #579) if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.project
                 .isAvalaibleOdeComponent(this.blockId, null)
@@ -392,10 +558,12 @@ export default class IdeviceBlockNode {
                     if (response.responseMessage !== 'OK') {
                         eXeLearning.app.modals.alert.show({
                             title: _('iDevice error'),
-                            body: _(response.responseMessage),
-                            contentId: 'error',
-                        });
+                                body: _(response.responseMessage),
+                                contentId: 'error',
+                            });
                     } else {
+                        // Restore raw title text before editing (avoid editing rendered MathJax DOM).
+                        this.blockNameElementText.textContent = this.blockName || '';
                         this.blockNameElementText.setAttribute(
                             'contenteditable',
                             'true'
@@ -412,10 +580,12 @@ export default class IdeviceBlockNode {
 
                         // Sync title in real-time while typing via Yjs
                         const onInput = () => {
+                            const rawTitle = this.blockNameElementText.textContent.trim();
+                            this.blockName = rawTitle;
                             const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
                             if (binding) {
                                 binding.updateBlock(this.blockId, {
-                                    blockName: this.blockNameElementText.textContent.trim()
+                                    blockName: rawTitle
                                 });
                             }
                         };
@@ -424,13 +594,16 @@ export default class IdeviceBlockNode {
                         const finishEditing = () => {
                             if (finished) return;
                             finished = true;
+                            const finalTitle = this.blockNameElementText.textContent.trim();
                             this.blockNameElementText.removeAttribute(
                                 'contenteditable'
                             );
                             this.blockNameElementText.removeEventListener('input', onInput);
+                            this.blockNameElementText.removeEventListener('blur', finishEditing);
+                            this.blockNameElementText.removeEventListener('keydown', onKeydown);
                             btnEdit.style.display = '';
                             this.apiUpdateTitle(
-                                this.blockNameElementText.textContent.trim()
+                                finalTitle
                             );
                         };
                         const onKeydown = (e) => {
@@ -449,9 +622,15 @@ export default class IdeviceBlockNode {
                         );
                     }
                 });
-        });
+        };
+
+        btnEdit.addEventListener('click', startTitleEditing);
+        this.blockNameElementText.addEventListener('click', startTitleEditing);
         container.appendChild(this.blockNameElementText);
         container.appendChild(btnEdit);
+
+        // Typeset after the title is attached to the DOM and layout is stable.
+        requestAnimationFrame(() => this.renderBlockTitle());
 
         eXeLearning.app.common.initTooltips(container);
 
@@ -459,6 +638,36 @@ export default class IdeviceBlockNode {
         this.addBehaviourChangeIcon();
 
         return container;
+    }
+
+    /**
+     * Render block title from raw text and typeset LaTeX when present.
+     */
+    renderBlockTitle() {
+        if (!this.blockNameElementText) return;
+
+        const title = this.blockName || '';
+        this.blockNameElementText.textContent = title;
+
+        // Avoid unstable glyph scaling when typesetting detached nodes.
+        if (!this.blockNameElementText.isConnected) return;
+
+        if (title && /(?:\\\(|\\\[|\\begin\{)/.test(title)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                const node = this.blockNameElementText;
+                const startup = MathJax.startup?.promise || Promise.resolve();
+                startup
+                    .then(() => {
+                        if (typeof MathJax.typesetClear === 'function') {
+                            MathJax.typesetClear([node]);
+                        }
+                        return MathJax.typesetPromise([node]);
+                    })
+                    .catch((err) => {
+                        Logger.log('[BlockNode] MathJax typeset error:', err);
+                    });
+            }
+        }
     }
 
     /**
@@ -485,14 +694,13 @@ export default class IdeviceBlockNode {
                 <span class="small-icon dots-menu-vertical-icon"></span>
             </button>
             <ul class="dropdown-menu button-action-block exe-advanced" aria-labelledby="dropdownMenuButton${id}">
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Properties')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Box properties')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone box')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to page')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export box')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="deleteBlock${id}"><span class="small-icon delete-icon-red"></span><span>${_('Delete box')}</span></button></li>
              </ul>
         </div>`;
-        // Check links (disabled) <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-checkLinks${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
 
         this.blockButtons = document.createElement('div');
         this.blockButtons.classList.add('box_actions');
@@ -513,7 +721,6 @@ export default class IdeviceBlockNode {
         this.addBehaviourToggleBlockButton();
         this.addTooltips();
         this.addNoTranslateForGoogle();
-        // Check links (disabled) this.addBehaviourCheckBlockLinksButton();
 
         return this.blockButtons;
     }
@@ -540,31 +747,6 @@ export default class IdeviceBlockNode {
                     }
                 });
         });
-    }
-
-    /**
-     * Event check broken links
-     *
-     */
-    addBehaviourButtonCheckBrokenLinksBlock() {
-        this.blockButtonCheckBrokenLinks.addEventListener(
-            'click',
-            (element) => {
-                let blockId = this.blockId;
-                this.getOdeBlockBrokenLinksEvent(blockId).then((response) => {
-                    if (!response.responseMessage) {
-                        // Show eXe OdeBrokenList modal
-                        eXeLearning.app.modals.odebrokenlinks.show(response);
-                    } else {
-                        // Open eXe alert modal
-                        eXeLearning.app.modals.alert.show({
-                            title: _('Broken Links'),
-                            body: "There aren't broken links",
-                        });
-                    }
-                });
-            }
-        );
     }
 
     /**
@@ -619,15 +801,20 @@ export default class IdeviceBlockNode {
                             ) {
                                 // Check if there is a block in the previous position
                                 let previousBlock = this.getContentPrevBlock();
-                                let previousOrder = this.order;
                                 if (previousBlock) {
                                     // Add a temporary class to handle display effects
                                     this.blockContent.classList.add('moving');
-                                    // Change order
-                                    this.order--;
-                                    // Update in database
-                                    this.apiUpdateOrder().then((response) => {
-                                        if (response.responseMessage == 'OK') {
+                                    // Issue #1665: when Yjs is enabled, ask
+                                    // the structure binding to move the
+                                    // block by -1 from its CURRENT Y.Doc
+                                    // position. The legacy path mutated
+                                    // this.order and trusted it, which went
+                                    // stale across consecutive clicks.
+                                    const movePromise = this.isYjsEnabled()
+                                        ? this.reorderViaYjsRelative(-1)
+                                        : (this.order--, this.apiUpdateOrder());
+                                    Promise.resolve(movePromise).then((response) => {
+                                        if (response && response.responseMessage == 'OK') {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
@@ -671,15 +858,15 @@ export default class IdeviceBlockNode {
                             ) {
                                 // Check if there is a block in the previous position
                                 let nextBlock = this.getContentNextBlock();
-                                let previousOrder = this.order;
                                 if (nextBlock) {
                                     // Add a temporary class to handle display effects
                                     this.blockContent.classList.add('moving');
-                                    // Change order
-                                    this.order++;
-                                    // Update in database
-                                    this.apiUpdateOrder().then((response) => {
-                                        if (response.responseMessage == 'OK') {
+                                    // Issue #1665: see addBehaviourButtonMoveUpBlock.
+                                    const movePromise = this.isYjsEnabled()
+                                        ? this.reorderViaYjsRelative(+1)
+                                        : (this.order++, this.apiUpdateOrder());
+                                    Promise.resolve(movePromise).then((response) => {
+                                        if (response && response.responseMessage == 'OK') {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
@@ -716,8 +903,33 @@ export default class IdeviceBlockNode {
                                 contentId: 'error',
                             });
                         } else {
-                            this.remove(true);
-                            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                            const lockedUsers = this.getLockedIdevicesInfo();
+                            if (lockedUsers.length > 0) {
+                                const userNames = lockedUsers.map(u => `<strong class="text-primary">${u.name}</strong>`).join(', ');
+                                const warningText = lockedUsers.length === 1
+                                    ? _('An iDevice in this box is being edited by another user')
+                                    : _('iDevices in this box are being edited by other users');
+                                const modalBody = `<p><strong>${_('Warning')}:</strong> ${warningText}:</p>
+                                    <p>${userNames}</p>
+                                    <p>${_('Their changes may be lost if you delete this box.')}</p>
+                                    <p>${_('Do you want to delete this box?')}</p>`;
+
+                                eXeLearning.app.modals.confirm.show({
+                                    title: _('Delete box'),
+                                    contentId: 'delete-block-modal',
+                                    body: modalBody,
+                                    confirmButtonText: _('Delete'),
+                                    cancelButtonText: _('Cancel'),
+                                    focusCancelButton: true,
+                                    confirmExec: () => {
+                                        this.remove(true);
+                                        eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                                    },
+                                });
+                            } else {
+                                this.remove(true);
+                                eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                            }
                         }
                     });
             });
@@ -792,7 +1004,7 @@ export default class IdeviceBlockNode {
                                 this.generateModalMoveToPageBody();
                             // Show modal
                             eXeLearning.app.modals.confirm.show({
-                                title: _('Move Block to page'),
+                                title: _('Move box to page'),
                                 body: bodyElement.innerHTML,
                                 contentId: 'modal-move-to-page',
                                 confirmButtonText: _('Move'),
@@ -897,31 +1109,7 @@ export default class IdeviceBlockNode {
     /**
      * Event check links
      *
-     */
-    /* To review (disabled)
-    addBehaviourCheckBlockLinksButton() {
-        this.blockButtons
-            .querySelector("#dropdownBlockMore-button-checkLinks"+this.blockId)
-            .addEventListener("click", element => {
-                let blockId = this.blockId;
-                Logger.log("check links");
-                this.getOdeBlockBrokenLinksEvent(blockId).then(response => {
-                    if (!response.responseMessage) {
-                        // Show eXe OdeBrokenList modal
-                        eXeLearning.app.modals.odebrokenlinks.show(response);
-                    } else {
-                        // Open eXe alert modal
-                        eXeLearning.app.modals.alert.show({
-                            title: _("Broken Links"),
-                            body: "There aren't broken links",
-                        })
-                    }
-                })
-            });
-    }
-    */
 
-    /**
      * Download block as .block file
      * @param {*} odeBlockId
      */
@@ -930,7 +1118,7 @@ export default class IdeviceBlockNode {
             // Get the Yjs bridge and document manager
             const yjsBridge = eXeLearning.app.project._yjsBridge;
             if (!yjsBridge) {
-                throw new Error('Yjs bridge not initialized');
+                throw new Error('Collaboration service not ready');
             }
             const documentManager = yjsBridge.documentManager;
             const assetCache = eXeLearning.app.project._assetCache || null;
@@ -943,13 +1131,27 @@ export default class IdeviceBlockNode {
                 null,
                 assetManager
             );
-            const result = await exporter.exportAndDownload(odeBlockId, null);
-            if (!result.success) {
+            // Use exportComponent instead of exportAndDownload to support Electron save dialog
+            const result = await exporter.exportComponent(odeBlockId, null);
+            if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
-                    body: result.error || _('Failed to export block'),
+                    body: result.error || _('Failed to export box'),
                     contentId: 'error',
                 });
+                return;
+            }
+
+            // Use downloadComponentFile for proper Electron support (always show Save As dialog)
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, result.filename, {
+                    typeKeySuffix: 'block',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
             }
         } catch (error) {
             console.error('[blockNode] Export failed:', error);
@@ -975,7 +1177,7 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.remove('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Show'));
         this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_up';
+            'keyboard_arrow_down';
     }
 
     /**
@@ -988,7 +1190,7 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.add('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Hide'));
         this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_down';
+            'keyboard_arrow_up';
     }
 
     /*********************************
@@ -1064,11 +1266,8 @@ export default class IdeviceBlockNode {
         if (iconValue == '0' || iconValue == this.emptyIcon) {
             iconValue = '';
         }
-        // Sync to Yjs for persistence across page changes and collaboration
-        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-        if (binding) {
-            binding.updateBlock(this.blockId, { iconName: iconValue });
-        }
+        // Note: Yjs sync is handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
+        // Do not sync here to avoid duplicate undo entries
         this.apiUpdateIcon(iconValue);
     }
 
@@ -1138,21 +1337,13 @@ export default class IdeviceBlockNode {
             '#change-block-icon-modal-content .option-block-icon'
         );
         iconsElements.forEach((icon) => {
-            // One click to select and sync via Yjs
+            // One click to select (visual only, no Yjs sync yet)
+            // The actual Yjs sync happens in saveIconAction() when modal is confirmed
             icon.addEventListener('click', (event) => {
                 iconsElements.forEach((option) => {
                     option.setAttribute('selected', 'false');
                 });
                 icon.setAttribute('selected', true);
-
-                // Sync icon in real-time via Yjs
-                const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-                if (binding) {
-                    let iconId = icon.getAttribute('icon-id');
-                    // Handle empty icon (id=0)
-                    const iconName = (iconId === '0' || iconId === this.emptyIcon) ? '' : iconId;
-                    binding.updateBlock(this.blockId, { iconName });
-                }
             });
             // Double click to select and save
             icon.addEventListener('dblclick', (event) => {
@@ -1219,7 +1410,12 @@ export default class IdeviceBlockNode {
      * @returns {Node}
      */
     getContentNextBlock() {
-        let nextBlock = this.blockContent.nextSibling;
+        // Issue #1667: use nextElementSibling (matches getContentPrevBlock)
+        // so whitespace text nodes between <article.box> siblings — left
+        // behind when a page is rendered from an imported .elpx — don't
+        // make the down-arrow handler silently exit. `nextSibling` would
+        // return the text node and the arrow click would do nothing.
+        let nextBlock = this.blockContent.nextElementSibling;
         if (
             nextBlock &&
             nextBlock.classList &&
@@ -1259,12 +1455,9 @@ export default class IdeviceBlockNode {
         let params = ['odePagStructureSyncId', 'blockName'];
         // Save new title text
         this.blockName = title;
-        this.blockNameElementText.innerHTML = title;
-        // Sync to Yjs for persistence across page changes and collaboration
-        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-        if (binding) {
-            binding.updateBlock(this.blockId, { blockName: title });
-        }
+        this.renderBlockTitle();
+        // Note: Yjs sync is handled by putSaveBlock -> apiCallManager
+        // Do not sync here to avoid duplicate undo entries
         // If block exist save in bbdd
         if (this.id) {
             this.apiSendDataService('putSaveBlock', params);
@@ -1284,7 +1477,7 @@ export default class IdeviceBlockNode {
         }
         // Generate params array
         let params = {
-            odePagStructureSyncId: this.id,
+            odePagStructureSyncId: this.blockId,
         };
         if (inherit) params.updateChildsProperties = 'true';
         for (let [key, value] of Object.entries(this.properties)) {
@@ -1583,6 +1776,60 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Move this block one position up (-1) or down (+1) using the Yjs
+     * structure binding as the source of truth for the current position.
+     *
+     * Issue #1665: the legacy path mutated `this.order` and forwarded it
+     * to updateBlockOrder. Other JS instances on the same page never had
+     * their `this.order` reconciled with the Y.Doc after a reorder, so
+     * consecutive arrow clicks on different blocks fed updateBlockOrder a
+     * target index computed from a stale snapshot and the blocks "jumped"
+     * positions. moveBlockRelative reads the current index directly from
+     * Yjs, so the per-instance counters become irrelevant.
+     *
+     * @param {number} delta - +1 for move down, -1 for move up
+     * @returns {Object} - { responseMessage: 'OK' | 'ERROR' }
+     */
+    async reorderViaYjsRelative(delta) {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding || typeof structureBinding.moveBlockRelative !== 'function') {
+                // Fall back to the absolute path so older bridges keep working.
+                return this.reorderViaYjs();
+            }
+
+            let success = structureBinding.moveBlockRelative(this.blockId, delta);
+            if (!success && this.id && this.id !== this.blockId) {
+                success = structureBinding.moveBlockRelative(this.id, delta);
+            }
+
+            if (success) {
+                // Reconcile this instance's local counter with the new
+                // position so that any code path still reading `this.order`
+                // (drag-and-drop fallback, REST writes, etc.) stays sane.
+                const location = structureBinding.findBlockLocation
+                    ? structureBinding.findBlockLocation(this.blockId)
+                    : null;
+                if (location && typeof location.index === 'number') {
+                    this.order = location.index;
+                }
+
+                setTimeout(() => {
+                    this.blockContent?.classList.remove('moving');
+                }, this.engine.movingClassDuration);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[BlockNode] Error moving block via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Returns the next available order number for a block on the current page.
      * If no blocks exist, it defaults to 1.
      *
@@ -1798,10 +2045,21 @@ export default class IdeviceBlockNode {
 
     /**
      * Remove idevices of block
-     *
+     * Only removes iDevices that actually belong to this block (matching blockId)
+     * This prevents cascading deletion when iDevices have moved to other blocks
      */
     removeIdevices() {
-        this.idevices.forEach((idevice) => {
+        // First, clean up stale references from the list
+        this.clearIdevicesOfList();
+
+        // Only delete iDevices that truly belong to this block
+        // This prevents cascading deletion when iDevice references are stale
+        const myIdevices = this.idevices.filter((idevice) => {
+            // Check if this iDevice still belongs to this block
+            return idevice.blockId === this.blockId;
+        });
+
+        myIdevices.forEach((idevice) => {
             idevice.remove(false);
         });
     }
@@ -1812,8 +2070,9 @@ export default class IdeviceBlockNode {
      */
     removeIdeviceOfListById(id) {
         this.clearIdevicesOfList();
+        // Filter by both id and odeIdeviceId for consistency
         this.idevices = this.idevices.filter((idevice, index, arr) => {
-            return idevice.id != id;
+            return idevice.id != id && idevice.odeIdeviceId != id;
         });
     }
 

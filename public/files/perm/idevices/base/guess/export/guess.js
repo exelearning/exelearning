@@ -42,9 +42,10 @@ var $guess = {
         $guess.options = [];
         $guess.activities.each(function (i) {
             const id = $(this).closest('.idevice_node').attr('id');
+            const dl = $('.adivina-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
 
             const version = $('.adivina-version', this).eq(0).text(),
-                dl = $('.adivina-DataGame', this),
                 imagesLink = $('.adivina-LinkImages', this),
                 audioLink = $('.adivina-LinkAudios', this),
                 mOption = $guess.loadDataGame(
@@ -304,14 +305,9 @@ var $guess = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
             );
-        mOptions.wordsGame =
-            mOptions.optionsRamdon && mOptions.percentajeQuestions === 100
-                ? $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                      mOptions.wordsGame
-                  )
-                : mOptions.wordsGame;
         mOptions.numberQuestions = mOptions.wordsGame.length;
 
         return mOptions;
@@ -385,7 +381,7 @@ var $guess = {
                     <video class="ADVNP-Video" id="adivinaVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="ADVNP-Protector" id="adivinaProtector-${instance}"></div>
                     <a href="#" class="ADVNP-LinkAudio" id="adivinaLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="ADVNP-Activo" alt="${msgs.msgAudio}" />
+                        <img src="${path}exequextaudio.svg" class="ADVNP-Activo" alt="${msgs.msgAudio}" />
                     </a>
                     <div class="ADVNP-GameOver" id="adivinaGamerOver-${instance}">
                         <div class="ADVNP-DataImage">
@@ -685,8 +681,7 @@ var $guess = {
         $linkAudio.on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.wordsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $startGame
@@ -946,7 +941,7 @@ var $guess = {
         mOptions.gameOver = true;
 
         $guess.showImage('', instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $guess.showScoreGame(type, instance);
         $guess.startVideo('', 0, 0, instance, 0);
         $guess.stopVideo(mOptions);
@@ -1198,12 +1193,11 @@ var $guess = {
             $('#adivinaLinkAudio-' + instance).show();
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (q.type != 2 && q.audio.trim().length > 5) {
             $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
+                q.audio.trim()
             );
         }
 

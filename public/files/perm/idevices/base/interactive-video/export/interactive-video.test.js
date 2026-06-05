@@ -7,7 +7,6 @@
  * - inIframe: Detects iframe context
  * - i18n: Internationalization strings including YouTube preview notice
  * - typeNames: Slide type name mappings
- * - loadYoutubeWrapper: YouTube wrapper URL construction (mocked DOM)
  * - showYoutubeFallback: Fallback HTML generation (mocked DOM)
  */
 
@@ -18,6 +17,7 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const jquery = global.$;
 
 /**
  * Helper to load export iDevice file and expose $interactivevideo globally.
@@ -250,153 +250,105 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
-  describe('loadYoutubeWrapper', () => {
-    let originalWindow;
-    let mockPlayerElement;
-
+  describe('progress report', () => {
     beforeEach(() => {
-      originalWindow = global.window;
-
-      // Mock player element
-      mockPlayerElement = {
-        innerHTML: '',
-        appendChild: vi.fn(),
-      };
-
-      // Mock DOM
-      global.document = {
-        getElementById: vi.fn((id) => {
-          if (id === 'player') return mockPlayerElement;
-          if (id === 'youtube-wrapper-iframe') return null;
-          return null;
-        }),
-        createElement: vi.fn(() => ({
-          id: '',
-          src: '',
-          width: '',
-          height: '',
-          frameBorder: '',
-          allow: '',
-          allowFullscreen: false,
-          style: { cssText: '' },
-        })),
-      };
-
-      // Mock window
-      global.window = {
-        location: { href: '', protocol: 'http:', origin: 'http://localhost:8080' },
-        addEventListener: vi.fn(),
-      };
-
-      // Mock eXe global
-      global.eXe = { basePath: '' };
+      global.$ = jquery;
+      window.$ = jquery;
     });
 
-    afterEach(() => {
-      global.window = originalWindow;
-      delete global.document;
-      delete global.eXe;
-    });
+    it('targets the interactive video iDevice body for report icons', () => {
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div class="idevice_body interactive-videoIdevice">
+            <div id="interactive-video-1" class="idevice_node interactive-video">
+              <div class="exe-interactive-video"></div>
+            </div>
+          </div>
+        </article>
+      `;
 
-    it('extracts HTTP origin from blob URL correctly', () => {
-      global.window.location.href = 'blob:http://localhost:8080/abcd-1234';
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      // Verify iframe was created with correct URL
-      expect(global.document.createElement).toHaveBeenCalledWith('iframe');
-    });
-
-    it('shows fallback for file: protocol', () => {
-      global.window.location.href = 'file:///path/to/file.html';
-      global.window.location.protocol = 'file:';
-
-      // Mock showYoutubeFallback
-      const showFallbackSpy = vi.fn();
-      $interactivevideo.showYoutubeFallback = showFallbackSpy;
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      expect(showFallbackSpy).toHaveBeenCalled();
-    });
-
-    it('shows fallback when origin cannot be determined', () => {
-      global.window.location.href = 'http://localhost:8080/page.html';
-
-      // Mock showYoutubeFallback
-      const showFallbackSpy = vi.fn();
-      $interactivevideo.showYoutubeFallback = showFallbackSpy;
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      // Non-blob URLs can't extract wrapper base URL
-      expect(showFallbackSpy).toHaveBeenCalled();
-    });
-
-    it('sets up message handler for communication', () => {
-      global.window.location.href = 'blob:http://localhost:8080/abcd-1234';
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      expect(global.window.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
-    });
-
-    it('creates player proxy object with required methods', () => {
-      global.window.location.href = 'blob:http://localhost:8080/abcd-1234';
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      expect($interactivevideo.player).toBeDefined();
-      expect(typeof $interactivevideo.player.getCurrentTime).toBe('function');
-      expect(typeof $interactivevideo.player.playVideo).toBe('function');
-      expect(typeof $interactivevideo.player.pauseVideo).toBe('function');
-      expect(typeof $interactivevideo.player.seekTo).toBe('function');
-      expect(typeof $interactivevideo.player.stopVideo).toBe('function');
-    });
-
-    it('player proxy getCurrentTime returns last tracked time', () => {
-      global.window.location.href = 'blob:http://localhost:8080/abcd-1234';
-
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
-
-      // Default value
-      expect($interactivevideo.player.getCurrentTime()).toBe(0);
-
-      // After time update
-      $interactivevideo._lastYoutubeTime = 42.5;
-      expect($interactivevideo.player.getCurrentTime()).toBe(42.5);
-    });
-
-    it('includes basePath in wrapper URL when set', () => {
-      global.window.location.href = 'blob:http://localhost:8080/abcd-1234';
-      global.eXe.basePath = '/exelearning';
-
-      let capturedIframe;
-      global.document.createElement = vi.fn(() => {
-        capturedIframe = {
-          id: '',
-          src: '',
-          width: '',
-          height: '',
-          frameBorder: '',
-          allow: '',
-          allowFullscreen: false,
-          style: { cssText: '' },
-        };
-        return capturedIframe;
+      const options = $interactivevideo.getOptions({
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        i18n: $interactivevideo.i18n,
       });
 
-      $interactivevideo.id = 'dQw4w9WgXcQ';
-      $interactivevideo.loadYoutubeWrapper();
+      expect(options.idevice).toBe('interactive-videoIdevice');
+      expect(options.main).toBe('.exe-interactive-video');
+      expect(options.evaluation).toBe(true);
+      expect(options.evaluationID).toBe('progress-1');
+    });
 
-      expect(capturedIframe.src).toContain('/exelearning/app/common/youtube-preview.html');
-      expect(capturedIframe.src).toContain('v=dQw4w9WgXcQ');
+    it('falls back to the exported iDevice node when no iDevice body wrapper exists', () => {
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video"></div>
+          </div>
+        </article>
+      `;
+
+      const options = $interactivevideo.getOptions({
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        i18n: $interactivevideo.i18n,
+      });
+
+      expect(options.idevice).toBe('idevice_node');
+    });
+
+    it('shows progress report information during export initialization', () => {
+      const previousScorm = $exeDevices.iDevice.gamification.scorm;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousIsInExe = eXe.app.isInExe;
+      const updateEvaluationIcon = vi.fn();
+
+      eXe.app.isInExe = vi.fn(() => false);
+      $exeDevices.iDevice.gamification.scorm = {
+        ...previousScorm,
+        addButtonScoreNew: vi.fn(() => ''),
+      };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video"></div>
+          </div>
+        </article>
+      `;
+      global.InteractiveVideo = {
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        scoreNIA: true,
+        slides: [],
+        i18n: $interactivevideo.i18n,
+      };
+
+      try {
+        $interactivevideo.enable();
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+        $exeDevices.iDevice.gamification.scorm = previousScorm;
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(updateEvaluationIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idevice: 'idevice_node',
+          evaluation: true,
+          evaluationID: 'progress-1',
+        }),
+        false,
+      );
     });
   });
 

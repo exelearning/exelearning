@@ -113,6 +113,15 @@ export default class modalTemplateSelection extends Modal {
             } catch (_e) {
                 // Intentional: property may not exist or be non-configurable
             }
+            // Also forget the main-process associated file so the next
+            // Save dialog starts fresh with the project title.
+            try {
+                if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                    await window.electronAPI.clearSavedPath();
+                }
+            } catch (_e) {
+                // Best effort.
+            }
 
             // Fetch the template file
             const response = await fetch(template.path);
@@ -134,25 +143,6 @@ export default class modalTemplateSelection extends Modal {
                     file
                 );
 
-                // CRITICAL: Clear the saved path AFTER upload completes
-                // The upload sets the path to the temp file, which we need to remove
-                // This ensures when user manually saves, they get prompted for location
-                if (
-                    window.electronAPI &&
-                    typeof window.electronAPI.clearSavedPath === 'function'
-                ) {
-                    try {
-                        // Wait a tiny bit to ensure the path was set first
-                        await new Promise((resolve) =>
-                            setTimeout(resolve, 100)
-                        );
-                        const projectId =
-                            window.__currentProjectId || 'default';
-                        await window.electronAPI.clearSavedPath(projectId);
-                    } catch (_e) {
-                        console.error('Failed to clear saved path:', _e);
-                    }
-                }
             } else {
                 console.error('Open user ODE files modal not available');
             }

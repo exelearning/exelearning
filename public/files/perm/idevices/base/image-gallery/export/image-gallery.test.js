@@ -83,24 +83,27 @@ describe('image-gallery iDevice export', () => {
     });
   });
 
-  describe('export context handling', () => {
-    it('renderView returns null in export context', () => {
-      // In export, body has exe-export class - renderView returns null
-      // to prevent exe_export.js from replacing the already-correct HTML
-      expect(code).toContain("if (document.body.classList.contains('exe-export'))");
-      expect(code).toContain('return null; // Return null to prevent innerHTML replacement');
+  describe('renderBehaviour context handling', () => {
+    it('only re-renders gallery when not in editor and node exists', () => {
+      // Gallery is re-rendered only when not in eXe editor and the node exists
+      expect(code).toContain('!isInExe && $node.length == 1');
     });
 
-    it('renderBehaviour detects export context via exe-export class', () => {
-      // In export, body has exe-export class - we should not re-render gallery
-      // because the HTML already has correct paths from server-side rendering
-      expect(code).toContain("isExport = document.body.classList.contains('exe-export')");
+    it('uses isInExe check from eXe.app', () => {
+      // Uses eXe.app.isInExe() to detect editor context
+      expect(code).toContain('isInExe = eXe.app.isInExe()');
+    });
+  });
+
+  describe('changeDirectory folder path handling', () => {
+    it('preserves valid content/resources paths', () => {
+      // Paths starting with content/resources/ should be preserved
+      expect(code).toContain("file.startsWith('content/resources/')");
     });
 
-    it('does not re-render gallery in export context', () => {
-      // Export HTML is generated with correct paths; re-rendering would break them
-      // because changeDirectory uses iDevice ID instead of resource UUID
-      expect(code).toContain('!isInExe && !isExport && $node.length == 1');
+    it('detects malformed paths with duplicated filename as folder', () => {
+      // Handles cases like content/resources/image.png/image.png
+      expect(code).toContain('possibleFolder === filename');
     });
   });
 });

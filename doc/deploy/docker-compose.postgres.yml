@@ -6,7 +6,7 @@ services:
     image: ghcr.io/exelearning/exelearning:${TAG:-latest}
     build: ../../
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8080}:${APP_PORT:-8080}"
     restart: unless-stopped
     volumes:
       - exelearning-data:/mnt/data:rw
@@ -16,8 +16,8 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForPostgresDeployment}"
       APP_ONLINE_MODE: 1
-      XDEBUG_MODE: off
-      
+      ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
+
       # Database settings
       DB_DRIVER: pdo_pgsql
       DB_HOST: postgres
@@ -26,7 +26,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
       
       # Files directory
       FILES_DIR: "/mnt/data/"
@@ -35,17 +35,11 @@ services:
       APP_AUTH_METHODS: password,guest
       AUTH_CREATE_USERS: true
       
-      # Test user
-      TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
-      TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
-      TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+      # Admin user (created/updated when ADMIN_PASSWORD is set)
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
 
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForPostgresDeployment}"
-
-      # Post-configuration commands
-      POST_CONFIGURE_COMMANDS: |
-        echo "Setting up eXeLearning with PostgreSQL..."
-        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
     depends_on:
       - postgres
 
@@ -59,7 +53,7 @@ services:
     # ports:
     #   - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
 
 volumes:
   exelearning-data:

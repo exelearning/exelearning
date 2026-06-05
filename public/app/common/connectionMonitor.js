@@ -278,12 +278,12 @@ export default class ConnectionMonitor {
         }
 
         const message = permanent
-            ? 'Please refresh the page to try to reconnect to the server...'
-            : 'Attempting to reconnect...';
+            ? _('Please refresh the page to try to reconnect to the server...')
+            : _('Attempting to reconnect...');
 
         this.connectionLostToast = this.toastsManager.createToast({
             icon: 'warning',
-            title: 'Connection lost',
+            title: _('Connection lost'),
             body: message,
             error: true,
             // NO 'remove' = persistent toast
@@ -308,8 +308,8 @@ export default class ConnectionMonitor {
 
         this.accessDeniedToast = this.toastsManager.createToast({
             icon: 'error',
-            title: 'Access denied',
-            body: 'Your access to this project has been revoked.',
+            title: _('Access denied'),
+            body: _('Your access to this project has been revoked.'),
             error: true,
             // NO 'remove' = persistent toast
         });

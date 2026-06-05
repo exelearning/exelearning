@@ -1,16 +1,16 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-ExtraLightItalic.woff2) format("woff2"),
-        url(fonts/Nunito-ExtraLightItalic.woff) format("woff");
+    src: url(fonts/Nunito-Italic.woff2) format("woff2"),
+        url(fonts/Nunito-Italic.woff) format("woff");
     font-style: italic;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-ExtraLight.woff2) format("woff2"),
-        url(fonts/Nunito-ExtraLight.woff) format("woff");
+    src: url(fonts/Nunito-Regular.woff2) format("woff2"),
+        url(fonts/Nunito-Regular.woff) format("woff");
     font-style: normal;
     font-display: swap;
 }
@@ -44,7 +44,7 @@ a {
 
 .page > header .package-title,
 .siteNav-off .page > header .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     padding-left: 32px;
     width: calc(100% - 470px);
     white-space: nowrap;
@@ -52,6 +52,7 @@ a {
     text-overflow: ellipsis;
     color: #002702;
     margin: 0;
+    line-height: 1.2em;
 }
 
 .exe-teacher-mode-toggler .page > header .package-title,
@@ -59,7 +60,7 @@ a {
     width: calc(100% - 550px);
 }
 
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     width: 100%;
 }
 
@@ -233,6 +234,11 @@ body.exe-web-site {
     background-attachment: fixed;
 }
 
+body#tinymce {
+    font-family: "Nunito", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;
+}
+
 .js .exe-export .exe-content {
     min-height: calc(100vh - 30px);
 }
@@ -241,12 +247,8 @@ body.exe-web-site {
     min-height: 0;
 }
 
-.sr-av {
-    display: none;
-}
-
 .exe-content .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     font-size: 1.7rem;
     text-align: left;
     font-weight: 700;
@@ -281,6 +283,26 @@ body.exe-web-site {
     color: #002702;
     font-size: 1.65rem !important;
     font-weight: 700;
+}
+
+/* Teacher mode visual indicator */
+.exe-content article.box.teacher-only {
+    border: 2px solid #FFB74D;
+}
+
+.exe-content .box.teacher-only header {
+  border-bottom-color: #002702;
+}
+
+.exe-content article.box .idevice_node.teacher-only {
+    border: 2px solid #FFB74D;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+#node-content article.box.exe-teacher-highlight,
+#node-content .idevice_node.exe-teacher-highlight {
+    border: 2px solid #FFB74D !important;
 }
 
 .exe-content .box-head .exe-icon {
@@ -1085,7 +1107,7 @@ body.siteNav-off button#searchBarTogger {
 
     .page > header .package-title,
     .siteNav-off .page > header .package-title,
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 32px;
     }
 
@@ -1194,7 +1216,7 @@ body.siteNav-off button#searchBarTogger {
     .exe-search-on button#siteNavToggler {
         height: 26px;
     }
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 60px;
         overflow: hidden;
         text-overflow: ellipsis;

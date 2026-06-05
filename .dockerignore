@@ -14,10 +14,10 @@ build/
 # NOTE: src/ and tsconfig.json are needed for building inside Docker
 test/
 tests/
-*.test.ts
-*.spec.ts
-*.test.js
-*.spec.js
+**/*.test.ts
+**/*.spec.ts
+**/*.test.js
+**/*.spec.js
 .vscode/
 .idea/
 .settings/
@@ -63,8 +63,12 @@ test-results/
 # Frontend test configuration
 public/jest.config.js
 public/jest.setup.js
+public/vitest.config.js
+public/vitest.setup.js
 public/coverage/
 public/app/**/__tests__/
+public/app/test-helpers/
+public/bun-test.setup.js
 
 # Logs
 logs/
@@ -124,4 +128,11 @@ start-migration-dev.sh
 !docker-entrypoint.sh
 Makefile
 release/
-release/
+
+# Development-only scripts
+scripts/run-electron-dev.js
+scripts/setup-local.js
+scripts/upload-bundle-analysis.js
+scripts/check-coverage.ts
+scripts/check-test-coverage.ts
+scripts/**/*.spec.ts

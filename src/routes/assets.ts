@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as mimeTypes from 'mime-types';
 
 import { db } from '../db/client';
+import { buildContentDisposition, encodeHeaderValue } from '../shared/http/headers';
 import type { Asset, Database } from '../db/types';
 import {
     createAsset,
@@ -21,8 +22,11 @@ import {
     updateAsset,
     bulkUpdateAssets,
     findProjectByUuid,
+    findProjectById,
+    checkProjectAccess,
 } from '../db/queries';
 import type { Kysely } from 'kysely';
+import { withJwtAuth, enforceProjectAccess } from '../utils/route-auth';
 
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
@@ -61,6 +65,8 @@ export interface AssetsQueries {
     updateAsset: typeof updateAsset;
     bulkUpdateAssets: typeof bulkUpdateAssets;
     findProjectByUuid: typeof findProjectByUuid;
+    findProjectById: typeof findProjectById;
+    checkProjectAccess: typeof checkProjectAccess;
 }
 
 /**
@@ -150,6 +156,8 @@ const defaultDependencies: AssetsDependencies = {
         updateAsset,
         bulkUpdateAssets,
         findProjectByUuid,
+        findProjectById,
+        checkProjectAccess,
     },
     fileHelper: defaultFileHelper,
     sessionManager: defaultSessionManager,
@@ -214,6 +222,26 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
     return (
         new Elysia({ prefix: '/api/projects/:projectId/assets' })
+            // Auth: every asset endpoint requires an authenticated user with
+            // access to the project (owner / collaborator / admin, or any
+            // authenticated user on public projects — same semantics as the
+            // Yjs WebSocket via checkProjectAccess).
+            .use(withJwtAuth())
+            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+                const projectIdParam = (params as Record<string, string>).projectId;
+                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                    db: database,
+                    queries: {
+                        findProjectByUuid: queries.findProjectByUuid,
+                        findProjectById: queries.findProjectById,
+                        checkProjectAccess: queries.checkProjectAccess,
+                    },
+                });
+                if ('status' in result) {
+                    set.status = result.status;
+                    return { success: false, error: result.message };
+                }
+            })
 
             // =====================================================
             // Upload Asset (simple)
@@ -620,25 +648,45 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 // Return file blob with metadata headers for collaborative sync
                 const fileBuffer = await readFile(asset.storage_path);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
-                set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 // Add metadata headers for AssetWebSocketHandler prefetch
                 set.headers['x-original-mime'] = asset.mime_type || 'application/octet-stream';
-                set.headers['x-filename'] = asset.filename;
-                set.headers['x-folder-path'] = asset.folder_path || '';
+                set.headers['x-filename'] = encodeHeaderValue(asset.filename);
+                set.headers['x-folder-path'] = encodeHeaderValue(asset.folder_path || '');
                 set.headers['x-file-size'] = asset.file_size || '0';
                 return fileBuffer;
             })
 
             // GET /:assetId - Get/Download asset
             .get('/:assetId', async ({ params, set }) => {
-                const assetId = parseInt(params.assetId, 10);
+                const { projectId, assetId } = params;
 
-                if (isNaN(assetId)) {
-                    set.status = 400;
-                    return { success: false, error: 'Invalid asset ID' };
+                // Get numeric project ID (handles both UUID and numeric strings)
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
                 }
 
-                const asset = await queries.findAssetById(database, assetId);
+                // IMPORTANT:
+                // AssetManager uses UUID-like client IDs in asset:// URLs and calls this endpoint.
+                // If we use parseInt() directly, UUIDs that start with a digit are misparsed
+                // (e.g. "960c..." => 960), causing random 404/400 responses.
+                // So we only treat strictly numeric values as DB numeric IDs.
+                const isNumericAssetId = /^\d+$/.test(assetId);
+
+                let asset: Asset | undefined;
+                if (isNumericAssetId) {
+                    const numericAssetId = parseInt(assetId, 10);
+                    const found = await queries.findAssetById(database, numericAssetId);
+                    // Ensure requested project matches asset ownership
+                    if (found && found.project_id === projectIdNum) {
+                        asset = found;
+                    }
+                } else {
+                    asset = await queries.findAssetByClientId(database, assetId, projectIdNum);
+                }
+
                 if (!asset) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
@@ -653,7 +701,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 // Return file
                 const fileBuffer = await readFile(asset.storage_path);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
-                set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 return fileBuffer;
             })
 

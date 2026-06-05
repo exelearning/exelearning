@@ -223,4 +223,110 @@ describe('ToastManagement', () => {
       expect(Toast).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('getOrCreateModalToastsContainer', () => {
+    let mockModal;
+    let mockModalContent;
+
+    beforeEach(() => {
+      mockModalContent = document.createElement('div');
+      mockModalContent.className = 'modal-content';
+
+      mockModal = document.createElement('div');
+      mockModal.className = 'modal show';
+      mockModal.appendChild(mockModalContent);
+    });
+
+    it('should create a new container if none exists', () => {
+      const container = toastManager.getOrCreateModalToastsContainer(mockModal);
+
+      expect(container).toBeDefined();
+      expect(container.classList.contains('toasts-container')).toBe(true);
+      expect(container.classList.contains('modal-toasts-container')).toBe(true);
+    });
+
+    it('should insert container at the beginning of modal-content', () => {
+      const existingChild = document.createElement('div');
+      existingChild.className = 'modal-header';
+      mockModalContent.appendChild(existingChild);
+
+      const container = toastManager.getOrCreateModalToastsContainer(mockModal);
+
+      expect(mockModalContent.firstChild).toBe(container);
+    });
+
+    it('should return existing container if already present', () => {
+      const existingContainer = document.createElement('div');
+      existingContainer.className = 'toasts-container modal-toasts-container';
+      mockModalContent.appendChild(existingContainer);
+
+      const container = toastManager.getOrCreateModalToastsContainer(mockModal);
+
+      expect(container).toBe(existingContainer);
+      expect(mockModal.querySelectorAll('.modal-toasts-container').length).toBe(1);
+    });
+  });
+
+  describe('createToast with modal option', () => {
+    let mockModal;
+    let mockModalContent;
+    let mockModalContainer;
+
+    beforeEach(() => {
+      toastManager.init();
+
+      mockModalContent = document.createElement('div');
+      mockModalContent.className = 'modal-content';
+
+      mockModal = document.createElement('div');
+      mockModal.className = 'modal show';
+      mockModal.appendChild(mockModalContent);
+
+      mockModalContainer = document.createElement('div');
+      mockModalContainer.className = 'toasts-container modal-toasts-container';
+    });
+
+    it('should append toast to modal container when modal: true and modal is open', () => {
+      vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+        if (selector === '.modal.show') return mockModal;
+        if (selector === 'body > .toasts-container') return mockContainer;
+        return null;
+      });
+
+      vi.spyOn(toastManager, 'getOrCreateModalToastsContainer').mockReturnValue(mockModalContainer);
+      mockModalContainer.append = vi.fn();
+
+      const data = { title: 'Test', modal: true };
+      toastManager.createToast(data);
+
+      expect(toastManager.getOrCreateModalToastsContainer).toHaveBeenCalledWith(mockModal);
+      expect(mockModalContainer.append).toHaveBeenCalledWith(mockClonedElement);
+    });
+
+    it('should fallback to body container when modal: true but no modal is open', () => {
+      vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+        if (selector === '.modal.show') return null;
+        if (selector === 'body > .toasts-container') return mockContainer;
+        return null;
+      });
+
+      const data = { title: 'Test', modal: true };
+      toastManager.createToast(data);
+
+      expect(mockContainer.append).toHaveBeenCalledWith(mockClonedElement);
+    });
+
+    it('should use body container when modal option is not set', () => {
+      vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+        if (selector === '.modal.show') return mockModal;
+        if (selector === 'body > .toasts-container') return mockContainer;
+        return null;
+      });
+
+      const data = { title: 'Test' };
+      toastManager.createToast(data);
+
+      expect(mockContainer.append).toHaveBeenCalledWith(mockClonedElement);
+    });
+  });
 });

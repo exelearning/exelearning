@@ -1,5 +1,7 @@
 # contentv3.xml Format Documentation
 
+> **See also**: For the modern `.elpx` format and `content.xml` structure, see [ELPX Format Documentation](elpx-format.md).
+
 This document describes the legacy `contentv3.xml` format used by eXeLearning 2.x (eXe Legacy). This format is a Python object serialization to XML and is **not suitable for DTD validation** due to its dynamic structure.
 
 ## Overview
@@ -385,3 +387,5 @@ The contentv3.xml parser is implemented in:
 | Content | `<unicode content="true">` | `<htmlView>`, `<jsonProperties>` |
 | Hierarchy | Nested Node instances | Flat with `odeParentPageId` |
 | Metadata | Dictionary keys | `<odeProperty>` elements |
+
+For full documentation of the ODE format, see [elpx-format.md](elpx-format.md).

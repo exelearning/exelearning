@@ -27,9 +27,11 @@ interface ResourceFetcherInterface {
     fetchScormFiles(): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
-    fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
+    fetchI18nFile(language: string): Promise<string | null>;
+    fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
 /**
@@ -94,17 +96,6 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of path -> content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
-        const format = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const blobMap = await this.fetcher.fetchSchemas(format);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
      * Fetch specific library files by path
      * @param files - Array of file paths
      * @param patterns - Optional library patterns to identify directory-based libraries
@@ -112,23 +103,28 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchLibraryFiles(files: string[], patterns?: LibraryPattern[]): Promise<Map<string, Uint8Array>> {
         // Build lookup for directory patterns
-        const directoryPatterns = new Set<string>();
+        // When isDirectory is true, we extract the directory name from file paths
+        // e.g., 'exe_atools/exe_atools.js' -> 'exe_atools' should include the entire directory
+        const directoriesToInclude = new Set<string>();
         if (patterns) {
             for (const lib of patterns) {
                 if (lib.isDirectory) {
                     for (const file of lib.files) {
-                        directoryPatterns.add(file);
+                        // Extract directory name (first path component)
+                        const dirName = file.split('/')[0];
+                        directoriesToInclude.add(dirName);
                     }
                 }
             }
         }
 
-        // Separate directory patterns from regular files
+        // Separate files by whether their directory should be fully included
         const regularFiles: string[] = [];
-        const directoryFiles: string[] = [];
+        const directoriesToFetch = new Set<string>();
         for (const file of files) {
-            if (directoryPatterns.has(file)) {
-                directoryFiles.push(file);
+            const dirName = file.split('/')[0];
+            if (directoriesToInclude.has(dirName)) {
+                directoriesToFetch.add(dirName);
             } else {
                 regularFiles.push(file);
             }
@@ -139,17 +135,20 @@ export class BrowserResourceProvider implements ResourceProvider {
         if (regularFiles.length > 0) {
             const blobMap = await this.fetcher.fetchLibraryFiles(regularFiles);
             const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
-            for (const [path, content] of converted) {
-                result.set(path, content);
+            for (const [filePath, content] of converted) {
+                result.set(filePath, content);
             }
         }
 
-        // Fetch directory patterns using fetchLibraryDirectory
-        for (const dir of directoryFiles) {
+        // Fetch entire directories for directory patterns
+        for (const dir of directoriesToFetch) {
             const blobMap = await this.fetcher.fetchLibraryDirectory(dir);
             const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
-            for (const [path, content] of converted) {
-                result.set(path, content);
+            for (const [filePath, content] of converted) {
+                // Filter out test files
+                if (!filePath.endsWith('.test.js') && !filePath.endsWith('.spec.js')) {
+                    result.set(filePath, content);
+                }
             }
         }
 
@@ -163,16 +162,6 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchLibraryDirectory(libraryName);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
-     * Fetch schema files for a format
-     * @param format - Format name (scorm12, scorm2004, ims, epub3)
-     * @returns Map of path -> content
-     */
-    async fetchSchemas(format: string): Promise<Map<string, Uint8Array>> {
-        const blobMap = await this.fetcher.fetchSchemas(format);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
@@ -206,6 +195,41 @@ export class BrowserResourceProvider implements ResourceProvider {
     async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchContentCss();
         return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es','atkinson-hyperlegible-next')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+        const blobMap = await this.fetcher.fetchGlobalFontFiles(fontId);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Delegates to ResourceFetcher which fetches `app/common/i18n/common_i18n.{lang}.js`.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
+     */
+    async fetchI18nFile(language: string): Promise<string> {
+        const result = await this.fetcher.fetchI18nFile(language);
+        return result ?? '';
+    }
+
+    /**
+     * Fetch i18n translations for a specific language.
+     * Delegates to ResourceFetcher which handles static vs server mode.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Map<englishSource, translatedTarget>
+     */
+    async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
+        const record = await this.fetcher.fetchI18nTranslations(language);
+        return new Map(Object.entries(record));
     }
 
     /**

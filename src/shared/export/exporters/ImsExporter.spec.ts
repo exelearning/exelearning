@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -81,6 +82,14 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
@@ -108,6 +117,14 @@ class MockZipProvider implements ZipProvider {
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -231,6 +248,43 @@ describe('ImsExporter', () => {
         });
     });
 
+    describe('eXeLearning Logo', () => {
+        it('should include exe_powered_logo.png when logo is available', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new ImsExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should include exe_powered_logo.png in imsmanifest.xml resources', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('content/img/exe_powered_logo.png');
+        });
+    });
+
     describe('IMS Manifest', () => {
         it('should generate valid imsmanifest.xml', async () => {
             await exporter.export();
@@ -287,11 +341,11 @@ describe('ImsExporter', () => {
             expect(html).not.toContain('unloadPage');
         });
 
-        it('should have exe-ims class', () => {
+        it('should have exe-ims class (but not exe-web-site)', () => {
             const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('exe-web-site');
             expect(html).toContain('exe-ims');
+            expect(html).not.toContain('exe-web-site');
         });
 
         it('should include page content', () => {
@@ -305,15 +359,122 @@ describe('ImsExporter', () => {
 
             expect(html).toContain('Test IMS Project');
         });
+
+        it('should NOT include page-counter when addPagination is false', () => {
+            document = new MockDocument({ addPagination: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('page-counter');
+        });
+
+        it('should include page-counter when addPagination is true', () => {
+            document = new MockDocument({ addPagination: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('page-counter');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('made-with-eXe');
+        });
+
+        it('should include made-with-eXe link by default', () => {
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('made-with-eXe');
+        });
     });
 
     describe('Project ID Generation', () => {
-        it('should generate unique project IDs', () => {
+        it('should generate unique low-level project IDs (legacy random helper)', () => {
             const id1 = exporter.generateProjectId();
             const id2 = exporter.generateProjectId();
 
             expect(id1).not.toBe(id2);
             expect(id1.length).toBeGreaterThan(0);
+        });
+
+        it('should produce a STABLE manifest@identifier across exports when odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const zip1 = new MockZipProvider();
+            const exporter1 = new ImsExporter(document, resources, assets, zip1);
+            await exporter1.export();
+            const manifest1 = zip1.files.get('imsmanifest.xml') as string;
+            const idMatch1 = manifest1.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch1).not.toBeNull();
+            const id1 = idMatch1![1];
+
+            const zip2 = new MockZipProvider();
+            const exporter2 = new ImsExporter(document, resources, assets, zip2);
+            await exporter2.export();
+            const manifest2 = zip2.files.get('imsmanifest.xml') as string;
+            const idMatch2 = manifest2.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch2).not.toBeNull();
+            const id2 = idMatch2![1];
+
+            // BUG fix: re-exporting the same project must produce the SAME manifest identifier.
+            expect(id1).toBe(id2);
+            expect(id1).toContain('20251201123456ABCDEF');
+        });
+
+        it('should honour meta.scormIdentifier as a user override (#1785)', async () => {
+            document = new MockDocument(
+                {
+                    odeIdentifier: '20251201123456ABCDEF',
+                    scormIdentifier: 'CUSTOM-OVERRIDE-XYZ',
+                },
+                samplePages,
+            );
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toBe('CUSTOM-OVERRIDE-XYZ');
+        });
+
+        it('should fall back to a generated eXe-MANIFEST-* identifier when neither override nor odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toMatch(/^eXe-MANIFEST-\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should derive manifest@identifier and content.xml odeId from the same odeIdentifier (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const contentXml = localZip.files.get('content.xml') as string;
+            // Both artifacts reference the same project-identity root.
+            expect(manifest).toContain('20251201123456ABCDEF');
+            expect(contentXml).toContain('20251201123456ABCDEF');
+        });
+
+        it('shares a single root id across manifest and organization on the FALLBACK path (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(orgMatch![1]).toBe(manifestMatch![1]);
         });
     });
 
@@ -326,11 +487,12 @@ describe('ImsExporter', () => {
             expect(loadedZip['index.html']).toBeDefined();
         });
 
-        it('should include theme files', async () => {
+        it('should include theme files with original names', async () => {
             const result = await exporter.export();
 
             const loadedZip = unzipSync(new Uint8Array(result.data!));
-            expect(loadedZip['theme/content.css']).toBeDefined();
+            // Theme file names should be preserved as-is
+            expect(loadedZip['theme/style.css']).toBeDefined();
         });
     });
 
@@ -387,6 +549,32 @@ describe('ImsExporter', () => {
             const result = await exporter.export({ filename: 'my-ims-package.zip' });
 
             expect(result.filename).toBe('my-ims-package.zip');
+        });
+    });
+
+    describe('ODE XML', () => {
+        it('should include content.xml in IMS package with DOCTYPE', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(contentXml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should include content.dtd in IMS package', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml and content.dtd in manifest COMMON_FILES', async () => {
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('<file href="content.xml"/>');
+            expect(manifest).toContain('<file href="content.dtd"/>');
         });
     });
 });

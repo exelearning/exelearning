@@ -1,0 +1,23 @@
+<div class="modal exe-modal-fade" id="modalGlobalSearch" tabindex="-1"
+     role="dialog" aria-label="{{ 'Search' | trans }}" data-open="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body p-0">
+                <div class="global-search-input-wrapper">
+                    <span class="exe-icon search-icon">search</span>
+                    <input type="text" id="global-search-input"
+                           placeholder="{{ 'Search pages and content...' | trans }}"
+                           autocomplete="off" />
+                    <kbd class="search-shortcut-hint">ESC</kbd>
+                </div>
+                <ul class="global-search-results" role="listbox" aria-label="{{ 'Search results' | trans }}"></ul>
+                <div class="global-search-empty d-none">{{ 'No results found' | trans }}</div>
+                <div class="global-search-footer">
+                    <span><kbd>↑↓</kbd> {{ 'Navigate' | trans }}</span>
+                    <span><kbd>↵</kbd> {{ 'Select' | trans }}</span>
+                    <span><kbd>ESC</kbd> {{ 'Close' | trans }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

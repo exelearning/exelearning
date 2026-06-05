@@ -84,8 +84,9 @@ var $quickquestionsvideo = {
         $quickquestionsvideo.options = [];
 
         $quickquestionsvideo.activities.each(function (i) {
+            const dl = $('.vquext-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.vquext-version', this).eq(0).text(),
-                dl = $('.vquext-DataGame', this),
                 videoLocal = $('.vquext-LinkLocalVideo', this)
                     .eq(0)
                     .attr('href'),
@@ -519,7 +520,8 @@ var $quickquestionsvideo = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
             );
         mOptions.numberQuestions = mOptions.questionsGame.length;
         mOptions.modeBoard =
@@ -899,7 +901,7 @@ var $quickquestionsvideo = {
                             );
                         if (latex) {
                             $exeDevices.iDevice.gamification.math.updateLatex(
-                                `vquextProgressBar-${instance}`
+                                `#vquextProgressBar-${instance}`
                             );
                         }
                         $(this).find('div.VQXTP-Tooltip').fadeIn(300);
@@ -1222,7 +1224,7 @@ var $quickquestionsvideo = {
             $quextOverPoint = $('#vquextOverScore-' + instance),
             $quextOverHits = $('#vquextOverHits-' + instance),
             $quextOverErrors = $('#vquextOverErrors-' + instance),
-            $quextPShowClue = $('#vuextPShowClue-' + instance),
+            $quextPShowClue = $('#vquextPShowClue-' + instance),
             $quextGamerOver = $('#vquextGamerOver-' + instance),
             $quextOverNumber = $('#vquextOverNumber-' + instance);
         let message = '',
@@ -1839,8 +1841,7 @@ var $quickquestionsvideo = {
                 mOptions.msgs.msgIndicateSolution,
                 instance
             );
-            r;
-            eturn;
+            return;
         }
         mOptions.gameActived = false;
 
@@ -2153,7 +2154,7 @@ var $quickquestionsvideo = {
             color: color,
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            `vquextPAuthor-${instance}`
+            `#vquextPAuthor-${instance}`
         );
     },
 
@@ -2222,7 +2223,7 @@ var $quickquestionsvideo = {
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `vquextQuestionDiv-${instance}`
+                `#vquextQuestionDiv-${instance}`
             );
         }
     },
@@ -2260,7 +2261,7 @@ var $quickquestionsvideo = {
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `vquextQuestionDiv-${instance}`
+                `#vquextQuestionDiv-${instance}`
             );
         }
     },

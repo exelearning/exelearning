@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -57,7 +58,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -67,6 +68,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -90,7 +92,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = infoCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -138,6 +140,7 @@ async function saveIdevice(page: Page): Promise<void> {
             const tinyMce = document.querySelector('#node-content article .idevice_node.udl-content .tox-menubar');
             return !tinyMce;
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -146,17 +149,28 @@ async function saveIdevice(page: Page): Promise<void> {
  * Helper to type content in the TinyMCE editor
  */
 async function typeInTinyMCE(page: Page, text: string): Promise<void> {
-    // Find the TinyMCE iframe
-    const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
-    const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            return !!editor && editor.initialized;
+        },
+        null,
+        { timeout: 15000 },
+    );
 
-    const frameEl = await tinyMceFrame.elementHandle();
-    const frame = await frameEl?.contentFrame();
+    await page.evaluate(content => {
+        const editor = (window as any).tinymce?.activeEditor;
+        if (!editor) return;
+        editor.setContent(content);
+        editor.fire('change');
+        editor.fire('input');
+        editor.setDirty(true);
+    }, text);
 
-    if (frame) {
-        await frame.focus('body');
-        await frame.type('body', text, { delay: 5 });
-    }
+    await page.waitForFunction(() => {
+        const editor = (window as any).tinymce?.activeEditor;
+        return !!editor && editor.isDirty();
+    });
 }
 
 /**
@@ -192,19 +206,10 @@ test.describe('UDL Content iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'UDL Content Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -247,18 +252,9 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Content Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add and edit UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -273,21 +269,10 @@ test.describe('UDL Content iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -296,7 +281,7 @@ test.describe('UDL Content iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Verify content persisted
@@ -313,18 +298,9 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Types Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -348,18 +324,9 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Multiple Blocks Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -408,18 +375,9 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Alt Content Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -446,18 +404,9 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add and configure UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
@@ -471,7 +420,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -482,7 +431,7 @@ test.describe('UDL Content iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify UDL container has correct type class
             const udlContainer = iframe.locator('.exe-udlContent');
@@ -513,25 +462,16 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Audio Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add and configure UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
             await enterEditMode(page);
 
             // Wait for TinyMCE to be ready
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Insert audio element via TinyMCE API (not directly into iframe body)
             // This ensures the content is properly tracked and saved
@@ -553,7 +493,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -564,13 +504,13 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
             await expect(button).toBeVisible({ timeout: 10000 });
             await button.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the content is visible
             const mainContent = previewIframe.locator('.exe-udlContent-content-main');
@@ -612,25 +552,16 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL MEJS Double Init Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add and configure UDL Content iDevice
             await addUdlContentIdeviceFromPanel(page);
             await enterEditMode(page);
 
             // Wait for TinyMCE to be ready
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Insert audio element via TinyMCE API (not directly into iframe body)
             // This ensures the content is properly tracked and saved
@@ -652,7 +583,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -663,13 +594,13 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
             await expect(button).toBeVisible({ timeout: 10000 });
             await button.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Check MEJS container classes
             const mejsContainer = previewIframe.locator('.exe-udlContent-content-main .mejs-container').first();

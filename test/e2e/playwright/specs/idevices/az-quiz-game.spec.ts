@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -57,7 +58,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -67,6 +68,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -88,7 +90,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = gamesCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -106,7 +108,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
     await page.locator('#node-content article .idevice_node.az-quiz-game').first().waitFor({ timeout: 15000 });
 
     // Wait for the word inputs to be dynamically created
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Wait for the Words fieldset to have content
     await page
@@ -118,6 +120,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
                 );
                 return wordInputs.length >= 26;
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -226,7 +229,7 @@ async function saveAzQuizGameIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete - check for rosco container appearing
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Try to wait for edition mode to end (mode attribute changes)
     await page
@@ -239,6 +242,7 @@ async function saveAzQuizGameIdevice(page: Page): Promise<void> {
                     document.querySelector('#node-content .az-quiz-game .rosco-IDevice') !== null
                 );
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -267,19 +271,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'AZ Quiz Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add an A-Z Quiz Game iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -299,18 +294,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'AZ Quiz Fill Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -335,18 +321,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'AZ Quiz Save Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -373,18 +350,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -393,21 +361,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -416,7 +373,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Wait for the iDevice to be rendered
@@ -426,6 +383,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
                         const idevice = document.querySelector('#node-content .az-quiz-game');
                         return idevice !== null;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .catch(() => {});
@@ -443,19 +401,18 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
+            // Capture console messages for debugging SW issues
+            const consoleLogs: string[] = [];
+            page.on('console', msg => {
+                if (msg.text().includes('[Preview SW]') || msg.text().includes('Service Worker')) {
+                    consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
+                }
+            });
+
             const projectUuid = await createProject(page, 'AZ Quiz Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -464,7 +421,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -474,8 +431,15 @@ test.describe('A-Z Quiz Game iDevice', () => {
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
 
-            // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            // Wait for page to load with error logging
+            try {
+                await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            } catch (error) {
+                console.log('--- SW Console Logs ---');
+                consoleLogs.forEach(log => console.log(log));
+                console.log('--- End SW Console Logs ---');
+                throw error;
+            }
 
             // Verify rosco elements are present
             await verifyRoscoInPreview(iframe);
@@ -486,18 +450,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Canvas Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -506,7 +461,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -515,10 +470,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for the rosco to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check canvas has proper dimensions (not 0x0)
             const canvasInfo = await iframe
@@ -546,18 +501,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Letters Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -566,7 +512,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -575,10 +521,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check that letter indicators exist
             const letterIndicators = iframe.locator('.rosco-Letter');
@@ -598,18 +544,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Start Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -618,7 +555,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -627,10 +564,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check start game button is visible
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
@@ -644,18 +581,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Game Start Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -664,7 +592,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -673,17 +601,17 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
 
             // Wait for game to start
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify question div is visible
             const questionDiv = iframe.locator('[id^="roscoQuestionDiv-"]').first();
@@ -703,18 +631,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Answer Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -723,7 +642,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -732,15 +651,15 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the initial hits count
             const hitsCounter = iframe.locator('[id^="roscotPHits-"]').first();
@@ -757,7 +676,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await submitBtn.click();
 
             // Wait for answer to be processed
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify hits counter increased
             const newHits = await hitsCounter.textContent();
@@ -769,18 +688,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Error Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -789,7 +699,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -798,15 +708,15 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the initial errors count
             const errorsCounter = iframe.locator('[id^="roscotPErrors-"]').first();
@@ -822,7 +732,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await submitBtn.click();
 
             // Wait for answer to be processed
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify errors counter increased
             const newErrors = await errorsCounter.textContent();
@@ -834,18 +744,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Skip Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -854,7 +755,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -863,15 +764,15 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the first definition text
             const definitionText = iframe.locator('[id^="roscoPDefinition-"]').first();
@@ -882,7 +783,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await moveOnBtn.click();
 
             // Wait for next question
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify definition changed (moved to next question)
             const newDefinition = await definitionText.textContent();
@@ -896,18 +797,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Duration Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -923,7 +815,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -932,10 +824,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check the time display shows 1:00 (60 seconds)
             const timeDisplay = iframe.locator('[id^="roscoPTime-"]').first();

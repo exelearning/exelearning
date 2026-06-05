@@ -52,8 +52,9 @@ var $padlock = {
     loadGame: function () {
         $padlock.options = [];
         $padlock.activities.each(function (i) {
+            const dl = $('.candado-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.candado-version', this).eq(0).text(),
-                dl = $('.candado-DataGame', this),
                 mOption = $padlock.loadDataGame(dl, version),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -72,7 +73,6 @@ var $padlock = {
             mOption.idevicePath = $padlock.idevicePath;
             mOption.main = 'candadoMainContainer-' + i;
             mOption.idevice = 'candado-IDevice';
-            +i;
 
             const candado = $padlock.createInterfaceCandado(i);
             dl.before(candado).remove();
@@ -167,7 +167,7 @@ var $padlock = {
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
         mOptions.score = 0;
-        mOptions.gameStarted = true;
+        mOptions.gameStarted = false;
         return mOptions;
     },
 

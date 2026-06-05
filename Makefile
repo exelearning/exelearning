@@ -16,6 +16,19 @@ endif
 
 MAKEFLAGS += --no-print-directory
 
+# Warn when running in native Windows shells (cmd or PowerShell)
+ifeq ($(SYSTEM_OS),windows)
+$(warning )
+$(warning ============================================================)
+$(warning  WARNING: Non-Bash shell detected (cmd or PowerShell))
+$(warning ============================================================)
+$(warning  Running make in native Windows shells may cause errors.)
+$(warning  Please use a Bash-compatible terminal instead,)
+$(warning  e.g. Git Bash: https://git-scm.com/downloads)
+$(warning ============================================================)
+$(warning )
+endif
+
 # Default target: show help
 .DEFAULT_GOAL := help
 
@@ -123,12 +136,39 @@ logs: check-docker
 
 # Local environment variables (used by CLI commands)
 # For up-local, cross-env handles these via package.json scripts
+ifeq ($(SYSTEM_OS),windows)
+# Windows: use cross-env for environment variable handling
+LOCAL_ENV := npx cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+else
 LOCAL_ENV := FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+endif
 
 # Install dependencies
 .PHONY: deps
 deps: check-bun
-	@bun install
+	@LOCK=/tmp/.exe-bun-lock; \
+	PIDFILE=/tmp/.exe-bun-lock.pid; \
+	if mkdir "$$LOCK" 2>/dev/null; then \
+		echo $$$$ > "$$PIDFILE"; \
+		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
+	else \
+		if [ -f "$$PIDFILE" ] && ! kill -0 $$(cat "$$PIDFILE") 2>/dev/null; then \
+			echo "[deps] Removing stale lock (owner PID no longer running)"; \
+			rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+			mkdir "$$LOCK" 2>/dev/null; \
+			echo $$$$ > "$$PIDFILE"; \
+			bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
+		fi; \
+		WAITED=0; \
+		while [ -d "$$LOCK" ]; do \
+			sleep 0.5; WAITED=$$((WAITED + 1)); \
+			if [ $$WAITED -ge 120 ]; then \
+				echo "[deps] Lock held for >60s — removing stale lock"; \
+				rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+				break; \
+			fi; \
+		done; \
+	fi
 
 # Build CSS
 .PHONY: css
@@ -146,7 +186,7 @@ bundle: deps
 # APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
 # APP_ENV=prod: Pre-compiled Elysia, no watchers
 .PHONY: up-local
-up-local: check-bun deps css bundle
+up-local: check-bun check-env deps css bundle
 ifeq ($(APP_ENV),prod)
 	@echo "Starting local (prod mode)..."
 	@$(MAKE) bundle
@@ -156,12 +196,36 @@ else
 	bun run dev:local
 endif
 
-# Start full app: Elysia backend + Electron
+# Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
-run-app: check-bun deps css bundle
-	@echo "Launching eXeLearning App (Electron + Elysia)..."
-	@bun run build:standalone
-	@bun run dev:app
+run-app: check-bun check-env deps css bundle
+	@bun add --no-save electron-updater electron-log electron-context-menu 2>/dev/null || true
+	@echo "Building static files..."
+	@bun scripts/build-static-bundle.ts
+	@echo "Copying static files to app/..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
+	@echo "Launching eXeLearning App (Electron)..."
+	@bun run electron
+
+# Build static distribution (PWA mode, no server required)
+# Usage: make build-static [VERSION=v1.0.0] [OUTPUT_DIR=/path/to/output]
+.PHONY: build-static
+build-static: check-bun deps css bundle
+	@echo "Building static distribution..."
+	@$(if $(VERSION),VERSION=$(VERSION) ,)$(if $(OUTPUT_DIR),OUTPUT_DIR=$(OUTPUT_DIR) ,)bun run build:static
+	@echo "Static distribution built at $${OUTPUT_DIR:-dist/static/}"
+
+# Build static distribution and serve it
+# Usage: make up-static [PORT=8080]
+.PHONY: up-static
+up-static: build-static
+	@echo ""
+	@echo "============================================================"
+	@echo "  Serving static distribution at http://localhost:$${PORT:-8080}"
+	@echo "  Press Ctrl+C to stop"
+	@echo "============================================================"
+	@echo ""
+	@bun x serve dist/static -p $${PORT:-8080}
 
 
 # =============================================================================
@@ -176,19 +240,16 @@ cli: check-bun
 	@$(CLI) $(ARGS)
 
 # Create a new user
-# Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
+# Usage: make create-user EMAIL=x PASSWORD=y [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
 .PHONY: create-user
 create-user: check-bun
 ifndef EMAIL
-	$(error EMAIL is required. Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z)
+	$(error EMAIL is required. Usage: make create-user EMAIL=x PASSWORD=y)
 endif
 ifndef PASSWORD
 	$(error PASSWORD is required)
 endif
-ifndef USER_ID
-	$(error USER_ID is required)
-endif
-	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(USER_ID) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
+	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
 
 # Grant ROLE_ADMIN to a user
 # Usage: make promote-admin EMAIL=x
@@ -247,11 +308,35 @@ endif
 tmp-cleanup: check-bun
 	@$(CLI) tmp:cleanup $(if $(MAX_AGE),--max-age=$(MAX_AGE),) $(if $(DRY_RUN),--dry-run,)
 
-# Extract and clean translations
-# Usage: make translations [LOCALE=es] [EXTRACT_ONLY=1] [CLEAN_ONLY=1]
+# Extract new translation keys (does not clean or remove anything)
+# Usage: make translations [LOCALE=es]
 .PHONY: translations
 translations: check-bun
-	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
+	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
+
+# Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
+# Usage: make translations-cleanup [LOCALE=es]
+.PHONY: translations-cleanup
+translations-cleanup: check-bun
+	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
+
+# Reorder trans-units in XLF files to match the order in messages.en.xlf
+# Usage: make translations-sort [LOCALE=es]
+.PHONY: translations-sort
+translations-sort: check-bun
+	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
+
+# Add CDATA to <target> elements that need it and normalise indentation
+# Usage: make translations-format [LOCALE=es]
+.PHONY: translations-format
+translations-format: check-bun
+	@$(CLI) translations:format $(if $(LOCALE),--locale=$(LOCALE),)
+
+# Update license information in public/libs/README.md
+# Usage: make update-licenses [DRY_RUN=1]
+.PHONY: update-licenses
+update-licenses: check-bun
+	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
 
 
 # =============================================================================
@@ -395,86 +480,6 @@ format: check-bun
 format-check: check-bun
 	bun run format:check
 
-
-# =============================================================================
-# LEGACY SYSTEM (Core2 Duo / No Bun support)
-# =============================================================================
-# UNSUPPORTED legacy mode for developers whose systems cannot run Bun
-# (e.g., older CPUs like Core2 Duo that lack AVX instructions).
-#
-# LIMITATIONS:
-# - No WebSocket support (real-time collaboration disabled)
-# - Runs in offline/single-user mode (APP_ONLINE_MODE=0)
-# - Performance may be slower than Bun
-# - Not recommended for production use
-#
-# For full functionality, use "make up" with Bun.
-
-# Start Docker with Node.js (legacy mode)
-.PHONY: up-legacy
-up-legacy: check-docker check-env ## Start server with Node.js (for systems without Bun)
-	@echo ""
-	@echo "============================================================"
-	@echo "  LEGACY MODE (Node.js) - UNSUPPORTED"
-	@echo "============================================================"
-	@echo "  This mode is for developers whose systems cannot run Bun"
-	@echo "  (e.g., older CPUs like Core2 Duo without AVX support)."
-	@echo ""
-	@echo "  LIMITATIONS:"
-	@echo "  - No WebSocket support (real-time collaboration disabled)"
-	@echo "  - Runs in offline/single-user mode"
-	@echo "  - Performance may be slower than Bun"
-	@echo ""
-	@echo "  For full functionality, use 'make up' with Bun."
-	@echo "============================================================"
-	@echo ""
-	@docker compose -f docker-compose.legacy.yml up --build --remove-orphans
-
-# Clean legacy Docker volumes
-.PHONY: clean-legacy
-clean-legacy: check-docker check-env
-	@echo ""
-	@echo "[LEGACY MODE] Starting with Node.js (no WebSocket, offline mode)"
-	@echo ""
-	@docker compose -f docker-compose.legacy.yml down -v --remove-orphans
-
-# Stop legacy Docker
-.PHONY: down-legacy
-down-legacy: check-docker ## Stop legacy server
-	@docker compose -f docker-compose.legacy.yml down
-
-# Check Node.js is installed
-check-node:
-ifeq ($(SYSTEM_OS),windows)
-	@where node >NUL 2>&1 || (echo. & echo [ERROR] Node.js is not installed. & echo    Install it from: https://nodejs.org/ & echo. & exit 1)
-else
-	@command -v node >/dev/null 2>&1 || { \
-		echo ""; \
-		echo "[ERROR] Node.js is not installed."; \
-		echo "   Install it from: https://nodejs.org/"; \
-		echo ""; \
-		exit 1; \
-	}
-endif
-
-.PHONY: test-frontend-legacy
-test-frontend-legacy: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
-	npm run test:frontend:node
-
-.PHONY: lint-legacy
-lint-legacy: check-node
-	@echo "[LEGACY] Running full lint with npm"
-	npm run lint:src
-	npm run lint:public
-	npm run lint:test
-
-.PHONY: fix-legacy
-fix-legacy: check-node
-	@echo "[LEGACY] Running full lint fix with npm"
-	npm run lint:src:fix
-	npm run lint:public:fix
-	npm run lint:test:fix
-
 # =============================================================================
 # TESTING
 # =============================================================================
@@ -488,13 +493,17 @@ check-coverage: check-bun ## Check that all files have at least 90% coverage
 	@bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 # Test environment: in-memory database for isolation, no BASE_PATH
+ifeq ($(SYSTEM_OS),windows)
+TEST_ENV := set "BASE_PATH=" && set "DB_PATH=:memory:" && set "ELYSIA_FILES_DIR=%TEMP%\exelearning-test" &&
+else
 TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
+endif
 
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
 .PHONY: test-unit
-test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverage and 90% threshold
+test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
 	@FORCE_COLOR=1 $(TEST_ENV) bun test:unit > /tmp/exe-coverage.txt 2>&1; \
 	test_exit=$$?; \
@@ -503,11 +512,11 @@ test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverag
 	bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 .PHONY: test-integration
-test-integration: check-bun check-env ## Run integration tests
+test-integration: check-bun check-env bundle ## Run integration tests
 	$(TEST_ENV) bun test:integration
 
 .PHONY: test-frontend
-test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom) with coverage
+test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
 
 .PHONY: test-unit-ci
@@ -519,19 +528,41 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
-	npx playwright test --project=chromium
+	bun x playwright test --project=chromium
 
 .PHONY: test-e2e
-test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
+test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
-	npx playwright test --ui
+	bun x playwright test --ui
 
 .PHONY: test-e2e-firefox
-test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
-	npx playwright test --project=firefox
+test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
+	bun x playwright test --project=firefox
 
+.PHONY: test-e2e-static
+test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests against Static Build"
+	@echo "============================================================"
+	@echo ""
+	@echo "Running Playwright tests (server managed by Playwright)..."
+	@echo ""
+	@bun x playwright test --project=static; \
+	test_exit=$$?; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  Static E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  Static E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
 
 # =============================================================================
 # DATABASE-SPECIFIC E2E TESTS
@@ -563,25 +594,31 @@ define wait_for_app
 	done
 endef
 
+.PHONY: down-e2e
+down-e2e:
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
+	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
+	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
+
+
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml up --build -d
+	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -599,24 +636,21 @@ test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml up --build -d
+	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -634,24 +668,21 @@ test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backe
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml up --build -d
+	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -683,10 +714,20 @@ endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
+	@echo "Building static files..."
+	@bun run build:static
+	@echo "Copying static files to app/dist/static..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
+	@echo "Updating version in package.json files..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
-	bun run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
+	@echo "Installing app dependencies..."
+	@cd app && npm install --production
+	@echo "Building Electron package..."
+	npm run electron:pack $(if $(PUBLISH),-- --publish $(PUBLISH),)
 	@echo "Restoring version to 0.0.0-alpha..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"
 
 
@@ -794,70 +835,90 @@ help:
 	@echo "eXeLearning Development Commands"
 	@echo ""
 	@echo "Docker:"
-	@echo "  make up              Start Docker (dev mode by default)"
-	@echo "  make up APP_ENV=prod Start Docker (prod mode)"
-	@echo "  make upd             Start Docker detached"
-	@echo "  make down            Stop Docker"
-	@echo "  make pull            Pull latest Docker images"
-	@echo "  make shell           Shell into container"
-	@echo "  make logs            View container logs"
+	@echo "  make build           Build Docker image"
 	@echo "  make clean           Stop and remove volumes"
 	@echo "  make destroy         Remove everything (containers, images, node_modules)"
+	@echo "  make down            Stop Docker"
+	@echo "  make logs            View container logs"
+	@echo "  make pull            Pull latest Docker images"
+	@echo "  make shell           Shell into container"
+	@echo "  make up              Start Docker (dev mode by default)"
+	@echo "  make up APP_ENV=prod Start Docker (prod mode)"
+	@echo "  make up-mariadb      Start Docker with MariaDB"
+	@echo "  make up-postgres     Start Docker with PostgreSQL"
+	@echo "  make upd             Start Docker detached"
 	@echo ""
 	@echo "Local:"
+	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
+	@echo "  make clean-local           Clean local data (database + assets)"
+	@echo "  make css                   Build CSS only"
+	@echo "  make deps                  Install dependencies"
+	@echo "  make run-app               Start Electron + backend (desktop app)"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
-	@echo "  make run-app               Start Electron + backend (desktop app)"
-	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
-	@echo "  make deps                  Install dependencies"
+	@echo "  make build-static [VERSION=v1.0.0]  Build static distribution (PWA mode)"
+	@echo "  make up-static             Build and serve static distribution (PWA mode)"
+	@echo "  make up-static PORT=3000   Same, but on custom port"
 	@echo ""
 	@echo "CLI Commands:"
-	@echo "  make create-user EMAIL=x PASSWORD=y USER_ID=z   Create a new user"
-	@echo "  make promote-admin EMAIL=x                      Grant ROLE_ADMIN"
-	@echo "  make demote-admin EMAIL=x                       Remove ROLE_ADMIN"
-	@echo "  make grant-role EMAIL=x ROLE=y                  Add role to user"
-	@echo "  make revoke-role EMAIL=x ROLE=y                 Remove role from user"
-	@echo "  make generate-jwt EMAIL=x [TTL=3600]              Generate JWT token"
-	@echo "  make tmp-cleanup [MAX_AGE=86400]                Clean temp files"
-	@echo "  make translations [LOCALE=es]                   Extract/clean translations"
+	@echo "  make cli ARGS='...'                           Generic CLI access"
+	@echo "  make create-user EMAIL=x PASSWORD=y           Create a new user"
+	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
+	@echo "  make generate-jwt EMAIL=x [TTL=3600]          Generate JWT token"
+	@echo "  make grant-role EMAIL=x ROLE=y                Add role to user"
+	@echo "  make promote-admin EMAIL=x                    Grant ROLE_ADMIN"
+	@echo "  make revoke-role EMAIL=x ROLE=y               Remove role from user"
+	@echo "  make tmp-cleanup [MAX_AGE=86400]              Clean temp files"
+	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
+	@echo "  make translations-cleanup                     Remove obsolete translation strings"
+	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
+	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
+	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"
-	@echo "  make convert-elp INPUT=x OUTPUT=y               Convert ELP v2.x to v3.0 (elpx)"
-	@echo "  make export-elpx FORMAT=x INPUT=y OUTPUT=z      Export to any format"
-	@echo "  make export-html5 INPUT=x OUTPUT=y              Export to HTML5"
-	@echo "  make export-html5-sp INPUT=x OUTPUT=y           Export to HTML5 single-page"
-	@echo "  make export-scorm12 INPUT=x OUTPUT=y            Export to SCORM 1.2"
-	@echo "  make export-scorm2004 INPUT=x OUTPUT=y          Export to SCORM 2004"
-	@echo "  make export-ims INPUT=x OUTPUT=y                Export to IMS Content Package"
-	@echo "  make export-epub3 INPUT=x OUTPUT=y              Export to EPUB3"
+	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"
+	@echo "  make export-elpx FORMAT=x INPUT=y OUTPUT=z    Export to any format"
+	@echo "  make export-epub3 INPUT=x OUTPUT=y            Export to EPUB3"
+	@echo "  make export-html5 INPUT=x OUTPUT=y            Export to HTML5"
+	@echo "  make export-html5-sp INPUT=x OUTPUT=y         Export to HTML5 single-page"
+	@echo "  make export-ims INPUT=x OUTPUT=y              Export to IMS Content Package"
+	@echo "  make export-scorm12 INPUT=x OUTPUT=y          Export to SCORM 1.2"
+	@echo "  make export-scorm2004 INPUT=x OUTPUT=y        Export to SCORM 2004"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test            Run all tests"
-	@echo "  make test-unit       Run unit tests"
-	@echo "  make test-frontend   Run frontend tests"
-	@echo "  make test-watch      Run tests in watch mode"
-	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
+	@echo "  make check-coverage     Check 90% coverage threshold"
+	@echo "  make check-tests        Check test file coverage requirements"
+	@echo "  make test               Run all tests"
+	@echo "  make test-clean         Clean test artifacts"
+	@echo "  make test-frontend      Run frontend tests (Vitest)"
+	@echo "  make test-integration   Run integration tests"
+	@echo "  make test-unit          Run unit tests with coverage"
+	@echo "  make test-unit-ci       Run unit tests with lcov for CI"
+	@# TODO: Implement test-watch target
+	@# @echo "  make test-watch         Run tests in watch mode"
+	@echo ""
+	@echo "E2E Testing (Playwright):"
+	@echo "  make down-e2e           Clean up E2E Docker containers"
+	@echo "  make test-e2e           Run E2E tests (Chromium)"
 	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
 	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
-	@echo ""
-	@echo "Legacy (Core2 Duo / No Bun):"
-	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"
-	@echo "  make down-legacy            Stop legacy server"
-	@echo "  make clean-legacy           Stop and remove legacy volumes"
-	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
-	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
-	@echo "  make fix-legacy             Fix lint issues using npm"
+	@echo "  make test-e2e-static    Run E2E tests against static build"
+	@echo "  make test-e2e-mariadb   Run E2E tests with MariaDB backend"
+	@echo "  make test-e2e-postgres  Run E2E tests with PostgreSQL backend"
+	@echo "  make test-e2e-sqlite    Run E2E tests with SQLite backend"
+	@echo "  make test-e2e-ui        Run E2E tests with Playwright UI"
 	@echo ""
 	@echo "Linting (Biome):"
-	@echo "  make lint            Run lint on all files"
 	@echo "  make fix             Fix all lint issues"
-	@echo "  make lint-ts         Lint TypeScript source (src/)"
-	@echo "  make fix-ts          Fix TypeScript linting issues"
-	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make fix-js          Fix JavaScript linting issues"
-	@echo "  make lint-tests      Lint test files"
 	@echo "  make fix-tests       Fix test linting issues"
+	@echo "  make fix-ts          Fix TypeScript linting issues"
 	@echo "  make format          Format code with Biome"
+	@echo "  make format-check    Check formatting without fixing"
+	@echo "  make lint            Run lint on all files"
+	@echo "  make lint-js         Lint JavaScript (public/app/)"
+	@echo "  make lint-tests      Lint test files"
+	@echo "  make lint-ts         Lint TypeScript source (src/)"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package VERSION=1.0.0                    Build release"

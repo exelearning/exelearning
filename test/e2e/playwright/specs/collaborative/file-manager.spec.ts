@@ -1,97 +1,83 @@
-import { test, expect } from '../../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
-import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { waitForLoadingScreen, waitForAppReady, dismissBlockingAlertModal } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
+import { addTextIdevice } from '../../helpers/workarea-helpers';
 
 /**
  * Collaborative File Manager Tests
  *
  * These tests verify that File Manager operations sync in real-time
  * between multiple clients connected to the same project via WebSocket.
+ *
+ * NOTE: These tests are skipped in static mode as they require WebSocket collaboration
  */
 
 /**
- * Helper to add a text iDevice and enter edit mode (needed to open File Manager)
- */
-async function addTextIdeviceFromPanel(page: Page): Promise<void> {
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    await page.waitForTimeout(1000);
-
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    const quickTextButton = page
-        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
-        .first();
-    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
-        await quickTextButton.click();
-    } else {
-        const infoCategory = page
-            .locator('#menu_idevices .accordion-item')
-            .filter({ hasText: /Information|Información/i })
-            .locator('.accordion-button');
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
-            if (isCollapsed) {
-                await infoCategory.first().click();
-                await page.waitForTimeout(500);
-            }
-        }
-
-        const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-    }
-
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
-/**
- * Helper to open the File Manager modal via TinyMCE image dialog
+ * Helper to open the File Manager modal.
+ * Fast path: open from Utilities menu (more stable in CI).
+ * Fallback: TinyMCE image dialog for flows where navbar entry is unavailable.
  */
 async function openFileManager(page: Page): Promise<void> {
-    const existingTinyMce = page.locator('.tox-menubar');
-    if ((await existingTinyMce.count()) === 0) {
-        await addTextIdeviceFromPanel(page);
+    const fileManagerModal = page.locator('#modalFileManager[data-open="true"], #modalFileManager.show');
+    if (await fileManagerModal.isVisible().catch(() => false)) {
+        return;
     }
 
-    await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+    const openFromUtilitiesMenu = async (): Promise<boolean> => {
+        try {
+            await dismissBlockingAlertModal(page);
+
+            const fileManagerBtn = page.locator('#navbar-button-filemanager').first();
+            if (await fileManagerBtn.isVisible().catch(() => false)) {
+                await fileManagerBtn.click();
+                await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
+                return true;
+            }
+
+            const utilitiesDropdown = page.locator('#dropdownUtilities').first();
+            if (await utilitiesDropdown.isVisible().catch(() => false)) {
+                await utilitiesDropdown.click();
+                await page.waitForTimeout(150);
+            }
+
+            if (await fileManagerBtn.isVisible().catch(() => false)) {
+                await fileManagerBtn.click();
+                await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
+                return true;
+            }
+        } catch {
+            return false;
+        }
+
+        return false;
+    };
+
+    if (await openFromUtilitiesMenu()) {
+        return;
+    }
+
+    const textBlocks = page.locator('#node-content article .idevice_node.text');
+    if ((await textBlocks.count()) === 0) {
+        await addTextIdevice(page);
+    }
+
+    const editionBlock = page
+        .locator(
+            '#node-content article .idevice_node.text[mode="edition"], #node-content article .idevice_node.text:has(.tox-tinymce)',
+        )
+        .first();
+
+    if ((await editionBlock.count()) === 0) {
+        const editableEditBtn = page
+            .locator('#node-content article .idevice_node.text .btn-edit-idevice:not([disabled])')
+            .first();
+        await editableEditBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await editableEditBtn.click();
+    }
+
+    await page.waitForSelector('.tox-tinymce, .tox-toolbar, .tox-edit-area, .tox-tbtn', { timeout: 25000 });
+    await dismissBlockingAlertModal(page);
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await expect(imageBtn).toBeVisible({ timeout: 10000 });
@@ -103,7 +89,7 @@ async function openFileManager(page: Page): Promise<void> {
     await expect(browseBtn).toBeVisible({ timeout: 5000 });
     await browseBtn.click();
 
-    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+    await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
 }
 
 /**
@@ -129,6 +115,7 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
             return items.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -136,16 +123,51 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
 }
 
 /**
- * Helper to select the first file in the grid
+ * Helper to select the first file in the grid.
+ *
+ * Under collaborative load on CI the grid can re-render between the click and
+ * the selection check (for example when a Yjs asset update arrives from the
+ * other client), which used to make `document.querySelector(first-item)`
+ * return a different DOM node than the one the click landed on. This helper
+ * is deliberately resilient: it uses a Playwright locator for the `.selected`
+ * wait (which natively retries against a live DOM), and if the first click
+ * does not register a selection within a short window it re-clicks before
+ * giving up. All existing semantics are preserved for the happy path.
  */
 async function selectFirstFile(page: Page): Promise<void> {
     const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
     await fileItem.waitFor({ state: 'visible', timeout: 10000 });
-    await fileItem.click();
 
-    await page.waitForSelector('#modalFileManager .media-library-sidebar-content:not([style*="display: none"])', {
-        timeout: 5000,
-    });
+    const selectedLocator = page.locator('#modalFileManager .media-library-item.selected').first();
+
+    // Try up to 3 times: click → wait for any item to be .selected. Re-click
+    // covers the case where a concurrent DOM re-render ate the click.
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await fileItem.click({ force: true });
+            await selectedLocator.waitFor({ state: 'attached', timeout: attempt < 2 ? 4000 : 10000 });
+            lastError = undefined;
+            break;
+        } catch (err) {
+            lastError = err as Error;
+        }
+    }
+    if (lastError) throw lastError;
+
+    // Wait for sidebar content to be populated (filename element has content)
+    // This indicates showSidebarContent() has completed its async work including getImageDimensions()
+    await page.waitForFunction(
+        () => {
+            const filenameEl = document.querySelector('#modalFileManager .media-library-filename');
+            return filenameEl?.textContent && filenameEl.textContent.trim().length > 0;
+        },
+        null,
+        { timeout: 10000 },
+    );
+
+    // Give the UI a brief moment to finish button state updates after sidebar render.
+    await page.waitForTimeout(150);
 }
 
 /**
@@ -159,18 +181,17 @@ async function getFileCount(page: Page): Promise<number> {
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsBridge(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 test.describe('Collaborative File Manager', () => {
     // Collaboration tests need more time for WebSocket sync between clients
-    test.setTimeout(180000); // 3 minutes per test
+    test.setTimeout(90000); // 3 minutes per test
+
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
 
     test.describe('Real-Time Asset Rename Sync', () => {
         test('should sync file rename from Client A to Client B', async ({
@@ -189,7 +210,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A gets share URL and shares project
             const shareUrl = await getShareUrl(pageA);
@@ -207,7 +228,7 @@ test.describe('Collaborative File Manager', () => {
             await uploadFile(pageA, 'test/fixtures/sample-2.jpg');
 
             // Wait for asset to sync via WebSocket (asset-announced message)
-            await pageA.waitForTimeout(2000);
+            await pageA.waitForTimeout(500);
 
             // Client A selects the file and renames it
             await selectFirstFile(pageA);
@@ -217,15 +238,14 @@ test.describe('Collaborative File Manager', () => {
             const originalFilename = await filenameSpanA.textContent();
             expect(originalFilename).toContain('sample-2');
 
-            // Set up rename dialog handler
+            // Click rename button on Client A and fill in the custom rename dialog
             const newFilename = `synced-rename-${Date.now()}.jpg`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFilename);
-            });
-
-            // Click rename button on Client A
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameInputA = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameInputA.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInputA.fill(newFilename);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for rename to complete on Client A
             await pageA.waitForFunction(
@@ -247,7 +267,7 @@ test.describe('Collaborative File Manager', () => {
             }
 
             // Wait for WebSocket sync (asset-renamed message)
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager to verify the renamed file
             await openFileManager(pageB);
@@ -260,6 +280,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -291,7 +312,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A gets share URL and shares project
             const shareUrl = await getShareUrl(pageA);
@@ -309,7 +330,7 @@ test.describe('Collaborative File Manager', () => {
             await uploadFile(pageA, 'test/fixtures/sample-2.jpg');
 
             // Wait for asset to sync via WebSocket
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager BEFORE the rename happens
             await openFileManager(pageB);
@@ -322,6 +343,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -329,12 +351,13 @@ test.describe('Collaborative File Manager', () => {
             await selectFirstFile(pageA);
 
             const newFilename = `live-sync-rename-${Date.now()}.jpg`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFilename);
-            });
-
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
+            await expect(renameBtn).toBeEnabled({ timeout: 5000 });
             await renameBtn.click();
+            const renameInputA2 = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameInputA2.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInputA2.fill(newFilename);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for rename to complete on Client A
             await pageA.waitForFunction(
@@ -348,7 +371,7 @@ test.describe('Collaborative File Manager', () => {
 
             // Wait for WebSocket sync to propagate to Client B
             // The File Manager should auto-refresh when receiving asset-renamed event
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B selects the file to view its current name
             await selectFirstFile(pageB);
@@ -379,7 +402,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Share and join
             const shareUrl = await getShareUrl(pageA);
@@ -392,13 +415,14 @@ test.describe('Collaborative File Manager', () => {
 
             const originalFolderName = `SharedFolder_${Date.now()}`;
 
-            // Create folder with dialog handler
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(originalFolderName);
-            });
-
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
+
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await pageA.locator('#modalFileManager .rename-dialog-input').fill(originalFolderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             await pageA.waitForSelector(
                 `#modalFileManager .media-library-folder[data-folder-name="${originalFolderName}"]`,
@@ -420,7 +444,7 @@ test.describe('Collaborative File Manager', () => {
             await pageA.waitForTimeout(500);
 
             // Wait for sync
-            await pageA.waitForTimeout(2000);
+            await pageA.waitForTimeout(500);
 
             // Client A renames the folder
             const folderToRename = pageA.locator(
@@ -430,12 +454,12 @@ test.describe('Collaborative File Manager', () => {
             await pageA.waitForTimeout(300);
 
             const newFolderName = `RenamedFolder_${Date.now()}`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFolderName);
-            });
-
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameFolderInput = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameFolderInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameFolderInput.fill(newFolderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder rename on Client A
             await pageA.waitForSelector(
@@ -453,7 +477,7 @@ test.describe('Collaborative File Manager', () => {
             }
 
             // Wait for WebSocket sync
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager and verifies the renamed folder
             await openFileManager(pageB);
@@ -496,7 +520,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and uploads files
             await openFileManager(pageA);
@@ -527,12 +551,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for asset to sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A gets share URL
             const shareUrl = await getShareUrl(pageA);
@@ -542,7 +567,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Client B waits for WebSocket to sync asset metadata from server
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -555,6 +580,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -584,7 +610,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and creates a folder
             await openFileManager(pageA);
@@ -592,12 +618,14 @@ test.describe('Collaborative File Manager', () => {
             const folderName = `SharedAssets_${Date.now()}`;
 
             // Create folder
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(folderName);
-            });
-
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
+
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await pageA.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             await pageA.waitForSelector(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`, {
                 timeout: 10000,
@@ -631,12 +659,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A shares and Client B joins
             const shareUrl = await getShareUrl(pageA);
@@ -644,7 +673,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Wait for metadata sync
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -667,6 +696,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -693,7 +723,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Share project BEFORE both open File Manager
             const shareUrl = await getShareUrl(pageA);
@@ -782,7 +812,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and uploads a file
             await openFileManager(pageA);
@@ -813,12 +843,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for asset to sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A makes project public and gets share URL
             const shareUrl = await getShareUrl(pageA);
@@ -828,7 +859,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Wait for WebSocket to sync asset metadata
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -841,6 +872,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 20000 },
             );
 

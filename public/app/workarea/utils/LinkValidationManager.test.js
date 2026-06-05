@@ -355,4 +355,212 @@ describe('LinkValidationManager', () => {
             });
         });
     });
+
+    describe('_validateLinksClientSide', () => {
+        it('should use client-side validation when no stream URL', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockResolvedValue({ status: 'valid', error: null }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://example.com', count: 1 },
+                ],
+                totalLinks: 1,
+            });
+
+            const manager = new LinkValidationManager();
+            const onLinkUpdate = vi.fn();
+            const onComplete = vi.fn();
+
+            manager.onLinkUpdate = onLinkUpdate;
+            manager.onComplete = onComplete;
+
+            await manager.startValidation([{ html: '<a href="https://example.com">Link</a>' }]);
+
+            expect(mockAdapter.validateLink).toHaveBeenCalledWith('https://example.com');
+            expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'valid', null, expect.any(Object));
+            expect(onComplete).toHaveBeenCalled();
+        });
+
+        it('should update link status to validating before validation', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockImplementation(async () => {
+                    // Delay to allow checking intermediate state
+                    await new Promise((r) => setTimeout(r, 10));
+                    return { status: 'valid', error: null };
+                }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [{ id: 'link-1', url: 'https://example.com', count: 1 }],
+                totalLinks: 1,
+            });
+
+            const manager = new LinkValidationManager();
+            const statusUpdates = [];
+            manager.onLinkUpdate = (id, status) => {
+                statusUpdates.push({ id, status });
+            };
+
+            await manager.startValidation([{ html: '<a href="https://example.com">Link</a>' }]);
+
+            // Should have validating status first, then valid
+            expect(statusUpdates[0].status).toBe('validating');
+            expect(statusUpdates[1].status).toBe('valid');
+        });
+
+        it('should handle broken links from adapter', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockResolvedValue({ status: 'broken', error: '404' }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [{ id: 'link-1', url: 'https://broken.com', count: 1 }],
+                totalLinks: 1,
+            });
+
+            const manager = new LinkValidationManager();
+            const onLinkUpdate = vi.fn();
+            manager.onLinkUpdate = onLinkUpdate;
+
+            await manager.startValidation([{ html: '<a href="https://broken.com">Link</a>' }]);
+
+            expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'broken', '404', expect.any(Object));
+        });
+
+        it('should handle adapter validation errors', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockRejectedValue(new Error('Validation failed')),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [{ id: 'link-1', url: 'https://error.com', count: 1 }],
+                totalLinks: 1,
+            });
+
+            const manager = new LinkValidationManager();
+            const onLinkUpdate = vi.fn();
+            manager.onLinkUpdate = onLinkUpdate;
+
+            await manager.startValidation([{ html: '<a href="https://error.com">Link</a>' }]);
+
+            expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'broken', 'Validation failed', expect.any(Object));
+        });
+
+        it('should mark links as valid when no adapter available', async () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(null);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [{ id: 'link-1', url: 'https://example.com', count: 1 }],
+                totalLinks: 1,
+            });
+
+            const manager = new LinkValidationManager();
+            const onLinkUpdate = vi.fn();
+            manager.onLinkUpdate = onLinkUpdate;
+
+            await manager.startValidation([{ html: '<a href="https://example.com">Link</a>' }]);
+
+            expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'valid', null, expect.any(Object));
+        });
+
+        it('should stop validation when cancelled', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockImplementation(async () => {
+                    await new Promise((r) => setTimeout(r, 50));
+                    return { status: 'valid', error: null };
+                }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://a.com', count: 1 },
+                    { id: 'link-2', url: 'https://b.com', count: 1 },
+                    { id: 'link-3', url: 'https://c.com', count: 1 },
+                ],
+                totalLinks: 3,
+            });
+
+            const manager = new LinkValidationManager();
+
+            // Start validation and cancel after a short delay
+            const validationPromise = manager.startValidation([{ html: '' }]);
+            setTimeout(() => manager.cancel(), 10);
+            await validationPromise;
+
+            // Should have validated fewer than all links
+            expect(mockAdapter.validateLink.mock.calls.length).toBeLessThan(3);
+        });
+
+        it('should call onProgress for each validated link', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn().mockResolvedValue({ status: 'valid', error: null }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://a.com', count: 1 },
+                    { id: 'link-2', url: 'https://b.com', count: 1 },
+                ],
+                totalLinks: 2,
+            });
+
+            const manager = new LinkValidationManager();
+            const onProgress = vi.fn();
+            manager.onProgress = onProgress;
+
+            await manager.startValidation([{ html: '' }]);
+
+            // Should be called for each link (validating + validated states)
+            expect(onProgress.mock.calls.length).toBeGreaterThanOrEqual(2);
+        });
+
+        it('should call onComplete with final stats', async () => {
+            const mockAdapter = {
+                validateLink: vi.fn()
+                    .mockResolvedValueOnce({ status: 'valid', error: null })
+                    .mockResolvedValueOnce({ status: 'broken', error: '404' }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://valid.com', count: 1 },
+                    { id: 'link-2', url: 'https://broken.com', count: 1 },
+                ],
+                totalLinks: 2,
+            });
+
+            const manager = new LinkValidationManager();
+            const onComplete = vi.fn();
+            manager.onComplete = onComplete;
+
+            await manager.startValidation([{ html: '' }]);
+
+            expect(onComplete).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    total: 2,
+                    valid: 1,
+                    broken: 1,
+                    pending: 0,
+                }),
+                false
+            );
+        });
+    });
 });

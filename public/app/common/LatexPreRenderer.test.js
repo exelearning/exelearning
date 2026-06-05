@@ -141,6 +141,60 @@ describe('LatexPreRenderer', () => {
             expect(result.expressions[0].display).toBe('block');
             expect(result.expressions[0].latex).toContain('<br>');
         });
+
+        test('does NOT extract \\begin{tikzpicture} environments', () => {
+            const html = '<p>\\begin{tikzpicture}\\draw (0,0) circle (1in);\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('does NOT extract \\begin{circuitikz} environments', () => {
+            const html = '<p>\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('extracts math but skips tikzpicture in mixed content', () => {
+            const html = '<p>\\(x^2\\) and \\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].latex).toBe('\\(x^2\\)');
+            expect(result.expressions[0].display).toBe('inline');
+            // tikzpicture should remain in the HTML untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+        });
+
+        test('extracts math but skips circuitikz in mixed content', () => {
+            const html = '<p>\\[E = mc^2\\] and \\begin{circuitikz}\\draw (0,0) to[V=5V] (0,2);\\end{circuitikz}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].latex).toBe('\\[E = mc^2\\]');
+            expect(result.expressions[0].display).toBe('block');
+            // circuitikz should remain in the HTML untouched
+            expect(result.html).toContain('\\begin{circuitikz}');
+        });
+
+        test('still extracts other \\begin environments (e.g. align, equation)', () => {
+            const html = '<p>\\begin{equation}a^2 + b^2 = c^2\\end{equation}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].display).toBe('block');
+        });
+
+        test('does NOT extract tikzpicture with multiline content and <br> tags', () => {
+            const html = '<p>\\begin{tikzpicture}<br>\\draw (0,0) -- (1,1);<br>\\draw (1,1) -- (2,0);<br>\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
     });
 
     describe('_cleanLatexFromHtml', () => {
@@ -497,24 +551,80 @@ describe('LatexPreRenderer', () => {
             expect(result.html).toContain('<em>variable</em>');
         });
 
-        test('does NOT render LaTeX inside colored span (example code)', async () => {
-            // LaTeX in colored span is example code, should not be rendered
+        test('renders LaTeX inside colored span', async () => {
             const html = `<p><span style="color: #0000ff;">\\(x^2\\)</span> produce: \\(x^2\\)</p>`;
             const result = await LatexPreRenderer.preRender(html);
 
-            expect(result.count).toBe(1); // Only second one rendered
-            // First LaTeX in colored span should remain as text
-            expect(result.html).toContain('<span style="color: #0000ff;">\\(x^2\\)</span>');
-            // Second LaTeX should be rendered
+            expect(result.count).toBe(2);
             expect(result.html).toContain('exe-math-rendered');
         });
 
-        test('does NOT render LaTeX inside nested colored spans', async () => {
+        test('renders LaTeX inside nested colored spans', async () => {
             const html = `<p><span style="color: blue;"><span>\\(y\\)</span></span> vs \\(z\\)</p>`;
             const result = await LatexPreRenderer.preRender(html);
 
-            expect(result.count).toBe(1); // Only z rendered
-            expect(result.html).toContain('\\(y\\)'); // y stays as text
+            expect(result.count).toBe(2);
+            expect(result.html).toContain('exe-math-rendered');
+        });
+
+        test('renders inline LaTeX in span when sibling already has exe-math-rendered', async () => {
+            const html = `
+                <table><tbody>
+                    <tr>
+                        <th><span><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg><math></math></span></span></th>
+                        <th>Resultado</th>
+                    </tr>
+                    <tr>
+                        <td><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+                    </tr>
+                </tbody></table>
+            `;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(1);
+            expect(result.html).toContain('data-latex="\\mathrm{ABCdef}"');
+            expect(result.html).not.toMatch(/>\s*\\\(\\mathrm\{ABCdef\}\\\)\s*</);
+        });
+
+        test('does NOT render \\begin{tikzpicture} environments', async () => {
+            const html = '<div><p>\\(x^2\\)</p><p>\\begin{tikzpicture}\\draw (0,0) circle (1in);\\end{tikzpicture}</p></div>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1); // Only the \(x^2\) expression
+            expect(result.html).toContain('exe-math-rendered');
+            // tikzpicture should remain untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+            expect(result.html).toContain('\\end{tikzpicture}');
+        });
+
+        test('does NOT render \\begin{circuitikz} environments', async () => {
+            const html = '<div><p>\\(y^2\\)</p><p>\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}</p></div>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1); // Only the \(y^2\) expression
+            expect(result.html).toContain('exe-math-rendered');
+            // circuitikz should remain untouched
+            expect(result.html).toContain('\\begin{circuitikz}');
+            expect(result.html).toContain('\\end{circuitikz}');
+        });
+
+        test('renders math environments but not TikZ when both coexist', async () => {
+            const html = `<div>
+                <p>\\begin{equation}E = mc^2\\end{equation}</p>
+                <p>\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}</p>
+                <p>\\begin{circuitikz}\\draw (0,0) to[V] (0,2);\\end{circuitikz}</p>
+                <p>\\(F = ma\\)</p>
+            </div>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(2); // equation + inline \(F = ma\)
+            // Both TikZ environments should remain untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+            expect(result.html).toContain('\\begin{circuitikz}');
         });
     });
 
@@ -1396,6 +1506,261 @@ describe('LatexPreRenderer', () => {
             const result = await LatexPreRenderer.preRender(html);
 
             expect(result.count).toBe(2);
+        });
+    });
+
+    describe('JSON iDevice data attribute processing', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+                texReset: vi.fn(),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('detects LaTeX in data-idevice-json-data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>Some text \\(x^2\\)</p>',
+                otherField: 'no latex here',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.hasLatex).toBe(true);
+        });
+
+        test('pre-renders LaTeX in JSON data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>The formula \\(x^2\\) is simple</p>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThan(0);
+
+            // Check the JSON data was updated with pre-rendered content
+            const parser = new globalThis.DOMParser();
+            const doc = parser.parseFromString(result.html, 'text/html');
+            const element = doc.querySelector('[data-idevice-json-data]');
+            const newJsonData = JSON.parse(element.getAttribute('data-idevice-json-data'));
+
+            expect(newJsonData.textTextarea).toContain('exe-math-rendered');
+        });
+
+        test('processes multiple JSON iDevice elements', async () => {
+            const jsonData1 = {
+                textTextarea: '<p>\\(a^2\\)</p>',
+            };
+            const jsonData2 = {
+                textTextarea: '<p>\\(b^2\\)</p>',
+            };
+            const jsonStr1 = JSON.stringify(jsonData1).replace(/"/g, '&quot;');
+            const jsonStr2 = JSON.stringify(jsonData2).replace(/"/g, '&quot;');
+            const html = `
+                <div class="idevice_node" data-idevice-json-data="${jsonStr1}"></div>
+                <div class="idevice_node" data-idevice-json-data="${jsonStr2}"></div>
+            `;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(2);
+        });
+
+        test('skips JSON data without LaTeX content', async () => {
+            const jsonData = {
+                textTextarea: '<p>Regular text content without math</p>',
+                otherField: 'Just text',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.hasLatex).toBe(false);
+            expect(result.latexRendered).toBe(false);
+        });
+
+        test('handles invalid JSON in data attribute gracefully', async () => {
+            // Invalid JSON but contains LaTeX pattern
+            const html = `<div class="idevice_node" data-idevice-json-data="invalid json with \\(x\\)"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not crash
+            expect(result.hasLatex).toBe(true);
+        });
+
+        test('processes both JSON data and HTML body LaTeX', async () => {
+            const jsonData = {
+                textTextarea: '<p>\\(formula\\)</p>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `
+                <div class="idevice_node" data-idevice-json-data="${jsonStr}">
+                    <p>\\(another\\)</p>
+                </div>
+            `;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(2);
+        });
+
+        test('skips JSON properties that do not contain LaTeX', async () => {
+            const jsonData = {
+                textTextarea: '<p>\\(x^2\\)</p>',
+                plainText: 'No LaTeX here',
+                number: 42,
+                boolVal: true,
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should only process textTextarea, not other properties
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1);
+
+            // Non-string properties should be preserved
+            const parser = new globalThis.DOMParser();
+            const doc = parser.parseFromString(result.html, 'text/html');
+            const element = doc.querySelector('[data-idevice-json-data]');
+            const newJsonData = JSON.parse(element.getAttribute('data-idevice-json-data'));
+
+            expect(newJsonData.plainText).toBe('No LaTeX here');
+        });
+    });
+
+    describe('double-processing prevention', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('skips string that already contains pre-rendered LaTeX', async () => {
+            // Simulate already pre-rendered content in JSON data
+            const alreadyRendered = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const result = await LatexPreRenderer.preRender(alreadyRendered);
+
+            // Should NOT try to process the LaTeX inside data-latex attribute
+            expect(result.html).toBe(alreadyRendered);
+            expect(result.latexRendered).toBe(false);
+        });
+
+        test('does not corrupt data-latex attribute by double-processing', async () => {
+            // This was the bug: preRenderString would match LaTeX inside data-latex attribute
+            // and try to wrap it again, corrupting the attribute value
+            const content = '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span></p>';
+
+            const result = await LatexPreRenderer.preRender(content);
+
+            // The content should be unchanged - no double processing
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
+        });
+
+        test('preRender skips JSON with already-rendered content in data-idevice-json-data', async () => {
+            // Simulate iDevice with already pre-rendered textTextarea
+            const renderedLatex = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const jsonData = JSON.stringify({ textTextarea: `<p>Text ${renderedLatex}</p>` });
+            const html = `<div class="idevice_node text" data-idevice-json-data="${jsonData.replace(/"/g, '&quot;')}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not double-process the already-rendered LaTeX
+            // The data-latex attribute should NOT contain HTML spans
+            expect(result.html).not.toMatch(/data-latex="[^"]*<span/);
+            expect(result.html).not.toMatch(/data-latex="[^"]*&lt;span/);
+        });
+
+        test('preRender skips container elements with already-rendered LaTeX children', async () => {
+            // Simulate a paragraph that already has pre-rendered LaTeX inside
+            const html = '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span> is great</p>';
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not try to process the content again
+            // Count of exe-math-rendered should remain 1, not increase
+            const matches = result.html.match(/exe-math-rendered/g) || [];
+            expect(matches.length).toBe(1);
+
+            // The data-latex should NOT be corrupted
+            expect(result.html).not.toContain('data-latex="<span');
+        });
+
+        test('preRender renders pending raw LaTeX when container already has exe-math-rendered', async () => {
+            const html =
+                '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span> and \\(\\mathrm{ABCdef}\\)</p>';
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            const wrappers = result.html.match(/class="exe-math-rendered"/g) || [];
+            expect(wrappers.length).toBe(2);
+            expect(result.html).toContain('data-latex="\\(\\mathrm{ABCdef}\\)"');
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
+        });
+
+        test('preRender skips iDevice DOM with already-rendered LaTeX', async () => {
+            // Simulate iDevice structure with already-rendered content in both JSON and DOM
+            const renderedSpan = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const jsonData = JSON.stringify({ textTextarea: `<p>${renderedSpan}</p>` });
+            const html = `
+                <div class="idevice_node text" data-idevice-json-data="${jsonData.replace(/"/g, '&quot;')}">
+                    <p>${renderedSpan}</p>
+                </div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Count exe-math-rendered - should be 1 in the DOM content, not doubled
+            const domMatches = result.html.match(/class="exe-math-rendered"/g) || [];
+            expect(domMatches.length).toBe(1);
+
+            // Verify no corruption
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
         });
     });
 });

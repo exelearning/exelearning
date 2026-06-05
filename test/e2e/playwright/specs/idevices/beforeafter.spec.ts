@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -50,7 +51,7 @@ async function selectPageNode(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -60,6 +61,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -89,7 +91,7 @@ async function addBeforeAfterIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = interactiveCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -155,6 +157,7 @@ async function uploadImageViaFilePicker(page: Page, inputSelector: string, fixtu
             const modal = document.querySelector('#modalFileManager');
             return !modal || !modal.classList.contains('show');
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -206,6 +209,7 @@ async function saveBeforeAfterIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.beforeafter');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -228,7 +232,7 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     // If the bug is present, opacity will be 0
     expect(opacity).toBeGreaterThan(0);
 
-    // Verify images have src set (blob: URLs from asset resolution)
+    // Verify images have src set (relative paths served by Service Worker)
     const beforeImg = iframe.locator('.BFAFP-ImageBefore').first();
     const afterImg = iframe.locator('[id^="bfafpImageAfter-"]').first();
 
@@ -238,9 +242,10 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     expect(beforeSrc).toBeTruthy();
     expect(afterSrc).toBeTruthy();
 
-    // Should be blob URLs (asset resolution)
-    expect(beforeSrc).toMatch(/^blob:/);
-    expect(afterSrc).toMatch(/^blob:/);
+    // With SW-based preview, assets are served via relative paths (content/resources/...)
+    // rather than blob URLs. Both approaches are valid for asset resolution.
+    expect(beforeSrc).toMatch(/^(blob:|content\/resources\/)/);
+    expect(afterSrc).toMatch(/^(blob:|content\/resources\/)/);
 }
 
 test.describe('BeforeAfter iDevice', () => {
@@ -250,19 +255,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'BeforeAfter Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -282,18 +275,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Multiple Pairs Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -339,18 +321,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Preview First Image Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -367,7 +338,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -378,10 +349,10 @@ test.describe('BeforeAfter iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load in iframe
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // CRITICAL TEST: Verify first image rendered correctly
             // This catches the cached image race condition bug
@@ -400,18 +371,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Navigation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -432,7 +392,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -441,10 +401,10 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify we start at image 1/3
             const numberInfo = iframe.locator('.BFAFP-NumberInfo').first();
@@ -453,7 +413,7 @@ test.describe('BeforeAfter iDevice', () => {
             // Click Next button
             const nextBtn = iframe.locator('[id^="bfafNext-"]').first();
             await nextBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify we're now at image 2/3
             await expect(numberInfo).toContainText(/2.*3/, { timeout: 5000 });
@@ -468,13 +428,13 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Click Next again to go to image 3
             await nextBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             await expect(numberInfo).toContainText(/3.*3/, { timeout: 5000 });
 
             // Click Previous to go back to image 2
             const prevBtn = iframe.locator('[id^="bfafPrevious-"]').first();
             await prevBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             await expect(numberInfo).toContainText(/2.*3/, { timeout: 5000 });
         });
 
@@ -483,18 +443,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Slider Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -507,7 +456,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -516,10 +465,10 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify slider is present
             const slider = iframe.locator('.BFAFP-Slider').first();
@@ -541,18 +490,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -565,21 +503,10 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             await selectPageNode(page);

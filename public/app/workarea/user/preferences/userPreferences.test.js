@@ -3,11 +3,25 @@ import UserPreferences from './userPreferences.js';
 describe('UserPreferences', () => {
   let userPreferences;
   let mockManager;
+  let originalLocalStorage;
 
   beforeEach(() => {
-    // Mock global eXeLearning
+    // Store original localStorage
+    originalLocalStorage = window.localStorage;
+
+    // Mock localStorage
+    const store = {};
+    window.localStorage = {
+      getItem: vi.fn((key) => store[key] || null),
+      setItem: vi.fn((key, value) => { store[key] = value; }),
+      removeItem: vi.fn((key) => { delete store[key]; }),
+      clear: vi.fn(() => Object.keys(store).forEach(key => delete store[key])),
+    };
+
+    // Mock global eXeLearning for server mode (default)
     globalThis.eXeLearning = {
       app: {
+        capabilities: { storage: { remote: true } }, // Server mode
         api: {
           parameters: {
             userPreferencesConfig: {
@@ -16,6 +30,13 @@ describe('UserPreferences', () => {
               locale: { value: 'en' }
             }
           },
+          getApiParameters: vi.fn().mockResolvedValue({
+            userPreferencesConfig: {
+              advancedMode: { value: 'false' },
+              versionControl: { value: 'true' },
+              locale: { value: 'en' }
+            }
+          }),
           getUserPreferences: vi.fn().mockResolvedValue({
             userPreferences: {
               advancedMode: { value: 'true' },
@@ -38,7 +59,7 @@ describe('UserPreferences', () => {
     mockManager = {
       reloadMode: vi.fn(),
       reloadVersionControl: vi.fn(),
-      reloadLang: vi.fn(),
+      reloadLang: vi.fn().mockResolvedValue(),
       app: globalThis.eXeLearning.app
     };
 
@@ -49,16 +70,58 @@ describe('UserPreferences', () => {
     vi.restoreAllMocks();
     delete globalThis.eXeLearning;
     delete globalThis._;
+    window.localStorage = originalLocalStorage;
   });
 
-  describe('load', () => {
+  describe('load (server mode)', () => {
     it('should load initial config and fetch api preferences', async () => {
       await userPreferences.load();
-      
+
       expect(userPreferences.preferences).toBeDefined();
       expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
       expect(mockManager.reloadVersionControl).toHaveBeenCalledWith('false');
       expect(mockManager.reloadLang).toHaveBeenCalledWith('es');
+    });
+  });
+
+  describe('load (static mode)', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should load preferences from API in static mode', async () => {
+      await userPreferences.load();
+
+      expect(globalThis.eXeLearning.app.api.getApiParameters).toHaveBeenCalled();
+      expect(userPreferences.preferences).toBeDefined();
+      expect(userPreferences.preferences.advancedMode).toBeDefined();
+    });
+
+    it('should use fallback defaults if API has no config', async () => {
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({});
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences).toBeDefined();
+      expect(userPreferences.preferences.locale).toEqual({ title: 'Language', value: 'en', type: 'select' });
+    });
+
+    it('should load from localStorage if available', async () => {
+      // Pre-populate localStorage
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' },
+          locale: { value: 'fr' }
+        }
+      }));
+
+      await userPreferences.load();
+
+      // After setPreferences, the values should be updated
+      expect(userPreferences.preferences.advancedMode.value).toBe('true');
+      expect(userPreferences.preferences.locale.value).toBe('fr');
     });
   });
 
@@ -67,12 +130,12 @@ describe('UserPreferences', () => {
       userPreferences.preferences = {
         testPref: { value: 'old' }
       };
-      
+
       userPreferences.setPreferences({
         testPref: { value: 'new' },
         newPref: { value: 'brand-new' }
       });
-      
+
       expect(userPreferences.preferences.testPref.value).toBe('new');
       expect(userPreferences.preferences.newPref.value).toBe('brand-new');
       expect(userPreferences.preferences.newPref.type).toBe('text'); // from template
@@ -83,21 +146,169 @@ describe('UserPreferences', () => {
     it('should call modals.properties.show', () => {
       userPreferences.preferences = { some: 'pref' };
       userPreferences.showModalPreferences();
-      
+
       expect(mockManager.app.modals.properties.show).toHaveBeenCalledWith(expect.objectContaining({
         contentId: 'preferences',
         properties: userPreferences.preferences
       }));
     });
+
+    it('should add static mode notice in static mode', async () => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+      // Create mock modal element
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences.preferences = { some: 'pref' };
+      userPreferences.showModalPreferences();
+
+      // Wait for setTimeout (350ms)
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).not.toBeNull();
+      expect(notice.className).toBe('alert alert-info');
+      expect(notice.textContent).toBe('Preferences will be applied after refreshing the page.');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should not add static mode notice in server mode', async () => {
+      // Server mode is default
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences.preferences = { some: 'pref' };
+      userPreferences.showModalPreferences();
+
+      // Wait for timeout
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).toBeNull();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
   });
 
-  describe('apiSaveProperties', () => {
+  describe('_addStaticModeNotice', () => {
+    it('should add notice to modal body', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences._addStaticModeNotice();
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).not.toBeNull();
+      expect(notice.getAttribute('role')).toBe('alert');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should not add duplicate notice', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Call twice
+      userPreferences._addStaticModeNotice();
+      userPreferences._addStaticModeNotice();
+
+      const notices = document.querySelectorAll('#preferences-static-notice');
+      expect(notices.length).toBe(1);
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should handle missing modal gracefully', () => {
+      // No modal in DOM
+      expect(() => userPreferences._addStaticModeNotice()).not.toThrow();
+    });
+
+    it('should handle modal without body gracefully', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      // No modal-body child
+      document.body.appendChild(mockModal);
+
+      expect(() => userPreferences._addStaticModeNotice()).not.toThrow();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+  });
+
+  describe('_showStaticReloadWarning', () => {
+    it('should add warning to modal body', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences._showStaticReloadWarning();
+
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+      expect(warning.className).toBe('alert alert-warning');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should reuse existing warning element', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Call twice
+      userPreferences._showStaticReloadWarning();
+      userPreferences._showStaticReloadWarning();
+
+      const warnings = document.querySelectorAll('#preferences-reload-warning');
+      expect(warnings.length).toBe(1);
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should handle missing modal gracefully', () => {
+      expect(() => userPreferences._showStaticReloadWarning()).not.toThrow();
+    });
+  });
+
+  describe('apiSaveProperties (server mode)', () => {
     it('should update local preferences and call api.putSaveUserPreferences', async () => {
       userPreferences.preferences = {
         advancedMode: { value: 'false' },
         locale: { value: 'en' }
       };
-      
+
       // Mock window.location.reload
       const originalLocation = window.location;
       delete window.location;
@@ -107,20 +318,237 @@ describe('UserPreferences', () => {
         advancedMode: 'true',
         locale: 'fr'
       });
-      
+
       expect(userPreferences.preferences.advancedMode.value).toBe('true');
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
         advancedMode: 'true',
         locale: 'fr'
       });
-      
-      // Wait for promise resolution in then()
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
       expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
+      expect(mockManager.reloadLang).toHaveBeenCalledWith('fr');
       expect(window.location.reload).toHaveBeenCalled();
 
       window.location = originalLocation;
+    });
+  });
+
+  describe('apiSaveProperties (static mode)', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should save preferences to localStorage in static mode', async () => {
+      userPreferences.preferences = {
+        advancedMode: { value: 'false' },
+        versionControl: { value: 'true' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        advancedMode: 'true'
+      });
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('should not call server API in static mode', async () => {
+      userPreferences.preferences = {
+        advancedMode: { value: 'false' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        advancedMode: 'true'
+      });
+
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('should reload versionControl when saving versionControl preference', async () => {
+      userPreferences.preferences = {
+        versionControl: { value: 'false' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        versionControl: 'true'
+      });
+
+      expect(mockManager.reloadVersionControl).toHaveBeenCalledWith('true');
+    });
+
+    it('should show static reload warning when changing locale in static mode', async () => {
+      userPreferences.preferences = {
+        locale: { value: 'en' }
+      };
+
+      // Create mock modal for the warning
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      await userPreferences.apiSaveProperties({
+        locale: 'es'
+      });
+
+      // Should show warning instead of reloading page
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+  });
+
+  describe('loadStaticPreferences auto-save on first launch', () => {
+    beforeEach(() => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should auto-save preferences to localStorage on first launch', async () => {
+      // No stored preferences (first launch)
+      // In static mode, initStaticMode detects browser language and sets config.locale
+      // The API parameters also reflect this locale
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
+        userPreferencesConfig: {
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' },
+          locale: { value: 'eu' }
+        }
+      });
+
+      await userPreferences.load();
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
+
+      // Verify the saved structure contains the detected locale
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      const saved = JSON.parse(savedCall[1]);
+      expect(saved.userPreferences.locale.value).toBe('eu');
+    });
+
+    it('should not auto-save if preferences already exist in localStorage', async () => {
+      // Pre-populate localStorage (returning user)
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          locale: { value: 'gl' },
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' }
+        }
+      }));
+
+      // Reset mock to track only new calls
+      localStorage.setItem.mockClear();
+
+      await userPreferences.load();
+
+      // setItem should NOT have been called again (no auto-save)
+      expect(localStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should save all preferences with value property on first launch', async () => {
+      window.eXeLearning.config = { locale: 'en' };
+
+      await userPreferences.load();
+
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      const saved = JSON.parse(savedCall[1]);
+
+      // All preferences with a value should be saved
+      expect(saved.userPreferences.advancedMode).toBeDefined();
+      expect(saved.userPreferences.versionControl).toBeDefined();
+      expect(saved.userPreferences.locale).toBeDefined();
+    });
+  });
+
+  describe('loadStaticPreferences error handling', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should handle localStorage parse errors gracefully', async () => {
+      // Set up invalid JSON in localStorage
+      localStorage.getItem = vi.fn().mockReturnValue('invalid json {{{');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await userPreferences.loadStaticPreferences();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[UserPreferences] Error loading static preferences:',
+        expect.any(Error)
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('defaultTheme preference', () => {
+    it('round-trips defaultTheme through localStorage in static mode', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+      // Seed userPreferences config with both keys (server-shaped config).
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      // setItem must have been called with the new value
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      expect(savedCall).toBeDefined();
+      const saved = JSON.parse(savedCall[1]);
+      expect(saved.userPreferences.defaultTheme.value).toBe('spectrum128k');
+      // Local in-memory state is also updated
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+      // Server endpoint must NOT have been called in static mode
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('persists defaultTheme via the server in cloud mode', async () => {
+      // server mode is the default in beforeEach
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        advancedMode: { value: 'true' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
+        defaultTheme: 'spectrum128k',
+      });
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+    });
+
+    it('reads defaultTheme back from localStorage on the next load', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          defaultTheme: { value: 'spectrum128k' },
+          locale: { value: 'en' },
+        },
+      }));
+      // Server mode payload returned by getApiParameters must include the
+      // defaultTheme template so setPreferences can populate the value.
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
+        userPreferencesConfig: {
+          defaultTheme: { value: '', type: 'select', title: 'Default style for new documents' },
+          locale: { value: 'en' },
+        },
+      });
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
     });
   });
 });

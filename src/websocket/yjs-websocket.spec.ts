@@ -6,6 +6,7 @@
  * message-parser, config). Only external dependencies are mocked via DI.
  */
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
@@ -24,6 +25,7 @@ import {
     getActiveRooms,
     broadcastToRoom,
     getDetailedStats,
+    getConnectedClientsDetail,
     generateClientId,
     checkWebSocketProjectAccess,
     handleWebSocketOpen,
@@ -54,6 +56,7 @@ function createMockQueries(): YjsWebSocketQueries {
             if (project.visibility === 'public') return { hasAccess: true };
             return { hasAccess: false, reason: 'Access denied' };
         },
+        markProjectAsSaved: async (_db: any, _projectId: number) => {},
     };
 }
 
@@ -169,6 +172,46 @@ describe('Yjs WebSocket Service', () => {
 
             expect(routes).toBeDefined();
             // Should have the /yjs/:docName route registered
+        });
+
+        it('should wire websocket handlers to open/pong/message/close', async () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+
+            expect(wsRoute).toBeDefined();
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            expect(wsHook).toBeDefined();
+
+            const ws = createMockWebSocket();
+            await wsHook?.open?.(ws as any);
+
+            // Invalid docName should close the connection
+            expect(ws.close).toHaveBeenCalled();
+
+            wsHook?.pong?.(ws as any, undefined as any);
+            wsHook?.message?.(ws as any, Buffer.from([0x01]));
+            wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
+            const routes = createWebSocketRoutes();
+            const app = new Elysia().use(routes);
+
+            const res = await app.handle(new Request('http://localhost/yjs/info'));
+            expect(res.status).toBe(200);
+
+            const data = (await res.json()) as Record<string, unknown>;
+            expect(data).toEqual({ ok: true, service: 'yjs-websocket' });
+            // Must not leak the same operational detail that /api/websocket/info hides.
+            for (const forbidden of ['port', 'mode', 'roomsCount', 'totalConnections', 'host', 'version']) {
+                expect(data).not.toHaveProperty(forbidden);
+            }
+        });
+
+        it('does not shadow the WS upgrade route for other docName values', () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            expect(wsRoute).toBeDefined();
         });
     });
 
@@ -393,6 +436,58 @@ describe('Yjs WebSocket Service', () => {
 
             expect(stats.rooms.totalRooms).toBe(0);
             expect(stats.rooms.totalConnections).toBe(0);
+        });
+    });
+
+    describe('getConnectedClientsDetail', () => {
+        it('should return an array', () => {
+            const clients = getConnectedClientsDetail();
+            expect(Array.isArray(clients)).toBe(true);
+        });
+
+        it('should return client details after a successful connection', async () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const mockWs = createMockWebSocket();
+            const docName = `project-${projectUuid}`;
+
+            mockProjects.set(projectUuid, {
+                id: 10,
+                uuid: projectUuid,
+                owner_id: 1,
+                visibility: 'private',
+            });
+
+            const countBefore = getConnectedClientsDetail().length;
+            await handleWebSocketOpen(mockWs as any, docName, 'valid-token-user-1');
+
+            const clients = getConnectedClientsDetail();
+            expect(clients.length).toBe(countBefore + 1);
+            const added = clients.find(c => c.projectUuid === projectUuid);
+            expect(added).toBeDefined();
+            expect(added!.userId).toBe(1);
+            expect(typeof added!.connectedAt).toBe('number');
+        });
+
+        it('should remove client details after disconnection', async () => {
+            const projectUuid = 'b2c3d4e5-f6a7-8901-bcde-ef1234567891';
+            const mockWs = createMockWebSocket();
+            const docName = `project-${projectUuid}`;
+
+            mockProjects.set(projectUuid, {
+                id: 11,
+                uuid: projectUuid,
+                owner_id: 1,
+                visibility: 'private',
+            });
+
+            const countBefore = getConnectedClientsDetail().length;
+            await handleWebSocketOpen(mockWs as any, docName, 'valid-token-user-1');
+            expect(getConnectedClientsDetail().length).toBe(countBefore + 1);
+
+            handleWebSocketClose(mockWs as any, mockWs.data as any);
+            const remaining = getConnectedClientsDetail();
+            expect(remaining.length).toBe(countBefore);
+            expect(remaining.some(c => c.projectUuid === projectUuid)).toBe(false);
         });
     });
 
@@ -1240,6 +1335,324 @@ describe('Yjs WebSocket Service', () => {
 
             // Connection should still succeed despite error in collaboration detection
             expect(result.success).toBe(true);
+        });
+
+        it('should send request-sync-state to first client when collaboration starts on unsaved project', async () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            // Create an unsaved project (saved_once = 0)
+            mockProjects.set(projectUuid, {
+                id: 999,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                saved_once: 0, // Not saved yet
+            });
+
+            // Add session for access control
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // First client connects
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            // No sync request should be sent yet (only 1 client)
+            expect(ws1.sentMessages.length).toBe(0);
+
+            // Second client connects - collaboration detected
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Wait for async operation to complete
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // First client should receive request-sync-state message
+            const syncMessages = ws1.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'request-sync-state';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            expect(syncMessages.length).toBe(1);
+            const syncMsg = JSON.parse(syncMessages[0]);
+            expect(syncMsg.reason).toBe('collaboration-started');
+            expect(syncMsg.projectUuid).toBe(projectUuid);
+        });
+
+        it('should NOT send request-sync-state when project is already saved', async () => {
+            const projectUuid = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+            const docName = `project-${projectUuid}`;
+
+            // Create a saved project (saved_once = 1)
+            mockProjects.set(projectUuid, {
+                id: 998,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                saved_once: 1, // Already saved
+            });
+
+            // Add session for access control
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // First client connects
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            // Second client connects
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Wait for async operation
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // First client should NOT receive any request-sync-state messages
+            const syncMessages = ws1.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'request-sync-state';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            expect(syncMessages.length).toBe(0);
+        });
+
+        it('should handle error when checking unsaved project gracefully', async () => {
+            const projectUuid = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+            const docName = `project-${projectUuid}`;
+
+            // Create a mock queries that throws on the second findProjectByUuid call
+            const mockQueries = createMockQueries();
+            let callCount = 0;
+            mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
+                callCount++;
+                // First call succeeds (for access check), subsequent calls throw
+                if (callCount > 1 && uuid === projectUuid) {
+                    throw new Error('Database error');
+                }
+                return mockProjects.get(uuid);
+            };
+
+            mockProjects.set(projectUuid, {
+                id: 997,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                saved_once: 0,
+            });
+
+            // Add session for access control
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            configure({
+                db: mockDb,
+                queries: mockQueries,
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // First client connects
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            // Second client connects - should not throw even if findProjectByUuid fails
+            const ws2 = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Connection should still succeed
+            expect(result.success).toBe(true);
+        });
+
+        it('should swallow errors while checking save status during collaboration', async () => {
+            const projectUuid = 'f4e5d6c7-b8a9-0123-def4-567890123456';
+            const docName = `project-${projectUuid}`;
+
+            const mockQueries = createMockQueries();
+            mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
+                if (uuid === projectUuid) {
+                    throw new Error('Database error');
+                }
+                return mockProjects.get(uuid);
+            };
+
+            // Add session so access check bypasses DB
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            configure({
+                db: mockDb,
+                queries: mockQueries,
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            const ws2 = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            expect(result.success).toBe(true);
+
+            // Allow async collaboration check to complete
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+    });
+
+    describe('trigger-resync on new client join', () => {
+        it('should send trigger-resync to existing clients when a new client joins', async () => {
+            const projectUuid = 'ae5c0c01-1234-5678-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+            mockProjects.set(projectUuid, {
+                id: 800,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                saved_once: 1,
+            });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // First client connects
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+            expect(ws1.sentMessages.length).toBe(0);
+
+            // Second client connects
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // First client should receive trigger-resync
+            const resyncMessages = ws1.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'trigger-resync';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            expect(resyncMessages.length).toBe(1);
+            const resyncMsg = JSON.parse(resyncMessages[0]);
+            expect(resyncMsg.reason).toBe('new-client-joined');
+            expect(resyncMsg.projectUuid).toBe(projectUuid);
+
+            // Second client should also receive trigger-resync (self-rebroadcast for race safety)
+            const ws2ResyncMessages = ws2.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'trigger-resync';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+            expect(ws2ResyncMessages.length).toBe(1);
+        });
+
+        it('should send trigger-resync to all existing clients when third client joins', async () => {
+            const projectUuid = 'be5c0c02-1234-5678-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+            mockProjects.set(projectUuid, {
+                id: 801,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'public',
+                saved_once: 1,
+            });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // Clear previous messages
+            ws1.sentMessages.length = 0;
+            ws2.sentMessages.length = 0;
+
+            // Third client connects
+            const ws3 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws3, docName, 'valid-token-admin');
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // Both ws1 and ws2 should receive trigger-resync
+            const countResync = (ws: any) =>
+                ws.sentMessages.filter((msg: any) => {
+                    if (typeof msg === 'string') {
+                        try {
+                            return JSON.parse(msg).type === 'trigger-resync';
+                        } catch {
+                            return false;
+                        }
+                    }
+                    return false;
+                }).length;
+
+            expect(countResync(ws1)).toBe(1);
+            expect(countResync(ws2)).toBe(1);
+            expect(countResync(ws3)).toBe(1);
         });
     });
 

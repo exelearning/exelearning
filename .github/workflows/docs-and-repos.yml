@@ -1,13 +1,6 @@
 name: Docs & Repos to GitHub Pages (latest release)
 
 on:
-  push:
-    branches:
-      - main
-    paths: # Only run on push when changes doc/ related files
-      - 'doc/**'
-      - 'mkdocs.yml'
-      - '.github/workflows/docs-and-repos.yml'
   release: # Always run on release
     types: [released]
   workflow_dispatch: # Allows manually triggering
@@ -20,10 +13,16 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+      APT_GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
+      APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+      RPM_GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
+      RPM_GPG_KEY_ID: ${{ secrets.RPM_GPG_KEY_ID }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # ---- Build MkDocs docs ----
       - name: Setup Python
@@ -158,11 +157,7 @@ jobs:
 
       # ---- Sign APT Release (optional) ----
       - name: Sign APT Release and export public key
-        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_deb == 'true' && env.APT_GPG_KEY_ID != ''
-        env:
-          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
-          APT_GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
-          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_deb == 'true' && env.APT_GPG_PRIVATE_KEY != '' && env.APT_GPG_KEY_ID != ''
         run: |
           set -euo pipefail
           REPO_DIR="site-repo/deb"
@@ -185,11 +180,9 @@ jobs:
 
       # ---- Build RPM repo (sign packages + repodata) ----
       - name: Build and Sign RPM repo
-        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_rpm == 'true'
+        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_rpm == 'true' && env.RPM_GPG_PRIVATE_KEY != '' && env.RPM_GPG_KEY_ID != ''
         env:
           GH_PAGES_BASEURL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-          RPM_GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
-          RPM_GPG_KEY_ID: ${{ secrets.RPM_GPG_KEY_ID }}
         run: |
           set -euo pipefail
           REPO_DIR="site-repo/rpm"
@@ -244,6 +237,13 @@ jobs:
           rsync -a site-docs/ site/ || true
           rsync -a site-repo/  site/ || true
 
+          # Publish /llms.txt and /llms-full.txt at the GitHub Pages root so
+          # AI agents can discover the project documentation per the
+          # https://llmstxt.org/ convention. The canonical sources live at
+          # the repo root; we copy them here so they ship alongside MkDocs.
+          [ -f llms.txt ] && cp llms.txt site/llms.txt || true
+          [ -f llms-full.txt ] && cp llms-full.txt site/llms-full.txt || true
+
       - name: Generate recursive autoindex
         shell: bash
         run: |
@@ -276,18 +276,20 @@ jobs:
 
       # ---- Deploy to GitHub Pages ----
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
       - name: Deploy to GitHub Pages
         if: github.repository == 'exelearning/exelearning'
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   publish-chocolatey:
-    if: github.event_name == 'release' && github.event.action == 'released'
+    if: github.event_name == 'release' && github.event.action == 'released' && github.repository == 'exelearning/exelearning'
     runs-on: windows-latest
+    env:
+      CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
     steps:
       - name: Download release metadata
         shell: pwsh
@@ -393,36 +395,26 @@ jobs:
           choco uninstall exelearning -y --no-progress
 
       - name: Push to Chocolatey
+        if: env.CHOCO_API_KEY != ''
         shell: pwsh
-        env:
-          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
         run: |
           choco apikey --key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
           choco push "exelearning.${{ steps.envs.outputs.VERSION }}.nupkg" --source https://push.chocolatey.org/ --force
 
   publish-winget:
-    if: github.event_name == 'release' && github.event.action == 'released'
+    if: github.event_name == 'release' && github.event.action == 'released' && github.repository == 'exelearning/exelearning'
     runs-on: ubuntu-latest
     needs: build-and-deploy
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     steps:
       - uses: vedantmgoyal9/winget-releaser@main
+        if: env.WINGET_TOKEN != ''
         with:
           identifier: Exelearning.Exelearning
           # Only select the NSIS installer Setup-*.exe from the release"
           installers-regex: 'eXeLearning-Setup-.*\.exe$'
           # Optional: if you want to force the version instead of using the tag without the "v" prefix
           # version: ${{ github.event.release.tag_name }}          
-          token: ${{ secrets.WINGET_TOKEN }}
+          token: ${{ env.WINGET_TOKEN }}
           fork-user: exelearning
-
-  publish-homebrew-cask:
-    if: github.event_name == 'release' && github.event.action == 'released'
-    runs-on: macos-latest
-    steps:
-      - name: Bump Homebrew cask PR
-        uses: macauley/action-homebrew-bump-cask@v1
-        with:
-          token: ${{ secrets.WINGET_TOKEN }}
-          tap: homebrew/cask
-          # TODO: Remove @beta on 3.0.0 release!
-          cask: exelearning@beta

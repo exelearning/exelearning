@@ -31,7 +31,19 @@ vi.mock('./structure/structureEngine.js', () => {
     };
 });
 
-import ProjectManager from './projectManager.js';
+vi.mock('../interface/importProgress.js', () => {
+    return {
+        default: vi.fn().mockImplementation(function () {
+            return {
+                show: vi.fn(),
+                hide: vi.fn(),
+                update: vi.fn(),
+            };
+        }),
+    };
+});
+
+import ProjectManager, { storePendingImport, retrievePendingImport } from './projectManager.js';
 
 describe('ProjectManager', () => {
     let projectManager;
@@ -282,20 +294,43 @@ describe('ProjectManager', () => {
 
     describe('helper methods', () => {
 
-    it('marks the installation as offline and exposes the project key', () => {
-        projectManager.offlineInstallation = true;
+    it('marks the installation as static when in static mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('static');
+        expect(button.innerHTML).toBe('save');
+        expect(button.getAttribute('title')).toBe('Save');
+    });
+
+    it('exposes project key for Electron when electronAPI is available', () => {
+        // Simulate Electron environment (electronAPI exists, static mode)
+        window.electronAPI = { test: true };
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
         projectManager.odeId = 'custom-project';
         const button = document.querySelector('#head-top-download-button');
 
         projectManager.setInstallationTypeAttribute();
 
-        expect(document.body.getAttribute('installation-type')).toBe('offline');
+        expect(document.body.getAttribute('installation-type')).toBe('static');
         expect(button.innerHTML).toBe('save');
         expect(button.getAttribute('title')).toBe('Save');
         expect(window.__currentProjectId).toBe('custom-project');
+
+        // Cleanup
+        delete window.electronAPI;
     });
 
-    it('marks the installation as online when the flag is false', () => {
+    it('marks the installation as online when in server mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => false,
+        };
         projectManager.offlineInstallation = false;
         const button = document.querySelector('#head-top-download-button');
 
@@ -303,6 +338,15 @@ describe('ProjectManager', () => {
 
         expect(document.body.getAttribute('installation-type')).toBe('online');
         expect(button.innerHTML).toBe('Download');
+    });
+
+    it('defaults to online when no runtimeConfig is available', () => {
+        projectManager.app.runtimeConfig = null;
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('online');
     });
 
     it('shows the save confirmation modal', () => {
@@ -407,7 +451,7 @@ describe('ProjectManager', () => {
             // The code uses eXeLearning.app.modals.alert.show (global), not mockApp
             expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
                 title: 'Info',
-                body: 'You are editing an iDevice. Please close it before continuing',
+                body: 'Unsaved changes detected. Save your iDevice before continuing.',
             });
         });
     });
@@ -710,10 +754,92 @@ describe('ProjectManager', () => {
         });
     });
 
+    describe('checkAndImportElp', () => {
+        let originalLocation;
+        
+        beforeEach(() => {
+            global.fetch = vi.fn();
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue('stats');
+            projectManager._yjsBridge = {
+                documentManager: {
+                    saveToServer: vi.fn().mockResolvedValue()
+                }
+            };
+            mockApp.modals.loader = {
+                show: vi.fn(),
+                hide: vi.fn(),
+            };
+            vi.stubGlobal('history', { replaceState: vi.fn() });
+        });
+        
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('does nothing if no fetchPlatformElp param', async () => {
+            vi.stubGlobal('location', { href: 'http://localhost:8080/', search: '' });
+            await projectManager.checkAndImportElp();
+            expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('openPlatformElp'), expect.anything());
+        });
+
+        it('fetches platform ELP when jwt_token and fetchPlatformElp are present', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ responseMessage: 'OK', elpFile: btoa('test data'), elpFileName: 'test.elpx' })
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
+            expect(projectManager._yjsBridge.documentManager.saveToServer).toHaveBeenCalled();
+            expect(mockApp.modals.loader.show).toHaveBeenCalled();
+        });
+
+        it('handles fetch platform ELP failure gracefully', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: false,
+                status: 500
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+        });
+    });
+
     describe('resetProject', () => {
         it('sets _forceStructureImport flag', () => {
             projectManager.resetProject();
             expect(projectManager._forceStructureImport).toBe(true);
+        });
+
+        it('resets preview panel state when available', () => {
+            const resetSpy = vi.fn();
+            mockApp.interface.previewButton = {
+                getPanel: vi.fn(() => ({
+                    resetToDefaultState: resetSpy,
+                })),
+            };
+
+            projectManager.resetProject();
+
+            expect(resetSpy).toHaveBeenCalled();
         });
 
         it('clears navigation tree DOM', () => {
@@ -926,126 +1052,240 @@ describe('ProjectManager', () => {
         });
     });
 
-    describe('reinitializeWithProject', () => {
-        it('throws error when YjsProjectBridge not available', async () => {
-            window.YjsModules = {};
-            await expect(
-                projectManager.reinitializeWithProject('new-uuid'),
-            ).rejects.toThrow('YjsProjectBridge not available');
-        });
-
-        it('disconnects existing bridge if present', async () => {
-            const mockDisconnect = vi.fn();
-            projectManager._yjsBridge = { disconnect: mockDisconnect };
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('new-uuid');
-            } catch {
-                // Expected to fail, we just want to test disconnect was called
-            }
-
-            expect(mockDisconnect).toHaveBeenCalled();
-            expect(projectManager._yjsBridge).toBe(null);
-        });
-
-        it('clears Yjs bindings', async () => {
-            projectManager._yjsBindings.set('test', 'binding');
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('new-uuid');
-            } catch {
-                // Expected to fail
-            }
-
-            expect(projectManager._yjsBindings.size).toBe(0);
-        });
-
-        it('updates project IDs before bridge creation', async () => {
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('my-new-project');
-            } catch {
-                // Expected to fail
-            }
-
-            expect(projectManager.yjsProjectId).toBe('my-new-project');
-            expect(projectManager.odeId).toBe('my-new-project');
-        });
-
-        it('passes skipSyncWait option to bridge initialize', async () => {
-            const mockInitialize = vi.fn().mockResolvedValue();
-            // Create a proper constructor class for mocking
-            class MockBridge {
-                constructor() {
-                    this.initialize = mockInitialize;
-                }
-            }
-            window.YjsModules = { YjsProjectBridge: MockBridge };
-            // Mock localStorage
-            const originalLocalStorage = global.localStorage;
-            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
-
-            await projectManager.reinitializeWithProject('test-uuid', {
-                skipSyncWait: true,
-            });
-
-            expect(mockInitialize).toHaveBeenCalledWith(
-                'test-uuid',
-                null, // authToken from localStorage.getItem mock
-                expect.objectContaining({
-                    skipSyncWait: true,
-                }),
-            );
-
-            global.localStorage = originalLocalStorage;
-        });
-
-        it('defaults skipSyncWait to false when not provided', async () => {
-            const mockInitialize = vi.fn().mockResolvedValue();
-            // Create a proper constructor class for mocking
-            class MockBridge {
-                constructor() {
-                    this.initialize = mockInitialize;
-                }
-            }
-            window.YjsModules = { YjsProjectBridge: MockBridge };
-            // Mock localStorage
-            const originalLocalStorage = global.localStorage;
-            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
-
-            await projectManager.reinitializeWithProject('test-uuid');
-
-            expect(mockInitialize).toHaveBeenCalledWith(
-                'test-uuid',
-                null, // authToken from localStorage.getItem mock
-                expect.objectContaining({
-                    skipSyncWait: false,
-                }),
-            );
-
-            global.localStorage = originalLocalStorage;
-        });
-    });
-
     describe('importElpDirectly', () => {
-        it('throws error when Yjs bridge not initialized', async () => {
+        it('throws error when Collaboration service not ready', async () => {
             projectManager._yjsBridge = null;
             const mockFile = new File(['content'], 'test.elp');
             await expect(
                 projectManager.importElpDirectly(mockFile),
-            ).rejects.toThrow('Yjs bridge not initialized');
+            ).rejects.toThrow('Collaboration service not ready');
         });
     });
 
     describe('checkAndImportElp', () => {
+        let originalFetch;
+        let originalHistoryReplaceState;
+
+        beforeEach(() => {
+            originalFetch = global.fetch;
+            originalHistoryReplaceState = window.history.replaceState;
+            window.__exeInitialProjectImported = undefined;
+
+            projectManager.app.modals.loader = {
+                show: vi.fn(),
+                hide: vi.fn(),
+            };
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue({
+                pages: 1,
+                blocks: 1,
+                components: 1,
+            });
+            projectManager._yjsBridge = {
+                documentManager: {
+                    saveToServer: vi.fn().mockResolvedValue(undefined),
+                },
+            };
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+            window.history.replaceState = originalHistoryReplaceState;
+            delete window.__exeInitialProjectImported;
+        });
+
         it('returns early when no import parameter in URL', async () => {
             // No import param, should just return without doing anything
             await projectManager.checkAndImportElp();
             // No error thrown means success
             expect(true).toBe(true);
+        });
+
+        it('imports from embedding initialProjectUrl and prevents duplicate import', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/course.elpx',
+                },
+            };
+
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+
+            await projectManager.checkAndImportElp();
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalledTimes(1);
+            expect(window.__exeInitialProjectImported).toBe('https://cdn.example.com/course.elpx');
+        });
+
+        it('imports from URL param, prefixes basePath and executes cleanup', async () => {
+            const OriginalURLSearchParams = global.URLSearchParams;
+            const OriginalURL = global.URL;
+            global.URLSearchParams = class MockURLSearchParams {
+                get(key) {
+                    return key === 'import' ? '/tmp/project.elpx' : null;
+                }
+            };
+            global.URL = class MockURL {
+                constructor(value) {
+                    const str = String(value || '');
+                    if (str.includes('/tmp/project.elpx')) {
+                        this.pathname = '/tmp/project.elpx';
+                        return;
+                    }
+                    this.searchParams = { delete: vi.fn() };
+                }
+            };
+            window.eXeLearning.config.basePath = '/exelearning';
+
+            const replaceStateSpy = vi.fn();
+            window.history.replaceState = replaceStateSpy;
+
+            global.fetch = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                });
+
+            try {
+                await projectManager.checkAndImportElp();
+
+                expect(global.fetch).toHaveBeenNthCalledWith(1, '/exelearning/tmp/project.elpx', { credentials: 'include' });
+                expect(global.fetch).toHaveBeenNthCalledWith(
+                    2,
+                    '/exelearning/api/project/cleanup-import?path=%2Ftmp%2Fproject.elpx',
+                    { method: 'DELETE' },
+                );
+                expect(replaceStateSpy).toHaveBeenCalled();
+            } finally {
+                global.URLSearchParams = OriginalURLSearchParams;
+                global.URL = OriginalURL;
+            }
+        });
+
+        it('shows alert and hides loader on fetch failure', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/fail.elpx',
+                },
+            };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                statusText: 'Forbidden',
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(projectManager.app.modals.loader.hide).toHaveBeenCalled();
+            expect(projectManager.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import Error',
+                    body: expect.stringContaining('Forbidden'),
+                }),
+            );
+        });
+
+        it('continues when saveToServer fails', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/course.elpx',
+                },
+            };
+            projectManager._yjsBridge.documentManager.saveToServer = vi
+                .fn()
+                .mockRejectedValue(new Error('save failed'));
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+            expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('uses fallback filename when URL parsing fails', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: '/path/to/from-split.elpx',
+                },
+            };
+            const OriginalURL = global.URL;
+            global.URL = class MockURLThatThrows {
+                constructor() {
+                    throw new Error('bad url');
+                }
+            };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+
+            try {
+                await projectManager.checkAndImportElp();
+                const importedFile = projectManager.importFromElpxViaYjs.mock.calls[0][0];
+                expect(importedFile.name).toBe('from-split.elpx');
+            } finally {
+                global.URL = OriginalURL;
+            }
+        });
+
+        it('continues when cleanup-import request fails', async () => {
+            const OriginalURLSearchParams = global.URLSearchParams;
+            const OriginalURL = global.URL;
+            global.URLSearchParams = class MockURLSearchParams {
+                get(key) {
+                    return key === 'import' ? '/tmp/project.elpx' : null;
+                }
+            };
+            global.URL = class MockURL {
+                constructor(value) {
+                    const str = String(value || '');
+                    if (str.includes('/tmp/project.elpx')) {
+                        this.pathname = '/tmp/project.elpx';
+                        return;
+                    }
+                    this.searchParams = { delete: vi.fn() };
+                }
+            };
+            window.eXeLearning.config.basePath = '/exelearning';
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            global.fetch = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+                })
+                .mockRejectedValueOnce(new Error('cleanup failed'));
+
+            try {
+                await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+                expect(warnSpy).toHaveBeenCalled();
+            } finally {
+                global.URLSearchParams = OriginalURLSearchParams;
+                global.URL = OriginalURL;
+            }
+        });
+    });
+
+    describe('_resolveDocumentReady', () => {
+        it('dispatches event and resolves app.documentReady once', () => {
+            const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+            const resolveSpy = vi.fn();
+            projectManager.app._documentReadyResolve = resolveSpy;
+
+            projectManager._resolveDocumentReady();
+
+            expect(dispatchSpy).toHaveBeenCalledWith(expect.any(CustomEvent));
+            expect(resolveSpy).toHaveBeenCalledTimes(1);
+            expect(projectManager.app._documentReadyResolve).toBeNull();
         });
     });
 
@@ -1526,7 +1766,7 @@ describe('ProjectManager', () => {
                 load: vi.fn(),
                 loadPropertiesFromYjs: vi.fn(),
             };
-            mockApp.locale = { loadContentTranslationsStrings: vi.fn() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn(), refreshI18nGlobals: vi.fn() };
             mockApp.interface.shareButton = { loadVisibilityFromProject: vi.fn() };
             projectManager.structure = { subscribeToYjsChanges: vi.fn() };
         });
@@ -1549,6 +1789,26 @@ describe('ProjectManager', () => {
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
+        });
+
+        it('loads content translations after Yjs initialization', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.properties.loadPropertiesFromYjs).toHaveBeenCalled();
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language from properties', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'es';
+
+            await projectManager.load();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('es');
         });
 
         it('generates autosave interval when Yjs not enabled', async () => {
@@ -1611,12 +1871,14 @@ describe('ProjectManager', () => {
             projectManager.subscribeToSessionAndNotify = vi.fn().mockResolvedValue();
             projectManager.properties = {
                 formProperties: { remove: vi.fn() },
+                properties: { pp_lang: { value: 'en' } },
             };
             projectManager.structure = {
                 reloadStructureMenu: vi.fn().mockResolvedValue(),
             };
             mockApp.interface.loadingScreen = { show: vi.fn(), hide: vi.fn() };
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn().mockResolvedValue(), refreshI18nGlobals: vi.fn().mockResolvedValue() };
             window.eXeLearning.app.modals.openuserodefiles = { close: vi.fn() };
         });
 
@@ -1648,6 +1910,23 @@ describe('ProjectManager', () => {
             expect(projectManager.loadStructureData).toHaveBeenCalled();
             expect(projectManager.loadModalsContent).toHaveBeenCalled();
             expect(projectManager.initialiceProject).toHaveBeenCalled();
+        });
+
+        it('loads content translations after loading properties', async () => {
+            projectManager.offlineInstallation = true;
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language', async () => {
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'fr';
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('fr');
         });
     });
 
@@ -2394,6 +2673,55 @@ describe('ProjectManager', () => {
 
             expect(projectManager.idevices.newBlockNode).toHaveBeenCalled();
         });
+
+        it('creates iDevices sequentially with for...of (not parallel)', async () => {
+            const creationOrder = [];
+            projectManager.idevices.createIdeviceInContent = vi.fn().mockImplementation(async (idevice) => {
+                // Simulate async work with small delay
+                await new Promise(r => setTimeout(r, 10));
+                creationOrder.push(idevice.odeIdeviceTypeName);
+                return { ideviceContent: document.createElement('div') };
+            });
+
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [
+                    { htmlView: '<div>1</div>', odeIdeviceTypeName: 'first' },
+                    { htmlView: '<div>2</div>', odeIdeviceTypeName: 'second' },
+                    { htmlView: '<div>3</div>', odeIdeviceTypeName: 'third' },
+                ],
+            };
+
+            // Trigger the interval callback
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+            await vi.advanceTimersByTimeAsync(projectManager.syncIntervalTime + 50);
+
+            // Sequential: must be in order
+            expect(creationOrder).toEqual(['first', 'second', 'third']);
+        });
+
+        it('skips iDevices with null htmlView', async () => {
+            const creationOrder = [];
+            projectManager.idevices.createIdeviceInContent = vi.fn().mockImplementation(async (idevice) => {
+                creationOrder.push(idevice.odeIdeviceTypeName);
+                return { ideviceContent: document.createElement('div') };
+            });
+
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [
+                    { htmlView: '<div>1</div>', odeIdeviceTypeName: 'first' },
+                    { htmlView: null, odeIdeviceTypeName: 'empty' },
+                    { htmlView: '<div>3</div>', odeIdeviceTypeName: 'third' },
+                ],
+            };
+
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+            await vi.advanceTimersByTimeAsync(projectManager.syncIntervalTime + 50);
+
+            // Empty idevice should be skipped
+            expect(creationOrder).toEqual(['first', 'third']);
+        });
     });
 
     describe('moveOdeComponentOnSamePage', () => {
@@ -2556,7 +2884,11 @@ describe('ProjectManager', () => {
             };
             projectManager.properties = {
                 loadPropertiesFromYjs: vi.fn(),
+                formProperties: {
+                    reloadValues: vi.fn(),
+                },
             };
+            projectManager._yjsBridge = null;
             projectManager.initialiceProject = vi.fn().mockResolvedValue();
             projectManager.showScreen = vi.fn();
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
@@ -2586,6 +2918,605 @@ describe('ProjectManager', () => {
 
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
+        });
+
+        it('reloads properties form values after refresh', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager.properties.loadPropertiesFromYjs).toHaveBeenCalledTimes(2);
+            expect(projectManager.properties.formProperties.reloadValues).toHaveBeenCalled();
+        });
+
+        it('forces Yjs form input sync when bridge is available', async () => {
+            projectManager._yjsBridge = {
+                forceAllFormInputsSync: vi.fn(),
+            };
+
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager._yjsBridge.forceAllFormInputsSync).toHaveBeenCalled();
+        });
+
+        it('reinitializes theme binding when themes manager exists', async () => {
+            mockApp.themes = { initYjsBinding: vi.fn() };
+
+            await projectManager.refreshAfterDirectImport();
+
+            expect(mockApp.themes.initYjsBinding).toHaveBeenCalled();
+        });
+
+        it('does not fail when themes manager is not available', async () => {
+            mockApp.themes = null;
+
+            await expect(projectManager.refreshAfterDirectImport()).resolves.not.toThrow();
+        });
+    });
+
+    // ===========================================
+    // storePendingImport / retrievePendingImport (IndexedDB)
+    // ===========================================
+
+    describe('storePendingImport and retrievePendingImport', () => {
+        let fakeDb;
+        let fakeStore;
+        let fakeTx;
+
+        /**
+         * Build a fake IndexedDB mock.
+         * For storePendingImport the tx.oncomplete fires right after transaction().
+         * For retrievePendingImport the get().onsuccess sets tx.oncomplete, so we
+         * need get().onsuccess to fire first, then tx.oncomplete after it.
+         *
+         * @param {Object} opts
+         * @param {Error}  [opts.openError]   - make indexedDB.open fail
+         * @param {Error}  [opts.txError]     - make tx.onerror fire
+         * @param {*}      [opts.getResult]   - value returned by store.get().result
+         * @param {boolean}[opts.getError]    - make get request fire onerror
+         */
+        function makeFakeIndexedDB({ openError, txError, getResult, getError } = {}) {
+            fakeTx = {
+                objectStore: null, // set below
+                oncomplete: null,
+                onerror: null,
+            };
+
+            fakeStore = {
+                put: vi.fn(),
+                delete: vi.fn(),
+                get: vi.fn(() => {
+                    const req = { result: getResult, onsuccess: null, onerror: null };
+                    Promise.resolve().then(() => {
+                        if (getError) {
+                            req.onerror?.();
+                        } else {
+                            req.onsuccess?.();
+                            // After onsuccess runs (which may set tx.oncomplete), fire it
+                            Promise.resolve().then(() => fakeTx.oncomplete?.());
+                        }
+                    });
+                    return req;
+                }),
+            };
+
+            fakeTx.objectStore = vi.fn(() => fakeStore);
+
+            fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => {
+                    if (txError) {
+                        Promise.resolve().then(() => {
+                            fakeTx.error = txError;
+                            fakeTx.onerror?.();
+                        });
+                    } else {
+                        // For storePendingImport: oncomplete is set synchronously after put(),
+                        // so we fire it on next microtick.
+                        Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    }
+                    return fakeTx;
+                }),
+                close: vi.fn(),
+            };
+
+            const fakeRequest = {
+                result: fakeDb,
+                onupgradeneeded: null,
+                onsuccess: null,
+                onerror: null,
+            };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    if (openError) {
+                        Promise.resolve().then(() => {
+                            fakeRequest.error = openError;
+                            fakeRequest.onerror?.();
+                        });
+                    } else {
+                        Promise.resolve().then(() => {
+                            fakeRequest.onupgradeneeded?.();
+                            fakeRequest.onsuccess?.();
+                        });
+                    }
+                    return fakeRequest;
+                }),
+            };
+        }
+
+        afterEach(() => {
+            delete global.indexedDB;
+        });
+
+        it('storePendingImport stores file bytes in IndexedDB', async () => {
+            makeFakeIndexedDB();
+            const file = new File(['hello'], 'test.elp');
+            await storePendingImport(file);
+            expect(fakeStore.put).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'test.elp', bytes: expect.any(ArrayBuffer) }),
+                'pending-import',
+            );
+        });
+
+        it('storePendingImport rejects on IDB open error', async () => {
+            makeFakeIndexedDB({ openError: new Error('IDB open failed') });
+            const file = new File(['x'], 'a.elp');
+            await expect(storePendingImport(file)).rejects.toThrow('IDB open failed');
+        });
+
+        it('storePendingImport rejects on transaction error', async () => {
+            makeFakeIndexedDB({ txError: new Error('tx error') });
+            const file = new File(['x'], 'b.elp');
+            await expect(storePendingImport(file)).rejects.toThrow('tx error');
+        });
+
+        it('retrievePendingImport returns File from stored data', async () => {
+            makeFakeIndexedDB({ getResult: { name: 'my.elp', bytes: new ArrayBuffer(4) } });
+            const file = await retrievePendingImport();
+            expect(file).toBeInstanceOf(File);
+            expect(file.name).toBe('my.elp');
+        });
+
+        it('retrievePendingImport returns null when no data exists', async () => {
+            makeFakeIndexedDB({ getResult: undefined });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+
+        it('retrievePendingImport returns null on IDB open error', async () => {
+            makeFakeIndexedDB({ openError: new Error('open fail') });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+
+        it('retrievePendingImport returns null on get request error', async () => {
+            makeFakeIndexedDB({ getError: true });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+    });
+
+    // ===========================================
+    // _processPendingImport
+    // ===========================================
+
+    describe('_processPendingImport', () => {
+        beforeEach(() => {
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue({});
+            window.history.replaceState = vi.fn();
+        });
+
+        afterEach(() => {
+            delete global.indexedDB;
+        });
+
+        it('returns early when pendingImport param is not 1', async () => {
+            const params = new URLSearchParams('');
+            await projectManager._processPendingImport(params);
+            // importFromElpxViaYjs should NOT have been called
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+        });
+
+        /**
+         * Helper to set up a fake IndexedDB for retrievePendingImport.
+         * Handles the correct async sequencing: get.onsuccess → tx.oncomplete.
+         */
+        function setupFakeIDB(getResult) {
+            const fakeTx = { objectStore: null, oncomplete: null, onerror: null };
+            const fakeStore = {
+                get: vi.fn(() => {
+                    const req = { result: getResult, onsuccess: null, onerror: null };
+                    Promise.resolve().then(() => {
+                        req.onsuccess?.();
+                        Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    });
+                    return req;
+                }),
+                delete: vi.fn(),
+            };
+            fakeTx.objectStore = vi.fn(() => fakeStore);
+            const fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => fakeTx),
+                close: vi.fn(),
+            };
+            const fakeRequest = { result: fakeDb, onupgradeneeded: null, onsuccess: null, onerror: null };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    Promise.resolve().then(() => {
+                        fakeRequest.onupgradeneeded?.();
+                        fakeRequest.onsuccess?.();
+                    });
+                    return fakeRequest;
+                }),
+            };
+        }
+
+        it('cleans URL and returns when no file found in IndexedDB', async () => {
+            setupFakeIDB(undefined);
+
+            const params = new URLSearchParams('pendingImport=1');
+            await projectManager._processPendingImport(params);
+
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+            expect(window.history.replaceState).toHaveBeenCalled();
+        });
+
+        it('imports file and cleans URL on success', async () => {
+            setupFakeIDB({ name: 'test.elp', bytes: new ArrayBuffer(8) });
+
+            const params = new URLSearchParams('pendingImport=1');
+            await projectManager._processPendingImport(params);
+
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalledTimes(1);
+            expect(window.history.replaceState).toHaveBeenCalled();
+        });
+
+        it('hides progress on import error (finally block)', async () => {
+            projectManager.importFromElpxViaYjs = vi.fn().mockRejectedValue(new Error('import fail'));
+            setupFakeIDB({ name: 'fail.elp', bytes: new ArrayBuffer(4) });
+
+            const params = new URLSearchParams('pendingImport=1');
+            await expect(projectManager._processPendingImport(params)).rejects.toThrow('import fail');
+        });
+    });
+
+    // ===========================================
+    // _cleanPendingImportUrl
+    // ===========================================
+
+    describe('_cleanPendingImportUrl', () => {
+        let originalReplaceState;
+
+        beforeEach(() => {
+            originalReplaceState = window.history.replaceState;
+            window.history.replaceState = vi.fn();
+        });
+
+        afterEach(() => {
+            window.history.replaceState = originalReplaceState;
+        });
+
+        it('removes pendingImport and new params from URL', () => {
+            // Simulate location with params
+            Object.defineProperty(window, 'location', {
+                value: {
+                    ...window.location,
+                    search: '?project=abc&pendingImport=1&new=1',
+                    pathname: '/workarea',
+                },
+                writable: true,
+            });
+
+            projectManager._cleanPendingImportUrl();
+
+            expect(window.history.replaceState).toHaveBeenCalledWith(
+                {},
+                '',
+                expect.stringContaining('project=abc'),
+            );
+            const calledUrl = window.history.replaceState.mock.calls[0][2];
+            expect(calledUrl).not.toContain('pendingImport');
+            expect(calledUrl).not.toContain('new');
+        });
+
+        it('preserves project param', () => {
+            Object.defineProperty(window, 'location', {
+                value: {
+                    search: '?project=xyz&pendingImport=1',
+                    pathname: '/workarea',
+                },
+                writable: true,
+            });
+
+            projectManager._cleanPendingImportUrl();
+
+            const calledUrl = window.history.replaceState.mock.calls[0][2];
+            expect(calledUrl).toContain('project=xyz');
+        });
+    });
+
+    // ===========================================
+    // transitionToProject
+    // ===========================================
+
+    describe('transitionToProject', () => {
+        let originalFetch;
+
+        beforeEach(() => {
+            originalFetch = global.fetch;
+            // Default: successful API response
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: vi.fn().mockResolvedValue({ uuid: 'new-uuid-123' }),
+            });
+
+            window.eXeLearning = {
+                ...window.eXeLearning,
+                config: { basePath: '' },
+            };
+            window.UnsavedChangesHelper = {
+                removeBeforeUnloadHandler: vi.fn(),
+            };
+            window.onbeforeunload = vi.fn();
+
+            // Mock location
+            Object.defineProperty(window, 'location', {
+                value: { href: '', pathname: '/workarea', search: '' },
+                writable: true,
+            });
+
+            // IndexedDB mock for 'import' action
+            const fakeStore = { put: vi.fn() };
+            const fakeTx = { objectStore: vi.fn(() => fakeStore), oncomplete: null, onerror: null };
+            const fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => {
+                    Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    return fakeTx;
+                }),
+                close: vi.fn(),
+            };
+            const fakeRequest = { result: fakeDb, onupgradeneeded: null, onsuccess: null, onerror: null };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    Promise.resolve().then(() => {
+                        fakeRequest.onupgradeneeded?.();
+                        fakeRequest.onsuccess?.();
+                    });
+                    return fakeRequest;
+                }),
+            };
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+            delete global.indexedDB;
+        });
+
+        it('new action: creates project and redirects', async () => {
+            await projectManager.transitionToProject({ action: 'new' });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                '/api/project/create-quick',
+                expect.objectContaining({ method: 'POST' }),
+            );
+            expect(window.location.href).toBe('/workarea?project=new-uuid-123&new=1');
+        });
+
+        it('open action: redirects to workarea with project uuid', async () => {
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'proj-42' });
+
+            expect(window.location.href).toBe('/workarea?project=proj-42');
+        });
+
+        it('import action: stores file in IndexedDB and redirects', async () => {
+            const file = new File(['content'], 'course.elpx');
+            await projectManager.transitionToProject({ action: 'import', file });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                '/api/project/create-quick',
+                expect.objectContaining({ method: 'POST' }),
+            );
+            expect(window.location.href).toBe('/workarea?project=new-uuid-123&new=1&pendingImport=1');
+        });
+
+        it('saves current project when skipSave is false and has unsaved changes', async () => {
+            const mockSave = vi.fn().mockResolvedValue(true);
+            projectManager._yjsBridge = {
+                saveManager: { save: mockSave },
+                documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+            };
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p1' });
+
+            expect(mockSave).toHaveBeenCalled();
+        });
+
+        it('skips save when skipSave is true', async () => {
+            const mockSave = vi.fn();
+            projectManager._yjsBridge = {
+                saveManager: { save: mockSave },
+                documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+            };
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p2', skipSave: true });
+
+            expect(mockSave).not.toHaveBeenCalled();
+        });
+
+        it('clears beforeunload handlers', async () => {
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p3' });
+
+            expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+            expect(window.onbeforeunload).toBeNull();
+        });
+
+        it('throws when API returns non-ok response (new)', async () => {
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+
+            await expect(
+                projectManager.transitionToProject({ action: 'new' }),
+            ).rejects.toThrow('Failed to create project: 500');
+        });
+
+        it('throws when API returns non-ok response (import)', async () => {
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 });
+            const file = new File(['x'], 'test.elp');
+
+            await expect(
+                projectManager.transitionToProject({ action: 'import', file }),
+            ).rejects.toThrow('Failed to create project: 403');
+        });
+
+        it('uses basePath from config', async () => {
+            window.eXeLearning.config.basePath = '/app';
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p4' });
+
+            expect(window.location.href).toBe('/app/workarea?project=p4');
+        });
+
+        it('import action uses file name as project title', async () => {
+            const file = new File(['x'], 'MyProject.elpx');
+            await projectManager.transitionToProject({ action: 'import', file });
+
+            const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+            expect(body.title).toBe('MyProject');
+        });
+
+        describe('static mode', () => {
+            beforeEach(() => {
+                window.eXeLearning.app = { capabilities: { storage: { remote: false } } };
+                projectManager.app = window.eXeLearning.app;
+                window.location.reload = vi.fn();
+            });
+
+            it('new action: reloads page without server call', async () => {
+                await projectManager.transitionToProject({ action: 'new' });
+
+                expect(global.fetch).not.toHaveBeenCalled();
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('import action: stores file, sets sessionStorage flag, and reloads', async () => {
+                const file = new File(['content'], 'course.elpx');
+                await projectManager.transitionToProject({ action: 'import', file });
+
+                expect(global.fetch).not.toHaveBeenCalled();
+                expect(sessionStorage.getItem('exe-pending-import')).toBe('1');
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('open action: sets projectId and reloads', async () => {
+                await projectManager.transitionToProject({ action: 'open', projectUuid: 'existing-uuid' });
+
+                expect(window.eXeLearning.projectId).toBe('existing-uuid');
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('new action: clears the Electron saved path so the next Save starts fresh', async () => {
+                const clearSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { clearSavedPath };
+
+                await projectManager.transitionToProject({ action: 'new' });
+
+                expect(clearSavedPath).toHaveBeenCalled();
+                delete window.electronAPI;
+            });
+
+            it('new action: survives a missing clearSavedPath without throwing', async () => {
+                window.electronAPI = {};
+
+                await expect(
+                    projectManager.transitionToProject({ action: 'new' }),
+                ).resolves.not.toThrow();
+
+                delete window.electronAPI;
+            });
+
+            it('import action: persists the imported file name via setSavedPath', async () => {
+                const setSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { setSavedPath };
+                const file = new File(['content'], 'Imported.elpx');
+
+                await projectManager.transitionToProject({ action: 'import', file });
+
+                expect(setSavedPath).toHaveBeenCalledWith('Imported.elpx');
+                delete window.electronAPI;
+            });
+
+            it('uses exportToElpxViaYjs for save instead of server saveManager', async () => {
+                const mockExport = vi.fn().mockResolvedValue({ saved: true });
+                const mockServerSave = vi.fn();
+                projectManager.exportToElpxViaYjs = mockExport;
+                projectManager._yjsBridge = {
+                    saveManager: { save: mockServerSave },
+                    documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+                };
+
+                await projectManager.transitionToProject({ action: 'new', skipSave: false });
+
+                expect(mockExport).toHaveBeenCalled();
+                expect(mockServerSave).not.toHaveBeenCalled();
+            });
+        });
+    });
+
+    // ===========================================
+    // initialiceProject — default theme preference
+    // ===========================================
+
+    describe('initialiceProject default theme preference', () => {
+        let selectThemeMock;
+
+        beforeEach(() => {
+            window.eXeLearning.config.defaultTheme = 'site-default';
+            selectThemeMock = vi.fn().mockResolvedValue();
+            mockApp.themes = { selected: null, selectTheme: selectThemeMock };
+            mockApp.user = { preferences: { preferences: {} } };
+            mockApp.selectFirstNodeStructure = vi.fn().mockResolvedValue();
+            // Bypass Yjs branch so we always exercise the preference logic
+            projectManager._yjsEnabled = false;
+        });
+
+        it('uses the site default when the user has no theme preference', async () => {
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('falls back to site default when defaultTheme preference is empty', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: '' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('uses the user defaultTheme preference when set', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('prefers defaultTheme over the legacy theme key', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('honors the legacy theme key when defaultTheme is missing', async () => {
+            mockApp.user.preferences.preferences = {
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('legacy-value', false);
         });
     });
 });

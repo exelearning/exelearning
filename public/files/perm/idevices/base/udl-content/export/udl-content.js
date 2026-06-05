@@ -41,6 +41,9 @@ var $udlcontent = {
         this.checkAltContentLinksPosition();
 
         $('.exe-udlContent').each(function () {
+            // Prevent double initialization
+            if ($(this).attr('data-udl-initialized')) return;
+            $(this).attr('data-udl-initialized', 'true');
             // Add a different CSS class for each content type
             var cont = $('.exe-udlContent', this);
             if (cont.length == 1) {
@@ -103,7 +106,7 @@ var $udlcontent = {
                             e.before(p);
                         }
                         // Add event
-                        $('#' + blockId + '-toggler').click(function () {
+                        $('#' + blockId + '-toggler').off('click').click(function () {
                             var ref = $(this).attr('href');
                             if ($udlcontent.isWorking) return false;
                             $udlcontent.isWorking = true;
@@ -232,6 +235,9 @@ var $udlcontent = {
         $('.exe-udlContent-alt-lnk').each(function () {
             var e = $(this);
 
+            // Remove previous handlers to prevent duplication
+            e.off('click');
+
             if ($(e).hasClass('exe-udlContent-alt-lnk-close')) {
                 // Close link
                 e.click(function () {
@@ -286,7 +292,7 @@ var $udlcontent = {
         });
 
         // Close alt content link
-        $('.exe-udlContent-alt-close-lnk a').click(function () {
+        $('.exe-udlContent-alt-close-lnk a').off('click').click(function () {
             $udlcontent.isWorking = false;
             $udlcontent.closeAltContents(this);
             return false;
@@ -324,13 +330,16 @@ var $udlcontent = {
                             c +
                             '.gif';
                     }
-                    $(this).prepend(
-                        '<img src="' +
-                            img +
-                            '" alt="' +
-                            characters[c] +
-                            '" class="udl-character-img" />'
-                    );
+                    // Prevent duplicate images
+                    if ($('.udl-character-img', this).length === 0) {
+                        $(this).prepend(
+                            '<img src="' +
+                                img +
+                                '" alt="' +
+                                characters[c] +
+                                '" class="udl-character-img" />'
+                        );
+                    }
                 }
             }
         });

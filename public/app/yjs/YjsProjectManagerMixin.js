@@ -76,6 +76,14 @@ const YjsProjectManagerMixin = {
         Logger.log('[ProjectManager] Theme binding initialized from Yjs');
       }
 
+      // Capture baseline state to enable dirty tracking
+      // This must be called AFTER all initial syncing is complete
+      // to prevent false positives during document initialization
+      if (this._yjsBridge?.documentManager) {
+        this._yjsBridge.documentManager.captureBaselineState();
+        Logger.log('[ProjectManager] Baseline state captured for dirty tracking');
+      }
+
       return this._yjsBridge;
     };
 
@@ -366,6 +374,11 @@ const YjsProjectManagerMixin = {
         // Update both pageName and title to ensure Preview and exports show the new name
         // ELPX imports set both fields, and YjsDocumentAdapter.convertPage() prioritizes 'title'
         this._yjsBridge.updatePage(pageId, { pageName: newName, title: newName });
+        // Also update properties.titleNode so the properties modal reflects the new name
+        // (getPageProperties returns titleNode from the properties map when set, not pageName)
+        if (this._yjsBridge.structureBinding) {
+          this._yjsBridge.structureBinding.updatePageProperties(pageId, { titleNode: newName });
+        }
         Logger.log('[YjsProjectManager] Renamed page via Yjs:', pageId, newName);
         return true;
       }
@@ -512,13 +525,13 @@ const YjsProjectManagerMixin = {
     /**
      * Export project to .elpx file via Yjs
      * Filename is auto-generated from project title (sanitized: lowercase, no accents, no special chars)
-     * @param {Object} options - Export options
-     * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+     * In Electron/Desktop mode, always prompts for save destination.
      */
-    projectManager.exportToElpxViaYjs = async function (options = {}) {
+    projectManager.exportToElpxViaYjs = async function () {
       if (this._yjsEnabled && this._yjsBridge) {
-        await this._yjsBridge.exportToElpx(options);
+        return await this._yjsBridge.exportToElpx();
       }
+      return { saved: false };
     };
 
     /**
@@ -595,7 +608,9 @@ const YjsProjectManagerMixin = {
         if (str == null || typeof str !== 'string') return '';
         for (const [originalPath, assetInfo] of assetMap.entries()) {
           const { id: assetId, filename: assetFileName } = assetInfo;
-          const assetUrl = `asset://${assetId}/${assetFileName}`;
+          // Generate new format asset URL: asset://uuid.ext
+          const ext = assetFileName?.includes('.') ? assetFileName.split('.').pop().toLowerCase() : '';
+          const assetUrl = ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
           const fileName = originalPath.split('/').pop();
           str = str.split(`{{context_path}}/${originalPath}`).join(assetUrl);
           str = str.split(originalPath).join(assetUrl);
@@ -610,6 +625,19 @@ const YjsProjectManagerMixin = {
           }
         }
         return str;
+      };
+
+      // Canonical id generator -- mirrors src/shared/ids.ts (Format A: base36
+      // timestamp + 9 base36 random chars). Kept inline because this mixin runs
+      // in the browser before the TS bundle is available. See issue #1782.
+      // Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+      const generateCanonicalId = (prefix) => {
+        if (!prefix) {
+          throw new Error('generateId: prefix is required');
+        }
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 11);
+        return `${prefix}-${timestamp}-${random}`;
       };
 
       // 2. Import structure into Yjs
@@ -658,7 +686,7 @@ const YjsProjectManagerMixin = {
       // Import each page as a flat entry in navigation (NO nested children arrays)
       const importPage = (pageData) => {
         const pageMap = new Y.Map();
-        const pageId = pageData.id || `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const pageId = pageData.id || generateCanonicalId('page');
 
         pageMap.set('id', pageId);
         pageMap.set('pageId', pageId);
@@ -672,7 +700,7 @@ const YjsProjectManagerMixin = {
         if (pageData.blocks && Array.isArray(pageData.blocks)) {
           for (const blockData of pageData.blocks) {
             const blockMap = new Y.Map();
-            const blockId = blockData.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const blockId = blockData.id || generateCanonicalId('block');
 
             blockMap.set('id', blockId);
             blockMap.set('blockId', blockId);
@@ -683,7 +711,7 @@ const YjsProjectManagerMixin = {
             if (blockData.idevices && Array.isArray(blockData.idevices)) {
               for (const ideviceData of blockData.idevices) {
                 const compMap = new Y.Map();
-                const compId = ideviceData.id || `idevice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const compId = ideviceData.id || generateCanonicalId('idevice');
 
                 compMap.set('id', compId);
                 compMap.set('ideviceId', compId);

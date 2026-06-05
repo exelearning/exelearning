@@ -27,7 +27,12 @@ import {
     setSetting,
     findProjectsPaginated,
 } from '../../../src/db/queries/admin';
-import { findProjectById, updateProject, hardDeleteProject } from '../../../src/db/queries/projects';
+import {
+    findProjectById,
+    updateProject,
+    hardDeleteProject,
+    findProjectsByOwnerId,
+} from '../../../src/db/queries/projects';
 import { getUserStorageUsage } from '../../../src/db/queries/assets';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
@@ -72,6 +77,7 @@ describe('Admin Routes Integration', () => {
                 findProjectById: (db, id) => findProjectById(db, id),
                 updateProject: (db, id, data) => updateProject(db, id, data),
                 hardDeleteProject: (db, id) => hardDeleteProject(db, id),
+                findProjectsByOwnerId: (db, userId) => findProjectsByOwnerId(db, userId),
             },
         });
 

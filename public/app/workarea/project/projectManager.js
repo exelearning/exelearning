@@ -1,9 +1,85 @@
 import ProjectProperties from './properties/projectProperties.js';
 import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
+import ImportProgress from '../interface/importProgress.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+/**
+ * IndexedDB store name and key for pending local file imports.
+ * The file bytes are stored before a full page reload and read back after.
+ */
+const PENDING_IMPORT_DB = 'exelearning-pending-import';
+const PENDING_IMPORT_KEY = 'pending-import';
+
+/**
+ * Store a file in IndexedDB so it survives a page reload.
+ * @param {File} file
+ * @returns {Promise<void>}
+ */
+export async function storePendingImport(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const record = { name: file.name, bytes: arrayBuffer };
+
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(PENDING_IMPORT_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('files')) {
+                db.createObjectStore('files');
+            }
+        };
+        request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction('files', 'readwrite');
+            tx.objectStore('files').put(record, PENDING_IMPORT_KEY);
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror = () => { db.close(); reject(tx.error); };
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * Read and delete the pending import from IndexedDB.
+ * @returns {Promise<File|null>}
+ */
+export async function retrievePendingImport() {
+    return new Promise((resolve) => {
+        const request = indexedDB.open(PENDING_IMPORT_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('files')) {
+                db.createObjectStore('files');
+            }
+        };
+        request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction('files', 'readwrite');
+            const store = tx.objectStore('files');
+            const getReq = store.get(PENDING_IMPORT_KEY);
+            getReq.onsuccess = () => {
+                const record = getReq.result;
+                // Delete the entry regardless
+                store.delete(PENDING_IMPORT_KEY);
+                tx.oncomplete = () => {
+                    db.close();
+                    if (record && record.bytes) {
+                        const file = new File([record.bytes], record.name, {
+                            type: 'application/octet-stream',
+                        });
+                        resolve(file);
+                    } else {
+                        resolve(null);
+                    }
+                };
+            };
+            getReq.onerror = () => { db.close(); resolve(null); };
+        };
+        request.onerror = () => resolve(null);
+    });
+}
 
 export default class projectManager {
     constructor(app) {
@@ -33,15 +109,23 @@ export default class projectManager {
         await this.loadCurrentProject();
         // Load project properties
         await this.loadProjectProperties();
-        this.app.locale.loadContentTranslationsStrings(
-            this.properties.properties.pp_lang.value
-        );
         // Compose and initialized interface
         await this.loadInterface();
 
         // Initialize Yjs collaborative editing BEFORE loading structure
         // This ensures Yjs is the source of truth for document structure
         await this.initializeYjs();
+        // Reload content translations after Yjs metadata sync (pp_lang -> language).
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+        }
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
+        // Generate $exe_i18n with the project's content-language translations.
+        // common_i18n.js is NOT loaded as a static script; it is resolved here so
+        // that c_("Next") becomes e.g. "Siguiente" for Spanish content.
+        await this.app.locale.refreshI18nGlobals();
 
         // Load project visibility for share button
         if (this.app.interface?.shareButton) {
@@ -68,6 +152,20 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
+
+        // Static mode: check for pending file import
+        const capabilities = this.app?.capabilities;
+        if (!capabilities?.storage?.remote && window.__pendingImportFile) {
+            Logger.log('[ProjectManager] Found pending import file, importing...');
+            const file = window.__pendingImportFile;
+            window.__pendingImportFile = null; // Clear it
+            this.importElp(file).catch(err => {
+                console.error('[ProjectManager] Failed to import pending file:', err);
+            });
+        }
+
         // Call the function to execute sorting and reordering
         //this.sortBlocksById(true);
         // Set offline atributtes
@@ -115,12 +213,12 @@ export default class projectManager {
                               eXeLearning?.config?.token ||
                               localStorage.getItem('authToken');
 
-            // Determine if we should use local-only mode (no WebSocket sync)
-            // Note: WebSocket works without auth in development - offline mode only for explicit offline installations
-            const localOnlyMode = this.offlineInstallation === true;
+            // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
+            // Note: this.offlineInstallation is a legacy field kept for backward compatibility
+            const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
 
-            if (localOnlyMode) {
-                Logger.log('[ProjectManager] Yjs local-only mode (offline installation)');
+            if (!collaborationEnabled) {
+                Logger.log('[ProjectManager] Yjs local-only mode (collaboration disabled)');
             } else {
                 Logger.log('[ProjectManager] Yjs collaborative mode (WebSocket + IndexedDB)');
             }
@@ -147,9 +245,9 @@ export default class projectManager {
                 Logger.log('[ProjectManager] Enabling Yjs mode for project:', projectId, isNewProject ? '(new)' : '(existing)');
                 await this.enableYjsMode(projectId, authToken, {
                     treeContainerId: 'structure-menu-nav',
-                    enableWebSocket: !localOnlyMode,  // Only enable WebSocket with auth
+                    enableWebSocket: collaborationEnabled,
                     enableIndexedDB: true,
-                    offline: localOnlyMode,
+                    offline: !collaborationEnabled,
                     isNewProject: isNewProject,  // Skip server load for new projects
                 });
                 Logger.log('[ProjectManager] Yjs collaborative editing enabled');
@@ -167,6 +265,9 @@ export default class projectManager {
 
                 // Check if we need to import an ELP file
                 await this.checkAndImportElp();
+
+                // Check for pending local file import (stored in IndexedDB before reload)
+                await this._processPendingImport(urlParams);
             }
         } catch (error) {
             console.warn('[ProjectManager] Failed to initialize Yjs:', error);
@@ -175,67 +276,51 @@ export default class projectManager {
     }
 
     /**
-     * Reinitialize Yjs with a new project (without page reload)
-     * Used when opening a new ELP file to switch to a different project
-     * @param {string} projectUuid - The new project UUID
-     * @param {Object} options - Options
-     * @param {boolean} options.isNewProject - Skip server load for new projects
+     * Check for a pending local file import stored in IndexedDB before reload.
+     * If found, imports the file and cleans the URL.
+     * @param {URLSearchParams} urlParams
      */
-    async reinitializeWithProject(projectUuid, options = {}) {
-        Logger.log('[ProjectManager] Reinitializing with new project:', projectUuid);
+    async _processPendingImport(urlParams) {
+        const staticPending = sessionStorage.getItem('exe-pending-import') === '1';
+        const hasPendingImport =
+            urlParams.get('pendingImport') === '1' || staticPending;
+        if (!hasPendingImport) return;
+        sessionStorage.removeItem('exe-pending-import');
 
-        // Disconnect existing Yjs connection if present
-        if (this._yjsBridge) {
-            Logger.log('[ProjectManager] Disconnecting existing Yjs bridge...');
-            try {
-                await this._yjsBridge.disconnect();
-            } catch (err) {
-                console.warn('[ProjectManager] Error disconnecting Yjs:', err);
-            }
-            this._yjsBridge = null;
+        const file = await retrievePendingImport();
+        if (!file) {
+            Logger.log('[ProjectManager] pendingImport flag set but no file found in IndexedDB');
+            this._cleanPendingImportUrl();
+            return;
         }
 
-        // Clear existing Yjs bindings
-        this._yjsBindings.clear();
+        Logger.log('[ProjectManager] Processing pending import:', file.name, file.size, 'bytes');
 
-        // Update project ID FIRST (before resetProject which may trigger observers)
-        this.yjsProjectId = projectUuid;
-        window.eXeLearning.projectId = projectUuid;
-        this.odeId = projectUuid;
+        const importProgress = new ImportProgress();
+        importProgress.show();
 
-        // Reinitialize Yjs BEFORE resetProject (so Yjs bindings work)
-        const YjsProjectBridge = window.YjsModules?.YjsProjectBridge;
-        if (!YjsProjectBridge) {
-            throw new Error('YjsProjectBridge not available');
+        try {
+            await this.importFromElpxViaYjs(file, {
+                onProgress: (progress) => importProgress.update(progress),
+            });
+            Logger.log('[ProjectManager] Pending import complete');
+        } finally {
+            importProgress.hide();
         }
 
-        // Get auth token
-        const authToken = this.app?.auth?.getToken?.() ||
-                          eXeLearning?.config?.token ||
-                          localStorage.getItem('authToken');
+        this._cleanPendingImportUrl();
+    }
 
-        // Determine mode
-        const localOnlyMode = this.offlineInstallation === true;
-
-        // Create new bridge (constructor takes app, not projectId)
-        this._yjsBridge = new YjsProjectBridge(this.app);
-
-        // Initialize the bridge with projectUuid
-        await this._yjsBridge.initialize(projectUuid, authToken, {
-            enableWebSocket: !localOnlyMode,
-            enableIndexedDB: true,
-            offline: localOnlyMode,
-            isNewProject: options.isNewProject,
-            skipSyncWait: options.skipSyncWait ?? false,
-        });
-
-        this._yjsEnabled = true;
-        Logger.log('[ProjectManager] Yjs reinitialized for project:', projectUuid);
-
-        // Reset project state AFTER Yjs is initialized (structure loading needs Yjs)
-        Logger.log('[ProjectManager] About to call resetProject...');
-        this.resetProject();
-        Logger.log('[ProjectManager] resetProject completed, reinitializeWithProject returning');
+    /**
+     * Remove pendingImport and new params from the URL without reload.
+     */
+    _cleanPendingImportUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.delete('pendingImport');
+        urlParams.delete('new');
+        const qs = urlParams.toString();
+        const cleanUrl = window.location.pathname + (qs ? '?' + qs : '');
+        window.history.replaceState({}, '', cleanUrl);
     }
 
     /**
@@ -249,7 +334,7 @@ export default class projectManager {
         Logger.log('[ProjectManager] Importing ELP directly from memory:', file.name);
 
         if (!this._yjsBridge) {
-            throw new Error('Yjs bridge not initialized');
+            throw new Error('Collaboration service not ready');
         }
 
         // Use centralized import method (handles asset announcement)
@@ -258,13 +343,11 @@ export default class projectManager {
 
         Logger.log('[ProjectManager] Direct import complete:', stats);
 
-        // Save to server
-        try {
-            await this._yjsBridge.documentManager.saveToServer();
-            Logger.log('[ProjectManager] Document saved to server after direct import');
-        } catch (saveError) {
-            console.warn('[ProjectManager] Failed to save to server:', saveError);
-        }
+        // Note: Don't save immediately on file open.
+        // The document is now in memory and will be saved when:
+        // - User explicitly saves (Save button)
+        // - Autosave triggers (if enabled)
+        // This avoids an unnecessary network round-trip on open.
 
         return stats;
     }
@@ -302,32 +385,140 @@ export default class projectManager {
             this.properties.loadPropertiesFromYjs();
         }
 
+        // Reinitialize theme binding from new Yjs document
+        if (this.app?.themes) {
+            this.app.themes.initYjsBinding();
+        }
+
+        // Rebind concurrent users to the current Yjs document manager.
+        if (this.app?.interface?.concurrentUsers?.rebindToCurrentDocumentManager) {
+            this.app.interface.concurrentUsers.rebindToCurrentDocumentManager();
+        }
+
         // Select first page and load its content
         await this.initialiceProject();
 
+        // Re-sync project properties form after refresh.
+        // During static imports, metadata can be cleared/reloaded in quick succession,
+        // leaving stale checkbox/select states in the existing form.
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+            this.properties.formProperties?.reloadValues?.();
+        }
+        if (this._yjsBridge?.forceAllFormInputsSync) {
+            this._yjsBridge.forceAllFormInputsSync();
+        }
+
         // Show workarea
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
 
         Logger.log('[ProjectManager] UI refreshed after direct import');
     }
 
     /**
-     * Check URL for import parameter and import ELP file if present
-     * Uses ElpxImporter to import the ELP content into the Yjs document
+     * Check URL/config for import path and import ELPX file if present.
      *
-     * Server-side mode: &import=/path/to/file.elp - fetches file from server
-     * (Client-side import now uses direct in-memory processing via reinitializeWithProject)
+     * Supported sources:
+     * - URL query: ?import=/path/to/file.elpx (server-side workflows)
+     * - Embedding config: __EXE_EMBEDDING_CONFIG__.initialProjectUrl (iframe boot workflows)
      */
     async checkAndImportElp() {
         const urlParams = new URLSearchParams(window.location.search);
-        const importPath = urlParams.get('import');
+
+        // =====================================================
+        // PLATFORM INTEGRATION: Fetch ELP from LMS if requested
+        // =====================================================
+        const fetchPlatformElp = urlParams.get('fetchPlatformElp') === '1';
+        const jwtToken = urlParams.get('jwt_token');
+
+        if (jwtToken && fetchPlatformElp) {
+            Logger.log('[ProjectManager] Detected platform integration new project, fetching ELP from platform...');
+            try {
+                if (this.app?.modals?.loader) {
+                    this.app.modals.loader.show({ message: window._ ? window._('Downloading from platform...') : 'Downloading from platform...' });
+                }
+
+                const basePath = window.eXeLearning?.config?.basePath || '';
+                const response = await fetch(`${basePath}/api/platform/integration/openPlatformElp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: jwtToken })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.responseMessage === 'OK' && data.elpFile) {
+                        Logger.log('[ProjectManager] ELP file fetched from platform, base64 size:', data.elpFile.length);
+
+                        // Convert base64 to Blob/File
+                        const binaryString = atob(data.elpFile);
+                        const len = binaryString.length;
+                        const bytes = new Uint8Array(len);
+                        for (let i = 0; i < len; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const fileName = data.elpFileName || 'platform_import.elpx';
+                        const file = new File([bytes], fileName, { type: 'application/octet-stream' });
+
+                        const stats = await this.importFromElpxViaYjs(file);
+                        Logger.log('[ProjectManager] Platform ELP import complete:', stats);
+
+                        try {
+                            await this._yjsBridge.documentManager.saveToServer();
+                            Logger.log('[ProjectManager] Document saved to server after platform import');
+                        } catch (saveError) {
+                            console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                        }
+
+                    } else {
+                        Logger.log('[ProjectManager] No ELP file returned by platform or error:', data.error);
+                    }
+                } else {
+                    console.warn(`[ProjectManager] Platform API responded with status ${response.status}`);
+                }
+            } catch (error) {
+                // Do not block the user, just log and continue
+                console.error('[ProjectManager] Failed to fetch ELP from platform:', error);
+            } finally {
+                if (this.app?.modals?.loader) {
+                    this.app.modals.loader.hide();
+                }
+
+                // Cleanup fetchPlatformElp url parameter
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete('fetchPlatformElp');
+                window.history.replaceState({}, '', newUrl.toString());
+            }
+
+            return; // We handled the platform import, skip subsequent checks
+        }
+
+        const importPathFromUrl = urlParams.get('import');
+        const importPathFromEmbedding = this.app?.runtimeConfig?.embeddingConfig?.initialProjectUrl || '';
+        const importPath = importPathFromUrl || importPathFromEmbedding;
+        const fromUrlParam = !!importPathFromUrl;
 
         if (!importPath) {
-            Logger.log('[ProjectManager] No import parameter found');
+            Logger.log('[ProjectManager] No import source found');
             return;
         }
 
-        Logger.log('[ProjectManager] Import parameter detected:', importPath);
+        Logger.log(
+            `[ProjectManager] Import source detected (${fromUrlParam ? 'url' : 'embedding'}):`,
+            importPath
+        );
+
+        // Prevent duplicate bootstrap imports when embedding config is reused.
+        if (!fromUrlParam) {
+            if (window.__exeInitialProjectImported === importPath) {
+                Logger.log('[ProjectManager] initialProjectUrl already imported, skipping');
+                return;
+            }
+            window.__exeInitialProjectImported = importPath;
+        }
 
         try {
             // Show loading indicator
@@ -335,20 +526,28 @@ export default class projectManager {
                 this.app.modals.loader.show({ message: _('Importing project...') });
             }
 
-            // Add basePath to import path if it starts with / (relative server path)
+            // URL query imports may be server-relative. Embedding imports are expected as final URL.
             const basePath = window.eXeLearning?.config?.basePath || '';
-            const fetchPath = importPath.startsWith('/') && basePath && !importPath.startsWith(basePath)
+            const fetchPath = fromUrlParam &&
+                importPath.startsWith('/') &&
+                basePath &&
+                !importPath.startsWith(basePath)
                 ? `${basePath}${importPath}`
                 : importPath;
 
-            // Fetch the ELP file from the server
-            const response = await fetch(fetchPath);
+            // Fetch the ELPX file with credentials for same-origin pluginfile URLs.
+            const response = await fetch(fetchPath, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`Failed to fetch ELP file: ${response.statusText}`);
             }
 
             const blob = await response.blob();
-            const fileName = importPath.split('/').pop() || 'imported.elp';
+            let fileName = importPath.split('/').pop() || 'imported.elpx';
+            try {
+                fileName = new URL(importPath, window.location.href).pathname.split('/').pop() || fileName;
+            } catch (e) {
+                // Keep fallback split result.
+            }
             const file = new File([blob], fileName, { type: 'application/octet-stream' });
 
             Logger.log('[ProjectManager] ELP file fetched, size:', file.size);
@@ -367,18 +566,20 @@ export default class projectManager {
                 // Continue anyway - data is at least saved locally
             }
 
-            // Remove import parameter from URL (keep project parameter)
-            const newUrl = new URL(window.location);
-            newUrl.searchParams.delete('import');
-            window.history.replaceState({}, '', newUrl);
+            if (fromUrlParam) {
+                // Remove import parameter from URL (keep project parameter)
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('import');
+                window.history.replaceState({}, '', newUrl);
 
-            // Cleanup: Request server to delete temp file
-            try {
-                await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                    method: 'DELETE'
-                });
-            } catch (cleanupError) {
-                console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
+                // Cleanup: Request server to delete temp file (URL-import workflow only)
+                try {
+                    await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
+                        method: 'DELETE'
+                    });
+                } catch (cleanupError) {
+                    console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
+                }
             }
 
             // Hide loading indicator
@@ -449,6 +650,122 @@ export default class projectManager {
     }
 
     /**
+     * Transition to a different project with a full page reload (online mode).
+     * This is the single entry point for all project transitions: new, open, import.
+     *
+     * @param {Object} opts
+     * @param {'new'|'open'|'import'} opts.action - The type of transition
+     * @param {string} [opts.projectUuid] - UUID for 'open' action
+     * @param {File} [opts.file] - The file for 'import' action
+     * @param {boolean} [opts.skipSave=false] - Skip saving current project
+     */
+    async transitionToProject({ action, projectUuid, file, skipSave = false }) {
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        const isStaticMode =
+            window.__EXE_STATIC_MODE__ === true ||
+            this.app?.capabilities?.storage?.remote === false;
+
+        // 1. Save current project if needed
+        if (!skipSave) {
+            const hasUnsaved = this._yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
+            if (hasUnsaved) {
+                if (isStaticMode && this.exportToElpxViaYjs) {
+                    // Static/Electron: prompt "Save As" dialog
+                    await this.exportToElpxViaYjs();
+                } else {
+                    const saveManager = this._yjsBridge?.saveManager;
+                    if (saveManager) {
+                        await saveManager.save();
+                    }
+                }
+            }
+        }
+
+        // 2. Clear beforeunload to prevent browser "Leave site?" dialog
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+        window.onbeforeunload = null;
+
+        // 3. Redirect based on action (always full page reload)
+
+        switch (action) {
+            case 'new': {
+                // Forget the main-process associated file BEFORE the
+                // reload so the next Save dialog starts fresh with the
+                // project title.
+                try {
+                    if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                        await window.electronAPI.clearSavedPath();
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
+                if (isStaticMode) {
+                    // Static/Electron: reload generates a fresh UUID automatically
+                    window.location.reload();
+                } else {
+                    const resp = await fetch(`${basePath}/api/project/create-quick`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ title: window._ ? _('Untitled') : 'Untitled' }),
+                    });
+                    if (!resp.ok) {
+                        throw new Error(`Failed to create project: ${resp.status}`);
+                    }
+                    const data = await resp.json();
+                    window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1`;
+                }
+                break;
+            }
+            case 'open':
+                if (isStaticMode) {
+                    // Static/Electron: set projectId and reload (no server routes)
+                    window.eXeLearning.projectId = projectUuid;
+                    window.location.reload();
+                } else {
+                    window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+                }
+                break;
+            case 'import': {
+                // Persist the imported file's basename so the next Save
+                // dialog pre-fills with it. The main process pairs this
+                // with the global dir set by the native file picker (or
+                // falls back to lastUsedDir for pathless imports).
+                try {
+                    if (file?.name && typeof window.electronAPI?.setSavedPath === 'function') {
+                        await window.electronAPI.setSavedPath(file.name);
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
+                // Store file in IndexedDB before reload
+                await storePendingImport(file);
+                if (isStaticMode) {
+                    // Signal for _processPendingImport after reload
+                    sessionStorage.setItem('exe-pending-import', '1');
+                    window.location.reload();
+                } else {
+                    // Create project on server
+                    const title = file.name.replace(/\.(elp|elpx)$/i, '') || 'Imported';
+                    const resp = await fetch(`${basePath}/api/project/create-quick`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ title }),
+                    });
+                    if (!resp.ok) {
+                        throw new Error(`Failed to create project: ${resp.status}`);
+                    }
+                    const data = await resp.json();
+                    window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1&pendingImport=1`;
+                }
+                break;
+            }
+        }
+    }
+
+    /**
      * Reset project state and clear DOM before loading new content
      * This ensures a clean slate when creating new projects or opening files
      */
@@ -458,6 +775,11 @@ export default class projectManager {
         // IMPORTANT: Flag to force structure import from API on next load
         // This ensures Yjs gets fresh data instead of stale cached data
         this._forceStructureImport = true;
+
+        // Remove all TinyMCE editors to prevent leaks
+        if (typeof tinymce !== 'undefined' && tinymce.remove) {
+            tinymce.remove();
+        }
 
         // Clear Yjs navigation if bridge exists (remove stale data)
         if (this._yjsBridge?.clearNavigation) {
@@ -471,6 +793,12 @@ export default class projectManager {
             window.eXeLearning.app.projectState.reset();
         }
         Logger.log('[ProjectManager] ProjectState reset done');
+
+        // Reset preview panel state so each project starts with closed/unpinned preview
+        const previewPanel = this.app.interface?.previewButton?.getPanel?.();
+        if (previewPanel?.resetToDefaultState) {
+            previewPanel.resetToDefaultState();
+        }
 
         // CRITICAL: Clear navigation tree DOM first
         // This ensures old nodes are removed even if the structure engine fails
@@ -536,6 +864,10 @@ export default class projectManager {
         this.app.interface.loadingScreen.show();
         // Load project properties
         await this.loadProjectProperties();
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
+        await this.app.locale.refreshI18nGlobals();
         // Load structure data
         await this.loadStructureData();
         // Load title
@@ -550,6 +882,8 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
         // Set offline atributtes
         this.setInstallationTypeAttribute();
         // Run autosave
@@ -1330,9 +1664,17 @@ export default class projectManager {
         // If Yjs mode is enabled and a theme was already set from Yjs metadata,
         // don't override it with user preferences or default
         if (!this._yjsEnabled || !this.app.themes.selected) {
+            // Precedence: user "defaultTheme" preference > legacy "theme" pref >
+            // server/site default. An empty preference value means "use the default
+            // style of the site", so we fall back to the server default.
             let theme = eXeLearning.config.defaultTheme;
-            if (this.app.user.preferences.preferences.theme) {
-                theme = this.app.user.preferences.preferences.theme.value;
+            const prefs = this.app.user.preferences.preferences;
+            const userDefaultTheme = prefs.defaultTheme && prefs.defaultTheme.value;
+            const legacyTheme = prefs.theme && prefs.theme.value;
+            if (userDefaultTheme) {
+                theme = userDefaultTheme;
+            } else if (legacyTheme) {
+                theme = legacyTheme;
             }
             await this.app.themes.selectTheme(theme, false);
         }
@@ -1359,37 +1701,47 @@ export default class projectManager {
     }
 
     /**
+     * Resolve the documentReady promise, signaling that the project document
+     * is fully loaded and ready for interaction (save, export, get state, etc.).
+     * Also emits an EXE_DOCUMENT_READY event so embedded bridges can react
+     * on every document load (including file imports after app startup).
+     * @private
+     */
+    _resolveDocumentReady() {
+        window.dispatchEvent(new CustomEvent('EXE_DOCUMENT_READY'));
+        const resolve = this.app?._documentReadyResolve;
+        if (resolve) {
+            resolve();
+            this.app._documentReadyResolve = null;
+        }
+    }
+
+    /**
      * Set installation type attribute to body and elements
-     *
+     * Uses RuntimeConfig to differentiate between 'static' and 'server' modes
      */
     setInstallationTypeAttribute() {
-        if (this.offlineInstallation == true) {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'offline');
-            /* To review (see #432)
-            document.querySelector(
-                '#navbar-button-download-project',
-            ).innerHTML = 'Save';
-            */
+        const runtimeConfig = this.app.runtimeConfig;
+        const installationType = runtimeConfig?.isStaticMode() ? 'static' : 'online';
+
+        document.querySelector('body').setAttribute('installation-type', installationType);
+
+        // Static mode UI adjustments (save button label)
+        if (installationType === 'static') {
             document.querySelector('#head-top-download-button').innerHTML =
                 'save';
             document
                 .querySelector('#head-top-download-button')
-                .setAttribute('title', 'Save');
+                .setAttribute('title', _('Save'));
 
             // Expose a stable project key for Electron (per-project save path)
-            try {
-                window.__currentProjectId = this.odeId || 'default';
-            } catch (e) {
-                // Intentional: Electron global assignment may fail in browser
+            if (window.electronAPI) {
+                try {
+                    window.__currentProjectId = this.odeId || 'default';
+                } catch (e) {
+                    // Intentional: Electron global assignment may fail in browser
+                }
             }
-
-            // Offline Save As is now provided by a dedicated menu item
-        } else {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'online');
         }
     }
 
@@ -1495,7 +1847,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalAutosave(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip autosave in static mode - no server to save to
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -1504,7 +1860,7 @@ export default class projectManager {
             };
             this.intervalSaveOde = setInterval(() => {
                 this.app.api.postOdeAutosave(data);
-            }, this.app.api.parameters.autosaveIntervalTime * 1000);
+            }, (this.app.api?.parameters?.autosaveIntervalTime || 60) * 1000);
         }
     }
 
@@ -1513,7 +1869,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalSessionExpiration(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip session expiration in static mode - no server sessions
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -1962,14 +2322,14 @@ export default class projectManager {
             nodeContentElement.children[cloneBlockNode.order]
         );
         // Load Idevices in block
-        newOdeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+        for (const idevice of newOdeBlockSync.odeComponentsSyncs) {
             idevice.mode = 'export';
             await this.idevices.createIdeviceInContent(
                 idevice,
                 cloneBlockNode.blockContent,
                 elementOnModeEdition
             );
-        });
+        }
     }
 
     /**
@@ -2005,9 +2365,10 @@ export default class projectManager {
         );
 
         // Load Idevices in block if node-content is on mode "view"
-        var loadIdevicesOnBlock = setInterval(() => {
+        var loadIdevicesOnBlock = setInterval(async () => {
             if (nodeContentElement.getAttribute('mode') == 'view') {
-                odeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+                clearInterval(loadIdevicesOnBlock);
+                for (const idevice of odeBlockSync.odeComponentsSyncs) {
                     // Exclude empty idevices
                     if (idevice.htmlView !== null) {
                         idevice.mode = 'export';
@@ -2017,8 +2378,7 @@ export default class projectManager {
                             elementOnModeEdition
                         );
                     }
-                });
-                clearInterval(loadIdevicesOnBlock);
+                }
             }
         }, this.syncIntervalTime);
     }
@@ -2257,15 +2617,15 @@ export default class projectManager {
             );
         }
 
-        // Load Idevices in block
-        newOdeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+        // Load Idevices in block (sequential to avoid race conditions)
+        for (const idevice of newOdeBlockSync.odeComponentsSyncs) {
             idevice.mode = 'export';
-            let ideviceNode = await this.idevices.createIdeviceInContent(
+            await this.idevices.createIdeviceInContent(
                 idevice,
                 cloneBlockNode.blockContent,
                 elementOnModeEdition
             );
-        });
+        }
 
         // Reset view of idevices to load plugins
         var loadIdevicesExportVIew = setInterval(() => {
@@ -2376,6 +2736,10 @@ export default class projectManager {
      *
      */
     async cleanPreviousAutosaves() {
+        // Skip in static mode - no server autosaves to clean
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
         let params = { odeSessionId: this.odeSession };
         await this.app.api.postCleanAutosavesByUser(params);
     }
@@ -2476,7 +2840,7 @@ export default class projectManager {
             eXeLearning.app.modals.alert.show({
                 title: _('Info'),
                 body: _(
-                    'You are editing an iDevice. Please close it before continuing'
+                    'Unsaved changes detected. Save your iDevice before continuing.'
                 ),
             });
             return true;

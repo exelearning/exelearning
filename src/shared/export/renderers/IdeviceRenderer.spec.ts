@@ -2,12 +2,12 @@
  * Tests for IdeviceRenderer
  */
 
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import type { ExportComponent, ExportBlock } from '../interfaces';
-import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
+import { loadIdeviceConfigs, resetIdeviceConfigCache, setIdevicesBasePath } from '../../../services/idevice-config';
 
 // Path to real iDevices for integration testing
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
@@ -31,7 +31,7 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('render', () => {
-        it('should render a text iDevice with exe-text wrapper', () => {
+        it('should render a text iDevice without extra content wrapper', () => {
             // Use 'text' iDevice which exists in config.xml and is a JSON type
             const component: ExportComponent = {
                 id: 'comp-1',
@@ -45,7 +45,6 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('id="comp-1"');
             expect(html).toContain('class="idevice_node text"');
-            expect(html).toContain('<div class="exe-text">');
             expect(html).toContain('<p>Hello World</p>');
         });
 
@@ -85,6 +84,79 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('data-idevice-component-type="json"');
         });
 
+        it('should include only ideviceId in data-idevice-json-data for text idevice', () => {
+            // Text iDevices should only have ideviceId in JSON data, not full properties
+            // This reduces HTML size and avoids exposing unnecessary data
+            const component: ExportComponent = {
+                id: 'text-minimal-json',
+                type: 'text',
+                order: 0,
+                content: '<p>Some text content</p>',
+                properties: {
+                    someProperty: 'should not appear',
+                    anotherProperty: 123,
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            // Should contain data-idevice-json-data with only ideviceId
+            expect(html).toContain('data-idevice-json-data="');
+            // Extract and parse the JSON data
+            const jsonMatch = html.match(/data-idevice-json-data="([^"]+)"/);
+            expect(jsonMatch).not.toBeNull();
+            const jsonData = JSON.parse(jsonMatch![1].replace(/&quot;/g, '"'));
+            expect(jsonData).toEqual({ ideviceId: 'text-minimal-json' });
+            // Should NOT contain the other properties
+            expect(jsonData.someProperty).toBeUndefined();
+            expect(jsonData.anotherProperty).toBeUndefined();
+        });
+
+        it('should include full properties in data-idevice-json-data for non-text idevices', () => {
+            // Non-text iDevices should have full properties in JSON data
+            const component: ExportComponent = {
+                id: 'form-full-json',
+                type: 'form',
+                order: 0,
+                content: '',
+                properties: {
+                    questionsData: [{ question: 'Test?' }],
+                    exportScorm: { saveScore: true },
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('data-idevice-json-data="');
+            // Extract and parse the JSON data
+            const jsonMatch = html.match(/data-idevice-json-data="([^"]+)"/);
+            expect(jsonMatch).not.toBeNull();
+            const jsonData = JSON.parse(
+                jsonMatch![1]
+                    .replace(/&quot;/g, '"')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>'),
+            );
+            // Should contain the full properties
+            expect(jsonData.questionsData).toBeDefined();
+            expect(jsonData.exportScorm).toBeDefined();
+        });
+
+        it('should not include data-idevice-template for text idevice', () => {
+            // Text iDevices don't need template attribute
+            const component: ExportComponent = {
+                id: 'text-no-template',
+                type: 'text',
+                order: 0,
+                content: '<p>Text content</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('data-idevice-template');
+        });
+
         it('should not include data attributes when disabled', () => {
             const component: ExportComponent = {
                 id: 'comp-1',
@@ -120,7 +192,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Hidden</p>',
-                properties: { visibility: 'false' },
+                properties: {},
+                structureProperties: { visibility: 'false' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -134,7 +207,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher only</p>',
-                properties: { teacherOnly: 'true' },
+                properties: {},
+                structureProperties: { teacherOnly: 'true' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -142,13 +216,14 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('teacher-only');
         });
 
-        it('should add custom cssClass from properties', () => {
+        it('should add custom cssClass from structureProperties', () => {
             const component: ExportComponent = {
                 id: 'comp-1',
                 type: 'text',
                 order: 0,
                 content: '<p>Custom styled</p>',
-                properties: { cssClass: 'my-custom-class' },
+                properties: {},
+                structureProperties: { cssClass: 'my-custom-class' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -194,7 +269,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Hidden</p>',
-                properties: { visibility: false },
+                properties: {},
+                structureProperties: { visibility: false as unknown as string },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -208,12 +284,137 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher only</p>',
-                properties: { teacherOnly: true },
+                properties: {},
+                structureProperties: { teacherOnly: true as unknown as string },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('teacher-only');
+        });
+
+        // Test for legacy visibilityType in jsonProperties
+        it('should add teacher-only class when visibilityType is teacher (legacy format)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Teacher only via legacy</p>',
+                properties: { visibilityType: 'teacher' },
+                structureProperties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        // Test when structureProperties is undefined
+        it('should render without structureProperties (undefined fallback)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>No structure props</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('class="idevice_node text"');
+            expect(html).not.toContain('novisible');
+            expect(html).not.toContain('teacher-only');
+        });
+
+        // Test combining multiple structureProperties
+        it('should apply multiple structureProperties together', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Multiple props</p>',
+                properties: {},
+                structureProperties: {
+                    visibility: 'false',
+                    teacherOnly: 'true',
+                    cssClass: 'highlight important',
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('highlight');
+            expect(html).toContain('important');
+        });
+
+        // Test cssClass not being a string (should be ignored)
+        it('should ignore cssClass when not a string', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Invalid cssClass</p>',
+                properties: {},
+                structureProperties: { cssClass: 123 as unknown as string },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            // Should have basic classes but not the invalid cssClass
+            expect(html).toContain('class="idevice_node text"');
+            expect(html).not.toContain('123');
+        });
+
+        // Test visibility true should NOT add novisible class
+        it('should not add novisible class when visibility is true', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Visible content</p>',
+                properties: {},
+                structureProperties: { visibility: 'true' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('novisible');
+        });
+
+        // Test teacherOnly false should NOT add teacher-only class
+        it('should not add teacher-only class when teacherOnly is false', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Not teacher only</p>',
+                properties: {},
+                structureProperties: { teacherOnly: 'false' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('teacher-only');
+        });
+
+        // Test empty cssClass should not add extra spaces
+        it('should handle empty cssClass gracefully', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Empty cssClass</p>',
+                properties: {},
+                structureProperties: { cssClass: '' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('class="idevice_node text"');
+            // Should not have trailing space or empty class
+            expect(html).not.toContain('class="idevice_node text "');
         });
     });
 
@@ -320,20 +521,6 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('novisible');
         });
 
-        it('should add identifier attribute when block has identifier property', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Custom ID Block',
-                order: 0,
-                components: [],
-                properties: { identifier: 'my-custom-id' },
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).toContain('identifier="my-custom-id"');
-        });
-
         it('should add custom cssClass to block', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -358,7 +545,6 @@ describe('IdeviceRenderer', () => {
                 properties: {
                     teacherOnly: 'true',
                     minimized: 'true',
-                    identifier: 'special-block',
                     cssClass: 'featured',
                 },
             };
@@ -367,35 +553,7 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('teacher-only');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="special-block"');
             expect(html).toContain('featured');
-        });
-
-        it('should not add identifier attribute when not set', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Block',
-                order: 0,
-                components: [],
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).not.toContain('identifier=');
-        });
-
-        it('should not add identifier attribute when empty string', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Block',
-                order: 0,
-                components: [],
-                properties: { identifier: '' },
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).not.toContain('identifier=');
         });
 
         // Tests for boolean values (Yjs stores booleans, not strings)
@@ -451,7 +609,6 @@ describe('IdeviceRenderer', () => {
                     teacherOnly: true as unknown as string,
                     visibility: false as unknown as string,
                     minimized: true as unknown as string,
-                    identifier: 'my-id',
                     cssClass: 'custom-class',
                 },
             };
@@ -461,7 +618,6 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('teacher-only');
             expect(html).toContain('novisible');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="my-id"');
             expect(html).toContain('custom-class');
         });
     });
@@ -816,7 +972,7 @@ describe('IdeviceRenderer', () => {
                 name: 'Test Block',
                 order: 0,
                 components: [],
-                iconName: 'lightbulb', // iconName is on block, not properties
+                iconName: 'lightbulb.png', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
@@ -826,13 +982,12 @@ describe('IdeviceRenderer', () => {
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {
-            // This tests lines 190-194
             const block: ExportBlock = {
                 id: 'block-1',
                 name: 'Preview Block',
                 order: 0,
                 components: [],
-                iconName: 'check', // iconName is on block, not properties
+                iconName: 'check.svg', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, {
@@ -841,7 +996,7 @@ describe('IdeviceRenderer', () => {
                 themeIconBasePath: '/preview/icons/',
             });
 
-            expect(html).toContain('/preview/icons/check.png');
+            expect(html).toContain('/preview/icons/check.svg');
             expect(html).not.toContain('theme/icons/');
         });
 
@@ -901,6 +1056,238 @@ describe('IdeviceRenderer', () => {
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('box-toggle');
+        });
+
+        it('should render toggle button when allowToggle is undefined (default behavior)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Default Toggle Block',
+                order: 0,
+                components: [],
+                properties: {}, // allowToggle is undefined - should default to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+        });
+
+        it('should NOT render toggle button when allowToggle is false', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: false },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should NOT render toggle button when allowToggle is string "false"', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle String Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: 'false' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should render icon and toggle button even when block has no title', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: 'check.png', // iconName includes extension
+                properties: { allowToggle: 'true' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have icon even without title
+            expect(html).toContain('box-icon');
+            expect(html).toContain('check.png');
+            // Should have toggle button even without title
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should NOT have title h1 since name is empty
+            expect(html).not.toContain('box-title');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button even when block has no title and no icon', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: '', // No icon
+                properties: {}, // allowToggle defaults to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have toggle button even without title or icon
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should have no-icon class
+            expect(html).toContain('no-icon');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button with static English text (i18n applied at runtime)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                properties: {},
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Toggle text is always English in HTML - translated at runtime by exe_export.js
+            expect(html).toContain('title="Toggle content"');
+            expect(html).toContain('<span>Toggle content</span>');
+        });
+
+        it('should resolve icon baseName to filename with extension using setThemeIconFiles', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'activity', // baseName without extension
+            };
+
+            // Configure renderer with theme files that maps 'activity' → 'activity.svg'
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should use resolved name with extension
+            expect(html).toContain('theme/icons/activity.svg');
+            // Should not have just the baseName without extension
+            expect(html).not.toMatch(/theme\/icons\/activity["']/);
+        });
+
+        it('should fall back to iconName when theme does not contain the icon', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'unknown-icon', // Icon not in theme
+            };
+
+            // Configure renderer with theme files without 'unknown-icon'
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should use iconName as-is since it's not in the theme
+            expect(html).toContain('theme/icons/unknown-icon');
+        });
+
+        it('should use iconName as-is when setThemeIconFiles is not called', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'share', // baseName without extension
+            };
+
+            // Note: setThemeIconFiles not called, so internal map is empty
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should fall back to .png extension when setThemeIconFiles is not called
+            expect(html).toContain('theme/icons/share.png');
+        });
+
+        it('should resolve icon and apply themeIconBasePath together', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Preview Block',
+                order: 0,
+                components: [],
+                iconName: 'check', // baseName without extension
+            };
+
+            // Configure renderer with theme files
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                themeIconBasePath: '/preview/icons/',
+            });
+
+            // Should use themeIconBasePath with resolved filename
+            expect(html).toContain('/preview/icons/check.png');
+            expect(html).not.toContain('theme/icons/');
+        });
+
+        it('should resolve icon with different file extensions based on theme', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'info', // Same baseName
+            };
+
+            // Theme A: SVG format
+            const themeFilesMapA = new Map<string, unknown>();
+            themeFilesMapA.set('icons/info.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMapA);
+
+            const htmlThemeA = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+            expect(htmlThemeA).toContain('theme/icons/info.svg');
+
+            // Theme B: PNG format (reconfigure renderer)
+            const themeFilesMapB = new Map<string, unknown>();
+            themeFilesMapB.set('icons/info.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMapB);
+
+            const htmlThemeB = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+            expect(htmlThemeB).toContain('theme/icons/info.png');
         });
     });
 
@@ -1070,6 +1457,125 @@ describe('IdeviceRenderer', () => {
         });
     });
 
+    describe('setThemeIconFiles', () => {
+        it('should build icon resolution map from theme files', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            themeFilesMap.set('icons/info.gif', new Uint8Array(0));
+            themeFilesMap.set('style.css', 'css content'); // Non-icon file
+
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // Test that icons are resolved correctly
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            expect(html).toContain('theme/icons/activity.svg');
+        });
+
+        it('should handle null theme files map', () => {
+            renderer.setThemeIconFiles(null);
+
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use iconName as-is since no resolution map
+            expect(html).toContain('theme/icons/activity');
+        });
+
+        it('should clear previous icon resolution map when called again', () => {
+            // First call with activity.svg
+            const themeFilesMap1 = new Map<string, unknown>();
+            themeFilesMap1.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap1);
+
+            // Second call with activity.png (different extension)
+            const themeFilesMap2 = new Map<string, unknown>();
+            themeFilesMap2.set('icons/activity.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap2);
+
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use the second configuration (png)
+            expect(html).toContain('theme/icons/activity.png');
+            expect(html).not.toContain('activity.svg');
+        });
+
+        it('should handle various image extensions', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/icon1.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon2.png', new Uint8Array(0));
+            themeFilesMap.set('icons/icon3.gif', new Uint8Array(0));
+            themeFilesMap.set('icons/icon4.jpg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon5.jpeg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon6.webp', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // Test each extension
+            const testIcon = (iconName: string, expectedExt: string) => {
+                const block: ExportBlock = {
+                    id: `block-${iconName}`,
+                    name: 'Test',
+                    order: 0,
+                    components: [],
+                    iconName,
+                };
+                const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+                expect(html).toContain(`theme/icons/${iconName}.${expectedExt}`);
+            };
+
+            testIcon('icon1', 'svg');
+            testIcon('icon2', 'png');
+            testIcon('icon3', 'gif');
+            testIcon('icon4', 'jpg');
+            testIcon('icon5', 'jpeg');
+            testIcon('icon6', 'webp');
+        });
+
+        it('should ignore non-icon files in theme', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            themeFilesMap.set('style.css', 'css content');
+            themeFilesMap.set('script.js', 'js content');
+            themeFilesMap.set('img/logo.png', new Uint8Array(0)); // Not in icons/ folder
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // 'logo' should not be resolved from img/ folder because only icons/ is scanned
+            // But it should fall back to .png extension for backwards compatibility
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'logo',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use iconName with .png fallback (not from img/ folder)
+            expect(html).toContain('theme/icons/logo.png');
+        });
+    });
+
     describe('render with pre>code escaping', () => {
         it('should escape pre>code content in rendered output', () => {
             const component: ExportComponent = {
@@ -1084,6 +1590,213 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;');
             expect(html).not.toContain('<script src="test.js">');
+        });
+    });
+
+    // Regression coverage for issue #1810 (3D Viewer iDevice does not render after export):
+    // Custom iDevices ship ES module scripts (e.g. three.module.min.js, STLLoader.js,
+    // OrbitControls.js). The exporter must mark them as <script type="module"> so the
+    // browser parses `import`/`export` instead of throwing a SyntaxError. Detection must
+    // work via filename convention (.module.js / .mjs) AND content sniffing (top-level
+    // `import`/`export`) so plugin authors don't have to rename existing files. The same
+    // detection must apply for index pages (basePath = '') and subpages (basePath = '../')
+    // and is exercised by every Html5Exporter subclass (SCORM 1.2/2004, EPUB, IMS).
+    describe('getJsScripts / getJsScriptInfo (ES module detection — issue #1810)', () => {
+        const fixtureRoot = path.join(process.cwd(), 'test/temp/idevice-renderer-module-detection');
+        const ideviceName = 'three-d-viewer';
+        const exportDir = path.join(fixtureRoot, ideviceName, 'export');
+
+        beforeEach(async () => {
+            // Fresh fixture per test so file edits don't leak between cases.
+            await fs.remove(fixtureRoot);
+            await fs.ensureDir(exportDir);
+
+            // Mirror the plugin layout reported in issue #1810:
+            //   - three-d-viewer.js          → classic bootstrap script
+            //   - three.module.min.js        → ES module (named convention)
+            //   - STLLoader.js               → ES module (no convention; sniffed)
+            //   - OrbitControls.mjs          → ES module (.mjs extension)
+            //   - model-viewer.min.js        → UMD bundle that *uses* the word `export`
+            //                                  inside a string but is NOT a module.
+            await fs.writeFile(
+                path.join(exportDir, `${ideviceName}.js`),
+                '/* eslint-disable */\n(function () { window.ThreeDViewerRuntime = {}; })();\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'three.module.min.js'),
+                'export const REVISION="160";export class Vector3{}\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'STLLoader.js'),
+                "import { BufferGeometry } from './three.module.min.js';\nexport class STLLoader {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'OrbitControls.mjs'),
+                "import { EventDispatcher } from './three.module.min.js';\nexport class OrbitControls {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'model-viewer.min.js'),
+                '/*! @license model-viewer */\n(function(g,f){typeof exports==="object"?f(exports):g.modelViewer=f({})})(this,function(e){e.foo=1});\n',
+            );
+
+            // Minimal config.xml so loadIdeviceConfigs() recognises the fixture iDevice.
+            await fs.writeFile(
+                path.join(fixtureRoot, ideviceName, 'config.xml'),
+                `<?xml version="1.0" encoding="UTF-8"?>
+<idevice>
+    <name>${ideviceName}</name>
+    <css-class>${ideviceName}</css-class>
+    <component-type>json</component-type>
+    <export-template-filename>${ideviceName}.html</export-template-filename>
+</idevice>`,
+            );
+
+            setIdevicesBasePath(fixtureRoot);
+            loadIdeviceConfigs(fixtureRoot);
+            renderer = new IdeviceRenderer();
+        });
+
+        afterEach(async () => {
+            await fs.remove(fixtureRoot);
+            // Restore real iDevice configs so the rest of the suite keeps working.
+            resetIdeviceConfigCache();
+            const real = path.join(process.cwd(), 'public/files/perm/idevices/base');
+            setIdevicesBasePath(real);
+            loadIdeviceConfigs(real);
+        });
+
+        it('emits <script type="module"> for .module.js files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits <script type="module"> for .mjs files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mjsTag = scripts.find(s => s.includes('OrbitControls.mjs'));
+            expect(mjsTag).toBeDefined();
+            expect(mjsTag).toContain('type="module"');
+        });
+
+        it('detects ES modules by top-level import/export content (no rename required)', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            // Author shipped a file with top-level `import`; exporter must treat it as a module
+            // even though its name does not follow the .module.js / .mjs convention.
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('does NOT add type="module" to classic / UMD scripts', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const bootstrapTag = scripts.find(s => s.includes(`${ideviceName}.js`) && !s.includes('module'));
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(bootstrapTag).toBeDefined();
+            expect(bootstrapTag).not.toContain('type="module"');
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('applies basePath to module scripts on index page (basePath="")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(`<script type="module" src="idevices/${ideviceName}/three.module.min.js"></script>`);
+        });
+
+        it('applies basePath to module scripts on subpages (basePath="../")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '../');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('applies BASE_PATH-style absolute prefix to module scripts (e.g. /myapp/)', () => {
+            // Mirrors deploy with BASE_PATH=/myapp where PageRenderer is invoked with the
+            // configured prefix; the same module-detection must still apply.
+            const scripts = renderer.getJsScripts([ideviceName], '/myapp/');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="/myapp/idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('getJsScriptInfo returns identical tags (used by Html5Exporter/SCORM/EPUB)', () => {
+            const info = renderer.getJsScriptInfo([ideviceName], '../');
+            const moduleEntry = info.find(s => s.src.endsWith('three.module.min.js'));
+            const classicEntry = info.find(s => s.src.endsWith(`${ideviceName}.js`));
+            expect(moduleEntry?.tag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+            expect(classicEntry?.tag).toBe(`<script src="../idevices/${ideviceName}/${ideviceName}.js"></script>`);
+        });
+
+        it('module scripts appear AFTER the classic bootstrap to preserve load order', () => {
+            // getIdeviceExportFiles puts the main `${typeName}.js` first; module siblings
+            // come after it (alphabetical). The fix must not reorder scripts.
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mainIdx = scripts.findIndex(s => s.endsWith(`${ideviceName}.js"></script>`));
+            const moduleIdx = scripts.findIndex(s => s.includes('three.module.min.js'));
+            expect(mainIdx).toBeGreaterThanOrEqual(0);
+            expect(moduleIdx).toBeGreaterThan(mainIdx);
+        });
+    });
+
+    // End-to-end check against the real plugin that triggered issue #1810. Skipped
+    // automatically if the iDevice is not installed on the current branch.
+    describe('three-d-viewer real iDevice integration (issue #1810)', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+        const threeDViewerPath = path.join(realIdevicesPath, 'three-d-viewer', 'export');
+
+        beforeEach(() => {
+            resetIdeviceConfigCache();
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+            renderer = new IdeviceRenderer();
+        });
+
+        it('emits type="module" for three.module.min.js (filename convention)', () => {
+            if (!fs.existsSync(threeDViewerPath)) {
+                console.log('[Test] three-d-viewer iDevice not installed; skipping');
+                return;
+            }
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for STLLoader.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for OrbitControls.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const ctrlTag = scripts.find(s => s.includes('OrbitControls.js'));
+            expect(ctrlTag).toBeDefined();
+            expect(ctrlTag).toContain('type="module"');
+        });
+
+        it('does NOT mark the UMD model-viewer.min.js as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('does NOT mark the classic three-d-viewer.js bootstrap as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const mainTag = scripts.find(s => /three-d-viewer\.js"><\/script>$/.test(s));
+            expect(mainTag).toBeDefined();
+            expect(mainTag).not.toContain('type="module"');
         });
     });
 });

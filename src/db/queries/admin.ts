@@ -79,17 +79,33 @@ export async function findProjectsPaginated(
         title?: string;
         status?: string;
         visibility?: string;
+        savedOnly?: boolean;
         sortBy?: 'id' | 'title' | 'created_at';
         sortOrder?: 'asc' | 'desc';
     } = {},
 ): Promise<{ projects: AdminProjectListItem[]; total: number }> {
-    const { limit = 50, offset = 0, owner, title, status, visibility, sortBy = 'id', sortOrder = 'desc' } = options;
+    const {
+        limit = 50,
+        offset = 0,
+        owner,
+        title,
+        status,
+        visibility,
+        savedOnly = true,
+        sortBy = 'id',
+        sortOrder = 'desc',
+    } = options;
 
     let query = db
         .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .selectAll('projects')
         .select(['users.email as owner_email', 'users.user_id as owner_user_id']);
+
+    // Filter by saved_once (exclude unsaved projects by default)
+    if (savedOnly) {
+        query = query.where('projects.saved_once', '=', 1);
+    }
 
     if (owner) {
         const ownerId = parseInt(owner, 10);
@@ -124,6 +140,11 @@ export async function findProjectsPaginated(
         .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .select(sql<number>`count(projects.id)`.as('count'));
+
+    // Filter by saved_once (exclude unsaved projects by default)
+    if (savedOnly) {
+        countQuery = countQuery.where('projects.saved_once', '=', 1);
+    }
 
     if (owner) {
         const ownerId = parseInt(owner, 10);
@@ -194,7 +215,7 @@ export async function createUserAsAdmin(
     data: {
         email: string;
         password: string;
-        userId: string;
+        userId?: string; // Optional: only for SSO users (CAS/OIDC)
         roles: string[];
         quotaMb?: number;
     },
@@ -207,7 +228,7 @@ export async function createUserAsAdmin(
     return insertAndReturn(db, 'users', {
         email: data.email,
         password: data.password,
-        user_id: data.userId,
+        user_id: data.userId ?? null, // null for local users, only set for SSO
         roles: stringifyRoles(roles),
         quota_mb: data.quotaMb ?? null,
         is_lopd_accepted: 0,
@@ -252,6 +273,7 @@ export async function getSystemStats(db: Kysely<Database>): Promise<{
         db
             .selectFrom('projects')
             .select([sql<number>`count(id)`.as('total')])
+            .where('saved_once', '=', 1)
             .executeTakeFirst(),
     ]);
 
@@ -260,6 +282,7 @@ export async function getSystemStats(db: Kysely<Database>): Promise<{
         .selectFrom('projects')
         .select(sql<number>`count(id)`.as('count'))
         .where('status', '=', 'active')
+        .where('saved_once', '=', 1)
         .executeTakeFirst();
 
     return {

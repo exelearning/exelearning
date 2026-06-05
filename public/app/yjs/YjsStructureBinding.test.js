@@ -493,6 +493,70 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('grouped page movement', () => {
+    beforeEach(() => {
+      const pages = [
+        createYMap({ id: 'a', pageId: 'a', pageName: 'A', parentId: null, order: 0 }),
+        createYMap({ id: 'b', pageId: 'b', pageName: 'B', parentId: null, order: 1 }),
+        createYMap({ id: 'c', pageId: 'c', pageName: 'C', parentId: null, order: 2 }),
+        createYMap({ id: 'd', pageId: 'd', pageName: 'D', parentId: null, order: 3 }),
+      ];
+      pages.forEach((p) => {
+        p.set('blocks', createYArray());
+        mockDocManager.getNavigation().push([p]);
+      });
+    });
+
+    it('canMoveGroupRight returns false when first selected has no previous sibling', () => {
+      expect(binding.canMoveGroupRight(['a', 'b'])).toBe(false);
+    });
+
+    it('movePageGroupRight nests selection under previous sibling of first selected', () => {
+      const moved = binding.movePageGroupRight(['b', 'c']);
+      expect(moved).toBe(true);
+
+      const pageB = binding.getPageMap('b');
+      const pageC = binding.getPageMap('c');
+      expect(pageB.get('parentId')).toBe('a');
+      expect(pageC.get('parentId')).toBe('a');
+      expect(pageB.get('order')).toBe(0);
+      expect(pageC.get('order')).toBe(1);
+    });
+
+    it('movePageGroupLeft keeps order and inserts after current parent', () => {
+      binding.movePageGroupRight(['b', 'c']); // b,c become children of a
+      const movedLeft = binding.movePageGroupLeft(['b', 'c']);
+      expect(movedLeft).toBe(true);
+
+      const topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('movePageGroupPrev/movePageGroupNext move as block without re-nesting', () => {
+      const movedUp = binding.movePageGroupPrev(['c', 'd']);
+      expect(movedUp).toBe(true);
+      let topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'c', 'd', 'b']);
+
+      const movedDown = binding.movePageGroupNext(['c', 'd']);
+      expect(movedDown).toBe(true);
+      topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'b', 'c', 'd']);
+    });
+  });
+
   describe('generateId', () => {
     it('generates unique IDs with prefix', () => {
       const id1 = binding.generateId('page');
@@ -502,10 +566,9 @@ describe('YjsStructureBinding', () => {
       expect(id1).toContain('page');
     });
 
-    it('generates IDs without prefix', () => {
-      const id = binding.generateId();
-      expect(typeof id).toBe('string');
-      expect(id.length).toBeGreaterThan(0);
+    it('throws on missing/empty prefix (mirrors src/shared/ids.ts contract)', () => {
+      expect(() => binding.generateId()).toThrow('generateId: prefix is required');
+      expect(() => binding.generateId('')).toThrow('generateId: prefix is required');
     });
   });
 
@@ -887,6 +950,88 @@ describe('YjsStructureBinding', () => {
       expect(blocks).toHaveLength(2);
       expect(blocks[0].blockName).toBe('Block 1');
       expect(blocks[1].blockName).toBe('Block 2');
+    });
+  });
+
+  describe('getBlock', () => {
+    it('returns null for non-existent block', () => {
+      const block = binding.getBlock('non-existent');
+      expect(block).toBeNull();
+    });
+
+    it('returns null when navigation is empty', () => {
+      const block = binding.getBlock('block-1');
+      expect(block).toBeNull();
+    });
+
+    it('finds block by id across all pages', () => {
+      // Create page 1 with block 1
+      const page1 = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Page 1',
+      });
+      const blocks1 = createYArray();
+      const block1 = createYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        iconName: 'info',
+        order: 0,
+      });
+      block1.set('components', createYArray());
+      blocks1.push([block1]);
+      page1.set('blocks', blocks1);
+
+      // Create page 2 with block 2
+      const page2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Page 2',
+      });
+      const blocks2 = createYArray();
+      const block2 = createYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        iconName: 'alert',
+        order: 0,
+      });
+      block2.set('components', createYArray());
+      blocks2.push([block2]);
+      page2.set('blocks', blocks2);
+
+      mockDocManager.getNavigation().push([page1]);
+      mockDocManager.getNavigation().push([page2]);
+
+      // Find block from page 2
+      const foundBlock = binding.getBlock('block-2');
+      expect(foundBlock).not.toBeNull();
+      expect(foundBlock.id).toBe('block-2');
+      expect(foundBlock.blockName).toBe('Block 2');
+      expect(foundBlock.iconName).toBe('alert');
+    });
+
+    it('finds block by blockId when id is different', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = createYArray();
+      const block = createYMap({
+        blockId: 'my-block-id',  // Only blockId, no id
+        blockName: 'Test Block',
+        order: 0,
+      });
+      block.set('components', createYArray());
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const foundBlock = binding.getBlock('my-block-id');
+      expect(foundBlock).not.toBeNull();
+      expect(foundBlock.blockName).toBe('Test Block');
     });
   });
 
@@ -1542,6 +1687,91 @@ describe('YjsStructureBinding', () => {
     it('does nothing for non-existent component', () => {
       // Should not throw
       binding.updateComponent('non-existent', { title: 'Test' });
+    });
+
+    it('updates jsonProperties with string value', () => {
+      const jsonData = JSON.stringify({ key: 'value', items: [1, 2, 3] });
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property
+      expect(comp.jsonProperties).toBe(jsonData);
+    });
+
+    it('updates jsonProperties and calls prepareJsonForSync when assetManager available', () => {
+      // Setup mock assetManager on window.eXeLearning
+      const mockPrepareJsonForSync = mock((json) => json.replace('blob:', 'asset://'));
+      global.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                prepareJsonForSync: mockPrepareJsonForSync,
+              },
+            },
+          },
+        },
+      };
+
+      const jsonData = JSON.stringify({ img: 'blob:http://localhost/abc' });
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      expect(mockPrepareJsonForSync).toHaveBeenCalledWith(jsonData);
+
+      // Cleanup
+      delete global.window.eXeLearning;
+    });
+
+    it('handles jsonProperties when assetManager is not available', () => {
+      // Ensure no assetManager
+      global.window.eXeLearning = { app: null };
+
+      const jsonData = JSON.stringify({ key: 'value' });
+      // Should not throw
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property
+      expect(comp.jsonProperties).toBe(jsonData);
+
+      // Cleanup
+      delete global.window.eXeLearning;
+    });
+
+    it('converts object jsonProperties to string before storing', () => {
+      const jsonObj = { key: 'value', nested: { a: 1 } };
+      binding.updateComponent('comp-1', { jsonProperties: jsonObj });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property (as string)
+      const stored = comp.jsonProperties;
+      expect(typeof stored).toBe('string');
+      expect(JSON.parse(stored)).toEqual(jsonObj);
+    });
+
+    // Regression test for issue #1674: updateComponent must drop the stale
+    // `htmlView` plain-string fallback when refreshing `htmlContent`, otherwise
+    // readers (e.g. File Manager reference counter) see stale content after
+    // in-place edits in the desktop/Electron build.
+    it('clears stale htmlView string when htmlContent is updated (issue #1674)', () => {
+      const navigation = mockDocManager.getNavigation();
+      const pageMap = navigation.get(0);
+      const blocks = pageMap.get('blocks');
+      const block = blocks.get(0);
+      const components = block.get('components');
+      const comp = components.get(0);
+
+      // Simulate post-import state: htmlView holds the imported HTML string
+      // (exactly how ElpxImporter/createComponentMapFromApi populate it).
+      comp.set('htmlView', '<p><img src="asset://stale-1674/img.jpg"></p>');
+      expect(comp.get('htmlView')).toBeDefined();
+
+      binding.updateComponent('comp-1', { htmlContent: '<p>image removed</p>' });
+
+      // htmlView must have been deleted so it can't mask the fresh htmlContent.
+      expect(comp.get('htmlView')).toBeUndefined();
+      const fresh = comp.get('htmlContent');
+      expect(fresh.toString()).toBe('<p>image removed</p>');
     });
   });
 
@@ -3384,6 +3614,287 @@ describe('YjsStructureBinding', () => {
 
       // Should call addMediaTypes since it has both audio and video
       expect(window.addMediaTypes).toHaveBeenCalled();
+    });
+  });
+
+  // ----------------------------------------------------------------
+  // Regression #1665: block reorder via arrow buttons loses order.
+  // updateBlockOrder() must keep the page's blocks Y.Array in a stable,
+  // deterministic order under repeated moves. Each block must appear
+  // exactly once, the array index must equal the `order` field, and the
+  // logical order produced by a sequence of moves must match what a
+  // reference implementation would produce.
+  // ----------------------------------------------------------------
+  describe('updateBlockOrder regression #1665', () => {
+    // Build a page with `count` blocks, ids "b0".."b(count-1)", and push
+    // it into navigation. Returns the {pageId, blocks Y.Array}.
+    function seedPageWithBlocks(count) {
+      const pageMap = createYMap({ id: 'page-1', pageId: 'page-1', pageName: 'P', order: 0 });
+      const blocks = createYArray();
+      for (let i = 0; i < count; i++) {
+        const b = createYMap({ id: `b${i}`, blockId: `b${i}`, order: i });
+        blocks.push([b]);
+      }
+      pageMap.set('blocks', blocks);
+      const navigation = mockDocManager.getNavigation();
+      navigation.push([pageMap]);
+      return { pageMap, blocks };
+    }
+
+    function readBlockIds(blocks) {
+      const ids = [];
+      for (let i = 0; i < blocks.length; i++) ids.push(blocks.get(i).get('id'));
+      return ids;
+    }
+
+    function readBlockOrders(blocks) {
+      const orders = [];
+      for (let i = 0; i < blocks.length; i++) orders.push(blocks.get(i).get('order'));
+      return orders;
+    }
+
+    it('moving a block from index 0 to index 2 produces the expected order', () => {
+      const { blocks } = seedPageWithBlocks(5); // [b0, b1, b2, b3, b4]
+
+      // Mirrors what addBehaviourButtonMoveDownBlock() asks for: place b0
+      // at the position currently occupied by b2 -> [b1, b2, b0, b3, b4].
+      const ok = binding.updateBlockOrder('b0', 2);
+
+      expect(ok).toBe(true);
+      expect(blocks.length).toBe(5);
+      expect(readBlockIds(blocks)).toEqual(['b1', 'b2', 'b0', 'b3', 'b4']);
+    });
+
+    it('moving a block from index 4 to index 1 produces the expected order', () => {
+      const { blocks } = seedPageWithBlocks(5); // [b0, b1, b2, b3, b4]
+
+      const ok = binding.updateBlockOrder('b4', 1);
+
+      expect(ok).toBe(true);
+      expect(blocks.length).toBe(5);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b4', 'b1', 'b2', 'b3']);
+    });
+
+    it('after every reorder, every block id must appear exactly once', () => {
+      const { blocks } = seedPageWithBlocks(6);
+
+      binding.updateBlockOrder('b0', 5);
+      binding.updateBlockOrder('b3', 0);
+      binding.updateBlockOrder('b5', 2);
+
+      const ids = readBlockIds(blocks);
+      expect(blocks.length).toBe(6);
+      expect(new Set(ids).size).toBe(6); // no duplicates
+      expect(ids.sort()).toEqual(['b0', 'b1', 'b2', 'b3', 'b4', 'b5']); // no losses
+    });
+
+    it('after every reorder, the `order` field must equal the array index', () => {
+      const { blocks } = seedPageWithBlocks(5);
+
+      binding.updateBlockOrder('b1', 3);
+      binding.updateBlockOrder('b4', 0);
+      binding.updateBlockOrder('b2', 4);
+
+      const orders = readBlockOrders(blocks);
+      expect(orders).toEqual([0, 1, 2, 3, 4]);
+    });
+
+    it('a long sequence of arrow moves matches a reference array implementation', () => {
+      const N = 6;
+      const { blocks } = seedPageWithBlocks(N); // [b0..b5]
+
+      // Reference: a plain JS array kept in lockstep with the same moves.
+      const reference = Array.from({ length: N }, (_, i) => `b${i}`);
+
+      // Sequence of (blockId, newIndex) moves chosen to exercise both
+      // upward and downward shifts and adjacent swaps.
+      const sequence = [
+        ['b0', 5], // move b0 from front to back
+        ['b3', 0], // pull b3 to the front
+        ['b5', 2], // mid swap
+        ['b1', 4], // forward shift
+        ['b2', 1], // backward shift
+        ['b0', 0], // bring b0 to the front again
+      ];
+
+      for (const [blockId, newOrder] of sequence) {
+        const fromIdx = reference.indexOf(blockId);
+        if (fromIdx === -1) throw new Error(`reference: ${blockId} missing`);
+        reference.splice(fromIdx, 1);
+        const insertAt = Math.min(Math.max(0, newOrder), reference.length);
+        reference.splice(insertAt, 0, blockId);
+
+        const ok = binding.updateBlockOrder(blockId, newOrder);
+        expect(ok).toBe(true);
+      }
+
+      expect(blocks.length).toBe(N);
+      expect(readBlockIds(blocks)).toEqual(reference);
+      // And `order` field is in sync with the array.
+      expect(readBlockOrders(blocks)).toEqual(reference.map((_, i) => i));
+    });
+
+    it('moving down by one (the arrow-down case) places the block right after its neighbour', () => {
+      const { blocks } = seedPageWithBlocks(4); // [b0, b1, b2, b3]
+
+      // Click "move down" on b1: it should swap with b2 -> [b0, b2, b1, b3].
+      // The click handler in blockNode.js computes its `this.order` from
+      // the DOM by reading the next sibling's order (=2) and calls
+      // updateBlockOrder('b1', 2).
+      const ok = binding.updateBlockOrder('b1', 2);
+
+      expect(ok).toBe(true);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1', 'b3']);
+    });
+
+    it('moving up by one (the arrow-up case) places the block right before its neighbour', () => {
+      const { blocks } = seedPageWithBlocks(4); // [b0, b1, b2, b3]
+
+      // Click "move up" on b2: should swap with b1 -> [b0, b2, b1, b3].
+      // The click handler in blockNode.js asks for newOrder = previous
+      // sibling's order = 1.
+      const ok = binding.updateBlockOrder('b2', 1);
+
+      expect(ok).toBe(true);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1', 'b3']);
+    });
+
+    // ----------------------------------------------------------------
+    // Fix for #1665. The bug was NOT in updateBlockOrder() in isolation —
+    // the unit tests above pass — but in how the click handler in
+    // blockNode.js fed the `newOrder`. The handler kept a per-instance
+    // `this.order` field and did `this.order++` / `this.order--` on every
+    // arrow click. After a single reorder, the JS instances of the OTHER
+    // blocks on the same page still held their pre-move `order` values,
+    // because nothing reconciled them with the Y.Doc. The next click on a
+    // neighbour fed updateBlockOrder a target index computed from that
+    // stale snapshot and the blocks "jumped" positions.
+    //
+    // The fix is `moveBlockRelative(blockId, delta)`: it reads the block's
+    // current index directly from the Y.Doc (the source of truth) and
+    // applies the delta from there. Per-instance counters become
+    // irrelevant. These tests exercise it the way blockNode.js does.
+    // ----------------------------------------------------------------
+    it('moveBlockRelative fixes #1665: consecutive "move down" clicks on different blocks', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      // Click "move down" on b0 -> [b1, b0, b2].
+      binding.moveBlockRelative('b0', +1);
+      expect(readBlockIds(blocks)).toEqual(['b1', 'b0', 'b2']);
+
+      // Click "move down" on b1. b1 is now physically at index 0; the
+      // binding reads that fresh from the Y.Doc and slides it ONE slot.
+      // Final order: [b0, b1, b2].
+      binding.moveBlockRelative('b1', +1);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('moveBlockRelative fixes #1665: consecutive "move up" clicks', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      binding.moveBlockRelative('b2', -1);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1']);
+
+      binding.moveBlockRelative('b1', -1);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('moveBlockRelative fixes #1665: alternating arrow clicks match the reference order', () => {
+      const N = 5;
+      const { blocks } = seedPageWithBlocks(N); // [b0, b1, b2, b3, b4]
+
+      // Reference: a plain JS array advanced by the SAME intended moves.
+      // Each click is a single-slot neighbour swap.
+      const reference = Array.from({ length: N }, (_, i) => `b${i}`);
+
+      function refMoveDown(id) {
+        const i = reference.indexOf(id);
+        if (i < 0 || i === reference.length - 1) return;
+        [reference[i], reference[i + 1]] = [reference[i + 1], reference[i]];
+      }
+      function refMoveUp(id) {
+        const i = reference.indexOf(id);
+        if (i <= 0) return;
+        [reference[i], reference[i - 1]] = [reference[i - 1], reference[i]];
+      }
+
+      const clicks = [
+        ['b0', 'down'],
+        ['b2', 'up'],
+        ['b3', 'down'],
+        ['b1', 'up'],
+        ['b4', 'up'],
+      ];
+
+      for (const [id, dir] of clicks) {
+        if (dir === 'down') {
+          refMoveDown(id);
+          binding.moveBlockRelative(id, +1);
+        } else {
+          refMoveUp(id);
+          binding.moveBlockRelative(id, -1);
+        }
+      }
+
+      expect(blocks.length).toBe(N);
+      expect(new Set(readBlockIds(blocks)).size).toBe(N);
+      expect(readBlockIds(blocks)).toEqual(reference);
+      // And the `order` field stays in sync with the array index.
+      expect(readBlockOrders(blocks)).toEqual(reference.map((_, i) => i));
+    });
+
+    it('moveBlockRelative is a no-op at the array edges', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      // Try to move b0 up at the top edge: must not change anything.
+      const r1 = binding.moveBlockRelative('b0', -1);
+      expect(r1).toBe(false);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+
+      // Try to move b2 down at the bottom edge: must not change anything.
+      const r2 = binding.moveBlockRelative('b2', +1);
+      expect(r2).toBe(false);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('moveBlockRelative clamps larger deltas into the valid range', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      // delta=+10 from index 0 lands at the last index (2).
+      binding.moveBlockRelative('b0', +10);
+      expect(readBlockIds(blocks)).toEqual(['b1', 'b2', 'b0']);
+
+      // delta=-10 from index 2 lands back at index 0.
+      binding.moveBlockRelative('b0', -10);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('moveBlockRelative returns false when the block does not exist', () => {
+      seedPageWithBlocks(3);
+      expect(binding.moveBlockRelative('does-not-exist', +1)).toBe(false);
+    });
+
+    it('moveBlockRelative rejects delta=0 and non-finite deltas without touching the array', () => {
+      const { blocks } = seedPageWithBlocks(3);
+      expect(binding.moveBlockRelative('b1', 0)).toBe(false);
+      expect(binding.moveBlockRelative('b1', NaN)).toBe(false);
+      expect(binding.moveBlockRelative('b1', Infinity)).toBe(false);
+      expect(binding.moveBlockRelative('b1', -Infinity)).toBe(false);
+      // Array unchanged.
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('findBlockLocation returns the page and the index of an existing block', () => {
+      const { blocks } = seedPageWithBlocks(3);
+      const loc = binding.findBlockLocation('b1');
+      expect(loc).not.toBeNull();
+      expect(loc.index).toBe(1);
+      expect(loc.blocks).toBe(blocks);
+    });
+
+    it('findBlockLocation returns null when the block does not exist', () => {
+      seedPageWithBlocks(3);
+      expect(binding.findBlockLocation('does-not-exist')).toBeNull();
     });
   });
 });

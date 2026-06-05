@@ -136,9 +136,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -338,10 +335,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="trueorfalseIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
-                    ${_('Create interactive True or False quizzes.')} 
-                    <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive True or False quizzes.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/verdadero-falso.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -380,24 +377,8 @@ var $exeDevice = {
                                 <span id="tofENumeroPercentaje">1/1</span>
                             </div>
                             <div class="Games-Reportdiv d-none flex-wrap align-items-center gap-2 mb-3">
-                                 <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="tofEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="tofEEvaluation">${_('Progress report')}</label>
-                                </div>
-                                <div class="d-flex flex-nowrap align-items-center gap-2">
-                                    <label for="tofEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="tofEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                </div>
-                                <a href="#tofEEvaluationHelp" id="tofEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="tofEEvaluationHelp" class="tofTypeGameHelp exe-block-info d-none">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -563,17 +544,7 @@ var $exeDevice = {
                 this.value = Math.max(0, Math.min(59, this.value));
             });
 
-        $('#tofEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#tofEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#tofEEvaluationHelpLnk').on('click', function (e) {
-            e.preventDefault();
-            const $el = $('#tofEEvaluationHelp');
-            const show = $el.hasClass('d-none');
-            $el.toggleClass('d-none', !show).toggleClass('d-block', show);
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -860,9 +831,10 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $('#tofEEvaluation').prop('checked', game.evaluation);
-        $('#tofEEvaluationID').val(game.evaluationID);
-        $('#tofEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#tofETime').val(game.time);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
         $('#tofEPercentageQuestions').val(game.percentageQuestions);
@@ -959,21 +931,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('True or false')}.txt`;
-
-        document.getElementById('trueorfalseIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('trueorfalseIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('True or false')}.txt`,
+            'trueorfalseIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questionsGame) {
@@ -991,9 +953,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        let evaluation = $('#tofEEvaluation').is(':checked');
-        const evaluationID = $('#tofEEvaluationID').val(),
-            questionsRandom = $('#tofEQuestionsRandom').is(':checked'),
+        const questionsRandom = $('#tofEQuestionsRandom').is(':checked'),
             percentageQuestions = parseInt(
                 $exeDevice.removeTags($('#tofEPercentageQuestions').val())
             ),
@@ -1003,16 +963,20 @@ var $exeDevice = {
             questionsGame = $exeDevice.questionsGame,
             showSlider = $('#tofEShowSlider').is(':checked');
 
-        evaluation = isTest ? evaluation : false;
+        let evaluation = false;
+        let evaluationID = '';
 
         if (questionsGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
 
-        if (evaluation && evaluationID.length < 5) {
-            $exeDevice.showMessage($exeDevice.msgs.msgIDLenght);
-            return false;
+        if (isTest) {
+            const progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+            if (!progressBar) return false;
+            evaluation = progressBar.evaluation;
+            evaluationID = progressBar.evaluationID;
         }
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];

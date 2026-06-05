@@ -553,6 +553,16 @@ describe('YjsPropertiesBinding', () => {
       expect(headerTitle.textContent).toBe('Updated Title');
     });
 
+    it('delegates to odeTitleElement for immediate render updates', () => {
+      const onRemoteTitleChange = mock(() => undefined);
+      window.eXeLearning.app.interface.odeTitleElement.onRemoteTitleChange = onRemoteTitleChange;
+
+      binding.metadata.set('title', 'Updated Title');
+      binding.syncTitleToHeader();
+
+      expect(onRemoteTitleChange).toHaveBeenCalledWith('Updated Title');
+    });
+
     it('skips update if element is in editing mode', () => {
       const headerTitle = document.querySelector('#exe-title > .exe-title.content');
       headerTitle.setAttribute('contenteditable', 'true');
@@ -598,6 +608,20 @@ describe('YjsPropertiesBinding', () => {
       binding.onMetadataKeyChanged('title');
 
       expect(input.value).toBe('Changed Title');
+    });
+
+    it('clears corresponding input on delete action', () => {
+      const input = document.createElement('input');
+      input.className = 'property-value';
+      input.setAttribute('property', 'pp_subtitle');
+      input.type = 'text';
+      input.value = 'stale subtitle';
+      mockFormElement.appendChild(input);
+
+      binding.bindForm(mockFormElement);
+      binding.onMetadataKeyChanged('subtitle', 'delete');
+
+      expect(input.value).toBe('');
     });
 
     it('updates title element if title changed', () => {
@@ -717,6 +741,262 @@ describe('YjsPropertiesBinding', () => {
 
     it('maps addMathJax to pp_addMathJax property', () => {
       expect(binding.mapMetadataKeyToProperty('addMathJax')).toBe('pp_addMathJax');
+    });
+  });
+
+  describe('legacy license detection', () => {
+    it('injects synthetic option when select value is not in options', () => {
+      // Create a select with limited options (non-legacy licenses only)
+      const select = document.createElement('select');
+      select.className = 'property-value';
+      select.setAttribute('property', 'pp_license');
+      select.setAttribute('data-type', 'select');
+
+      const option1 = document.createElement('option');
+      option1.value = 'creative commons: attribution 4.0';
+      option1.text = 'CC BY 4.0';
+      select.appendChild(option1);
+
+      const option2 = document.createElement('option');
+      option2.value = 'public domain';
+      option2.text = 'Public Domain';
+      select.appendChild(option2);
+
+      // Set a legacy license value in Yjs
+      binding.metadata.set('license', 'creative commons: attribution 3.0');
+
+      // Update the select from Yjs
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify synthetic option was injected with warning in text
+      expect(select.options.length).toBe(3);
+      expect(select.options[0].value).toBe('creative commons: attribution 3.0');
+      expect(select.options[0].textContent).toContain('creative commons: attribution 3.0');
+      expect(select.options[0].textContent).toContain('⚠️');
+      expect(select.options[0].textContent).toContain('Legacy');
+      expect(select.dataset.legacyValue).toBe('true');
+    });
+
+    it('does NOT inject synthetic option when value is in options', () => {
+      const select = document.createElement('select');
+      select.className = 'property-value';
+      select.setAttribute('property', 'pp_license');
+      select.setAttribute('data-type', 'select');
+
+      const option1 = document.createElement('option');
+      option1.value = 'creative commons: attribution 4.0';
+      option1.text = 'CC BY 4.0';
+      select.appendChild(option1);
+
+      // Set a valid (non-legacy) license value in Yjs
+      binding.metadata.set('license', 'creative commons: attribution 4.0');
+
+      // Update the select from Yjs
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Should NOT have injected any option
+      expect(select.options.length).toBe(1);
+      expect(select.dataset.legacyValue).toBeUndefined();
+    });
+
+    it('injectLegacyOption creates correct synthetic option with warning in text', () => {
+      const select = document.createElement('select');
+
+      binding.injectLegacyOption(select, 'license gfdl');
+
+      expect(select.options.length).toBe(1);
+      expect(select.options[0].value).toBe('license gfdl');
+      expect(select.options[0].textContent).toContain('license gfdl');
+      expect(select.options[0].textContent).toContain('⚠️');
+      expect(select.options[0].textContent).toContain('Legacy');
+      expect(select.options[0].selected).toBe(true);
+      expect(select.options[0].dataset.legacySynthetic).toBe('true');
+      // CSS styling via data attribute, no class needed
+      expect(select.dataset.legacyValue).toBe('true');
+    });
+
+    it('removes legacy warning when valid license is selected', () => {
+      const select = document.createElement('select');
+      select.className = 'property-value';
+
+      // Add a valid option
+      const validOption = document.createElement('option');
+      validOption.value = 'public domain';
+      validOption.text = 'Public Domain';
+      select.appendChild(validOption);
+
+      // First set a legacy license
+      binding.metadata.set('license', 'gnu/gpl');
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify legacy warning is present via data attribute
+      expect(select.dataset.legacyValue).toBe('true');
+      expect(select.options.length).toBe(2); // synthetic + valid
+
+      // Now select a valid license
+      binding.metadata.set('license', 'public domain');
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify legacy warning is removed
+      expect(select.dataset.legacyValue).toBeUndefined();
+      expect(select.options.length).toBe(1); // only valid option remains
+      expect(select.value).toBe('public domain');
+    });
+
+    it('removeLegacyWarning cleans up select element', () => {
+      const select = document.createElement('select');
+
+      // Inject legacy option first
+      binding.injectLegacyOption(select, 'free software license eupl');
+
+      // Verify it was added
+      expect(select.options.length).toBe(1);
+      expect(select.dataset.legacyValue).toBe('true');
+
+      // Remove it
+      binding.removeLegacyWarning(select);
+
+      // Verify it was removed
+      expect(select.options.length).toBe(0);
+      expect(select.dataset.legacyValue).toBeUndefined();
+    });
+  });
+
+  describe('syncLanguageToApp', () => {
+    beforeEach(() => {
+      // Setup eXeLearning mock with locale and project properties
+      window.eXeLearning = {
+        app: {
+          locale: {
+            loadContentTranslationsStrings: mock(() => Promise.resolve()),
+          },
+          project: {
+            properties: {
+              properties: {
+                pp_lang: { value: 'en' },
+              },
+            },
+          },
+          interface: {
+            odeTitleElement: {
+              checkTitleLineCount: mock(() => undefined),
+            },
+          },
+        },
+      };
+    });
+
+    it('updates pp_lang.value when language changes', async () => {
+      binding.metadata.set('language', 'es');
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.project.properties.properties.pp_lang.value).toBe('es');
+    });
+
+    it('calls loadContentTranslationsStrings with new language', async () => {
+      binding.metadata.set('language', 'fr');
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('fr');
+    });
+
+    it('does nothing if language is not set', async () => {
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).not.toHaveBeenCalled();
+    });
+
+    it('handles missing project properties gracefully', async () => {
+      window.eXeLearning.app.project = null;
+      binding.metadata.set('language', 'de');
+
+      // Should not throw
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('de');
+    });
+
+    it('handles missing locale gracefully', async () => {
+      window.eXeLearning.app.locale = null;
+      binding.metadata.set('language', 'it');
+
+      // Should not throw
+      await binding.syncLanguageToApp();
+    });
+
+    it('skips update if pp_lang.value already matches', async () => {
+      window.eXeLearning.app.project.properties.properties.pp_lang.value = 'es';
+      binding.metadata.set('language', 'es');
+
+      await binding.syncLanguageToApp();
+
+      // Still calls loadContentTranslationsStrings (translations may need refresh)
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('es');
+    });
+  });
+
+  describe('setupLanguageSyncObserver', () => {
+    it('sets up languageSyncObserver', () => {
+      expect(binding.languageSyncObserver).toBeNull();
+
+      binding.setupLanguageSyncObserver();
+
+      expect(binding.languageSyncObserver).toBeDefined();
+      expect(typeof binding.languageSyncObserver).toBe('function');
+    });
+
+    it('does not setup twice if already exists', () => {
+      binding.setupLanguageSyncObserver();
+      const firstObserver = binding.languageSyncObserver;
+
+      binding.setupLanguageSyncObserver();
+
+      expect(binding.languageSyncObserver).toBe(firstObserver);
+    });
+
+    it('observer calls syncLanguageToApp on language change', async () => {
+      const syncSpy = spyOn(binding, 'syncLanguageToApp').mockImplementation(() => Promise.resolve());
+      binding.setupLanguageSyncObserver();
+
+      // Trigger a language change
+      binding.metadata.set('language', 'pt');
+
+      // Wait for observer to be called
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(syncSpy).toHaveBeenCalled();
+    });
+
+    it('observer ignores non-language metadata changes', async () => {
+      const syncSpy = spyOn(binding, 'syncLanguageToApp').mockImplementation(() => Promise.resolve());
+      binding.setupLanguageSyncObserver();
+
+      // Trigger a non-language change
+      binding.metadata.set('title', 'New Title');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(syncSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('languageSyncObserver cleanup', () => {
+    it('unbindForm removes languageSyncObserver', () => {
+      binding.bindForm(mockFormElement);
+      expect(binding.languageSyncObserver).toBeDefined();
+
+      binding.unbindForm();
+
+      expect(binding.languageSyncObserver).toBeNull();
+    });
+
+    it('destroy removes languageSyncObserver', () => {
+      binding.setupLanguageSyncObserver();
+      expect(binding.languageSyncObserver).toBeDefined();
+
+      binding.destroy();
+
+      expect(binding.languageSyncObserver).toBeNull();
     });
   });
 });

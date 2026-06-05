@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -49,7 +50,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -58,6 +59,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -82,7 +84,7 @@ async function addRelateIdeviceFromPanel(page: Page): Promise<void> {
         if (isCollapsed) {
             const label = interactiveCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -136,6 +138,7 @@ async function uploadImageViaFilePicker(page: Page, inputSelector: string, fixtu
             const modal = document.querySelector('#modalFileManager');
             return !modal || !modal.classList.contains('show');
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -197,6 +200,7 @@ async function saveRelateIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.relate');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -265,18 +269,7 @@ test.describe('Relate iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a relate iDevice
             await addRelateIdeviceFromPanel(page);
@@ -297,18 +290,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Multiple Pairs Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -347,18 +329,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Canvas Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -369,7 +340,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -378,10 +349,10 @@ test.describe('Relate iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for game to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // CRITICAL TEST: Verify canvas has correct dimensions
             // This catches the bug where canvas was 0x0 on first load
@@ -393,18 +364,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Display Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -415,7 +375,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -423,9 +383,9 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify words container is visible
             const wordsContainer = iframe.locator('[id^="rlcContainerWords-"]').first();
@@ -448,18 +408,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Images Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -470,7 +419,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -478,19 +427,20 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
-            // Verify images are loaded (have blob: src)
+            // Verify images are loaded (have valid src)
             const images = iframe.locator('.RLCP-Image');
             const imageCount = await images.count();
             expect(imageCount).toBeGreaterThanOrEqual(2);
 
-            // Check first image has a valid src
+            // Check first image has a valid src (blob URL or relative path)
             const firstImageSrc = await images.first().getAttribute('src');
             expect(firstImageSrc).toBeTruthy();
-            expect(firstImageSrc).toMatch(/^blob:/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(firstImageSrc).toMatch(/^(blob:|content\/resources\/)/);
         });
     });
 
@@ -500,18 +450,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Connection Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -522,7 +461,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -530,9 +469,9 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify game is ready (canvas has dimensions)
             await verifyCanvasInitialized(iframe);
@@ -558,18 +497,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -578,21 +506,10 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             await selectPageNode(page);
 

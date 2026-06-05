@@ -334,41 +334,7 @@ describe('ResourceFetcher', () => {
     });
   });
 
-  describe('fetchSchemas', () => {
-    it('returns cached schemas if available', async () => {
-      const fetcher = new ResourceFetcher();
-      const cachedFiles = new Map([['schema.xsd', new Blob(['xsd'])]]);
-      fetcher.cache.set('schemas:scorm12', cachedFiles);
-
-      const result = await fetcher.fetchSchemas('scorm12');
-
-      expect(result).toBe(cachedFiles);
-    });
-
-    it('fetches schemas from API with format', async () => {
-      const fetcher = new ResourceFetcher();
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetcher.fetchSchemas('scorm2004');
-
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/schemas/scorm2004');
-    });
-
-    it('caches schemas with format-specific key', async () => {
-      const fetcher = new ResourceFetcher();
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetcher.fetchSchemas('ims');
-
-      expect(fetcher.cache.has('schemas:ims')).toBe(true);
-    });
-  });
+  // Note: fetchSchemas was removed - XSD schema files are no longer included in exports
 
   describe('fetchLibraryFile', () => {
     it('returns cached file if available', async () => {
@@ -810,6 +776,48 @@ describe('ResourceFetcher', () => {
     });
   });
 
+  describe('getLoadingChain', () => {
+    it('returns static mode chain when in static mode', () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = true;
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toEqual([
+        'Memory cache',
+        'User themes (Yjs)',
+        'IndexedDB user themes',
+        'Local ZIP bundles (/bundles/)',
+      ]);
+    });
+
+    it('returns online mode chain when not in static mode', () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = false;
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toEqual([
+        'Memory cache',
+        'User themes (Yjs)',
+        'IndexedDB user themes',
+        'IndexedDB server cache',
+        'Server ZIP bundles',
+        'Individual file fallback',
+      ]);
+    });
+
+    it('returns online mode chain by default', () => {
+      const fetcher = new ResourceFetcher();
+      // isStaticMode is undefined by default (falsy)
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toContain('Server ZIP bundles');
+      expect(chain).toContain('Individual file fallback');
+    });
+  });
+
   describe('setResourceCache', () => {
     it('sets the resourceCache instance', () => {
       const fetcher = new ResourceFetcher();
@@ -818,6 +826,440 @@ describe('ResourceFetcher', () => {
       fetcher.setResourceCache(mockCache);
 
       expect(fetcher.resourceCache).toBe(mockCache);
+    });
+  });
+
+  describe('setUserThemeFiles', () => {
+    it('registers user theme files in userThemeFiles map', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([99, 115, 115]),
+        'config.xml': new Uint8Array([120, 109, 108]),
+      };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      expect(fetcher.userThemeFiles.has('my-theme')).toBe(true);
+      expect(fetcher.userThemeFiles.get('my-theme')).toBe(files);
+    });
+
+    it('converts Uint8Array files to Blob and caches them', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([99, 115, 115]),
+      };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const cacheKey = 'theme:my-theme';
+      expect(fetcher.cache.has(cacheKey)).toBe(true);
+      const cached = fetcher.cache.get(cacheKey);
+      expect(cached).toBeInstanceOf(Map);
+      expect(cached.has('style.css')).toBe(true);
+      expect(cached.get('style.css')).toBeInstanceOf(Blob);
+    });
+
+    it('detects correct MIME types for various file extensions', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([1]),
+        'script.js': new Uint8Array([1]),
+        'data.json': new Uint8Array([1]),
+        'page.html': new Uint8Array([1]),
+        'config.xml': new Uint8Array([1]),
+        'icon.svg': new Uint8Array([1]),
+        'image.png': new Uint8Array([1]),
+        'photo.jpg': new Uint8Array([1]),
+        'photo2.jpeg': new Uint8Array([1]),
+        'anim.gif': new Uint8Array([1]),
+        'font.woff': new Uint8Array([1]),
+        'font2.woff2': new Uint8Array([1]),
+        'font3.ttf': new Uint8Array([1]),
+        'unknown.xyz': new Uint8Array([1]),
+      };
+
+      await fetcher.setUserThemeFiles('test-theme', files);
+
+      const cached = fetcher.cache.get('theme:test-theme');
+      expect(cached.get('style.css').type).toBe('text/css');
+      expect(cached.get('script.js').type).toBe('application/javascript');
+      expect(cached.get('data.json').type).toBe('application/json');
+      expect(cached.get('page.html').type).toBe('text/html');
+      expect(cached.get('config.xml').type).toBe('text/xml');
+      expect(cached.get('icon.svg').type).toBe('image/svg+xml');
+      expect(cached.get('image.png').type).toBe('image/png');
+      expect(cached.get('photo.jpg').type).toBe('image/jpeg');
+      expect(cached.get('photo2.jpeg').type).toBe('image/jpeg');
+      expect(cached.get('anim.gif').type).toBe('image/gif');
+      expect(cached.get('font.woff').type).toBe('font/woff');
+      expect(cached.get('font2.woff2').type).toBe('font/woff2');
+      expect(cached.get('font3.ttf').type).toBe('font/ttf');
+      expect(cached.get('unknown.xyz').type).toBe('application/octet-stream');
+    });
+
+    it('logs theme registration', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([1]),
+        'script.js': new Uint8Array([1]),
+      };
+
+      await fetcher.setUserThemeFiles('logged-theme', files);
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining("Registered user theme 'logged-theme' with 2 files")
+      );
+    });
+  });
+
+  describe('hasUserTheme', () => {
+    it('returns true when user theme is registered', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('existing-theme', files);
+
+      expect(fetcher.hasUserTheme('existing-theme')).toBe(true);
+    });
+
+    it('returns false when user theme is not registered', () => {
+      const fetcher = new ResourceFetcher();
+
+      expect(fetcher.hasUserTheme('non-existent-theme')).toBe(false);
+    });
+  });
+
+  describe('getUserTheme', () => {
+    it('returns cached theme files when available', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const result = fetcher.getUserTheme('my-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('returns null when theme not in cache', () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = fetcher.getUserTheme('non-existent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getUserThemeAsync', () => {
+    it('returns cached theme files when available in memory', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const result = await fetcher.getUserThemeAsync('my-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('returns null when theme not found anywhere', async () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = await fetcher.getUserThemeAsync('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('fetches from IndexedDB when not in memory but resourceCache available', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('db-theme');
+
+      expect(mockResourceCache.getUserTheme).toHaveBeenCalledWith('db-theme');
+      expect(result).toBe(mockThemeFiles);
+    });
+
+    it('caches theme in memory after loading from IndexedDB', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      await fetcher.getUserThemeAsync('db-theme');
+
+      expect(fetcher.cache.has('theme:db-theme')).toBe(true);
+      expect(fetcher.cache.get('theme:db-theme')).toBe(mockThemeFiles);
+    });
+
+    it('logs when loading from IndexedDB', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      await fetcher.getUserThemeAsync('db-theme');
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining("User theme 'db-theme' loaded from IndexedDB via getUserThemeAsync")
+      );
+    });
+
+    it('returns null when IndexedDB has no theme', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('missing-theme');
+
+      expect(result).toBeNull();
+    });
+
+    it('handles IndexedDB error gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockRejectedValue(new Error('DB error')),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('error-theme');
+
+      expect(result).toBeNull();
+      expect(console.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchTheme with user themes', () => {
+    it('returns user theme from memory cache', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('user-theme', files);
+
+      const result = await fetcher.fetchTheme('user-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('logs user theme source correctly', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('user-theme', files);
+      global.Logger.log.mockClear();
+
+      await fetcher.fetchTheme('user-theme');
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('(user theme)')
+      );
+    });
+
+    it('rebuilds cache when user theme registered but not in cache', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      // Register but clear cache to simulate edge case
+      fetcher.userThemeFiles.set('edge-theme', files);
+      // Don't call setUserThemeFiles to avoid cache population
+
+      const result = await fetcher.fetchTheme('edge-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('registered but not in cache')
+      );
+    });
+
+    it('fetches user theme from IndexedDB when not in memory', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.fetchTheme('indexeddb-theme');
+
+      expect(mockResourceCache.getUserTheme).toHaveBeenCalledWith('indexeddb-theme');
+      expect(result).toBe(mockThemeFiles);
+    });
+
+    it('handles IndexedDB user theme lookup error gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        getUserTheme: vi.fn().mockRejectedValue(new Error('DB error')),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      // Should fall through to server fetch
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      const result = await fetcher.fetchTheme('error-theme');
+
+      // The theme fetch should continue even if IndexedDB lookup fails
+      expect(result).toBeInstanceOf(Map);
+    });
+  });
+
+  describe('site theme cache-buster (updated_at)', () => {
+    // Reproduces the bug reported in PR #1775: after re-uploading a site theme
+    // via the admin panel, stale CSS/icons kept being served from IndexedDB
+    // until the user cleared site data. Incognito worked because IndexedDB was
+    // empty. Fix: include the theme's updated_at in the IndexedDB cache key
+    // and in the bundle URL. Versions are populated from /api/themes/installed
+    // during init(); tests seed them directly.
+
+    it('uses the site theme updated_at as part of the IndexedDB cache key', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.siteThemeVersions = new Map([['my-style', 1700000000000]]);
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('my-style');
+
+      expect(mockResourceCache.get).toHaveBeenCalledWith('theme', 'my-style', 'v3.1.0-1700000000000');
+    });
+
+    it('falls back to the app version when no updatedAt is known (base/user themes)', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.siteThemeVersions = new Map();
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('base');
+
+      expect(mockResourceCache.get).toHaveBeenCalledWith('theme', 'base', 'v3.1.0');
+    });
+
+    it('produces a different cache key when the site theme is re-uploaded', async () => {
+      async function cacheKeyForUpdatedAt(updatedAt) {
+        const fetcher = new ResourceFetcher();
+        fetcher.siteThemeVersions = new Map([['my-style', updatedAt]]);
+        const cache = {
+          get: vi.fn().mockResolvedValue(null),
+          set: vi.fn().mockResolvedValue(undefined),
+          getUserTheme: vi.fn().mockResolvedValue(null),
+        };
+        fetcher.resourceCache = cache;
+        mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+        await fetcher.fetchTheme('my-style');
+        return cache.get.mock.calls[0][2];
+      }
+
+      const before = await cacheKeyForUpdatedAt(1700000000000);
+      const after = await cacheKeyForUpdatedAt(1700000099999);
+
+      expect(before).not.toBe(after);
+      expect(before).toContain('-1700000000000');
+      expect(after).toContain('-1700000099999');
+    });
+
+    it('appends ?v=<updatedAt> to the bundle URL so the HTTP cache invalidates', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.bundlesAvailable = true;
+      fetcher.bundleManifest = { themes: {} };
+      fetcher.siteThemeVersions = new Map([['my-style', 1700000000000]]);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '0' },
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('my-style');
+
+      const calledUrls = mockFetch.mock.calls.map(c => c[0]);
+      expect(calledUrls).toContain('/web/exelearning/api/resources/bundle/theme/my-style?v=1700000000000');
+    });
+  });
+
+  describe('loadSiteThemeVersions', () => {
+    it('populates a name → updatedAt map from /api/themes/installed', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            themes: [
+              { type: 'site', dirName: 'my-style', updatedAt: 1700000000000 },
+              { type: 'site', dirName: 'other', updatedAt: 1700000000001 },
+              { type: 'base', dirName: 'base' }, // base themes are ignored
+              { type: 'site', dirName: 'bad' }, // missing updatedAt is ignored
+            ],
+          }),
+      });
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.get('my-style')).toBe(1700000000000);
+      expect(versions.get('other')).toBe(1700000000001);
+      expect(versions.has('base')).toBe(false);
+      expect(versions.has('bad')).toBe(false);
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/themes/installed');
+    });
+
+    it('returns an empty map and does not throw when the request fails', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.size).toBe(0);
+    });
+
+    it('skips the network call in static mode', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = true;
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.size).toBe(0);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent across concurrent callers', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ themes: [] }),
+      });
+
+      const [a, b] = await Promise.all([fetcher.loadSiteThemeVersions(), fetcher.loadSiteThemeVersions()]);
+
+      expect(a).toBe(b);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -1122,6 +1564,50 @@ describe('ResourceFetcher', () => {
       expect(result.size).toBe(1);
 
       delete window.fflate;
+    });
+
+    it('uses hash-based cache version when manifest has libs hash', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = mockCache;
+      fetcher.bundleManifest = {
+        libs: { hash: 'abc123def456' },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await fetcher.fetchBaseLibraries();
+
+      // Should use version + first 8 chars of hash
+      expect(mockCache.get).toHaveBeenCalledWith('libs', 'base', 'v3.1.0-abc123de');
+    });
+
+    it('uses version-only cache key when manifest has no libs hash', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = mockCache;
+      fetcher.bundleManifest = {}; // No libs.hash
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await fetcher.fetchBaseLibraries();
+
+      // Should use version only (no hash suffix)
+      expect(mockCache.get).toHaveBeenCalledWith('libs', 'base', 'v3.1.0');
     });
 
     it('falls back when bundle is empty', async () => {
@@ -1497,6 +1983,716 @@ describe('ResourceFetcher', () => {
 
       expect(result.size).toBe(1);
       expect(result.has('good.js')).toBe(true);
+    });
+  });
+
+  describe('fetchGlobalFontFiles', () => {
+    it('returns empty Map for null or default fontId', async () => {
+      const fetcher = new ResourceFetcher();
+
+      const nullResult = await fetcher.fetchGlobalFontFiles(null);
+      const defaultResult = await fetcher.fetchGlobalFontFiles('default');
+
+      expect(nullResult).toBeInstanceOf(Map);
+      expect(nullResult.size).toBe(0);
+      expect(defaultResult).toBeInstanceOf(Map);
+      expect(defaultResult.size).toBe(0);
+    });
+
+    it('returns empty Map for unknown fontId', async () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = await fetcher.fetchGlobalFontFiles('unknownfont');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Unknown global font'));
+    });
+
+    it('fetches opendyslexic font files', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      const result = await fetcher.fetchGlobalFontFiles('opendyslexic');
+
+      expect(mockFetch).toHaveBeenCalledTimes(5); // 4 font files + OFL.txt
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Italic.woff')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OFL.txt')).toBe(true);
+    });
+
+    it('fetches andika font files (woff2)', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      const result = await fetcher.fetchGlobalFontFiles('andika');
+
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(result.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/andika/Andika-Bold.woff2')).toBe(true);
+    });
+it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      const result = await fetcher.fetchGlobalFontFiles('atkinson-hyperlegible-next');
+
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(result.has('fonts/global/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Bold.woff2')).toBe(true);
+    });
+    
+    it('fetches nunito font files', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      const result = await fetcher.fetchGlobalFontFiles('nunito');
+
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(result.has('fonts/global/nunito/Nunito-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/nunito/OFL.txt')).toBe(true);
+    });
+
+    it('fetches playwrite-es font files (fewer variants)', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      const result = await fetcher.fetchGlobalFontFiles('playwrite-es');
+
+      expect(mockFetch).toHaveBeenCalledTimes(2); // Only Regular + OFL.txt
+      expect(result.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
+    });
+
+    it('skips files that fail to fetch', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['font-data'])),
+        })
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValue({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['font-data'])),
+        });
+
+      const result = await fetcher.fetchGlobalFontFiles('playwrite-es');
+
+      expect(result.size).toBe(1);
+    });
+
+    it('handles fetch exceptions gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      const result = await fetcher.fetchGlobalFontFiles('opendyslexic');
+
+      expect(result.size).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Error fetching font file'),
+        expect.any(Error)
+      );
+    });
+
+    it('uses correct base path for font files', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
+
+      await fetcher.fetchGlobalFontFiles('opendyslexic');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/web/exelearning/files/perm/fonts/global/opendyslexic/OpenDyslexic-Regular.woff'
+      );
+    });
+  });
+
+  describe('static mode', () => {
+    beforeEach(() => {
+      global.eXeLearning = {
+        config: { basePath: '' },
+        version: 'v3.1.0',
+        app: {
+          capabilities: {
+            storage: { remote: false },
+          },
+        },
+      };
+    });
+
+    describe('init', () => {
+      it('detects static mode from capabilities', async () => {
+        const fetcher = new ResourceFetcher();
+        await fetcher.init();
+
+        expect(fetcher.isStaticMode).toBe(true);
+        expect(fetcher.bundlesAvailable).toBe(false);
+      });
+
+      it('skips loadBundleManifest in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        const loadManifestSpy = vi.spyOn(fetcher, 'loadBundleManifest');
+
+        await fetcher.init();
+
+        expect(loadManifestSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('fetchThemeStatic', () => {
+      it('fetches theme from local bundle ZIP', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'style.css': new Uint8Array([1]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchThemeStatic('base');
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/base.zip');
+        expect(result.size).toBe(1);
+
+        delete window.fflate;
+      });
+
+      it('returns empty Map when bundle not found', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+        const result = await fetcher.fetchThemeStatic('missing');
+
+        expect(result).toBeInstanceOf(Map);
+        expect(result.size).toBe(0);
+      });
+
+      describe('admin-uploaded themes (themeRegistryOverride)', () => {
+        afterEach(() => {
+          delete window.eXeLearning?.config?.themeRegistryOverride;
+        });
+
+        function blobResponse(body = 'body{}') {
+          return {
+            ok: true,
+            headers: { get: () => String(body.length) },
+            blob: () => Promise.resolve(new Blob([body], { type: 'text/css' })),
+          };
+        }
+
+        function notFoundResponse() {
+          return { ok: false, status: 404 };
+        }
+
+        it('fetches each file declared by an admin theme instead of the bundle', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'icons/a.svg'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockResolvedValueOnce(blobResponse('<svg/>'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/style.css');
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/icons/a.svg');
+          expect(result.size).toBe(2);
+          expect(result.has('style.css')).toBe(true);
+          expect(result.has('icons/a.svg')).toBe(true);
+        });
+
+        it('falls back to cssFiles manifest when files is absent', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              cssFiles: ['style.css', 'extra.css'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css1'))
+            .mockResolvedValueOnce(blobResponse('css2'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(2);
+        });
+
+        it('defaults to style.css when no manifest is provided', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{ name: 'acme', url: 'https://host.test/files/acme' }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse('x{}'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/style.css');
+          expect(result.size).toBe(1);
+        });
+
+        it('matches entries by id, name, or dirName', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              id: 'acme',
+              dirName: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse());
+          const byName = await fetcher.fetchThemeStatic('acme');
+          expect(byName.size).toBe(1);
+        });
+
+        it('encodes path segments containing spaces or unicode', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['icons/sub dir/â.png'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse('png'));
+
+          await fetcher.fetchThemeStatic('acme');
+
+          const [url] = mockFetch.mock.calls[0];
+          expect(url).toBe('https://host.test/files/acme/icons/sub%20dir/' + encodeURIComponent('â') + '.png');
+        });
+
+        it('skips missing per-file assets without aborting', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'optional.svg'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockResolvedValueOnce(notFoundResponse());
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(1);
+          expect(result.has('style.css')).toBe(true);
+          expect(result.has('optional.svg')).toBe(false);
+        });
+
+        it('swallows fetch errors silently for per-file assets', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'broken.js'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockRejectedValueOnce(new TypeError('net'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(1);
+        });
+
+        it('falls back to the bundle when the admin fetch produces no files', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['gone.css'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(notFoundResponse())   // admin file 404
+            .mockResolvedValueOnce({                      // bundle zip
+              ok: true,
+              headers: { get: () => '100' },
+              arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            });
+          window.fflate = {
+            unzipSync: vi.fn().mockReturnValue({ 'style.css': new Uint8Array([1]) }),
+          };
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenNthCalledWith(2, '/bundles/themes/acme.zip');
+          expect(result.size).toBe(1);
+          delete window.fflate;
+        });
+
+        it('ignores admin entries with a non-absolute URL', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: '/relative/path',
+              files: ['style.css'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/acme.zip');
+          expect(result.size).toBe(0);
+        });
+
+        it('returns empty Map when the override is malformed', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = { uploaded: 'nope' };
+          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+          const result = await fetcher.fetchThemeStatic('missing');
+
+          expect(result.size).toBe(0);
+        });
+
+        it('_findAdminUploadedTheme returns null when window is undefined-shaped', () => {
+          const fetcher = new ResourceFetcher();
+          // Simulate a missing config tree.
+          delete window.eXeLearning.config.themeRegistryOverride;
+          expect(fetcher._findAdminUploadedTheme('whatever')).toBeNull();
+        });
+      });
+    });
+
+    describe('fetchIdeviceStatic', () => {
+      it('loads iDevices from common bundle', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'text/script.js': new Uint8Array([1]),
+            'text/style.css': new Uint8Array([2]),
+            'quiz/quiz.js': new Uint8Array([3]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchIdeviceStatic('text');
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/idevices.zip');
+        expect(result.size).toBe(2);
+        expect(result.has('script.js')).toBe(true);
+        expect(result.has('style.css')).toBe(true);
+
+        delete window.fflate;
+      });
+
+      it('returns cached iDevice on subsequent calls', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+
+        // Pre-populate cache
+        const ideviceFiles = new Map([['script.js', new Blob(['js'])]]);
+        fetcher.cache.set('idevice:cached-idev', ideviceFiles);
+        fetcher.cache.set('idevices:all', new Map([['cached-idev', ideviceFiles]]));
+
+        const result = await fetcher.fetchIdeviceStatic('cached-idev');
+
+        expect(mockFetch).not.toHaveBeenCalled();
+        expect(result).toBe(ideviceFiles);
+      });
+    });
+
+    describe('fetchContentCssStatic', () => {
+      it('fetches CSS from content-css.zip bundle', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'base.css': new Uint8Array([1]),
+            'content.css': new Uint8Array([2]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchContentCssStatic();
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/content-css.zip');
+        expect(result.size).toBe(2);
+
+        delete window.fflate;
+      });
+
+      it('returns empty Map when bundle fails', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+        const result = await fetcher.fetchContentCssStatic();
+
+        expect(result.size).toBe(0);
+      });
+    });
+
+    describe('fetchBaseLibrariesStatic', () => {
+      it('fetches libraries from libs.zip bundle', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'jquery/jquery.min.js': new Uint8Array([1]),
+            'common/common.js': new Uint8Array([2]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchBaseLibrariesStatic();
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/libs.zip');
+        expect(result.size).toBe(2);
+
+        delete window.fflate;
+      });
+
+      it('returns empty Map when bundle not available', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+        const result = await fetcher.fetchBaseLibrariesStatic();
+
+        expect(result.size).toBe(0);
+      });
+    });
+
+    describe('fetchLibraryDirectory in static mode', () => {
+      it('loads library from common.zip bundle', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'exe_effects/exe_effects.js': new Uint8Array([1]),
+            'exe_effects/exe_effects.css': new Uint8Array([2]),
+            'other_lib/other.js': new Uint8Array([3]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchLibraryDirectory('exe_effects');
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/common.zip');
+        expect(result.size).toBe(2);
+        expect(result.has('exe_effects/exe_effects.js')).toBe(true);
+        expect(result.has('exe_effects/exe_effects.css')).toBe(true);
+
+        delete window.fflate;
+      });
+
+      it('caches common.zip bundle for subsequent calls', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+
+        // Pre-populate common:all cache
+        const commonFiles = new Map([
+          ['lib1/file.js', new Blob(['js1'])],
+          ['lib2/file.js', new Blob(['js2'])],
+        ]);
+        fetcher.cache.set('common:all', commonFiles);
+
+        const result = await fetcher.fetchLibraryDirectory('lib1');
+
+        expect(mockFetch).not.toHaveBeenCalled();
+        expect(result.size).toBe(1);
+        expect(result.has('lib1/file.js')).toBe(true);
+      });
+
+      it('returns empty Map for non-existent library', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+
+        fetcher.cache.set('common:all', new Map());
+
+        const result = await fetcher.fetchLibraryDirectory('nonexistent');
+
+        expect(result.size).toBe(0);
+      });
+    });
+
+    describe('fetchLibraryFile in static mode', () => {
+      it('uses non-versioned paths in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['content'])),
+        });
+
+        await fetcher.fetchLibraryFile('exe_effects/exe_effects.js');
+
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js');
+      });
+    });
+
+    describe('fetchExeLogo in static mode', () => {
+      it('uses non-versioned path in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['png'])),
+        });
+
+        await fetcher.fetchExeLogo();
+
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_powered_logo/exe_powered_logo.png');
+      });
+    });
+
+    describe('fetchTheme integration with static mode', () => {
+      it('uses fetchThemeStatic when in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'style.css': new Uint8Array([1]),
+          }),
+        };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '100' },
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+        });
+
+        const result = await fetcher.fetchTheme('custom-theme');
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/custom-theme.zip');
+        expect(result.size).toBe(1);
+
+        delete window.fflate;
+      });
+
+      it('does not fall back to individual files in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+
+        // Bundle fails
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+        const result = await fetcher.fetchTheme('missing-theme');
+
+        // Should NOT call the fallback API
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(result.size).toBe(0);
+      });
+    });
+  });
+
+  describe('loadBundleManifest error handling', () => {
+    it('sets bundlesAvailable to false on JSON parse error', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.reject(new Error('Invalid JSON')),
+      });
+
+      await fetcher.loadBundleManifest();
+
+      expect(fetcher.bundlesAvailable).toBe(false);
+    });
+
+    it('handles network timeout gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockRejectedValueOnce(new Error('fetch timeout'));
+
+      await fetcher.loadBundleManifest();
+
+      expect(fetcher.bundlesAvailable).toBe(false);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to load bundle manifest'),
+        'fetch timeout'
+      );
     });
   });
 

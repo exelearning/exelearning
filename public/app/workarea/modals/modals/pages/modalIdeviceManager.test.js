@@ -940,11 +940,12 @@ describe('ModalIdeviceManager', () => {
       expect(label.textContent).toContain('Text iDevice');
     });
 
-    it('should add asterisk for user idevices', () => {
+    it('should not add asterisk for user idevices', () => {
       idevice.type = 'user';
       const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
       const label = result.querySelector('.toggle-label');
-      expect(label.textContent).toContain('*');
+      expect(label.textContent).not.toContain('*');
+      expect(label.textContent).toContain('Text iDevice');
     });
 
     it('should create checkbox input', () => {

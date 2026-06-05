@@ -1,6 +1,6 @@
 {% extends "base.njk" %}
 
-{% block title %}eXeLearning{% endblock %}
+{% block title %}{{ appName or 'eXeLearning' }}{% endblock %}
 
 {% block stylesheets %}
     {# eXeLearning styles #}
@@ -27,7 +27,8 @@
     <script class="exe" src="{{ '/app/common/asset_url_resolver.js' | asset }}" defer></script>
     {# eXeLearning common legacy objects #}
     <script class="exe" type="module" src="{{ '/app/common/app_common.js' | asset }}" defer></script>
-    <script class="exe" src="{{ '/app/common/common_i18n.js' | asset }}" defer></script>
+    {# common_i18n.js is NOT loaded statically — it is generated dynamically by Locale.refreshI18nGlobals()
+       after the content language is known (project metadata loaded from Yjs). #}
     <script class="exe" src="{{ '/app/common/common_edition.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/common.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/exe_effects/exe_effects.js' | asset }}" defer></script>
@@ -82,7 +83,7 @@
             <div class="content-info">
                 <div id="exe-title" class="title-not-editing">
                     <h2 class="exe-title content" id="change_title">...</h2>
-                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ t.change_title or 'Change title' }}" aria-label="{{ t.change_title or 'Change title' }}">
+                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ t.change_title or 'Edit title' }}" aria-label="{{ t.change_title or 'Edit title' }}">
                         <span class="exe-icon small-icon edit-icon-green"></span>
                     </button>
                 </div>
@@ -117,8 +118,14 @@
                     <div class="preview-pinned-header">
                         <h2 class="preview-pinned-title">{{ t.preview or 'Preview' }}</h2>
                         <div class="preview-pinned-actions">
+                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
+                                <span class="small-icon external-link-icon"></span>
+                            </button>
                             <button id="preview-unpin-button" class="btn button-square button-tertiary" title="{{ t.unpin_preview or 'Unpin preview' }}" aria-label="{{ t.unpin_preview or 'Unpin preview' }}">
                                 <span class="small-icon unpin-icon"></span>
+                            </button>
+                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                                <span class="small-icon mobile-icon"></span>
                             </button>
                             <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                                 <span class="small-icon refresh-icon"></span>
@@ -126,7 +133,9 @@
                         </div>
                     </div>
                     <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        <div class="preview-device-frame">
+                            <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        </div>
                     </div>
                 </aside>
             </div>
@@ -138,7 +147,7 @@
         <aside id="stylessidenav" class="sidenav" role="complementary">
             <div class="content-styles-header">
                 <h1 class="styles-title">
-                    Styles
+                    {{ 'Styles' | trans }}
                 </h1>
                 <div id="stylessidenavclose" class="navbar-close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -150,12 +159,12 @@
                 <ul class="nav nav-tabs{% if config.userStyles == false %} d-none{% endif %}" id="styleslist" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab" data-bs-target="#exestylescontent" type="button" role="tab" aria-controls="exestylescontent" aria-selected="true">
-                            System
+                            {{ 'System' | trans }}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab" data-bs-target="#importedstylescontent" type="button" role="tab" aria-controls="importedstylescontent" aria-selected="false">
-                            Imported
+                            {{ 'Imported' | trans }}
                         </button>
                     </li>
                 </ul>
@@ -175,8 +184,14 @@
             <div class="preview-panel-header">
                 <h1 class="preview-title">{{ t.preview or 'Preview' }}</h1>
                 <div class="preview-header-actions">
+                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
+                        <span class="small-icon external-link-icon"></span>
+                    </button>
                     <button id="preview-pin-button" class="btn button-square button-tertiary" title="{{ t.pin_preview or 'Pin preview' }}" aria-label="{{ t.pin_preview or 'Pin preview to layout' }}">
                         <span class="small-icon pin-icon"></span>
+                    </button>
+                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                        <span class="small-icon mobile-icon"></span>
                     </button>
                     <button id="preview-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                         <span class="small-icon refresh-icon"></span>
@@ -189,7 +204,9 @@
                 </div>
             </div>
             <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                <div class="preview-device-frame">
+                    <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                </div>
             </div>
         </aside>
     </div>
@@ -200,13 +217,12 @@
         {% include 'workarea/modals/generic/modalInfo.njk' %}
         {% include 'workarea/modals/generic/modalConfirm.njk' %}
         {% include 'workarea/modals/generic/modalSessionLogout.njk' %}
-        {% include 'workarea/modals/pages/uploadtodrive.njk' %}
-        {% include 'workarea/modals/pages/uploadtodropbox.njk' %}
         {% include 'workarea/modals/pages/filemanager.njk' %}
         {% include 'workarea/modals/pages/stylemanager.njk' %}
         {% include 'workarea/modals/pages/idevicemanager.njk' %}
         {% include 'workarea/modals/pages/odebrokenlinks.njk' %}
         {% include 'workarea/modals/pages/odeusedfiles.njk' %}
+        {% include 'workarea/modals/pages/imageoptimizer.njk' %}
         {% include 'workarea/modals/pages/lopd.njk' %}
         {% include 'workarea/modals/pages/assistant.njk' %}
         {% include 'workarea/modals/pages/releasenotes.njk' %}
@@ -218,6 +234,7 @@
 	        {% include 'workarea/modals/pages/templateselection.njk' %}
 	        {% include 'workarea/modals/pages/modalShare.njk' %}
 	        {% include 'workarea/modals/pages/printpreview.njk' %}
+	        {% include 'workarea/modals/pages/globalsearch.njk' %}
 	    </div>
 
     {# Toasts #}

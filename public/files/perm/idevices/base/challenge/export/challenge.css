@@ -299,7 +299,7 @@
 }
 
 .desafio-SolutionDiv .exeQuextIcons-Submit {
-	background-image: url(exequextreply.png);
+	background-image: url(exequextreply.svg);
 	background-size: 100% 100%;
 	width: 100%;
 	height: 100%;
@@ -348,55 +348,65 @@
 }
 
 .exeDesafio-IconReboot {
-	background-image: url(exequextreload.png);
+	background-image: url(exequextreload.svg);
 	background-size: 100% 100%;
 	height: 100%;
 	width: 100%;
 }
 
 .exeQuextRetos-C0 {
-	background: url(exeRetosIcons.png) no-repeat 0 0;
+	background: url(number1_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C1 {
-	background: url(exeRetosIcons.png) no-repeat -24px 0;
+	background: url(number2_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C2 {
-	background: url(exeRetosIcons.png) no-repeat -48px 0;
+	background: url(number3_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C3 {
-	background: url(exeRetosIcons.png) no-repeat -72px 0;
+	background: url(number4_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C4 {
-	background: url(exeRetosIcons.png) no-repeat -96px 0;
+	background: url(number5_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C5 {
-	background: url(exeRetosIcons.png) no-repeat -120px 0;
+	background: url(number6_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C6 {
-	background: url(exeRetosIcons.png) no-repeat -144px 0;
+	background: url(number7_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C7 {
-	background: url(exeRetosIcons.png) no-repeat -168px 0;
+	background: url(number8_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C8 {
-	background: url(exeRetosIcons.png) no-repeat -192px 0;
+	background: url(number9_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .exeQuextRetos-C9 {
-	background: url(exeRetosIcons.png) no-repeat -216px 0;
+	background: url(number10_grey.svg) no-repeat center center;
+	background-size: contain;
 }
 
 .desafio-Activo {
-	-webkit-filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
-	filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
+	-webkit-filter: drop-shadow(.08em .08em .1em rgba(0, 0, 0, 0.2));
+	filter: drop-shadow(.08em .08em .1em rgba(0, 0, 0, 0.2));
 	cursor: pointer;
 	-moz-transition: transform 0.3s;
 	-ms-transition: transform 0.3s;

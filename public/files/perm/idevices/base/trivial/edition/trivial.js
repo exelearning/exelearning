@@ -56,6 +56,10 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.trivialID = $exeDevice.getId();
         $exeDevice.initQuestions();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
@@ -189,9 +193,6 @@ var $exeDevice = {
         );
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
@@ -678,9 +679,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#trivialEURLAudio').val(p.audio);
@@ -986,11 +987,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/triviext.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -1057,26 +1057,8 @@ var $exeDevice = {
                                 <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="trivialEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="trivialEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2" id="trivialEEvaluationIDWrapper">
-                                    <label for="trivialEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </div>
-                                <strong class="GameModeLabel">
-                                    <a href="#trivialEEvaluationHelp" id="trivialEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1244,7 +1226,7 @@ var $exeDevice = {
                                             <input id="trivialEAlt" type="text" class="form-control w-100" />
                                         </div>
                                     </div>                                    
-                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio">
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio" data-voice-recorder data-voice-input="#trivialEURLAudio">
                                         <span id="trivialETitleAudio">${_('Audio')}:</span>
                                         <label class="sr-av" for="trivialEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker TRVLE-EURLAudio form-control w-100 me-0" id="trivialEURLAudio"/>
@@ -1577,8 +1559,9 @@ var $exeDevice = {
 
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
-            let json = $('.trivial-DataGame', wrapper).text(),
-                dataGame =
+            let json = $('.trivial-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            let dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
             dataGame = $exeDevice.Decrypt(dataGame);
@@ -1694,9 +1677,10 @@ var $exeDevice = {
         $('#trivialNumberTema').val(1);
         $('#trivialLoadGame').val('');
         $('#trivialNameTema').val(game.nombresTemas[0]);
-        $('#trivialEEvaluation').prop('checked', game.evaluation);
-        $('#trivialEEvaluationID').val(game.evaluationID);
-        $('#trivialEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#trivialEGlobalTimes').val(game.globalTime);
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -1960,7 +1944,7 @@ var $exeDevice = {
         }
 
         p.audio = $('#trivialEURLAudio').val();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         p.soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0;
@@ -2115,25 +2099,14 @@ var $exeDevice = {
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], {
-                type: 'text/plain',
-            });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-
-        let link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-TriviEx.json';
-        document.getElementById('gameQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(function () {
-            document.getElementById('gameQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], {
+            type: 'text/plain',
+        });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-TriviEx.json`,
+            'gameQEIdeviceForm'
+        );
     },
     importQuExt: function (data) {
         for (let i = 0; i < data.questionsGame.length; i++) {
@@ -2239,6 +2212,7 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (!game || typeof game.typeGame == 'undefined') {
@@ -2431,19 +2405,16 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
-            evaluation = $('#trivialEEvaluation').is(':checked'),
-            evaluationID = $('#trivialEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -2557,8 +2528,8 @@ var $exeDevice = {
             trivialID: $exeDevice.trivialID,
             version: 3,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             globalTime: globalTime,
             id: id,
         };
@@ -2815,7 +2786,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -2933,16 +2904,14 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#trivialEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#trivialEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2973,14 +2942,7 @@ var $exeDevice = {
             }
         });
 
-        $('#trivialEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#trivialEEvaluationID').prop('disabled', !marcado);
-        });
-        $('#trivialEEvaluationHelpLnk').click(function () {
-            $exeDevice.toggleFlex($('#trivialEEvaluationHelp'));
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#trivialGlobalTimeButton').on('click', function (e) {
             e.preventDefault();
@@ -3193,6 +3155,7 @@ var $exeDevice = {
     },
 
     gameAdd: function (content, filetype) {
+        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 

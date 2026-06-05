@@ -260,6 +260,8 @@ describe('componentDownloadHelper', () => {
                 mockElectronAPI = {
                     save: vi.fn(),
                     saveAs: vi.fn(),
+                    saveBuffer: vi.fn(),
+                    saveBufferAs: vi.fn(),
                 };
                 window.electronAPI = mockElectronAPI;
                 global.eXeLearning.config.isOfflineInstallation = true;
@@ -335,6 +337,96 @@ describe('componentDownloadHelper', () => {
                 await downloadComponentFile('https://example.com/file.json', 'test.json');
 
                 expect(document.createElement).toHaveBeenCalledWith('a');
+            });
+
+            describe('blob: URL handling', () => {
+                let mockBlob;
+                let mockBytes;
+                let originalFetch;
+
+                beforeEach(() => {
+                    // "test content" as raw bytes — the main process expects a
+                    // Uint8Array / ArrayBuffer here (see app/main.js normalizeBinaryPayload).
+                    mockBytes = new TextEncoder().encode('test content');
+                    mockBlob = new Blob([mockBytes], { type: 'application/zip' });
+
+                    originalFetch = global.fetch;
+                    global.fetch = vi.fn(() => Promise.resolve({
+                        blob: () => Promise.resolve(mockBlob),
+                        arrayBuffer: () => Promise.resolve(mockBytes.buffer.slice(0)),
+                    }));
+                });
+
+                afterEach(() => {
+                    global.fetch = originalFetch;
+                });
+
+                it('should use saveBufferAs for blob: URLs when not remembered', async () => {
+                    window.localStorage.getItem = vi.fn(() => null);
+                    mockElectronAPI.saveBufferAs = vi.fn(() => Promise.resolve(true));
+
+                    const blobUrl = 'blob:http://localhost:8080/12345678-1234-1234-1234-123456789abc';
+                    await downloadComponentFile(blobUrl, 'test.zip');
+
+                    // Should NOT call saveAs (uses HTTP which fails for blob:)
+                    expect(mockElectronAPI.saveAs).not.toHaveBeenCalled();
+                    // Should call saveBufferAs with a Uint8Array payload
+                    expect(mockElectronAPI.saveBufferAs).toHaveBeenCalledTimes(1);
+                    const [payload, , fileName] = mockElectronAPI.saveBufferAs.mock.calls[0];
+                    expect(payload).toBeInstanceOf(Uint8Array);
+                    expect(fileName).toBe('test.zip');
+                });
+
+                it('should use saveBuffer for blob: URLs when key is remembered', async () => {
+                    window.localStorage.getItem = vi.fn(() => '1');
+                    mockElectronAPI.saveBuffer = vi.fn(() => Promise.resolve(true));
+
+                    const blobUrl = 'blob:http://localhost:8080/12345678-1234-1234-1234-123456789abc';
+                    await downloadComponentFile(blobUrl, 'test.zip');
+
+                    // Should NOT call save (uses HTTP which fails for blob:)
+                    expect(mockElectronAPI.save).not.toHaveBeenCalled();
+                    // Should call saveBuffer with a Uint8Array payload
+                    expect(mockElectronAPI.saveBuffer).toHaveBeenCalledTimes(1);
+                    const [payload, , fileName] = mockElectronAPI.saveBuffer.mock.calls[0];
+                    expect(payload).toBeInstanceOf(Uint8Array);
+                    expect(fileName).toBe('test.zip');
+                });
+
+                it('should fall back to saveBufferAs when saveBuffer fails for blob: URL', async () => {
+                    window.localStorage.getItem = vi.fn(() => '1');
+                    mockElectronAPI.saveBuffer = vi.fn(() => Promise.resolve(false));
+                    mockElectronAPI.saveBufferAs = vi.fn(() => Promise.resolve(true));
+
+                    const blobUrl = 'blob:http://localhost:8080/12345678-1234-1234-1234-123456789abc';
+                    await downloadComponentFile(blobUrl, 'test.zip');
+
+                    expect(mockElectronAPI.saveBuffer).toHaveBeenCalled();
+                    expect(mockElectronAPI.saveBufferAs).toHaveBeenCalled();
+                });
+
+                it('should fall back to browser download when both buffer methods fail for blob: URL', async () => {
+                    window.localStorage.getItem = vi.fn(() => null);
+                    mockElectronAPI.saveBufferAs = vi.fn(() => Promise.resolve(false));
+
+                    const blobUrl = 'blob:http://localhost:8080/12345678-1234-1234-1234-123456789abc';
+                    await downloadComponentFile(blobUrl, 'test.zip');
+
+                    // Should fall back to browser download
+                    expect(document.createElement).toHaveBeenCalledWith('a');
+                    expect(mockAnchor.click).toHaveBeenCalled();
+                });
+
+                it('should handle fetch error for blob: URLs gracefully', async () => {
+                    window.localStorage.getItem = vi.fn(() => null);
+                    global.fetch = vi.fn(() => Promise.reject(new Error('Fetch failed')));
+
+                    const blobUrl = 'blob:http://localhost:8080/12345678-1234-1234-1234-123456789abc';
+                    await downloadComponentFile(blobUrl, 'test.zip');
+
+                    // Should fall back to browser download
+                    expect(document.createElement).toHaveBeenCalledWith('a');
+                });
             });
         });
 
@@ -459,6 +551,136 @@ describe('componentDownloadHelper', () => {
                     downloadComponentFile('https://example.com/file.json', 'test.json')
                 ).resolves.not.toThrow();
             });
+        });
+
+        describe('alwaysAskLocation option (Electron)', () => {
+            let mockElectronAPI;
+
+            beforeEach(() => {
+                window.__currentProjectId = `always-ask-test-${Date.now()}`;
+                mockElectronAPI = {
+                    save: vi.fn(() => Promise.resolve(true)),
+                    saveAs: vi.fn(() => Promise.resolve(true)),
+                    saveBuffer: vi.fn(() => Promise.resolve(true)),
+                    saveBufferAs: vi.fn(() => Promise.resolve(true)),
+                };
+                window.electronAPI = mockElectronAPI;
+                global.eXeLearning.config.isOfflineInstallation = true;
+                // Mark key as remembered
+                window.localStorage.getItem = vi.fn(() => '1');
+                window.localStorage.setItem = vi.fn();
+            });
+
+            it('should always use saveAs when alwaysAskLocation is true, even if key is remembered', async () => {
+                await downloadComponentFile('https://example.com/file.json', 'test.json', {
+                    typeKeySuffix: 'page',
+                    alwaysAskLocation: true,
+                });
+
+                // save should NOT be called because alwaysAskLocation is true
+                expect(mockElectronAPI.save).not.toHaveBeenCalled();
+                // saveAs should be called
+                expect(mockElectronAPI.saveAs).toHaveBeenCalled();
+            });
+
+            it('should NOT mark key as remembered when alwaysAskLocation is true', async () => {
+                // Start with no remembered key
+                window.localStorage.getItem = vi.fn(() => null);
+
+                await downloadComponentFile('https://example.com/file.json', 'test.json', {
+                    typeKeySuffix: 'idevice',
+                    alwaysAskLocation: true,
+                });
+
+                // setItem should NOT be called because alwaysAskLocation prevents remembering
+                expect(window.localStorage.setItem).not.toHaveBeenCalled();
+            });
+
+            it('should use normal save flow when alwaysAskLocation is false', async () => {
+                await downloadComponentFile('https://example.com/file.json', 'test.json', {
+                    typeKeySuffix: 'block',
+                    alwaysAskLocation: false,
+                });
+
+                // save should be called first since key is remembered
+                expect(mockElectronAPI.save).toHaveBeenCalled();
+                // saveAs should NOT be called since save succeeded
+                expect(mockElectronAPI.saveAs).not.toHaveBeenCalled();
+            });
+
+            it('should use normal save flow when alwaysAskLocation is not specified', async () => {
+                await downloadComponentFile('https://example.com/file.json', 'test.json', {
+                    typeKeySuffix: 'page',
+                });
+
+                // save should be called first since key is remembered
+                expect(mockElectronAPI.save).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // Regression #1659: Export Page / Export Box / Export iDevice in the Electron
+    // desktop app showed the save dialog but never wrote a file. Root cause: the
+    // blob: branch of runElectronDownload handed a base64 string to saveBufferAs,
+    // but the main process's normalizeBinaryPayload only treats the first arg as
+    // binary when it is a Uint8Array / ArrayBuffer / Array, so it returned null
+    // and fs.writeFileSync never ran. These tests lock in the Uint8Array contract
+    // and the fallback behavior when the main process reports {saved:false}.
+    describe('downloadComponentFile — Electron blob handling (regression #1659)', () => {
+        let originalFetch;
+
+        beforeEach(() => {
+            global.eXeLearning = { config: { isOfflineInstallation: true } };
+            window.__currentProjectId = 'project-1659';
+
+            originalFetch = global.fetch;
+            global.fetch = vi.fn().mockResolvedValue({
+                blob: async () => new Blob([new Uint8Array([80, 75, 3, 4])]),
+                arrayBuffer: async () => new Uint8Array([80, 75, 3, 4]).buffer,
+            });
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+        });
+
+        it('passes a Uint8Array (not a base64 string) to saveBufferAs for blob: URLs', async () => {
+            const saveBufferAs = vi
+                .fn()
+                .mockResolvedValue({ saved: true, filePath: '/tmp/out.elpx' });
+            window.electronAPI = { saveBufferAs };
+
+            await downloadComponentFile('blob:mock-url', 'page.elpx', {
+                typeKeySuffix: 'page',
+                alwaysAskLocation: true,
+            });
+
+            expect(saveBufferAs).toHaveBeenCalledTimes(1);
+            const [payload, , suggestedName] = saveBufferAs.mock.calls[0];
+            expect(typeof payload).not.toBe('string');
+            expect(payload).toBeInstanceOf(Uint8Array);
+            expect(suggestedName).toBe('page.elpx');
+        });
+
+        it('falls back to browser download when electron save reports {saved:false}', async () => {
+            const saveBufferAs = vi.fn().mockResolvedValue({
+                saved: false,
+                error: 'Failed to normalize binary payload',
+            });
+            window.electronAPI = { saveBufferAs };
+
+            const anchorClick = vi.fn();
+            global.document.createElement = vi.fn(() => ({
+                click: anchorClick,
+                style: {},
+            }));
+
+            await downloadComponentFile('blob:mock-url', 'page.elpx', {
+                typeKeySuffix: 'page',
+                alwaysAskLocation: true,
+            });
+
+            expect(anchorClick).toHaveBeenCalled();
         });
     });
 });

@@ -8,7 +8,7 @@
  */
 
 // To review:
-// Do not allow Flash?
+// // Do not allow Flash?
 var InteractiveVideo = {};
 
 var stringToHTML = function (str) {
@@ -161,7 +161,7 @@ var $exeDevice = {
                     </div>                    
                     <span class="d-block mt-1 info">
                         <strong>${_('Example')}:</strong>
-                        <a href="https://www.youtube.com/watch?v=v_rGjOBtvhI" target="_blank" rel="noopener">https://www.youtube.com/watch?v=v_rGjOBtvhI</a>
+                        <a href="https://www.youtube.com/watch?v=g9gPKSGGkEk" target="_blank" rel="noopener">https://www.youtube.com/watch?v=g9gPKSGGkEk</a>
                     </span>
                 </div>
                 <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
@@ -188,18 +188,8 @@ var $exeDevice = {
                     </span>
                     <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
                 </div>
-                <div class="d-flex flex-nowrap align-items-center gap-2 mb-4">
-                    <div class="toggle-item mb-0">
-                        <span class="toggle-control">
-                            <input class="toggle-input" type="checkbox" id="interactiveVideoEvaluation">
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label mb-0" for="interactiveVideoEvaluation">${_('Progress report')}.</label>
-                    </div>
-                     <div class="d-flex flex-nowrap align-items-center gap-2">
-                        <label for="interactiveVideoEvaluationID" class="form-label mb-0">${_('Identifier')}</label>
-                        <input type="text" id="interactiveVideoEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}">
-                    </div>
+                <div class="mb-4">
+                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                 </div>
                 <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
                     <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
@@ -221,24 +211,14 @@ var $exeDevice = {
             $exeDevice.toggleType(this.value);
         });
 
-        $('#interactiveVideoEvaluation').on('change', function () {
-            var marcado = $(this).is(':checked');
-            $('#interactiveVideoEvaluationID').prop('disabled', !marcado);
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#interactiveVideoFile')
             .change(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                if (this.value.indexOf('files/tmp/') == 0) {
+                // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    // $exeDevice.interactiveVideoEditorOpenerHTML = e.html();
-                    // var saveNowMsg = '<p class="exe-block-info">' + _("Please save your iDevice now (click on %s now) and edit it to add interaction.") + '</p>';
-                    // saveNowMsg = saveNowMsg.replace('%s', '<img style="vertical-align:top" src="' + $exeDevice.idevicePath + 'images/stock-apply.png" alt="' + _("Done") + '" />');
-                    // var extension = this.value.split('.').pop().toLowerCase();
-                    // if (extension == "flv") {
-                    //   eXe.app.alert(_("Format") + ": flv - " + _("Recommended type") + ": ogv/ogg, webm, mp4");
-                    // }
-                    // e.html(saveNowMsg).fadeIn();
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -246,7 +226,8 @@ var $exeDevice = {
             })
             .keyup(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                if (this.value.indexOf('files/tmp/') == 0) {
+                // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
                     e.fadeIn();
                 } else {
@@ -392,16 +373,84 @@ var $exeDevice = {
             $('body').append(wrapper);
 
             // Get the data
-
             var previousData = stringToHTML(originalHTML);
-            var jsonParse = previousData.querySelector(
-                '#exe-interactive-video-contents'
-            ).innerHTML;
-            InteractiveVideo = JSON.parse(jsonParse);
+
+            // Try modern format first: <script id="exe-interactive-video-contents" type="application/json">
+            var jsonScript = previousData.querySelector('#exe-interactive-video-contents');
+
+            // Helper to sanitize JSON from legacy formats (handles control characters)
+            var sanitizeJSON = function(jsonStr) {
+                if (typeof $exeDevices !== 'undefined' &&
+                    $exeDevices.iDevice &&
+                    $exeDevices.iDevice.gamification &&
+                    $exeDevices.iDevice.gamification.helpers &&
+                    $exeDevices.iDevice.gamification.helpers.sanitizeJSONString) {
+                    return $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonStr);
+                }
+                return jsonStr;
+            };
+
+            if (jsonScript) {
+                // Modern format - parse JSON directly
+                try {
+                    var jsonContent = sanitizeJSON(jsonScript.innerHTML);
+                    InteractiveVideo = JSON.parse(jsonContent);
+                } catch (e) {
+                    console.error('Interactive Video: Error parsing modern JSON format', e);
+                    InteractiveVideo = { slides: [] };
+                }
+            } else {
+                // Legacy format (eXe 2.9): <script type="text/javascript">var InteractiveVideo = {...}</script>
+                // Try to extract from var InteractiveVideo = {...}
+                var legacyScript = previousData.querySelector('script[type="text/javascript"]');
+                if (legacyScript) {
+                    var scriptContent = legacyScript.innerHTML || legacyScript.textContent || '';
+                    // Remove CDATA markers and extract JSON
+                    scriptContent = scriptContent
+                        .replace(/\/\/<!\[CDATA\[/g, '')
+                        .replace(/\/\/\]\]>/g, '')
+                        .trim();
+
+                    var match = scriptContent.match(/var\s+InteractiveVideo\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+                    if (match && match[1]) {
+                        try {
+                            // Sanitize JSON to handle control characters from legacy versions
+                            var sanitizedJson = sanitizeJSON(match[1]);
+                            InteractiveVideo = JSON.parse(sanitizedJson);
+                        } catch (e) {
+                            console.error('Interactive Video: Error parsing legacy format', e);
+                            InteractiveVideo = { slides: [] };
+                        }
+                    } else {
+                        console.warn('Interactive Video: Could not extract data from legacy format');
+                        InteractiveVideo = { slides: [] };
+                    }
+                } else {
+                    console.warn('Interactive Video: No script tag found');
+                    InteractiveVideo = { slides: [] };
+                }
+            }
             if (
                 typeof InteractiveVideo == 'object' &&
                 typeof InteractiveVideo.slides == 'object'
             ) {
+                // Update legacy image URLs (numbers) to asset:// URLs
+                if (InteractiveVideo.slides && Array.isArray(InteractiveVideo.slides)) {
+                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                        var slide = InteractiveVideo.slides[i];
+                        if (slide.type === 'image' && typeof slide.url === 'number') {
+                            // Find the image in the HTML
+                            var imgId = 'exe-interactive-video-img-' + slide.url;
+                            var imgEl = previousData.querySelector('#' + imgId);
+                            if (imgEl && imgEl.src) {
+                                slide.url = imgEl.src;
+                            } else {
+                                console.warn('[InteractiveVideo] Could not find image element', imgId);
+                            }
+                        }
+                    }
+                }
+
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
                 // i18n
                 InteractiveVideo.scorm =
@@ -423,7 +472,6 @@ var $exeDevice = {
                         ? false
                         : InteractiveVideo.evaluation;
                 const defaultEvalID =
-                    $('#interactiveVideoEvaluationID').val() ||
                     (typeof eXeLearning !== 'undefined' &&
                     eXeLearning.app &&
                     eXeLearning.app.project
@@ -439,17 +487,10 @@ var $exeDevice = {
                         ? InteractiveVideo.ideviceID
                         : false;
                 $exeDevice.ideviceID = $exeDevice.getIdeviceID();
-                $('#interactiveVideoEvaluation').prop(
-                    'checked',
-                    InteractiveVideo.evaluation
-                );
-                $('#interactiveVideoEvaluationID').val(
-                    InteractiveVideo.evaluationID
-                );
-                $('#interactiveVideoEvaluationID').prop(
-                    'disabled',
-                    !InteractiveVideo.evaluation
-                );
+                $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+                    evaluation: InteractiveVideo.evaluation,
+                    evaluationID: InteractiveVideo.evaluationID,
+                });
             }
             // Save the list of images and remove the wrapper
             top.interactiveVideoEditor.imageList = $(
@@ -523,12 +564,25 @@ var $exeDevice = {
             $(
                 '#modalGenericIframeContainer,#modalGenericIframeContainerCSS'
             ).remove();
-            const editorURL =
-                eXeLearning.symfony.baseURL +
-                eXeLearning.symfony.basePath +
-                '/api/idevices/download-file-resources?resource=' +
-                filePath +
-                'editor/index.html';
+
+            // Check for static mode (no server available)
+            const config = window.eXeLearning?.config;
+            const isStaticMode = config?.isStaticMode || config?.isOfflineInstallation ||
+                                 window.__EXE_STATIC_MODE__ || window.electronAPI;
+
+            let editorURL;
+            if (isStaticMode) {
+                // Use relative path for static/offline mode
+                editorURL = './files/perm/idevices/base/interactive-video/edition/editor/index.html';
+            } else {
+                // Use API endpoint for server mode
+                editorURL =
+                    eXeLearning.symfony.baseURL +
+                    eXeLearning.symfony.basePath +
+                    '/api/idevices/download-file-resources?resource=' +
+                    filePath +
+                    'editor/index.html';
+            }
             var css = `
     	<style id="modalGenericIframeContainerCSS">
           .modal-fullscreen .modal-header,
@@ -595,25 +649,28 @@ var $exeDevice = {
                 eXe.app.alert(_('Required') + ': ' + _('File'));
                 return false;
             }
-            var extension = myVideo.split('.').pop().toLowerCase();
-            if (
-                extension != 'ogg' &&
-                extension != 'ogv' &&
-                extension != 'mp4' &&
-                extension != 'webm' &&
-                extension != 'flv'
-            ) {
-                eXe.app.alert(
-                    _('Supported formats') + ': ogv/ogg, webm, mp4, flv'
-                );
-                return false;
+            // Skip extension validation for blob: and asset:// URLs (already validated on upload)
+            if (myVideo.indexOf('blob:') != 0 && myVideo.indexOf('asset://') != 0) {
+                var extension = myVideo.split('.').pop().toLowerCase();
+                if (
+                    extension != 'ogg' &&
+                    extension != 'ogv' &&
+                    extension != 'mp4' &&
+                    extension != 'webm' &&
+                    extension != 'flv'
+                ) {
+                    eXe.app.alert(
+                        _('Supported formats') + ': ogv/ogg, webm, mp4, flv'
+                    );
+                    return false;
+                }
             }
         } else if (type == 'youtube') {
             myVideo = $('#interactiveVideoYoutubeURL').val();
             if (myVideo.indexOf('https://www.youtube.com/watch?v=') != 0) {
                 eXe.app.alert(
                     _('Wrong URL. Expected format:') +
-                        ' https://www.youtube.com/watch?v=v_rGjOBtvhI'
+                        ' https://www.youtube.com/watch?v=g9gPKSGGkEk'
                 );
                 return false;
             }
@@ -631,14 +688,11 @@ var $exeDevice = {
             }
         }
 
-        var seval = $('#interactiveVideoEvaluation').is(':checked'),
-            sevalid = seval ? $('#interactiveVideoEvaluationID').val() : '';
-        if (seval && sevalid.length < 5) {
-            eXe.app.alert(
-                _('The report identifier must have at least 5 characters')
-            );
-            return false;
-        }
+        var progressBarValues =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBarValues) return false;
+        var seval = progressBarValues.evaluation,
+            sevalid = progressBarValues.evaluationID;
 
         var ideviceID = $exeDevice.getIdeviceID();
 
@@ -689,7 +743,10 @@ var $exeDevice = {
                             '" id="exe-interactive-video-img-' +
                             i +
                             '" alt="" /></p>';
-                        slide.url = i;
+                        // Only replace URL with index for legacy relative paths (not asset:// or blob://)
+                        if (slide.url.indexOf('asset://') !== 0 && slide.url.indexOf('blob:') !== 0) {
+                            slide.url = i;
+                        }
                     }
                 }
             }

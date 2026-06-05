@@ -79,7 +79,7 @@
         }
 
         .admin-sidebar-header {
-            padding: 1.25rem;
+            padding: .9rem 1.25rem;
             background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%);
             color: white;
         }
@@ -157,6 +157,7 @@
         /* Main content */
         .admin-main {
             margin-left: var(--admin-sidebar-width);
+            width: calc(100% - var(--admin-sidebar-width));
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -630,12 +631,7 @@
         .btn-admin-danger {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
-            border: none;
-        }
-
-        .btn-admin-danger:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-            color: white;
+            border-color: #e33232;
         }
 
         /* Form controls */
@@ -705,6 +701,59 @@
             margin-top: 0.35rem;
             color: var(--admin-text-muted);
             font-size: 0.75rem;
+        }
+
+        /* Maintenance banner */
+        .maintenance-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            background: #fff7e6;
+            border: 1px solid #f6d28b;
+            border-radius: var(--admin-radius);
+            color: #7a5400;
+            font-size: 0.9rem;
+        }
+
+        /* Maintenance status card */
+        .maintenance-status-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: var(--admin-radius);
+            border: 1px solid;
+        }
+
+        .maintenance-status-inactive {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .maintenance-status-active {
+            background: #fff7e6;
+            border-color: #f6d28b;
+            color: #7a5400;
+        }
+
+        .maintenance-status-icon .mi {
+            font-size: 32px;
+        }
+
+        .maintenance-status-info strong {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .maintenance-status-info p {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.85;
         }
 
         /* Section visibility */
@@ -780,6 +829,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            color: white;
         }
 
         .modal-header .btn-close {
@@ -846,6 +896,7 @@
 
             .admin-main {
                 margin-left: 0;
+                width: 100%;
             }
 
             .sidebar-overlay {
@@ -1007,6 +1058,193 @@
             padding: 2rem;
             color: var(--admin-text-muted);
         }
+        .admin-code-textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            min-height: 200px;
+        }
+        .admin-code-example {
+            margin-top: 0.75rem;
+            background: var(--admin-bg, #f8f9fa);
+            border: 1px solid var(--admin-border, #dee2e6);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .admin-code-example summary {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--admin-text-muted, #6c757d);
+            cursor: pointer;
+            user-select: none;
+        }
+        .admin-code-example pre {
+            margin: 0;
+            padding: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            border-top: 1px solid var(--admin-border, #dee2e6);
+        }
+        .admin-favicon-preview {
+            border: 1px solid var(--admin-border, #dee2e6);
+            border-radius: 4px;
+            object-fit: contain;
+            background: var(--admin-bg, #f8f9fa);
+        }
+        .btn-admin-icon {
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            color: var(--admin-text-muted, #6c757d);
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+        .btn-admin-icon:hover {
+            background: var(--admin-bg, #f8f9fa);
+            color: var(--admin-text, #374151);
+        }
+        .admin-file-input-sm {
+            max-width: 300px;
+        }
+        .admin-file-input-sm::file-selector-button {
+            margin-top: 0;
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: var(--admin-primary-light);
+            color: var(--bs-accordion-btn-color);
+        }
+
+        /* Dashboard analytics styles */
+        .dashboard-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--admin-shadow);
+            transition: all 0.2s ease;
+        }
+        .kpi-card:hover {
+            box-shadow: var(--admin-shadow-lg);
+            transform: translateY(-2px);
+        }
+        .kpi-help {
+            font-size: 16px;
+            color: var(--admin-text-muted);
+            cursor: help;
+            vertical-align: middle;
+            margin-left: 4px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .kpi-help:hover {
+            opacity: 1;
+            color: var(--admin-primary);
+        }
+        .kpi-label {
+            font-size: 11px;
+            color: var(--admin-text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--admin-text);
+        }
+        .dashboard-main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 900px) {
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+        }
+        .dashboard-panel {
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius);
+            padding: 20px;
+            box-shadow: var(--admin-shadow);
+        }
+        .dashboard-panel h3 {
+            margin: 0 0 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--admin-text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dashboard-chart-container {
+            position: relative;
+            height: 280px;
+        }
+        .dash-online-count {
+            font-size: 13px;
+            color: var(--admin-text-muted);
+            margin-bottom: 12px;
+        }
+        .dash-online-count strong {
+            font-size: 22px;
+            font-weight: 700;
+            color: #059669;
+        }
+        .dash-audit-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--admin-text-muted);
+        }
+        .dash-audit-stats strong {
+            color: var(--admin-text);
+        }
+        .dash-sysinfo-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            font-size: 13px;
+            border-bottom: 1px solid var(--admin-border);
+        }
+        .dash-sysinfo-row:last-of-type { border-bottom: none; }
+        .dash-sysinfo-label { color: var(--admin-text-muted); font-weight: 500; }
+        .dash-sysinfo-value { color: var(--admin-text); font-weight: 600; }
+        .dash-sysinfo-progress-label {
+            font-size: 11px;
+            color: var(--admin-text-muted);
+            margin-top: 8px;
+            margin-bottom: 3px;
+        }
+        .dash-sysinfo-bar {
+            height: 6px;
+            background: var(--admin-border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .dash-sysinfo-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .dash-sysinfo-bar-fill.ok { background: #059669; }
+        .dash-sysinfo-bar-fill.warning { background: #d97706; }
+        .dash-sysinfo-bar-fill.danger { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -1043,9 +1281,17 @@
                 <span class="mi">description</span>
                 {{ t.templates or 'Templates' }}
             </a>
-            <a href="#settings" class="admin-nav-link" data-section="settings">
+            <a href="#settings" class="admin-nav-link d-none" data-section="settings">
                 <span class="mi">tune</span>
                 {{ t.settings or 'Settings' }}
+            </a>
+            <a href="#presentation" class="admin-nav-link" data-section="presentation">
+                <span class="mi">tune</span>
+                {{ t.customization or 'Customization' }}
+            </a>
+            <a href="#maintenance" class="admin-nav-link" data-section="maintenance">
+                <span class="mi">engineering</span>
+                {{ t.maintenance or 'Maintenance' }}
             </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
@@ -1078,47 +1324,71 @@
 
         <!-- Content -->
         <div class="admin-content">
+            {% if adminSettings.maintenance.maintenance_mode %}
+            <div class="maintenance-banner" id="maintenanceBanner">
+                <span class="mi mi-sm">engineering</span>
+                <strong>{{ t.maintenance_mode_active or 'Maintenance mode is active' }}</strong> &mdash;
+                {{ t.maintenance_mode_active_desc or 'Non-administrator users cannot access the platform.' }}
+            </div>
+            {% endif %}
             <!-- Dashboard Section -->
             <section id="dashboard" class="admin-section active">
-                <div class="stats-grid">
-                    <div class="stats-card">
-                        <div class="stats-icon primary">
-                            <span class="mi">group</span>
+                <!-- KPI Cards -->
+                <div class="dashboard-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.total_users or 'Total Users' }}
+                            <span class="kpi-help mi" title="{{ t.total_users_help or 'Total number of registered accounts in the platform.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-totalUsers">-</div>
-                            <div class="stats-label">{{ t.total_users or 'Total Users' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-total-users">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon success">
-                            <span class="mi">person_check</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.active_projects or 'Active Projects' }}
+                            <span class="kpi-help mi" title="{{ t.active_projects_help or 'Projects that have been opened or edited recently.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-activeUsers">-</div>
-                            <div class="stats-label">{{ t.active_users or 'Active Users' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-active-projects">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon info">
-                            <span class="mi">folder</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.logins_today or 'Logins Today' }}
+                            <span class="kpi-help mi" title="{{ t.logins_today_help or 'Number of unique users who logged in during the last 24 hours.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-totalProjects">-</div>
-                            <div class="stats-label">{{ t.total_projects or 'Total Projects' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-logins-today">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon warning">
-                            <span class="mi">edit_note</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.online_now or 'Online Now' }}
+                            <span class="kpi-help mi" title="{{ t.online_now_help or 'Number of users currently connected and editing in real time. Refreshes every 30 seconds.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-activeProjects">-</div>
-                            <div class="stats-label">{{ t.active_projects or 'Active Projects' }}</div>
+                        <div class="kpi-value" id="dash-online-count">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.peak_hour or 'Peak Hour' }}
+                            <span class="kpi-help mi" title="{{ t.peak_hour_help or 'The hour of the day with the highest number of logins over the last 30 days.' }}">help_outline</span>
+                        </div>
+                        <div class="kpi-value" id="dash-kpi-peak-hour">—</div>
+                    </div>
+                </div>
+
+                <!-- Activity Chart -->
+                <div class="dashboard-panel" style="margin-bottom: 24px;">
+                    <h3>
+                        <span class="mi mi-sm">show_chart</span>
+                        {{ t.activity_last_30_days or 'Activity (Last 30 Days)' }}
+                        <span class="kpi-help mi" title="{{ t.activity_chart_help or 'Shows the number of logins and projects created each day over the last 30 days.' }}">help_outline</span>
+                    </h3>
+                    <div class="dashboard-chart-container">
+                        <canvas id="dash-activity-chart"></canvas>
+                        <div id="dash-chart-empty" style="display:none;align-items:center;justify-content:center;height:200px;color:var(--admin-text-muted,#9ca3af);flex-direction:column;gap:8px;">
+                            <span class="mi" style="font-size:48px;opacity:0.3;">show_chart</span>
+                            <span>{{ t.no_activity_data or 'No activity data yet. The chart will populate as users log in and create projects.' }}</span>
                         </div>
                     </div>
                 </div>
 
+                <!-- System Info card (existing) -->
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h5>
@@ -1185,7 +1455,7 @@
                                     <th>{{ t.roles or 'Roles' }}</th>
                                     <th>{{ t.quota_mb or 'Quota (MB)' }}</th>
                                     <th>{{ t.status or 'Status' }}</th>
-                                    <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    <th style="width: 150px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody">
@@ -1274,7 +1544,7 @@
                                     <th>{{ t.status or 'Status' }}</th>
                                     <th>{{ t.visibility or 'Visibility' }}</th>
                                     <th>{{ t.created or 'Created' }}</th>
-                                    <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    <th style="width: 180px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
                             </thead>
                             <tbody id="projectsTableBody">
@@ -1423,23 +1693,36 @@
                             <span id="settingsSaveStatus" class="admin-settings-status"></span>
                         </div>
                         <div class="admin-settings-group">
-                            <h6>Plataforma y colaboracion</h6>
+                            <h6>{{ t.maintenance or 'Maintenance' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>MAINTENANCE_MODE</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="MAINTENANCE_MODE" data-setting-type="boolean" {% if adminSettings.maintenance.maintenance_mode %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.maintenance_mode_desc or 'When enabled, non-administrator users will see a maintenance page. Administrators retain full access.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-settings-group">
+                            <h6>{{ t.platform_and_collaboration or 'Platform and collaboration' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>ONLINE_THEMES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_THEMES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_themes_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar temas en linea.</small>
+                                    <small>{{ t.allows_install_themes_online or 'Allows installing themes online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>ONLINE_IDEVICES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_IDEVICES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_idevices_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar iDevices en linea.</small>
+                                    <small>{{ t.allows_install_idevices_online or 'Allows installing iDevices online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>APP_AUTH_METHODS</label>
@@ -1459,13 +1742,13 @@
                                         <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="guest" {% if 'guest' in adminSettings.general.app_auth_methods %}checked{% endif %}>
                                         <span>guest</span>
                                     </div>
-                                    <small>Metodos de autenticacion habilitados.</small>
+                                    <small>{{ t.enabled_auth_methods or 'Enabled authentication methods.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>VERSION_CONTROL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="VERSION_CONTROL" data-setting-type="boolean" {% if adminSettings.general.version_control %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                                 <div class="admin-field">
@@ -1487,41 +1770,41 @@
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Almacenamiento y cuotas</h6>
+                            <h6>{{ t.storage_and_quotas or 'Storage and quotas' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>USER_STORAGE_MAX_DISK_SPACE</label>
                                     <input type="number" class="admin-input" data-setting-key="USER_STORAGE_MAX_DISK_SPACE" data-setting-type="number" value="{{ adminSettings.storage.user_storage_max_disk_space }}">
-                                    <small>Maximo de almacenamiento por usuario (MB).</small>
+                                    <small>{{ t.max_storage_per_user or 'Maximum storage per user (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>DEFAULT_QUOTA</label>
                                     <input type="number" class="admin-input" data-setting-key="DEFAULT_QUOTA" data-setting-type="number" value="{{ adminSettings.storage.default_quota }}">
-                                    <small>Cuota por defecto (MB).</small>
+                                    <small>{{ t.default_quota_mb or 'Default quota (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>COUNT_USER_AUTOSAVE_SPACE_ODE_FILES</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="COUNT_USER_AUTOSAVE_SPACE_ODE_FILES" data-setting-type="boolean" {% if adminSettings.storage.count_user_autosave_space_ode_files %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Cuenta el autosave en la cuota.</small>
+                                    <small>{{ t.count_autosave_in_quota or 'Counts autosave in quota.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>FILE_UPLOAD_MAX_SIZE</label>
                                     <input type="number" class="admin-input" data-setting-key="FILE_UPLOAD_MAX_SIZE" data-setting-type="number" value="{{ adminSettings.storage.file_upload_max_size }}">
-                                    <small>Tamano maximo de subida (MB).</small>
+                                    <small>{{ t.max_upload_size or 'Maximum upload size (MB).' }}</small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Autosave</h6>
+                            <h6>{{ t.autosave or 'Autosave' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL</label>
                                     <input type="number" class="admin-input" data-setting-key="PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL" data-setting-type="number" value="{{ adminSettings.autosave.permanent_save_autosave_time_interval }}">
-                                    <small>Intervalo de autosave (segundos).</small>
+                                    <small>{{ t.autosave_interval or 'Autosave interval (seconds).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES</label>
@@ -1531,7 +1814,7 @@
                                     <label>AUTOSAVE_ODE_FILES_FUNCTION</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="AUTOSAVE_ODE_FILES_FUNCTION" data-setting-type="boolean" {% if adminSettings.autosave.autosave_ode_files_function %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1593,32 +1876,175 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            </section>
+
+            <section id="presentation" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">tune</span>
+                            {{ t.customization or 'Customization' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="presentationSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="presentationSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="accordion" id="customizationAccordion">
+
+                            <!-- Panel 1: App Identity -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingIdentity">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIdentity" aria-expanded="true" aria-controls="collapseIdentity">
+                                        <span class="mi mi-sm me-2">web_asset</span>
+                                        {{ t.app_identity_label or 'App Identity' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseIdentity" class="accordion-collapse collapse show" aria-labelledby="headingIdentity" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <label for="appNameInput">{{ t.app_name_label or 'Application name' }}</label>
+                                                <input id="appNameInput" class="admin-input" type="text" data-setting-key="APP_NAME" data-setting-type="string" value="{{ adminSettings.presentation.app_name }}" placeholder="eXeLearning">
+                                                <small>{{ t.app_name_help or 'Page title shown in the browser tab. Leave empty to use "eXeLearning".' }}</small>
+                                            </div>
+                                            <div class="admin-field">
+                                                <label>{{ t.app_favicon_label or 'Favicon' }}</label>
+                                                <div id="faviconPreviewArea" class="{% if adminSettings.presentation.app_favicon_path %}d-flex{% else %}d-none{% endif %} align-items-center gap-3 mb-2">
+                                                    <img id="faviconPreviewImg" src="{{ basePath }}/customization/favicon" alt="favicon" width="32" height="32" class="admin-favicon-preview">
+                                                    <button type="button" id="faviconDeleteBtn" class="btn-admin-outline btn-sm">
+                                                        <span class="mi mi-sm">delete</span>
+                                                        {{ t.app_favicon_delete or 'Delete favicon' }}
+                                                    </button>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <input type="file" id="faviconFileInput" class="form-control form-control-sm admin-file-input-sm" accept=".ico,.png,.svg,.gif,.jpg,.jpeg,.webp">
+                                                    <span id="faviconUploadStatus" class="admin-settings-status"></span>
+                                                </div>
+                                                <small class="mt-1 d-block">{{ t.app_favicon_help or 'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.' }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel 2: Custom HEAD HTML -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingCustomHtml">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustomHtml" aria-expanded="false" aria-controls="collapseCustomHtml">
+                                        <span class="mi mi-sm me-2">code</span>
+                                        {{ t.custom_head_html_label or 'Custom HEAD HTML' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseCustomHtml" class="accordion-collapse collapse" aria-labelledby="headingCustomHtml" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <textarea id="customHeadHtmlInput" class="admin-input admin-code-textarea" data-setting-key="CUSTOM_HEAD_HTML" data-setting-type="string" rows="12">{{ adminSettings.presentation.custom_head_html }}</textarea>
+                                                <small>{{ t.custom_head_html_help or 'HTML injected into the &lt;head&gt; of all user pages (login, workarea, error pages). Not applied to the admin panel. Only &lt;style&gt;, &lt;meta&gt;, &lt;link&gt; and &lt;script&gt; tags are allowed; any other tags will be removed automatically.' }}</small>
+                                                <small>
+                                                    {{ t.custom_head_html_jquery_note or 'jQuery is available on all user pages.' }}
+                                                    {{ t.custom_head_html_hook_label or 'To run code only in the workarea after the app is fully loaded, define' }}
+                                                    <code>window.$eXeLearningCustom.init()</code>:
+                                                </small>
+                                                <details class="admin-code-example">
+                                                    <summary>{{ t.custom_head_html_example or 'Example' }}</summary>
+                                                    <pre>&lt;style&gt;
+    /* Your custom CSS here */
+&lt;/style&gt;
+
+&lt;script&gt;
+jQuery(function () {
+    // Runs when DOM is loaded (login, workarea, error pages, etc.)
+});
+window.$eXeLearningCustom = {
+    init: function () {
+        // Runs only in the workarea, after the app has fully loaded.
+        // window.eXeLearning is available here.
+    }
+};
+&lt;/script&gt;</pre>
+                                                </details>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel 3: Custom Assets -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingAssets">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssets" aria-expanded="false" aria-controls="collapseAssets">
+                                        <span class="mi mi-sm me-2">attach_file</span>
+                                        {{ t.custom_assets_label or 'Custom Assets' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseAssets" class="accordion-collapse collapse" aria-labelledby="headingAssets" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <small class="d-block mb-3">{{ t.custom_assets_help or 'Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.' }}</small>
+                                                <div class="d-flex align-items-center gap-2 mb-3">
+                                                    <input type="file" id="assetFileInput" class="form-control form-control-sm admin-file-input-sm" multiple>
+                                                    <span id="assetUploadStatus" class="admin-settings-status"></span>
+                                                </div>
+                                                <div id="customAssetsList"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Maintenance Section -->
+            <section id="maintenance" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">engineering</span>
+                            {{ t.maintenance or 'Maintenance' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="maintenanceSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="maintenanceSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="maintenance-status-card {% if adminSettings.maintenance.maintenance_mode %}maintenance-status-active{% else %}maintenance-status-inactive{% endif %}" id="maintenanceStatusCard">
+                            <div class="maintenance-status-icon">
+                                <span class="mi" id="maintenanceStatusIcon">{% if adminSettings.maintenance.maintenance_mode %}engineering{% else %}check_circle{% endif %}</span>
+                            </div>
+                            <div class="maintenance-status-info">
+                                <strong id="maintenanceStatusTitle">{% if adminSettings.maintenance.maintenance_mode %}{{ t.maintenance_mode_active or 'Maintenance mode is active' }}{% else %}{{ t.maintenance_mode_inactive or 'Platform is online' }}{% endif %}</strong>
+                                <p id="maintenanceStatusDesc">{% if adminSettings.maintenance.maintenance_mode %}{{ t.maintenance_mode_active_desc or 'Non-administrator users cannot access the platform.' }}{% else %}{{ t.maintenance_mode_inactive_desc or 'All users can access the platform normally.' }}{% endif %}</p>
+                            </div>
+                        </div>
+
                         <div class="admin-settings-group">
-                            <h6>Integraciones de almacenamiento</h6>
+                            <h6>{{ t.maintenance_mode_setting or 'Maintenance mode' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
-                                    <label>GOOGLE_CLIENT_ID</label>
-                                    <input class="admin-input" data-setting-key="GOOGLE_CLIENT_ID" data-setting-type="string" value="{{ adminSettings.storage_integrations.google_client_id }}">
-                                </div>
-                                <div class="admin-field">
-                                    <label>GOOGLE_CLIENT_SECRET</label>
-                                    <input class="admin-input" type="password" data-setting-key="GOOGLE_CLIENT_SECRET" data-setting-type="string" value="{{ adminSettings.storage_integrations.google_client_secret }}">
-                                </div>
-                                <div class="admin-field">
-                                    <label>DROPBOX_CLIENT_ID</label>
-                                    <input class="admin-input" data-setting-key="DROPBOX_CLIENT_ID" data-setting-type="string" value="{{ adminSettings.storage_integrations.dropbox_client_id }}">
-                                </div>
-                                <div class="admin-field">
-                                    <label>DROPBOX_CLIENT_SECRET</label>
-                                    <input class="admin-input" type="password" data-setting-key="DROPBOX_CLIENT_SECRET" data-setting-type="string" value="{{ adminSettings.storage_integrations.dropbox_client_secret }}">
-                                </div>
-                                <div class="admin-field">
-                                    <label>OPENEQUELLA_CLIENT_ID</label>
-                                    <input class="admin-input" data-setting-key="OPENEQUELLA_CLIENT_ID" data-setting-type="string" value="{{ adminSettings.storage_integrations.openequella_client_id }}">
-                                </div>
-                                <div class="admin-field">
-                                    <label>OPENEQUELLA_CLIENT_SECRET</label>
-                                    <input class="admin-input" type="password" data-setting-key="OPENEQUELLA_CLIENT_SECRET" data-setting-type="string" value="{{ adminSettings.storage_integrations.openequella_client_secret }}">
+                                    <label>MAINTENANCE_MODE</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" id="maintenanceModeToggle" data-setting-key="MAINTENANCE_MODE" data-setting-type="boolean" {% if adminSettings.maintenance.maintenance_mode %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.maintenance_mode_desc or 'When enabled, non-administrator users will see a maintenance page. Administrators retain full access.' }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1746,11 +2172,13 @@
         </div>
     </div>
 
+    <script src="{{ basePath }}/libs/chartjs/chart.umd.min.js"></script>
     <script src="{{ basePath }}/libs/bootstrap/bootstrap.bundle.min.js"></script>
     <script>
         // Configuration
         const API_BASE = '{{ basePath }}/api/admin';
         const BASE_PATH = '{{ basePath }}';
+        const CURRENT_ADMIN_USER_ID = Number('{{ user.id }}');
         const T = {
             confirm_delete: '{{ t.confirm_delete or "Are you sure you want to delete this user?" }}',
             confirm_delete_bulk: '{{ t.confirm_delete_bulk or "Are you sure you want to delete {count} users?" }}',
@@ -1771,7 +2199,19 @@
             deactivate: '{{ t.deactivate or "Deactivate" }}',
             archiving: '{{ t.archiving or "Archiving..." }}',
             updating: '{{ t.updating or "Updating..." }}',
-            archive: '{{ t.archive or "Archive" }}'
+            archive: '{{ t.archive or "Archive" }}',
+            unlimited: '{{ t.unlimited or "Unlimited" }}',
+            base: '{{ t.base or "Base" }}',
+            site: '{{ t.site or "Site" }}',
+            log_in_as: '{{ t.log_in_as or "Log in as" }}',
+            cannot_impersonate_admin: '{{ t.cannot_impersonate_admin or "Cannot impersonate administrator users" }}',
+            cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
+            confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
+            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
+            presentation: '{{ t.customization or "Customization" }}',
+            maintenance: '{{ t.maintenance or "Maintenance" }}',
+            logins: '{{ t.logins or "Logins" }}',
+            projects_created: '{{ t.projects_created or "Projects Created" }}'
         };
 
         // State
@@ -1814,12 +2254,14 @@
                 users: T.users,
                 projects: T.projects,
                 extensions: T.extensions,
-                settings: T.settings
+                settings: T.settings,
+                presentation: T.customization,
+                maintenance: T.maintenance
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
             // Load section data
-            if (section === 'dashboard') { loadStats(); loadSystemInfo(); }
+            if (section === 'dashboard') { loadSystemInfo(); }
             if (section === 'users') loadUsers();
             if (section === 'projects') loadProjects();
 
@@ -1836,7 +2278,7 @@
             settingsSaveBtn.addEventListener('click', async () => {
                 settingsSaveBtn.setAttribute('disabled', 'disabled');
                 if (settingsSaveStatus) {
-                    settingsSaveStatus.textContent = 'Guardando...';
+                    settingsSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
                     settingsSaveStatus.classList.remove('success', 'error');
                 }
 
@@ -1856,14 +2298,14 @@
                     }
 
                     if (settingsSaveStatus) {
-                        settingsSaveStatus.textContent = 'Guardado';
+                        settingsSaveStatus.textContent = '{{ t.saved or "Saved" }}';
                         settingsSaveStatus.classList.add('success');
                     }
                     updateCreateUserDefaultQuota(settings);
                 } catch (err) {
                     console.error('Failed to save settings:', err);
                     if (settingsSaveStatus) {
-                        settingsSaveStatus.textContent = err?.message || 'Error al guardar';
+                        settingsSaveStatus.textContent = err?.message || '{{ t.error_saving or "Error saving" }}';
                         settingsSaveStatus.classList.add('error');
                     }
                 } finally {
@@ -1871,6 +2313,342 @@
                 }
             });
         }
+
+        // Presentation save
+        const presentationSaveBtn = document.getElementById('presentationSaveBtn');
+        const presentationSaveStatus = document.getElementById('presentationSaveStatus');
+
+        if (presentationSaveBtn) {
+            presentationSaveBtn.addEventListener('click', async () => {
+                presentationSaveBtn.setAttribute('disabled', 'disabled');
+                if (presentationSaveStatus) {
+                    presentationSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
+                    presentationSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const appNameInput = document.getElementById('appNameInput');
+                    const textarea = document.getElementById('customHeadHtmlInput');
+                    const settings = [
+                        { key: 'APP_NAME', value: appNameInput ? appNameInput.value : '', type: 'string' },
+                        { key: 'CUSTOM_HEAD_HTML', value: textarea ? textarea.value : '', type: 'string' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+                    const resData = await res.json();
+                    // Update textarea with the sanitized value returned by the server
+                    if (resData.sanitizedValues?.CUSTOM_HEAD_HTML !== undefined && textarea) {
+                        textarea.value = resData.sanitizedValues.CUSTOM_HEAD_HTML;
+                    }
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = '{{ t.saved or "Saved" }}';
+                        presentationSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            presentationSaveStatus.textContent = '';
+                            presentationSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
+                        presentationSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    presentationSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Maintenance save
+        const maintenanceSaveBtn = document.getElementById('maintenanceSaveBtn');
+        const maintenanceSaveStatus = document.getElementById('maintenanceSaveStatus');
+
+        if (maintenanceSaveBtn) {
+            maintenanceSaveBtn.addEventListener('click', async () => {
+                maintenanceSaveBtn.setAttribute('disabled', 'disabled');
+                if (maintenanceSaveStatus) {
+                    maintenanceSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
+                    maintenanceSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const toggle = document.getElementById('maintenanceModeToggle');
+                    const settings = [
+                        { key: 'MAINTENANCE_MODE', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+
+                    // Update status card UI
+                    const isActive = toggle && toggle.checked;
+                    const statusCard = document.getElementById('maintenanceStatusCard');
+                    const statusIcon = document.getElementById('maintenanceStatusIcon');
+                    const statusTitle = document.getElementById('maintenanceStatusTitle');
+                    const statusDesc = document.getElementById('maintenanceStatusDesc');
+                    const banner = document.getElementById('maintenanceBanner');
+
+                    if (statusCard) {
+                        statusCard.classList.toggle('maintenance-status-active', isActive);
+                        statusCard.classList.toggle('maintenance-status-inactive', !isActive);
+                    }
+                    if (statusIcon) statusIcon.textContent = isActive ? 'engineering' : 'check_circle';
+                    if (statusTitle) statusTitle.textContent = isActive ? '{{ t.maintenance_mode_active or "Maintenance mode is active" }}' : '{{ t.maintenance_mode_inactive or "Platform is online" }}';
+                    if (statusDesc) statusDesc.textContent = isActive ? '{{ t.maintenance_mode_active_desc or "Non-administrator users cannot access the platform." }}' : '{{ t.maintenance_mode_inactive_desc or "All users can access the platform normally." }}';
+
+                    // Show/hide global banner
+                    if (banner) {
+                        banner.classList.toggle('d-none', !isActive);
+                    } else if (isActive) {
+                        // Create banner dynamically if it doesn't exist yet
+                        const content = document.querySelector('.admin-content');
+                        if (content) {
+                            const newBanner = document.createElement('div');
+                            newBanner.className = 'maintenance-banner';
+                            newBanner.id = 'maintenanceBanner';
+                            newBanner.innerHTML = '<span class="mi mi-sm">engineering</span><strong>{{ t.maintenance_mode_active or "Maintenance mode is active" }}</strong> &mdash; {{ t.maintenance_mode_active_desc or "Non-administrator users cannot access the platform." }}';
+                            content.insertBefore(newBanner, content.firstChild);
+                        }
+                    }
+
+                    if (maintenanceSaveStatus) {
+                        maintenanceSaveStatus.textContent = '{{ t.saved or "Saved" }}';
+                        maintenanceSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            maintenanceSaveStatus.textContent = '';
+                            maintenanceSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (maintenanceSaveStatus) {
+                        maintenanceSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
+                        maintenanceSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    maintenanceSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // =============================================
+        // Favicon management
+        // =============================================
+        function updateFaviconPreview(hasCustomFavicon) {
+            const previewArea = document.getElementById('faviconPreviewArea');
+            if (!previewArea) return;
+            if (hasCustomFavicon) {
+                previewArea.classList.remove('d-none');
+                previewArea.classList.add('d-flex');
+                const img = document.getElementById('faviconPreviewImg');
+                if (img) img.src = `${BASE_PATH}/customization/favicon?t=${Date.now()}`;
+            } else {
+                previewArea.classList.add('d-none');
+                previewArea.classList.remove('d-flex');
+            }
+        }
+
+        const faviconFileInput = document.getElementById('faviconFileInput');
+        const faviconDeleteBtn = document.getElementById('faviconDeleteBtn');
+        const faviconUploadStatus = document.getElementById('faviconUploadStatus');
+
+        if (faviconFileInput) {
+            faviconFileInput.addEventListener('change', async () => {
+                const file = faviconFileInput.files?.[0];
+                if (!file) return;
+                if (faviconUploadStatus) {
+                    faviconUploadStatus.textContent = '...';
+                    faviconUploadStatus.className = 'admin-settings-status';
+                }
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const res = await fetch(`${API_BASE}/customization/favicon`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData,
+                    });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.message || 'Upload failed');
+                    }
+                    if (faviconUploadStatus) {
+                        faviconUploadStatus.textContent = '✓';
+                        faviconUploadStatus.classList.add('success');
+                        setTimeout(() => {
+                            faviconUploadStatus.textContent = '';
+                            faviconUploadStatus.className = 'admin-settings-status';
+                        }, 3000);
+                    }
+                    updateFaviconPreview(true);
+                    faviconFileInput.value = '';
+                } catch (err) {
+                    if (faviconUploadStatus) {
+                        faviconUploadStatus.textContent = err?.message || 'Error';
+                        faviconUploadStatus.classList.add('error');
+                    }
+                }
+            });
+        }
+
+        if (faviconDeleteBtn) {
+            faviconDeleteBtn.addEventListener('click', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/customization/favicon`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (!res.ok) throw new Error('Delete failed');
+                    updateFaviconPreview(false);
+                } catch (err) {
+                    alert(err?.message || 'Error deleting favicon');
+                }
+            });
+        }
+
+        // =============================================
+        // Custom Assets management
+        // =============================================
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).catch(() => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            });
+        }
+
+        async function loadCustomAssets() {
+            const container = document.getElementById('customAssetsList');
+            if (!container) return;
+            container.innerHTML = '<p class="text-muted small">{{ t.loading or "Loading..." }}</p>';
+            try {
+                const res = await fetch(`${API_BASE}/customization/assets`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load assets');
+                const data = await res.json();
+                if (!data.assets || data.assets.length === 0) {
+                    container.innerHTML = '<p class="text-muted small">{{ t.custom_assets_empty or "No files uploaded yet." }}</p>';
+                    return;
+                }
+                container.innerHTML = `
+                    <table class="admin-table">
+                        <thead><tr><th>File</th><th>URL</th><th>Size</th><th></th></tr></thead>
+                        <tbody>
+                            ${data.assets.map(asset => `
+                                <tr>
+                                    <td class="text-break">${escapeHtml(asset.filename)}</td>
+                                    <td>
+                                        <code class="text-break small">${escapeHtml(asset.url)}</code>
+                                        <button type="button" class="btn-admin-icon ms-1 js-copy-url" data-url="${escapeHtml(asset.url)}" title="{{ t.custom_assets_copy_url or 'Copy URL' }}">
+                                            <span class="mi mi-sm">content_copy</span>
+                                        </button>
+                                    </td>
+                                    <td class="text-nowrap">${formatBytes(asset.size)}</td>
+                                    <td>
+                                        <button type="button" class="btn-admin-outline btn-sm js-delete-asset" data-filename="${escapeHtml(asset.filename)}">
+                                            <span class="mi mi-sm">delete</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            } catch (err) {
+                container.innerHTML = `<p class="text-danger small">${escapeHtml(err?.message || 'Error loading assets')}</p>`;
+            }
+        }
+
+        // Event delegation for dynamically rendered asset buttons
+        document.getElementById('customAssetsList')?.addEventListener('click', async (e) => {
+            const copyBtn = e.target.closest('.js-copy-url');
+            if (copyBtn) {
+                copyToClipboard(copyBtn.dataset.url);
+                return;
+            }
+            const deleteBtn = e.target.closest('.js-delete-asset');
+            if (deleteBtn) {
+                const filename = deleteBtn.dataset.filename;
+                if (!confirm(`Delete "${filename}"?`)) return;
+                try {
+                    const res = await fetch(`${API_BASE}/customization/assets/${encodeURIComponent(filename)}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (!res.ok) throw new Error('Delete failed');
+                    loadCustomAssets();
+                } catch (err) {
+                    alert(err?.message || 'Error deleting file');
+                }
+            }
+        });
+
+        const assetFileInput = document.getElementById('assetFileInput');
+        const assetUploadStatus = document.getElementById('assetUploadStatus');
+
+        if (assetFileInput) {
+            assetFileInput.addEventListener('change', async () => {
+                const files = Array.from(assetFileInput.files || []);
+                if (!files.length) return;
+                if (assetUploadStatus) {
+                    assetUploadStatus.textContent = '...';
+                    assetUploadStatus.className = 'admin-settings-status';
+                }
+                let errors = 0;
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const res = await fetch(`${API_BASE}/customization/assets`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData,
+                        });
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            throw new Error(data.message || 'Upload failed');
+                        }
+                    } catch {
+                        errors++;
+                    }
+                }
+                if (assetUploadStatus) {
+                    if (errors === 0) {
+                        assetUploadStatus.textContent = '✓';
+                        assetUploadStatus.classList.add('success');
+                        setTimeout(() => {
+                            assetUploadStatus.textContent = '';
+                            assetUploadStatus.className = 'admin-settings-status';
+                        }, 3000);
+                    } else {
+                        assetUploadStatus.textContent = `${errors} file(s) failed`;
+                        assetUploadStatus.classList.add('error');
+                    }
+                }
+                assetFileInput.value = '';
+                loadCustomAssets();
+            });
+        }
+
+        // Load assets when the Custom Assets accordion panel opens
+        document.getElementById('collapseAssets')?.addEventListener('show.bs.collapse', loadCustomAssets);
 
         function collectAdminSettings() {
             const inputs = Array.from(document.querySelectorAll('[data-setting-key]'));
@@ -1916,21 +2694,7 @@
             quotaInput.value = defaultQuotaSetting.value ?? '';
         }
 
-        // Load stats
-        async function loadStats() {
-            try {
-                const res = await fetch(`${API_BASE}/stats`, { credentials: 'include' });
-                if (!res.ok) throw new Error('Failed to load stats');
-                const data = await res.json();
-
-                document.getElementById('stat-totalUsers').textContent = data.totalUsers ?? '-';
-                document.getElementById('stat-activeUsers').textContent = data.activeUsers ?? '-';
-                document.getElementById('stat-totalProjects').textContent = data.totalProjects ?? '-';
-                document.getElementById('stat-activeProjects').textContent = data.activeProjects ?? '-';
-            } catch (err) {
-                console.error('Failed to load stats:', err);
-            }
-        }
+        // Stats are loaded by dashboard.js (loadKPICards)
 
         // Load system info
         async function loadSystemInfo() {
@@ -2091,11 +2855,25 @@
                     const statusCls = user.is_active ? 'badge-active' : 'badge-inactive';
                     const statusText = user.is_active ? T.active : T.inactive;
                     const isChecked = selectedUserIds.has(user.id) ? 'checked' : '';
+                    const isAdminTarget = user.roles.includes('ROLE_ADMIN');
+                    const isSelfUser = Number(user.id) === CURRENT_ADMIN_USER_ID;
+                    const canImpersonate = !isAdminTarget && !isSelfUser;
+                    const impersonateButtonTitle = isAdminTarget
+                        ? T.cannot_impersonate_admin
+                        : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
+                    const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
+                    const impersonateButton = canImpersonate
+                        ? `<button class="btn-admin-outline" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})' title="${safeImpersonateTitle}">
+                                <span class="mi mi-sm">login</span>
+                           </button>`
+                        : `<button class="btn-admin-outline" data-action="impersonate" disabled title="${safeImpersonateTitle}">
+                                <span class="mi mi-sm">login</span>
+                           </button>`;
 
                     // Build quota display with progress bar
                     let quotaHTML = '';
                     if (user.quota_mb == null) {
-                        quotaHTML = '<span class="quota-unlimited">Unlimited</span>';
+                        quotaHTML = '<span class="quota-unlimited">' + T.unlimited + '</span>';
                     } else {
                         const usedMB = user.storage_used_mb || 0;
                         const quotaMB = user.quota_mb;
@@ -2139,9 +2917,12 @@
                         <td>${quotaHTML}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
-                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="Edit">
-                                <span class="mi mi-sm">edit</span>
-                            </button>
+                            <div class="d-flex gap-1">
+                                <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
+                                    <span class="mi mi-sm">edit</span>
+                                </button>
+                                ${impersonateButton}
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -2156,7 +2937,7 @@
                 updatePagination();
             } catch (err) {
                 console.error('Failed to load users:', err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
             } finally {
                 loading.classList.remove('active');
             }
@@ -2392,24 +3173,33 @@
                     const createdAt = project.created_at ? new Date(project.created_at).toLocaleDateString() : '-';
                     const isChecked = selectedProjectIds.has(project.id) ? 'checked' : '';
 
+                    const isPublic = project.visibility === 'public';
                     const tr = document.createElement('tr');
                     tr.dataset.projectId = project.id;
                     tr.innerHTML = `
                         <td>
                             <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
                         </td>
-                        <td style="font-weight: 600; color: var(--admin-text-muted);">#${project.id}</td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${project.uuid}">#${project.id}</td>
                         <td>${project.title || '-'}</td>
                         <td>${ownerLabel}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
                         <td>${createdAt}</td>
                         <td>
+                            ${isPublic ? `
+                            <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
+                                <span class="mi mi-sm">open_in_new</span>
+                            </a>
+                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id}, '${(project.title || '').replace(/'/g, "\\'")}')" title="{{ t.download_elpx or 'Download .elpx' }}">
+                                <span class="mi mi-sm">download</span>
+                            </button>
+                            ` : ''}
                             <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, '${nextStatus}')" title="${toggleLabel}">
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
                             ${canArchive ? `
-                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="Archive">
+                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="{{ t.archive or 'Archive' }}">
                                 <span class="mi mi-sm">archive</span>
                             </button>
                             ` : ''}
@@ -2717,6 +3507,51 @@
             }
         }
 
+        async function impersonateUser(userId, userEmail) {
+            const confirmText = T.confirm_impersonate.replace('{email}', userEmail || `#${userId}`);
+            if (!confirm(confirmText)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/impersonation/start`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.message || T.impersonation_failed);
+                }
+
+                const redirectPath = data.redirect_to || '/workarea';
+                window.location.href = `${BASE_PATH}${redirectPath}`;
+            } catch (err) {
+                console.error('Failed to start impersonation:', err);
+                alert(err.message || T.impersonation_failed);
+            }
+        }
+
+        async function downloadProjectElpx(projectId, projectTitle) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/download`, { credentials: 'include' });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.message || T.error_downloading || 'Download failed');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = res.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] || `project-${projectId}.elpx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Download failed:', err);
+            }
+        }
+
         // Edit user
         async function editUser(userId) {
             try {
@@ -2911,8 +3746,8 @@
 
                     // Source badge - different colors for base vs site themes
                     const sourceBadge = theme.source === 'base'
-                        ? '<span class="badge badge-primary">Base</span>'
-                        : '<span class="badge badge-secondary">Site</span>';
+                        ? '<span class="badge badge-primary">' + T.base + '</span>'
+                        : '<span class="badge badge-secondary">' + T.site + '</span>';
 
                     // Toggle for base vs site themes (both can be toggled now)
                     const toggleHtml = theme.source === 'base'
@@ -2979,7 +3814,16 @@
                     throw new Error(result.message || 'Upload failed');
                 }
 
-                showNotification('{{ t.theme_uploaded or "Theme uploaded successfully" }}', 'success');
+                // The backend returns { replaced: true, message, theme } when an
+                // existing site theme was overwritten by re-uploading a ZIP with
+                // the same internal name, so the admin gets clear feedback that
+                // the upload upgraded a theme rather than creating a duplicate.
+                if (result && result.replaced) {
+                    const replacedMsg = '{{ t.theme_replaced or "Theme replaced. Clients will load the new version on next refresh." }}';
+                    showNotification(result.message || replacedMsg, 'success');
+                } else {
+                    showNotification('{{ t.theme_uploaded or "Theme uploaded successfully" }}', 'success');
+                }
                 loadAdminThemes();
             } catch (error) {
                 showNotification(error.message, 'error');
@@ -3246,8 +4090,8 @@
         });
 
         // Initial load
-        loadStats();
         loadSystemInfo();
     </script>
+    <script type="module" src="{{ basePath }}/app/admin/dashboard.js"></script>
 </body>
 </html>

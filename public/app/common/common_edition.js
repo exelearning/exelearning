@@ -41,14 +41,23 @@ var $exeDevicesEdition = {
             }
 
             // Replace the _ function (see locale.js)
+            // Strip the leading "~" marker used to flag machine-translated
+            // placeholder entries. The marker stays in the XLF files for
+            // translator review but must never reach the iDevice editor UI.
+            var stripFuzzy = function (value) {
+                if (typeof value === "string" && value.charAt(0) === "~") {
+                    return value.substring(1);
+                }
+                return value;
+            };
             _ = function (str) {
                 if (typeof ($exeDevice.i18n) != "undefined") {
                     var lang = $("HTML").attr("lang");
                     if (typeof ($exeDevice.i18n[lang]) != "undefined") {
-                        return top.translations[str] || $exeDevice.i18n[lang][str] || str;
+                        return stripFuzzy(top.translations[str] || $exeDevice.i18n[lang][str] || str);
                     }
                 }
-                return top.translations[str] || str;
+                return stripFuzzy(top.translations[str] || str);
             }
 
             // Enable the iDevice
@@ -67,10 +76,16 @@ var $exeDevicesEdition = {
             // Enable the iDevice instructions
             $(".exe-info").each(function () {
                 var e = $(this);
-                e.html('<p class="exe-block-info exe-block-dismissible">' + e.html() + ' <a href="#" class="exe-block-close" title="' + _("Hide") + '"><span class="sr-av">' + _("Hide") + ' </span>×</a></p>');
+                e.html(
+                    '<div class="alert alert-info alert-dismissible fade show mb-3" role="alert">' +
+                    e.html() +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' +
+                    _("Hide") +
+                    '"></button></div>'
+                );
             });
 
-            // Dismissible messages
+            // Legacy dismissible messages (custom pre-Bootstrap markup still used by many iDevices)
             $(".exe-block-dismissible .exe-block-close").click(function () {
                 $(this).parent().fadeOut();
                 return false;
@@ -84,9 +99,25 @@ var $exeDevicesEdition = {
 
             // Enable file uploaders
             $exeDevicesEdition.iDevice.filePicker.init();
+
+            // Enable shared voice recorder controls in marked audio fields
+            $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
         },
         // Common
         common: {
+            getIdeviceDescription: function (text, url) {
+                if (typeof text != "string") return "";
+
+                var textHtml = _(text);
+                var linkHtml = "";
+                if (typeof url === "string" && url.length > 0) {
+                    linkHtml = ` <a href="${url}" target="_blank" hreflang="es" class="alert-link">${_('Usage Instructions')}</a>`;
+                }
+
+                var closeBtnHtml = ` <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>`;
+
+                return `<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">${textHtml}${linkHtml}${closeBtnHtml}</p>`;
+            },
             // Get the "Content after" or the "Content before" fieldset
             getTextFieldset: function (position) {
                 if (typeof (position) != "string" || (position != "after" && position != "before")) return "";
@@ -166,6 +197,62 @@ var $exeDevicesEdition = {
                     </fieldset>';
                 }
             },
+            progressBar: {
+                getContents: function (path) {
+                    return `<div class="exe-progress-report-wrapper" style="flex-basis:100%;width:100%">
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                    <div class="toggle-item m-0" idevice-id="eXeProgressReport">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="eXeProgressReport" class="toggle-input" aria-label="${_('Progress report')}">
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="eXeProgressReport">${_('Progress report')}.</label>
+                                    </div>
+                                    <div class="d-flex align-items-center flex-nowrap gap-2">
+                                        <label for="eXeProgressReportID" class="mb-0">${_('Identifier')}:</label>
+                                        <input type="text" class="form-control form-control-sm" id="eXeProgressReportID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                        <a href="#eXeProgressReportHelp" id="eXeProgressReportHelpLnk" title="${_('Help')}">
+                                            <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div id="eXeProgressReportHelp" class="alert alert-info d-none">
+                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                                </div>
+                            </div>`;
+                },
+                setValues: function (data) {
+                    var evaluation = !!(data && data.evaluation);
+                    var evaluationID = data && typeof data.evaluationID !== 'undefined' ? data.evaluationID : '';
+                    $('#eXeProgressReport').prop('checked', evaluation);
+                    $('#eXeProgressReportID').val(evaluationID);
+                    $('#eXeProgressReportID').prop('disabled', !evaluation);
+                },
+                getValues: function () {
+                    var evaluation = $('#eXeProgressReport').is(':checked');
+                    var evaluationID = $.trim($('#eXeProgressReportID').val());
+                    if (evaluation && evaluationID.length < 5) {
+                        eXe.app.alert(_('The report identifier must have at least 5 characters'));
+                        return false;
+                    }
+                    return {
+                        evaluation: evaluation,
+                        evaluationID: evaluationID
+                    };
+                },
+                addEvents: function () {
+                    $('#eXeProgressReport').on('change', function () {
+                        var checked = $(this).is(':checked');
+                        $('#eXeProgressReportID').prop('disabled', !checked);
+                    });
+                    $(document)
+                        .off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk')
+                        .on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', function (e) {
+                            e.preventDefault();
+                            $('#eXeProgressReportHelp').toggleClass('d-none');
+                        });
+                }
+            },
             itinerary: {
                 getContents: function () {
                     return `
@@ -201,7 +288,7 @@ var $exeDevicesEdition = {
                             </div>
                             <div class="d-flex gap-1 align-items-center mb-3">
                                 <label for="eXeGamePercentajeClue" id="labelPercentajeClue" class="mb-1">${_("Percentage of correct answers required to display the message")}:</label>
-                                <select id="eXeGamePercentajeClue" class="form-select" disabled style="max-width:8ch;width:8ch;">
+                                <select id="eXeGamePercentajeClue" class="form-select" disabled style="max-width:10ch;width:10ch;">
                                     <option value="10">10%</option>
                                     <option value="20">20%</option>
                                     <option value="30">30%</option>
@@ -296,9 +383,9 @@ var $exeDevicesEdition = {
                     $exeDevicesEdition.iDevice.gamification.scorm.addEvents();
                 },
 
-                getTab: function (hidebutton = false, hiderepeat = false, onlybutton = false) {
-                    const displaybutton = hidebutton ? `style="display:none;"` : '';
-                    const displayrepeat = hiderepeat ? `style="display:none;"` : '';
+                getTab: function (hidebutton = false, onlybutton = false) {
+                    const buttonClass = hidebutton ? 'd-none' : 'd-flex';
+                    const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
                     return `
                         <div class="exe-form-tab" title="${_('SCORM')}">
@@ -309,67 +396,53 @@ var $exeDevicesEdition = {
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
                                 <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
-                                <span id="eXeGameSCORgameAuto" class="ms-3" style="display:none;">
-                                    <div class="form-check form-check-inline" ${displayrepeat}>
-                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivityAuto" checked />
-                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivityAuto">${_("Repeat activity")}</label>
-                                    </div>
-                                </span>
+                                <span id="eXeGameSCORgameAuto" class="ms-3 d-none"></span>
                             </div>
-                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock" ${displaybutton}>
+                            <div class="${buttonClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
                                 <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
-                                <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3" style="display:none;">
+                                <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3 d-none">
                                     <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
                                     <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
-                                    <div class="form-check" ${displayrepeat}>
-                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivity" checked />
-                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivity">${_("Repeat activity")}</label>
-                                    </div>
                                 </span>
                             </div>
-                            <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2">
+                            <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
-                                    <li ${displaybutton}>${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
+                                    <li class="${buttonLiClass}">${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2">
+                            <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("The button will only be displayed when exported as SCORM.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2" >
+                            <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2 d-none">
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
                                 <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
-                                <span>%</span>   
+                                <span>%</span>
                             </div>
                         </div>`;
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
-                    $("#eXeGameSCORgame").css("visibility", "hidden");
-                    $("#eXeGameSCORgameAuto").css("visibility", "hidden");
-                    $("#eXeGameSCORMPercentaje").css("visibility", "visible");
-                    $("#eXeGameSCORMinstructionsButton").hide();
-                    $("#eXeGameSCORMinstructionsAuto").hide();
+                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
 
                     if (isScorm == 0) {
                         $('#eXeGameSCORMNoSave').prop('checked', true);
-                        $("#eXeGameSCORMPercentaje").css("visibility", "hidden");
                     } else if (isScorm == 1) {
                         $('#eXeGameSCORMAutoSave').prop('checked', true);
-                        $('#eXeGameSCORgameAuto').css("visibility", "visible");
-                        $('#eXeGameSCORMRepeatActivityAuto').prop("checked", repeatActivity);
-                        $('#eXeGameSCORMinstructionsAuto').show();
+                        $('#eXeGameSCORgameAuto').removeClass('d-none');
+                        $('#eXeGameSCORMinstructionsAuto').removeClass('d-none');
+                        $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     } else if (isScorm == 2) {
                         $('#eXeGameSCORMButtonSave').prop('checked', true);
                         $('#eXeGameSCORMbuttonText').val(textButtonScorm);
-                        $('#eXeGameSCORgame').css("visibility", "visible");
-                        $('#eXeGameSCORMinstructionsButton').show();
-                        $('#eXeGameSCORMRepeatActivity').prop("checked", repeatActivity);
+                        $('#eXeGameSCORgame').removeClass('d-none');
+                        $('#eXeGameSCORMinstructionsButton').removeClass('d-none');
+                        $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     }
                 },
 
@@ -386,40 +459,28 @@ var $exeDevicesEdition = {
                 },
 
                 addEvents: function () {
+                    const showWithFade = function (selector) {
+                        $(selector).stop(true, true).removeClass('d-none').css({
+                            opacity: 0,
+                        }).animate({
+                            opacity: 1,
+                        }, 500);
+                    };
+
                     $('input[type=radio][name="eXeGameSCORM"]').on('change', function () {
-                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto, #eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").hide();
+                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje").addClass('d-none').css('opacity', '');
                         switch ($(this).val()) {
                             case '0':
-                                $("#eXeGameSCORMPercentaje").css("visibility", "hidden");
                                 break;
                             case '1':
-                                $("#eXeGameSCORMinstructionsAuto").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
-                                $("#eXeGameSCORMPercentaje").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
+                                showWithFade('#eXeGameSCORgameAuto');
+                                showWithFade('#eXeGameSCORMinstructionsAuto');
+                                showWithFade('#eXeGameSCORMPercentaje');
                                 break;
                             case '2':
-                                $("#eXeGameSCORMinstructionsButton").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
-
-                                $("#eXeGameSCORMPercentaje").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
+                                showWithFade('#eXeGameSCORgame');
+                                showWithFade('#eXeGameSCORMinstructionsButton');
+                                showWithFade('#eXeGameSCORMPercentaje');
                                 break;
                         }
                     });
@@ -448,7 +509,7 @@ var $exeDevicesEdition = {
                                         <form method="POST">
                                             <div class="exe-file-upload" data-exe-upload>
                                                 <label for="eXeGameImportGame" class="form-label mb-1">${_("Import")}: </label>
-                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input" />
+                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input d-none" />
                                                 <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_("Choose")}</button>
                                                 <span class="exe-file-name" data-exe-file-name>${_("No file selected")}</span>
                                                 <span class="exe-field-instructions d-block mt-1">${_("Supported formats")}:${formtxt}</span>
@@ -457,16 +518,16 @@ var $exeDevicesEdition = {
                                     </div>
                                     <p class="exe-block-info" style="display:${displayEQ}" >${_('You can export its questions in txt format to integrate them into other compatible activities.')}</p>
                                     <p class ="d-flex align-items-center justify-content-start gap-1">
-                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportGame" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
+                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
                                     </p>
                                 </div>
                             </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
-                getTabIA: function (type = 0) {
+                getTabIA: function (type = 0, options = {}) {
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
@@ -490,16 +551,7 @@ var $exeDevicesEdition = {
                                     </li>
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
-                                        ${c_('Act as a highly experienced teacher.')}
-                                        ${fprompt.prompt}
-                                        ${c_('Formats')}:
-                                        ${fprompt.format.join('\\n')} 
-                                        ${fprompt.explanation}
-                                        ${c_('Examples')}:
-                                        ${fprompt.examples.join('\\n')}
-                                        ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
-                                    </textarea>
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
@@ -509,6 +561,14 @@ var $exeDevicesEdition = {
                                 <div class="d-flex justify-content-end  border-secondary p-2">
                                    <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
                                    <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
+                                   <select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
+                                        <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
+                                        <option value="https://claude.ai/new?q=">Claude</option>
+                                        <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
+                                        <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
+                                        <option value="https://grok.com/?q=">Grok</option>
+                                        <option value="https://chat.qwen.ai/?text=">Qwen</option>
+                                    </select>
                                    <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
                                    <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
                                 </div>
@@ -568,7 +628,7 @@ var $exeDevicesEdition = {
                 },
 
 
-                getAllowedFormats: function (gameId) {
+                getAllowedFormats: function (gameId, options = {}) {
                     const gameFormats = {
                         0: { // Word/Definition
                             format: [`${c_('Word')}#${c_('Definition')}`],
@@ -686,6 +746,104 @@ var $exeDevicesEdition = {
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/
                         },
+                        10: (() => { // adaptative quiz (mixed: select / sort / word)
+                            const requestedLevels = parseInt(options.numLevels, 10);
+                            const numLevels = requestedLevels === 5 ? 5 : requestedLevels === 4 ? 4 : 3;
+                            const lvlClass = numLevels === 5 ? '[0-4]' : numLevels === 4 ? '[0-3]' : '[0-2]';
+                            const lvlList = numLevels === 5
+                                ? '0, 1, 2, 3 or 4'
+                                : numLevels === 4
+                                    ? '0, 1, 2 or 3'
+                                    : '0, 1 or 2';
+                            const lvlDescr = numLevels === 5
+                                ? c_('Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).')
+                                : numLevels === 4
+                                    ? c_('Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).')
+                                    : c_('Level: 0 (low), 1 (medium) or 2 (high).');
+
+                            const format = [
+                                // Type 0: Select (multiple-choice)
+                                `0@${c_('Level')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}[#${c_('OptionC')}][#${c_('OptionD')}][#${c_('OptionE')}][#${c_('OptionF')}]`,
+                                // Type 1: Sort / order
+                                `1@${c_('Level')}#${c_('Question')}#Item1#Item2#Item3[#Item4][#Item5][#Item6]`,
+                                // Type 2: Word / definition
+                                `2@${c_('Level')}#${c_('Word')}#${c_('Definition')}`
+                            ];
+
+                            const examples = [
+                                // Type 0: single correct answer (letter B = OptionB)
+                                `0@0#B#${c_('What is the largest planet in the solar system?')}#${c_('Earth')}#${c_('Jupiter')}#${c_('Mars')}#${c_('Venus')}`,
+                                // Type 0: multiple correct answers (A and C)
+                                `0@1#AC#${c_('Which of the following are prime numbers?')}#2#4#5#9`,
+                                // Type 1: sort
+                                `1@2#${c_('Sort from largest to smallest')}#${c_('Elephant')}#${c_('Tiger')}#${c_('Cat')}#${c_('Mouse')}`,
+                                // Type 2: word/definition
+                                `2@0#${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`
+                            ];
+                            if (numLevels >= 4) {
+                                examples.push(`0@3#ABCD#${c_('Which of these are transcendental numbers?')}#π#e#${c_('Liouville constant')}#${c_('Champernowne constant')}`);
+                            }
+                            if (numLevels === 5) {
+                                examples.push(`1@4#${c_('Sort these chemical elements from lowest to highest atomic number')}#${c_('Hydrogen')}#${c_('Carbon')}#${c_('Iron')}#${c_('Gold')}#${c_('Uranium')}`);
+                            }
+
+                            const explanation = [
+                                lvlDescr,
+                                c_('Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:'),
+                                c_('Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.'),
+                                c_('Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.'),
+                                c_('Type 2 (word/definition): 2@Level#Word#Definition.'),
+                                c_('Do not include the # character inside any field.')
+                            ].join(' ');
+
+                            // Type 0 (Select): 0..6 uppercase or lowercase letters A-F as solution; 2-6 options.
+                            const selectRe = `0@${lvlClass}#[A-Fa-f]{0,6}#[^#]+#[^#]+#[^#]+(#[^#]+){0,4}`;
+                            // Type 1 (Sort): question + 3 to 6 items already in correct order.
+                            const sortRe = `1@${lvlClass}#[^#]+#[^#]+#[^#]+#[^#]+(#[^#]+){0,3}`;
+                            // Type 2 (Word): word + definition.
+                            const wordRe = `2@${lvlClass}#[^#]+#[^#]+`;
+                            const allowRegex = new RegExp(`^(${selectRe}|${sortRe}|${wordRe})$`);
+
+                            const distribution = numLevels === 5
+                                ? c_('balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)')
+                                : numLevels === 4
+                                    ? c_('balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)')
+                                    : c_('balanced across the 3 levels (0=low, 1=medium, 2=high)');
+                            const perLevelCount = numLevels === 5 ? 12 : numLevels === 4 ? 15 : 20;
+                            const totalQuestions = perLevelCount * numLevels;
+                            const difficultyLadder = numLevels === 5
+                                ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.')
+                                : numLevels === 4
+                                    ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.')
+                                    : c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.');
+
+                            // The prompt is a single static translation key with %placeholders%
+                            // so it can be extracted and translated. We must NOT wrap a template
+                            // literal containing ${...} in c_(): the extractor skips dynamic keys
+                            // (translations.ts) and the catalogue lookup would never match, leaving
+                            // the whole sentence in English. Translate first, then substitute.
+                            const prompt = c_('Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.')
+                                .replace('%total%', totalQuestions)
+                                .replace('%distribution%', distribution)
+                                .replace('%ladder%', difficultyLadder)
+                                .replace('%perLevel%', perLevelCount);
+
+                            return { format, explanation, examples, allowRegex, prompt, _meta: { numLevels, lvlList } };
+                        })(),
+                        11: { // Electric circuits
+                            format: [
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}`,
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}`
+                            ],
+                            explanation: `${c_('One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.')}`,
+                            examples: [
+                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#1 kΩ#2 kΩ#500 Ω#10 kΩ`,
+                                `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
+                            ],
+                            allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
+                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.`)
+                        },
                     };
 
                     const game = gameFormats[gameId];
@@ -703,7 +861,31 @@ var $exeDevicesEdition = {
                     };
                 },
 
-                addEvents: function (type, saveQuestions) {
+                buildIAPromptText: function (gameId, options = {}) {
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options);
+                    const lines = [
+                        c_('Act as a highly experienced teacher.'),
+                        fprompt.prompt,
+                        `${c_('Formats')}:`,
+                        fprompt.format.join('\n'),
+                        fprompt.explanation,
+                        `${c_('Examples')}:`,
+                        fprompt.examples.join('\n'),
+                        `${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')},`
+                    ];
+                    return lines.filter((line) => line !== undefined && line !== '').join('\n');
+                },
+
+                refreshIAPrompt: function (gameId, options = {}) {
+                    const $prompt = $('#eXeEPromptArea');
+                    if (!$prompt.length) return;
+                    $prompt.val($exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(gameId, options));
+                },
+
+                addEvents: function (type, saveQuestions, getOptions) {
+                    const resolveOptions = typeof getOptions === 'function'
+                        ? getOptions
+                        : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
                     const $textAreaIa = $('#eXeEQuestionsIA');
@@ -717,9 +899,24 @@ var $exeDevicesEdition = {
                     const $openChatGPTButton = $('#eXeEOpenChatGPTButton');
                     const $saveButton = $('#eXeESaveButton');
                     const $iaButton = $('#eXeEIAButton');
+                    const $iaSelect = $('#eXeEIASelect');
 
                     const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
                     const $eXeEAddArea = $('#eXeEAddArea');
+
+                    // Load user's default AI preference and select it
+                    if (window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
+                        const defaultAI = eXeLearning.app.user.preferences.preferences.defaultAI.value;
+                        if ($iaSelect.find(`option[value="${defaultAI}"]`).length) {
+                            $iaSelect.val(defaultAI);
+                        } else {
+                            // Fallback to the first option when the saved value is invalid
+                            $iaSelect.val($iaSelect.find('option').first().val());
+                        }
+                    }
+
+                    // Do not persist changes here; preferences are managed in the user preferences UI.
+                    $iaSelect.off('change.defaultAI');
 
                     $saveButton.hide();
                     $textQuestionsArea.hide();
@@ -727,9 +924,9 @@ var $exeDevicesEdition = {
                     $textPrompt.show()
                     $copyButton.show();
                     $openChatGPTButton.show();
-
-                    $divEIA.hide();
-                    $iaButton.hide()
+                    $iaButton.hide();
+                    $iaSelect.show()
+                    $divEIA.hide();                   
 
                     // File input custom UI events
                     $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
@@ -761,6 +958,7 @@ var $exeDevicesEdition = {
                         $copyButton.hide();
                         $openChatGPTButton.hide();
                         $iaButton.hide();
+                        $iaSelect.hide()
                     });
 
                     $tabPrompt.on('click', function (e) {
@@ -774,8 +972,8 @@ var $exeDevicesEdition = {
                         $saveButton.hide();
                         $copyButton.show();
                         $openChatGPTButton.show();
+                        $iaSelect.show();
                         $iaButton.hide();
-
                     });
 
                     $tabIA.on('click', function (e) {
@@ -792,50 +990,56 @@ var $exeDevicesEdition = {
                         $copyButton.hide();
                         $openChatGPTButton.hide();
                         $iaButton.hide();
+                        $iaSelect.hide();
                     });
 
                     $openChatGPTButton.on('click', function () {
                         $tabQuestions.trigger('click');
                         let prompt = $textPrompt.val();
                         if (!prompt || !prompt.trim()) {
-                            alert(_('There is no query to send to the assistant.'));
+                            eXe.app.alert(_('There is no query to send to the assistant.'));
                             return;
                         }
                         const encodedPrompt = encodeURIComponent(prompt.trim());
-                        const url = `https://chat.openai.com/?q=${encodedPrompt}`;
+                        const baseUrl = $iaSelect.val();
+                        if (!baseUrl) {
+                            eXe.app.alert(_('Please select an AI assistant.'));
+                            return;
+                        }
+                        const url = `${baseUrl}${encodedPrompt}`;
                         window.open(url, '_blank');
                     });
 
                     $saveButton.on('click', function () {
                         const content = $textQuestionsArea.val().trim();
                         if (!content) {
-                            alert(_("Please enter at least one question."));
+                            eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
+                            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert('The questions have been added successfully');
+                            eXe.app.alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
                     $iaButton.on('click', function () {
                         const content = $textAreaIa.val().trim();
                         if (!content) {
-                            alert(_("Please enter at least one question."));
+                            eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
 
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
+                            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert('The questions have been added successfully');
+                            eXe.app.alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').click();
                         }
                     });
@@ -865,11 +1069,11 @@ var $exeDevicesEdition = {
 
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
-                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
+                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions, resolveOptions());
                     });
 
                 },
-                genarateIAQuestons: async function (type, saveQuestions) {
+                genarateIAQuestons: async function (type, saveQuestions, options = {}) {
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
                     const $specialty = $('#eXeSpecialtyIA');
                     const $course = $('#eXeCourseIA');
@@ -906,14 +1110,14 @@ var $exeDevicesEdition = {
                         promptText += `${_('With the following formats:')}`;
                     }
 
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
                         ${fprompt.explanation}
                         ${_('Examples')}:
-                        ${fprompt.examples.join('\n')}  
-                        ${_('You must return only the questions without numbering and without classification or bullet points')},                    
+                        ${fprompt.examples.join('\n')}
+                        ${_('You must return only the questions without numbering and without classification or bullet points')},
                     `;
 
                     let sdata = '';
@@ -925,7 +1129,7 @@ var $exeDevicesEdition = {
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions);
+                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
                                 saveQuestions(correctsQuestions);
                             } else {
                                 sdata = _('The questions could not be generated');
@@ -974,11 +1178,11 @@ var $exeDevicesEdition = {
                 },
 
 
-                validateAndSave: function (gameId, $textQuestionsArea) {
+                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
                     const lines = $textQuestionsArea.val().trim().split('\n');
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -996,10 +1200,10 @@ var $exeDevicesEdition = {
                     }
                 },
 
-                validateQuesionsIA: function (gameId, lines) {
+                validateQuesionsIA: function (gameId, lines, options = {}) {
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1013,33 +1217,109 @@ var $exeDevicesEdition = {
                     return validLines;
                 },
 
-                exportGame: function (dataGame, idevice, name) {
+                /**
+                 * Get Electron API from current window or parent (for iframe contexts).
+                 * Returns null when not running inside Electron.
+                 */
+                getElectronAPI: function () {
+                    if (typeof window === 'undefined') return null;
+                    try {
+                        if (window.electronAPI) return window.electronAPI;
+                        if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                            return window.parent.electronAPI;
+                        }
+                    } catch (_e) {
+                        // Cross-origin access blocked
+                    }
+                    return null;
+                },
 
-                    if (!dataGame) return false;
-
-                    var blob = JSON.stringify(dataGame),
-                        newBlob = new Blob([blob], {
-                            type: "text/plain"
-                        });
+                /**
+                 * Download a Blob as a file from the editor UI.
+                 *
+                 * Centralizes the "anchor + click + revoke" pattern used by
+                 * every gamification iDevice to export game data and/or
+                 * questions. When running inside Electron (see PR #1595 and
+                 * the double-dialog regression on `#eXeGameExportQuestions`),
+                 * invoking `link.click()` on an `<a download>` with a
+                 * `blob:` URL triggers Electron's `will-download` event. The
+                 * main-process handler in `app/main.js` is async and shows
+                 * a custom `promptSave()` dialog before calling
+                 * `item.setSavePath()`. Because Electron does not await the
+                 * handler's Promise, it also shows its own default Save
+                 * dialog, resulting in two dialogs appearing at the same
+                 * time. Routing the save through `window.electronAPI.saveBufferAs`
+                 * bypasses the `will-download` path entirely and keeps a
+                 * single native dialog per user action.
+                 *
+                 * @param {Blob} blob - The file contents.
+                 * @param {string} fileName - Suggested file name.
+                 * @param {string} [containerId] - DOM id used as the anchor
+                 *   parent in the browser fallback. Falls back to `document.body`.
+                 * @returns {boolean} `true` if a save was initiated.
+                 */
+                downloadBlob: function (blob, fileName, containerId) {
+                    if (!(blob instanceof Blob)) return false;
 
                     if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-                        window.navigator.msSaveOrOpenBlob(newBlob);
-                        return;
+                        window.navigator.msSaveOrOpenBlob(blob);
+                        return true;
                     }
 
-                    const data = window.URL.createObjectURL(newBlob);
+                    // Electron bypass: use the IPC channel so `will-download`
+                    // never fires and only our custom promptSave() shows up.
+                    const electronAPI =
+                        $exeDevicesEdition.iDevice.gamification.share.getElectronAPI();
+                    if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                        const projectKey =
+                            (typeof window !== 'undefined' && window.__currentProjectId) ||
+                            'idevice-gamification-export';
+                        Promise.resolve()
+                            .then(() => blob.arrayBuffer())
+                            .then((buf) =>
+                                electronAPI.saveBufferAs(
+                                    new Uint8Array(buf),
+                                    projectKey,
+                                    fileName
+                                )
+                            )
+                            .catch((err) => {
+                                // eslint-disable-next-line no-console
+                                console.error(
+                                    '[gamification.share.downloadBlob] Electron saveBufferAs failed:',
+                                    err
+                                );
+                            });
+                        return true;
+                    }
 
-                    var link = document.createElement('a');
+                    // Browser fallback.
+                    const data = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
                     link.href = data;
-
-                    link.download = `${_("Activity")}-${name}.json`;
-                    document.getElementById(idevice).appendChild(link);
+                    link.download = fileName;
+                    const container =
+                        (containerId && document.getElementById(containerId)) ||
+                        document.body;
+                    container.appendChild(link);
                     link.click();
-
                     setTimeout(function () {
-                        document.getElementById(idevice).removeChild(link);
+                        if (link.parentNode) link.parentNode.removeChild(link);
                         window.URL.revokeObjectURL(data);
                     }, 100);
+                    return true;
+                },
+
+                exportGame: function (dataGame, idevice, name) {
+                    if (!dataGame) return false;
+                    const blob = new Blob([JSON.stringify(dataGame)], {
+                        type: 'text/plain',
+                    });
+                    return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+                        blob,
+                        `${_('Activity')}-${name}.json`,
+                        idevice
+                    );
                 },
                 import: {
 
@@ -1120,7 +1400,6 @@ var $exeDevicesEdition = {
                         });
                         addWords(words)
                     },
-
                     glosary: function (xmlText, addWords) {
                         const parser = new DOMParser(),
                             xmlDoc = parser.parseFromString(xmlText, "text/xml"),
@@ -1147,6 +1426,91 @@ var $exeDevicesEdition = {
                     },
                 },
             },
+            helpers: {
+                playerAudio: null,
+                currentAudioUrl: null,
+
+                /**
+                 * Play an audio file, supporting both regular URLs and asset:// URLs
+                 * If the same audio is already playing, it will stop it (toggle behavior)
+                 * @param {string} audio - URL of the audio file (can be asset:// or regular URL)
+                 */
+                playSound: async function (audio) {
+                    if (!audio || typeof audio !== 'string') {
+                        console.error('playSound: Invalid audio URL');
+                        return;
+                    }
+
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        this.playerAudio &&
+                        this.currentAudioUrl === audio &&
+                        !this.playerAudio.paused
+                    ) {
+                        this.stopSound();
+                        return;
+                    }
+
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound();
+
+                    let audioUrl = audio;
+
+                    // Check if it's an asset:// URL and resolve it
+                    if (audio.startsWith('asset://')) {
+                        // Use the global AssetResolver to convert asset:// to blob://
+                        if (
+                            window.eXeLearningAssetResolver &&
+                            typeof window.eXeLearningAssetResolver.resolve === 'function'
+                        ) {
+                            try {
+                                const resolvedUrl =
+                                    await window.eXeLearningAssetResolver.resolve(audio);
+                                if (resolvedUrl) {
+                                    audioUrl = resolvedUrl;
+                                } else {
+                                    console.error('playSound: Could not resolve asset URL');
+                                    return;
+                                }
+                            } catch (error) {
+                                console.error('playSound: Error resolving asset URL:', error);
+                                return;
+                            }
+                        } else {
+                            console.error('playSound: AssetResolver not available');
+                            return;
+                        }
+                    }
+
+                    // Extract URL from Google Drive if applicable
+                    if (
+                        typeof $exeDevices !== 'undefined' &&
+                        $exeDevices.iDevice?.gamification?.media?.extractURLGD
+                    ) {
+                        audioUrl = $exeDevices.iDevice.gamification.media.extractURLGD(audioUrl);
+                    }
+
+                    // Store the original URL for comparison
+                    this.currentAudioUrl = audio;
+
+                    // Create and play the audio
+                    this.playerAudio = new Audio(audioUrl);
+                    this.playerAudio
+                        .play()
+                        .catch((error) => console.error('playSound: Error playing audio:', error));
+                },
+
+                /**
+                 * Stop the currently playing audio
+                 */
+                stopSound: function () {
+                    if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
+                        this.playerAudio.pause();
+                        this.playerAudio = null;
+                    }
+                    this.currentAudioUrl = null;
+                }
+            }
         },
         // / Gamification
         filePicker: {
@@ -1208,6 +1572,9 @@ var $exeDevicesEdition = {
                         }
                     });
                 });
+
+                // Initialize recorder controls for fields marked with data-voice-recorder.
+                $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
             },
             openFilePicker: function (e) {
                 // Legacy fallback - should not be called anymore
@@ -1220,6 +1587,746 @@ var $exeDevicesEdition = {
                     eXe.app.alert(e);
                 }
             }
+        },
+        voiceRecorder: {
+            maxDurationMs: 120000,
+            startDelayMs: 80,
+            styleId: 'exe-voice-recorder-styles',
+            instances: [],
+            _cleanupBound: false,
+            _detachObserver: null,
+            isSupported: function () {
+                return !!(
+                    navigator?.mediaDevices?.getUserMedia &&
+                    typeof window.MediaRecorder !== 'undefined'
+                );
+            },
+            bindCleanupHandlers: function () {
+                if (this._cleanupBound) return;
+                this._cleanupBound = true;
+
+                var self = this;
+
+                window.addEventListener('beforeunload', function () {
+                    self.cleanupAll();
+                });
+
+                window.addEventListener('pagehide', function () {
+                    self.cleanupAll();
+                });
+
+                if (typeof MutationObserver !== 'undefined' && document.body) {
+                    this._detachObserver = new MutationObserver(function () {
+                        self.cleanupDetachedInstances();
+                    });
+                    this._detachObserver.observe(document.body, {
+                        childList: true,
+                        subtree: true,
+                    });
+                }
+            },
+            registerInstance: function (entry) {
+                this.instances.push(entry);
+            },
+            unregisterInstance: function (entry) {
+                this.instances = this.instances.filter(function (current) {
+                    return current !== entry;
+                });
+            },
+            cleanupDetachedInstances: function () {
+                var self = this;
+                this.instances.slice().forEach(function (entry) {
+                    var el = entry?.containerEl;
+                    if (!el || !document.body.contains(el)) {
+                        try {
+                            entry.cleanup();
+                        } catch (error) {
+                            self.unregisterInstance(entry);
+                        }
+                    }
+                });
+            },
+            cleanupAll: function () {
+                this.instances.slice().forEach(function (entry) {
+                    try {
+                        entry.cleanup();
+                    } catch (error) {
+                        // Ignore cleanup errors during global shutdown.
+                    }
+                });
+                this.instances = [];
+            },
+            getStrings: function () {
+                return {
+                    startRecording: _('Start voice recording'),
+                    stopRecording: _('Stop'),
+                    saveRecording: _('Save'),
+                    discardRecording: _('Delete'),
+                    fileName: _('File name'),
+                    recordingTime: _('Recording time'),
+                    reviewRecording: _('Review recording'),
+                    recordingInProgress: _('Recording in progress'),
+                    uploading: _('Uploading...'),
+                    microphoneError: _('Microphone access was denied or unavailable.'),
+                    uploadError: _('Failed to save recording.'),
+                };
+            },
+            initVoiceRecorders: function (rootElement, assetManager) {
+                if (!this.isSupported()) return;
+
+                var $root = $(rootElement || document);
+                if (!$root.length) return;
+
+                this.ensureStyles();
+                this.bindCleanupHandlers();
+
+                var self = this;
+                $root.find('[data-voice-recorder]').each(function () {
+                    self.initRecorder($(this), assetManager);
+                });
+            },
+            ensureStyles: function () {
+                if (document.getElementById(this.styleId)) return;
+
+                var style = document.createElement('style');
+                style.id = this.styleId;
+                style.textContent = `
+                    .exe-voice-recorder-toggle.recording {
+                        color: #fff;
+                        background-color: #d9534f;
+                        border-color: #d9534f;
+                        animation: exeVoicePulse 1.2s infinite;
+                    }
+                    .exe-voice-recorder-toggle {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 2.25rem !important;
+                        height: 2.25rem !important;
+                        min-width: 2.25rem !important;
+                        min-height: 2.25rem !important;
+                        padding: 0 !important;
+                        aspect-ratio: 1 / 1;
+                        flex-shrink: 0;
+                        line-height: 1;
+                        color: var(--brand-primary, #0BA1A1);
+                        border-color: var(--brand-primary, #0BA1A1);
+                        background: #fff;
+                    }
+                    .exe-voice-recorder-toggle:hover,
+                    .exe-voice-recorder-toggle:focus,
+                    .exe-voice-recorder-toggle:active {
+                        color: #087d7d;
+                        border-color: #087d7d;
+                        background: #e6f6f6;
+                    }
+                    .exe-voice-recorder-toggle svg {
+                        width: 1rem;
+                        height: 1rem;
+                        fill: currentColor;
+                    }
+                    @keyframes exeVoicePulse {
+                        0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.45); }
+                        70% { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); }
+                    }
+                    .exe-voice-recorder-panel {
+                        border: 1px solid #ced4da;
+                        border-radius: 0.375rem;
+                        padding: 0.75rem;
+                        margin-top: 0.5rem;
+                        background: #fff;
+                    }
+                    .exe-voice-recorder-status {
+                        font-size: 0.875rem;
+                        color: #495057;
+                    }
+                    .exe-voice-recorder-error {
+                        color: #b3092f;
+                        font-size: 0.875rem;
+                        margin-top: 0.5rem;
+                    }
+                    .exe-voice-recorder-fallback-modal {
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(0, 0, 0, 0.45);
+                        z-index: 1070;
+                        display: none;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 1rem;
+                    }
+                    .exe-voice-recorder-fallback-modal.show {
+                        display: flex;
+                    }
+                    .exe-voice-recorder-fallback-dialog {
+                        background: #fff;
+                        border-radius: 0.5rem;
+                        width: 560px !important;
+                        max-width: 92vw !important;
+                        box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.2);
+                    }
+                    .exe-voice-recorder-modal-dialog {
+                        width: 560px !important;
+                        max-width: 92vw !important;
+                    }
+                    .exe-voice-recorder-modal-dialog .modal-content,
+                    .exe-voice-recorder-fallback-dialog {
+                        width: 100%;
+                    }
+                    .exe-voice-recorder-stop,
+                    .exe-voice-recorder-save,
+                    .exe-voice-recorder-cancel {
+                        min-width: 8rem;
+                        min-height: 2.5rem;
+                        padding: 0.5rem 0.9rem;
+                        font-size: 0.95rem;
+                        font-weight: 500;
+                    }
+                `;
+                document.head.appendChild(style);
+            },
+            getPreferredMimeType: function () {
+                if (typeof window.MediaRecorder === 'undefined' || typeof window.MediaRecorder.isTypeSupported !== 'function') {
+                    return '';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    return 'audio/webm;codecs=opus';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/mp4')) {
+                    return 'audio/mp4';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/webm')) {
+                    return 'audio/webm';
+                }
+                return '';
+            },
+            getExtensionForMimeType: function (mimeType) {
+                var normalized = (mimeType || '').toLowerCase();
+                if (normalized.indexOf('audio/mp4') === 0) return 'mp4';
+                if (normalized.indexOf('audio/webm') === 0) return 'webm';
+                return 'webm';
+            },
+            getDefaultRecordingName: function () {
+                var date = new Date();
+                var yyyy = String(date.getFullYear());
+                var mm = String(date.getMonth() + 1).padStart(2, '0');
+                var dd = String(date.getDate()).padStart(2, '0');
+                var hh = String(date.getHours()).padStart(2, '0');
+                var min = String(date.getMinutes()).padStart(2, '0');
+                var ss = String(date.getSeconds()).padStart(2, '0');
+                return 'audio-rec-' + yyyy + mm + dd + '-' + hh + min + ss;
+            },
+            stripAudioExtension: function (name) {
+                var value = (name || '').toString().trim();
+                return value.replace(/\.(mp3|wav|ogg|m4a|aac|flac|webm|mp4)$/i, '');
+            },
+            sanitizeFileNameBase: function (name) {
+                var value = this.stripAudioExtension(name);
+                if (!value) {
+                    return this.getDefaultRecordingName();
+                }
+                value = value
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                return value || this.getDefaultRecordingName();
+            },
+            formatTime: function (seconds) {
+                var mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+                var ss = String(seconds % 60).padStart(2, '0');
+                return mm + ':' + ss;
+            },
+            resolveAssetManager: function (assetManager) {
+                return (
+                    assetManager ||
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                    null
+                );
+            },
+            initRecorder: function ($container, assetManager) {
+                if ($container.data('voiceRecorderInit')) return;
+
+                var inputSelector = $container.attr('data-voice-input') || '';
+                var previewSelector = $container.attr('data-voice-preview') || '';
+                var $input = inputSelector
+                    ? $(inputSelector).first()
+                    : $container.find('input[type="text"]').first();
+                if (!$input.length) return;
+
+                var $preview = previewSelector ? $(previewSelector).first() : $();
+                var strings = this.getStrings();
+
+                var $anchor = $container
+                    .find('.exe-pick-any-file, .exe-pick-image, input[type="button"], button')
+                    .not('.exe-voice-recorder-toggle')
+                    .first();
+                if (!$anchor.length) {
+                    $anchor = $input;
+                }
+
+                var $toggle = $('<button>', {
+                    type: 'button',
+                    class: 'btn btn-outline-secondary exe-voice-recorder-toggle',
+                    'aria-label': strings.startRecording,
+                    title: strings.startRecording,
+                    html: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 1 0 10 0z"></path></svg><span class="sr-av">' + strings.startRecording + '</span>',
+                });
+                var $inlineError = $('<div class="exe-voice-recorder-error d-none" aria-live="polite"></div>');
+
+                var modalId = 'exe-voice-recorder-modal-' + Date.now() + '-' + Math.round(Math.random() * 10000);
+                var inputId = 'exe-voice-recorder-name-' + Date.now() + '-' + Math.round(Math.random() * 10000);
+
+                var $modal = $(
+                    '<div class="modal fade" id="' + modalId + '" tabindex="-1" aria-hidden="true">' +
+                    '<div class="modal-dialog modal-dialog-centered exe-voice-recorder-modal-dialog">' +
+                    '<div class="modal-content">' +
+                    '<div class="modal-header">' +
+                    '<h5 class="modal-title">' + strings.reviewRecording + '</h5>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                    '<div class="exe-voice-recorder-recording-view">' +
+                    '<div class="exe-voice-recorder-status mb-3"><strong>' + _('Recording') + ':</strong> <span class="exe-voice-recorder-time">00:00</span></div>' +
+                    '<div class="d-flex justify-content-end"><button type="button" class="btn btn-primary exe-voice-recorder-stop" aria-label="' + strings.stopRecording + '">' + strings.stopRecording + '</button></div>' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-confirmation-view d-none">' +
+                    '<audio class="exe-voice-recorder-audio w-100 mb-2" controls></audio>' +
+                    '<label class="mb-1" for="' + inputId + '">' + strings.fileName + '</label>' +
+                    '<input type="text" class="form-control exe-voice-recorder-name" id="' + inputId + '" />' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-error d-none mt-2" aria-live="polite"></div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                    '<button type="button" class="btn btn-primary exe-voice-recorder-save" aria-label="' + strings.saveRecording + '">' + strings.saveRecording + '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary exe-voice-recorder-cancel" aria-label="' + _('Cancel') + '">' + _('Cancel') + '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>'
+                );
+
+                var $fallbackModal = $(
+                    '<div class="exe-voice-recorder-fallback-modal" id="' + modalId + '-fallback" aria-hidden="true">' +
+                    '<div class="exe-voice-recorder-fallback-dialog">' +
+                    '<div class="modal-header">' +
+                    '<h5 class="modal-title">' + strings.reviewRecording + '</h5>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                    '<div class="exe-voice-recorder-recording-view">' +
+                    '<div class="exe-voice-recorder-status mb-3"><strong>' + _('Recording') + ':</strong> <span class="exe-voice-recorder-time">00:00</span></div>' +
+                    '<div class="d-flex justify-content-end"><button type="button" class="btn btn-primary exe-voice-recorder-stop" aria-label="' + strings.stopRecording + '">' + strings.stopRecording + '</button></div>' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-confirmation-view d-none">' +
+                    '<audio class="exe-voice-recorder-audio w-100 mb-2" controls></audio>' +
+                    '<label class="mb-1" for="' + inputId + '-fallback">' + strings.fileName + '</label>' +
+                    '<input type="text" class="form-control exe-voice-recorder-name" id="' + inputId + '-fallback" />' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-error d-none mt-2" aria-live="polite"></div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                    '<button type="button" class="btn btn-primary exe-voice-recorder-save" aria-label="' + strings.saveRecording + '">' + strings.saveRecording + '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary exe-voice-recorder-cancel" aria-label="' + _('Cancel') + '">' + _('Cancel') + '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>'
+                );
+
+                $('body').append($modal);
+                $('body').append($fallbackModal);
+
+                $anchor.after($toggle);
+                $toggle.after($inlineError);
+
+                var state = {
+                    recorder: null,
+                    stream: null,
+                    chunks: [],
+                    blob: null,
+                    blobUrl: '',
+                    timerId: null,
+                    maxTimerId: null,
+                    startTimerId: null,
+                    seconds: 0,
+                    uploaded: false,
+                    lastFocused: null,
+                    mimeType: this.getPreferredMimeType(),
+                    modalOpen: false,
+                    recordingStarted: false,
+                    suggestedName: '',
+                };
+
+                var self = this;
+                var modalApi = null;
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    modalApi = new window.bootstrap.Modal($modal[0], {
+                        backdrop: 'static',
+                        keyboard: false,
+                    });
+                }
+
+                function getActiveModal() {
+                    return modalApi ? $modal : $fallbackModal;
+                }
+
+                function updateModalTime() {
+                    getActiveModal().find('.exe-voice-recorder-time').text(self.formatTime(state.seconds));
+                }
+
+                function showRecordingView() {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-recording-view').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-confirmation-view').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-save').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-cancel').addClass('d-none');
+                }
+
+                function showConfirmationView() {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-recording-view').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-confirmation-view').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-save').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-cancel').removeClass('d-none');
+                }
+
+                function openModal() {
+                    if (modalApi) {
+                        modalApi.show();
+                    } else {
+                        $fallbackModal.addClass('show').attr('aria-hidden', 'false');
+                    }
+                    state.modalOpen = true;
+                }
+
+                function openConfirmationModal() {
+                    var $activeModal = getActiveModal();
+                    state.suggestedName = self.getDefaultRecordingName();
+                    $activeModal.find('.exe-voice-recorder-audio').attr('src', state.blobUrl);
+                    $activeModal.find('.exe-voice-recorder-name').val('');
+                    $activeModal
+                        .find('.exe-voice-recorder-name')
+                        .attr('placeholder', state.suggestedName);
+                    showConfirmationView();
+                    showError('', true);
+
+                    openModal();
+                    setTimeout(function () {
+                        $activeModal.find('.exe-voice-recorder-name').trigger('focus');
+                    }, 0);
+                }
+
+                function closeConfirmationModal() {
+                    if (modalApi) {
+                        modalApi.hide();
+                    } else {
+                        $fallbackModal.removeClass('show').attr('aria-hidden', 'true');
+                    }
+                    state.modalOpen = false;
+                }
+
+                function stopStream() {
+                    if (!state.stream) return;
+                    state.stream.getTracks().forEach(function (track) {
+                        if (track && typeof track.stop === 'function') track.stop();
+                    });
+                    state.stream = null;
+                }
+
+                function clearTimers() {
+                    if (state.timerId) clearInterval(state.timerId);
+                    if (state.maxTimerId) clearTimeout(state.maxTimerId);
+                    if (state.startTimerId) clearTimeout(state.startTimerId);
+                    state.timerId = null;
+                    state.maxTimerId = null;
+                    state.startTimerId = null;
+                }
+
+                function showError(message, forModal) {
+                    var $error;
+                    if (forModal) {
+                        $error = getActiveModal().find('.exe-voice-recorder-error');
+                    } else {
+                        $error = $inlineError;
+                    }
+                    if (!message) {
+                        $error.addClass('d-none').text('');
+                        return;
+                    }
+                    $error.removeClass('d-none').text(message);
+                }
+
+                function setIdleState() {
+                    clearTimers();
+                    state.recordingStarted = false;
+                    state.seconds = 0;
+                    updateModalTime();
+                    $toggle.removeClass('recording').prop('disabled', false);
+                    showError('', false);
+                    if (state.lastFocused && typeof state.lastFocused.focus === 'function') {
+                        state.lastFocused.focus();
+                        state.lastFocused = null;
+                    }
+                }
+
+                function setRecordingState() {
+                    $toggle.addClass('recording').prop('disabled', false);
+                    showRecordingView();
+                    openModal();
+                    updateModalTime();
+                    showError('', false);
+                }
+
+                function beginRecording() {
+                    if (!state.recorder || state.recordingStarted) return;
+                    if (!state.modalOpen) return;
+
+                    state.recordingStarted = true;
+                    state.seconds = 0;
+                    updateModalTime();
+
+                    state.timerId = setInterval(function () {
+                        state.seconds += 1;
+                        updateModalTime();
+                    }, 1000);
+
+                    state.maxTimerId = setTimeout(function () {
+                        stopRecording();
+                    }, self.maxDurationMs);
+
+                    state.recorder.start(200);
+                }
+
+                function scheduleRecordingStart() {
+                    if (state.startTimerId) {
+                        clearTimeout(state.startTimerId);
+                        state.startTimerId = null;
+                    }
+
+                    if (modalApi) {
+                        $modal.one('shown.bs.modal', function () {
+                            beginRecording();
+                        });
+                    }
+
+                    state.startTimerId = setTimeout(function () {
+                        beginRecording();
+                    }, self.startDelayMs);
+                }
+
+                function setUploadingState(uploading) {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-save, .exe-voice-recorder-cancel').prop('disabled', uploading);
+                    if (uploading) {
+                        $activeModal.find('.exe-voice-recorder-save').text(strings.uploading);
+                    } else {
+                        $activeModal.find('.exe-voice-recorder-save').text(strings.saveRecording);
+                    }
+                }
+
+                function resetBlob() {
+                    if (state.blobUrl) {
+                        URL.revokeObjectURL(state.blobUrl);
+                    }
+                    state.blob = null;
+                    state.blobUrl = '';
+                    state.uploaded = false;
+                    $modal.find('.exe-voice-recorder-audio').attr('src', '');
+                    $fallbackModal.find('.exe-voice-recorder-audio').attr('src', '');
+                }
+
+                async function startRecording() {
+                    try {
+                        resetBlob();
+                        showError('', false);
+                        state.lastFocused = document.activeElement;
+                        state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        state.chunks = [];
+
+                        var options = state.mimeType ? { mimeType: state.mimeType } : undefined;
+                        state.recorder = options
+                            ? new MediaRecorder(state.stream, options)
+                            : new MediaRecorder(state.stream);
+
+                        state.recorder.ondataavailable = function (event) {
+                            if (event.data && event.data.size > 0) {
+                                state.chunks.push(event.data);
+                            }
+                        };
+
+                        state.recorder.onstop = function () {
+                            clearTimers();
+                            stopStream();
+                            state.recordingStarted = false;
+                            var outputType = state.recorder.mimeType || state.mimeType || 'audio/webm';
+                            state.blob = new Blob(state.chunks, { type: outputType });
+                            state.blobUrl = URL.createObjectURL(state.blob);
+                            openConfirmationModal();
+                        };
+
+                        setRecordingState();
+                        scheduleRecordingStart();
+                    } catch (error) {
+                        stopStream();
+                        setIdleState();
+                        showError(strings.microphoneError, false);
+                    }
+                }
+
+                function stopRecording() {
+                    if (!state.recorder) return;
+                    if (state.recorder.state === 'recording') {
+                        state.recorder.stop();
+                    } else if (!state.recordingStarted && state.modalOpen) {
+                        discardRecording(true);
+                    }
+                }
+
+                function discardRecording(skipStop) {
+                    if (!skipStop) {
+                        stopRecording();
+                    }
+                    stopStream();
+                    clearTimers();
+                    closeConfirmationModal();
+                    resetBlob();
+                    setIdleState();
+                }
+
+                async function saveRecording() {
+                    if (!state.blob) return;
+                    var manager = self.resolveAssetManager(assetManager);
+                    if (!manager || typeof manager.insertImage !== 'function') {
+                        showError(strings.uploadError, true);
+                        return;
+                    }
+
+                    try {
+                        setUploadingState(true);
+                        showError('', true);
+                        var mimeType = state.blob.type || state.mimeType || 'audio/webm';
+                        var extension = self.getExtensionForMimeType(mimeType);
+                        var userName = getActiveModal().find('.exe-voice-recorder-name').val();
+                        var baseCandidate = userName;
+                        if (!baseCandidate || !baseCandidate.toString().trim()) {
+                            baseCandidate = state.suggestedName;
+                        }
+                        var fileNameBase = self.sanitizeFileNameBase(baseCandidate);
+                        var file = new File(
+                            [state.blob],
+                            fileNameBase + '.' + extension,
+                            { type: mimeType }
+                        );
+
+                        var assetUrl = await manager.insertImage(file);
+                        $input.val(assetUrl).trigger('change');
+
+                        if ($preview.length && $preview.is('audio')) {
+                            $preview.attr('src', state.blobUrl).removeClass('d-none').show();
+                        }
+
+                        state.uploaded = true;
+                        discardRecording(true);
+                    } catch (error) {
+                        showError(strings.uploadError, true);
+                    } finally {
+                        setUploadingState(false);
+                    }
+                }
+
+                var registryEntry = {
+                    containerEl: $container.get(0),
+                    cleanup: function () {
+                        if ($container.data('voiceRecorderDestroyed')) return;
+                        $container.data('voiceRecorderDestroyed', true);
+
+                        try {
+                            if (state.recorder && state.recorder.state === 'recording') {
+                                state.recorder.stop();
+                            }
+                        } catch (error) {
+                            // Ignore recorder stop errors during forced cleanup.
+                        }
+
+                        stopStream();
+                        clearTimers();
+
+                        if (state.blobUrl) {
+                            try {
+                                URL.revokeObjectURL(state.blobUrl);
+                            } catch (error) {
+                                // Ignore revoke errors.
+                            }
+                        }
+                        state.blob = null;
+                        state.blobUrl = '';
+
+                        closeConfirmationModal();
+
+                        $toggle.off();
+                        $inlineError.remove();
+
+                        if (modalApi) {
+                            try {
+                                modalApi.dispose();
+                            } catch (error) {
+                                // Ignore dispose errors.
+                            }
+                        }
+                        $modal.remove();
+                        $fallbackModal.remove();
+
+                        self.unregisterInstance(registryEntry);
+                    },
+                };
+
+                this.registerInstance(registryEntry);
+
+                $toggle.on('click', function (event) {
+                    event.preventDefault();
+                    if (state.modalOpen) return;
+                    if ($toggle.hasClass('recording')) {
+                        stopRecording();
+                    } else {
+                        startRecording();
+                    }
+                });
+
+                $modal.find('.exe-voice-recorder-stop').on('click', function (event) {
+                    event.preventDefault();
+                    stopRecording();
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-stop').on('click', function (event) {
+                    event.preventDefault();
+                    stopRecording();
+                });
+
+                $modal.find('.exe-voice-recorder-cancel').on('click', function (event) {
+                    event.preventDefault();
+                    discardRecording(true);
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-cancel').on('click', function (event) {
+                    event.preventDefault();
+                    discardRecording(true);
+                });
+
+                $modal.find('.exe-voice-recorder-save').on('click', function (event) {
+                    event.preventDefault();
+                    saveRecording();
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-save').on('click', function (event) {
+                    event.preventDefault();
+                    saveRecording();
+                });
+
+                $container.data('voiceRecorderInit', true);
+                $container.data('voiceRecorderCleanup', function () {
+                    registryEntry.cleanup();
+                });
+            },
         },
         // Save the iDevice
         save: function () {

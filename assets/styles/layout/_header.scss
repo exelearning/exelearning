@@ -376,6 +376,26 @@
                     display: none;
                 }
 
+                // Share button: solo icono en móviles
+                #head-top-share-button {
+                    width: 36px;
+                    height: 36px;
+                    padding: 4px !important;
+
+                    .button-share-text {
+                        // Visually hidden pero accesible para screen readers
+                        position: absolute;
+                        width: 1px;
+                        height: 1px;
+                        padding: 0;
+                        margin: -1px;
+                        overflow: hidden;
+                        clip: rect(0, 0, 0, 0);
+                        white-space: nowrap;
+                        border: 0;
+                    }
+                }
+
                 // Botones más compactos en móvil
                 .btn {
                     padding: 4px 8px;

@@ -1,5 +1,19 @@
 import Theme from './theme.js';
 
+/**
+ * Read the host-supplied "block theme install from content" flag.
+ *
+ * When a host integration (WordPress/Moodle/Omeka-S) publishes a
+ * `window.eXeLearning.config.themeRegistryOverride.blockImportInstall`
+ * flag, any theme install path that originates from project content,
+ * .elpx imports, or in-editor upload UIs is silently refused and logged.
+ *
+ * @returns {boolean}
+ */
+function isThemeImportBlocked() {
+    return !!window.eXeLearning?.config?.themeRegistryOverride?.blockImportInstall;
+}
+
 export default class ThemeList {
     constructor(manager) {
         this.manager = manager;
@@ -8,19 +22,21 @@ export default class ThemeList {
 
     /**
      * Load themes
-     *
+     * Loads both server themes (base/site) and user themes from IndexedDB
      */
     async load() {
         await this.loadThemesInstalled();
+        await this.loadUserThemesFromIndexedDB();
     }
 
     /**
-     * Load themes from api
+     * Load themes from API (works in both static and server modes)
      *
      * @returns {Array}
      */
     async loadThemesInstalled() {
         this.installed = {};
+        // Use ApiCallManager which handles both static and server modes internally
         let installedThemesJSON =
             await this.manager.app.api.getThemesInstalled();
         if (installedThemesJSON && installedThemesJSON.themes) {
@@ -33,12 +49,13 @@ export default class ThemeList {
     }
 
     /**
-     * Load theme from api
+     * Load specific theme from API
      *
      * @param {*} themeId
      * @returns {Array}
      */
     async loadThemeInstalled(themeId) {
+        // Use ApiCallManager which handles both static and server modes internally
         let installedThemesJSON =
             await this.manager.app.api.getThemesInstalled();
         if (installedThemesJSON && installedThemesJSON.themes) {
@@ -79,6 +96,96 @@ export default class ThemeList {
     loadTheme(themeData) {
         let theme = this.newTheme(themeData);
         this.installed[themeData.name] = theme;
+    }
+
+    /**
+     * Load user themes from IndexedDB (persistent local storage)
+     * These are themes imported from .elpx files that persist across sessions.
+     * @param {ResourceCache} [providedCache] - Optional ResourceCache to use (passed from YjsProjectBridge during init)
+     */
+    async loadUserThemesFromIndexedDB(providedCache = null) {
+        // Embedded integrations may forbid loading user-installed themes so the
+        // editor only exposes admin-approved styles (see themeRegistryOverride).
+        if (isThemeImportBlocked()) {
+            return;
+        }
+        try {
+            // Use provided cache, or try to get from YjsProjectBridge
+            let resourceCache = providedCache;
+            if (!resourceCache) {
+                resourceCache = this.manager.app?.project?._yjsBridge?.resourceCache;
+            }
+            if (!resourceCache) {
+                return;
+            }
+
+            // List all user themes in IndexedDB
+            const userThemes = await resourceCache.listUserThemes();
+            if (!userThemes || userThemes.length === 0) {
+                return;
+            }
+
+            Logger.log(`[ThemeList] Loading ${userThemes.length} user theme(s) from IndexedDB...`);
+
+            for (const { name, config } of userThemes) {
+                // Skip if already loaded
+                if (this.installed[name]) {
+                    continue;
+                }
+
+                // Add to installed list
+                this.addUserTheme(config);
+            }
+
+            this.orderThemesInstalled();
+            Logger.log('[ThemeList] User themes loaded from IndexedDB');
+        } catch (error) {
+            console.error('[ThemeList] Error loading user themes from IndexedDB:', error);
+        }
+    }
+
+    /**
+     * Add a user theme (imported from .elpx, stored in IndexedDB)
+     * User themes are stored client-side in IndexedDB for persistence
+     * and synced via Yjs for collaboration.
+     *
+     * @param {Object} themeConfig - Theme configuration from parsed config.xml
+     * @param {string} themeConfig.name - Theme name
+     * @param {string} themeConfig.dirName - Theme directory name
+     * @param {string} themeConfig.displayName - Display name
+     * @param {string} themeConfig.type - Should be 'user'
+     * @param {string[]} themeConfig.cssFiles - CSS file names
+     * @param {boolean} themeConfig.isUserTheme - Flag indicating user theme
+     * @returns {Theme} The created Theme instance
+     */
+    addUserTheme(themeConfig) {
+        // Embedded integrations may forbid user-installed themes so the editor
+        // only exposes the admin-approved registry (see themeRegistryOverride).
+        if (isThemeImportBlocked()) {
+            console.warn(
+                `[ThemeList] Refusing to install theme '${themeConfig?.name}': `
+                + 'theme imports are disabled by the host integration.'
+            );
+            return null;
+        }
+        // User themes need special URL handling since they're served from IndexedDB/Yjs
+        // Use a special prefix that the Theme class will recognize
+        const userThemeUrl = `user-theme://${themeConfig.dirName}`;
+
+        const themeData = {
+            ...themeConfig,
+            url: userThemeUrl,
+            preview: '', // No preview for user themes
+            valid: true,
+        };
+
+        const theme = this.newTheme(themeData);
+        theme.isUserTheme = true; // Mark as user theme
+        this.installed[themeConfig.name] = theme;
+        this.orderThemesInstalled();
+
+        console.log(`[ThemeList] Added user theme '${themeConfig.name}'`);
+        return theme;
     }
 
     /**

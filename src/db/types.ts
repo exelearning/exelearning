@@ -20,6 +20,8 @@ export interface Database {
     app_settings: AppSettingsTable;
     themes: ThemesTable;
     templates: TemplatesTable;
+    impersonation_audit_logs: ImpersonationAuditLogsTable;
+    activity_log: ActivityLogTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -32,7 +34,13 @@ export interface Database {
 interface UsersTable {
     id: Generated<number>;
     email: string;
-    user_id: string;
+    /**
+     * External login identifier for SSO integrations (nullable)
+     * - CAS users: "cas:{username}"
+     * - OIDC users: "oidc:{subject}"
+     * - Local/Guest users: null (not SSO)
+     */
+    user_id: string | null;
     password: string;
     roles: string; // JSON stored as text, parse with JSON.parse()
     is_lopd_accepted: number; // SQLite boolean = 0/1
@@ -46,7 +54,7 @@ interface UsersTable {
 
 interface UsersPreferencesTable {
     id: Generated<number>;
-    user_id: string;
+    owner_id: number;
     preference_key: string;
     value: string;
     description: string | null;
@@ -169,6 +177,26 @@ interface TemplatesTable {
     updated_at: number | null; // Unix timestamp in milliseconds
 }
 
+interface ImpersonationAuditLogsTable {
+    id: Generated<number>;
+    session_id: string;
+    impersonator_user_id: number;
+    impersonated_user_id: number;
+    started_at: number;
+    ended_at: number | null;
+    started_by_ip: string | null;
+    started_user_agent: string | null;
+    ended_by_ip: string | null;
+    ended_user_agent: string | null;
+}
+
+interface ActivityLogTable {
+    id: Generated<number>;
+    event_type: string;
+    user_id: number | null;
+    created_at: number; // Unix timestamp in milliseconds
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -230,6 +258,15 @@ export type ThemeUpdate = Updateable<ThemesTable>;
 export type Template = Selectable<TemplatesTable>;
 export type NewTemplate = Insertable<TemplatesTable>;
 export type TemplateUpdate = Updateable<TemplatesTable>;
+
+// Impersonation audit logs
+export type ImpersonationAuditLog = Selectable<ImpersonationAuditLogsTable>;
+export type NewImpersonationAuditLog = Insertable<ImpersonationAuditLogsTable>;
+export type ImpersonationAuditLogUpdate = Updateable<ImpersonationAuditLogsTable>;
+
+// Audit events
+export type ActivityEvent = Selectable<ActivityLogTable>;
+export type NewActivityEvent = Insertable<ActivityLogTable>;
 
 // ============================================================================
 // HELPER TYPES

@@ -99,23 +99,23 @@ export default class IdevicesEngine {
         // Add class to dragged element
         this.draggedElement.classList.add('idevice-content-block');
         this.draggedElement.classList.add('idevice-element-in-content');
+        // When container is a block article, iDevices live inside .box-content
+        const insertTarget = container.querySelector(':scope > .box-content') || container;
         // Element after draggable element
-        let query = '.idevice-element-in-content.draggable:not(.dragging)';
-        let otherElements = [...container.querySelectorAll(query)];
+        // Exclude box-head elements - iDevices can only be placed after the header, not before it
+        let query = '.idevice-element-in-content.draggable:not(.dragging):not(.box-head)';
+        let otherElements = [...insertTarget.querySelectorAll(query)];
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
-            // Insert before element of container
-            if (container == afterElement.parentNode) {
-                container.insertBefore(this.draggedElement, afterElement);
-            } else {
-                container.insertBefore(
-                    this.draggedElement,
-                    afterElement.parentNode
-                );
+            // Walk up to find the direct child of insertTarget (handles nested elements)
+            let refNode = afterElement;
+            while (refNode.parentNode && refNode.parentNode !== insertTarget) {
+                refNode = refNode.parentNode;
             }
+            insertTarget.insertBefore(this.draggedElement, refNode);
         } else {
             // Insert in last position of container
-            container.append(this.draggedElement);
+            insertTarget.append(this.draggedElement);
         }
     }
 
@@ -126,19 +126,23 @@ export default class IdevicesEngine {
      * @param {*} ypos
      */
     moveIdeviceContentToContent(container, ypos) {
+        // When container is a block article, iDevices live inside .box-content
+        const insertTarget = container.querySelector(':scope > .box-content') || container;
         // Element after draggable element
-        let query = '.idevice-element-in-content.draggable:not(.dragging)';
-        let otherElements = [...container.querySelectorAll(query)];
+        // Exclude box-head elements - iDevices can only be placed after the header, not before it
+        let query = '.idevice-element-in-content.draggable:not(.dragging):not(.box-head)';
+        let otherElements = [...insertTarget.querySelectorAll(query)];
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
-            // Insert before element of container
-            if (container !== afterElement.parentNode) {
-                afterElement = afterElement.parentNode;
+            // Walk up to find the direct child of insertTarget (handles nested elements)
+            let refNode = afterElement;
+            while (refNode.parentNode && refNode.parentNode !== insertTarget) {
+                refNode = refNode.parentNode;
             }
-            container.insertBefore(this.draggedElement, afterElement);
+            insertTarget.insertBefore(this.draggedElement, refNode);
         } else {
             // Insert in last position of container
-            container.append(this.draggedElement);
+            insertTarget.append(this.draggedElement);
         }
     }
 
@@ -523,8 +527,24 @@ export default class IdevicesEngine {
             if (ideviceNode) {
                 let ideviceNodePreviousBlockId = ideviceNode.blockId;
                 let idevicePreviousOrder = ideviceNode.order;
+
+                // IMPORTANT: Remove iDevice from source block's idevices array BEFORE moving
+                // This prevents stale references that cause cascading deletion bugs
+                const sourceBlock = this.getBlockById(ideviceNodePreviousBlockId);
+                if (sourceBlock) {
+                    sourceBlock.removeIdeviceOfListById(ideviceNode.odeIdeviceId);
+                }
+
                 // Add idevice content to container (main container or block)
                 this.addIdeviceNodeToContainer(ideviceNode, container);
+
+                // IMPORTANT: Add iDevice to target block's idevices array AFTER moving
+                // This ensures the block-iDevice relationship is properly maintained
+                const targetBlock = this.getBlockById(ideviceNode.blockId);
+                if (targetBlock && !targetBlock.idevices.includes(ideviceNode)) {
+                    targetBlock.idevices.push(ideviceNode);
+                }
+
                 // Add idevice to components list in case there isn't
                 if (!this.getIdeviceById(ideviceNode.odeIdeviceId)) {
                     this.addIdeviceToComponentsList(
@@ -544,12 +564,45 @@ export default class IdevicesEngine {
                 this.resetDragOverClasses();
                 // We add the class to generate movement effect
                 ideviceNode.ideviceContent.classList.add('moving');
-                // Update the order of the idevice (change the parent block if necessary)
-                ideviceNode.apiUpdateBlock().then((response) => {
+
+                // Calculate new order from DOM position after reordering
+                const calculateIdeviceOrderFromDOM = (ideviceContent) => {
+                    const parent = ideviceContent.parentElement;
+                    if (!parent) return 0;
+                    const siblings = Array.from(
+                        parent.querySelectorAll(':scope > .idevice_node')
+                    );
+                    return siblings.indexOf(ideviceContent);
+                };
+                const newOrder = calculateIdeviceOrderFromDOM(
+                    ideviceNode.ideviceContent
+                );
+                ideviceNode.order = newOrder;
+
+                // Determine if this is a same-block reorder or a block change
+                const isSameBlockReorder =
+                    ideviceNodePreviousBlockId === ideviceNode.blockId;
+
+                const handlePostMove = () => {
                     setTimeout(() => {
                         ideviceNode.ideviceContent.classList.remove('moving');
                     }, this.movingClassDuration);
-                });
+                    // Check if source block became empty after move
+                    // Only check the specific source block, not all blocks
+                    // Pass null for same-block reorder (no block became empty)
+                    const blockToCheck = isSameBlockReorder
+                        ? null
+                        : ideviceNodePreviousBlockId;
+                    this.setParentsAndChildrenIdevicesBlocks(blockToCheck);
+                };
+
+                if (isSameBlockReorder) {
+                    // Same block - call apiUpdateOrder to sync order to Yjs
+                    ideviceNode.apiUpdateOrder(false).then(handlePostMove);
+                } else {
+                    // Different block - call apiUpdateBlock to handle block change
+                    ideviceNode.apiUpdateBlock().then(handlePostMove);
+                }
             }
         }
     }
@@ -759,8 +812,22 @@ export default class IdevicesEngine {
                 // Reset dragged element
                 this.resetDragElement();
                 this.resetDragOverClasses();
-                // Update order in database
-                blockNode.apiUpdateOrder(true).then((response) => {
+
+                // Calculate new order directly from DOM position (more reliable than getCurrentOrder)
+                const calculateBlockOrderFromDOM = (blockContent) => {
+                    const parent = blockContent.parentElement;
+                    if (!parent) return 0;
+                    const siblings = Array.from(
+                        parent.querySelectorAll(':scope > article.box')
+                    );
+                    const blockArticle = blockContent.closest('article.box');
+                    return siblings.indexOf(blockArticle);
+                };
+                const newOrder = calculateBlockOrderFromDOM(blockNode.blockContent);
+                blockNode.order = newOrder;
+
+                // Update order in database with explicit order (not getCurrentOrder)
+                blockNode.apiUpdateOrder(false).then((response) => {
                     setTimeout(() => {
                         blockNode.blockContent.classList.remove('moving');
                     }, this.movingClassDuration);
@@ -807,6 +874,13 @@ export default class IdevicesEngine {
      */
     isDragableInside(element, container) {
         if (element && container && element != container) {
+            // Prevent drops on block headers and ANY element inside them
+            // The header (box-head) and all its children are NOT valid drop targets
+            // Only the block body should accept drops
+            if (this.isInsideBlockHeader(container)) {
+                return false;
+            }
+
             // In case the dragged element and the container are both boxes, it is not allowed to drop
             if (
                 !(
@@ -826,6 +900,27 @@ export default class IdevicesEngine {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if an element is inside a block header (box-head)
+     * This includes the header itself and all its children (buttons, title, icons, etc.)
+     *
+     * @param {HTMLElement} element - The element to check
+     * @returns {boolean} True if the element is inside or is a block header
+     */
+    isInsideBlockHeader(element) {
+        if (!element) return false;
+
+        // Check the element itself and all its ancestors
+        let current = element;
+        while (current && current !== document.body) {
+            if (current.classList && current.classList.contains('box-head')) {
+                return true;
+            }
+            current = current.parentElement;
         }
         return false;
     }
@@ -933,8 +1028,8 @@ export default class IdevicesEngine {
             cloneIdeviceData,
             blockContent
         );
-        // Move
-        blockContent.insertBefore(
+        // Move (reposition clone immediately after the original within box-content)
+        blockNode.boxContent.insertBefore(
             cloneIdeviceNode.ideviceContent,
             originalIdevice.ideviceContent.nextSibling
         );
@@ -1020,11 +1115,44 @@ export default class IdevicesEngine {
         if (container.id == 'node-content') {
             // It is necessary to add a block and idevice inside
             let iconName = ''; // The icons of the idevices will not be shown in the content
-            let blockData = { iconName, blockName: ideviceNode.idevice.title };
+            const blockName = ideviceNode.idevice?.title || '';
+
+            // Get Yjs bridge and page ID
+            const bridge = this.project._yjsBridge;
+            const pageId =
+                this.project.app.project.structure.getSelectNodePageId();
+
+            // Calculate block order from DOM position
+            const existingBlocks = container.querySelectorAll(
+                ':scope > article.box'
+            );
+            let blockOrder = existingBlocks.length;
+            if (this.draggedElement) {
+                const blocksArray = Array.from(existingBlocks);
+                for (let i = 0; i < blocksArray.length; i++) {
+                    const blockRect = blocksArray[i].getBoundingClientRect();
+                    const dragRect =
+                        this.draggedElement.getBoundingClientRect();
+                    if (dragRect.top < blockRect.top + blockRect.height / 2) {
+                        blockOrder = i;
+                        break;
+                    }
+                }
+            }
+
+            // Create block in Yjs FIRST if bridge available
+            // This ensures the block exists in Yjs before any move operations reference it
+            let yjsBlockId = null;
+            if (bridge && pageId) {
+                yjsBlockId = bridge.addBlock(pageId, blockName, null, blockOrder);
+            }
+
+            // Create DOM block with Yjs blockId (or generate local ID if no Yjs)
+            let blockData = { iconName, blockName, blockId: yjsBlockId };
             // Generate new block
             let ideviceBlockNode = this.newBlockNode(blockData, true);
             let ideviceBlockNodeContent = ideviceBlockNode.blockContent;
-            ideviceBlockNodeContent.append(ideviceNodeContent);
+            ideviceBlockNode.boxContent.append(ideviceNodeContent);
             // Set block data to idevice
             this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
             // Insert block into node content
@@ -1041,8 +1169,8 @@ export default class IdevicesEngine {
                 }
                 // Set block ids
                 this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
-                // Insert idevice into block
-                container.insertBefore(ideviceNodeContent, this.draggedElement);
+                // Insert idevice into block's box-content wrapper
+                ideviceBlockNode.boxContent.insertBefore(ideviceNodeContent, this.draggedElement);
             }
         }
         // Move window to idevice element
@@ -1331,7 +1459,7 @@ export default class IdevicesEngine {
 
         // Generate content and add to DOM
         const ideviceContent = ideviceNode.makeIdeviceContentNode(true);
-        const blockBody = blockContainer.querySelector('.box-body') || blockContainer;
+        const blockBody = blockContainer.querySelector('.box-content') || blockContainer;
         blockBody.appendChild(ideviceContent);
 
         // Set block reference
@@ -1370,36 +1498,55 @@ export default class IdevicesEngine {
 
         Logger.log(`[IdevicesEngine] Updating remote iDevice content: ${componentData.id}`);
 
-        // Update the HTML content
-        ideviceNode.htmlView = componentData.htmlContent || '';
+        const hasContentUpdate =
+            componentData.htmlContent !== undefined ||
+            componentData.jsonProperties !== undefined;
 
-        // Remove lock status since content was saved
-        ideviceNode.lockedByRemote = false;
-        ideviceNode.lockUserName = null;
-        ideviceNode.lockUserColor = null;
+        // Update in-memory content first (used when opening edition mode later)
+        if (componentData.htmlContent !== undefined) {
+            ideviceNode.htmlView = componentData.htmlContent || '';
+        }
+        if (componentData.jsonProperties !== undefined) {
+            try {
+                ideviceNode.jsonProperties =
+                    typeof componentData.jsonProperties === 'string'
+                        ? JSON.parse(componentData.jsonProperties || '{}')
+                        : componentData.jsonProperties || {};
+            } catch {
+                ideviceNode.jsonProperties = {};
+            }
+        }
+
+        // Update lock status from remote data
+        if (componentData.lockedBy || componentData.lockUserName) {
+            ideviceNode.lockedByRemote = true;
+            ideviceNode.lockUserName = componentData.lockUserName || 'Another user';
+            ideviceNode.lockUserColor = componentData.lockUserColor || '#999';
+        } else {
+            ideviceNode.lockedByRemote = false;
+            ideviceNode.lockUserName = null;
+            ideviceNode.lockUserColor = null;
+        }
 
         // Remove loading attribute from the iDevice container
         if (ideviceNode.ideviceContent) {
             ideviceNode.ideviceContent.setAttribute('loading', 'false');
         }
 
-        // Re-render the iDevice body with new content
-        if (ideviceNode.ideviceBody) {
-            // For simple HTML content, just update the body
-            if (ideviceNode.idevice?.componentType !== 'json' || componentData.htmlContent) {
-                // Remove placeholder if present
-                const placeholder = ideviceNode.ideviceBody.querySelector('.idevice-locked-placeholder');
-                if (placeholder) {
-                    placeholder.remove();
-                }
-
-                // Update content based on iDevice type
-                if (ideviceNode.mode === 'export') {
-                    // In view mode, update the displayed content
-                    ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
-                    await ideviceNode.loadInitScriptIdevice('export');
-                }
+        // Re-render the iDevice body with new content when not being edited locally.
+        // This avoids stale/flickering UI for JSON iDevices whose source of truth is jsonProperties.
+        if (hasContentUpdate && ideviceNode.ideviceBody && ideviceNode.mode === 'export') {
+            const placeholder = ideviceNode.ideviceBody.querySelector('.idevice-locked-placeholder');
+            if (placeholder) {
+                placeholder.remove();
             }
+            // Keep immediate HTML refresh for plain-content updates.
+            // This preserves existing behavior and unit-test expectations while
+            // loadInitScriptIdevice('export') performs full iDevice re-render.
+            if (componentData.htmlContent !== undefined) {
+                ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
+            }
+            await ideviceNode.loadInitScriptIdevice('export');
         }
 
         // Update the lock indicator in the header
@@ -1490,18 +1637,18 @@ export default class IdevicesEngine {
      * @param {*} exceptionsIds
      */
     async resetCurrentIdevicesExportView(exceptionsIds) {
-        // Remove scripts/styles tags
-        this.clearNeedlessScripts();
         // Load styles of idevices
         await this.loadIdevicesExportStyles();
-        // Reload body of components
-        this.components.idevices.forEach(async (idevice) => {
+        // Reload body of components (sequential to avoid race conditions)
+        for (const idevice of this.components.idevices) {
             if (!exceptionsIds.includes(idevice.id)) {
                 // Reload export html
                 await idevice.generateContentExportView();
             }
-        });
-        // Load scripts of idevices
+        }
+        // Remove old scripts and reload them
+        // (forces re-initialization of HTML-type iDevices after all HTML is in DOM)
+        this.clearNeedlessScripts();
         this.loadIdevicesExportScripts();
         // Load legacy functions
         this.loadLegacyExeFunctionalitiesExport();
@@ -1530,6 +1677,8 @@ export default class IdevicesEngine {
             loadScreen,
             pageElement
         );
+        // Reconcile empty-page cover after reloads (including imports on current page).
+        eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode?.();
         return loadedComponents;
     }
 
@@ -1732,10 +1881,6 @@ export default class IdevicesEngine {
         if (data && data.odePagStructureSyncs) {
             // Load components in page content
             await this.loadComponentsPage(data.odePagStructureSyncs);
-            // Load idevices styles files
-            await this.loadIdevicesExportStyles();
-            // Load idevices script files
-            this.loadIdevicesExportScripts();
             // Set parents and children (blocks and idevices)
             this.setParentsAndChildrenIdevicesBlocks();
             // Promise to delay content loading
@@ -1870,8 +2015,11 @@ export default class IdevicesEngine {
                     };
                 }
             }
-            // Fallback: try to get from structure node
-            const node = project?.structure?.getNodeById(pageIdOrProperties);
+            // Fallback: try to get from structure node (if getNodeById method exists)
+            const node =
+                typeof project?.structure?.getNodeById === 'function'
+                    ? project.structure.getNodeById(pageIdOrProperties)
+                    : null;
             if (node?.properties) {
                 return {
                     hidePageTitle: node.properties.hidePageTitle?.value,
@@ -2015,8 +2163,11 @@ export default class IdevicesEngine {
      * @param {Object} components
      */
     async loadComponentsPage(pagStructure) {
-        // Load components
-        pagStructure.forEach(async (block) => {
+        const ideviceNodes = [];
+
+        // Phase 1: Create all iDevice nodes and add HTML to DOM
+        // (without loading scripts, so auto-exec doesn't fire prematurely)
+        for (const block of pagStructure) {
             // Create block
             let blockNode = this.newBlockNode(block, true);
             let blockContent = blockNode.blockContent;
@@ -2024,15 +2175,41 @@ export default class IdevicesEngine {
             blockContent.classList.add('loading');
             // Add block element to node container
             this.nodeContentElement.append(blockContent);
-            // Load Idevices in block
-            await block.odeComponentsSyncs.forEach(async (idevice) => {
+            // Create iDevices in block (without loading scripts)
+            for (const idevice of block.odeComponentsSyncs) {
                 idevice.mode = 'export';
-                let ideviceNode = await this.createIdeviceInContent(
-                    idevice,
-                    blockContent
-                );
-            });
-        });
+                let ideviceNode = await this.newIdeviceNode(idevice);
+                if (ideviceNode) {
+                    this.addIdeviceNodeToContainer(ideviceNode, blockContent);
+                    ideviceNodes.push(ideviceNode);
+                }
+            }
+        }
+
+        // Phase 2: Set HTML content for HTML-type iDevices
+        // (all HTML must be in DOM before scripts load, so auto-exec finds all activities)
+        for (const node of ideviceNodes) {
+            node.restartExeIdeviceValue();
+            const isJsonType = node.idevice?.componentType === 'json';
+            if (!isJsonType) {
+                await node.generateContentExportView();
+            }
+            node.updateMode('export');
+        }
+        this.updateMode();
+
+        // Phase 3: Load styles and scripts
+        // (scripts' auto-exec $(function(){ init() }) will find ALL HTML-type content in DOM)
+        await this.loadIdevicesExportStyles();
+        this.loadIdevicesExportScripts();
+
+        // Phase 4: Init JSON-type iDevices (need export object from loaded scripts)
+        for (const node of ideviceNodes) {
+            const isJsonType = node.idevice?.componentType === 'json';
+            if (isJsonType) {
+                await node.ideviceInitExport();
+            }
+        }
     }
 
     /**
@@ -2253,7 +2430,7 @@ export default class IdevicesEngine {
      * Go through the list of components to assign the idevices to their respective blocks
      *
      */
-    setParentsAndChildrenIdevicesBlocks(checkEmptyBlock) {
+    setParentsAndChildrenIdevicesBlocks(blockIdToCheck = null) {
         this.components.blocks.forEach((block) => {
             block.idevices = [];
         });
@@ -2263,29 +2440,29 @@ export default class IdevicesEngine {
                 block.idevices.push(idevice);
             }
         });
-        // Check empty blocks if required
-        if (checkEmptyBlock) {
-            this.components.blocks.forEach((block) => {
+        // Check only the specific block that might have become empty
+        // This prevents showing dialogs for blocks that were already empty
+        if (blockIdToCheck) {
+            const block = this.getBlockById(blockIdToCheck);
+            if (block && block.idevices.length == 0) {
                 // Delete or ask if they want to delete the block
-                if (block.idevices.length == 0) {
-                    if (block.removeIfEmpty) {
-                        block.remove(true);
-                    } else if (block.askForRemoveIfEmpty) {
-                        setTimeout(() => {
-                            eXeLearning.app.modals.confirm.show({
-                                title: _('Delete box'),
-                                body: _(
-                                    'The box is empty. Do you want to delete it?'
-                                ),
-                                confirmButtonText: _('Yes'),
-                                confirmExec: () => {
-                                    block.remove(true);
-                                },
-                            });
-                        }, 300);
-                    }
+                if (block.removeIfEmpty) {
+                    block.remove(true);
+                } else if (block.askForRemoveIfEmpty) {
+                    setTimeout(() => {
+                        eXeLearning.app.modals.confirm.show({
+                            title: _('Delete box'),
+                            body: _(
+                                'The box is empty. Do you want to delete it?'
+                            ),
+                            confirmButtonText: _('Yes'),
+                            confirmExec: () => {
+                                block.remove(true);
+                            },
+                        });
+                    }, 300);
                 }
-            });
+            }
         }
     }
 
@@ -2415,6 +2592,8 @@ export default class IdevicesEngine {
         $exeABCmusic.init();
         // Legacy $exe object
         $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**
@@ -2422,38 +2601,79 @@ export default class IdevicesEngine {
      *
      */
     enableInternalLinks() {
-        let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
-        if (eXeNodeLinks.length > 0) {
-            let pages = eXeLearning.app.project.structure.data;
-            let buttonsPages = document.querySelectorAll('.nav-element-text');
+        const eXeNodeLinks = document.querySelectorAll("a[href^='exe-node:']");
+        if (eXeNodeLinks.length === 0) return;
 
-            eXeNodeLinks.forEach((link) => {
-                let pageElement = null;
-                let pageName = 'nopage';
-                let pageId = link.href.replace('exe-node:', '');
+        const self = this;
+        eXeNodeLinks.forEach((link) => {
+            // Use getAttribute for reliable custom-protocol handling
+            const href = link.getAttribute('href') || '';
+            const withoutProtocol = href.replace(/^exe-node:/, '');
+            const hashIdx = withoutProtocol.indexOf('#');
+            const pageId = hashIdx !== -1 ? withoutProtocol.substring(0, hashIdx) : withoutProtocol;
+            const anchorId = hashIdx !== -1 ? withoutProtocol.substring(hashIdx + 1) : null;
 
-                pages.forEach((page) => {
-                    if (page.pageId === pageId) {
-                        pageName = page.pageName;
+            // Navigate directly by nav-id (reliable, no pageName matching needed)
+            const navElement = document.querySelector(`.nav-element[nav-id="${pageId}"]`);
+            if (navElement) {
+                link.onclick = async function (event) {
+                    event.preventDefault();
+                    // Navigate to target page via selectNode and wait for content to load
+                    const behaviour = self.project.app.project.structure.menuStructureBehaviour;
+                    if (behaviour) {
+                        await behaviour.selectNode(navElement);
                     }
-                });
-
-                buttonsPages.forEach((button) => {
-                    if (
-                        button.className == 'nav-element-text' &&
-                        button.innerText == pageName
-                    ) {
-                        pageElement = button;
+                    if (anchorId) {
+                        // Content is fully loaded after selectNode resolves.
+                        // Use requestAnimationFrame to ensure the DOM is painted
+                        // before scrolling to the anchor.
+                        requestAnimationFrame(() => {
+                            const target = document.getElementById(anchorId)
+                                || document.querySelector(`[name="${anchorId}"]`);
+                            if (target) {
+                                target.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        });
                     }
-                });
+                };
+            }
+        });
+    }
 
-                if (pageElement) {
-                    link.onclick = function (event) {
-                        event.preventDefault();
-                        pageElement.click();
-                    };
+    /**
+     * Normalize a script URL for deduplication checks.
+     * Strips hash and cache-buster param "t", preserves other query params.
+     *
+     * @param {string} rawSrc
+     * @returns {string}
+     */
+    normalizeScriptSrc(rawSrc) {
+        if (!rawSrc) return '';
+        try {
+            const url = new URL(rawSrc, document.baseURI);
+            url.hash = '';
+            if (url.searchParams.has('t')) {
+                url.searchParams.delete('t');
+                if (url.searchParams.toString() === '') {
+                    url.search = '';
                 }
-            });
+            }
+            return url.toString();
+        } catch (error) {
+            // Fallback for non-standard URLs
+            let cleaned = String(rawSrc).split('#')[0];
+            const parts = cleaned.split('?');
+            if (parts.length > 1) {
+                const base = parts.shift();
+                const params = parts.join('?');
+                const searchParams = new URLSearchParams(params);
+                if (searchParams.has('t')) {
+                    searchParams.delete('t');
+                }
+                const rest = searchParams.toString();
+                return rest ? `${base}?${rest}` : base;
+            }
+            return cleaned;
         }
     }
 
@@ -2464,6 +2684,23 @@ export default class IdevicesEngine {
      * @returns {Node}
      */
     loadScriptDynamically(path, newVersion) {
+        // Prevent duplicate script loading (SPA)
+        if (!newVersion) {
+            const normalizedTarget = this.normalizeScriptSrc(path);
+            const existingScript = Array.from(
+                document.querySelectorAll('head > script[src]')
+            ).find(
+                (script) =>
+                    this.normalizeScriptSrc(script.getAttribute('src')) ===
+                    normalizedTarget
+            );
+
+            if (existingScript) {
+                Logger.log('[iDevice] Script already loaded, skipping:', path);
+                return existingScript;
+            }
+        }
+
         let script = document.createElement('script');
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');
@@ -2526,8 +2763,12 @@ export default class IdevicesEngine {
             status == 'edition' ? idevice.pathEdition : idevice.pathExport;
         // Get css
         let cssText = await eXeLearning.app.api.func.getText(path);
-        // Replace idevice style urls
-        cssText = cssText.replace(/url\((?:(?!http))/gm, `url(${idevicePath}`);
+        // Rewrite relative URLs to absolute, preserving quotes
+        // Skip absolute URLs (http:, https:, data:, blob:) and root-relative paths (/)
+        cssText = cssText.replace(
+            /url\(\s*(['"]?)(?!data:|http:|https:|blob:|\/)([^'")]+)\1\s*\)/g,
+            (match, quote, path) => `url(${quote}${idevicePath}${path}${quote})`
+        );
         style.innerHTML = cssText;
         document.querySelector('head').append(style);
         return style;
@@ -2728,7 +2969,7 @@ export default class IdevicesEngine {
         const avatar = document.createElement('div');
         avatar.classList.add('idevice-user-avatar');
         // Tooltip with email
-        avatar.title = user.email || `${_('Editing by')} ${user.name || 'User'}`;
+        avatar.title = user.email || `${_('Being edited by')} ${user.name || 'User'}`;
 
         if (user.color) {
             avatar.style.borderColor = user.color;

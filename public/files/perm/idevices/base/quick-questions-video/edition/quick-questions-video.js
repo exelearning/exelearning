@@ -123,7 +123,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgClose: c_('Close'),
             msgOption: c_('Option'),
@@ -205,9 +205,6 @@ var $exeDevice = {
         );
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -360,11 +357,11 @@ var $exeDevice = {
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else if ($exeDevice.videoType == 2) {
-            url = $exeDevice.extractURLGD(url);
+            url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else if ($exeDevice.videoType == 3) {
-            url = $exeDevice.extractURLGD(url);
+            url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else {
@@ -470,9 +467,39 @@ var $exeDevice = {
     startVideoLocal: function (url, start, end) {
         if ($exeDevice.localPlayer) {
             $exeDevice.pointEnd = end;
-            $exeDevice.localPlayer.src = url;
-            $exeDevice.localPlayer.currentTime = parseFloat(start);
-            $exeDevice.localPlayer.play();
+            const player = $exeDevice.localPlayer;
+            const startTime = parseFloat(start);
+
+            // For asset:// URLs, we need to wait for resolution before playing
+            if (url.startsWith('asset://')) {
+                // Store the asset URL for reference
+                player.setAttribute('data-asset-src', url);
+
+                // Use the global asset resolver if available
+                const resolver = window.eXeLearningAssetResolver;
+                if (resolver && typeof resolver.resolve === 'function') {
+                    resolver.resolve(url).then(blobUrl => {
+                        if (blobUrl) {
+                            // Set src directly without going through interceptor
+                            player.src = blobUrl;
+                            // Wait for canplay event to set time and play
+                            // This works better with the existing loadedmetadata listener from initClock
+                            player.addEventListener('canplay', function onCanPlay() {
+                                player.removeEventListener('canplay', onCanPlay);
+                                player.currentTime = startTime;
+                                player.play().catch(() => {});
+                            }, { once: true });
+                        }
+                    });
+                } else {
+                    console.warn('[quick-questions-video] Asset resolver not available for:', url);
+                }
+            } else {
+                // Regular URL - use synchronous approach
+                player.src = url;
+                player.currentTime = startTime;
+                player.play();
+            }
             $('#vquextEVITime').show();
         }
     },
@@ -804,11 +831,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
                 <div id="vquextQEIdeviceForm">
-                    <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                        ${_('Create activities consisting on a video with interactive questions.')} 
-                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/vdeoquext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                        <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                    </p>
+                    ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                        _('Create activities consisting on a video with interactive questions.'),
+                        'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/videotest.html',
+                    )}
                     <div class="exe-form-tab" title="${_('General settings')}">
                         ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                         <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -890,7 +916,7 @@ var $exeDevice = {
                                         <label class="toggle-label" for="vquextEHasFeedBack">${_('Feedback')}.</label>
                                     </div>
                                     <input class="form-control" type="number" name="vquextEPercentajeFB" id="vquextEPercentajeFB" value="100" min="5" max="100" step="5" disabled style="width: 9.5ch !important; max-width:9.5ch !important;"/>
-                                    <label for="vquextEPercentajeFB" class="mb-0">${_('&percnt; right to see the feedback')}</label>
+                                    <label for="vquextEPercentajeFB" class="mb-0">${_('% right to see the feedback')}</label>
                                 </div>
                                 <div id="vquextEFeedbackP" class="VDQXTE-EFeedbackP mb-3">
                                     <textarea id="vquextEFeedBackEditor" class="exe-html-editor"></textarea>
@@ -961,24 +987,8 @@ var $exeDevice = {
                                     <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEEvaluation" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEEvaluation">${_('Progress report')}.</label>
-                                    </div>
-                                    <div class="d-flex align-items-center flex-nowrap gap-2">
-                                           <label for="vquextEEvaluationID">${_('Identifier')}:</label>
-                                           <input type="text" class="form-control" id="vquextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                    </div>
-                                    <a href="#vquextEEvaluationHelp" id="vquextEEvaluationHelpLnk" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>  
+                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                                 </div>
-                                <p id="vquextEEvaluationHelp" class="VDQXTE-TypeGameHelp exe-block-info">
-                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                                </p>
                             </div>
                         </fieldset>
                         <fieldset class="exe-fieldset">
@@ -1364,9 +1374,10 @@ var $exeDevice = {
         $('#vquextERepeatQuestion').prop('checked', game.repeatQuestion);
         $('#vquextERepeatQuestion').prop('disabled', !game.isNavigable);
         $('#vquextEModeBoard').prop('checked', game.modeBoard);
-        $('#vquextEEvaluation').prop('checked', game.evaluation);
-        $('#vquextEEvaluationID').val(game.evaluationID);
-        $('#vquextEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#vquextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
@@ -1699,7 +1710,7 @@ var $exeDevice = {
                     .startsWith('https://drive.google.com') &&
                     idVideoQuExt.toLowerCase().includes('sharing')),
             isMediaTeca = idVideoQuExt.startsWith(
-                'https://mediateca.educa.madrid.org/videos'
+                'https://mediateca.educa.madrid.org/'
             ),
             authorVideo = $('#vquextEAuthor').val(),
             isNavigable = $('#vquextENavigable').is(':checked'),
@@ -1708,12 +1719,13 @@ var $exeDevice = {
                 clear($('#vquextEPercentajeQuestions').val())
             ),
             modeBoard = $('#vquextEModeBoard').is(':checked'),
-            evaluation = $('#vquextEEvaluation').is(':checked'),
-            evaluationID = $('#vquextEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
         if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgProvideFB);
             return false;
@@ -1731,15 +1743,10 @@ var $exeDevice = {
             !$exeDevice.validTime($('#vquextEVIStart').val()) ||
             !$exeDevice.validTime($('#vquextEVIEnd').val()) ||
             startVideoQuExt >= endVideoQuExt ||
-            endVideoQuExt > durationVideo + 1
+            (durationVideo > 0 && endVideoQuExt > durationVideo + 1)
         ) {
             $exeDevice.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
 
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            $exeDevice.showMessage($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -1817,8 +1824,8 @@ var $exeDevice = {
             repeatQuestion,
             percentajeQuestions,
             modeBoard,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             globalTime,
             id,
         };
@@ -2116,15 +2123,7 @@ var $exeDevice = {
                 }
             }
         });
-        $('#vquextEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#vquextEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#vquextEEvaluationHelpLnk').click(function () {
-            $('#vquextEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
             e.preventDefault();

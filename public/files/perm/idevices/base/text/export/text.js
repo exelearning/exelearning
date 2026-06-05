@@ -24,8 +24,26 @@ var $text = {
      * Get the base html of the idevice view
      */
     renderView(data, accessibility, template) {
-        const hmltdata = $text.getHTMLView(data);
-        return template.replace('{content}', hmltdata);
+        let content = data.textTextarea || '';
+        const feedbackContent = data[this.feedbackContentId] || '';
+
+        // Add feedback from jsonProperties only if content doesn't already have it
+        if (feedbackContent) {
+            const temp = document.createElement('div');
+            temp.innerHTML = content;
+            const hasFeedback = temp.querySelector('.feedback-button')
+                || temp.querySelector('.feedbacktooglebutton')
+                || temp.querySelector('.feedbackbutton')
+                || temp.querySelector('.feedback.js-feedback')
+                || temp.querySelector('div.feedback');
+
+            if (!hasFeedback) {
+                const btnText = c_(data[this.feedbackTitleId]) || this.defaultBtnFeedbackText;
+                content += this.createFeedbackHTML(btnText, feedbackContent);
+            }
+        }
+
+        return template.replace('{content}', content);
     },
 
     getHTMLView(data, pathMedia) {
@@ -55,7 +73,8 @@ var $text = {
         const btnDiv = temp.querySelector('.feedback-button');
         let buttonFeedBackText = data[this.feedbackTitleId];
         if (btnDiv) {
-            const inputEl = btnDiv.querySelector('input.feedbackbutton');
+            // Support both legacy eXe 2.9 (feedbackbutton) and modern (feedbacktooglebutton) formats
+            const inputEl = btnDiv.querySelector('input.feedbackbutton, input.feedbacktooglebutton');
             if (inputEl)
                 buttonFeedBackText = isInExe
                     ? c_(inputEl.value)
@@ -92,86 +111,13 @@ var $text = {
         const activityContent =
             infoContentHTML +
             contentHtml +
-            feedbackContentHTML +
-            `<p class="clearfix"></p>`;
+            feedbackContentHTML;
 
         let htmlContent = `<div class="${this.ideviceClass}">`;
         htmlContent += this.createMainContent(activityContent);
         htmlContent += `</div>`;
 
         return htmlContent;
-    },
-
-    renderHtmlOldIdevice(data, $node) {
-        // Defensive: ensure $node is a jQuery object
-        if (!$node || !$node.length) return;
-
-        if (
-            $node.find('.pbl-task-description').length === 1 &&
-            (data[this.durationId] || data[this.participantsId])
-        ) {
-            const durationText = data[this.durationTextId];
-            const participantsText = data[this.participantsTextId];
-            const infoContentHTML = this.createInfoHTML(
-                data[this.durationId] === '' ? '' : durationText,
-                data[this.durationId],
-                data[this.participantsId] === '' ? '' : participantsText,
-                data[this.participantsId]
-            );
-
-            $node.prepend(infoContentHTML);
-        }
-
-        let buttonFeedBackText = data[this.feedbackTitleId] || '';
-        let feedBackHtml = data[this.feedbackContentId] || '';
-        const hasFeedbackNode = $node.find('.feedback.js-feedback').length > 0;
-        const hasFeedbackData = !!feedBackHtml;
-        const hasFeedbackButton = $node.find('.feedback-button').length > 0;
-
-        if (hasFeedbackData || hasFeedbackNode) {
-            const $btnDiv = $node.find('.feedback-button');
-            const hasInput =
-                $btnDiv.find('input.feedbacktooglebutton, input.feedbackbutton')
-                    .length > 0;
-            if ($btnDiv.length && !hasInput) {
-                const btnText = buttonFeedBackText
-                    ? buttonFeedBackText
-                    : this.defaultBtnFeedbackText;
-                $btnDiv.append(
-                    `<input type="button" class="feedbacktooglebutton" value="${btnText}" />`
-                );
-            } else if (!hasFeedbackButton) {
-                const feedbackButtonHTML = `
-                    <div class="iDevice_buttons feedback-button js-required">
-                        <input type="button" class="feedbacktooglebutton" value="${buttonFeedBackText || this.defaultBtnFeedbackText}" />
-                    </div>`;
-                const $activity = $node.find('.exe-text');
-                if ($activity.length) {
-                    $activity.append(feedbackButtonHTML);
-                } else {
-                    $node.append(feedbackButtonHTML);
-                }
-            }
-        }
-
-        if (hasFeedbackData && !hasFeedbackNode) {
-            const feedbackContentHTML = `<div class="feedback js-feedback js-hidden">${feedBackHtml}</div>`;
-            const $activity = $node.find('.exe-text');
-            if ($activity.length) {
-                $activity.append(feedbackContentHTML);
-            } else {
-                $node.append(feedbackContentHTML);
-            }
-        }
-
-        if ($node.find('.clearfix').length === 0) {
-            const $activity = $node.find('.exe-text');
-            if ($activity.length) {
-                $activity.append('<p class="clearfix"></p>');
-            } else {
-                $node.append('<p class="clearfix"></p>');
-            }
-        }
     },
 
     /**

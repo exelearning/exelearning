@@ -269,7 +269,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'archived',
                     visibility: 'private',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -295,7 +295,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'active',
                     visibility: 'public',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -368,6 +368,29 @@ describe('Admin Queries', () => {
             expect(result.projects).toHaveLength(1);
             expect(result.projects[0].title).toBe('Alice Test');
             expect(result.total).toBe(1);
+        });
+
+        it('should filter out unsaved projects by default (savedOnly=true)', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Saved Project', uuid: 'proj-saved', saved_once: 1 });
+            await seedTestProject(db, userId, { title: 'Unsaved Project', uuid: 'proj-unsaved', saved_once: 0 });
+
+            const result = await findProjectsPaginated(db);
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Saved Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should include unsaved projects when savedOnly=false', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Saved Project', uuid: 'proj-saved-2', saved_once: 1 });
+            await seedTestProject(db, userId, { title: 'Unsaved Project', uuid: 'proj-unsaved-2', saved_once: 0 });
+
+            const result = await findProjectsPaginated(db, { savedOnly: false });
+
+            expect(result.projects).toHaveLength(2);
+            expect(result.total).toBe(2);
         });
     });
 
@@ -505,25 +528,35 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('createUserAsAdmin', () => {
-        it('should create user with minimal fields', async () => {
+        it('should create user with minimal fields and null user_id by default', async () => {
             const user = await createUserAsAdmin(db, {
                 email: 'new@test.com',
                 password: 'hashed-password',
-                userId: 'new_user',
                 roles: ['ROLE_USER'],
             });
 
             expect(user.id).toBeDefined();
             expect(user.email).toBe('new@test.com');
-            expect(user.user_id).toBe('new_user');
+            // user_id should be null for local users (not SSO)
+            expect(user.user_id).toBeNull();
             expect(user.is_active).toBe(1);
+        });
+
+        it('should set user_id when provided (for SSO users)', async () => {
+            const user = await createUserAsAdmin(db, {
+                email: 'sso@test.com',
+                password: 'hashed-password',
+                userId: 'cas:sso_user',
+                roles: ['ROLE_USER'],
+            });
+
+            expect(user.user_id).toBe('cas:sso_user');
         });
 
         it('should always include ROLE_USER', async () => {
             const user = await createUserAsAdmin(db, {
                 email: 'admin@test.com',
                 password: 'hash',
-                userId: 'admin',
                 roles: ['ROLE_ADMIN'], // Only admin role provided
             });
 
@@ -536,7 +569,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'user@test.com',
                 password: 'hash',
-                userId: 'user',
                 roles: ['ROLE_USER', 'ROLE_USER'], // Duplicate
             });
 
@@ -549,7 +581,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'quota@test.com',
                 password: 'hash',
-                userId: 'quota',
                 roles: ['ROLE_USER'],
                 quotaMb: 500,
             });
@@ -561,7 +592,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'noquota@test.com',
                 password: 'hash',
-                userId: 'noquota',
                 roles: ['ROLE_USER'],
             });
 
@@ -573,7 +603,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'time@test.com',
                 password: 'hash',
-                userId: 'time',
                 roles: ['ROLE_USER'],
             });
             const after = Date.now();
@@ -588,7 +617,6 @@ describe('Admin Queries', () => {
             await createUserAsAdmin(db, {
                 email: 'dupe@test.com',
                 password: 'hash',
-                userId: 'dupe1',
                 roles: ['ROLE_USER'],
             });
 
@@ -596,7 +624,6 @@ describe('Admin Queries', () => {
                 createUserAsAdmin(db, {
                     email: 'dupe@test.com',
                     password: 'hash',
-                    userId: 'dupe2',
                     roles: ['ROLE_USER'],
                 }),
             ).rejects.toThrow();
@@ -705,7 +732,7 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
             await seedTestProject(db, userId, { title: 'Active Project' });
 
-            // Create archived project
+            // Create archived but saved project
             const now = Date.now();
             await db
                 .insertInto('projects')
@@ -715,7 +742,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'archived',
                     visibility: 'private',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -725,6 +752,49 @@ describe('Admin Queries', () => {
 
             expect(stats.totalProjects).toBe(2);
             expect(stats.activeProjects).toBe(1);
+        });
+
+        it('should exclude unsaved projects from counts', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+
+            // Create saved projects (should be counted)
+            await seedTestProject(db, userId, { title: 'Saved Active', uuid: 'saved-1' });
+            await seedTestProject(db, userId, { title: 'Saved Active 2', uuid: 'saved-2' });
+
+            // Create unsaved projects (should NOT be counted)
+            const now = Date.now();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'unsaved-1',
+                    title: 'Unsaved Project 1',
+                    owner_id: userId,
+                    status: 'active',
+                    visibility: 'private',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'unsaved-2',
+                    title: 'Unsaved Project 2',
+                    owner_id: userId,
+                    status: 'active',
+                    visibility: 'private',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            const stats = await getSystemStats(db);
+
+            // Only saved projects should be counted
+            expect(stats.totalProjects).toBe(2);
+            expect(stats.activeProjects).toBe(2);
         });
 
         it('should return consistent numbers', async () => {

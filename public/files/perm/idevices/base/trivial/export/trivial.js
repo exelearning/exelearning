@@ -125,6 +125,7 @@ var $eXeTrivial = {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
             const dl = $('.trivial-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             let mOption = $eXeTrivial.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -486,7 +487,7 @@ var $eXeTrivial = {
                     <video class="trivial-Video" id="trivialVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="trivial-Protector1" id="trivialProtector-${instance}"></div>
                     <a href="#" class="trivial-LinkAudio" id="trivialLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="trivial-Activo" alt="${msgs.msgAudio}">
+                        <img src="${path}exequextaudio.svg" class="trivial-Activo" alt="${msgs.msgAudio}">
                     </a>
                 </div>
                 <div class="trivial-AuthorLicence" id="trivialAutorLicence-${instance}">
@@ -928,7 +929,7 @@ var $eXeTrivial = {
             $eXeTrivial.correctAnswer(instance);
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeTrivial.saveEvaluation(instance);
         $eXeTrivial.saveDataStorage(instance);
     },
@@ -1481,7 +1482,8 @@ var $eXeTrivial = {
             .replace(/\\\[/g, '\\\\[');
     },
     loadDataGame: function (data) {
-        let json = $eXeTrivial.escapeParens(data.text());
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
 
         let mOptions = $eXeTrivial.isJsonString(json);
         mOptions = $eXeTrivial.Decrypt(mOptions);
@@ -1532,6 +1534,67 @@ var $eXeTrivial = {
             typeof mOptions.modeBoard == 'undefined'
                 ? false
                 : mOptions.modeBoard;
+
+        // Default messages for legacy imports
+        if (typeof mOptions.msgs === 'undefined') {
+            mOptions.msgs = {
+                msgStartGame: 'Click here to start',
+                msgSubmit: 'Submit',
+                msgEnterCode: 'Enter the access code',
+                msgErrorCode: 'The access code is not correct',
+                msgGameOver: 'Game Over!',
+                msgClue: 'Cool! The clue is:',
+                msgNewGame: 'Click here for a new game',
+                msgCodeAccess: 'Access code',
+                msgPlayStart: 'Click here to play',
+                msgMinimize: 'Minimize',
+                msgMaximize: 'Maximize',
+                msgTime: 'Time per question',
+                msgFullScreen: 'Full Screen',
+                msgExitFullScreen: 'Exit Full Screen',
+                msgNoImage: 'No picture question',
+                msgSuccesses: 'Right! | Excellent! | Great! | Very good! | Perfect!',
+                msgFailures: 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!',
+                msgNotNetwork: 'You can only play this game with internet connection.',
+                msgQuestion: 'Question',
+                msgAnswer: 'Check',
+                msgInformation: 'Information',
+                msgAuthor: 'Authorship',
+                msgActityComply: 'You have already done this activity.',
+                msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+                msgYouLastScore: 'The last score saved is',
+                msgOption: 'Option',
+                msgImage: 'Image',
+                msgOrders: 'Please order the answers',
+                msgIndicateWord: 'Provide a word or phrase',
+                msgGameStarted: 'The game has already started.',
+                msgPlayersName: 'You must indicate a name for all the selected players.',
+                msgReboot: 'Do you want to restart the game?',
+                msgRoolDice: 'roll the dice.',
+                msgsWinner: 'The game has finished. The winner is %1. Do you want to play again?',
+                msgWinGame: 'Cool! You won the game.',
+                msgsYouPlay: 'you play. Roll the dice.',
+                msgSaveDiceAuto: 'Your score will be automatically saved after each throw.',
+                msgSaveAuto: 'Your score will be automatically saved after each question.',
+                msgOnlyFirstGame: 'You can only play once.',
+                msgGamers: 'Players',
+                msgReply: 'Answer',
+                msgErrorQuestion: 'you have failed.',
+                msgGetQueso: 'you get the cheese of',
+                msgRightAnswre: 'One more point.',
+                msgAudio: 'Audio',
+                msgCorrect: 'Correct',
+                msgIncorrect: 'Incorrect',
+                msgUncompletedActivity: 'Incomplete activity',
+                msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+                msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+                msgNext: 'Next',
+                msgTypeGame: 'TriviExt',
+                msgRestart: 'Restart',
+                msgYouScore: 'Your score',
+            };
+        }
+
         return mOptions;
     },
 
@@ -1580,7 +1643,7 @@ var $eXeTrivial = {
     showStartedButton: function () {
         $eXeTrivial.options.forEach((option, i) => {
             if (!option.gameStarted && !option.gameOver) {
-                $(`#trivialStartGame-${ì}`).show();
+                $(`#trivialStartGame-${i}`).show();
                 $eXeTrivial.showMessage(1, '', i);
             }
         });
@@ -1962,7 +2025,7 @@ var $eXeTrivial = {
 
     getSize: function (size, instance) {
         let facTamano =
-                $('#trivialTabllero-' + instance).width() >= 550
+                $('#trivialTablero-' + instance).width() >= 550
                     ? 1
                     : $('#trivialTablero-' + instance).width() / 550,
             fs = parseFloat(size * facTamano, 10).toFixed(2);
@@ -2267,8 +2330,7 @@ var $eXeTrivial = {
                     mOptions.activesQuestions[mOptions.activeTema]
                 ];
             const audio = mq.audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         if (typeof mOptions.trivialID != 'undefined') {
@@ -2580,7 +2642,7 @@ var $eXeTrivial = {
 
         $eXeTrivial.startVideo('', 0, 0, instance);
         $exeDevices.iDevice.gamification.media.stopVideo(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#trivialDivModeBoard-' + instance).hide();
         $('#trivialImagen-' + instance).hide();
@@ -2901,12 +2963,9 @@ var $eXeTrivial = {
             $('#trivialLinkAudio-' + instance).show();
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         if (q.type != 2 && q.audio.trim().length > 5) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
         $('#trivialEdAnswer-' + instance).focus();
     },

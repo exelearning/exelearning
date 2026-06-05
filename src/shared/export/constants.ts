@@ -49,7 +49,7 @@ export const EXPORT_FORMAT_INFO: Record<
     [ExportFormat.SCORM_12]: {
         name: 'SCORM 1.2',
         extension: '.zip',
-        suffix: '_scorm12',
+        suffix: '_scorm',
         description: 'SCORM 1.2 package for LMS',
     },
     [ExportFormat.SCORM_2004]: {
@@ -122,27 +122,33 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Code highlighting
+    // Matches the legacy TinyMCE class (`highlighted-code`) and the
+    // `language-<lang>` classes produced by Showdown for fenced code blocks.
     {
         name: 'exe_highlighter',
-        type: 'class',
-        pattern: 'highlighted-code',
+        type: 'regex',
+        pattern: /class\s*=\s*["'][^"']*\b(?:highlighted-code|language-[a-z0-9_+-]+)\b/i,
         files: ['exe_highlighter/exe_highlighter.js', 'exe_highlighter/exe_highlighter.css'],
     },
 
     // Lightbox for images
+    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
     {
         name: 'exe_lightbox',
         type: 'rel',
         pattern: 'lightbox',
         files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+        isDirectory: true,
     },
 
     // Lightbox for image galleries
+    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
     {
         name: 'exe_lightbox_gallery',
         type: 'class',
         pattern: 'imageGallery',
         files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+        isDirectory: true,
     },
 
     // Tooltips (qTip2)
@@ -246,13 +252,10 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         isDirectory: true,
     },
 
-    // Mermaid diagrams
-    {
-        name: 'mermaid',
-        type: 'class',
-        pattern: 'mermaid',
-        files: ['mermaid/mermaid.min.js'],
-    },
+    // NOTE: Mermaid library is NOT included in exports.
+    // Mermaid diagrams are always pre-rendered to static SVG (class="exe-mermaid-rendered")
+    // before export, so the ~2.7MB mermaid.min.js library is never needed.
+    // The MermaidPreRenderer.js handles conversion in the workarea.
 
     // jQuery UI for sortable/draggable iDevices
     {
@@ -287,11 +290,13 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Accessibility toolbar
+    // isDirectory: true to include font files (woff, woff2) and icon (png) referenced from CSS
     {
         name: 'exe_atools',
         type: 'class',
         pattern: 'exe-atools',
         files: ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+        isDirectory: true,
     },
 
     // ELPX download support (for download-source-file iDevice)
@@ -302,7 +307,26 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         pattern: 'exe-download-package-link',
         files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
     },
+    // ELPX download support for manual links using exe-package:elp protocol
+    {
+        name: 'exe_elpx_download_protocol',
+        type: 'regex',
+        pattern: /exe-package:elp/,
+        files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
+    },
 ];
+
+/**
+ * Inline handler for download-source-file links.
+ *
+ * In editor preview, delegate to the parent workarea so it exports the complete
+ * Yjs document as ELPX. In standalone exports, fall back to the manifest-based
+ * download helper bundled with the HTML package.
+ */
+export const ELPX_DOWNLOAD_ONCLICK =
+    'try{var p=window.parent;' +
+    "if(p&&p!==window&&p.eXeLearning&&p.eXeLearning.app){p.postMessage({type:'exe-download-elpx'},'*');" +
+    "return false;}}catch(e){}if(typeof downloadElpx==='function')downloadElpx();return false;";
 
 // =============================================================================
 // Base Libraries (always included in exports)
@@ -340,6 +364,7 @@ export const SCORM_LIBRARIES = ['scorm/SCORM_API_wrapper.js', 'scorm/SCOFunction
  */
 export const MIME_TO_EXTENSION: Record<string, string> = {
     'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif',
     'image/webp': '.webp',
@@ -353,6 +378,7 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
     'video/ogg': '.ogv',
     'video/quicktime': '.mov',
     'audio/mpeg': '.mp3',
+    'audio/mp4': '.m4a',
     'audio/ogg': '.ogg',
     'audio/wav': '.wav',
     'audio/webm': '.weba',
@@ -370,6 +396,386 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
  */
 export function getExtensionFromMime(mime: string): string {
     return MIME_TO_EXTENSION[mime] || '.bin';
+}
+
+// =============================================================================
+// Extension to MIME Type Mapping
+// =============================================================================
+
+/**
+ * File extension to MIME type mapping.
+ * Derived from MIME_TO_EXTENSION plus additional common extensions
+ * (Office documents, XML, etc.) not covered by the reverse lookup.
+ */
+export const EXTENSION_TO_MIME: Record<string, string> = {
+    // Reverse of MIME_TO_EXTENSION
+    ...Object.fromEntries(Object.entries(MIME_TO_EXTENSION).map(([mime, ext]) => [ext, mime])),
+    // Ensure canonical MIME types for extensions with multiple MIME aliases
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.xml': 'application/xml',
+};
+
+/**
+ * Get MIME type from file extension
+ */
+export function getMimeFromExtension(ext: string): string {
+    return EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+}
+
+// =============================================================================
+// License Registry (Single Source of Truth)
+// =============================================================================
+
+/**
+ * License entry in the registry
+ */
+export interface LicenseEntry {
+    /** Full display name with version and short code */
+    displayName: string;
+    /** Official license URL (empty if none) */
+    url: string;
+    /** CSS class for license icon (only CC and propietary have icons in themes) */
+    cssClass: string;
+    /** If true, license is preserved but not selectable in dropdown (legacy from older eXe versions) */
+    legacy?: boolean;
+    /** If true, no license section is shown in export footer (e.g., propietary, not appropriate) */
+    hideInFooter?: boolean;
+}
+
+/**
+ * Central registry of all supported licenses.
+ * This is the single source of truth - all other license mappings derive from this.
+ *
+ * Includes:
+ * - CC 4.0 licenses (current)
+ * - CC 3.0 licenses (legacy support)
+ * - CC 2.5 licenses (legacy support)
+ * - GNU/GPL licenses
+ * - EUPL license
+ * - GFDL license
+ * - Other license types
+ */
+export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
+    // === Creative Commons 4.0 (Current) ===
+    'creative commons: attribution 4.0': {
+        displayName: 'Creative Commons: Attribution 4.0 (BY)',
+        url: 'https://creativecommons.org/licenses/by/4.0/',
+        cssClass: 'cc',
+    },
+    'creative commons: attribution - share alike 4.0': {
+        displayName: 'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/4.0/',
+        cssClass: 'cc cc-by-sa',
+    },
+    'creative commons: attribution - non derived work 4.0': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work 4.0 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/4.0/',
+        cssClass: 'cc cc-by-nd',
+    },
+    'creative commons: attribution - non commercial 4.0': {
+        displayName: 'Creative Commons: Attribution - Non Commercial 4.0 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/4.0/',
+        cssClass: 'cc cc-by-nc',
+    },
+    'creative commons: attribution - non commercial - share alike 4.0': {
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 4.0 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
+        cssClass: 'cc cc-by-nc-sa',
+    },
+    'creative commons: attribution - non derived work - non commercial 4.0': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 4.0 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+        cssClass: 'cc cc-by-nc-nd',
+    },
+
+    // === Creative Commons 3.0 (Legacy - not selectable in dropdown) ===
+    'creative commons: attribution 3.0': {
+        displayName: 'Creative Commons: Attribution 3.0 (BY)',
+        url: 'https://creativecommons.org/licenses/by/3.0/',
+        cssClass: 'cc',
+        legacy: true,
+    },
+    'creative commons: attribution - share alike 3.0': {
+        displayName: 'Creative Commons: Attribution - Share Alike 3.0 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/3.0/',
+        cssClass: 'cc cc-by-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work 3.0': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work 3.0 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/3.0/',
+        cssClass: 'cc cc-by-nd',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial 3.0': {
+        displayName: 'Creative Commons: Attribution - Non Commercial 3.0 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/3.0/',
+        cssClass: 'cc cc-by-nc',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial - share alike 3.0': {
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 3.0 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
+        cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work - non commercial 3.0': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 3.0 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/3.0/',
+        cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
+    },
+
+    // === Creative Commons 2.5 (Legacy - not selectable in dropdown) ===
+    'creative commons: attribution 2.5': {
+        displayName: 'Creative Commons: Attribution 2.5 (BY)',
+        url: 'https://creativecommons.org/licenses/by/2.5/',
+        cssClass: 'cc',
+        legacy: true,
+    },
+    'creative commons: attribution - share alike 2.5': {
+        displayName: 'Creative Commons: Attribution - Share Alike 2.5 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/2.5/',
+        cssClass: 'cc cc-by-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work 2.5': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work 2.5 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/2.5/',
+        cssClass: 'cc cc-by-nd',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial 2.5': {
+        displayName: 'Creative Commons: Attribution - Non Commercial 2.5 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/2.5/',
+        cssClass: 'cc cc-by-nc',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial - share alike 2.5': {
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 2.5 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/2.5/',
+        cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work - non commercial 2.5': {
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 2.5 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/2.5/',
+        cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
+    },
+
+    // === Creative Commons CC0 1.0 (Public Domain Dedication) ===
+    'creative commons: cc0 1.0': {
+        displayName: 'Creative Commons: Public Domain 1.0 (CC0)',
+        url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        cssClass: 'cc cc-0',
+    },
+
+    // === Public Domain (generic, no specific license link) ===
+    'public domain': {
+        displayName: 'Public domain',
+        url: '',
+        cssClass: '',
+    },
+
+    // === GNU/GPL Licenses (Legacy - not selectable in dropdown, no icon in themes) ===
+    'gnu/gpl': {
+        displayName: 'GNU/GPL',
+        url: 'https://www.gnu.org/licenses/gpl.html',
+        cssClass: '',
+        legacy: true,
+    },
+    'free software license gpl': {
+        displayName: 'Free Software License GPL',
+        url: 'https://www.gnu.org/licenses/gpl.html',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === EUPL License (Legacy - not selectable in dropdown, no icon in themes) ===
+    'free software license eupl': {
+        displayName: 'Free Software License EUPL',
+        url: 'https://eupl.eu/',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === Dual License GPL + EUPL (Legacy - not selectable in dropdown, no icon in themes) ===
+    'dual free content license gpl and eupl': {
+        displayName: 'Dual Free Content License GPL and EUPL',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === GFDL License (Legacy - not selectable in dropdown, no icon in themes) ===
+    'license gfdl': {
+        displayName: 'License GFDL',
+        url: 'https://www.gnu.org/licenses/fdl.html',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === Other Licenses (Legacy - not selectable in dropdown) ===
+    'other free software licenses': {
+        displayName: 'Other Free Software Licenses',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+    'propietary license': {
+        displayName: 'Proprietary license',
+        url: '',
+        cssClass: '',
+        hideInFooter: true,
+    },
+    'intellectual property license': {
+        displayName: 'Intellectual Property License',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+    'not appropriate': {
+        displayName: 'Not appropriate',
+        url: '',
+        cssClass: '',
+        hideInFooter: true,
+    },
+};
+
+// =============================================================================
+// License CSS Class Lookup
+// =============================================================================
+
+/**
+ * Resolves a license name (which could be an internal key, a legacy displayName with a suffix like (BY),
+ * or potentially a translated name if previously saved) to its internal stable key.
+ *
+ * @param licenseName - The license name to resolve
+ * @returns The internal key, or the normalized name if not found in the registry
+ */
+export function resolveLicenseKey(licenseName: string): string {
+    if (!licenseName) return '';
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Fast path: direct lookup in registry
+    if (LICENSE_REGISTRY[cleanName]) {
+        return cleanName;
+    }
+
+    // Fallback: search by displayName to handle legacy cases where the UI saved
+    // something like "creative commons: attribution 4.0 (BY)" into Yjs metadata.
+    for (const [key, entry] of Object.entries(LICENSE_REGISTRY)) {
+        if (cleanName === entry.displayName.toLowerCase().trim().replace(/\s+/g, ' ')) {
+            return key;
+        }
+    }
+
+    return cleanName;
+}
+
+/**
+ * Get CSS class for license icon display.
+ * Looks up the cssClass from LICENSE_REGISTRY.
+ *
+ * @param licenseName - License name to look up
+ * @returns The CSS class(es) for the license icon (empty string if no icon)
+ */
+export function getLicenseClass(licenseName: string): string {
+    if (!licenseName) {
+        return '';
+    }
+
+    const key = resolveLicenseKey(licenseName);
+
+    // Direct lookup in registry
+    if (LICENSE_REGISTRY[key]) {
+        return LICENSE_REGISTRY[key].cssClass;
+    }
+
+    return '';
+}
+
+/**
+ * Get URL for a given license name.
+ *
+ * @param licenseName - The license name
+ * @returns The URL for the license (empty string if not found or no URL)
+ */
+export function getLicenseUrl(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = resolveLicenseKey(licenseName);
+    return LICENSE_REGISTRY[key]?.url || '';
+}
+
+/**
+ * Format license text for translation and display.
+ * Returns the stable string used for translation lookups in .xlf files.
+ * CC licenses use their lowecase keys, while others use their Title Cased displayNames.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns Formatted license translation key
+ */
+export function formatLicenseText(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = resolveLicenseKey(licenseName);
+    const entry = LICENSE_REGISTRY[key];
+    if (!entry) return licenseName;
+
+    return key.startsWith('creative commons') ? key : entry.displayName;
+}
+
+/**
+ * Format license text for Fichero Fuente display.
+ * Generates the short format (e.g., "Creative Commons BY-NC 4.0") matching the editor view.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns Short formatted license text, or displayName if not a standard CC license
+ */
+export function formatShortLicenseText(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = resolveLicenseKey(licenseName);
+    const entry = LICENSE_REGISTRY[key];
+
+    if (entry?.url?.includes('creativecommons.org/licenses/')) {
+        const match = entry.url.match(/licenses\/([^/]+\/[^/]+)\/?/);
+        if (match?.[1]) {
+            const type = match[1].replace('/', ' ').toUpperCase();
+            return `Creative Commons ${type}`;
+        }
+    }
+
+    if (entry?.url?.includes('creativecommons.org/publicdomain/zero/')) {
+        return 'Creative Commons CC0 1.0';
+    }
+
+    return entry?.displayName || licenseName;
+}
+
+/**
+ * Check if a license should show a footer in exports.
+ * Returns false for empty license or licenses with hideInFooter: true in the registry.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns true if footer should be shown, false otherwise
+ */
+export function shouldShowLicenseFooter(licenseName: string): boolean {
+    if (!licenseName) return false;
+
+    const cleaned = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const entry = LICENSE_REGISTRY[cleaned];
+
+    // If license is in registry and has hideInFooter, don't show footer
+    if (entry?.hideInFooter) return false;
+
+    return true;
 }
 
 // =============================================================================
@@ -411,7 +817,7 @@ export const IMS_NAMESPACES = {
  * LOM metadata namespaces
  */
 export const LOM_NAMESPACES = {
-    lom: 'http://ltsc.ieee.org/xsd/LOM',
+    lom: 'http://www.imsglobal.org/xsd/imsmd_rootv1p2p1',
     xsi: 'http://www.w3.org/2001/XMLSchema-instance',
 } as const;
 
@@ -443,6 +849,7 @@ export const EPUB3_MIMETYPE = 'application/epub+zip';
  * - Legacy name → current name (e.g., 'freetext' → 'text')
  * - Plural → singular (e.g., 'rubrics' → 'rubric')
  * - Variant names (e.g., 'download-package' → 'download-source-file')
+ * - Legacy Python eXeLearning types (e.g., 'jsidevice' → 'text')
  *
  * The key is the lowercase type name (after removing 'idevice' suffix),
  * the value is the canonical export folder name.
@@ -453,6 +860,13 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     text: 'text',
     freetextidevice: 'text',
     textidevice: 'text',
+
+    // Legacy Python eXeLearning iDevice types (pre-v3.0)
+    // JsIdevice was a text iDevice in old Python eXeLearning
+    jsidevice: 'text',
+    js: 'text',
+    // GalleryImages from old Python format
+    galleryimages: 'image-gallery',
 
     // Spanish → English mappings
     adivina: 'guess',
@@ -552,14 +966,8 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     // Interactive video variants
     'video-interactivo': 'interactive-video',
 
-    // Collaborative editing
-    'edicion-colaborativa': 'collaborative-editing',
-
     // Dragdrop variants
     'arrastrar-soltar': 'dragdrop',
-
-    // Attached files variants
-    'archivos-adjuntos': 'attached-files',
 
     // Select media files variants
     'seleccionar-archivos': 'select-media-files',
@@ -590,3 +998,83 @@ export function normalizeIdeviceType(typeName: string): string {
     // Look up in map or return as-is
     return IDEVICE_TYPE_MAP[normalized] || normalized || 'text';
 }
+
+// =============================================================================
+// ODE Content DTD (for ELPX and EPUB exports)
+// =============================================================================
+
+/**
+ * ODE DTD filename (included in ELPX and EPUB exports with content.xml)
+ */
+export const ODE_DTD_FILENAME = 'content.dtd';
+
+/**
+ * ODE Content DTD
+ * Embedded DTD for exports that include content.xml - validates content.xml structure
+ */
+export const ODE_DTD_CONTENT = `<!--
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
+    Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
+    Copyright (C) 2025 eXeLearning - License: AGPL-3.0
+-->
+
+<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
+
+<!-- User Preferences -->
+<!ELEMENT userPreferences (userPreference*)>
+<!ELEMENT userPreference (key, value)>
+
+<!-- ODE Resources -->
+<!ELEMENT odeResources (odeResource*)>
+<!ELEMENT odeResource (key, value)>
+
+<!-- ODE Properties -->
+<!ELEMENT odeProperties (odeProperty*)>
+<!ELEMENT odeProperty (key, value)>
+
+<!-- Shared Key-Value Elements -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- Navigation Structures (Pages) -->
+<!ELEMENT odeNavStructures (odeNavStructure*)>
+<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
+
+<!ELEMENT odePageId (#PCDATA)>
+<!ELEMENT odeParentPageId (#PCDATA)>
+<!ELEMENT pageName (#PCDATA)>
+<!ELEMENT odeNavStructureOrder (#PCDATA)>
+
+<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
+<!ELEMENT odeNavStructureProperty (key, value)>
+
+<!-- Block Structures -->
+<!ELEMENT odePagStructures (odePagStructure*)>
+<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
+
+<!ELEMENT odeBlockId (#PCDATA)>
+<!ELEMENT blockName (#PCDATA)>
+<!ELEMENT iconName (#PCDATA)>
+<!ELEMENT odePagStructureOrder (#PCDATA)>
+
+<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
+<!ELEMENT odePagStructureProperty (key, value)>
+
+<!-- Components (iDevices) -->
+<!ELEMENT odeComponents (odeComponent*)>
+<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
+
+<!ELEMENT odeIdeviceId (#PCDATA)>
+<!ELEMENT odeIdeviceTypeName (#PCDATA)>
+<!ELEMENT htmlView (#PCDATA)>
+<!ELEMENT jsonProperties (#PCDATA)>
+<!ELEMENT odeComponentsOrder (#PCDATA)>
+
+<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
+<!ELEMENT odeComponentsProperty (key, value)>
+`;

@@ -79,7 +79,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgWrote: c_(
                 'Write the correct word and click on Reply. If you hesitate, click on Move on.'
@@ -148,9 +148,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgMaximeSize = _(
             'The word cannot contain more than fourteen characters or white spaces'
         );
@@ -160,11 +157,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="ccgmQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">
-                ${_('Create crossword-type activities')} 
-                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create crossword-type activities'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/crucigrama.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -223,7 +219,7 @@ var $exeDevice = {
                                 <label class="toggle-label" for="ccgmEHasFeedBack">${_('Feedback')}.</label>
                             </span>
                            <input type="number" name="ccgmEPercentajeFB" id="ccgmEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                           <label for="ccgmEPercentajeFB" class="ms-0">${_('&percnt; right to see the feedback')}</label>
+                           <label for="ccgmEPercentajeFB" class="ms-0">${_('% right to see the feedback')}</label>
                         </div>
                         <div id="ccgmEFeedbackP" class="CCGM-EFeedbackP">
                             <textarea id="ccgmEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
@@ -262,26 +258,8 @@ var $exeDevice = {
                             <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmEEvaluation" class="toggle-input" data-target="#ccgmEEvaluationIDWrapper" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmEEvaluation">${_('Progress report')}.</label>
-                            </span>
-                            <span id="ccgmEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="ccgmEEvaluationID" class="mb-0 me-0">${_('Identifier')}: </label>
-                                <input type="text" id="ccgmEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}"/> 
-                            </span>
-                            <strong class="GameModeLabel">
-                                <a href="#ccgmEEvaluationHelp" id="ccgmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
-                            </strong>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="ccgmEEvaluationHelp" class="CCGM-TypeGameHelp exe-block-info" style="display:none;">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                      </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -325,7 +303,7 @@ var $exeDevice = {
                                     </div>
                                 </div>
                                 <span id="ccgmETitleAudio">${_('Audio')}</span>
-                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio">
+                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio" data-voice-recorder data-voice-input="#ccgmEURLAudio">
                                     <label class="sr-av" for="ccgmEURLAudio">${_('URL')}</label>
                                     <input type="text" class="exe-file-picker CCGM-EURLAudio form-control me-0" id="ccgmEURLAudio"/>
                                     <a href="#" id="ccgmEPlayAudio" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Play audio')}">
@@ -399,6 +377,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initQuestions();
 
+        const root = document.getElementById('ccgmQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
@@ -437,10 +418,8 @@ var $exeDevice = {
             $exeDevice.showImage(p.url, p.x, p.y, p.alt);
         }
 
-        $exeDevice.stopSound();
-
         if (p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#ccgmEURLAudio').val(p.audio);
@@ -579,7 +558,7 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const fields = this.ci18n,
             i18n = fields;
@@ -694,7 +673,7 @@ var $exeDevice = {
                 percentageShow: parseInt($('#ccgmEPercentageShow').val()),
             };
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.word.length === 0) {
             message = $exeDevice.msgs.msgEProvideWord;
@@ -724,6 +703,8 @@ var $exeDevice = {
     },
 
     validateData() {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),
@@ -740,8 +721,8 @@ var $exeDevice = {
             tilde = $('#ccgmETilde').is(':checked'),
             feedBack = $('#ccgmEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
-            evaluation = $('#ccgmEEvaluation').is(':checked'),
-            evaluationID = $('#ccgmEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
             authorBackImage = $('#ccgmAuthorBack').val(),
             id = $exeDevice.getIdeviceID(),
@@ -749,6 +730,7 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -756,10 +738,6 @@ var $exeDevice = {
         }
         if (wordsGame.length < 2) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         for (let i = 0; i < wordsGame.length; i++) {
@@ -809,8 +787,8 @@ var $exeDevice = {
             feedBack,
             percentajeFB,
             version: 2,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             percentajeQuestions,
             difficulty,
             time,
@@ -990,8 +968,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#ccgmEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1101,8 +1078,7 @@ var $exeDevice = {
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevice.stopSound();
-                    $exeDevice.playSound(selectedFile);
+                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });
@@ -1136,15 +1112,7 @@ var $exeDevice = {
             }
         });
 
-        $('#ccgmEEvaluation').on('change', function () {
-            const checked = $(this).is(':checked');
-            $('#ccgmEEvaluationID').prop('disabled', !checked);
-        });
-
-        $('#ccgmEEvaluationHelpLnk').on('click', function () {
-            $('#ccgmEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#ccgmEShowMore').on('click', (e) => {
             e.preventDefault();
@@ -1378,10 +1346,11 @@ var $exeDevice = {
         $('#ccgmETilde').prop('checked', game.tilde);
         $('#ccgmEHasFeedBack').prop('checked', game.feedBack);
         $('#ccgmEPercentajeFB').val(game.percentajeFB);
-        $('#ccgmEEvaluation').prop('checked', game.evaluation);
-        $('#ccgmEEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#ccgmBack0').prop('checked', game.hasBack);
-        $('#ccgmEEvaluationID').prop('disabled', !game.evaluation);
         $('#ccgmAuthorBack').val(game.authorBackImage);
         $('#ccgmEPercentajeQuestions').val(game.percentajeQuestions);
 
@@ -1420,21 +1389,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('words')}-crucigrama.txt`;
-
-        document.getElementById('ccgmQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('ccgmQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('words')}-crucigrama.txt`,
+            'ccgmQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {

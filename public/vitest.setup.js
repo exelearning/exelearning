@@ -591,9 +591,9 @@ global.createMockAssetManager = (assets = []) => {
     // Check if asset exists
     hasAsset: vi.fn((id) => Promise.resolve(assetMap.has(id))),
 
-    // Resolve asset:// URL to blob URL
+    // Resolve asset:// URL to blob URL (format: asset://uuid.ext)
     resolveAssetURL: vi.fn((assetUrl) => {
-      const id = assetUrl.replace('asset://', '').split('/')[0];
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       if (blobURLCache.has(id)) {
         return Promise.resolve(blobURLCache.get(id));
       }
@@ -602,9 +602,15 @@ global.createMockAssetManager = (assets = []) => {
       return Promise.resolve(blobURL);
     }),
 
-    // Resolve asset:// URL synchronously
+    // Generate asset URL in new format: asset://uuid.ext
+    getAssetUrl: vi.fn((assetId, filename) => {
+      const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+      return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+    }),
+
+    // Resolve asset:// URL synchronously (format: asset://uuid.ext)
     resolveAssetURLSync: vi.fn((assetUrl) => {
-      const id = assetUrl.replace('asset://', '').split('/')[0];
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       return blobURLCache.get(id) || null;
     }),
 
@@ -612,18 +618,20 @@ global.createMockAssetManager = (assets = []) => {
     resolveHTMLAssets: vi.fn((html) => Promise.resolve(html)),
     resolveHTMLAssetsSync: vi.fn((html) => html),
 
-    // Insert image
-    insertImage: vi.fn((file) => Promise.resolve(`asset://mock-${Date.now()}/${file.name}`)),
+    // Insert image - uses new format: asset://uuid.ext
+    insertImage: vi.fn((file) => {
+      const ext = file.name?.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+      const id = `mock-${Date.now()}`;
+      return Promise.resolve(ext ? `asset://${id}.${ext}` : `asset://${id}`);
+    }),
 
     // Upload/download methods
     uploadPendingAssets: vi.fn(() => Promise.resolve({ uploaded: 0, failed: 0, bytes: 0 })),
     downloadMissingAssetsFromServer: vi.fn(() => Promise.resolve({ downloaded: 0, failed: 0 })),
 
-    // Asset ID extraction
+    // Asset ID extraction (format: asset://uuid.ext)
     extractAssetId: vi.fn((assetUrl) => {
-      const path = assetUrl.replace('asset://', '');
-      const slashIndex = path.indexOf('/');
-      return slashIndex > 0 ? path.substring(0, slashIndex) : path;
+      return assetUrl.replace('asset://', '').split('.')[0];
     }),
 
     // Statistics
@@ -648,52 +656,6 @@ global.createMockAssetManager = (assets = []) => {
     getAllAssetIds: vi.fn(() => Promise.resolve(assets.map((a) => a.id || a.assetId))),
   };
 };
-
-// ============================================================================
-// Mock AssetCacheManager Class (for tests that use new AssetCacheManager())
-// ============================================================================
-
-class MockAssetCacheManager {
-  constructor(projectId) {
-    this.projectId = projectId;
-    this._assets = new Map();
-  }
-
-  async init() {
-    return this;
-  }
-
-  async getAllAssets() {
-    return Array.from(this._assets.values());
-  }
-
-  async getAsset(assetId) {
-    return this._assets.get(assetId) || null;
-  }
-
-  async addAsset(blob, metadata) {
-    const assetId = 'mock-asset-' + Math.random().toString(36).substr(2, 9);
-    this._assets.set(assetId, { assetId, blob, metadata });
-    return assetId;
-  }
-
-  async removeAsset(assetId) {
-    this._assets.delete(assetId);
-  }
-
-  async clear() {
-    this._assets.clear();
-  }
-
-  destroy() {
-    this._assets.clear();
-  }
-}
-
-global.AssetCacheManager = MockAssetCacheManager;
-if (typeof window !== 'undefined') {
-  window.AssetCacheManager = MockAssetCacheManager;
-}
 
 // ============================================================================
 // Console Spy Setup (optional)
@@ -1167,6 +1129,35 @@ const mockGamificationCommon = {
   load: vi.fn(),
 };
 
+// Shared progress-report component used by every migrated gamified iDevice.
+// Mirrors the real implementation in public/app/common/common_edition.js so
+// iDevice tests can exercise loadPreviousValues / save without bundling the
+// whole common_edition module.
+const mockGamificationProgressBar = {
+  getContents: vi.fn(() => ''),
+  setValues: vi.fn((data) => {
+    const evaluation = !!(data && data.evaluation);
+    const evaluationID = data && typeof data.evaluationID !== 'undefined' ? data.evaluationID : '';
+    if (typeof window !== 'undefined' && window.$) {
+      window.$('#eXeProgressReport').prop('checked', evaluation);
+      window.$('#eXeProgressReportID').val(evaluationID);
+      window.$('#eXeProgressReportID').prop('disabled', !evaluation);
+    }
+  }),
+  getValues: vi.fn(() => {
+    if (typeof window === 'undefined' || !window.$) {
+      return { evaluation: false, evaluationID: '' };
+    }
+    const evaluation = window.$('#eXeProgressReport').is(':checked');
+    const evaluationID = (window.$('#eXeProgressReportID').val() || '').toString().trim();
+    if (evaluation && evaluationID.length < 5) {
+      return false;
+    }
+    return { evaluation, evaluationID };
+  }),
+  addEvents: vi.fn(),
+};
+
 const mockGamificationHelpers = {
   getFieldset: vi.fn((config) => {
     const title = config?.title || 'Gamification';
@@ -1245,6 +1236,7 @@ global.$exeDevicesEdition = {
       instructions: mockGamificationInstructions,
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
+      progressBar: mockGamificationProgressBar,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,

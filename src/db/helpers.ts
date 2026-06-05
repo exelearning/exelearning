@@ -208,6 +208,42 @@ export function getBinaryType(): DataTypeExpression {
 // ============================================================================
 
 /**
+ * Insert a row, ignoring if it violates a unique constraint.
+ * - PostgreSQL/SQLite: ON CONFLICT DO NOTHING
+ * - MySQL/MariaDB: INSERT IGNORE
+ *
+ * This is useful for upsert-like operations where we want to silently skip
+ * duplicates without throwing an error.
+ */
+export async function insertIgnore<T extends keyof Database>(
+    db: Kysely<Database>,
+    table: T,
+    values: Insertable<Database[T]>,
+): Promise<void> {
+    if (getDialect() === 'mysql') {
+        // MySQL/MariaDB: Use INSERT IGNORE with raw SQL
+        // Note: ON CONFLICT DO NOTHING syntax is not supported
+        const keys = Object.keys(values as object);
+        const vals = Object.values(values as object);
+
+        // Build column list and value placeholders
+        const columnList = keys.map(k => sql.id(k));
+        const valuePlaceholders = vals.map(v => sql.lit(v));
+
+        await sql`INSERT IGNORE INTO ${sql.table(table)} (${sql.join(columnList)}) VALUES (${sql.join(valuePlaceholders)})`.execute(
+            db,
+        );
+    } else {
+        // PostgreSQL/SQLite: Use ON CONFLICT DO NOTHING
+        await db
+            .insertInto(table)
+            .values(values as Insertable<Database[T]>)
+            .onConflict(oc => oc.doNothing())
+            .execute();
+    }
+}
+
+/**
  * Insert a row and return the complete inserted row
  * Works across SQLite, PostgreSQL, and MySQL
  */

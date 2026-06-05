@@ -305,13 +305,94 @@
     }
 
     /**
+     * Process mermaid content in a JSON properties object
+     * For JSON iDevices, mermaid content is stored in properties like textTextarea
+     * @param {Object} jsonData - Parsed JSON properties object
+     * @param {Document} doc - Document for creating elements
+     * @returns {Promise<{updated: boolean, count: number, jsonData: Object}>}
+     */
+    async function processJsonProperties(jsonData, doc) {
+        let updated = false;
+        let count = 0;
+
+        for (const [key, value] of Object.entries(jsonData)) {
+            // Only process string values that might contain mermaid
+            if (typeof value !== 'string' || !HAS_MERMAID_PATTERN.test(value)) {
+                continue;
+            }
+
+            // Parse the HTML content
+            const tempDiv = doc.createElement('div');
+            tempDiv.innerHTML = value;
+
+            // Find mermaid elements in this content
+            const mermaidElements = tempDiv.querySelectorAll('pre.mermaid');
+            if (mermaidElements.length === 0) {
+                continue;
+            }
+
+            let propertyUpdated = false;
+            for (const element of Array.from(mermaidElements)) {
+                // Skip already pre-rendered elements
+                if (element.parentElement?.classList.contains('exe-mermaid-rendered')) {
+                    continue;
+                }
+
+                // Get the mermaid code
+                let code = element.textContent.trim();
+
+                // If element was already processed by runtime mermaid, try to extract original code
+                if (element.hasAttribute('data-processed')) {
+                    const extractedCode = extractMermaidCode(element, doc);
+                    if (extractedCode) {
+                        code = extractedCode;
+                    }
+                }
+
+                if (!code || code.length < 5) {
+                    continue;
+                }
+
+                try {
+                    const svg = await renderMermaidToSvg(code);
+                    if (svg) {
+                        // Create wrapper and replace
+                        const wrapper = doc.createElement('div');
+                        wrapper.className = 'exe-mermaid-rendered';
+                        wrapper.setAttribute('data-mermaid', code);
+                        wrapper.innerHTML = svg;
+                        element.parentNode.replaceChild(wrapper, element);
+                        count++;
+                        propertyUpdated = true;
+                    }
+                } catch (err) {
+                    console.warn('[MermaidPreRenderer] Failed to render mermaid in JSON property:', key, err);
+                }
+            }
+
+            if (propertyUpdated) {
+                // Update the JSON property with pre-rendered content
+                jsonData[key] = tempDiv.innerHTML;
+                updated = true;
+            }
+        }
+
+        return { updated, count, jsonData };
+    }
+
+    /**
      * Pre-render all Mermaid diagrams in HTML string
+     * Also processes mermaid content inside data-idevice-json-data attributes
+     * for JSON iDevices (like text iDevice)
      * @param {string} html - HTML content with <pre class="mermaid"> elements
      * @returns {Promise<{html: string, hasMermaid: boolean, mermaidRendered: boolean, count: number}>}
      */
     async function preRender(html) {
-        // Quick check: any Mermaid at all?
-        if (!html || !HAS_MERMAID_PATTERN.test(html)) {
+        // Quick check: any Mermaid at all? (check both HTML body and JSON data attributes)
+        const hasMermaidInHtml = html && HAS_MERMAID_PATTERN.test(html);
+        const hasMermaidInJson = html && /data-idevice-json-data="[^"]*mermaid/i.test(html);
+
+        if (!hasMermaidInHtml && !hasMermaidInJson) {
             return {
                 html,
                 hasMermaid: false,
@@ -337,20 +418,35 @@
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Find all <pre class="mermaid"> elements
-        const mermaidElements = doc.querySelectorAll('pre.mermaid');
-
-        if (mermaidElements.length === 0) {
-            return {
-                html,
-                hasMermaid: false,
-                mermaidRendered: false,
-                count: 0,
-            };
-        }
-
         let renderedCount = 0;
         let errorCount = 0;
+
+        // FIRST: Process mermaid content inside data-idevice-json-data attributes
+        // This is needed for JSON iDevices where content is stored in properties, not HTML body
+        const jsonDataElements = doc.querySelectorAll('[data-idevice-json-data]');
+        for (const element of Array.from(jsonDataElements)) {
+            const jsonStr = element.getAttribute('data-idevice-json-data');
+            if (!jsonStr || !jsonStr.includes('mermaid')) {
+                continue;
+            }
+
+            try {
+                const jsonData = JSON.parse(jsonStr);
+                const result = await processJsonProperties(jsonData, doc);
+                if (result.updated) {
+                    // Update the attribute with pre-rendered content
+                    const newJsonStr = JSON.stringify(result.jsonData);
+                    element.setAttribute('data-idevice-json-data', newJsonStr);
+                    renderedCount += result.count;
+                    console.log(`[MermaidPreRenderer] Pre-rendered ${result.count} mermaid diagram(s) in JSON data`);
+                }
+            } catch (err) {
+                console.warn('[MermaidPreRenderer] Failed to process JSON data attribute:', err);
+            }
+        }
+
+        // SECOND: Process <pre class="mermaid"> elements in the HTML body (legacy behavior)
+        const mermaidElements = doc.querySelectorAll('pre.mermaid');
 
         // Process each mermaid element
         // Convert NodeList to Array to avoid live collection issues when replacing elements
@@ -404,10 +500,12 @@
             }
         }
 
+        const hasMermaid = hasMermaidInHtml || hasMermaidInJson;
+
         if (renderedCount === 0) {
             return {
                 html,
-                hasMermaid: true,
+                hasMermaid,
                 mermaidRendered: false,
                 count: 0,
             };
@@ -429,7 +527,7 @@
 
         return {
             html: outputHtml,
-            hasMermaid: true,
+            hasMermaid,
             mermaidRendered: renderedCount > 0,
             count: renderedCount,
         };

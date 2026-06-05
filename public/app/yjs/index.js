@@ -17,25 +17,22 @@
  *   const binding = new YjsStructureBinding(manager);
  *   const pages = binding.getPages();
  *
- *   const assetCache = new AssetCacheManager(projectId);
- *   await assetCache.fetchAndCache(assetId, apiUrl, token);
- *
  *   // Import .elpx
- *   const importer = new ElpxImporter(manager, assetCache);
+ *   const importer = new ElpxImporter(manager, assetManager);
  *   await importer.importFromFile(file);
  *
  *   // Export .elpx
- *   const exporter = new ElpxExporter(manager, assetCache);
+ *   const exporter = new ElpxExporter(manager, assetManager);
  *   await exporter.exportToFile('project.elpx');
  */
 
 // Module exports for browser
 window.YjsModules = {
   // Core modules
+  ProjectTabTracker: window.ProjectTabTracker,
   YjsDocumentManager: window.YjsDocumentManager,
   YjsLockManager: window.YjsLockManager,
   YjsStructureBinding: window.YjsStructureBinding,
-  AssetCacheManager: window.AssetCacheManager,
 
   // Import/Export
   ElpxImporter: window.ElpxImporter,
@@ -66,6 +63,10 @@ window.YjsModules = {
 
     // Clean up previous instance if exists
     if (this._bridge) {
+      // Clear asset resolver cache before cleanup (blobs will be revoked)
+      if (window.eXeLearningAssetResolver?.clearCache) {
+        window.eXeLearningAssetResolver.clearCache();
+      }
       await this._bridge.disconnect();
       this._bridge = null;
     }
@@ -117,6 +118,11 @@ window.YjsModules = {
    * Disconnect and clean up all instances
    */
   async cleanup() {
+    // Clear asset resolver cache BEFORE disconnecting (blobs will be revoked)
+    if (window.eXeLearningAssetResolver?.clearCache) {
+      window.eXeLearningAssetResolver.clearCache();
+    }
+
     if (this._treeAdapter) {
       this._treeAdapter.destroy();
       this._treeAdapter = null;

@@ -107,11 +107,37 @@ describe('challenge iDevice', () => {
       expect(typeof id).toBe('number');
     });
 
-    it('returns different IDs on consecutive calls', () => {
+    it('returns different IDs when time or random changes', () => {
+      // Mock Date and Math.random for deterministic testing
+      const originalDate = global.Date;
+      const originalRandom = Math.random;
+
+      // First call: timestamp 1000, random 0.5
+      global.Date = class extends originalDate {
+        getTime() {
+          return 1000;
+        }
+      };
+      Math.random = () => 0.5;
       const id1 = $exeDevice.getId();
+      expect(id1).toBe(Math.round(1000 + 0.5 * 100)); // 1050
+
+      // Second call: different timestamp
+      global.Date = class extends originalDate {
+        getTime() {
+          return 2000;
+        }
+      };
+      Math.random = () => 0.5;
       const id2 = $exeDevice.getId();
-      // Due to time-based + random component, should be different (unless called in same millisecond)
+      expect(id2).toBe(Math.round(2000 + 0.5 * 100)); // 2050
+
+      // IDs should be different
       expect(id1).not.toBe(id2);
+
+      // Restore originals
+      global.Date = originalDate;
+      Math.random = originalRandom;
     });
 
     it('returns a positive number', () => {
@@ -181,6 +207,108 @@ describe('challenge iDevice', () => {
   describe('clearChallenge', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.clearChallenge).toBe('function');
+    });
+  });
+
+  describe('createForm', () => {
+    let originalExeLearning;
+    let originalExeDevicesEdition;
+    let container;
+
+    beforeEach(() => {
+      container = document.createElement('div');
+      $exeDevice.ideviceBody = container;
+      $exeDevice.idevicePath = '/test/';
+      $exeDevice.ci18n = {};
+      $exeDevice.challengesGame = [];
+
+      originalExeLearning = global.eXeLearning;
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+
+      global.eXeLearning = {
+        app: {
+          project: { odeId: 'ode-id' },
+        },
+      };
+      global.$exeDevicesEdition = {
+        iDevice: {
+          common: {
+            getIdeviceDescription: vi.fn(
+              () =>
+                '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
+            ),
+          },
+          gamification: {
+            instructions: { getFieldset: vi.fn(() => '<div class="mock-fieldset"></div>') },
+            common: { getLanguageTab: vi.fn(() => '<div class="mock-language-tab"></div>') },
+            scorm: {
+              getTab: vi.fn(() => '<div class="mock-scorm-tab"></div>'),
+              init: vi.fn(),
+            },
+            progressBar: {
+              getContents: vi.fn(() => '<div class="mock-progress-bar"></div>'),
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+              addEvents: vi.fn(),
+            },
+          },
+          tabs: { init: vi.fn() },
+        },
+      };
+
+      $exeDevice.loadPreviousValues = vi.fn();
+      $exeDevice.addEvents = vi.fn();
+      $exeDevice.showDesafio = vi.fn();
+    });
+
+    afterEach(() => {
+      global.eXeLearning = originalExeLearning;
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('renders top info as dismissible Bootstrap alert', () => {
+      $exeDevice.createForm();
+      const progressBar =
+        global.$exeDevicesEdition.iDevice.gamification.progressBar;
+      const topAlert = container.querySelector(
+        '#desafioIdeviceForm > .alert.alert-info.alert-dismissible',
+      );
+      const closeButton = topAlert?.querySelector(
+        'button.btn-close[data-bs-dismiss="alert"]',
+      );
+      expect(topAlert).not.toBeNull();
+      expect(closeButton).not.toBeNull();
+      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
+    });
+  });
+
+  describe('addEvents', () => {
+    let originalExeDevicesEdition;
+
+    beforeEach(() => {
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+      document.body.innerHTML = '<div id="desafioIdeviceForm"></div>';
+      $exeDevice.challengesGame = [];
+
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            progressBar: { addEvents: vi.fn() },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('registers shared progress bar events', () => {
+      $exeDevice.addEvents();
+      expect(
+        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 

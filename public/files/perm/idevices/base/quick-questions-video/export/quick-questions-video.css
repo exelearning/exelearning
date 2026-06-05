@@ -413,7 +413,7 @@ a.VQXTP-ModeBoardShow {
 }
 
 .VQXTP-Cubierta .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     width: 1.7em;
@@ -610,7 +610,7 @@ a.VQXTP-ModeBoardShow {
 }
 
 .VQXTP-EdReply {
-    margin: auto 0.2em;
+    margin: auto 0.6em;
     max-width: 400px;
     width: 60%;
     text-align: center;
@@ -618,8 +618,8 @@ a.VQXTP-ModeBoardShow {
 
 .VQXTP-GameContainer .exeQuextIcons-MoveOne,
 .VQXTP-GameContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 /*  Video Introducción */
@@ -854,7 +854,7 @@ a.VQXTP-ModeBoardShow {
 }
 
 .exeQuextIcons-Preview {
-    background-image: url(exequextsq.png);
+    background-image: url(exequextsq.svg);
     background-size: 100% 100%;
 }
 
@@ -869,7 +869,7 @@ a.VQXTP-ModeBoardShow {
 }
 
 .exeQuextIcons-Reload {
-    background-image: url(exequextreload.png);
+    background-image: url(exequextreload.svg);
     background-size: 100% 100%;
 }
 
@@ -984,12 +984,12 @@ a.VQXTP-ModeBoardShow {
 }
 
 .VQXTP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .VQXTP-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 

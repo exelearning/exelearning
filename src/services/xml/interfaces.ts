@@ -19,6 +19,7 @@ export interface OdeXmlDocument {
 export interface OdeXmlMeta {
     author?: string;
     title?: string;
+    subtitle?: string;
     description?: string;
     language?: string;
     license?: string;
@@ -48,6 +49,7 @@ export interface OdeXmlMeta {
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
     exportSource?: boolean;
+    globalFont?: string;
 
     // Custom content
     extraHeadContent?: string;
@@ -76,7 +78,7 @@ export interface OdeXmlPage {
 /**
  * Property value types allowed in component/page properties
  */
-export type PropertyValue = string | number | boolean | null;
+export type PropertyValue = string | number | boolean | null | PropertyValue[] | { [key: string]: PropertyValue };
 
 /**
  * Component structure within a page
@@ -101,6 +103,7 @@ export interface NormalizedPage {
     level: number;
     parent_id: string | null;
     position: number;
+    properties?: Record<string, PropertyValue>; // Page-level properties
 }
 
 export interface NormalizedComponent {
@@ -211,6 +214,7 @@ export interface RealOdeComponent {
     odePageId: string;
     odeBlockId: string;
     odeIdeviceId?: string;
+    odeIdeviceTypeDirName?: string; // Preferred type identifier (matches browser ElpxImporter behavior)
     odeIdeviceTypeName?: string;
     htmlView?: string;
     jsonProperties?: string;

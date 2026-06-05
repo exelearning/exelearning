@@ -68,7 +68,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -121,7 +121,7 @@ var $exeDevice = {
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgEOneQuestion = _('Please provide at least one question');
+        msgs.msgEOneQuestion = _('Please create at least one card');
         msgs.msgTypeChoose = _(
             'Please check all the answers in the right order'
         );
@@ -134,20 +134,16 @@ var $exeDevice = {
             'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum number of activities: 30');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
-                    ${_('Create interactive activities in which players will have to select the correct multimedia cards.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona_multimedia.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive activities in which players will have to select the correct multimedia cards.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona-multimedia.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Select the right cards'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -223,24 +219,8 @@ var $exeDevice = {
                                 <input id="slcmEAuthor" type="text" class="form-control" />
                             </div>
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-3 Games-Reportdiv">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="slcmEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="slcmEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex flex-nowrap align-items-center gap-2">
-                                    <label for="slcmEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="slcmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </div>
-                                <a href="#slcmEEvaluationHelp" id="slcmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                </a>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="slcmEEvaluationHelp" class="SLCME-TypeGameHelp exe-block-info d-none">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -286,19 +266,19 @@ var $exeDevice = {
                                     </div>
                                 </div>
                             </div>
-                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioDefinition">
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioOK">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioKO" >
                                 <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
                                 <input type="text" id="slcmEMessageKO" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
@@ -379,7 +359,7 @@ var $exeDevice = {
                 dataCard = $exeDevice.cardToJson($cardcopy);
 
             dataCard.id = $exeDevice.getID();
-            $cardactive.after($exeDevice.jsonToCard(dataCard, true));
+            $cardactive.after($exeDevice.jsonToCard(dataCard, false));
             $exeDevice.activeID = dataCard.id;
         } else if ($exeDevice.typeEditC == 1) {
             $exeDevice.hideFlex($('#slcmEPasteC'));
@@ -437,8 +417,18 @@ var $exeDevice = {
         return Math.floor(Math.random() * Date.now());
     },
 
+    initVoiceRecorders: function (target) {
+        const recorder = $exeDevicesEdition?.iDevice?.voiceRecorder;
+        if (typeof recorder?.initVoiceRecorders === 'function') {
+            recorder.initVoiceRecorders(target);
+        }
+    },
+
     enableForm: function (field) {
         $exeDevice.initPhrases();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevice.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues(field);
         $exeDevice.addEvents();
@@ -495,7 +485,7 @@ var $exeDevice = {
         $('#slcmEURLAudioOK').val(phrase.audioHit);
         $('#slcmEURLAudioKO').val(phrase.audioError);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     initPhrases: function () {
@@ -552,7 +542,7 @@ var $exeDevice = {
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
-                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudio-${$exeDevice.activeID}">
                     <label class="sr-av">URL</label>
                     <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
@@ -573,6 +563,7 @@ var $exeDevice = {
         }
         const $card = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').last();
         $exeDevice.addEventCard($exeDevice.activeID);
+        $exeDevice.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         return $card;
     },
@@ -581,6 +572,10 @@ var $exeDevice = {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
 
+        $exeDevice.initVoiceRecorders($container);
+
+        const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
         $container
             .find(
                 '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
@@ -588,24 +583,31 @@ var $exeDevice = {
             .each(function () {
                 const $input = $(this);
                 $input.addClass('initialized');
-                const id = $input.attr('id'),
-                    css = $input.hasClass('exe-image-picker')
-                        ? 'exe-pick-image'
-                        : 'exe-pick-any-file',
-                    type = css === 'exe-pick-image' ? 'image' : 'media';
+                const id = $input.attr('id');
+                const idLower = id.toLowerCase();
+                const isImage =
+                    $input.hasClass('exe-image-picker') ||
+                    idLower.includes('urlimage');
+                const css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                let $fileInput = $('#' + `_browseFor${id}`);
-                if (!$fileInput.length) {
-                    $fileInput = $('<input>', {
-                        id: `_browseFor${id}`,
-                        type: 'file',
-                        accept: type === 'image' ? 'image/*' : undefined,
-                        style: 'display:none;', // Se oculta
-                    }).on('change', function (event) {
-                        $exeDevice.processFile(event.target.files[0], id, type);
-                    });
-                    $container.append($fileInput);
+                let accept = null;
+                if (isImage) {
+                    accept = 'image';
+                } else if (idLower.includes('audio')) {
+                    accept = 'audio';
+                } else if (idLower.includes('video')) {
+                    accept = 'video';
                 }
+
+                const hasOwnPickerButton =
+                    $input.next('input.exe-pick-any-file, input.exe-pick-image').length >
+                        0 ||
+                    $container.find(
+                        `input[type="button"][data-filepicker="${id}"]`
+                    ).length > 0;
+
+                if (hasOwnPickerButton) return;
+
                 if (
                     !$container.find(
                         `input[type="button"][data-filepicker="${id}"]`
@@ -616,73 +618,31 @@ var $exeDevice = {
                         class: css,
                         value: _('Select a file'),
                         'data-filepicker': id,
-                    }).on('click', function () {
-                        $fileInput.trigger('click');
                     });
                     $input.after($button);
                 }
+
+                // For this iDevice we bind locally to avoid legacy handlers opening native dialogs.
+                $container
+                    .find(`input[type="button"][data-filepicker="${id}"]`)
+                    .off('click.selectMediaFilesPicker')
+                    .on('click.selectMediaFilesPicker', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+
+                        if (!filemanager) return;
+
+                        filemanager.show({
+                            accept: accept,
+                            onSelect: function (result) {
+                                $input.val(result.assetUrl);
+                                $input[0].dataset.blobUrl = result.blobUrl;
+                                $input.trigger('change');
+                            },
+                        });
+                    });
             });
-    },
-
-    processFile: function (file, id, type) {
-        try {
-            this.addUploadImage(file, file.name, id, type);
-        } catch (err) {
-            console.error('Error processing file:', err);
-        }
-    },
-
-    addUploadImage: async function (imageData, imageName, id) {
-        let fd = new FormData();
-        fd.append('file', imageData);
-        fd.append('filename', imageName);
-        fd.append('odeSessionId', eXeLearning.app.project.odeSession);
-
-        this.lockScreen();
-        let lockStartTime = Date.now();
-
-        try {
-            let response = await eXe.app.uploadLargeFile(fd);
-            let loadTime = Date.now() - lockStartTime;
-
-            if (response?.savedPath && response?.savedFilename) {
-                let fileUrl = `${response.savedPath}/${response.savedFilename}`;
-                let $fileContainerField = $(`#${id}`);
-
-                if ($fileContainerField.length) {
-                    $fileContainerField.val(fileUrl).trigger('change');
-                }
-            } else {
-                eXe.app.alert(_(response?.code || 'Upload failed'));
-            }
-
-            this.unlockScreen(loadTime);
-        } catch (err) {
-            console.error('Upload failed:', err);
-            this.unlockScreen();
-        }
-    },
-
-    lockScreen: function () {
-        let $loadScreen = $('#load-screen-node-content');
-        $loadScreen
-            .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
-            .removeClass('hide hidden')
-            .addClass('loading');
-    },
-
-    unlockScreen: function (delay = 1000) {
-        delay = delay > 1000 ? 400 : 0;
-        let $loadScreen = $('#load-screen-node-content');
-
-        $loadScreen.removeClass('loading').addClass('hidding');
-        setTimeout(() => {
-            $loadScreen
-                .addClass('hide hidden')
-                .removeClass('hidding')
-                .css({ zIndex: 990, position: 'absolute' })
-                .removeAttr('top left');
-        }, delay);
     },
 
     addEventCard: function (id) {
@@ -1216,14 +1176,15 @@ var $exeDevice = {
             ),
             author = $('#slcmEAuthor').val(),
             phrasesGame = $exeDevice.phrasesGame,
-            evaluation = $('#slcmEEvaluation').is(':checked'),
-            evaluationID = $('#slcmEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             modeTable = $('#slcmEModeTable').is(':checked'),
             numberMaxCards = $('#slcmEANumberMaxCard').val(),
             attempsNumber = parseInt($('#slcmEAttemptsNumber').val());
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEProvideTimeSolution);
@@ -1255,8 +1216,8 @@ var $exeDevice = {
             timeShowSolution: timeShowSolution,
             time: time,
             version: $exeDevice.version,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             attempsNumber: attempsNumber,
             numberMaxCards: numberMaxCards,
             modeTable: modeTable,
@@ -1420,11 +1381,12 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
-                $exeDevices.iDevice.gamification.share.exportGame(
+            $('#eXeGameExportQuestions').on('click', function () {
+                const dataGame = $exeDevice.validateData();
+                $exeDevicesEdition.iDevice.gamification.share.exportGame(
                     dataGame,
-                    _('Select media files'),
-                    'gameQEIdeviceForm'
+                    'gameQEIdeviceForm',
+                    _('Select media files')
                 );
             });
         } else {
@@ -1550,23 +1512,7 @@ var $exeDevice = {
             $exeDevice.loadAudio(audio);
         });
 
-        $('#slcmEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#slcmEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#slcmEEvaluationHelpLnk').on('click', function (e) {
-            e.preventDefault();
-            if ($('#slcmEEvaluationHelp').hasClass('d-none')) {
-                $('#slcmEEvaluationHelp')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            } else {
-                $('#slcmEEvaluationHelp')
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            }
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#slcmEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1631,8 +1577,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1810,9 +1755,10 @@ var $exeDevice = {
         $('#slcmECustomMessages').prop('checked', game.customMessages);
 
         $exeDevice.updateQuestionsNumber();
-        $('#slcmEEvaluation').prop('checked', game.evaluation);
-        $('#slcmEEvaluationID').val(game.evaluationID);
-        $('#slcmEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#slcmEAttemptsNumber').val(game.attempsNumber);
         $('#slcmEModeTable').prop('checked', game.modeTable);
         $('#slcmEANumberMaxCard').val(game.numberMaxCards);

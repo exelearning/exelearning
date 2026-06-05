@@ -1,6 +1,13 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
+import {
+    getPreviewFrame,
+    waitForPreviewContent,
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+} from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -46,7 +53,7 @@ async function addImageGalleryFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content
     await page
@@ -56,6 +63,7 @@ async function addImageGalleryFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -121,19 +129,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add an image-gallery iDevice using the panel
             await addImageGalleryFromPanel(page);
@@ -161,18 +157,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -210,6 +195,7 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -224,7 +210,7 @@ test.describe('Image Gallery iDevice', () => {
             await expect(viewModeImages.first()).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             const naturalWidth = await viewModeImages.first().evaluate((el: HTMLImageElement) => el.naturalWidth);
             console.log('View mode image naturalWidth:', naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
@@ -237,18 +223,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -272,18 +247,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -322,18 +286,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -357,12 +310,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -371,7 +325,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify gallery container exists in preview
             const previewGallery = iframe.locator('.imageGallery-IDevice');
@@ -396,18 +350,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -431,11 +374,14 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Wait for SimpleLightbox to be loaded
-            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', { timeout: 10000 });
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', undefined, {
+                timeout: 10000,
+            });
 
             // Wait for renderBehaviour to complete and SimpleLightbox to initialize
             await page.waitForTimeout(500);
@@ -444,9 +390,10 @@ test.describe('Image Gallery iDevice', () => {
             const galleryLink = page.locator('#node-content .imageGallery-IDevice a.imageLink').first();
             await expect(galleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href has been resolved to blob:// URL
+            // Verify the href has been resolved (blob URL or relative path)
             const href = await galleryLink.getAttribute('href');
-            expect(href).toMatch(/^blob:/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(href).toMatch(/^(blob:|content\/resources\/)/);
 
             // Click the image to open lightbox
             await galleryLink.click();
@@ -478,18 +425,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -513,12 +449,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -527,7 +464,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for SimpleLightbox to be available in iframe
             await page.waitForFunction(
@@ -536,20 +473,22 @@ test.describe('Image Gallery iDevice', () => {
                     if (!previewIframe?.contentWindow) return false;
                     return typeof (previewIframe.contentWindow as any).SimpleLightbox !== 'undefined';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Wait for renderBehaviour to complete
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click on the image in the preview
             const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
             await expect(previewGalleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href is a blob or data URL (resolved asset)
+            // Verify the href is resolved (blob, data URL, or relative path)
             const href = await previewGalleryLink.getAttribute('href');
             console.log('Preview gallery link href:', href);
-            expect(href).toMatch(/^(blob:|data:)/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(href).toMatch(/^(blob:|data:|content\/resources\/)/);
 
             await previewGalleryLink.click();
 
@@ -561,14 +500,898 @@ test.describe('Image Gallery iDevice', () => {
             const lightboxImage = iframe.locator('.sl-image img');
             await lightboxImage.waitFor({ state: 'attached', timeout: 5000 });
 
-            // Verify the lightbox image element exists and has a blob src
+            // Verify the lightbox image element exists and has a valid src
             const imgSrc = await lightboxImage.getAttribute('src');
             expect(imgSrc).toBeTruthy();
-            expect(imgSrc).toMatch(/^blob:/);
+            // With SW-based preview, assets may be relative paths
+            expect(imgSrc).toMatch(/^(blob:|content\/resources\/)/);
 
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');
             await expect(closeBtn).toBeVisible({ timeout: 5000 });
+        });
+    });
+
+    test.describe('Image Modification', () => {
+        test('should modify existing image without URL scheme errors', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // Capture console errors
+            const consoleErrors: string[] = [];
+            page.on('console', msg => {
+                if (msg.type() === 'error') {
+                    consoleErrors.push(msg.text());
+                }
+            });
+
+            // 1. Create project and navigate
+            const projectUuid = await createProject(page, 'Image Gallery Modify Test');
+            await gotoWorkarea(page, projectUuid);
+
+            // 2. Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // 3. Upload first image
+            await uploadImagesToGallery(page, ['test/fixtures/sample-2.jpg']);
+
+            // Verify first image was added
+            const imageContainer = page.locator('.imgSelectContainer').first();
+            await expect(imageContainer).toBeVisible({ timeout: 10000 });
+
+            // Get the initial image src - should be blob:// or similar valid URL
+            const initialImage = imageContainer.locator('img.image');
+            const initialSrc = await initialImage.getAttribute('src');
+            console.log('Initial image src:', initialSrc);
+
+            // 4. Click the "Modify" button on the image
+            const modifyBtn = imageContainer.locator('button.modify');
+            await expect(modifyBtn).toBeVisible();
+            await modifyBtn.click();
+
+            // 5. Wait for File Manager modal to open
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 6. Upload and select a different image
+            const fileInput = page.locator('#modalFileManager input[type="file"]').first();
+            await fileInput.setInputFiles('test/fixtures/sample-3.jpg');
+
+            // Wait for upload to complete and item to appear
+            await page.waitForSelector('#modalFileManager .media-library-item:not(.media-library-folder)', {
+                timeout: 15000,
+            });
+
+            // Wait a bit for the UI to update
+            await page.waitForTimeout(500);
+
+            // Select the newly uploaded item (last item in grid that's not a folder)
+            const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
+            await newItem.click();
+            await page.waitForTimeout(300);
+
+            // Click insert button
+            await page.click('#modalFileManager .media-library-insert-btn');
+            await page.waitForTimeout(500);
+
+            // 7. Verify the image src uses valid URL scheme (blob: or relative path, NOT asset://)
+            const modifiedImage = imageContainer.locator('img.image');
+            const modifiedSrc = await modifiedImage.getAttribute('src');
+            console.log('Modified image src:', modifiedSrc);
+
+            // The src should NOT contain the asset:// protocol which browsers cannot load
+            expect(modifiedSrc).not.toContain('asset://');
+            // It should be a valid URL (blob:, data:, or relative/absolute path)
+            expect(modifiedSrc).toMatch(/^(blob:|data:|content\/|\/|https?:\/\/)/);
+
+            // 8. Verify no ERR_UNKNOWN_URL_SCHEME errors in console
+            const schemeErrors = consoleErrors.filter(e => e.includes('ERR_UNKNOWN_URL_SCHEME'));
+            if (schemeErrors.length > 0) {
+                console.log('Found URL scheme errors:', schemeErrors);
+            }
+            expect(schemeErrors).toHaveLength(0);
+
+            // 9. Verify image actually loads (naturalWidth > 0)
+            const imageLoaded = await page
+                .waitForFunction(
+                    () => {
+                        const img = document.querySelector('.imgSelectContainer img.image') as HTMLImageElement;
+                        return img?.complete && img.naturalWidth > 0;
+                    },
+                    undefined,
+                    { timeout: 10000 },
+                )
+                .then(() => true)
+                .catch(() => false);
+            expect(imageLoaded).toBe(true);
+
+            // Check naturalWidth
+            const naturalWidth = await modifiedImage.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            console.log('Modified image naturalWidth:', naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+
+            // 10. Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Verify the gallery is rendered in view mode
+            const viewModeGallery = page.locator(
+                '#node-content article .idevice_node.image-gallery .imageGallery-IDevice',
+            );
+            await expect(viewModeGallery).toBeVisible({ timeout: 10000 });
+
+            // Verify image is displayed in view mode and loads correctly
+            const viewModeImage = viewModeGallery.locator('img').first();
+            await expect(viewModeImage).toBeVisible({ timeout: 5000 });
+
+            // Wait for image to load and verify it loaded correctly
+            await page.waitForTimeout(500);
+            const viewModeNaturalWidth = await viewModeImage.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            console.log('View mode image naturalWidth:', viewModeNaturalWidth);
+            expect(viewModeNaturalWidth).toBeGreaterThan(0);
+
+            // Save project
+            await workarea.save();
+        });
+    });
+
+    test.describe('Image Persistence', () => {
+        test('should display images correctly after page reload', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // Capture console errors
+            const consoleErrors: string[] = [];
+            page.on('console', msg => {
+                if (msg.type() === 'error') {
+                    consoleErrors.push(msg.text());
+                }
+            });
+
+            // Create project
+            const projectUuid = await createProject(page, 'Image Gallery Persistence Test');
+            await gotoWorkarea(page, projectUuid);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // Upload images
+            await uploadImagesToGallery(page, ['test/fixtures/sample-3.jpg']);
+
+            // Verify image container exists
+            const imageContainer = page.locator('.imgSelectContainer').first();
+            await expect(imageContainer).toBeVisible({ timeout: 10000 });
+
+            // Verify the image was added successfully (check for src attribute)
+            const galleryImage = imageContainer.locator('img.image');
+            const srcAttr = await galleryImage.getAttribute('src');
+            expect(srcAttr).toBeTruthy();
+            console.log('Image src before save:', srcAttr);
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            await block.locator('.btn-save-idevice').click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Verify the gallery is rendered in view mode
+            const viewModeGallery = page.locator(
+                '#node-content article .idevice_node.image-gallery .imageGallery-IDevice',
+            );
+            await expect(viewModeGallery).toBeVisible({ timeout: 10000 });
+
+            // Get the iDevice data from Yjs before reload to verify no blob URLs are stored
+            const ideviceDataBeforeReload = await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return null;
+
+                // Get all idevices
+                const pages = bridge.documentManager?.getPages?.();
+                if (!pages) return null;
+
+                for (const pageData of pages) {
+                    const blocks = pageData?.blocks;
+                    if (!blocks) continue;
+                    for (const block of blocks) {
+                        const idevices = block?.idevices;
+                        if (!idevices) continue;
+                        for (const idevice of idevices) {
+                            if (idevice?.type === 'image-gallery') {
+                                return idevice.data;
+                            }
+                        }
+                    }
+                }
+                return null;
+            });
+
+            console.log('iDevice data before reload:', JSON.stringify(ideviceDataBeforeReload, null, 2));
+
+            // Verify that no blob URLs are stored in the iDevice data
+            if (ideviceDataBeforeReload) {
+                const dataString = JSON.stringify(ideviceDataBeforeReload);
+                expect(dataString).not.toContain('blob:');
+            }
+
+            // Save the project to persist Yjs document
+            await workarea.save();
+            await page.waitForTimeout(500); // Wait for save to complete
+
+            // Reload the page
+            await reloadPage(page);
+
+            // Wait for the tree to be populated (using role="tree" which is more reliable)
+            await page.waitForSelector('[role="tree"]', { timeout: 15000 });
+
+            // Navigate to the page containing the image gallery using multiple selector strategies
+            const pageNodeSelectors = [
+                '[role="treeitem"] button:has-text("New page")',
+                '[role="treeitem"] button:has-text("Nueva página")',
+                '.nav-element-text:has-text("New page")',
+                '.nav-element-text:has-text("Nueva página")',
+                '[role="treeitem"]:not([selected]) button',
+                '#menu_structure .structure-tree li .nav-element-text',
+            ];
+
+            let pageSelected = false;
+            for (const selector of pageNodeSelectors) {
+                const element = page.locator(selector).first();
+                if ((await element.count()) > 0) {
+                    try {
+                        await element.click({ force: true, timeout: 5000 });
+                        pageSelected = true;
+                        console.log('Page selected using selector:', selector);
+                        break;
+                    } catch {
+                        // Try next selector
+                    }
+                }
+            }
+
+            if (!pageSelected) {
+                throw new Error('Could not select page node after reload');
+            }
+
+            await page.waitForTimeout(500);
+
+            // Verify the image gallery is rendered (view mode, not edition)
+            const galleryViewAfterReload = page.locator('#node-content .idevice_node.image-gallery').first();
+            await expect(galleryViewAfterReload).toBeVisible({ timeout: 15000 });
+
+            // Verify the gallery container exists
+            const viewModeGalleryAfterReload = page.locator(
+                '#node-content .idevice_node.image-gallery .imageGallery-IDevice',
+            );
+            await expect(viewModeGalleryAfterReload).toBeVisible({ timeout: 10000 });
+
+            // Verify images are visible (not broken)
+            const galleryImages = viewModeGalleryAfterReload.locator('img');
+            await expect(galleryImages.first()).toBeVisible({ timeout: 10000 });
+
+            // Wait for image to load and verify it loaded correctly (naturalWidth > 0)
+            const imageLoaded = await page
+                .waitForFunction(
+                    () => {
+                        const img = document.querySelector(
+                            '#node-content .idevice_node.image-gallery .imageGallery-IDevice img',
+                        ) as HTMLImageElement;
+                        return img?.complete && img.naturalWidth > 0;
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                )
+                .then(() => true)
+                .catch(() => false);
+
+            expect(imageLoaded).toBe(true);
+
+            const naturalWidth = await galleryImages.first().evaluate((el: HTMLImageElement) => el.naturalWidth);
+            console.log('Image naturalWidth after reload:', naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+
+            // Verify image src is NOT a blob URL (should be resolved by AssetManager)
+            const imageSrc = await galleryImages.first().getAttribute('src');
+            console.log('Image src after reload:', imageSrc);
+            // After reload, the AssetManager should resolve asset:// URLs to blob: URLs for display
+            // OR the image may use a relative path. Either way, it should NOT be a stale blob URL from before.
+            expect(imageSrc).toBeTruthy();
+
+            // Verify NO ERR_FILE_NOT_FOUND errors for blob URLs
+            const blobErrors = consoleErrors.filter(e => e.includes('ERR_FILE_NOT_FOUND') && e.includes('blob:'));
+            if (blobErrors.length > 0) {
+                console.log('Found blob URL errors:', blobErrors);
+            }
+            expect(blobErrors).toHaveLength(0);
+        });
+
+        test('should persist modified images correctly after multiple page reloads', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // Capture console logs and errors
+            const consoleErrors: string[] = [];
+            const consoleLogs: string[] = [];
+            page.on('console', msg => {
+                const text = msg.text();
+                if (msg.type() === 'error') {
+                    consoleErrors.push(text);
+                }
+                // Capture Image Gallery related logs
+                if (text.includes('[Image Gallery')) {
+                    consoleLogs.push(`[${msg.type()}] ${text}`);
+                    console.log(`[Browser] ${text}`);
+                }
+            });
+
+            // Helper function to wait for app initialization and select page
+            async function waitForAppAndSelectPage(): Promise<void> {
+                await waitForAppReady(page);
+
+                // Wait for the tree to be populated
+                await page.waitForSelector('[role="tree"]', { timeout: 15000 });
+
+                // Navigate to the page containing the image gallery
+                const pageNodeSelectors = [
+                    '[role="treeitem"] button:has-text("New page")',
+                    '[role="treeitem"] button:has-text("Nueva página")',
+                    '.nav-element-text:has-text("New page")',
+                    '.nav-element-text:has-text("Nueva página")',
+                ];
+
+                for (const selector of pageNodeSelectors) {
+                    const element = page.locator(selector).first();
+                    if ((await element.count()) > 0) {
+                        try {
+                            await element.click({ force: true, timeout: 5000 });
+                            break;
+                        } catch {
+                            // Try next selector
+                        }
+                    }
+                }
+
+                // Wait for the image gallery iDevice to be visible in the content area
+                await page.waitForSelector('#node-content .idevice_node.image-gallery', { timeout: 15000 });
+
+                // Wait for the gallery to render in view mode (not edition mode)
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content .idevice_node.image-gallery');
+                        if (!idevice) return false;
+                        // Wait for view mode (either no mode attribute or mode !== 'edition')
+                        const mode = idevice.getAttribute('mode');
+                        if (mode === 'edition') return false;
+                        // Wait for the gallery content to be rendered
+                        const gallery = idevice.querySelector('.imageGallery-IDevice');
+                        return !!gallery;
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                );
+
+                // Wait for AssetManager to resolve asset URLs to blob URLs
+                // Increase wait time to ensure all assets are fully resolved
+                await page.waitForTimeout(500);
+            }
+
+            // Helper function to verify all images load correctly
+            async function verifyImagesLoadCorrectly(expectedCount: number): Promise<void> {
+                const viewModeGallery = page.locator('#node-content .idevice_node.image-gallery .imageGallery-IDevice');
+                await expect(viewModeGallery).toBeVisible({ timeout: 10000 });
+
+                const galleryImages = viewModeGallery.locator('img');
+                await expect(galleryImages).toHaveCount(expectedCount, { timeout: 10000 });
+
+                // Verify each image loads correctly (naturalWidth > 0)
+                for (let i = 0; i < expectedCount; i++) {
+                    const img = galleryImages.nth(i);
+                    await expect(img).toBeVisible({ timeout: 10000 });
+
+                    // Add debugging: check attributes to catch issues early
+                    const debugInfo = await img.evaluate((el: HTMLImageElement) => ({
+                        src: el.getAttribute('src'),
+                        origin: el.getAttribute('origin'),
+                        naturalWidth: el.naturalWidth,
+                        complete: el.complete,
+                    }));
+                    console.log(`Image ${i + 1} attributes:`, debugInfo);
+
+                    // In view mode, images use asset:// URLs in src which get resolved by the asset resolver
+
+                    // Wait for image to load successfully (naturalWidth > 0)
+                    // This polls until the image is loaded, not just complete
+                    const result = await page
+                        .waitForFunction(
+                            (idx: number) => {
+                                const images = document.querySelectorAll(
+                                    '#node-content .idevice_node.image-gallery .imageGallery-IDevice img',
+                                );
+                                const img = images[idx] as HTMLImageElement;
+                                if (!img) return null;
+                                // Only return when image is actually loaded with content
+                                if (img.complete && img.naturalWidth > 0) {
+                                    return {
+                                        loaded: true,
+                                        naturalWidth: img.naturalWidth,
+                                        src: img.getAttribute('src')?.substring(0, 100),
+                                    };
+                                }
+                                // If image is complete but has no width, it failed to load
+                                // Keep polling - AssetManager may still be resolving the URL
+                                return null;
+                            },
+                            i,
+                            { timeout: 30000 },
+                        )
+                        .then(handle => handle.jsonValue())
+                        .catch(async () => {
+                            // On timeout, get current state for debugging
+                            const debugState = await page.evaluate((idx: number) => {
+                                const images = document.querySelectorAll(
+                                    '#node-content .idevice_node.image-gallery .imageGallery-IDevice img',
+                                );
+                                const img = images[idx] as HTMLImageElement;
+                                if (!img) return { error: 'Image element not found' };
+                                return {
+                                    loaded: false,
+                                    naturalWidth: img.naturalWidth,
+                                    src: img.getAttribute('src')?.substring(0, 100),
+                                    origin: img.getAttribute('origin')?.substring(0, 100),
+                                    complete: img.complete,
+                                };
+                            }, i);
+                            return debugState;
+                        });
+
+                    console.log(`Image ${i + 1}:`, result);
+                    expect(result?.loaded).toBe(true);
+                    expect(result?.naturalWidth).toBeGreaterThan(0);
+                }
+            }
+
+            // Helper function to modify an image at a specific index
+            async function modifyImageAtIndex(index: number, newImagePath: string): Promise<void> {
+                // Enter edit mode
+                const galleryIdevice = page.locator('#node-content .idevice_node.image-gallery').first();
+                const editBtn = galleryIdevice.locator('.btn-edit-idevice, [data-action="edit"]').first();
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.click();
+                }
+
+                // Wait for edit mode
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                        return idevice && idevice.getAttribute('mode') === 'edition';
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                );
+
+                // Wait for MutationObserver to process images and set data-asset-url attributes
+                // This ensures all asset URLs are properly resolved before any modifications
+                await page.waitForTimeout(500);
+
+                // Click modify button on the specified image
+                const imageContainers = page.locator('.imgSelectContainer');
+                const targetContainer = imageContainers.nth(index);
+                const modifyBtn = targetContainer.locator('button.modify');
+                await modifyBtn.click();
+
+                // Wait for File Manager modal to open
+                await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                    timeout: 10000,
+                });
+
+                // Upload and select the new image
+                const fileInput = page.locator('#modalFileManager input[type="file"]').first();
+                await fileInput.setInputFiles(newImagePath);
+
+                // Wait for upload to complete
+                await page.waitForSelector('#modalFileManager .media-library-item:not(.media-library-folder)', {
+                    timeout: 15000,
+                });
+                await page.waitForTimeout(500);
+
+                // Select the newly uploaded item
+                const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
+                await newItem.click();
+                await page.waitForTimeout(300);
+
+                // Click insert button
+                await page.click('#modalFileManager .media-library-insert-btn');
+                await page.waitForTimeout(500);
+
+                // Save the iDevice
+                const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+                await block.locator('.btn-save-idevice').click();
+
+                // Wait for edition mode to end
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                        return idevice && idevice.getAttribute('mode') !== 'edition';
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                );
+
+                // Save the project
+                await workarea.save();
+                await page.waitForTimeout(500);
+            }
+
+            // ============ STEP 1: Create project and add two images ============
+            const projectUuid = await createProject(page, 'Image Gallery Multi-Modify Test');
+            await gotoWorkarea(page, projectUuid);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // Upload two images
+            await uploadImagesToGallery(page, ['test/fixtures/sample-2.jpg', 'test/fixtures/sample-3.jpg']);
+
+            // Verify two image containers exist
+            const imageContainers = page.locator('.imgSelectContainer');
+            await expect(imageContainers).toHaveCount(2, { timeout: 10000 });
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            await block.locator('.btn-save-idevice').click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(500);
+            console.log('Step 1 complete: Two images added and saved');
+
+            // ============ STEP 2: Reload and verify both images display ============
+            await reloadPage(page);
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+            console.log('Step 2 complete: Both images display correctly after first reload');
+
+            // ============ STEP 3: Modify first image ============
+            // We'll use sample-3.jpg to replace the first image
+            await modifyImageAtIndex(0, 'test/fixtures/sample-3.jpg');
+            console.log('Step 3 complete: First image modified');
+
+            // ============ STEP 4: Reload and verify both images still display ============
+            await reloadPage(page);
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+            console.log('Step 4 complete: Both images display correctly after modifying first image');
+
+            // ============ STEP 5: Modify second image ============
+            await modifyImageAtIndex(1, 'test/fixtures/sample-2.jpg');
+            console.log('Step 5 complete: Second image modified');
+
+            // ============ STEP 6: Final reload and verification ============
+            await reloadPage(page);
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+
+            // Verify NO ERR_FILE_NOT_FOUND errors for blob URLs
+            const blobErrors = consoleErrors.filter(e => e.includes('ERR_FILE_NOT_FOUND') && e.includes('blob:'));
+            if (blobErrors.length > 0) {
+                console.log('Found blob URL errors:', blobErrors);
+            }
+            expect(blobErrors).toHaveLength(0);
+
+            console.log('Step 6 complete: Both images display correctly after final reload, no console errors');
+        });
+    });
+
+    test.describe('Folder Path Support', () => {
+        /**
+         * Helper to open file manager from image gallery "Add images" button
+         */
+        async function openFileManagerFromGallery(page: Page): Promise<void> {
+            // Click the "Add images" button which opens file manager
+            await page.click('#addImageButton');
+            // Wait for file manager modal to open
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+            // Wait for the grid to be ready
+            await page.waitForTimeout(500);
+        }
+
+        /**
+         * Helper to create a folder in file manager
+         */
+        async function createFolderInFileManager(page: Page, folderName: string): Promise<void> {
+            // Click new folder button
+            await page.click('.media-library-newfolder-btn');
+
+            // Handle the modal dialog for folder name input
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await page.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
+
+            // Wait for folder to appear in grid
+            await page.waitForSelector(`.media-library-folder[data-folder-name="${folderName}"]`, { timeout: 10000 });
+        }
+
+        /**
+         * Helper to navigate into a folder by double-clicking.
+         *
+         * After dblclick the file manager updates its breadcrumb trail
+         * (`renderBreadcrumbs()` in modalFileManager.js) and re-renders the
+         * grid for the new path. We wait for the breadcrumb to actually
+         * reflect the target folder before returning so subsequent uploads
+         * happen in the right `currentPath`.
+         */
+        async function navigateToFolder(page: Page, folderName: string): Promise<void> {
+            // Wait for the folder tile to be in the grid before issuing the
+            // navigation request. We don't need to actually click it: each
+            // file-manager re-render replaces the DOM nodes, which makes
+            // Playwright's dblclick race with the re-render. We instead
+            // ask the file manager directly to enter the folder by name,
+            // which mirrors the JS path triggered by the dblclick handler
+            // (`item.dblclick → enterFolder(folderName)` in
+            // public/app/workarea/modals/modals/pages/modalFileManager.js).
+            const folderItem = page.locator(`.media-library-folder[data-folder-name="${folderName}"]`).first();
+            await folderItem.waitFor({ state: 'visible', timeout: 10000 });
+
+            await page.evaluate((name: string) => {
+                const w = window as unknown as {
+                    eXeLearning?: { modals?: { fileManager?: { enterFolder?: (name: string) => void } } };
+                };
+                const fm = w.eXeLearning?.modals?.fileManager;
+                if (fm?.enterFolder) {
+                    fm.enterFolder(name);
+                    return;
+                }
+                // Fallback: dispatch a real dblclick event on the folder tile.
+                const el = document.querySelector(
+                    `#modalFileManager .media-library-folder[data-folder-name="${name.replace(/"/g, '\\"')}"]`,
+                );
+                if (!el) throw new Error(`Folder tile not found: ${name}`);
+                el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+            }, folderName);
+
+            // Wait for the breadcrumb's leaf segment to equal the folder
+            // we just entered.
+            await page.waitForFunction(
+                (name: string) => {
+                    const items = document.querySelectorAll(
+                        '#modalFileManager .media-library-breadcrumbs .breadcrumb-item',
+                    );
+                    if (!items.length) return false;
+                    const last = items[items.length - 1];
+                    return last.textContent?.trim() === name;
+                },
+                folderName,
+                { timeout: 8000 },
+            );
+
+            // Allow the grid re-render to settle before counting items.
+            await page.waitForTimeout(250);
+        }
+
+        /**
+         * Helper to upload an image and confirm its insertion.
+         *
+         * `modalFileManager.uploadFiles()` auto-selects the freshly uploaded
+         * asset (`autoSelectUploadedAsset`, modalFileManager.js:2091), which
+         * is what enables the insert button. Trying to click the item again
+         * from the test races with the grid re-render and frequently leaves
+         * the button disabled, so we let auto-select do its job and only
+         * fall back to manual selection if the button is still disabled
+         * after the upload settles.
+         *
+         * Steps:
+         *   1. Snapshot the current item count.
+         *   2. Trigger the upload via the hidden file input.
+         *   3. Wait for a NEW item to appear and for every item's
+         *      `data-asset-loading` placeholder attribute to clear.
+         *   4. Wait for the insert button to be enabled (auto-selection).
+         *      If that times out, click the new item explicitly as a fallback.
+         *   5. Click insert.
+         */
+        async function uploadAndSelectImage(page: Page, fixturePath: string): Promise<void> {
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            // The file manager tags each item tile with `data-filename` set
+            // to the original upload filename. Waiting for the SPECIFIC
+            // filename to appear is more robust than counting items, which
+            // can stay constant when the grid switches folder views in the
+            // same render tick (sample-3 in /photos -> sample-4 in
+            // /photos/vacation: count is "1" before AND after).
+            const filename = fixturePath.split('/').pop() ?? fixturePath;
+            const newItem = page.locator(`#modalFileManager .media-library-item[data-filename="${filename}"]`).first();
+
+            const fileInput = page.locator('#modalFileManager input[type="file"]').first();
+            await fileInput.setInputFiles(fixturePath);
+
+            // Wait for the new item identified by filename
+            await newItem.waitFor({ state: 'visible', timeout: 20000 });
+
+            // Wait for placeholder/loading state to clear on the new item
+            await page.waitForFunction(
+                (fname: string) => {
+                    const el = document.querySelector(
+                        `#modalFileManager .media-library-item[data-filename="${fname}"]`,
+                    );
+                    if (!el) return false;
+                    return el.getAttribute('data-asset-loading') !== 'true';
+                },
+                filename,
+                { timeout: 30000 },
+            );
+
+            // Auto-select kicks in inside uploadFiles(). Give it a brief
+            // window to enable the insert button before falling back.
+            try {
+                await expect(insertBtn).toBeEnabled({ timeout: 10000 });
+            } catch {
+                await newItem.click();
+                await expect(insertBtn).toBeEnabled({ timeout: 15000 });
+            }
+
+            await insertBtn.click();
+            await page.waitForTimeout(500);
+        }
+
+        /**
+         * Helper to navigate to a specific breadcrumb path
+         */
+        async function navigateToBreadcrumbRoot(page: Page): Promise<void> {
+            // Click on the root breadcrumb item to go back to root
+            const rootBreadcrumb = page.locator(
+                '.media-library-breadcrumbs .breadcrumb-item[data-path=""], .media-library-breadcrumbs .breadcrumb-root',
+            );
+            if ((await rootBreadcrumb.count()) > 0) {
+                await rootBreadcrumb.first().click();
+                await page.waitForTimeout(500);
+            }
+        }
+
+        test('should load images from different folder depths in preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Image Gallery Folder Depth Test');
+            await gotoWorkarea(page, projectUuid);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // 1. Add image from ROOT level via file manager
+            await openFileManagerFromGallery(page);
+            await uploadAndSelectImage(page, 'test/fixtures/sample-2.jpg');
+
+            // Verify first image was added
+            const imageContainers = page.locator('.imgSelectContainer');
+            await expect(imageContainers).toHaveCount(1, { timeout: 10000 });
+
+            // 2. Add image from ONE LEVEL folder
+            await openFileManagerFromGallery(page);
+            await createFolderInFileManager(page, 'photos');
+            await navigateToFolder(page, 'photos');
+            await uploadAndSelectImage(page, 'test/fixtures/sample-3.jpg');
+
+            // Verify second image was added
+            await expect(imageContainers).toHaveCount(2, { timeout: 10000 });
+
+            // 3. Add image from NESTED folders (2 levels: photos/vacation)
+            await openFileManagerFromGallery(page);
+            await navigateToFolder(page, 'photos');
+            await createFolderInFileManager(page, 'vacation');
+            await navigateToFolder(page, 'vacation');
+            // Use a distinct image to avoid content-hash collision with call 1 (same UUID → broken autoSelect)
+            await uploadAndSelectImage(page, 'test/fixtures/sample-4.jpg');
+
+            // Verify third image was added
+            await expect(imageContainers).toHaveCount(3, { timeout: 15000 });
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(500);
+
+            // Open preview panel using helper (handles Service Worker check)
+            const previewLoaded = await waitForPreviewContent(page, 30000);
+            expect(previewLoaded).toBe(true);
+
+            // Get iframe reference
+            const iframe = getPreviewFrame(page);
+
+            // Verify gallery exists in preview
+            const previewGallery = iframe.locator('.imageGallery-IDevice');
+            await expect(previewGallery).toBeVisible({ timeout: 10000 });
+
+            // Verify ALL 3 images exist in preview
+            const previewImages = iframe.locator('.imageGallery-IDevice img');
+            await expect(previewImages).toHaveCount(3, { timeout: 10000 });
+
+            // Check each image loads with naturalWidth > 0
+            for (let i = 0; i < 3; i++) {
+                const img = previewImages.nth(i);
+                await img.waitFor({ state: 'attached', timeout: 10000 });
+
+                // Wait for image to load and check naturalWidth
+                const result = await iframe.locator('body').evaluate(async (_, idx: number) => {
+                    const images = document.querySelectorAll('.imageGallery-IDevice img');
+                    const img = images[idx] as HTMLImageElement;
+                    if (!img) return { loaded: false, src: '', naturalWidth: 0 };
+
+                    // Wait for load if not already loaded
+                    if (!img.complete) {
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                            setTimeout(reject, 5000);
+                        }).catch(() => {});
+                    }
+
+                    return {
+                        loaded: img.complete && img.naturalWidth > 0,
+                        src: img.getAttribute('src'),
+                        naturalWidth: img.naturalWidth,
+                    };
+                }, i as number);
+
+                console.log(`Image ${i + 1}:`, result);
+                expect(result.loaded).toBe(true);
+                expect(result.naturalWidth).toBeGreaterThan(0);
+            }
         });
     });
 });

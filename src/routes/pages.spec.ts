@@ -15,6 +15,7 @@ import {
     type PagesFileHelperDeps,
     type PagesTemplateDeps,
     type PagesUtilsDeps,
+    type PagesSettingsDeps,
 } from './pages';
 
 // Mock data stores
@@ -40,8 +41,21 @@ function createMockQueries(): PagesQueriesDeps {
             mockUsers.set(id, user);
             return user;
         },
-        findPreference: async (_db: any, userId: string, key: string) => {
+        findPreference: async (_db: any, userId: number, key: string) => {
             return mockPreferences.get(`${userId}:${key}`);
+        },
+        setPreference: async (_db: any, userId: number, key: string, value: string) => {
+            mockPreferences.set(`${userId}:${key}`, { value });
+            return {
+                id: 1,
+                owner_id: userId,
+                preference_key: key,
+                value,
+                description: null,
+                is_active: 1,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+            };
         },
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
         findProjectByPlatformId: async (_db: any, platformId: string) => {
@@ -51,18 +65,18 @@ function createMockQueries(): PagesQueriesDeps {
             }
             return undefined;
         },
-        checkProjectAccess: async (_db: any, project: any, userId: number) => {
+        checkProjectAccess: async (_db: any, project: any, userId?: number) => {
             // Check owner (support both ownerId and owner_id)
-            if (project.ownerId === userId || project.owner_id === userId) {
-                return { hasAccess: true };
+            if (userId && (project.ownerId === userId || project.owner_id === userId)) {
+                return { hasAccess: true, reason: undefined };
             }
             // Check collaborators
-            if (project.collaborators?.includes(userId)) {
-                return { hasAccess: true };
+            if (userId && project.collaborators?.includes(userId)) {
+                return { hasAccess: true, reason: undefined };
             }
             // Check visibility
             if (project.visibility === 'public') {
-                return { hasAccess: true };
+                return { hasAccess: true, reason: undefined };
             }
             return { hasAccess: false, reason: 'ACCESS_DENIED' };
         },
@@ -76,6 +90,14 @@ function createMockQueries(): PagesQueriesDeps {
                 saved_once: data.saved_once ?? 0,
                 visibility: 'private',
                 status: 'active',
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                description: null,
+                language: 'en',
+                author: null,
+                license: null,
+                last_accessed_at: Date.now(),
+                platform_id: null,
             };
             mockProjects.set(uuid, project);
             return project;
@@ -105,6 +127,8 @@ function createMockFileHelper(): PagesFileHelperDeps {
         createSessionDirectories: async (_sessionId: string) => {
             // Do nothing in tests
         },
+        fileExists: async (_filePath: string) => false,
+        readFile: async (_filePath: string) => Buffer.from(''),
     };
 }
 
@@ -113,6 +137,9 @@ function createMockTemplate(): PagesTemplateDeps {
     return {
         renderTemplate: (template: string, data: any) => {
             return `<html><body>Template: ${template}, Locale: ${data.locale || 'en'}</body></html>`;
+        },
+        setRenderLocale: (_locale: string) => {
+            // No-op for default mock
         },
     };
 }
@@ -126,6 +153,18 @@ function createMockUtils(): PagesUtilsDeps {
     };
 }
 
+// Create mock settings
+function createMockSettings(): PagesSettingsDeps {
+    return {
+        getAuthMethods: async (_db: any, fallback: string) => {
+            const methods = (process.env.APP_AUTH_METHODS || fallback).split(',').map(m => m.trim());
+            return methods;
+        },
+        getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
+        getSettingString: async (_db: any, _key: string, fallback: string) => fallback,
+    };
+}
+
 // Create mock dependencies
 function createMockDependencies(): PagesDependencies {
     return {
@@ -135,6 +174,7 @@ function createMockDependencies(): PagesDependencies {
         fileHelper: createMockFileHelper(),
         template: createMockTemplate(),
         utils: createMockUtils(),
+        settings: createMockSettings(),
     };
 }
 
@@ -1271,6 +1311,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>Workarea: ${template}</body></html>`;
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1316,6 +1357,208 @@ describe('Pages Routes', () => {
             expect(templateData.t).toBeDefined();
         });
 
+        it('should expose isAdmin=false and admin_panel translation for non-admin users', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = { ...mockDeps, template: customTemplate };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('isadmin-false', { sessionId: 'isadmin-false', fileName: 'Test.elp' });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=isadmin-false', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(templateData).not.toBeNull();
+            expect(templateData.user.isAdmin).toBe(false);
+            expect(templateData.user.roles).toEqual(['ROLE_USER']);
+            expect(templateData.t.admin_panel).toBeDefined();
+        });
+
+        it('should expose isAdmin=true for users with ROLE_ADMIN', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = { ...mockDeps, template: customTemplate };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(77, {
+                id: 77,
+                email: 'admin-workarea@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 77,
+                email: 'admin-workarea@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            mockSessions.set('isadmin-true', { sessionId: 'isadmin-true', fileName: 'Test.elp' });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=isadmin-true', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(templateData).not.toBeNull();
+            expect(templateData.user.isAdmin).toBe(true);
+            expect(templateData.user.roles).toContain('ROLE_ADMIN');
+        });
+
+        it('should include impersonation context in workarea view model', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(99, {
+                id: 99,
+                email: 'admin-impersonator@test.com',
+                roles: '["ROLE_USER","ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const userToken = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+            const adminToken = await tempApp.decorator.jwt.sign({
+                sub: 99,
+                email: 'admin-impersonator@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            mockSessions.set('impersonation-view-test', {
+                sessionId: 'impersonation-view-test',
+                fileName: 'Test.elp',
+                userId: 1,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=impersonation-view-test', {
+                    headers: {
+                        Cookie: `auth=${userToken}; impersonator_auth=${adminToken}; impersonation_session=session-123`,
+                    },
+                }),
+            );
+
+            expect(templateData.impersonation).toBeDefined();
+            expect(templateData.impersonation.isActive).toBe(true);
+            expect(templateData.impersonation.sessionId).toBe('session-123');
+            expect(templateData.impersonation.impersonatorEmail).toBe('admin-impersonator@test.com');
+            expect(templateData.impersonation.impersonatedEmail).toBe('test@test.com');
+        });
+
+        it('should call setRenderLocale with correct locale before rendering template', async () => {
+            let setLocaleCalledWith: string | null = null;
+            let renderTemplateCalledAfterSetLocale = false;
+            let setLocaleCalled = false;
+
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, _data: any) => {
+                    // Verify setRenderLocale was called before renderTemplate
+                    renderTemplateCalledAfterSetLocale = setLocaleCalled;
+                    return '<html></html>';
+                },
+                setRenderLocale: (locale: string) => {
+                    setLocaleCalledWith = locale;
+                    setLocaleCalled = true;
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Set user locale preference to Spanish
+            mockPreferences.set('1:locale', { value: 'es' });
+
+            mockSessions.set('setlocale-test', {
+                sessionId: 'setlocale-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=setlocale-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Verify setRenderLocale was called with the correct locale
+            expect(setLocaleCalled).toBe(true);
+            expect(setLocaleCalledWith).toBe('es');
+            // Verify setRenderLocale was called BEFORE renderTemplate
+            expect(renderTemplateCalledAfterSetLocale).toBe(true);
+        });
+
         it('should include all translation keys', async () => {
             let templateData: any = null;
             const customTemplate: PagesTemplateDeps = {
@@ -1323,6 +1566,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1373,6 +1617,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1422,6 +1667,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1469,6 +1715,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Template rendering failed');
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1519,6 +1766,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>${template}</body></html>`;
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1785,6 +2033,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1833,6 +2082,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1888,6 +2138,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1936,6 +2187,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Admin template failed');
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2055,6 +2307,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2096,6 +2349,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2223,6 +2477,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2262,6 +2517,109 @@ describe('Pages Routes', () => {
         });
     });
 
+    describe('GET /customization/favicon', () => {
+        it('should redirect to default favicon when no custom favicon is configured', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location')).toContain('/favicon.ico');
+        });
+
+        it('should redirect to default favicon when configured file does not exist on disk', async () => {
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return 'favicon.png';
+                        return fallback;
+                    },
+                },
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => false,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location')).toContain('/favicon.ico');
+        });
+
+        it('should serve the custom favicon file when it exists', async () => {
+            const faviconContent = Buffer.from('fake-png-data');
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return 'favicon.png';
+                        return fallback;
+                    },
+                },
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => true,
+                    readFile: async (_path: string) => faviconContent,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('image/png');
+        });
+
+        it('should return 400 for path traversal in favicon filename', async () => {
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return '../etc/passwd';
+                        return fallback;
+                    },
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe('GET /customization/assets/:filename', () => {
+        it('should return 404 when asset file does not exist', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/assets/image.png'));
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should serve the asset file when it exists', async () => {
+            const fileContent = Buffer.from('image-data');
+            const customDeps = {
+                ...mockDeps,
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => true,
+                    readFile: async (_path: string) => fileContent,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/assets/image.png'));
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('image/png');
+        });
+
+        it('should return 400 for path traversal attempt', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
+
+            expect(res.status).toBe(400);
+        });
+    });
+
     describe('GET /access-denied', () => {
         it('should render access denied page with 403 status', async () => {
             const res = await app.handle(new Request('http://localhost/access-denied'));
@@ -2285,6 +2643,7 @@ describe('Pages Routes', () => {
                         templateData = data;
                         return `<html><body>Template: ${template}</body></html>`;
                     },
+                    setRenderLocale: () => {},
                 };
 
                 const customDeps = {

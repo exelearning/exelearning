@@ -49,6 +49,7 @@ describe('YjsProjectManagerMixin', () => {
       },
       documentManager: {
         awareness: null,
+        captureBaselineState: mock(() => undefined),
       },
       app: null,
     };
@@ -232,6 +233,12 @@ describe('YjsProjectManagerMixin', () => {
       await projectManager.enableYjsMode(123, 'token');
 
       expect(projectManager.app.themes.initYjsBinding).toHaveBeenCalled();
+    });
+
+    it('captures baseline state after initialization', async () => {
+      await projectManager.enableYjsMode(123, 'token');
+
+      expect(mockBridge.documentManager.captureBaselineState).toHaveBeenCalled();
     });
 
     it('returns bridge instance', async () => {
@@ -637,6 +644,10 @@ describe('YjsProjectManagerMixin', () => {
 
     it('updates both pageName and title', async () => {
       mockBridge.updatePage = mock(() => undefined);
+      const mockUpdatePageProperties = mock(() => true);
+      mockBridge.structureBinding = {
+        updatePageProperties: mockUpdatePageProperties,
+      };
       await projectManager.enableYjsMode(123, 'token');
 
       const result = projectManager.renamePageViaYjs('page-1', 'New Name');
@@ -644,6 +655,10 @@ describe('YjsProjectManagerMixin', () => {
       expect(mockBridge.updatePage).toHaveBeenCalledWith('page-1', {
         pageName: 'New Name',
         title: 'New Name',
+      });
+      // Also updates properties.titleNode so the modal reads the correct value
+      expect(mockUpdatePageProperties).toHaveBeenCalledWith('page-1', {
+        titleNode: 'New Name',
       });
       expect(result).toBe(true);
     });
@@ -1085,18 +1100,19 @@ describe('YjsProjectManagerMixin', () => {
       YjsProjectManagerMixin.applyMixin(projectManager);
     });
 
-    it('does nothing when Yjs not enabled', async () => {
-      // Should not throw
-      await projectManager.exportToElpxViaYjs();
+    it('returns saved false when Yjs not enabled', async () => {
+      const result = await projectManager.exportToElpxViaYjs();
+      expect(result).toEqual({ saved: false });
     });
 
-    it('delegates to bridge when enabled', async () => {
-      mockBridge.exportToElpx = mock(() => undefined).mockResolvedValue();
+    it('delegates to bridge and propagates result when enabled', async () => {
+      mockBridge.exportToElpx = mock(() => Promise.resolve({ saved: true }));
       await projectManager.enableYjsMode(123, 'token');
 
-      await projectManager.exportToElpxViaYjs();
+      const result = await projectManager.exportToElpxViaYjs();
 
       expect(mockBridge.exportToElpx).toHaveBeenCalled();
+      expect(result).toEqual({ saved: true });
     });
   });
 
@@ -1173,6 +1189,58 @@ describe('YjsProjectManagerMixin', () => {
       expect(result.components).toBe(1);
     });
 
+    it('generates canonical page, block and iDevice IDs when converted structure has none (#1782)', async () => {
+      const nowSpy = spyOn(Date, 'now').mockReturnValue(1700000000000);
+      window.Y = { Map: global.MockYMap, Array: global.MockYArray };
+      const mockNavigation = new global.MockYArray();
+      mockBridge.getAssetManager = mock(() => null);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            title: 'Generated IDs',
+            blocks: [
+              {
+                name: 'Generated block',
+                idevices: [
+                  {
+                    type: 'FreeTextIdevice',
+                    htmlView: '<p>Generated component</p>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      await projectManager.importConvertedStructure(structure, []);
+
+      const page = mockNavigation.get(0);
+      const pageId = page.get('id');
+      const block = page.get('blocks').get(0);
+      const blockId = block.get('id');
+      const component = block.get('components').get(0);
+      const componentId = component.get('id');
+
+      // Canonical Format A: <prefix>-<base36 timestamp>-<9 base36 random chars>
+      expect(pageId).toMatch(/^page-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(pageId.startsWith(`page-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(page.get('pageId')).toBe(pageId);
+      expect(blockId).toMatch(/^block-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(blockId.startsWith(`block-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(block.get('blockId')).toBe(blockId);
+      expect(componentId).toMatch(/^idevice-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(componentId.startsWith(`idevice-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(component.get('ideviceId')).toBe(componentId);
+      nowSpy.mockRestore();
+    });
+
     it('handles empty structure', async () => {
       const mockNavigation = new global.window.Y.Array();
       mockBridge.getAssetManager = mock(() => null);
@@ -1203,6 +1271,158 @@ describe('YjsProjectManagerMixin', () => {
       // Navigation should have been cleared (delete called)
       expect(mockNavigation.length).toBe(0);
     });
+
+    it('replaces asset paths with new format URLs (asset://uuid.ext)', async () => {
+      const mockNavigation = new global.window.Y.Array();
+
+      // Setup proper mocks for asset import
+      global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+      global.Blob = class MockBlob {
+        constructor(chunks, options) {
+          this.type = options?.type || '';
+          this.size = chunks[0]?.length || 0;
+        }
+      };
+      global.File = class MockFile extends global.Blob {
+        constructor(chunks, name, options) {
+          super(chunks, options);
+          this.name = name;
+        }
+      };
+
+      // Track the URL returned by insertImage and the filename used in URL generation
+      let capturedFilename = '';
+      const mockAssetManager = {
+        insertImage: mock((file) => {
+          capturedFilename = file.name;
+          // Generate new format URL based on file extension
+          const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+          const url = ext ? `asset://mock-uuid.${ext}` : 'asset://mock-uuid';
+          return Promise.resolve(url);
+        }),
+        preloadAllAssets: mock(() => Promise.resolve()),
+      };
+
+      mockBridge.getAssetManager = mock(() => mockAssetManager);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Test Page',
+            blocks: [
+              {
+                id: 'block-1',
+                name: 'Block 1',
+                idevices: [
+                  {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    htmlView: '<img src="{{context_path}}/resources/photo.jpg">',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      // Assets with base64 encoded content
+      const assets = [
+        {
+          path: 'resources/photo.jpg',
+          base64: 'dGVzdA==', // "test" in base64
+          mime: 'image/jpeg',
+        },
+      ];
+
+      const result = await projectManager.importConvertedStructure(structure, assets);
+
+      expect(result).toBeDefined();
+      expect(result.assets).toBe(1);
+
+      // Verify insertImage was called with correct filename
+      expect(mockAssetManager.insertImage).toHaveBeenCalled();
+      expect(capturedFilename).toBe('photo.jpg');
+    });
+
+    it('handles assets without file extension', async () => {
+      const mockNavigation = new global.window.Y.Array();
+
+      global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+      global.Blob = class MockBlob {
+        constructor(chunks, options) {
+          this.type = options?.type || '';
+          this.size = chunks[0]?.length || 0;
+        }
+      };
+      global.File = class MockFile extends global.Blob {
+        constructor(chunks, name, options) {
+          super(chunks, options);
+          this.name = name;
+        }
+      };
+
+      let capturedFilename = '';
+      const mockAssetManager = {
+        insertImage: mock((file) => {
+          capturedFilename = file.name;
+          const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+          const url = ext ? `asset://mock-uuid.${ext}` : 'asset://mock-uuid';
+          return Promise.resolve(url);
+        }),
+        preloadAllAssets: mock(() => Promise.resolve()),
+      };
+
+      mockBridge.getAssetManager = mock(() => mockAssetManager);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Test Page',
+            blocks: [
+              {
+                id: 'block-1',
+                name: 'Block 1',
+                idevices: [
+                  {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    htmlView: '<a href="{{context_path}}/resources/README">Link</a>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const assets = [
+        {
+          path: 'resources/README',
+          base64: 'dGVzdA==',
+          mime: 'text/plain',
+        },
+      ];
+
+      const result = await projectManager.importConvertedStructure(structure, assets);
+
+      expect(result.assets).toBe(1);
+      // Verify the filename extracted correctly (no extension)
+      expect(capturedFilename).toBe('README');
+    });
+
   });
 
   describe('isApplied', () => {

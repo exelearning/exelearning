@@ -20,6 +20,13 @@
     cursor: grab;
 }
 
+.SLP-TouchHelper {
+    opacity: .8;
+    cursor: move;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
 .exe-sortableList .first .up,
 .exe-sortableList-options .last .down {
     visibility: hidden;

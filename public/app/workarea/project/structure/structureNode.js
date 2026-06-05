@@ -7,6 +7,8 @@ export default class StructureNode {
         this.id = data.id;
         this.children = [];
         this.moving = false;
+        // Initialize properties (must be done before setParams)
+        this._initProperties();
         // Set api params
         this.setParams(data);
         // Control parameters
@@ -15,12 +17,23 @@ export default class StructureNode {
 
     /**
      * Node properties
+     * Initialized in constructor to ensure API data is loaded first
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odeNavStructureSyncPropertiesConfig
-        )
-    );
+    properties = {};
+
+    /**
+     * Initialize properties from API config
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
+     * @private
+     */
+    _initProperties() {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? app?.api?.staticData?.parameters?.odeNavStructureSyncPropertiesConfig
+            : app?.api?.parameters?.odeNavStructureSyncPropertiesConfig;
+        this.properties = JSON.parse(JSON.stringify(config || {}));
+    }
 
     /**
      * Api params
@@ -47,6 +60,11 @@ export default class StructureNode {
      * @param {Array} data
      */
     setParams(data) {
+        // Guard against undefined/null data
+        if (!data) {
+            return;
+        }
+
         for (let [i, param] of Object.entries(this.params)) {
             let defaultValue = this.default[param] ? this.default[param] : null;
             this[param] = data[param] ? data[param] : defaultValue;
@@ -54,8 +72,10 @@ export default class StructureNode {
         if (data.odeNavStructureSyncProperties) {
             this.setProperties(data.odeNavStructureSyncProperties);
         }
-        // Set property titleNode
-        this.properties.titleNode.value = this.pageName;
+        // Set property titleNode (with defensive check for static mode)
+        if (this.properties?.titleNode) {
+            this.properties.titleNode.value = this.pageName;
+        }
     }
 
     /**
@@ -629,32 +649,40 @@ export default class StructureNode {
 
     /**
      * Save properties via Yjs
-     * @param {Object} properties - Properties to save
+     * @param {Object} properties - Properties to save (e.g., {titleNode: string, highlight: string, author: string})
+     * @returns {Promise<{responseMessage: string}|false>} Response object on success, false on failure
      */
     async savePropertiesViaYjs(properties) {
         try {
             const project = eXeLearning.app.project;
-            const bridge = project._yjsBridge;
 
-            if (!bridge || !bridge.structureBinding) {
+            if (!project._yjsBridge?.structureBinding) {
                 console.warn('[StructureNode] Yjs structure binding not available');
                 return false;
             }
 
-            // Save properties to Yjs
-            const success = bridge.structureBinding.updatePageProperties(this.id, properties);
+            const success = project._yjsBridge.structureBinding.updatePageProperties(this.id, properties);
 
             if (success) {
                 Logger.log('[StructureNode] Saved properties via Yjs:', this.id);
 
-                // Rename node if titleNode changed
+                // titleNode changes require both local state update and full menu reload
+                // because the navigation tree displays page titles
                 if (properties.titleNode) {
                     this.pageName = properties.titleNode;
                     this.structure.renameNodeAndReload(this.id, properties.titleNode);
+                } else if (properties.highlight !== undefined) {
+                    // highlight affects the visual appearance of the nav item
+                    // Only reset when titleNode didn't change to avoid redundant reloads
+                    await this.structure.resetStructureData(this.id);
                 }
 
-                // Reload page content to reflect changes
-                this.structure.project.idevices.loadApiIdevicesInPage(true);
+                // Only reload idevices if there were actual property changes
+                // to avoid unnecessary re-renders
+                const hasProperties = Object.keys(properties).length > 0;
+                if (hasProperties) {
+                    this.structure.project.idevices.loadApiIdevicesInPage(true);
+                }
 
                 return { responseMessage: 'OK' };
             } else {

@@ -32,7 +32,7 @@ APP_AUTH_METHODS=password,cas,openid,guest
 AUTH_CREATE_USERS=true
 
 # CAS
-CAS_URL=https://casserverpac4j.herokuapp.com
+CAS_URL=https://www.casserverpac4j.dev
 CAS_VALIDATE_PATH=/p3/serviceValidate
 CAS_LOGIN_PATH=/login
 CAS_LOGOUT_PATH=/logout
@@ -149,13 +149,35 @@ OIDC_CLIENT_SECRET=secret
 Use these variables (example with a public test server):
 
 ```
-CAS_URL=https://casserverpac4j.herokuapp.com
+CAS_URL=https://www.casserverpac4j.dev
 CAS_VALIDATE_PATH=/p3/serviceValidate
 CAS_LOGIN_PATH=/login
 CAS_LOGOUT_PATH=/logout
 ```
 
 Login starts at `/login/cas`; the firewall validates the returned `ticket`. Logout redirects to `CAS_LOGOUT_PATH` with a `service` return URL.
+
+### Reverse Proxy Setup for SSO
+
+When using CAS or OpenID behind a reverse proxy, you **must** configure `TRUSTED_PROXIES` so callback URLs are built correctly.
+
+**Problem:** Without configuration, the callback URL sent to CAS/OpenID will use the internal hostname (e.g., `http://internal-server:8080/login/cas/callback`) instead of the public URL (e.g., `https://public.example.org/app/login/cas/callback`).
+
+**Solution:** In your `.env`:
+
+```env
+# Trust proxies in private network ranges
+TRUSTED_PROXIES=private_ranges,REMOTE_ADDR
+
+# Trust these headers from the proxy
+TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+```
+
+**CAS Callback URL with Subdirectory:**
+If you have `BASE_PATH=/app`, the CAS callback URL will be:
+`https://public.example.org/app/login/cas/callback`
+
+See [Deployment: Reverse Proxy Configuration](../deployment.md#reverse-proxy-configuration) for more details.
 
 ## Guest Mode
 

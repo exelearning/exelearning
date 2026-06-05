@@ -25,6 +25,8 @@ export default class LoadingScreen {
         setTimeout(() => {
             this.loadingScreenNode.classList.remove('hiding');
             this.loadingScreenNode.classList.add('hide');
+            // Clear any inline display style so CSS .hide class can take effect
+            this.loadingScreenNode.style.display = '';
             // Testing: explicit visibility flag
             this.loadingScreenNode.setAttribute('data-visible', 'false');
         }, this.hideTime);

@@ -46,7 +46,7 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
       APP_ONLINE_MODE: 1
-      XDEBUG_MODE: off
+      ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
 
       # Database settings (PostgreSQL)
       DB_DRIVER: pdo_pgsql
@@ -56,7 +56,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
 
       # Files directory (shared volume)
       FILES_DIR: "/mnt/data/"
@@ -69,18 +69,12 @@ services:
       APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
       AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
 
-      # Test user
-      TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
-      TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
-      TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+      # Admin user (created/updated when ADMIN_PASSWORD is set)
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
 
       # JWT secret (MUST be same across all instances)
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
-
-      # Post-configuration commands (only run on first instance)
-      POST_CONFIGURE_COMMANDS: |
-        echo "Setting up eXeLearning instance 1..."
-        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
 
     depends_on:
       postgres:
@@ -88,7 +82,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -107,7 +101,6 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
       APP_ONLINE_MODE: 1
-      XDEBUG_MODE: off
 
       # Database settings (PostgreSQL - same as instance 1)
       DB_DRIVER: pdo_pgsql
@@ -117,7 +110,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
 
       # Files directory (shared volume)
       FILES_DIR: "/mnt/data/"
@@ -130,10 +123,12 @@ services:
       APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
       AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
 
+      # Admin user (same credentials as instance 1, handled automatically by app)
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+
       # JWT secret (MUST be same across all instances)
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
-
-      # No POST_CONFIGURE_COMMANDS - instance 1 handles user creation
 
     depends_on:
       postgres:
@@ -141,7 +136,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -156,7 +151,7 @@ services:
       POSTGRES_USER: "${DB_USER:-postgres}"
       POSTGRES_DB: "${DB_NAME:-exelearning}"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-exelearning}"]
       interval: 10s

@@ -7,25 +7,112 @@ export default class NavbarFile {
         this.button = this.menu.navbar.querySelector('#dropdownStyles');
         this.menuButton = this.menu.navbar.querySelector('#navbar-button-styles');
         this.readers = [];
+
+        // Get theme config from api.parameters (works in both static and server modes)
+        // Note: api.parameters is populated during api.init() in static mode
         this.paramsInfo = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
+            JSON.stringify(eXeLearning.app.api.parameters?.themeInfoFieldsConfig || {})
         );
         this.paramsEdit = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.themeEditionFieldsConfig
-            )
+            JSON.stringify(eXeLearning.app.api.parameters?.themeEditionFieldsConfig || {})
         );
         this.updateThemes();
-        document
-            .querySelector('#exestylescontent-tab')
-            .addEventListener('click', () => {
+
+        // Translate static sidebar elements (needed for static mode where HTML isn't server-rendered)
+        this.translateSidebarElements();
+
+        const exeStylesTab = document.querySelector('#exestylescontent-tab');
+        if (exeStylesTab) {
+            exeStylesTab.addEventListener('click', () => {
                 this.buildBaseListThemes();
             });
-        document
-            .querySelector('#importedstylescontent-tab')
-            .addEventListener('click', () => {
+        }
+        const importedStylesTab = document.querySelector('#importedstylescontent-tab');
+        if (importedStylesTab) {
+            importedStylesTab.addEventListener('click', () => {
                 this.buildUserListThemes();
             });
+        }
+
+        // When the host integration has blocked imported styles (via
+        // themeRegistryOverride.blockImportInstall or the legacy
+        // ONLINE_THEMES_INSTALL=false flag), hide the "Imported" tab
+        // entirely so users don't see or use it.
+        if (this._isImportBlocked()) {
+            this._hideImportedStylesTab();
+        }
+    }
+
+    /**
+     * @returns {boolean} Whether theme import is disabled by the host.
+     * @private
+     */
+    _isImportBlocked() {
+        const override = window.eXeLearning?.config?.themeRegistryOverride;
+        if (override && override.blockImportInstall) {
+            return true;
+        }
+        const userStyles = window.eXeLearning?.config?.userStyles;
+        const isOffline = window.eXeLearning?.config?.isOfflineInstallation;
+        // userStyles can be 0/1 or true/false; coerce carefully.
+        const userStylesEnabled = userStyles === 1 || userStyles === true;
+        return !isOffline && !userStylesEnabled && userStyles !== undefined;
+    }
+
+    /**
+     * Hide the "Imported" tab and its pane, and force-activate the
+     * "System" tab if the "Imported" one was the default in the HTML.
+     * Also hides the entire tablist <ul>: with imports blocked there is
+     * only one tab left ("System") and rendering a single-tab nav is
+     * visually pointless — the workarea.njk template already does this
+     * with `{% if config.userStyles == false %} d-none{% endif %}`.
+     * @private
+     */
+    _hideImportedStylesTab() {
+        const tab = document.querySelector('#importedstylescontent-tab');
+        if (tab) {
+            const navItem = tab.closest('li, .nav-item') || tab;
+            navItem.style.setProperty('display', 'none', 'important');
+        }
+        const pane = document.getElementById('importedstylescontent');
+        if (pane) {
+            pane.style.setProperty('display', 'none', 'important');
+            pane.classList.remove('show', 'active');
+        }
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        const systemPane = document.getElementById('exestylescontent');
+        if (systemTab && !systemTab.classList.contains('active')) {
+            systemTab.classList.add('active');
+        }
+        if (systemPane && !systemPane.classList.contains('show')) {
+            systemPane.classList.add('show', 'active');
+        }
+        const tablist = document.getElementById('styleslist');
+        if (tablist) {
+            tablist.classList.add('d-none');
+        }
+    }
+
+    /**
+     * Translate static sidebar elements that are defined in HTML
+     */
+    translateSidebarElements() {
+        // Translate sidebar title
+        const titleEl = document.querySelector('.styles-title');
+        if (titleEl) {
+            titleEl.textContent = _('Styles');
+        }
+
+        // Translate tab buttons
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        if (systemTab) {
+            systemTab.textContent = _('System');
+        }
+
+        const importedTab = document.querySelector('#importedstylescontent-tab');
+        if (importedTab) {
+            importedTab.textContent = _('Imported');
+        }
     }
 
     updateThemes() {
@@ -88,6 +175,8 @@ export default class NavbarFile {
      *
      */
     styleManagerEvent() {
+        // Refresh themes list before building UI (themes may have loaded after constructor)
+        this.updateThemes();
         this.buildBaseListThemes();
         this.buildUserListThemes();
 
@@ -375,6 +464,9 @@ export default class NavbarFile {
     makeMenuThemeEdit(theme) {
         const li = document.createElement('li');
 
+        // TODO Disabled the edition right now, study if we will support direct edit in the future
+        li.classList.add('d-none');
+
         const icon = document.createElement('span');
         icon.classList.add('small-icon', 'edit-icon-green');
         li.appendChild(icon);
@@ -417,16 +509,28 @@ export default class NavbarFile {
 
     makeMenuThemeDownload(theme) {
         const li = document.createElement('li');
+        const isDownloadable = theme.downloadable === '1' || theme.downloadable === 1;
+
+        // Disable if not downloadable
+        if (!isDownloadable) {
+            li.classList.add('disabled');
+        }
 
         const icon = document.createElement('span');
-        icon.classList.add('small-icon', 'download-icon-green');
+        if (isDownloadable) {
+            icon.classList.add('small-icon', 'download-icon-green');
+        } else {
+            icon.classList.add('small-icon', 'download-icon-disabled');
+        }
         li.appendChild(icon);
         li.appendChild(document.createTextNode(` ${_('Download')}`));
 
         li.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            this.downloadThemeZip(theme);
+            if (isDownloadable) {
+                this.downloadThemeZip(theme);
+            }
         });
         return li;
     }
@@ -493,42 +597,131 @@ export default class NavbarFile {
         }
     }
 
+    /**
+     * Edit a theme's configuration
+     * For user themes: updates config in IndexedDB
+     * For server themes (site): uses API
+     */
     async editTheme(dirName, fields) {
-        let response = await eXeLearning.app.api.putEditTheme(dirName, fields);
-        if (response && response.responseMessage === 'OK' && response.themes) {
-            eXeLearning.app.themes.list.loadThemesInstalled();
-            let promise = new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    this.updateThemes();
-                    this.buildUserListThemes();
-                }, 1000);
-            });
-            return promise;
-        } else {
-            // Show alert
-            this.showElementAlert(_('Failed to edit the style '), response);
+        try {
+            // Find the theme by dirName or id in installed themes
+            const installedThemes = eXeLearning.app.themes.list.installed;
+            let theme = installedThemes[dirName];
+            if (!theme) {
+                // Search by dirName property
+                theme = Object.values(installedThemes).find(
+                    (t) => t.dirName === dirName || t.id === dirName || t.name === dirName
+                );
+            }
+            const isUserTheme = theme?.isUserTheme || theme?.type === 'user';
+
+            if (isUserTheme) {
+                // Update config in IndexedDB
+                const resourceCache = eXeLearning.app.project?._yjsBridge?.resourceCache;
+                if (!resourceCache) {
+                    this.showElementAlert(_('Storage not available'), {});
+                    return;
+                }
+
+                // Extract config fields from form data
+                const configUpdates = fields.data || {};
+
+                // Use the theme name (key in IndexedDB) for the update
+                const themeName = theme.name || theme.dirName || dirName;
+
+                // Update theme config in IndexedDB
+                await resourceCache.updateUserThemeConfig(themeName, configUpdates);
+
+                // Update the theme object in memory
+                if (theme) {
+                    Object.assign(theme, configUpdates);
+                    if (configUpdates.title) {
+                        theme.displayName = configUpdates.title;
+                    }
+                }
+
+                // Refresh UI
+                this.updateThemes();
+                this.buildUserListThemes();
+                Logger.log(`[NavbarStyles] User theme '${dirName}' config updated`);
+                return;
+            }
+
+            // Server themes (site): use API
+            let response = await eXeLearning.app.api.putEditTheme(dirName, fields);
+            if (response && response.responseMessage === 'OK' && response.themes) {
+                eXeLearning.app.themes.list.loadThemesInstalled();
+                let promise = new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        this.updateThemes();
+                        this.buildUserListThemes();
+                    }, 1000);
+                });
+                return promise;
+            } else {
+                // Show alert
+                this.showElementAlert(_('Failed to edit the style '), response);
+            }
+        } catch (error) {
+            console.error('[NavbarStyles] editTheme error:', error);
+            this.showElementAlert(_('Failed to edit the style '), { error: error.message });
         }
     }
+    /**
+     * Remove a user theme
+     * For user themes: deletes from IndexedDB
+     * For server themes: calls API (if allowed)
+     */
     async removeTheme(id) {
-        let params = {};
-        params.id = id;
-        let response = await eXeLearning.app.api.deleteTheme(params);
-        if (
-            response &&
-            response.responseMessage === 'OK' &&
-            response.deleted &&
-            response.deleted.name
-        ) {
-            await eXeLearning.app.themes.list.removeTheme(
-                response.deleted.name
-            );
-            this.updateThemes();
-            this.buildUserListThemes();
-        } else {
-            // Show modal
-            setTimeout(() => {
-                this.showElementAlert(_('Failed to remove style'), response);
-            }, 1000);
+        try {
+            // Check if it's a user theme (stored in IndexedDB)
+            const theme = eXeLearning.app.themes.list.installed[id];
+            const isUserTheme = theme?.isUserTheme || theme?.type === 'user';
+
+            if (isUserTheme) {
+                // Delete from IndexedDB
+                const resourceCache = eXeLearning.app.project?._yjsBridge?.resourceCache;
+                if (resourceCache) {
+                    await resourceCache.deleteUserTheme(id);
+                    Logger.log(`[NavbarStyles] User theme '${id}' deleted from IndexedDB`);
+                }
+
+                // Remove from ResourceFetcher cache
+                const resourceFetcher = eXeLearning.app.resourceFetcher;
+                if (resourceFetcher) {
+                    resourceFetcher.userThemeFiles?.delete(id);
+                    resourceFetcher.cache?.delete(`theme:${id}`);
+                }
+
+                // Remove from ThemeList
+                await eXeLearning.app.themes.list.removeTheme(id);
+                this.updateThemes();
+                this.buildUserListThemes();
+
+                Logger.log(`[NavbarStyles] User theme '${id}' removed successfully`);
+            } else {
+                // Server theme - use API (legacy behavior)
+                let params = {};
+                params.id = id;
+                let response = await eXeLearning.app.api.deleteTheme(params);
+                if (
+                    response &&
+                    response.responseMessage === 'OK' &&
+                    response.deleted &&
+                    response.deleted.name
+                ) {
+                    await eXeLearning.app.themes.list.removeTheme(
+                        response.deleted.name
+                    );
+                    this.updateThemes();
+                    this.buildUserListThemes();
+                } else {
+                    this.showElementAlert(_('Failed to remove style'), response);
+                }
+            }
+        } catch (error) {
+            console.error('[NavbarStyles] Remove theme error:', error);
+            this.showElementAlert(_('Failed to remove style'), { error: error.message });
         }
     }
 
@@ -604,46 +797,254 @@ export default class NavbarFile {
     }
 
     addNewReader(file) {
+        // Read file as ArrayBuffer for ZIP parsing
         let reader = new FileReader();
         this.readers.push(reader);
         reader.onload = (event) => {
-            this.uploadTheme(file.name, event.target.result);
+            this.uploadThemeToIndexedDB(file.name, event.target.result);
         };
-        reader.readAsDataURL(file);
+        reader.readAsArrayBuffer(file);
     }
 
-    uploadTheme(fileName, fileData) {
-        let params = {};
-        params.filename = fileName;
-        params.file = fileData;
-        eXeLearning.app.api.postUploadTheme(params).then((response) => {
-            if (response && response.responseMessage === 'OK') {
-                eXeLearning.app.themes.list.loadTheme(response.theme);
-                eXeLearning.app.themes.list.orderThemesInstalled();
-                this.updateThemes();
-                this.buildUserListThemes();
-            } else {
-                this.showElementAlert(
-                    _('Failed to install the new style'),
-                    response
-                );
+    /**
+     * Upload theme to IndexedDB (client-side storage)
+     * Does NOT upload to server - themes are stored locally and synced via Yjs
+     * @param {string} fileName - ZIP file name
+     * @param {ArrayBuffer} arrayBuffer - ZIP file content
+     */
+    async uploadThemeToIndexedDB(fileName, arrayBuffer) {
+        try {
+            // Parse ZIP with fflate
+            const fflate = window.fflate;
+            if (!fflate) {
+                throw new Error('fflate library not loaded');
             }
-        });
+
+            const uint8Data = new Uint8Array(arrayBuffer);
+            const zip = fflate.unzipSync(uint8Data);
+
+            // Validate config.xml exists
+            const configXmlData = zip['config.xml'];
+            if (!configXmlData) {
+                this.showElementAlert(_('Invalid style package'), { error: _('config.xml not found in ZIP') });
+                return;
+            }
+
+            // Parse config.xml
+            const configXml = new TextDecoder().decode(configXmlData);
+            const getValue = (tag) => {
+                const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+                return match ? match[1].trim() : '';
+            };
+
+            // Extract theme name from config.xml
+            let themeName = getValue('name') || fileName.replace('.zip', '');
+            const downloadable = getValue('downloadable') || '1';
+            // Sanitize theme name for use as directory/key
+            const dirName = themeName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+
+            if (downloadable === '0') {
+                this.showElementAlert(_('Failed to install the new style'), {
+                    error: _('This style cannot be downloaded'),
+                });
+                return;
+            }
+
+            // Check if theme already exists
+            if (eXeLearning.app.themes.list.installed[dirName]) {
+                this.showElementAlert(_('Style already exists'), { error: _('A style with this name already exists') });
+                return;
+            }
+
+            // Create theme config object
+            const themeConfig = {
+                name: dirName,
+                dirName: dirName,
+                displayName: themeName,
+                title: getValue('title') || themeName,
+                type: 'user',
+                version: getValue('version') || '1.0',
+                author: getValue('author') || '',
+                license: getValue('license') || '',
+                description: getValue('description') || '',
+                downloadable, // Default to downloadable
+                cssFiles: [],
+                js: [],
+                icons: {},
+                valid: true,
+                isUserTheme: true,
+            };
+
+            // Scan for CSS, JS, and icons
+            for (const filePath of Object.keys(zip)) {
+                if (filePath.endsWith('.css') && !filePath.includes('/')) {
+                    themeConfig.cssFiles.push(filePath);
+                } else if (filePath.endsWith('.js') && !filePath.includes('/')) {
+                    themeConfig.js.push(filePath);
+                } else if (filePath.startsWith('icons/') && /\.(svg|png|gif|jpe?g|webp)$/i.test(filePath)) {
+                    const iconName = filePath.replace('icons/', '').replace(/\.(svg|png|gif|jpe?g|webp)$/i, '');
+                    // Store as ThemeIcon object - blob URLs will be resolved on theme selection
+                    themeConfig.icons[iconName] = {
+                        id: iconName,
+                        title: iconName,
+                        type: 'img',
+                        value: filePath,
+                        _relativePath: filePath,
+                    };
+                }
+            }
+
+            if (themeConfig.cssFiles.length === 0) {
+                themeConfig.cssFiles.push('style.css');
+            }
+
+            // Compress theme files for storage
+            const compressedFiles = fflate.zipSync(zip, { level: 6 });
+
+            // Get ResourceCache from YjsProjectBridge
+            const resourceCache = eXeLearning.app.project?._yjsBridge?.resourceCache;
+            if (!resourceCache) {
+                this.showElementAlert(_('Failed to install the new style'), { error: _('Storage not available') });
+                return;
+            }
+
+            // Save to IndexedDB
+            await resourceCache.setUserTheme(dirName, compressedFiles, themeConfig);
+            Logger.log(`[NavbarStyles] Theme '${dirName}' saved to IndexedDB`);
+
+            // Register with ResourceFetcher
+            const resourceFetcher = eXeLearning.app.resourceFetcher;
+            if (resourceFetcher) {
+                await resourceFetcher.setUserThemeFiles(dirName, zip);
+            }
+
+            // Add to installed themes (does NOT auto-select)
+            eXeLearning.app.themes.list.addUserTheme(themeConfig);
+
+            // Copy theme to Yjs for collaboration (so other clients receive it immediately)
+            const bridge = eXeLearning.app.project?._yjsBridge;
+            if (bridge) {
+                try {
+                    await bridge._copyThemeToYjs(dirName, zip);
+                    Logger.log(`[NavbarStyles] Theme '${dirName}' copied to Yjs for collaboration`);
+                } catch (e) {
+                    // Non-fatal: theme is still installed locally, just won't sync immediately
+                    console.warn('[NavbarStyles] Could not copy theme to Yjs:', e);
+                }
+            }
+
+            // Auto-select the uploaded theme
+            await eXeLearning.app.themes.selectTheme(dirName, true, false);
+
+            // Update UI
+            this.updateThemes();
+            this.buildUserListThemes();
+
+            Logger.log(`[NavbarStyles] Theme '${dirName}' installed successfully`);
+        } catch (error) {
+            console.error('[NavbarStyles] Theme upload error:', error);
+            this.showElementAlert(_('Failed to install the new style'), { error: error.message });
+        }
     }
 
-    downloadThemeZip(theme) {
-        eXeLearning.app.api
-            .getThemeZip(eXeLearning.app.project.odeSession, theme.dirName)
-            .then((response) => {
-                if (response && response.zipFileName && response.zipBase64) {
-                    let link = document.createElement('a');
-                    link.setAttribute('type', 'hidden');
-                    link.href = 'data:text/plain;base64,' + response.zipBase64;
-                    link.download = response.zipFileName;
-                    link.click();
-                    link.remove();
+    /**
+     * Legacy upload method - redirects to new IndexedDB upload
+     * @deprecated Use uploadThemeToIndexedDB instead
+     */
+    uploadTheme(fileName, fileData) {
+        console.warn('[NavbarStyles] uploadTheme() is deprecated, use uploadThemeToIndexedDB()');
+        // Convert base64 to ArrayBuffer if needed
+        if (typeof fileData === 'string' && fileData.includes('base64,')) {
+            const base64 = fileData.split('base64,')[1];
+            const binary = atob(base64);
+            const arrayBuffer = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                arrayBuffer[i] = binary.charCodeAt(i);
+            }
+            this.uploadThemeToIndexedDB(fileName, arrayBuffer.buffer);
+        } else {
+            this.uploadThemeToIndexedDB(fileName, fileData);
+        }
+    }
+
+    /**
+     * Download theme as ZIP file
+     * For user themes: get from IndexedDB and download client-side
+     * For server themes: use API to download
+     */
+    async downloadThemeZip(theme) {
+        // Check downloadable
+        const isDownloadable = theme.downloadable === '1' || theme.downloadable === 1;
+        if (!isDownloadable) {
+            this.showElementAlert(_('This style cannot be downloaded'), {});
+            return;
+        }
+
+        // User themes: get from IndexedDB and create ZIP client-side
+        if (theme.type === 'user' || theme.isUserTheme) {
+            try {
+                const resourceCache = eXeLearning.app.project?._yjsBridge?.resourceCache;
+                if (!resourceCache) {
+                    this.showElementAlert(_('Storage not available'), {});
+                    return;
                 }
-            });
+
+                // Use getUserThemeRaw to get the compressed ZIP data
+                const themeData = await resourceCache.getUserThemeRaw(theme.name);
+                if (!themeData?.compressedFiles) {
+                    this.showElementAlert(_('Style files not found'), {});
+                    return;
+                }
+
+                // themeData.compressedFiles is the raw compressed ZIP data (Uint8Array)
+                const blob = new Blob([themeData.compressedFiles], { type: 'application/zip' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${theme.name}.zip`;
+                link.click();
+                URL.revokeObjectURL(url);
+                Logger.log(`[NavbarStyles] User theme '${theme.name}' downloaded`);
+            } catch (error) {
+                console.error('[NavbarStyles] Download theme error:', error);
+                this.showElementAlert(_('Failed to download the style'), { error: error.message });
+            }
+            return;
+        }
+
+        // Download from bundled theme ZIPs (works in both online and static mode)
+        this.downloadThemeFromBundle(theme);
+    }
+
+    /**
+     * Download a theme from the bundled ZIP files or API endpoint
+     * Base themes use pre-built static bundles, site/admin themes use API for on-demand ZIP generation
+     * @param {Object} theme - Theme object with dirName, name, and type properties
+     */
+    async downloadThemeFromBundle(theme) {
+        try {
+            const basePath = eXeLearning.config?.basePath || '';
+            const bundleUrl = (theme.type === 'site' || theme.type === 'admin')
+                ? `${basePath}/api/resources/bundle/theme/${theme.dirName}`
+                : `${basePath}/bundles/themes/${theme.dirName}.zip`;
+
+            const response = await fetch(bundleUrl);
+            if (!response.ok) {
+                throw new Error(`Theme bundle not found: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${theme.name || theme.dirName}.zip`;
+            link.click();
+            URL.revokeObjectURL(url);
+            Logger.log(`[NavbarStyles] Theme '${theme.name}' downloaded from bundle`);
+        } catch (error) {
+            console.error('[NavbarStyles] Bundle download failed:', error);
+            this.showElementAlert(_('Failed to download the style'), { error: error.message });
+        }
     }
 
     toggleSidenav() {
@@ -667,7 +1068,7 @@ export default class NavbarFile {
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-info-key');
         label.setAttribute('for', 'theme-info-key-' + key);
-        label.textContent = config.title;
+        label.textContent = _(config.title);
         group.appendChild(label);
 
         switch (config.tag) {
@@ -828,7 +1229,7 @@ export default class NavbarFile {
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-edit-key');
         label.setAttribute('for', `${themeId}-${key}-field`);
-        label.innerHTML = `${config.title}`;
+        label.textContent = _(config.title);
         return label;
     }
 

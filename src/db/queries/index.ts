@@ -40,6 +40,7 @@ export {
     updateProject,
     updateProjectByUuid,
     markProjectAsSaved,
+    updateProjectTitle,
     updateProjectTitleAndSave,
     updateLastAccessed,
     softDeleteProject,
@@ -52,6 +53,10 @@ export {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    // Cleanup queries
+    findUnsavedProjectsOlderThan,
+    findGuestProjectsOlderThan,
+    deleteProjectWithRelatedData,
 } from './projects';
 
 // Asset queries
@@ -143,6 +148,14 @@ export {
     getSystemStats,
 } from './admin';
 export type { AppSetting } from './admin';
+
+// Impersonation audit queries
+export * as impersonationQueries from './impersonation';
+export {
+    createImpersonationAuditSession,
+    endImpersonationAuditSession,
+    findImpersonationAuditSessionBySessionId,
+} from './impersonation';
 
 // Theme queries (consolidated - base and site themes)
 export * as themeQueries from './themes';

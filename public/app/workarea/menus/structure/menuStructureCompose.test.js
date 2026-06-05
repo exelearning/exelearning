@@ -349,10 +349,11 @@ describe('MenuStructureCompose', () => {
             };
         });
 
-        it('should create button element with nav-element-text class', () => {
+        it('should create div element with nav-element-text and dropdown classes', () => {
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
-            expect(result.tagName).toBe('BUTTON');
+            expect(result.tagName).toBe('DIV');
             expect(result.classList.contains('nav-element-text')).toBe(true);
+            expect(result.classList.contains('dropdown')).toBe(true);
         });
 
         it('should set title attribute to pageName', () => {
@@ -360,10 +361,22 @@ describe('MenuStructureCompose', () => {
             expect(result.getAttribute('title')).toBe('Test Page');
         });
 
-        it('should contain page icon', () => {
+        it('should contain page icon when visible', () => {
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
             const pageIcon = result.querySelector('.page-icon');
             expect(pageIcon).not.toBeNull();
+            const hideIcon = result.querySelector('.exe-visibility-off-green-icon');
+            expect(hideIcon).toBeNull();
+        });
+
+        it('should contain visibility off icon instead of page icon when not visible', () => {
+            mockNode.properties = { visibility: { value: 'false' } };
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const pageIcon = result.querySelector('.page-icon');
+            expect(pageIcon).toBeNull();
+            const hideIcon = result.querySelector('.exe-visibility-off-green-icon');
+            expect(hideIcon).not.toBeNull();
+            expect(hideIcon.classList.contains('medium-icon')).toBe(true);
         });
 
         it('should contain node text span with pageName', () => {
@@ -385,6 +398,16 @@ describe('MenuStructureCompose', () => {
             const settingsButton = result.querySelector('.page-settings');
             expect(settingsButton).not.toBeNull();
             expect(settingsButton.getAttribute('data-menunavid')).toBe('test-node');
+        });
+
+        it('should configure dropdown trigger with fixed positioning strategy', () => {
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const dropdownTrigger = result.querySelector('.page-settings-trigger');
+            expect(dropdownTrigger).not.toBeNull();
+            const popperConfig = dropdownTrigger.getAttribute('data-bs-popper-config');
+            expect(popperConfig).not.toBeNull();
+            const config = JSON.parse(popperConfig);
+            expect(config.strategy).toBe('fixed');
         });
 
         it('should not contain settings button for root node', () => {
@@ -439,6 +462,41 @@ describe('MenuStructureCompose', () => {
             const node = { properties: { visibility: { value: '' } } };
             menuStructureCompose.setPropertiesClassesToElement(element, node);
             expect(element.getAttribute('export-view')).toBeNull();
+        });
+
+        it('should add nav-element-highlighted class when highlight is string true', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: 'true' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(true);
+        });
+
+        it('should add nav-element-highlighted class when highlight is boolean true', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: true } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(true);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is string false', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: 'false' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is boolean false', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: false } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is undefined', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
         });
     });
 

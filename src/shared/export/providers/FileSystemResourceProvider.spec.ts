@@ -90,10 +90,100 @@ describe('FileSystemResourceProvider', () => {
             expect(cssContent?.toString()).toBe('.base { color: red; }');
         });
 
-        it('should return empty map for non-existent theme', async () => {
+        it('should fall back to base theme for non-existent theme', async () => {
             const files = await provider.fetchTheme('nonexistent');
 
+            // Falls back to 'base' theme, which has 2 files in our test setup
+            expect(files.size).toBe(2);
+            expect(files.has('content.css')).toBe(true);
+            expect(files.has('default.js')).toBe(true);
+        });
+
+        it('should return empty map when neither theme nor base exists', async () => {
+            // Create a provider with a directory that has no themes at all
+            const emptyDir = path.join(os.tmpdir(), `test-empty-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+            const emptyProvider = new FileSystemResourceProvider(emptyDir);
+
+            const files = await emptyProvider.fetchTheme('nonexistent');
+
             expect(files.size).toBe(0);
+
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('fetchTheme with embedded themes', () => {
+        let extractedDir: string;
+
+        beforeEach(async () => {
+            // Create a temp directory for extracted ELP/ELPX files
+            extractedDir = path.join(os.tmpdir(), `test-extracted-${Date.now()}`);
+            await fs.ensureDir(extractedDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(extractedDir);
+        });
+
+        it('should use embedded theme when downloadable=1', async () => {
+            // Create embedded theme structure
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(
+                path.join(extractedDir, 'theme', 'config.xml'),
+                `<?xml version="1.0"?>
+<theme>
+    <name>custom</name>
+    <downloadable>1</downloadable>
+</theme>`,
+            );
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.custom { color: blue; }');
+            await fs.writeFile(path.join(extractedDir, 'theme', 'default.js'), 'console.log("custom");');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('custom');
+
+            expect(files.size).toBe(3); // config.xml, content.css, default.js
+            expect(files.has('content.css')).toBe(true);
+            expect(files.get('content.css')?.toString()).toBe('.custom { color: blue; }');
+        });
+
+        it('should fall back to base theme when downloadable=0', async () => {
+            // Create embedded theme with downloadable=0
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(
+                path.join(extractedDir, 'theme', 'config.xml'),
+                `<?xml version="1.0"?>
+<theme>
+    <name>nondl</name>
+    <downloadable>0</downloadable>
+</theme>`,
+            );
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.nondl { color: green; }');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('nondl');
+
+            // Should fall back to base theme (2 files in our test setup)
+            expect(files.size).toBe(2);
+            expect(files.has('content.css')).toBe(true);
+            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
+        });
+
+        it('should fall back to base theme when config.xml is missing', async () => {
+            // Create embedded theme without config.xml
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.noconfig { color: pink; }');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('noconfig');
+
+            // Should fall back to base theme
+            expect(files.size).toBe(2);
+            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
         });
     });
 
@@ -175,6 +265,96 @@ describe('FileSystemResourceProvider', () => {
 
             expect(files.size).toBe(0);
         });
+
+        it('should include entire directory when isDirectory pattern is passed', async () => {
+            // Create a library directory with multiple files (like exe_atools)
+            await fs.ensureDir(path.join(testDir, 'libs', 'exe_atools'));
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.css'), '/* CSS */');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.png'), 'PNG');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'font.woff2'), 'FONT');
+
+            // Pass a pattern with isDirectory: true
+            const patterns = [
+                {
+                    name: 'exe_atools',
+                    type: 'class' as const,
+                    pattern: 'exe-atools',
+                    files: ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+                    isDirectory: true,
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(
+                ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+                patterns,
+            );
+
+            // Should include all files in the directory, not just the requested ones
+            expect(files.size).toBe(4);
+            expect(files.has('exe_atools/exe_atools.js')).toBe(true);
+            expect(files.has('exe_atools/exe_atools.css')).toBe(true);
+            expect(files.has('exe_atools/exe_atools.png')).toBe(true);
+            expect(files.has('exe_atools/font.woff2')).toBe(true);
+        });
+
+        it('should filter out test files when including directory', async () => {
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_lightbox'));
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.css'), '/* CSS */');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.test.js'),
+                '/* Test */',
+            );
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'sprite.png'), 'PNG');
+
+            const patterns = [
+                {
+                    name: 'exe_lightbox',
+                    type: 'rel' as const,
+                    pattern: 'lightbox',
+                    files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+                    isDirectory: true,
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(['exe_lightbox/exe_lightbox.js'], patterns);
+
+            // Should include all files except test files
+            expect(files.size).toBe(3);
+            expect(files.has('exe_lightbox/exe_lightbox.js')).toBe(true);
+            expect(files.has('exe_lightbox/exe_lightbox.css')).toBe(true);
+            expect(files.has('exe_lightbox/sprite.png')).toBe(true);
+            expect(files.has('exe_lightbox/exe_lightbox.test.js')).toBe(false);
+        });
+
+        it('should not include directory if isDirectory is not set', async () => {
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_effects'));
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'exe_effects.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'exe_effects.css'), '/* CSS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'extra.png'), 'PNG');
+
+            // No isDirectory flag
+            const patterns = [
+                {
+                    name: 'exe_effects',
+                    type: 'class' as const,
+                    pattern: 'exe-fx',
+                    files: ['exe_effects/exe_effects.js', 'exe_effects/exe_effects.css'],
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(
+                ['exe_effects/exe_effects.js', 'exe_effects/exe_effects.css'],
+                patterns,
+            );
+
+            // Should only include the requested files, not the whole directory
+            expect(files.size).toBe(2);
+            expect(files.has('exe_effects/exe_effects.js')).toBe(true);
+            expect(files.has('exe_effects/exe_effects.css')).toBe(true);
+            expect(files.has('exe_effects/extra.png')).toBe(false);
+        });
     });
 
     describe('fetchScormFiles', () => {
@@ -193,40 +373,6 @@ describe('FileSystemResourceProvider', () => {
             expect(files.size).toBe(2);
             expect(files.has('SCORM_API_wrapper.js')).toBe(true);
             expect(files.has('SCOFunctions.js')).toBe(true);
-        });
-    });
-
-    describe('fetchScormSchemas', () => {
-        it('should return empty map when no schemas exist', async () => {
-            // By default test dir doesn't have schemas
-            const files = await provider.fetchScormSchemas('1.2');
-            expect(files.size).toBe(0);
-        });
-
-        it('should fetch schema files when they exist', async () => {
-            // Create schema directory and file
-            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm12'));
-            await fs.writeFile(
-                path.join(testDir, 'app', 'schemas', 'scorm12', 'imscp_rootv1p1p2.xsd'),
-                '<?xml version="1.0"?>',
-            );
-
-            const files = await provider.fetchScormSchemas('1.2');
-            expect(files.size).toBe(1);
-            expect(files.has('imscp_rootv1p1p2.xsd')).toBe(true);
-        });
-
-        it('should fetch SCORM 2004 schemas', async () => {
-            // Create schema directory and file
-            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm2004'));
-            await fs.writeFile(
-                path.join(testDir, 'app', 'schemas', 'scorm2004', 'adlcp_v1p3.xsd'),
-                '<?xml version="1.0"?>',
-            );
-
-            const files = await provider.fetchScormSchemas('2004');
-            expect(files.size).toBe(1);
-            expect(files.has('adlcp_v1p3.xsd')).toBe(true);
         });
     });
 
@@ -292,6 +438,216 @@ describe('FileSystemResourceProvider', () => {
             expect(files.has('file1.css')).toBe(true);
             expect(files.has('level1/file2.css')).toBe(true);
             expect(files.has('level1/level2/file3.css')).toBe(true);
+        });
+    });
+
+    describe('fetchGlobalFontFiles', () => {
+        beforeEach(async () => {
+            // Create font directory structure
+            await fs.ensureDir(path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic'));
+            await fs.ensureDir(path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika'));
+
+            // Create test font files for opendyslexic
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'OpenDyslexic-Regular.woff'),
+                Buffer.from('WOFF_FONT_DATA'),
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'OpenDyslexic-Bold.woff'),
+                Buffer.from('WOFF_FONT_DATA'),
+            );
+
+            // Create test font files for andika
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika', 'Andika-Regular.woff2'),
+                Buffer.from('WOFF2_FONT_DATA'),
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika', 'ATTRIBUTION.txt'),
+                'SIL Open Font License',
+            );
+        });
+
+        it('should return empty map for default font', async () => {
+            const files = await provider.fetchGlobalFontFiles('default');
+            expect(files.size).toBe(0);
+        });
+
+        it('should return empty map for empty font id', async () => {
+            const files = await provider.fetchGlobalFontFiles('');
+            expect(files.size).toBe(0);
+        });
+
+        it('should return empty map for non-existent font', async () => {
+            const files = await provider.fetchGlobalFontFiles('nonexistent');
+            expect(files.size).toBe(0);
+        });
+
+        it('should fetch font files for opendyslexic', async () => {
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(files.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
+        });
+
+        it('should fetch font files and attribution for andika', async () => {
+            const files = await provider.fetchGlobalFontFiles('andika');
+
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+            expect(files.has('fonts/global/andika/ATTRIBUTION.txt')).toBe(true);
+        });
+
+        it('should only include font-related extensions', async () => {
+            // Add a non-font file
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'readme.md'),
+                '# OpenDyslexic Font',
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'example.html'),
+                '<html></html>',
+            );
+
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            // Should still only have font files (woff, woff2, ttf, txt)
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/opendyslexic/readme.md')).toBe(false);
+            expect(files.has('fonts/global/opendyslexic/example.html')).toBe(false);
+        });
+
+        it('should return Buffer content', async () => {
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+            const fontContent = files.get('fonts/global/opendyslexic/OpenDyslexic-Regular.woff');
+
+            expect(fontContent).toBeInstanceOf(Buffer);
+            expect(fontContent?.toString()).toBe('WOFF_FONT_DATA');
+        });
+    });
+
+    describe('fetchExeLogo', () => {
+        it('should return null when logo does not exist', async () => {
+            const logo = await provider.fetchExeLogo();
+            expect(logo).toBeNull();
+        });
+
+        it('should fetch logo when it exists', async () => {
+            // Create the logo file
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_powered_logo'));
+            const logoData = Buffer.from('PNG_IMAGE_DATA');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'common', 'exe_powered_logo', 'exe_powered_logo.png'),
+                logoData,
+            );
+
+            const logo = await provider.fetchExeLogo();
+
+            expect(logo).not.toBeNull();
+            expect(logo?.toString()).toBe('PNG_IMAGE_DATA');
+        });
+    });
+
+    describe('fetchI18nFile', () => {
+        let i18nDir: string;
+
+        beforeEach(async () => {
+            i18nDir = path.join(testDir, 'app', 'common', 'i18n');
+            await fs.ensureDir(i18nDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(i18nDir);
+        });
+
+        it('should return empty string when no i18n file exists', async () => {
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe('');
+        });
+
+        it('should return pre-built file content for the requested language', async () => {
+            const content = '$exe_i18n = { "previous": "Anterior", "next": "Siguiente" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.es.js'), content);
+
+            const result = await provider.fetchI18nFile('es');
+
+            expect(result).toBe(content);
+        });
+
+        it('should fall back to English when locale file is not found', async () => {
+            const enContent = '$exe_i18n = { "previous": "Previous", "next": "Next" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.en.js'), enContent);
+
+            const result = await provider.fetchI18nFile('fr');
+
+            expect(result).toBe(enContent);
+        });
+
+        it('should fall back to base language before English', async () => {
+            const ptContent = '$exe_i18n = { "previous": "Anterior", "next": "Próximo" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.pt.js'), ptContent);
+
+            const result = await provider.fetchI18nFile('pt-BR');
+
+            expect(result).toBe(ptContent);
+        });
+    });
+
+    describe('fetchI18nTranslations', () => {
+        const xlfContent = `<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="1" resname="Previous">
+        <source>Previous</source>
+        <target>Anterior</target>
+      </trans-unit>
+      <trans-unit id="2" resname="Next">
+        <source>Next</source>
+        <target>Siguiente</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        // translationsDir lives one level above publicDir (testDir)
+        let translationsDir: string;
+
+        beforeEach(async () => {
+            translationsDir = path.join(testDir, '..', 'translations');
+            await fs.ensureDir(translationsDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(translationsDir);
+        });
+
+        it('should return empty map when XLF file does not exist', async () => {
+            const map = await provider.fetchI18nTranslations('es');
+            expect(map.size).toBe(0);
+        });
+
+        it('should parse translations from XLF file', async () => {
+            await fs.writeFile(path.join(translationsDir, 'messages.es.xlf'), xlfContent);
+
+            const map = await provider.fetchI18nTranslations('es');
+
+            expect(map.get('Previous')).toBe('Anterior');
+            expect(map.get('Next')).toBe('Siguiente');
+        });
+
+        it('should fall back to base language for regional variant', async () => {
+            await fs.writeFile(path.join(translationsDir, 'messages.pt.xlf'), xlfContent);
+
+            const map = await provider.fetchI18nTranslations('pt-BR');
+
+            expect(map.get('Previous')).toBe('Anterior');
+        });
+
+        it('should return empty map for unknown language', async () => {
+            const map = await provider.fetchI18nTranslations('xx');
+            expect(map.size).toBe(0);
         });
     });
 });

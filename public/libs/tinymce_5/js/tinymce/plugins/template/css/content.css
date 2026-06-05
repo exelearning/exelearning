@@ -1,10 +1,10 @@
 /* TinyMCE: Images and media */
-.exe-figure{margin:2em 0;max-width:100%}
-.position-center{margin:2em auto}
-.position-right{margin:2em 0 2em auto}
+.exe-figure{margin:1.5em 0}
+.position-center{margin:1.5em auto}
+.position-right{margin:1.5em 0 1.5em auto}
 .float-left{float:left;margin:.5em 1.5em 1em 0}
-.float-right{float:right;margin:.5em 0 1em 2em}
-.figcaption{padding-top:.2em}
+.float-right{float:right;margin:.5em 0 1em 1.5em}
+.figcaption{padding-top:.2em;line-height:1em}
 .figcaption.header{padding-top:0;padding-bottom:.2em}
 /* TinyMCE templates */
 .exe-clear{overflow:auto}

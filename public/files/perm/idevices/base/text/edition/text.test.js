@@ -11,6 +11,9 @@
  */
 
 /* eslint-disable no-undef */
+// Import setup for DOM mocks (happy-dom), jQuery, TinyMCE, eXe globals
+import '../../../../../../../public/vitest.setup.js';
+
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -219,12 +222,45 @@ describe('text iDevice', () => {
       // Note: infoDurationTextInputValue is 'Duration' (colon is added only in createEditorGroup HTML)
       expect(durationTextInput.value).toBe('Duration');
     });
-  });
 
+    it('removes legacy outer exe-text wrapper from loaded textarea content', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text"><p>Legacy content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Legacy content</p>');
+      expect(textarea.value).not.toContain('class="exe-text"');
+    });
+
+    it('extracts main content when loaded textarea has exe-text-activity wrapper', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text-activity"><p>Activity content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Activity content</p>');
+    });
+
+    it('does not parse non-wrapper asset html when stripping legacy wrapper', () => {
+      const createElementSpy = vi.spyOn(document, 'createElement');
+      const html = '<p><img src="asset://ffee9e6d-1bbb-d42c-645e-75445b1a962a.png"></p>';
+
+      const result = $exeDevice.stripLegacyExeTextWrapper(html);
+
+      expect(result).toBe(html);
+      expect(createElementSpy).not.toHaveBeenCalled();
+    });
+  });
   describe('checkFormValues', () => {
     it('returns false and shows alert when text is empty string', () => {
       $exeDevice.init(mockElement, {});
-      // checkFormValues checks this.text property
+      // checkFormValues checks this.text property (which is intentionally undefined
+      // to allow saving empty iDevices - matching original behavior)
       $exeDevice.text = '';
 
       const result = $exeDevice.checkFormValues();
@@ -249,7 +285,7 @@ describe('text iDevice', () => {
 
       $exeDevice.checkFormValues();
       $exeDevice.checkFormValues();
-
+ 
       expect(eXe.app._alertHistory.length).toBe(2);
     });
 
@@ -261,6 +297,15 @@ describe('text iDevice', () => {
 
       expect(result).toBe(true);
       expect(eXe.app._alertHistory.length).toBe(0);
+    });
+
+    it('returns true when text is undefined (allows empty iDevices)', () => {
+      $exeDevice.init(mockElement, {});
+      // text property is not defined, so validation passes (original behavior)
+      
+      const result = $exeDevice.checkFormValues();
+
+      expect(result).toBe(true);
     });
   });
 
@@ -632,6 +677,306 @@ describe('text iDevice', () => {
 
       const textarea = document.getElementById('textTextarea');
       expect(textarea.value).toBe('<p>Synced content</p>');
+    });
+  });
+
+  describe('extractTaskInfoFromHtml', () => {
+    it('returns null for content without exe-text-activity or feedback', () => {
+      $exeDevice.init(mockElement, {});
+
+      const result = $exeDevice.extractTaskInfoFromHtml('<p>Regular content</p>');
+      expect(result).toBeNull();
+    });
+
+    it('returns null for empty input', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.extractTaskInfoFromHtml('')).toBeNull();
+      expect($exeDevice.extractTaskInfoFromHtml(null)).toBeNull();
+      expect($exeDevice.extractTaskInfoFromHtml(undefined)).toBeNull();
+    });
+
+    it('extracts duration and participants from dl structure', () => {
+      $exeDevice.init(mockElement, {});
+
+      const html = `<div class="exe-text-activity">
+        <dl>
+          <div class="inline"><dt><span title="Duration:">Duration:</span></dt><dd>2 hours</dd></div>
+          <div class="inline"><dt><span title="Grouping:">Grouping:</span></dt><dd>Pairs</dd></div>
+        </dl>
+        <p>Main content</p>
+      </div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result).not.toBeNull();
+      expect(result.textInfoDurationTextInput).toBe('Duration:');
+      expect(result.textInfoDurationInput).toBe('2 hours');
+      expect(result.textInfoParticipantsTextInput).toBe('Grouping:');
+      expect(result.textInfoParticipantsInput).toBe('Pairs');
+    });
+
+    it('extracts feedback button and content', () => {
+      $exeDevice.init(mockElement, {});
+
+      const html = `<div class="exe-text-activity">
+        <p>Main content</p>
+        <div class="iDevice_buttons feedback-button">
+          <input type="button" class="feedbacktooglebutton" value="Show Answer">
+        </div>
+        <div class="feedback js-feedback"><p>Feedback text</p></div>
+      </div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result).not.toBeNull();
+      expect(result.textFeedbackInput).toBe('Show Answer');
+      expect(result.textFeedbackTextarea).toContain('Feedback text');
+    });
+
+    it('extracts main content without dl and feedback', () => {
+      $exeDevice.init(mockElement, {});
+
+      const html = `<div class="exe-text-activity">
+        <dl><div class="inline"><dt>Duration:</dt><dd>1h</dd></div></dl>
+        <p>Main content here</p>
+        <div class="iDevice_buttons"><input class="feedbacktooglebutton" value="Show"></div>
+        <div class="feedback js-feedback">Feedback</div>
+      </div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result.textTextarea).not.toContain('<dl>');
+      expect(result.textTextarea).not.toContain('feedback');
+      expect(result.textTextarea).toContain('Main content here');
+    });
+
+    it('extracts simple feedback without exe-text-activity wrapper (modern feedbacktooglebutton)', () => {
+      $exeDevice.init(mockElement, {});
+
+      // This format comes from legacy FreeTextIdevice with feedback but no task info
+      const html = `<p>First paragraph content.</p>
+<p>Second paragraph content.</p>
+<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbacktooglebutton" value="Mostrar retroalimentación" data-text-a="Mostrar retroalimentación" data-text-b="Mostrar retroalimentación" /></div>
+<div class="feedback js-feedback js-hidden" style="display: none;">
+<p>This is the feedback content.</p>
+</div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result).not.toBeNull();
+      expect(result.textFeedbackInput).toBe('Mostrar retroalimentación');
+      expect(result.textFeedbackTextarea).toContain('This is the feedback content.');
+      expect(result.textTextarea).toContain('First paragraph content.');
+      expect(result.textTextarea).toContain('Second paragraph content.');
+      expect(result.textTextarea).not.toContain('feedback');
+      expect(result.textTextarea).not.toContain('iDevice_buttons');
+    });
+
+    it('extracts simple feedback from legacy eXe 2.9 format (feedbackbutton class)', () => {
+      $exeDevice.init(mockElement, {});
+
+      // Legacy eXe 2.9 FreeTextIdevice: uses "feedbackbutton" instead of "feedbacktooglebutton"
+      const html = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <ol>
+    <li>Repasar nuestro porfolio.</li>
+    <li>Hacer una reflexión personal.</li>
+    </ol>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result).not.toBeNull();
+      expect(result.textFeedbackInput).toBe('Evaluación');
+      expect(result.textFeedbackTextarea).toContain('Esta tarea se valorará');
+      expect(result.textTextarea).toContain('A lo largo del proyecto');
+      expect(result.textTextarea).not.toContain('iDevice_buttons');
+      expect(result.textTextarea).not.toContain('js-feedback');
+    });
+  });
+
+  describe('buildTextareaHtml', () => {
+    it('returns just main content when no task info or feedback', () => {
+      $exeDevice.init(mockElement, {});
+
+      $exeDevice.textTextarea = '<p>Simple content</p>';
+      $exeDevice.textInfoDurationInput = '';
+      $exeDevice.textInfoParticipantsInput = '';
+      $exeDevice.textFeedbackInput = '';
+      $exeDevice.textFeedbackTextarea = '';
+
+      const result = $exeDevice.buildTextareaHtml();
+
+      expect(result).toBe('<p>Simple content</p>');
+      expect(result).not.toContain('exe-text-activity');
+    });
+
+    it('builds exe-text-activity structure when task info present', () => {
+      $exeDevice.init(mockElement, {});
+
+      $exeDevice.textTextarea = '<p>Task content</p>';
+      $exeDevice.textInfoDurationInput = '30 min';
+      $exeDevice.textInfoDurationTextInput = 'Duration:';
+      $exeDevice.textInfoParticipantsInput = '';
+      $exeDevice.textInfoParticipantsTextInput = '';
+      $exeDevice.textFeedbackInput = '';
+      $exeDevice.textFeedbackTextarea = '';
+
+      const result = $exeDevice.buildTextareaHtml();
+
+      expect(result).toContain('exe-text-activity');
+      expect(result).toContain('<dl>');
+      expect(result).toContain('Duration:');
+      expect(result).toContain('30 min');
+      expect(result).toContain('Task content');
+    });
+
+    it('builds exe-text-activity structure when feedback present', () => {
+      $exeDevice.init(mockElement, {});
+
+      $exeDevice.textTextarea = '<p>Content</p>';
+      $exeDevice.textInfoDurationInput = '';
+      $exeDevice.textInfoParticipantsInput = '';
+      $exeDevice.textFeedbackInput = 'Show Feedback';
+      $exeDevice.textFeedbackTextarea = '<p>The answer is...</p>';
+
+      const result = $exeDevice.buildTextareaHtml();
+
+      expect(result).toContain('exe-text-activity');
+      expect(result).toContain('feedbacktooglebutton');
+      expect(result).toContain('Show Feedback');
+      expect(result).toContain('The answer is...');
+      expect(result).not.toContain('<dl>'); // No task info, no dl
+    });
+
+    it('builds complete structure with task info and feedback', () => {
+      $exeDevice.init(mockElement, {});
+
+      $exeDevice.textTextarea = '<p>Main content</p>';
+      $exeDevice.textInfoDurationInput = '1 hour';
+      $exeDevice.textInfoDurationTextInput = 'Time:';
+      $exeDevice.textInfoParticipantsInput = 'Groups of 4';
+      $exeDevice.textInfoParticipantsTextInput = 'Grouping:';
+      $exeDevice.textFeedbackInput = 'Check Answer';
+      $exeDevice.textFeedbackTextarea = '<p>Correct!</p>';
+
+      const result = $exeDevice.buildTextareaHtml();
+
+      expect(result).toContain('exe-text-activity');
+      expect(result).toContain('<dl>');
+      expect(result).toContain('Time:');
+      expect(result).toContain('1 hour');
+      expect(result).toContain('Grouping:');
+      expect(result).toContain('Groups of 4');
+      expect(result).toContain('Main content');
+      expect(result).toContain('feedbacktooglebutton');
+      expect(result).toContain('Check Answer');
+      expect(result).toContain('Correct!');
+    });
+  });
+
+  describe('escapeHtml', () => {
+    it('escapes HTML special characters', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml('<script>')).toBe('&lt;script&gt;');
+      expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
+    });
+
+    it('returns empty string for falsy input', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml('')).toBe('');
+      expect($exeDevice.escapeHtml(null)).toBe('');
+      expect($exeDevice.escapeHtml(undefined)).toBe('');
+    });
+  });
+
+  describe('escapeHtmlAttr', () => {
+    it('escapes attribute special characters', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtmlAttr('"quoted"')).toBe('&quot;quoted&quot;');
+      expect($exeDevice.escapeHtmlAttr("it's")).toBe('it&#39;s');
+    });
+  });
+
+  describe('loadPreviousValues with exe-text-activity extraction', () => {
+    it('extracts task info from textTextarea when it has exe-text-activity structure', () => {
+      const html = `<div class="exe-text-activity">
+        <dl>
+          <div class="inline"><dt><span title="Duration:">Duration:</span></dt><dd>45 min</dd></div>
+          <div class="inline"><dt><span title="Grouping:">Grouping:</span></dt><dd>Individual</dd></div>
+        </dl>
+        <p>Task description</p>
+        <div class="iDevice_buttons feedback-button">
+          <input type="button" class="feedbacktooglebutton" value="Show Solution">
+        </div>
+        <div class="feedback js-feedback"><p>The solution is...</p></div>
+      </div>`;
+
+      const previousData = {
+        textTextarea: html,
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      // Check that extracted values are loaded into the form fields
+      const durationInput = mockElement.querySelector('#textInfoDurationInput');
+      const durationTextInput = mockElement.querySelector('#textInfoDurationTextInput');
+      const participantsInput = mockElement.querySelector('#textInfoParticipantsInput');
+      const participantsTextInput = mockElement.querySelector('#textInfoParticipantsTextInput');
+
+      expect(durationInput.value).toBe('45 min');
+      expect(durationTextInput.value).toBe('Duration:');
+      expect(participantsInput.value).toBe('Individual');
+      expect(participantsTextInput.value).toBe('Grouping:');
+    });
+
+    it('loads regular textTextarea without extraction when no exe-text-activity', () => {
+      const previousData = {
+        textTextarea: '<p>Regular content without task info</p>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Regular content without task info</p>');
+    });
+
+    it('extracts feedback from legacy eXe 2.9 format when loading previousData', () => {
+      // Reproduces the bug: eXe 2.9 ELPs use "feedbackbutton" class; previously the
+      // feedback content appeared in the main text box and the feedback field was empty.
+      const legacyHtml = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
+
+      const previousData = { textTextarea: legacyHtml };
+
+      $exeDevice.init(mockElement, previousData);
+
+      // Main textarea must NOT contain the feedback HTML
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toContain('A lo largo del proyecto');
+      expect(textarea.value).not.toContain('iDevice_buttons');
+      expect(textarea.value).not.toContain('js-feedback');
+
+      // Feedback button label must be populated
+      const feedbackInput = mockElement.querySelector('#textFeedbackInput');
+      expect(feedbackInput.value).toBe('Evaluación');
+
+      // Feedback textarea must contain the feedback content
+      const feedbackTextarea = mockElement.querySelector('#textFeedbackTextarea');
+      expect(feedbackTextarea.value).toContain('Esta tarea se valorará');
+
+      // Feedback fieldset must be expanded because it has content
+      const feedbackFieldset = mockElement.querySelector('#textFeedback');
+      expect(feedbackFieldset.classList.contains('exe-fieldset-open')).toBe(true);
     });
   });
 });

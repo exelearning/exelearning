@@ -13,7 +13,6 @@
  * - escapeHtml: HTML character escaping
  * - removeTags: HTML tag removal
  */
-
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -27,6 +26,136 @@ const __dirname = dirname(__filename);
  * Replaces 'var $exeDevice' with 'global.$exeDevice' to make it accessible.
  */
 function loadIdevice(code) {
+  // Mock translation function
+  global._ = (str) => str;
+
+  // Helper to strip HTML tags
+  const stripTags = (html) => {
+    if (!html) return '';
+    return String(html).replace(/<[^>]*>/g, '');
+  };
+
+  // Mock jQuery with chaining support
+  const createJQueryObject = (element) => {
+    // If element is a DOM node, use its properties
+    const isElement = element && typeof element === 'object' && element.tagName;
+    
+    const obj = {
+      length: isElement ? 1 : 0,
+      0: element,
+      val: () => '',
+      text: () => stripTags(element || ''),
+      html: (newContent) => {
+        if (newContent !== undefined) {
+          return createJQueryObject(newContent);
+        }
+        return element || '';
+      },
+      attr: () => '',
+      data: () => null,
+      find: () => createJQueryObject(''),
+      each: () => {},
+      on: () => obj,
+      off: () => obj,
+      click: () => obj,
+      hide: () => obj,
+      show: () => obj,
+      css: () => obj,
+      addClass: () => obj,
+      removeClass: () => obj,
+      hasClass: () => false,
+      parent: () => {
+        if (isElement && element.parentNode) {
+          return createJQueryObject(element.parentNode);
+        }
+        return createJQueryObject('');
+      },
+      eq: () => ({ attr: () => '' }),
+      append: () => obj,
+      prepend: () => obj,
+      remove: () => obj,
+      width: () => {
+        if (isElement) {
+          return element.offsetWidth || 100;
+        }
+        return 100;
+      },
+      height: () => {
+        if (isElement) {
+          return element.offsetHeight || 100;
+        }
+        return 100;
+      },
+    };
+    return obj;
+  };
+
+  global.$ = (selector) => createJQueryObject(selector);
+  global.$.trim = (str) => (str ? String(str).trim() : '');
+  global.jQuery = global.$;
+
+  // Mock document with proper element creation
+  global.document = {
+    createElement: (tag) => {
+      const element = {
+        tagName: tag.toUpperCase(),
+        style: {},
+        children: [],
+        parentNode: null,
+        appendChild: function(child) {
+          child.parentNode = this;
+          this.children.push(child);
+          return child;
+        },
+        remove: () => {},
+      };
+      return element;
+    },
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    body: {
+      appendChild: (child) => {
+        child.parentNode = global.document.body;
+        return child;
+      },
+      removeChild: () => {},
+    },
+  };
+
+  // Mock $exeDevices
+  global.$exeDevices = {
+    iDevice: {
+      gamification: {
+        helpers: {
+          supportedBrowser: () => true,
+          isJsonString: (str) => {
+            if (!str) return false;
+            try {
+              return JSON.parse(str);
+            } catch {
+              return false;
+            }
+          },
+        },
+      },
+    },
+  };
+
+  // Mock $exeDevicesEdition
+  global.$exeDevicesEdition = {
+    iDevice: {
+      gamification: {
+        common: {
+          getLanguageTab: () => '',
+        },
+      },
+      tabs: {
+        init: () => {},
+      },
+    },
+  };
+
   // Replace 'var $exeDevice' with 'global.$exeDevice' anywhere in the code
   const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
   // Execute the modified code using eval in global context

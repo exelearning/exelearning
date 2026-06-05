@@ -74,6 +74,7 @@ docker compose -f docker-compose.postgres.yml up -d
 
 > **Heads-up:** The sample sets `DB_SERVER_VERSION` and pins a Postgres image tag. Keep these aligned when you customize. 
 
+> **Note:** In all cases, if you experience write permission issues, try pruning unused Docker volumes.
 ---
 
 ## Configuration
@@ -89,9 +90,10 @@ Common knobs (all supported by the example files):
 * **Base path (subdirectory installs):** `BASE_PATH`
 * **Database:** `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_CHARSET`, engine-specific version flags
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
-* **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`, plus optional test user (`TEST_USER_*`)
+* **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`
+* **Admin user:** `ADMIN_EMAIL`, `ADMIN_PASSWORD` (see [Admin User Setup](#admin-user-setup))
 * **Real-time (Yjs WebSocket):** Uses the main server port, no additional configuration needed
-* **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., auto-create a user)
+* **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., run custom scripts)
 
 (See the embedded Compose files for the full set.)    
 
@@ -104,6 +106,7 @@ Common knobs (all supported by the example files):
 You can deploy eXeLearning under a subdirectory (e.g., `https://example.org/exelearning`) by setting `BASE_PATH`.
 
 - Do not include a trailing slash.
+- Start with a slash
 - Can be multi-level.
 
 Examples:
@@ -127,8 +130,46 @@ What it does:
 
 Verification:
 
-- Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
-- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
+- Visit `https://your-host/%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
+- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `/%BASE_PATH%/healthcheck`.
+
+---
+
+## Admin User Setup
+
+eXeLearning can automatically create and maintain an admin user via environment variables. This is useful for:
+
+- Initial deployment setup
+- Admin password recovery (if locked out)
+- Consistent admin access across container restarts
+
+### Configuration
+
+Set these environment variables in your `.env` file or Docker Compose:
+
+```env
+# Admin user email
+ADMIN_EMAIL=admin@myorganization.org
+
+# Admin password (required to enable admin user creation)
+ADMIN_PASSWORD=your_secure_password_here
+```
+
+### Behavior
+
+When `ADMIN_PASSWORD` is set (non-empty):
+
+1. **If the admin user doesn't exist:** Creates a new user with `ROLE_USER` and `ROLE_ADMIN` roles
+2. **If the admin user exists:** Updates the password and ensures admin roles are set
+
+This "upsert" behavior allows admin recovery if you lose access—just set the environment variable and restart the container.
+
+### Security Notes
+
+- Never commit `ADMIN_PASSWORD` to version control
+- Use strong, unique passwords
+- Consider removing `ADMIN_PASSWORD` after initial setup and using the UI for password changes
+- For multi-instance deployments (Redis HA), use the same `ADMIN_EMAIL` and `ADMIN_PASSWORD` across all instances
 
 ---
 
@@ -173,7 +214,34 @@ server {
 }
 ```
 
-> **If TLS is terminated at your proxy:** set `USE_FORWARDED_HEADERS=1` and ensure `X-Forwarded-*` headers are sent. 
+> **If TLS is terminated at your proxy:** set `TRUSTED_PROXIES=private_ranges,REMOTE_ADDR` in your `.env` and ensure your proxy sends `X-Forwarded-*` headers. See [Reverse Proxy Configuration](#reverse-proxy-configuration) below.
+
+---
+
+## Reverse Proxy Configuration
+
+When running behind a reverse proxy, eXeLearning needs to know how to construct public URLs (for SSO callbacks, redirects, etc.). Configure these variables in your `.env`:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TRUSTED_PROXIES` | IP ranges allowed to set proxy headers | `private_ranges,REMOTE_ADDR` |
+| `TRUSTED_HEADERS` | Headers to trust from proxies | `x-forwarded-for,x-forwarded-host,x-forwarded-proto` |
+
+**Example `.env` for reverse proxy:**
+
+```env
+# Trust private network ranges (typical for Docker/internal proxies)
+TRUSTED_PROXIES=private_ranges,REMOTE_ADDR
+TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+```
+
+**Why this matters:** Without proper configuration, SSO authentication (CAS, OpenID) will fail because callback URLs will use the internal server hostname instead of the public URL.
+
+**Common issues:**
+
+- CAS/OpenID redirects to wrong host → Check `TRUSTED_PROXIES` is set
+- Protocol mismatch (http vs https) → Ensure proxy sends `X-Forwarded-Proto`
+- Missing BASE_PATH in callbacks → Ensure `BASE_PATH` is set correctly
 
 ---
 
@@ -206,7 +274,7 @@ Templates uploaded through the admin panel are stored in `FILES_DIR/admin/templa
 
 Administrators can enable or disable templates through the admin panel. Disabled templates won't appear in the "New from Template" menu for users.
 
-### Creating templates
+### Creating templates (without admin panel)
 
 1. Design your project in eXeLearning
 2. Export it as an `.elpx` file (**File → Download as... → eXeLearning content**)
@@ -241,21 +309,8 @@ For deployments requiring horizontal scaling and high availability with multiple
 
 ### Temporary files cleanup
 
-eXeLearning stores intermediate/temporary files (exports, conversions, etc.) under the configured temporary directory. You can clean up old entries either via a console command (recommended for cron) or an HTTP endpoint (for environments where only HTTP access is available).
+eXeLearning stores intermediate/temporary files (exports, conversions, etc.) under the configured temporary directory. You can clean up old entries via a console command (recommended for cron).
 
-- Command (recommended):
-  - `bun cli tmp-cleanup [--max-age=SECONDS]`
-  - Example cron (daily at 03:00, keeping 24h):
-    - `0 3 * * * cd /opt/exelearning && bun cli tmp-cleanup --max-age=86400`
-
-- HTTP endpoint (GET or POST):
-  - Path: `/maintenance/tmp/cleanup`
-  - Query/body parameter: `key`
-  - Example:
-    - `curl -fsS "https://exelearning.example.org/maintenance/tmp/cleanup?key=$TMP_CLEANUP_KEY"`
-  - Response: `200 OK` with a JSON summary; `207 Multi-Status` when some deletions fail.
-
-- Security and configuration:
-  - Set `TMP_CLEANUP_KEY` in your environment (also present in `.env.dist`). The endpoint validates `?key=...` against this value.
-  - If `TMP_CLEANUP_KEY` is empty or unset, the endpoint is inert and returns `204 No Content` without performing any action (silent exit).
-  - Expose the endpoint only over HTTPS and/or restrict by IP as needed.
+- `bun cli tmp-cleanup [--max-age=SECONDS]`
+- Example cron (daily at 03:00, keeping 24h):
+  - `0 3 * * * cd /opt/exelearning && bun cli tmp-cleanup --max-age=86400`

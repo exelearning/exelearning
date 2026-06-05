@@ -15,13 +15,14 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # Install Bun
       - name: Set up Bun
@@ -80,22 +81,46 @@ jobs:
       # Use the Makefile package target
       - name: Package application using Makefile
         env:
-          # GitHub Releases API token for electron-builder
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          # Only set signing secrets if they exist
-          WIN_CSC_LINK: ${{ secrets.CERT_P12 != '' && './windows-cert.pfx' || '' }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # choose publish mode depending on trigger:
           # - when triggered by a release.prereleased -> publish (PUBLISH=always)
           # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
           # - skip publishing on forks
           PUBLISH: ${{ github.event_name == 'release' && github.repository_owner == 'exelearning' && 'always' || 'never' }}
         run: |
+          # GitHub Releases API token for electron-builder
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+
+          if [ "${{ github.repository_owner }}" = "exelearning" ]; then
+            echo "Official repo detected. Enabling signing/notarization only when secrets are available."
+
+            if [ -n "${{ secrets.MAC_CERT_P12 }}" ]; then
+              export CSC_LINK="${{ secrets.MAC_CERT_P12 }}"
+            fi
+            if [ -n "${{ secrets.MAC_CSC_KEY_PASSWORD }}" ]; then
+              export CSC_KEY_PASSWORD="${{ secrets.MAC_CSC_KEY_PASSWORD }}"
+            fi
+            if [ -n "${{ secrets.APPLE_ID }}" ]; then
+              export APPLE_ID="${{ secrets.APPLE_ID }}"
+            fi
+            if [ -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" ]; then
+              export APPLE_APP_SPECIFIC_PASSWORD="${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+            fi
+            if [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+              export APPLE_TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
+            fi
+            if [ -n "${{ secrets.CERT_P12 }}" ]; then
+              export WIN_CSC_LINK="./windows-cert.pfx"
+            fi
+            if [ -n "${{ secrets.CSC_KEY_PASSWORD }}" ]; then
+              export WIN_CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
+            fi
+          else
+            echo "Fork detected. Building unsigned installers (no macOS signing/notarization)."
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            export SKIP_NOTARIZE=1
+            unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+
           # Run the package command with the version
           make package VERSION=${{ steps.get_version.outputs.version }}  PUBLISH=${{ env.PUBLISH }}
         shell: bash
@@ -104,7 +129,7 @@ jobs:
       # If the trigger was a release and electron-builder already published, this
       # artifact is an extra safe copy; if it was a push/PR-merge, this is the only copy.
       - name: Upload installers artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.os }}
           path: |
@@ -125,11 +150,12 @@ jobs:
     needs: package
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]        
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Download installers
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: installers-${{ matrix.os }}
           path: installers
@@ -251,26 +277,52 @@ jobs:
           $port           = [int]($env:APP_PORT ?? 41309)
           $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 300)
           $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 6)
+          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $installPoll    = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
 
           # -------- Find installer and install silently --------
           $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) { throw "No Windows installer found in 'installers'." }
 
-          # /S = silent for NSIS oneClick; avoids UI + autolaunch races
+          # /S = silent for NSIS oneClick; avoids UI + autolaunch races.
+          # NOTE: electron-builder's NSIS installer extracts the app in a child
+          # process that can outlive the launcher it spawns, so -Wait sometimes
+          # returns before eXeLearning.exe exists on disk. Checking for the EXE
+          # only once right after this call is the root cause of the flaky
+          # "Installed EXE not found to launch." failures, so we poll below.
           Start-Process $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
-          # -------- Locate installed EXE --------
-          $exePath = @(
+          # -------- Locate installed EXE (poll to absorb the NSIS extraction race) --------
+          $candidatePaths = @(
             (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          )
+
+          $exePath = $null
+          $installDeadline = (Get-Date).AddSeconds($installTimeout)
+          do {
+            $exePath = $candidatePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+            if (-not $exePath) {
+              $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
+                Select-Object -First 1 | ForEach-Object FullName
+            }
+
+            if ($exePath) { break }
+
+            # Installer still extracting; wait for any lingering Setup processes
+            # then retry until the EXE shows up or we hit the install timeout.
+            Get-Process -Name '*Setup*' -ErrorAction SilentlyContinue | ForEach-Object {
+              try { $_.WaitForExit($installPoll * 1000) | Out-Null } catch {}
+            }
+            Start-Sleep -Seconds $installPoll
+          } until ((Get-Date) -ge $installDeadline)
 
           if (-not $exePath) {
-            $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
-              Select-Object -First 1 | ForEach-Object FullName
+            throw "Installed EXE not found to launch after $installTimeout s (NSIS silent install never produced eXeLearning.exe)."
           }
-          if (-not $exePath) { throw "Installed EXE not found to launch." }
+          Write-Host "Found installed EXE: $exePath"
 
           # -------- Launch with deterministic env for CI --------
           $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -361,7 +413,7 @@ jobs:
 
 
       - name: Upload screenshots and logs (per OS)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: screenshots-and-logs-${{ matrix.os }}
           path: |
@@ -377,13 +429,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all per-OS artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: screenshots-and-logs-*
           merge-multiple: true   # leave all files in the workspace
 
       - name: Re-upload merged artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: screenshots-and-logs
           path: .

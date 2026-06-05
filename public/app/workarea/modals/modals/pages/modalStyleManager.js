@@ -40,18 +40,22 @@ export default class ModalStyleManager extends Modal {
     show(themes) {
         // Set title
         this.titleDefault = _('Styles');
+        // Get config from appropriate source (static mode vs server mode)
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const configSource = isStaticMode
+            ? app?.api?.staticData?.parameters
+            : app?.api?.parameters;
         this.paramInstallThemes = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.canInstallThemes)
+            JSON.stringify(configSource?.canInstallThemes || false)
         );
         // Parameters of a theme that we will show in the information
         this.paramsInfo = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
+            JSON.stringify(configSource?.themeInfoFieldsConfig || {})
         );
         // Parameters of a theme that we can edit
         this.paramsEdit = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.themeEditionFieldsConfig
-            )
+            JSON.stringify(configSource?.themeEditionFieldsConfig || {})
         );
         // Installed themes
         if (themes) this.themes = themes;
@@ -1275,21 +1279,39 @@ export default class ModalStyleManager extends Modal {
 
     /**
      * Download/Export theme
+     * Downloads from bundled theme ZIPs (works in both online and static mode)
      *
      * @param {*} theme
      */
     downloadThemeZip(theme) {
-        eXeLearning.app.api
-            .getThemeZip(eXeLearning.app.project.odeSession, theme.dirName)
-            .then((response) => {
-                if (response && response.zipFileName && response.zipBase64) {
-                    let link = document.createElement('a');
-                    link.setAttribute('type', 'hidden');
-                    link.href = 'data:text/plain;base64,' + response.zipBase64;
-                    link.download = response.zipFileName;
-                    link.click();
-                    link.remove();
-                }
-            });
+        this.downloadThemeFromBundle(theme);
+    }
+
+    /**
+     * Download a theme from the bundled ZIP files
+     * Works in both online and static mode since bundles are pre-built
+     * @param {Object} theme - Theme object with dirName and name properties
+     */
+    async downloadThemeFromBundle(theme) {
+        try {
+            const basePath = eXeLearning.config?.basePath || '';
+            const bundleUrl = `${basePath}/bundles/themes/${theme.dirName}.zip`;
+
+            const response = await fetch(bundleUrl);
+            if (!response.ok) {
+                throw new Error(`Theme bundle not found: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${theme.name || theme.dirName}.zip`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('[ModalStyleManager] Bundle download failed:', error);
+            this.showElementAlert(_('Failed to download the style'), { error: error?.message });
+        }
     }
 }

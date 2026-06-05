@@ -15,10 +15,12 @@
  * - content/css/ (base CSS)
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm2004ManifestGenerator } from '../generators/Scorm2004Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
@@ -42,19 +44,49 @@ export class Scorm2004Exporter extends Html5Exporter {
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = options?.theme || meta.theme || 'base';
-            const projectId = this.generateProjectId();
+            // Stable manifest identifier (see BaseExporter.getManifestIdentifier and #1785).
+            // `manifestIdentifier` is the final `<manifest identifier="...">` value;
+            // `projectId` is the bare id used for organization/resource ids and the
+            // LOM `catalog/entry`, so a single project identity flows through all
+            // artifacts (manifest, organization, LOM, content.xml).
+            const manifestIdentifier = this.getManifestIdentifier();
+            const projectId = this.getBareProjectIdentifier();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Filter out hidden pages (visibility: false)
+            pages = pages.filter(p => this.isPageVisible(p, pages));
+
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
+            // Check for ELPX download support (looks for exe-package:elp in content)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                this.zip.addFile(path, content);
+                if (fileList) fileList.push(path);
+            };
+
             // Initialize generators
-            this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
-                title: meta.title || 'eXeLearning',
-                language: meta.language || 'en',
-                author: meta.author || '',
-                description: meta.description || '',
-                license: meta.license || '',
-            });
+            this.manifestGenerator = new Scorm2004ManifestGenerator(
+                projectId,
+                pages,
+                {
+                    identifier: manifestIdentifier,
+                    pages: pages,
+                    version: '2004',
+                    title: meta.title || 'eXeLearning',
+                    language: meta.language || 'en',
+                    author: meta.author || '',
+                    description: meta.description || '',
+                    license: meta.license || '',
+                },
+                manifestIdentifier,
+            );
 
             this.lomGenerator = new LomMetadataGenerator(projectId, {
                 title: meta.title || 'eXeLearning',
@@ -68,33 +100,94 @@ export class Scorm2004Exporter extends Html5Exporter {
             const commonFiles: string[] = [];
             const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
-            // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX pre-rendering)
+            // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
+            const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
+
+            // Configure iDevice renderer with theme files for icon resolution
+            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Fetch translated nav labels for the content language (includes license)
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+
+            // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX/Mermaid pre-rendering)
+            const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
+            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex);
+                let html = this.generateScorm2004PageHtml(
+                    page,
+                    pages,
+                    meta,
+                    isIndex,
+                    themeRootFiles,
+                    i,
+                    faviconInfo,
+                    pageFilenameMap,
+                    navLabels,
+                );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
-                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
-                if (!meta.addMathJax && options?.preRenderLatex) {
-                    try {
-                        const result = await options.preRenderLatex(html);
-                        if (result.latexRendered) {
-                            html = result.html;
-                            latexWasRendered = true;
-                            console.log(
-                                `[Scorm2004Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                if (!meta.addMathJax) {
+                    // Pre-render LaTeX in encrypted DataGame divs FIRST
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(html);
+                            if (result.count > 0) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Scorm2004Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn(
+                                '[Scorm2004Exporter] DataGame LaTeX pre-render failed for page:',
+                                page.title,
+                                error,
                             );
                         }
-                    } catch (error) {
-                        console.warn('[Scorm2004Exporter] LaTeX pre-render failed for page:', page.title, error);
+                    }
+
+                    // Pre-render visible LaTeX to SVG+MathML
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(html);
+                            if (result.latexRendered) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Scorm2004Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[Scorm2004Exporter] LaTeX pre-render failed for page:', page.title, error);
+                        }
                     }
                 }
 
-                const pageFilename = isIndex ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
-                this.zip.addFile(pageFilename, html);
+                // Pre-render Mermaid diagrams to static SVG
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
+                            html = result.html;
+                            mermaidWasRendered = true;
+                            console.log(
+                                `[Scorm2004Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Scorm2004Exporter] Mermaid pre-render failed for page:', page.title, error);
+                    }
+                }
+
+                // Use unique filename from the map (handles title collisions)
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
+                pageHtmlMap.set(pageFilename, html);
 
                 pageFiles[page.id] = {
                     fileUrl: pageFilename,
@@ -102,12 +195,8 @@ export class Scorm2004Exporter extends Html5Exporter {
                 };
             }
 
-            // 1b. Add search_index.js if search box is enabled
-            if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
-                this.zip.addFile('search_index.js', searchIndexContent);
-                commonFiles.push('search_index.js');
-            }
+            // Note: SCORM exports do NOT include search_index.js
+            // The LMS handles navigation, so client-side search is not needed
 
             // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -115,113 +204,170 @@ export class Scorm2004Exporter extends Html5Exporter {
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered LaTeX CSS if LaTeX was rendered
-            if (latexWasRendered) {
-                const latexCss = this.getPreRenderedLatexCss();
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered || mermaidWasRendered) {
                 const decoder = new TextDecoder();
-                const baseCssText = decoder.decode(baseCss);
+                let baseCssText = decoder.decode(baseCss);
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
                 const encoder = new TextEncoder();
-                baseCss = encoder.encode(baseCssText + '\n' + latexCss);
+                baseCss = encoder.encode(baseCssText);
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
 
-            // 3. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [filePath, content] of themeFiles) {
-                    // Rename theme files to legacy export format
-                    let exportPath = filePath;
-                    if (filePath === 'style.css') {
-                        exportPath = 'content.css';
-                    } else if (filePath === 'style.js') {
-                        exportPath = 'default.js';
-                    }
-                    this.zip.addFile(`theme/${exportPath}`, content);
-                    commonFiles.push(`theme/${exportPath}`);
+            // 3. Add theme files (already pre-fetched in step 0)
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    addFile(`theme/${filePath}`, content);
+                    commonFiles.push(`theme/${filePath}`);
                 }
-            } catch {
-                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
-                commonFiles.push('theme/content.css', 'theme/default.js');
+            } else {
+                addFile('theme/style.css', this.getFallbackThemeCss());
+                addFile('theme/style.js', this.getFallbackThemeJs());
+                commonFiles.push('theme/style.css', 'theme/style.js');
             }
 
             // 4. Fetch and add base libraries
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [path, content] of baseLibs) {
-                    this.zip.addFile(`libs/${path}`, content);
+                    addFile(`libs/${path}`, content);
                     commonFiles.push(`libs/${path}`);
                 }
             } catch {
                 // No base libraries available
             }
 
-            // 5. Fetch SCORM 2004 API wrapper files
+            // 4.5. Generate localized i18n file
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
+            addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
+            commonFiles.push('libs/common_i18n.js');
+
+            // 5. Detect and fetch additional required libraries based on content
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
+            });
+
+            try {
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
+                for (const [libPath, content] of libFiles) {
+                    // Only add if not already added by base libraries
+                    const zipPath = `libs/${libPath}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        addFile(zipPath, content);
+                        commonFiles.push(zipPath);
+                    }
+                }
+            } catch {
+                // Additional libraries not available - continue anyway
+            }
+
+            // 5b. Ensure ELPX download libraries are present
+            if (needsElpxDownload) {
+                await this.ensureElpxDownloadLibraries(addFile, commonFiles);
+            }
+
+            // 6. Fetch SCORM 2004 API wrapper files
             try {
                 const scormFiles = await this.resources.fetchScormFiles('2004');
                 for (const [filePath, content] of scormFiles) {
-                    this.zip.addFile(`libs/${filePath}`, content);
+                    addFile(`libs/${filePath}`, content);
                     commonFiles.push(`libs/${filePath}`);
                 }
             } catch {
                 // Add fallback SCORM files
-                this.zip.addFile('libs/SCORM_API_wrapper.js', this.getScorm2004ApiWrapper());
-                this.zip.addFile('libs/SCOFunctions.js', this.getSco2004Functions());
+                addFile('libs/SCORM_API_wrapper.js', this.getScorm2004ApiWrapper());
+                addFile('libs/SCOFunctions.js', this.getSco2004Functions());
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
-            // 5b. Fetch SCORM 2004 schema XSD files
-            try {
-                const schemaFiles = await this.resources.fetchScormSchemas('2004');
-                for (const [filePath, content] of schemaFiles) {
-                    this.zip.addFile(filePath, content);
-                    commonFiles.push(filePath);
-                }
-            } catch {
-                // Schema files are optional for package to work
-            }
-
-            // 5c. Copy content.xml (always include for re-editing capability)
+            // 6b. Copy content.xml and DTD (always include for re-editing capability)
             try {
                 const contentXml = await this.getContentXml();
                 if (contentXml) {
-                    this.zip.addFile('content.xml', contentXml);
+                    addFile('content.xml', contentXml);
                     commonFiles.push('content.xml');
+                    addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                    commonFiles.push(ODE_DTD_FILENAME);
                 }
             } catch {
                 // content.xml is optional
             }
 
-            // 6. Fetch and add iDevice assets
+            // 7. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
+                    const normalizedType = this.resources.normalizeIdeviceType(idevice);
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`idevices/${idevice}/${path}`, content);
-                        commonFiles.push(`idevices/${idevice}/${path}`);
+                        addFile(`idevices/${normalizedType}/${path}`, content);
+                        commonFiles.push(`idevices/${normalizedType}/${path}`);
                     }
                 } catch {
                     // Many iDevices don't have extra files
                 }
             }
 
-            // 7. Add project assets
-            await this.addAssetsToZipWithResourcePath();
+            // 8. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                            commonFiles.push(filePath);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[Scorm2004Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
 
-            // 8. Generate imsmanifest.xml
-            const manifestXml = this.manifestGenerator.generate({
-                commonFiles,
-                pageFiles,
-            });
-            this.zip.addFile('imsmanifest.xml', manifestXml);
+            // 9. Add project assets (with tracking for ELPX manifest)
+            await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 9. Generate imslrm.xml (LOM metadata)
+            // 10. Generate ELPX manifest file if download-source-file is used
+            if (needsElpxDownload && fileList) {
+                const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);
+                this.addElpxManifestToZip(fileList, pageUrls, commonFiles);
+            }
+
+            // 11. Add all HTML pages to ZIP (with ELPX script injection on pages with download-source-file)
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const isIndex = i === 0;
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
+                let html = pageHtmlMap.get(filename) || '';
+                if (needsElpxDownload) {
+                    html = this.injectElpxScripts(html, page, isIndex);
+                }
+                this.zip.addFile(filename, html);
+            }
+
+            // 12. Generate imslrm.xml (LOM metadata) - must be before manifest
             const lomXml = this.lomGenerator.generate();
             this.zip.addFile('imslrm.xml', lomXml);
 
-            // 10. Generate ZIP buffer
+            // 13. Generate imsmanifest.xml with complete file list
+            // Get all files from the ZIP to ensure the manifest lists ALL resources
+            const allZipFiles = this.zip.getFilePaths();
+            const manifestXml = this.manifestGenerator.generate({
+                commonFiles,
+                pageFiles,
+                allZipFiles,
+            });
+            this.zip.addFile('imsmanifest.xml', manifestXml);
+
+            // 14. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -238,7 +384,12 @@ export class Scorm2004Exporter extends Html5Exporter {
     }
 
     /**
-     * Generate project ID for SCORM package
+     * Generate a random low-level project ID.
+     *
+     * @deprecated Since #1785, the SCORM manifest identifier is derived from
+     * the project's odeIdentifier via {@link BaseExporter.getManifestIdentifier}
+     * so LMS tracking survives re-uploads. This helper is kept only for
+     * external callers/tests and is no longer used by the export pipeline.
      */
     generateProjectId(): string {
         return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
@@ -246,38 +397,77 @@ export class Scorm2004Exporter extends Html5Exporter {
 
     /**
      * Generate SCORM 2004-enabled HTML page
+     * @param page - Page data
+     * @param allPages - All pages in the project
+     * @param meta - Project metadata
+     * @param isIndex - Whether this is the index page
+     * @param themeFiles - List of root-level theme CSS/JS files
+     * @param pageIndex - Index of the current page (for page counter)
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
     generateScorm2004PageHtml(
         page: ExportPage,
         allPages: ExportPage[],
         meta: ExportMetadata,
         isIndex: boolean,
+        themeFiles?: string[],
+        pageIndex?: number,
+        faviconInfo?: FaviconInfo | null,
+        pageFilenameMap?: Map<string, string>,
+        navLabels?: { previous: string; next: string; license?: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-scorm exe-scorm2004';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles: customStyles,
             allPages,
             basePath,
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'CC-BY-SA',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            // Export options
-            addSearchBox: meta.addSearchBox ?? false,
-            // SCORM 2004-specific options
+            licenseUrl: meta.licenseUrl || '',
+            addSearchBox: false,
+            addExeLink: meta.addExeLink ?? true,
+            addPagination: meta.addPagination ?? false,
+            totalPages: allPages.length,
+            currentPageIndex: pageIndex ?? 0,
             isScorm: true,
             scormVersion: '2004',
-            bodyClass: 'exe-scorm exe-scorm2004',
+            bodyClass: bodyClass,
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
             onUnloadScript: 'unloadPage()',
+            hideNavigation: true,
+            hideNavButtons: true,
+            themeFiles: themeFiles || [],
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
+            pageFilenameMap,
+            // Pre-translated nav button labels (resolved from XLF at export time)
+            navLabels,
+            version: meta.exelearningVersion,
         });
     }
 

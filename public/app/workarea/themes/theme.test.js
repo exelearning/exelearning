@@ -88,11 +88,44 @@ describe('Theme', () => {
       expect(theme.path).toBe('http://localhost:8080/themes/test-theme/');
     });
 
+    // Regression for #1802 / #1804 — server-emitted theme URLs already include
+    // BASE_PATH, so the client must not prepend manager.symfonyURL again or the
+    // browser asks for "/aplicaciones/.../aplicaciones/.../style.css" and 404s.
+    it('uses an absolute server URL verbatim instead of double-prefixing symfonyURL', () => {
+      const prefixedManager = { symfonyURL: '/aplicaciones/medusa/exelearning' };
+      const prefixedData = {
+        ...mockData,
+        url: '/aplicaciones/medusa/exelearning/v0.0.0-alpha/files/perm/themes/base/base',
+      };
+
+      const t = new Theme(prefixedManager, prefixedData);
+
+      expect(t.path).toBe(
+        '/aplicaciones/medusa/exelearning/v0.0.0-alpha/files/perm/themes/base/base/',
+      );
+      expect(t.path).not.toContain(
+        '/aplicaciones/medusa/exelearning/aplicaciones/medusa/exelearning/',
+      );
+    });
+
+    it('still prefixes purely relative URLs with symfonyURL (legacy contract)', () => {
+      const legacyManager = { symfonyURL: 'http://localhost:8080' };
+      const legacyData = { ...mockData, url: 'themes/legacy-theme' };
+
+      const t = new Theme(legacyManager, legacyData);
+
+      expect(t.path).toBe('http://localhost:8080themes/legacy-theme/');
+    });
+
     it('should call setConfigValues with data', () => {
       const spy = vi.spyOn(Theme.prototype, 'setConfigValues');
       new Theme(mockManager, mockData);
       expect(spy).toHaveBeenCalledWith(mockData);
       spy.mockRestore();
+    });
+
+    it('should store dirName property for theme editing', () => {
+      expect(theme.dirName).toBe('test-theme');
     });
   });
 
@@ -210,11 +243,13 @@ describe('Theme', () => {
       expect(result).toContain('resource=//themes/test/style.css');
     });
 
-    it('should extract path after /files/', () => {
+    it('should return static mode theme paths directly', () => {
+      // Static mode: paths containing /files/perm/themes/ are served directly
       const path = 'http://localhost/files/perm/themes/modern/base.css';
       const result = theme.getResourceServicePath(path);
 
-      expect(result).toBe('/api/resources?resource=/perm/themes/modern/base.css');
+      // Paths to bundled theme files are returned as-is for static mode
+      expect(result).toBe('http://localhost/files/perm/themes/modern/base.css');
     });
 
     it('should return site theme paths directly without resource service', () => {
@@ -231,6 +266,14 @@ describe('Theme', () => {
 
       // Admin themes path still works for backwards compatibility
       expect(result).toBe('/v1.0.0/admin-files/themes/custom-theme/style.css');
+    });
+
+    it('should return user theme paths directly (from FILES_DIR)', () => {
+      const path = '/v0.0.0-alpha/user-files/themes/universal/style.css';
+      const result = theme.getResourceServicePath(path);
+
+      // User themes imported from ELP files are served directly via /user-files/
+      expect(result).toBe('/v0.0.0-alpha/user-files/themes/universal/style.css');
     });
   });
 
@@ -328,15 +371,37 @@ describe('Theme', () => {
       expect(window.eXeLearning.app.api.func.getText).toHaveBeenCalledWith(path);
     });
 
-    it('should replace relative URLs with theme path', async () => {
+    it('should replace relative URLs without quotes', async () => {
       window.eXeLearning.app.api.func.getText.mockResolvedValue(
-        'body { background: url(bg.png); }'
+        'body { background: url(img/bg.png); }'
       );
 
       const path = '/api/resources?resource=/themes/test/style.css';
       await theme.loadStyleByInsertingIt(path);
 
-      expect(mockStyle.innerHTML).toBe('body { background: url(http://localhost:8080/themes/test-theme/bg.png); }');
+      expect(mockStyle.innerHTML).toBe('body { background: url(http://localhost:8080/themes/test-theme/img/bg.png); }');
+    });
+
+    it('should replace relative URLs with single quotes', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        "body { background: url('img/bg.png'); }"
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe("body { background: url('http://localhost:8080/themes/test-theme/img/bg.png'); }");
+    });
+
+    it('should replace relative URLs with double quotes', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        'body { background: url("img/bg.png"); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe('body { background: url("http://localhost:8080/themes/test-theme/img/bg.png"); }');
     });
 
     it('should not replace absolute HTTP URLs', async () => {
@@ -348,6 +413,63 @@ describe('Theme', () => {
       await theme.loadStyleByInsertingIt(path);
 
       expect(mockStyle.innerHTML).toBe('body { background: url(http://example.com/bg.png); }');
+    });
+
+    it('should not replace absolute HTTPS URLs', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        'body { background: url(https://example.com/bg.png); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe('body { background: url(https://example.com/bg.png); }');
+    });
+
+    it('should not replace data URLs', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        'body { background: url(data:image/png;base64,abc123); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe('body { background: url(data:image/png;base64,abc123); }');
+    });
+
+    it('should not replace blob URLs', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        'body { background: url(blob:http://localhost/abc-123); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe('body { background: url(blob:http://localhost/abc-123); }');
+    });
+
+    it('should handle multiple URLs in CSS', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        '.exe-content { background: url(img/bg.png); } .header { background: url("images/header.jpg"); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe(
+        '.exe-content { background: url(http://localhost:8080/themes/test-theme/img/bg.png); } .header { background: url("http://localhost:8080/themes/test-theme/images/header.jpg"); }'
+      );
+    });
+
+    it('should not replace root-relative URLs (starting with /)', async () => {
+      window.eXeLearning.app.api.func.getText.mockResolvedValue(
+        'body { background: url(/api/idevices/download-file-resources); }'
+      );
+
+      const path = '/api/resources?resource=/themes/test/style.css';
+      await theme.loadStyleByInsertingIt(path);
+
+      expect(mockStyle.innerHTML).toBe('body { background: url(/api/idevices/download-file-resources); }');
     });
 
     it('should append style to head', async () => {
@@ -414,6 +536,278 @@ describe('Theme', () => {
       await theme.loadCss();
 
       expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should use loadUserThemeCss for user themes (isUserTheme flag)', async () => {
+      theme.isUserTheme = true;
+      const spy = vi.spyOn(theme, 'loadUserThemeCss').mockResolvedValue(undefined);
+      const serverSpy = vi.spyOn(theme, 'loadStyleByInsertingIt');
+
+      await theme.loadCss();
+
+      expect(spy).toHaveBeenCalled();
+      expect(serverSpy).not.toHaveBeenCalled();
+    });
+
+    it('should use loadUserThemeCss for user-theme:// paths', async () => {
+      theme.path = 'user-theme://custom-theme/';
+      const spy = vi.spyOn(theme, 'loadUserThemeCss').mockResolvedValue(undefined);
+      const serverSpy = vi.spyOn(theme, 'loadStyleByInsertingIt');
+
+      await theme.loadCss();
+
+      expect(spy).toHaveBeenCalled();
+      expect(serverSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadUserThemeCss', () => {
+    beforeEach(() => {
+      window.eXeLearning.app.resourceFetcher = null;
+    });
+
+    it('should log error when ResourceFetcher is not available', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await theme.loadUserThemeCss();
+
+      expect(consoleSpy).toHaveBeenCalledWith('[Theme] ResourceFetcher not available for user theme');
+    });
+
+    it('should log error when theme files are not found', async () => {
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(null),
+      };
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await theme.loadUserThemeCss();
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('files not found'));
+    });
+
+    it('should try getUserThemeAsync if getUserTheme returns null', async () => {
+      const mockThemeFiles = new Map([
+        ['style.css', new Blob(['body { color: red; }'], { type: 'text/css' })],
+      ]);
+
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(null),
+        getUserThemeAsync: vi.fn().mockResolvedValue(mockThemeFiles),
+      };
+
+      theme.cssFiles = ['style.css'];
+      const injectSpy = vi.spyOn(theme, 'injectUserThemeCss').mockResolvedValue({});
+
+      await theme.loadUserThemeCss();
+
+      expect(window.eXeLearning.app.resourceFetcher.getUserThemeAsync).toHaveBeenCalledWith('test-theme');
+      expect(injectSpy).toHaveBeenCalled();
+    });
+
+    it('should load CSS files from theme files map', async () => {
+      const mockThemeFiles = new Map([
+        ['style.css', new Blob(['body { color: red; }'], { type: 'text/css' })],
+        ['layout.css', new Blob(['.container { width: 100%; }'], { type: 'text/css' })],
+      ]);
+
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(mockThemeFiles),
+      };
+
+      const injectSpy = vi.spyOn(theme, 'injectUserThemeCss').mockResolvedValue({});
+
+      await theme.loadUserThemeCss();
+
+      expect(injectSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should warn when CSS file not found in theme files', async () => {
+      const mockThemeFiles = new Map(); // Empty map
+
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(mockThemeFiles),
+      };
+
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await theme.loadUserThemeCss();
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('not found in user theme'));
+    });
+  });
+
+  describe('injectUserThemeCss', () => {
+    let mockHead;
+    let mockStyle;
+
+    beforeEach(() => {
+      mockStyle = {
+        classList: {
+          add: vi.fn(),
+        },
+        setAttribute: vi.fn(),
+        innerHTML: '',
+      };
+
+      mockHead = {
+        append: vi.fn(),
+      };
+
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockHead);
+      vi.spyOn(document, 'createElement').mockReturnValue(mockStyle);
+
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(new Map()),
+      };
+    });
+
+    it('should create style element with user theme attributes', async () => {
+      await theme.injectUserThemeCss('body { color: red; }', 'style.css');
+
+      expect(mockStyle.classList.add).toHaveBeenCalledWith('exe');
+      expect(mockStyle.classList.add).toHaveBeenCalledWith('theme-style');
+      expect(mockStyle.setAttribute).toHaveBeenCalledWith('data-user-theme', 'test-theme');
+      expect(mockStyle.setAttribute).toHaveBeenCalledWith('data-file', 'style.css');
+    });
+
+    it('should append style to head', async () => {
+      await theme.injectUserThemeCss('body { color: red; }', 'style.css');
+
+      expect(mockHead.append).toHaveBeenCalledWith(mockStyle);
+    });
+
+    it('should return the created style element', async () => {
+      const result = await theme.injectUserThemeCss('body { color: red; }', 'style.css');
+
+      expect(result).toBe(mockStyle);
+    });
+
+    it('should call rewriteCssUrls when theme files are available', async () => {
+      const mockThemeFiles = new Map([
+        ['img/bg.png', new Blob([''], { type: 'image/png' })],
+      ]);
+
+      window.eXeLearning.app.resourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(mockThemeFiles),
+      };
+
+      const rewriteSpy = vi.spyOn(theme, 'rewriteCssUrls').mockResolvedValue('rewritten css');
+
+      await theme.injectUserThemeCss('body { background: url(img/bg.png); }', 'style.css');
+
+      expect(rewriteSpy).toHaveBeenCalledWith('body { background: url(img/bg.png); }', mockThemeFiles);
+    });
+  });
+
+  describe('rewriteCssUrls', () => {
+    let mockCreateObjectURL;
+
+    beforeEach(() => {
+      mockCreateObjectURL = vi.fn().mockReturnValue('blob:http://localhost/test-blob');
+      global.URL.createObjectURL = mockCreateObjectURL;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should rewrite relative URLs to blob URLs', async () => {
+      const mockThemeFiles = new Map([
+        ['img/bg.png', new Blob([''], { type: 'image/png' })],
+      ]);
+
+      const cssText = 'body { background: url(img/bg.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+      expect(result).toContain("url('blob:");
+    });
+
+    it('should handle URLs with ./ prefix', async () => {
+      const mockThemeFiles = new Map([
+        ['img/bg.png', new Blob([''], { type: 'image/png' })],
+      ]);
+
+      const cssText = 'body { background: url(./img/bg.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+      expect(result).toContain("url('blob:");
+    });
+
+    it('should skip http URLs', async () => {
+      const mockThemeFiles = new Map();
+
+      const cssText = 'body { background: url(http://example.com/bg.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).not.toHaveBeenCalled();
+      expect(result).toBe(cssText);
+    });
+
+    it('should skip https URLs', async () => {
+      const mockThemeFiles = new Map();
+
+      const cssText = 'body { background: url(https://example.com/bg.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).not.toHaveBeenCalled();
+      expect(result).toBe(cssText);
+    });
+
+    it('should skip data URLs', async () => {
+      const mockThemeFiles = new Map();
+
+      const cssText = 'body { background: url(data:image/png;base64,abc); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).not.toHaveBeenCalled();
+      expect(result).toBe(cssText);
+    });
+
+    it('should skip protocol-relative URLs', async () => {
+      const mockThemeFiles = new Map();
+
+      const cssText = 'body { background: url(//example.com/bg.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).not.toHaveBeenCalled();
+      expect(result).toBe(cssText);
+    });
+
+    it('should handle missing files gracefully', async () => {
+      const mockThemeFiles = new Map(); // Empty map
+
+      const cssText = 'body { background: url(img/missing.png); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).not.toHaveBeenCalled();
+      expect(result).toBe(cssText);
+    });
+
+    it('should handle multiple URLs', async () => {
+      const mockThemeFiles = new Map([
+        ['img/bg.png', new Blob([''], { type: 'image/png' })],
+        ['fonts/font.woff', new Blob([''], { type: 'font/woff' })],
+      ]);
+
+      const cssText = 'body { background: url(img/bg.png); } @font-face { src: url(fonts/font.woff); }';
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(2);
+      expect(result).toContain("url('blob:");
+    });
+
+    it('should handle URLs with quotes', async () => {
+      const mockThemeFiles = new Map([
+        ['img/bg.png', new Blob([''], { type: 'image/png' })],
+      ]);
+
+      const cssText = "body { background: url('img/bg.png'); }";
+      const result = await theme.rewriteCssUrls(cssText, mockThemeFiles);
+
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+      expect(result).toContain("url('blob:");
     });
   });
 
@@ -498,6 +892,265 @@ describe('Theme', () => {
       await theme.select(false);
 
       expect(window.eXeLearning.app.project.idevices.cleanNodeAndLoadPage).not.toHaveBeenCalled();
+    });
+
+    it('should call resolveIconBlobUrls for user themes', async () => {
+      theme.isUserTheme = true;
+      const spy = vi.spyOn(theme, 'resolveIconBlobUrls').mockResolvedValue();
+
+      await theme.select(false);
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should not call resolveIconBlobUrls for non-user themes', async () => {
+      theme.isUserTheme = false;
+      const spy = vi.spyOn(theme, 'resolveIconBlobUrls').mockResolvedValue();
+
+      await theme.select(false);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveIconBlobUrls', () => {
+    let mockResourceFetcher;
+    let mockThemeFiles;
+
+    beforeEach(() => {
+      // Create mock blob
+      const mockBlob = new Blob(['icon data'], { type: 'image/png' });
+      mockThemeFiles = new Map([
+        ['icons/info.png', mockBlob],
+        ['icons/warning.png', mockBlob],
+      ]);
+
+      mockResourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(mockThemeFiles),
+        getUserThemeAsync: vi.fn().mockResolvedValue(mockThemeFiles),
+      };
+
+      window.eXeLearning.app.resourceFetcher = mockResourceFetcher;
+
+      // Setup theme as user theme with icons
+      theme.isUserTheme = true;
+      theme.icons = {
+        info: {
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'icons/info.png',
+          _relativePath: 'icons/info.png',
+        },
+        warning: {
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'icons/warning.png',
+          _relativePath: 'icons/warning.png',
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete window.eXeLearning.app.resourceFetcher;
+    });
+
+    it('should skip non-user themes', async () => {
+      theme.isUserTheme = false;
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should skip themes without icons', async () => {
+      theme.icons = {};
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should skip when icons is null', async () => {
+      theme.icons = null;
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should return early when resourceFetcher not available', async () => {
+      delete window.eXeLearning.app.resourceFetcher;
+
+      await theme.resolveIconBlobUrls();
+
+      // Should not throw
+      expect(theme.icons.info.value).toBe('icons/info.png');
+    });
+
+    it('should get theme files from resourceFetcher', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).toHaveBeenCalledWith('test-theme');
+    });
+
+    it('should use async fallback when sync method returns null', async () => {
+      mockResourceFetcher.getUserTheme.mockReturnValue(null);
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserThemeAsync).toHaveBeenCalledWith('test-theme');
+    });
+
+    it('should return early when theme files not found', async () => {
+      mockResourceFetcher.getUserTheme.mockReturnValue(null);
+      mockResourceFetcher.getUserThemeAsync.mockResolvedValue(null);
+
+      await theme.resolveIconBlobUrls();
+
+      // Value should remain unchanged
+      expect(theme.icons.info.value).toBe('icons/info.png');
+    });
+
+    it('should convert icon paths to blob URLs', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toMatch(/^blob:/);
+      expect(theme.icons.warning.value).toMatch(/^blob:/);
+    });
+
+    it('should track blob URLs for cleanup', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(theme._iconBlobUrls).toBeDefined();
+      expect(theme._iconBlobUrls.length).toBe(2);
+    });
+
+    it('should skip icons without _relativePath', async () => {
+      theme.icons.legacy = {
+        id: 'legacy',
+        value: 'some-url',
+        // No _relativePath
+      };
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.legacy.value).toBe('some-url');
+    });
+
+    it('should skip non-object icons', async () => {
+      theme.icons.stringIcon = 'icons/old-format.png';
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.stringIcon).toBe('icons/old-format.png');
+    });
+
+    it('should skip icons already resolved to blob URLs', async () => {
+      theme.icons.info.value = 'blob:http://localhost/already-resolved';
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toBe('blob:http://localhost/already-resolved');
+    });
+
+    it('should handle missing icon files gracefully', async () => {
+      mockThemeFiles.delete('icons/warning.png');
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toMatch(/^blob:/);
+      expect(theme.icons.warning.value).toBe('icons/warning.png');
+    });
+  });
+
+  describe('revokeIconBlobUrls', () => {
+    let revokeObjectURLSpy;
+
+    beforeEach(() => {
+      revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      theme.icons = {
+        info: {
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'blob:http://localhost/icon1',
+          _relativePath: 'icons/info.png',
+        },
+        warning: {
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'blob:http://localhost/icon2',
+          _relativePath: 'icons/warning.png',
+        },
+      };
+      theme._iconBlobUrls = [
+        'blob:http://localhost/icon1',
+        'blob:http://localhost/icon2',
+      ];
+    });
+
+    afterEach(() => {
+      revokeObjectURLSpy.mockRestore();
+    });
+
+    it('should revoke all tracked blob URLs', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(2);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/icon1');
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/icon2');
+    });
+
+    it('should clear the _iconBlobUrls array', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(theme._iconBlobUrls).toEqual([]);
+    });
+
+    it('should reset icon values to relative paths', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.info.value).toBe('icons/info.png');
+      expect(theme.icons.warning.value).toBe('icons/warning.png');
+    });
+
+    it('should do nothing when _iconBlobUrls is empty', () => {
+      theme._iconBlobUrls = [];
+
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when _iconBlobUrls is undefined', () => {
+      delete theme._iconBlobUrls;
+
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+    });
+
+    it('should skip non-object icons during reset', () => {
+      theme.icons.stringIcon = 'some-string';
+
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.stringIcon).toBe('some-string');
+    });
+
+    it('should skip icons without _relativePath during reset', () => {
+      theme.icons.noPath = {
+        id: 'noPath',
+        value: 'blob:http://localhost/icon3',
+      };
+
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.noPath.value).toBe('blob:http://localhost/icon3');
     });
   });
 });

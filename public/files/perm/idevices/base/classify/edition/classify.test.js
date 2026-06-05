@@ -141,8 +141,73 @@ describe('classify iDevice', () => {
       expect(result).toBe(4);
     });
 
-    it('returns false for group number > 3', () => {
-      const result = $exeDevice.validateGroups(['0#item1', '4#item2']);
+    it('returns 5 for valid 5 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+      ]);
+      expect(result).toBe(5);
+    });
+
+    it('returns 6 for valid 6 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+      ]);
+      expect(result).toBe(6);
+    });
+
+    it('returns 7 for valid 7 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+      ]);
+      expect(result).toBe(7);
+    });
+
+    it('returns 8 for valid 8 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+        '7#item8',
+      ]);
+      expect(result).toBe(8);
+    });
+
+    it('returns 9 for valid 9 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+        '7#item8',
+        '8#item9',
+      ]);
+      expect(result).toBe(9);
+    });
+
+    it('returns false for group number > 8', () => {
+      const result = $exeDevice.validateGroups(['0#item1', '9#item2']);
       expect(result).toBe(false);
     });
 
@@ -243,6 +308,61 @@ describe('classify iDevice', () => {
       expect(q1).not.toBe(q2);
       q1.eText = 'modified';
       expect(q2.eText).toBe('');
+    });
+  });
+
+  describe('normalizeQuestionByType', () => {
+    it('keeps image content and audio for type 0', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 0,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+        x: 0.2,
+        y: 0.4,
+        author: 'Author',
+        alt: 'Alt',
+      });
+
+      expect(normalized.url).toBe('files/img.png');
+      expect(normalized.eText).toBe('');
+      expect(normalized.audio).toBe('files/sound.mp3');
+      expect(normalized.x).toBe(0.2);
+      expect(normalized.y).toBe(0.4);
+    });
+
+    it('keeps text content and audio for type 1', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 1,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+        x: 0.2,
+        y: 0.4,
+        author: 'Author',
+        alt: 'Alt',
+      });
+
+      expect(normalized.eText).toBe('text');
+      expect(normalized.url).toBe('');
+      expect(normalized.audio).toBe('files/sound.mp3');
+      expect(normalized.x).toBe(0);
+      expect(normalized.y).toBe(0);
+      expect(normalized.author).toBe('');
+      expect(normalized.alt).toBe('');
+    });
+
+    it('keeps text, image and audio for type 2', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 2,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+      });
+
+      expect(normalized.url).toBe('files/img.png');
+      expect(normalized.eText).toBe('text');
+      expect(normalized.audio).toBe('files/sound.mp3');
     });
   });
 });

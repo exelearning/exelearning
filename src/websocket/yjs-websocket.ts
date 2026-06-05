@@ -31,6 +31,7 @@ import { verifyToken as verifyTokenDefault } from '../routes/auth';
 import {
     findProjectByUuid as findProjectByUuidDefault,
     checkProjectAccess as checkProjectAccessDefault,
+    markProjectAsSaved as markProjectAsSavedDefault,
 } from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import { getSession as getSessionDefault } from '../services/session-manager';
@@ -53,6 +54,7 @@ import { parseMessage } from './message-parser';
 export interface YjsWebSocketQueries {
     findProjectByUuid: typeof findProjectByUuidDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
+    markProjectAsSaved: typeof markProjectAsSavedDefault;
 }
 
 /**
@@ -97,6 +99,7 @@ const defaultDependencies: YjsWebSocketDependencies = {
     queries: {
         findProjectByUuid: findProjectByUuidDefault,
         checkProjectAccess: checkProjectAccessDefault,
+        markProjectAsSaved: markProjectAsSavedDefault,
     },
     sessionManager: {
         getSession: getSessionDefault,
@@ -287,6 +290,53 @@ export async function handleWebSocketOpen(
     // Detect collaboration and trigger asset prefetch
     if (clientCount > 1) {
         console.log(`[YjsWebSocket] Collaboration detected in ${projectUuid}`);
+
+        // Auto-save unsaved projects when collaboration starts
+        // This ensures documents aren't lost when multiple users work together
+        (async () => {
+            try {
+                const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
+                if (project && !project.saved_once) {
+                    console.log(
+                        `[YjsWebSocket] Project ${projectUuid} not saved yet, requesting sync from first client`,
+                    );
+
+                    // Find the first (oldest) client in the room to request state
+                    const firstClient = Array.from(room.conns)[0];
+                    if (firstClient) {
+                        // Send JSON message to request sync-state
+                        const syncRequestMsg = JSON.stringify({
+                            type: 'request-sync-state',
+                            reason: 'collaboration-started',
+                            projectUuid,
+                        });
+                        firstClient.send(syncRequestMsg);
+                        console.log(`[YjsWebSocket] Sent request-sync-state to first client for ${projectUuid}`);
+                    }
+                }
+            } catch (err) {
+                console.error('[YjsWebSocket] Error checking project save status:', err);
+            }
+        })();
+
+        // Ask existing clients to re-broadcast awareness when a new client joins.
+        // This keeps presence UI in sync without forcing reconnects.
+        for (const existingConn of room.conns) {
+            if (existingConn.readyState === 1) {
+                try {
+                    existingConn.send(
+                        JSON.stringify({
+                            type: 'trigger-resync',
+                            reason: 'new-client-joined',
+                            projectUuid,
+                        }),
+                    );
+                } catch {
+                    /* ignore individual send errors */
+                }
+            }
+        }
+
         deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
             console.error('[YjsWebSocket] Error in collaboration detection:', err);
         });
@@ -398,34 +448,46 @@ export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData |
  * Create Elysia WebSocket routes for Yjs
  */
 export function createWebSocketRoutes() {
-    return new Elysia({ name: 'yjs-websocket' }).ws('/yjs/:docName', {
-        // Connection opened - validate token here since beforeHandle doesn't pass data to open
-        async open(ws) {
-            const rawData = ws.data as ElysiaWsRawData;
-            const docName = rawData.params?.docName;
-            const token = rawData.query?.token as string;
+    return (
+        new Elysia({ name: 'yjs-websocket' })
+            // Public liveness probe under the same prefix where the WebSocket is
+            // mounted. Used by external healthchecks and quick smoke tests that
+            // want to confirm the Yjs service is up without negotiating a WS
+            // upgrade. Intentionally minimal: no counts, ports, modes or hostnames.
+            .get('/yjs/info', () => ({ ok: true, service: 'yjs-websocket' }))
+            .ws('/yjs/:docName', {
+                // Connection opened - validate token here since beforeHandle doesn't pass data to open
+                async open(ws) {
+                    const rawData = ws.data as ElysiaWsRawData;
+                    const docName = rawData.params?.docName;
+                    const token = rawData.query?.token as string;
 
-            const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
-            if (!result.success && result.error) {
-                ws.close(result.error.code, result.error.reason);
-            }
-        },
+                    const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+                    if (!result.success && result.error) {
+                        ws.close(result.error.code, result.error.reason);
+                    }
+                },
 
-        // Handle pong response (Bun WebSocket native support)
-        pong(ws) {
-            handleWebSocketPong(ws.data as WsData);
-        },
+                // Handle pong response (Bun WebSocket native support)
+                pong(ws) {
+                    handleWebSocketPong(ws.data as WsData);
+                },
 
-        // Message received
-        message(ws, message) {
-            handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
-        },
+                // Message received
+                message(ws, message) {
+                    handleWebSocketMessage(
+                        ws as ServerWebSocket<WsData>,
+                        ws.data as WsData,
+                        message as Buffer | string,
+                    );
+                },
 
-        // Connection closed
-        close(ws) {
-            handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
-        },
-    });
+                // Connection closed
+                close(ws) {
+                    handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+                },
+            })
+    );
 }
 
 /**
@@ -492,6 +554,26 @@ export function getActiveRooms(): string[] {
  */
 export function broadcastToRoom(docName: string, message: Buffer | string): void {
     roomManager.broadcastToRoom(docName, message);
+}
+
+/**
+ * Get details of all connected WebSocket clients.
+ * Used by admin dashboard to show online users.
+ */
+export function getConnectedClientsDetail(): Array<{
+    userId: number;
+    projectUuid: string;
+    connectedAt: number;
+}> {
+    const clients: Array<{ userId: number; projectUuid: string; connectedAt: number }> = [];
+    for (const meta of clientMetaMap.values()) {
+        clients.push({
+            userId: meta.userId,
+            projectUuid: meta.projectUuid,
+            connectedAt: meta.connectedAt instanceof Date ? meta.connectedAt.getTime() : Number(meta.connectedAt),
+        });
+    }
+    return clients;
 }
 
 /**

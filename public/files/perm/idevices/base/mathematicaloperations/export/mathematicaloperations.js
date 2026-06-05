@@ -66,8 +66,9 @@ var $eXeMathOperations = {
     loadGame: function () {
         $eXeMathOperations.options = [];
         $eXeMathOperations.activities.each(function (i) {
-            const dl = $('.mathoperations-DataGame', this),
-                mOption = $eXeMathOperations.loadDataGame(dl, i),
+            const dl = $('.mathoperations-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeMathOperations.loadDataGame(dl, i),
                 msg = mOption.msgs.msgPlayStart;
 
             mOption.scorerp = 0;
@@ -218,7 +219,7 @@ var $eXeMathOperations = {
         html +=
             '<a id="MTHO-' +
             instance +
-            '-prevLink" style="visibility:hidden" href="#" onclick="$mathoQuestions.goTo(-1,' +
+            '-prevLink" style="visibility:hidden" href="#" onclick="$eXeMathOperations.goTo(-1,' +
             mOptions.number +
             ',' +
             instance +
@@ -1094,7 +1095,7 @@ var $eXeMathOperations = {
             (100 * parseFloat(rightAnswered.html())) / trs.length
         );
         $('#' + base + 'result').html(qualification);
-        $eXeMathOperations.exe.games.math.updateLatex(
+        $exeDevices.iDevice.gamification.math.updateLatex(
             '#mthoMultimedia-' + instance
         );
         $eXeMathOperations.updateScore(right, instance);
@@ -1632,7 +1633,7 @@ var $eXeMathOperations = {
                     $eXeMathOperations.startGame(instance);
                 }
                 $exeDevices.iDevice.gamification.math.updateLatex(
-                    'mthoMultimedia-' + instance
+                    '#mthoMultimedia-' + instance
                 );
             } else {
                 $eXeMathOperations.startGame(instance);
@@ -1808,7 +1809,6 @@ var $eXeMathOperations = {
 
         if (correctAnswer) {
             mOptions.hits++;
-            type = 2;
         } else {
             mOptions.errors++;
         }

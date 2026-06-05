@@ -149,6 +149,14 @@ export default class LinkValidationManager {
         return new Promise((resolve, reject) => {
             const streamUrl = eXeLearning.app.api.getLinkValidationStreamUrl();
 
+            // If no stream URL available (static mode), use client-side validation
+            if (!streamUrl) {
+                this._validateLinksClientSide(links)
+                    .then(resolve)
+                    .catch(reject);
+                return;
+            }
+
             this.streamHandle = SSEClient.createStream(
                 streamUrl,
                 { links },
@@ -202,6 +210,67 @@ export default class LinkValidationManager {
             }
         } else if (event.event === 'done') {
             // Will be handled by onComplete callback
+        }
+    }
+
+    /**
+     * Client-side validation when server is not available (static/offline mode)
+     * Validates links using the LinkValidationAdapter
+     *
+     * @param {Array<Object>} links - Links to validate
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _validateLinksClientSide(links) {
+        console.log('[LinkValidationManager] Using client-side validation');
+
+        const adapter = eXeLearning.app.api.getAdapter('linkValidation');
+
+        for (const link of links) {
+            // Check if validation was cancelled
+            if (this.isCancelled) {
+                break;
+            }
+
+            // Get the link state from our map
+            const linkState = this.links.get(link.id);
+            if (!linkState) {
+                continue;
+            }
+
+            // Update status to validating
+            linkState.status = 'validating';
+            if (this.onLinkUpdate) {
+                this.onLinkUpdate(link.id, 'validating', null, linkState);
+            }
+
+            // Validate using adapter (or mark as valid if no adapter)
+            let result = { status: 'valid', error: null };
+            if (adapter?.validateLink) {
+                try {
+                    result = await adapter.validateLink(link.url);
+                } catch (err) {
+                    result = { status: 'broken', error: err.message };
+                }
+            }
+
+            // Update link state with result
+            linkState.status = result.status;
+            linkState.error = result.error;
+
+            if (this.onLinkUpdate) {
+                this.onLinkUpdate(link.id, result.status, result.error, linkState);
+            }
+
+            if (this.onProgress) {
+                this.onProgress(this.getStats());
+            }
+        }
+
+        // Mark validation as complete
+        this.isValidating = false;
+        if (this.onComplete) {
+            this.onComplete(this.getStats(), this.isCancelled);
         }
     }
 

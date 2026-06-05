@@ -6,6 +6,13 @@
     padding: 0;
 }
 
+// Ensure translated text spans inside buttons inherit the button's own color
+// (e.g., white for .btn-primary, white for .btn-danger) instead of var(--text).
+// Static mode wraps {{ 'Text' | trans }} in <span data-i18n="Text"> for runtime translation.
+.btn [data-i18n] {
+    color: inherit;
+}
+
 /* Hyerarchy: Display > Primary > Secondary > Tertiary */
 
 .button-display {
@@ -83,6 +90,9 @@
         background-color: var(--gray-200) !important;
         color: var(--text);
         border: 1px solid var(--gray-200) !important;
+    }
+    &:focus {
+        color: var(--text);
     }
     &:active {
         border-color: var(--white) !important;
@@ -202,3 +212,37 @@ Flexbox Bootstrap 5 helpers:
     - Center start: d-flex align-items-center justify-content-start
     - Center center: d-flex justify-content-center align-items-center
 */
+
+/* Share button */
+
+.btn.button-share-link {
+    background: transparent !important;
+    border: 1px solid var(--gray-icons) !important;
+    border-radius: 24px;
+    filter: grayscale(1);
+
+    .button-share-text {
+        color: var(--gray-icons);
+    }
+
+    &:hover,
+    &:focus {
+        opacity: 1;
+        filter: none;
+        background: var(--brand-primary-50) !important;
+        border: 1px solid var(--brand-primary) !important;
+        .button-share-text {
+            color: var(--brand-primary);
+        }
+    }
+
+    // Active/shared state: has the shared-icon inside
+    &:has(.shared-icon) {
+        opacity: 1;
+        filter: none;
+        border: 1px solid var(--brand-primary) !important;
+        .button-share-text {
+            color: var(--brand-primary);
+        }
+    }
+}

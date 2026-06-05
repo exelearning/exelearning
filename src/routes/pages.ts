@@ -11,12 +11,13 @@ import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
-import { renderTemplate as renderTemplateDefault } from '../services/template';
+import { renderTemplate as renderTemplateDefault, setRenderLocale } from '../services/template';
 import {
     findUserById as findUserByIdDefault,
     findUserByEmail as findUserByEmailDefault,
     createUser as createUserDefault,
     findPreference as findPreferenceDefault,
+    setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
@@ -28,9 +29,11 @@ import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
+import { buildAdminTranslations } from './admin';
 import {
     getAuthMethods as getAuthMethodsFromSettings,
-    getSettingBoolean,
+    getSettingBoolean as getSettingBooleanFromSettings,
+    getSettingString as getSettingStringFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -47,11 +50,35 @@ import {
     generateSessionId as generateSessionIdDefault,
     getSession as getSessionDefault,
 } from '../services/session-manager';
-import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
+import {
+    createSessionDirectories as createSessionDirectoriesDefault,
+    getFilesDir,
+    readFile as readFileFromDisk,
+    fileExists as fileExistsOnDisk,
+} from '../services/file-helper';
+import * as pathModule from 'path';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+
+const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
+    '.ico': 'image/x-icon',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.gif': 'image/gif',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.mp4': 'video/mp4',
+    '.mp3': 'audio/mpeg',
+};
 
 /**
  * Login page query parameters
@@ -59,6 +86,15 @@ import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes'
 interface LoginQueryParams {
     returnUrl?: string;
     error?: string;
+}
+
+interface ImpersonationContext {
+    isActive: boolean;
+    sessionId: string | null;
+    impersonatorId: number;
+    impersonatorEmail: string;
+    impersonatedId: number;
+    impersonatedEmail: string;
 }
 
 // ============================================================================
@@ -73,6 +109,7 @@ export interface PagesQueriesDeps {
     findUserByEmail: typeof findUserByEmailDefault;
     createUser: typeof createUserDefault;
     findPreference: typeof findPreferenceDefault;
+    setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
@@ -94,6 +131,8 @@ export interface PagesSessionManagerDeps {
  */
 export interface PagesFileHelperDeps {
     createSessionDirectories: typeof createSessionDirectoriesDefault;
+    fileExists: typeof fileExistsOnDisk;
+    readFile: typeof readFileFromDisk;
 }
 
 /**
@@ -101,13 +140,20 @@ export interface PagesFileHelperDeps {
  */
 export interface PagesTemplateDeps {
     renderTemplate: typeof renderTemplateDefault;
+    setRenderLocale: typeof setRenderLocale;
 }
 
 /**
  * Utils interface
  */
-export interface PagesUtilsDeps {
-    createGravatarUrl: typeof createGravatarUrlDefault;
+// ... (existing code, added new interface)
+/**
+ * Settings functions interface
+ */
+export interface PagesSettingsDeps {
+    getAuthMethods: typeof getAuthMethodsFromSettings;
+    getSettingBoolean: typeof getSettingBooleanFromSettings;
+    getSettingString: typeof getSettingStringFromSettings;
 }
 
 /**
@@ -120,6 +166,7 @@ export interface PagesDependencies {
     fileHelper?: PagesFileHelperDeps;
     template?: PagesTemplateDeps;
     utils?: PagesUtilsDeps;
+    settings?: PagesSettingsDeps;
 }
 
 // Default queries
@@ -128,6 +175,7 @@ const defaultQueries: PagesQueriesDeps = {
     findUserByEmail: findUserByEmailDefault,
     createUser: createUserDefault,
     findPreference: findPreferenceDefault,
+    setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
@@ -145,16 +193,26 @@ const defaultSessionManager: PagesSessionManagerDeps = {
 // Default file helper
 const defaultFileHelper: PagesFileHelperDeps = {
     createSessionDirectories: createSessionDirectoriesDefault,
+    fileExists: fileExistsOnDisk,
+    readFile: readFileFromDisk,
 };
 
 // Default template
 const defaultTemplate: PagesTemplateDeps = {
     renderTemplate: renderTemplateDefault,
+    setRenderLocale,
 };
 
 // Default utils
 const defaultUtils: PagesUtilsDeps = {
     createGravatarUrl: createGravatarUrlDefault,
+};
+
+// Default settings
+const defaultSettings: PagesSettingsDeps = {
+    getAuthMethods: getAuthMethodsFromSettings,
+    getSettingBoolean: getSettingBooleanFromSettings,
+    getSettingString: getSettingStringFromSettings,
 };
 
 // Default dependencies
@@ -165,6 +223,7 @@ const defaultDependencies: PagesDependencies = {
     fileHelper: defaultFileHelper,
     template: defaultTemplate,
     utils: defaultUtils,
+    settings: defaultSettings,
 };
 
 const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
@@ -189,6 +248,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findUserByEmail,
         createUser,
         findPreference,
+        setPreference,
         findProjectByUuid,
         findProjectByPlatformId,
         checkProjectAccess,
@@ -196,8 +256,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         getDefaultTheme,
     } = deps.queries ?? defaultQueries;
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
-    const { renderTemplate } = deps.template ?? defaultTemplate;
+    const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
+    const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
+    const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
      * Get user's locale preference from database
@@ -224,6 +286,25 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     }
 
     /**
+     * Reads APP_NAME, APP_FAVICON_PATH and CUSTOM_HEAD_HTML from settings.
+     * Returns values ready to pass to any page viewModel.
+     */
+    async function getCustomizationSettings(): Promise<{
+        customHeadHtml: string;
+        appName: string;
+        customFaviconUrl: string;
+    }> {
+        const basePath = getBasePath();
+        const [customHeadHtml, appName, appFaviconPath] = await Promise.all([
+            getSettingString(db, 'CUSTOM_HEAD_HTML', ''),
+            getSettingString(db, 'APP_NAME', ''),
+            getSettingString(db, 'APP_FAVICON_PATH', ''),
+        ]);
+        const customFaviconUrl = appFaviconPath ? `${basePath}/customization/favicon` : '';
+        return { customHeadHtml, appName, customFaviconUrl };
+    }
+
+    /**
      * Pages routes
      */
     return (
@@ -240,11 +321,42 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // Derive user from JWT token
             .derive(async ({ jwt, cookie }) => {
                 const token = cookie.auth?.value;
-                if (!token) return { currentUser: null, isGuest: false };
+                if (!token) {
+                    if (cookie.impersonator_auth?.value) {
+                        cookie.impersonator_auth.remove();
+                        cookie.impersonation_session.remove();
+                    }
+                    return { currentUser: null, isGuest: false, impersonation: null as ImpersonationContext | null };
+                }
+
+                let impersonationBase: {
+                    sessionId: string | null;
+                    impersonatorId: number;
+                    impersonatorEmail: string;
+                } | null = null;
+
+                const impersonatorToken = cookie.impersonator_auth?.value;
+                if (impersonatorToken) {
+                    try {
+                        const originalPayload = (await jwt.verify(impersonatorToken)) as JwtPayload | false;
+                        if (originalPayload?.sub) {
+                            const impersonatorUser = await findUserById(db, Number(originalPayload.sub));
+                            impersonationBase = {
+                                sessionId: cookie.impersonation_session?.value || null,
+                                impersonatorId: Number(originalPayload.sub),
+                                impersonatorEmail:
+                                    impersonatorUser?.email || originalPayload.email || `user-${originalPayload.sub}`,
+                            };
+                        }
+                    } catch {
+                        cookie.impersonator_auth.remove();
+                        cookie.impersonation_session.remove();
+                    }
+                }
 
                 try {
                     const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) return { currentUser: null, isGuest: false };
+                    if (!payload) return { currentUser: null, isGuest: false, impersonation: null };
 
                     const isGuest = payload.isGuest || false;
                     if (isGuest) {
@@ -252,16 +364,89 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             currentUser: {
                                 id: payload.sub,
                                 email: payload.email || 'guest@guest.local',
+                                roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
+                            impersonation: null,
                         };
                     }
 
                     const user = await findUserById(db, payload.sub);
-                    return { currentUser: user || null, isGuest: false };
+                    const impersonation: ImpersonationContext | null =
+                        impersonationBase && user
+                            ? {
+                                  isActive: true,
+                                  sessionId: impersonationBase.sessionId,
+                                  impersonatorId: impersonationBase.impersonatorId,
+                                  impersonatorEmail: impersonationBase.impersonatorEmail,
+                                  impersonatedId: Number(user.id),
+                                  impersonatedEmail: user.email || payload.email || `user-${user.id}`,
+                              }
+                            : null;
+
+                    return { currentUser: user || null, isGuest: false, impersonation };
                 } catch {
-                    return { currentUser: null, isGuest: false };
+                    return { currentUser: null, isGuest: false, impersonation: null };
                 }
+            })
+
+            // =====================================================
+            // Public: Serve custom favicon (no auth required)
+            // =====================================================
+            .get('/customization/favicon', async ({ set }) => {
+                const faviconFilename = await getSettingString(db, 'APP_FAVICON_PATH', '');
+                if (!faviconFilename) {
+                    return new Response(null, {
+                        status: 302,
+                        headers: { Location: `${getBasePath()}/favicon.ico` },
+                    });
+                }
+                const faviconDir = pathModule.join(getFilesDir(), 'customization', 'favicon');
+                const filePath = pathModule.resolve(faviconDir, faviconFilename);
+                const resolvedDir = pathModule.resolve(faviconDir);
+                if (!filePath.startsWith(resolvedDir + pathModule.sep) && filePath !== resolvedDir) {
+                    set.status = 400;
+                    return;
+                }
+                if (!(await fileExists(filePath))) {
+                    return new Response(null, {
+                        status: 302,
+                        headers: { Location: `${getBasePath()}/favicon.ico` },
+                    });
+                }
+                const content = await readFile(filePath);
+                const ext = pathModule.extname(faviconFilename).toLowerCase();
+                return new Response(content as unknown as BodyInit, {
+                    headers: {
+                        'Content-Type': CUSTOMIZATION_MIME_TYPES[ext] ?? 'application/octet-stream',
+                        'Cache-Control': 'public, max-age=3600',
+                    },
+                });
+            })
+
+            // =====================================================
+            // Public: Serve custom assets (no auth required)
+            // =====================================================
+            .get('/customization/assets/:filename', async ({ params, set }) => {
+                const assetsDir = pathModule.join(getFilesDir(), 'customization', 'assets');
+                const filePath = pathModule.resolve(assetsDir, params.filename);
+                const resolvedDir = pathModule.resolve(assetsDir);
+                if (!filePath.startsWith(resolvedDir + pathModule.sep) && filePath !== resolvedDir) {
+                    set.status = 400;
+                    return;
+                }
+                if (!(await fileExists(filePath))) {
+                    set.status = 404;
+                    return;
+                }
+                const content = await readFile(filePath);
+                const ext = pathModule.extname(params.filename).toLowerCase();
+                return new Response(content as unknown as BodyInit, {
+                    headers: {
+                        'Content-Type': CUSTOMIZATION_MIME_TYPES[ext] ?? 'application/octet-stream',
+                        'Cache-Control': 'public, max-age=3600',
+                    },
+                });
             })
 
             // =====================================================
@@ -274,7 +459,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Login Page
             // =====================================================
-            .get('/login', async ({ currentUser, cookie, jwt, query, request }) => {
+            .get('/login', async ({ currentUser, cookie, jwt, query, request, impersonation }) => {
                 const offline = isOfflineMode();
                 const defaultEmail =
                     process.env.DEFAULT_USER_EMAIL || process.env.TEST_USER_EMAIL || 'user@exelearning.net';
@@ -289,8 +474,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: defaultEmail,
                                 password: '', // No password needed for offline
                                 roles: JSON.stringify(['ROLE_USER']),
-                                provider: 'offline-local',
-                                isActive: true,
+                                is_active: 1,
                             });
                         }
 
@@ -315,10 +499,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
                 }
 
-                const authMethods = await getAuthMethodsFromSettings(
-                    db,
-                    process.env.APP_AUTH_METHODS || 'password,guest',
-                );
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
 
                 // Store nonce in cookie for guest login verification
@@ -367,6 +548,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const rawReturnUrl = typedQuery?.returnUrl || '';
                 const returnUrl = isValidReturnUrl(rawReturnUrl) ? rawReturnUrl : '';
 
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
+
                 const viewModel = {
                     app_version: getAppVersion(),
                     auth_methods: authMethods,
@@ -379,6 +562,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     t,
                     basePath: getBasePath(),
                     returnUrl,
+                    impersonation,
+                    customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 };
 
                 const html = renderTemplate('security/login', viewModel);
@@ -390,7 +577,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request }) => {
+            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, impersonation }) => {
                 // Check if user is authenticated
                 if (!currentUser) {
                     // Preserve the original URL for post-login redirect
@@ -405,6 +592,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const loginUrl = prefixPath('/login');
                     return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent(returnUrl)}`, 302);
                 }
+
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
 
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
@@ -466,7 +655,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             const basePath = getBasePath();
                             let redirectUrl = `${basePath}/workarea?project=${newSessionId}`;
                             if (jwtTokenParam) {
-                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                             }
                             return Response.redirect(redirectUrl, 302);
                         } catch (error) {
@@ -498,6 +687,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     projectId: projectUuid,
                                     reason: accessCheck.reason,
                                     locale: 'en',
+                                    impersonation,
+                                    customHeadHtml,
+                                    appName,
+                                    customFaviconUrl,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -514,6 +707,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 projectId: projectUuid,
                                 reason: 'ACCESS_DENIED',
                                 locale: 'en',
+                                impersonation,
+                                customHeadHtml,
+                                appName,
+                                customFaviconUrl,
                             });
                             set.status = 403;
                             return new Response(html, {
@@ -535,6 +732,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     projectId: projectUuid,
                                     reason: accessCheck.reason,
                                     locale: 'en',
+                                    impersonation,
+                                    customHeadHtml,
+                                    appName,
+                                    customFaviconUrl,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -548,6 +749,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 basePath,
                                 error: 'Project Not Found',
                                 message: 'The requested project does not exist.',
+                                impersonation,
+                                customHeadHtml,
+                                appName,
+                                customFaviconUrl,
                             });
                             set.status = 404;
                             return new Response(html, {
@@ -560,11 +765,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 // If no project UUID, create a new project and redirect
                 if (!projectUuid) {
                     // Helper function to build redirect URL with preserved jwt_token
+                    // Helper function to build redirect URL with preserved jwt_token
                     const buildRedirectUrl = (sessionId: string): string => {
                         const basePath = getBasePath();
                         let url = `${basePath}/workarea?project=${sessionId}`;
                         if (jwtTokenParam) {
-                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                         }
                         return url;
                     };
@@ -620,11 +826,28 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const userId = currentUser.id;
                 const email = currentUser.email || 'user@exelearning.net';
 
-                // Determine locale with fallback: user preference → browser Accept-Language → default
+                // Determine locale with fallback: user preference → APP_LOCALE → browser Accept-Language → default
                 const userLocale = await getUserLocalePreference(userId);
+                const appLocale = process.env.APP_LOCALE || null;
                 const acceptLanguage = request.headers.get('accept-language');
                 const browserLocale = detectLocaleFromHeader(acceptLanguage);
-                const locale = userLocale || browserLocale || DEFAULT_LOCALE;
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                // First time: auto-save locale as user preference for consistency
+                if (!userLocale) {
+                    try {
+                        await setPreference(db, Number(userId), 'locale', JSON.stringify({ value: locale }));
+                        console.log(`[Pages] Auto-saved locale preference '${locale}' for user ${userId}`);
+                    } catch (e) {
+                        // Non-critical - log and continue
+                        console.warn('[Pages] Failed to auto-save locale preference:', e);
+                    }
+                }
+
+                const workareaRoles: string[] =
+                    typeof currentUser.roles === 'string'
+                        ? JSON.parse(currentUser.roles || '[]')
+                        : currentUser.roles || [];
 
                 const user = {
                     id: userId,
@@ -634,9 +857,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     odePlatformId: null,
                     newOde: null,
                     gravatarUrl: createGravatarUrl(email, null, email),
+                    roles: workareaRoles,
+                    isAdmin: workareaRoles.includes('ROLE_ADMIN'),
                 };
 
-                const appAuthMethods = await getAuthMethodsFromSettings(
+                const appAuthMethods = await getAuthMethods(
                     db,
                     process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                 );
@@ -688,6 +913,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
+                    // Version for cache busting in preview and asset URLs
+                    version: getAppVersion(),
                     // Platform settings
                     platformName: platformName,
                     platformType: 'standalone',
@@ -749,6 +976,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     resources_report: trans('Resources report', {}, locale),
                     link_validation: trans('Link validation', {}, locale),
                     file_manager: trans('File manager', {}, locale),
+                    image_optimizer: trans('Image optimizer', {}, locale),
+                    search: trans('Search...', {}, locale),
                     help: trans('Help', {}, locale),
                     assistant: trans('Assistant', {}, locale),
                     user_manual: trans('User manual', {}, locale),
@@ -760,11 +989,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     report_bug: trans('Report a bug', {}, locale),
                     download: trans('Download', {}, locale),
                     styles: trans('Styles', {}, locale),
-                    settings: trans('Settings', {}, locale),
+                    project_properties: trans('Project Properties', {}, locale),
                     share: trans('Share', {}, locale),
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
+                    admin_panel: 'Admin', // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
                     structure_panel: trans('Structure panel', {}, locale),
@@ -774,7 +1004,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     user_menu: trans('User menu', {}, locale),
                     users_online: trans('Users online', {}, locale),
                     exit: trans('Exit', {}, locale),
-                    change_title: trans('Change title', {}, locale),
+                    change_title: trans('Edit title', {}, locale),
                     move_up: trans('Move up', {}, locale),
                     move_down: trans('Move down', {}, locale),
                     move_left: trans('Move left (up in hierarchy)', {}, locale),
@@ -782,7 +1012,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     page_properties: trans('Page properties', {}, locale),
                     delete_page: trans('Delete page', {}, locale),
                     clone_page: trans('Clone page', {}, locale),
-                    import_idevices: trans('Import iDevices', {}, locale),
+                    import_content: trans('Import content', {}, locale),
                     new_page: trans('New page', {}, locale),
                     add_subpage: trans('Add subpage', {}, locale),
                     page_options: trans('Page options', {}, locale),
@@ -799,7 +1029,14 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     projectId: projectUuid || null,
                     t,
                     basePath,
+                    impersonation,
+                    customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 };
+
+                // Set locale for Nunjucks template rendering (fixes | trans filter)
+                setLocale(locale);
 
                 try {
                     const html = renderTemplate('workarea/workarea', viewModel);
@@ -829,7 +1066,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Admin Panel
             // =====================================================
-            .get('/admin', async ({ currentUser, request, set }) => {
+            .get('/admin', async ({ currentUser, request, set, impersonation }) => {
                 // Require authentication
                 if (!currentUser) {
                     return Response.redirect(prefixPath('/login?returnUrl=/admin') || '/login?returnUrl=/admin', 302);
@@ -847,6 +1084,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         error: 'You do not have permission to access the admin panel.',
                         is_authenticated: true,
                         basePath: getBasePath(),
+                        impersonation,
                     });
                     return new Response(html, {
                         status: 403,
@@ -854,9 +1092,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
 
-                // Detect locale from Accept-Language header
+                // Detect locale from user preference → APP_LOCALE → Accept-Language header
+                const adminUserLocale = await getUserLocalePreference(currentUser.id);
                 const acceptLanguage = request.headers.get('accept-language');
-                const locale = detectLocaleFromHeader(acceptLanguage);
+                const locale = adminUserLocale || process.env.APP_LOCALE || detectLocaleFromHeader(acceptLanguage);
 
                 const email = currentUser.email || 'admin@exelearning.net';
                 const user = {
@@ -868,43 +1107,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     roles: userRoles,
                 };
 
-                const t = {
-                    admin_panel: trans('Admin Panel', {}, locale),
-                    dashboard: trans('Dashboard', {}, locale),
-                    users: trans('Users', {}, locale),
-                    extensions: trans('Extensions', {}, locale),
-                    settings: trans('Settings', {}, locale),
-                    back_to_workarea: trans('Back to Workarea', {}, locale),
-                    logout: trans('Logout', {}, locale),
-                    total_users: trans('Total Users', {}, locale),
-                    active_users: trans('Active Users', {}, locale),
-                    total_projects: trans('Total Projects', {}, locale),
-                    active_projects: trans('Active Projects', {}, locale),
-                    user_management: trans('User Management', {}, locale),
-                    create_user: trans('Create User', {}, locale),
-                    email: trans('Email', {}, locale),
-                    roles: trans('Roles', {}, locale),
-                    status: trans('Status', {}, locale),
-                    actions: trans('Actions', {}, locale),
-                    edit: trans('Edit', {}, locale),
-                    delete: trans('Delete', {}, locale),
-                    save: trans('Save', {}, locale),
-                    cancel: trans('Cancel', {}, locale),
-                    active: trans('Active', {}, locale),
-                    inactive: trans('Inactive', {}, locale),
-                    search: trans('Search', {}, locale),
-                    loading: trans('Loading...', {}, locale),
-                    confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
-                    styles: trans('Styles', {}, locale),
-                    idevices: trans('iDevices', {}, locale),
-                    templates: trans('Templates', {}, locale),
-                    installed: trans('Installed', {}, locale),
-                    available: trans('Available', {}, locale),
-                    install: trans('Install', {}, locale),
-                    uninstall: trans('Uninstall', {}, locale),
-                    activate: trans('Activate', {}, locale),
-                    deactivate: trans('Deactivate', {}, locale),
-                };
+                const t = buildAdminTranslations('en'); // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
 
                 let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
                 const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {
@@ -950,7 +1153,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         autosave_ode_files_function: parseBoolean(process.env.AUTOSAVE_ODE_FILES_FUNCTION, true),
                     },
                     cas: {
-                        url: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com',
+                        url: process.env.CAS_URL || 'https://www.casserverpac4j.dev',
                         validate_path: process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate',
                         login_path: process.env.CAS_LOGIN_PATH || '/login',
                         logout_path: process.env.CAS_LOGOUT_PATH || '/logout',
@@ -968,13 +1171,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         client_id: process.env.OIDC_CLIENT_ID || 'interactive.confidential',
                         client_secret: process.env.OIDC_CLIENT_SECRET || 'secret',
                     },
-                    storage_integrations: {
-                        google_client_id: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
-                        google_client_secret: process.env.GOOGLE_CLIENT_SECRET || 'example.com',
-                        dropbox_client_id: process.env.DROPBOX_CLIENT_ID || 'example.com',
-                        dropbox_client_secret: process.env.DROPBOX_CLIENT_SECRET || 'example.com',
-                        openequella_client_id: process.env.OPENEQUELLA_CLIENT_ID || 'example.com',
-                        openequella_client_secret: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com',
+                    presentation: {
+                        custom_head_html: '',
+                        app_name: '',
+                        app_favicon_path: '',
+                    },
+                    maintenance: {
+                        maintenance_mode: false,
                     },
                 };
 
@@ -1019,15 +1222,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     OIDC_SCOPE: { path: ['oidc', 'scope'], type: 'string' },
                     OIDC_CLIENT_ID: { path: ['oidc', 'client_id'], type: 'string' },
                     OIDC_CLIENT_SECRET: { path: ['oidc', 'client_secret'], type: 'string' },
-                    GOOGLE_CLIENT_ID: { path: ['storage_integrations', 'google_client_id'], type: 'string' },
-                    GOOGLE_CLIENT_SECRET: { path: ['storage_integrations', 'google_client_secret'], type: 'string' },
-                    DROPBOX_CLIENT_ID: { path: ['storage_integrations', 'dropbox_client_id'], type: 'string' },
-                    DROPBOX_CLIENT_SECRET: { path: ['storage_integrations', 'dropbox_client_secret'], type: 'string' },
-                    OPENEQUELLA_CLIENT_ID: { path: ['storage_integrations', 'openequella_client_id'], type: 'string' },
-                    OPENEQUELLA_CLIENT_SECRET: {
-                        path: ['storage_integrations', 'openequella_client_secret'],
-                        type: 'string',
-                    },
+                    CUSTOM_HEAD_HTML: { path: ['presentation', 'custom_head_html'], type: 'string' },
+                    APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
+                    APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
+                    MAINTENANCE_MODE: { path: ['maintenance', 'maintenance_mode'], type: 'boolean' },
                 };
 
                 try {
@@ -1069,6 +1267,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     basePath: getBasePath(),
                     defaultQuota,
                     adminSettings,
+                    impersonation,
                 };
 
                 try {
@@ -1098,11 +1297,16 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Access Denied Page (standalone route for redirects)
             // =====================================================
-            .get('/access-denied', () => {
+            .get('/access-denied', async ({ impersonation }) => {
                 const basePath = getBasePath();
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
                 const html = renderTemplate('workarea/access-denied', {
                     basePath,
                     locale: 'en',
+                    impersonation,
+                    customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 });
                 return new Response(html, {
                     status: 403,

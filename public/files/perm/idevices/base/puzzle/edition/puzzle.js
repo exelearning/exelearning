@@ -70,7 +70,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -137,9 +137,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -155,11 +152,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="puzzleIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative;">
-                    ${_('Create interactive activities where players must solve various puzzles.')}
-                    <a style="display:none" href="https://www.youtube.com/watch?v=th78R1PAiJQ" hreflang="en" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive activities where players must solve various puzzles.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/puzzle.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following puzzles.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -207,21 +203,8 @@ var $exeDevice = {
                                 <input id="puzzleEAuthor" type="text" class="form-control" />
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="puzzleEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="puzzleEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label>
-                                <input type="text" id="puzzleEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" style="max-width:16ch" />
-                                <strong class="GameModeLabel"><a href="#puzzleEEvaluationHelp" id="puzzleEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="puzzleEEvaluationHelp" class="PZLE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -317,7 +300,7 @@ var $exeDevice = {
                                 <label for="puzzleEDefinition">${_('Statement')}:</label>
                                 <input type="text" id="puzzleEDefinition" class="form-control" />
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3" data-voice-recorder data-voice-input="#puzzleEURLAudioDefinition">
                                 <label for="puzzleEURLAudioDefinition">${_('Audio')}:</label>
                                 <input type="text" id="puzzleEURLAudioDefinition" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
                                 <a href="#" id="puzzleEPlayAudioDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
@@ -326,7 +309,7 @@ var $exeDevice = {
                                 <label for="puzzleECluePuzzle">${_('Feedback/Solution')}:</label>
                                 <input type="text" id="puzzleECluePuzzle" class="PZLE-EURLAudio form-control" />
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-voice-recorder data-voice-input="#puzzleEURLAudioClue">
                                 <label for="puzzleEURLAudioClue">${_('Audio')}:</label>
                                 <input type="text" id="puzzleEURLAudioClue" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
                                 <a href="#" id="puzzleEPlayAudioClue" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
@@ -376,6 +359,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initPuzzles();
 
+        const root = document.getElementById('puzzleIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
@@ -420,7 +406,7 @@ var $exeDevice = {
         $('#puzzleEURLAudioClue').val(puzzle.audioClue);
         $('#puzzleECluePuzzle').val(puzzle.clue);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
     initPuzzles: function () {
         $exeDevice.active = 0;
@@ -762,11 +748,12 @@ var $exeDevice = {
             ),
             author = $('#puzzleEAuthor').val(),
             puzzlesGame = $exeDevice.puzzlesGame,
-            evaluation = $('#puzzleEEvaluation').is(':checked'),
-            evaluationID = $('#puzzleEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (puzzlesGame.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -793,8 +780,8 @@ var $exeDevice = {
             percentajeFB,
             percentajeQuestions,
             version: $exeDevice.version,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
         return data;
@@ -953,7 +940,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -1036,15 +1023,7 @@ var $exeDevice = {
             $exeDevice.loadAudio(audio);
         });
 
-        $('#puzzleEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#puzzleEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#puzzleEEvaluationHelpLnk').click(function () {
-            $('#puzzleEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#puzzleEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1114,8 +1093,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1286,9 +1264,10 @@ var $exeDevice = {
         $('#puzzleEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.updateQuestionsNumber();
 
-        $('#puzzleEEvaluation').prop('checked', game.evaluation);
-        $('#puzzleEEvaluationID').val(game.evaluationID);
-        $('#puzzleEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
     },
 
     exportGame: function () {
@@ -1296,24 +1275,12 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: 'text/plain' });
-
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Activity')}-Puzzle.json`;
-        document.getElementById('puzzleIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('puzzleIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-Puzzle.json`,
+            'puzzleIdeviceForm'
+        );
     },
 
     importGame: function (content) {

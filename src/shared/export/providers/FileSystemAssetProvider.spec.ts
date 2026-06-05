@@ -18,9 +18,11 @@ describe('FileSystemAssetProvider', () => {
         await fs.ensureDir(testDir);
 
         // Create test asset structure
+        // v3.0 format: user assets in content/resources/
+        await fs.ensureDir(path.join(testDir, 'content', 'resources'));
+        // Legacy format: assets in resources/
         await fs.ensureDir(path.join(testDir, 'resources', 'images'));
         await fs.ensureDir(path.join(testDir, 'resources', 'media'));
-        await fs.ensureDir(path.join(testDir, 'content'));
 
         // Create test files
         await fs.writeFile(path.join(testDir, 'resources', 'images', 'photo.jpg'), Buffer.from([0xff, 0xd8, 0xff])); // JPEG magic bytes
@@ -29,7 +31,8 @@ describe('FileSystemAssetProvider', () => {
             Buffer.from([0x89, 0x50, 0x4e, 0x47]),
         ); // PNG magic bytes
         await fs.writeFile(path.join(testDir, 'resources', 'media', 'video.mp4'), Buffer.from('fake mp4 content'));
-        await fs.writeFile(path.join(testDir, 'content', 'document.pdf'), Buffer.from('fake pdf content'));
+        // v3.0 format: PDF in content/resources/
+        await fs.writeFile(path.join(testDir, 'content', 'resources', 'document.pdf'), Buffer.from('fake pdf content'));
 
         provider = new FileSystemAssetProvider(testDir);
     });
@@ -83,7 +86,7 @@ describe('FileSystemAssetProvider', () => {
         });
 
         it('should detect correct MIME type for PDF', async () => {
-            const asset = await provider.getAsset('content/document.pdf');
+            const asset = await provider.getAsset('content/resources/document.pdf');
 
             expect(asset?.mime).toBe('application/pdf');
         });
@@ -111,11 +114,11 @@ describe('FileSystemAssetProvider', () => {
             expect(mediaPaths).toContain('resources/media/video.mp4');
         });
 
-        it('should include assets from content directory', async () => {
+        it('should include assets from content/resources directory', async () => {
             const assets = await provider.getAllAssets();
             const contentPaths = assets.map(a => a.originalPath);
 
-            expect(contentPaths).toContain('content/document.pdf');
+            expect(contentPaths).toContain('content/resources/document.pdf');
         });
     });
 
@@ -208,6 +211,137 @@ describe('FileSystemAssetProvider', () => {
     describe('getBasePath', () => {
         it('should return the base path', () => {
             expect(provider.getBasePath()).toBe(testDir);
+        });
+    });
+
+    describe('forEachAsset', () => {
+        it('should process each asset sequentially', async () => {
+            const processed: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                processed.push(asset.originalPath);
+            });
+
+            expect(count).toBeGreaterThanOrEqual(4);
+            expect(processed).toContain('resources/images/photo.jpg');
+            expect(processed).toContain('resources/images/icon.png');
+            expect(processed).toContain('resources/media/video.mp4');
+            expect(processed).toContain('content/resources/document.pdf');
+        });
+
+        it('should return 0 for empty directory', async () => {
+            const emptyDir = path.join(os.tmpdir(), `test-empty-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+
+            const emptyProvider = new FileSystemAssetProvider(emptyDir);
+            const count = await emptyProvider.forEachAsset(async () => {});
+
+            expect(count).toBe(0);
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('listAssetMetadata', () => {
+        it('should return metadata without binary data', async () => {
+            const metadata = await provider.listAssetMetadata();
+
+            expect(metadata.length).toBeGreaterThanOrEqual(1);
+            // content/resources/document.pdf should be in the metadata
+            const pdfMeta = metadata.find(m => m.filename === 'document.pdf');
+            expect(pdfMeta).toBeDefined();
+            expect(pdfMeta!.mime).toBe('application/pdf');
+            // Should NOT have data property
+            expect((pdfMeta as any).data).toBeUndefined();
+        });
+
+        it('should return empty array for empty directory', async () => {
+            const emptyDir = path.join(os.tmpdir(), `test-empty-meta-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+
+            const emptyProvider = new FileSystemAssetProvider(emptyDir);
+            const metadata = await emptyProvider.listAssetMetadata();
+
+            expect(metadata).toEqual([]);
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('listAssetMetadata and forEachAsset consistency', () => {
+        it('should return the same asset IDs from both methods', async () => {
+            const meta = await provider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await provider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+        });
+
+        it('should include root-level assets in both methods', async () => {
+            // Create a root-level asset file
+            await fs.writeFile(path.join(testDir, 'root-image.jpg'), Buffer.from([0xff, 0xd8, 0xff]));
+
+            // Need fresh provider to avoid cache
+            const freshProvider = new FileSystemAssetProvider(testDir);
+
+            const meta = await freshProvider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await freshProvider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+            // Root-level file should be in both
+            expect(idsFromMeta.has('root-image.jpg')).toBe(true);
+        });
+    });
+
+    // Regression for issue #1842: server-side export logged a noisy
+    // "[BaseExporter] Failed to add assets to ZIP: ENOENT ... scandir" because
+    // the root basePath was read without an existence guard. getAllAssets() and
+    // forEachAsset() must resolve (no throw) when the assets dir is missing.
+    describe('missing / empty / populated basePath (issue #1842)', () => {
+        it.each([
+            ['missing', false, false],
+            ['empty', true, false],
+            ['with root asset', true, true],
+        ])('handles a %s basePath without throwing', async (_label, createDir, withAsset) => {
+            const dir = path.join(
+                os.tmpdir(),
+                `test-1842-${_label}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            );
+            if (createDir) {
+                await fs.ensureDir(dir);
+            }
+            if (withAsset) {
+                await fs.writeFile(path.join(dir, 'root-photo.jpg'), Buffer.from([0xff, 0xd8, 0xff]));
+            }
+
+            const isolatedProvider = new FileSystemAssetProvider(dir);
+
+            const allAssets = await isolatedProvider.getAllAssets();
+
+            let iterated = 0;
+            const count = await isolatedProvider.forEachAsset(async () => {
+                iterated += 1;
+            });
+
+            if (withAsset) {
+                expect(allAssets.length).toBeGreaterThanOrEqual(1);
+                expect(count).toBeGreaterThanOrEqual(1);
+                expect(iterated).toBeGreaterThanOrEqual(1);
+            } else {
+                expect(allAssets).toEqual([]);
+                expect(count).toBe(0);
+                expect(iterated).toBe(0);
+            }
+
+            if (createDir) {
+                await fs.remove(dir);
+            }
         });
     });
 

@@ -87,11 +87,153 @@ describe('text iDevice export', () => {
     it('is a function', () => {
       expect(typeof $text.renderView).toBe('function');
     });
+
+    it('replaces {content} with textTextarea in template', () => {
+      global.c_ = (v) => v;
+      const data = { textTextarea: '<p>Hello</p>', textFeedbackTextarea: '' };
+      const result = $text.renderView(data, {}, '<div>{content}</div>');
+      expect(result).toBe('<div><p>Hello</p></div>');
+    });
+
+    it('returns template with empty content when textTextarea is missing', () => {
+      global.c_ = (v) => v;
+      const data = { textFeedbackTextarea: '' };
+      const result = $text.renderView(data, {}, '<div>{content}</div>');
+      expect(result).toBe('<div></div>');
+    });
+
+    it('appends feedback HTML when feedbackContent exists and content has no feedback elements', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<p>Main content</p>',
+        textFeedbackTextarea: '<p>My feedback</p>',
+        textFeedbackInput: 'Show Feedback',
+      };
+      const result = $text.renderView(data, {}, '<div>{content}</div>');
+      expect(result).toContain('<p>Main content</p>');
+      expect(result).toContain('feedbacktooglebutton');
+      expect(result).toContain('Show Feedback');
+      expect(result).toContain('My feedback');
+    });
+
+    it('does not duplicate feedback when content already has .feedback-button', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<p>Text</p><div class="feedback-button"><input class="feedbackbutton" value="Btn"></div>',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: 'Show',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      // Should not contain a second feedbacktooglebutton from createFeedbackHTML
+      const matches = result.match(/feedbacktooglebutton/g);
+      expect(matches).toBeNull();
+    });
+
+    it('does not duplicate feedback when content already has .feedbacktooglebutton', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<p>Text</p><input class="feedbacktooglebutton" value="Toggle">',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: 'Show',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      // Only the original one, no extra from createFeedbackHTML appended
+      const matches = result.match(/feedbacktooglebutton/g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it('does not duplicate feedback when content already has .feedback.js-feedback', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<div class="feedback js-feedback">Existing</div>',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: 'Show',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      expect(result).not.toContain('feedbacktooglebutton');
+    });
+
+    it('does not duplicate feedback when content already has div.feedback', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<div class="feedback">Existing</div>',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: 'Show',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      expect(result).not.toContain('feedbacktooglebutton');
+    });
+
+    it('uses defaultBtnFeedbackText when feedbackTitleId is empty', () => {
+      global.c_ = (v) => v;
+      const data = {
+        textTextarea: '<p>Text</p>',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: '',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      expect(result).toContain('Show feedback');
+    });
+
+    it('uses c_() to translate the feedback button text', () => {
+      global.c_ = (v) => `[translated] ${v}`;
+      const data = {
+        textTextarea: '<p>Text</p>',
+        textFeedbackTextarea: '<p>Feedback</p>',
+        textFeedbackInput: 'Mostrar',
+      };
+      const result = $text.renderView(data, {}, '{content}');
+      expect(result).toContain('[translated] Mostrar');
+    });
   });
 
   describe('getHTMLView', () => {
     it('is a function', () => {
       expect(typeof $text.getHTMLView).toBe('function');
+    });
+
+    it('extracts button text from feedbackbutton (legacy eXe 2.9) when textFeedbackInput is empty', () => {
+      global.c_ = (v) => v;
+      // eXe is provided by vitest.setup.js; patch only isInExe for this test
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      const data = {
+        textTextarea: `<p>Content</p>
+<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+<div class="feedback js-feedback js-hidden"><p>Feedback content</p></div>`,
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textInfoDurationTextInput: '',
+        textInfoParticipantsTextInput: '',
+      };
+      const result = $text.getHTMLView(data, '');
+      eXe.app.isInExe = origIsInExe;
+      expect(result).toContain('Evaluación');
+      expect(result).toContain('Feedback content');
+      expect(result).toContain('Content');
+    });
+
+    it('extracts button text from feedbacktooglebutton (eXe 4.0) when textFeedbackInput is empty', () => {
+      global.c_ = (v) => v;
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      const data = {
+        textTextarea: `<p>Content</p>
+<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbacktooglebutton" value="Mostrar" /></div>
+<div class="feedback js-feedback js-hidden"><p>Respuesta</p></div>`,
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textInfoDurationTextInput: '',
+        textInfoParticipantsTextInput: '',
+      };
+      const result = $text.getHTMLView(data, '');
+      eXe.app.isInExe = origIsInExe;
+      expect(result).toContain('Mostrar');
+      expect(result).toContain('Respuesta');
     });
   });
 

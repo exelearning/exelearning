@@ -342,6 +342,32 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('checkFormValues', () => {
+    beforeEach(() => {
+      eXe.app.alert = vi.fn();
+    });
+
+    it('returns false when there are no questions', () => {
+      $exeDevice.questionsData = [];
+      expect($exeDevice.checkFormValues()).toBe(false);
+      expect(eXe.app.alert).toHaveBeenCalled();
+    });
+
+    it('returns true when there is at least one question', () => {
+      $exeDevice.questionsData = [{ question: 'q1' }];
+      expect($exeDevice.checkFormValues()).toBe(true);
+    });
+
+    it('does not validate evaluation length here (delegated to progressBar.getValues)', () => {
+      // Even with a too-short evaluationID, checkFormValues is only responsible
+      // for question count after the migration.
+      $exeDevice.evaluation = true;
+      $exeDevice.evaluationID = 'abc';
+      $exeDevice.questionsData = [{ question: 'q1' }];
+      expect($exeDevice.checkFormValues()).toBe(true);
+    });
+  });
+
   // Note: Form class tests removed because $exeDevice.Form
   // does not exist in the current version of form.js from main branch.
   // These tests were written for a modified version of the code.

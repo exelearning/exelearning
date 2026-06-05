@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { testRequest, parseJsonResponse } from '../helpers/integration-app';
-import { ExportFormatType } from '../../../src/services/export/interfaces';
+import { ExportFormatType } from '../../../src/shared/export/interfaces';
 
 describe('Export Routes Integration', () => {
     let app: Elysia;

@@ -20,6 +20,70 @@ eXeLearning follows a **browser-first architecture** where:
 3. **Content-addressable assets**: Same file content = same ID across all users
 4. **Dependency injection**: All services use DI pattern for testability
 
+### Runtime Modes (Server, Static, Embedded)
+
+eXeLearning supports two primary runtime modes and one optional embedding mode:
+
+| Mode | What runs | Persistence | Collaboration | Typical use |
+|------|-----------|-------------|---------------|-------------|
+| **Server (online)** | Bun + Elysia API + WebSocket | Server DB + client IndexedDB | Yes | Multi-user, hosted installs |
+| **Static (offline)** | Pure static assets (no API) | Client IndexedDB + file save/export | No | Desktop installers, static hosting |
+| **Embedded (iframe)** | Server or Static in iframe | Delegated to host via postMessage | Depends on mode | LMS, CMS, plugin embeds |
+
+**Static mode** is built from the online app by removing database and API dependencies to stay stateless. The build bundles required catalog data (iDevices, themes, translations, parameters) into `dist/static` and runs fully in the browser. It is generated with:
+
+```
+make build-static
+```
+
+This is the same runtime used by the current offline (installable) eXeLearning desktop app. It improves simplicity and performance by avoiding any server persistence.
+
+### Embedding Example (Static or Server)
+
+When eXeLearning runs inside an iframe, it can coordinate file operations with the host page via `postMessage`. The app announces readiness with `EXELEARNING_READY` and can request open/save operations. A minimal host integration:
+
+```html
+<iframe
+  id="exe"
+  src="https://your-host/exelearning/"
+  style="width: 100%; height: 100vh; border: 0;"
+></iframe>
+
+<script>
+  const iframe = document.getElementById('exe');
+
+  function postToExe(type, data = {}) {
+    const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    iframe.contentWindow.postMessage({ type, requestId, ...data }, '*');
+    return requestId;
+  }
+
+  window.addEventListener('message', async (event) => {
+    const { type, requestId, bytes } = event.data || {};
+    if (!type) return;
+
+    if (type === 'EXELEARNING_READY') {
+      // Optional: set trusted origins or request info
+      postToExe('GET_PROJECT_INFO');
+    }
+
+    if (type === 'EXELEARNING_SAVE_REQUEST') {
+      // Host handles file persistence
+      // Example: upload bytes to your backend, then respond
+      event.source.postMessage({ type: 'EXELEARNING_SAVE_RESPONSE', requestId, path: 'project.elpx' }, event.origin);
+    }
+
+    if (type === 'EXELEARNING_OPEN_REQUEST') {
+      // Host provides bytes for a .elpx file (from disk or backend)
+      const fileBytes = new Uint8Array(); // replace with real data
+      event.source.postMessage({ type: 'EXELEARNING_OPEN_RESPONSE', requestId, bytes: fileBytes }, event.origin);
+    }
+  });
+</script>
+```
+
+For production, restrict origins and validate all messages (see `EmbeddedFileSystem` and `EmbeddingBridge` for supported message types and security checks).
+
 ## 2. Technology Stack
 
 | Component | Technology | Purpose |
@@ -349,9 +413,95 @@ const exporter = ExportFactory.create('scorm12');
 const zipPath = await exporter.export(session, options);
 ```
 
-## 8. Database Architecture
+## 8. Preview System (Service Worker Architecture)
 
-### 8.1 Multi-Database Support
+The workarea preview uses a **Service Worker** to serve exported HTML files directly, ensuring the preview exactly matches the exported output.
+
+### 8.1 Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      WORKAREA                                │
+├─────────────────────────────────────────────────────────────┤
+│  Yjs Bridge                    PreviewPanelManager          │
+│      │                               │                       │
+│      │ onStructureChange()           │                       │
+│      └──────────────────────────────►│                       │
+│                                      │                       │
+│                            1. Generate export                │
+│                               (Html5Exporter)                │
+│                                      │                       │
+│                            2. Send to SW                     │
+│                               (SET_CONTENT)                  │
+│                                      │                       │
+│                            3. Load iframe                    │
+│                               /viewer/index.html             │
+└─────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   SERVICE WORKER                             │
+├─────────────────────────────────────────────────────────────┤
+│  contentFiles: Map<path, ArrayBuffer>                        │
+│                                                              │
+│  fetch('/viewer/*') → handleViewerRequest()                  │
+│      ├── Look up path in contentFiles                        │
+│      ├── Return Response with correct MIME type              │
+│      └── Inject external link handler for HTML               │
+└─────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   PREVIEW IFRAME                             │
+├─────────────────────────────────────────────────────────────┤
+│  <iframe src="/viewer/index.html">                          │
+│      │                                                       │
+│      ├── CSS: /viewer/theme/style.css                       │
+│      ├── JS:  /viewer/libs/common.js                        │
+│      ├── IMG: /viewer/content/resources/image.jpg           │
+│      └── All served by SW from memory!                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 How It Works
+
+1. **Generate Export**: When preview is requested, `Html5Exporter.generateForPreview()` generates all export files in memory as `Map<string, Uint8Array | string>`
+
+2. **Send to Service Worker**: Files are sent to the SW via `postMessage({ type: 'SET_CONTENT', files })`
+
+3. **Load Preview**: The iframe loads `/viewer/index.html` - all requests intercepted by SW
+
+4. **Serve Files**: SW serves files from its in-memory cache with correct MIME types
+
+### 8.3 Key Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Service Worker** | `public/app/preview-sw.js` | Intercepts `/viewer/*` requests |
+| **Preview Panel** | `public/app/workarea/interface/elements/previewPanel.js` | UI and orchestration |
+| **Export Generator** | `src/shared/export/exporters/Html5Exporter.ts` | Generates export files |
+| **Browser API** | `src/shared/export/browser/index.ts` | Browser-side export functions |
+
+### 8.4 Benefits
+
+- **Exact match**: Preview IS the exported HTML (same code path, same output)
+- **No workarounds**: No blob:// URL complexity for assets
+- **Native PDF viewer**: PDFs work without PDF.js workaround (not in nested blob context)
+- **External links**: Handled correctly (SW injects click handler)
+- **Multi-page navigation**: Works exactly like the real export
+
+### 8.5 Service Worker Protocol
+
+```javascript
+// Messages sent to Service Worker
+{ type: 'SET_CONTENT', files: Map<path, ArrayBuffer> }  // Set preview content
+{ type: 'CLEAR_CONTENT' }                                // Clear preview cache
+{ type: 'CLAIM_CLIENTS' }                                // Activate SW for page
+```
+
+## 9. Database Architecture
+
+### 9.1 Multi-Database Support
 
 Kysely ORM with dialect adapters:
 
@@ -369,7 +519,7 @@ function createDialect(): Dialect {
 }
 ```
 
-### 8.2 Query Pattern with Dependency Injection
+### 9.2 Query Pattern with Dependency Injection
 
 All queries accept `db` as first parameter for testability:
 
@@ -396,9 +546,9 @@ configure({
 afterEach(() => resetDependencies());
 ```
 
-## 9. Configuration
+## 10. Configuration
 
-### 9.1 Environment Variables
+### 10.1 Environment Variables
 
 Key configuration in `.env`:
 
@@ -419,7 +569,7 @@ BASE_PATH=/exelearning        # URL prefix for subdirectory install
 APP_AUTH_METHODS=password     # password,cas,openid,guest
 ```
 
-### 9.2 Desktop vs Server Configuration
+### 10.2 Desktop vs Server Configuration
 
 | Setting | Desktop (Electron) | Server |
 |---------|-------------------|--------|
@@ -428,7 +578,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | Compact threshold | 100 updates | 50 updates |
 | WebSocket timeout | 70s | 40s |
 
-## 10. Key File Locations
+## 11. Key File Locations
 
 ### Backend (src/)
 
@@ -442,6 +592,8 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `src/websocket/yjs-websocket.ts` | WebSocket handler |
 | `src/websocket/room-manager.ts` | Room lifecycle |
 | `src/websocket/asset-coordinator.ts` | P2P coordination |
+| `src/shared/export/exporters/Html5Exporter.ts` | HTML5 export (also used for preview) |
+| `src/shared/export/browser/index.ts` | Browser-side export API |
 
 ### Frontend (public/app/)
 
@@ -452,6 +604,8 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `public/app/yjs/AssetWebSocketHandler.js` | Asset protocol |
 | `public/app/yjs/SaveManager.js` | Save orchestration |
 | `public/app/yjs/YjsProjectBridge.js` | Coordination hub |
+| `public/app/preview-sw.js` | Preview Service Worker |
+| `public/app/workarea/interface/elements/previewPanel.js` | Preview panel UI |
 
 ### Configuration
 
@@ -462,7 +616,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `bunfig.toml` | Bun configuration |
 | `Makefile` | Build commands |
 
-## 11. Testing
+## 12. Testing
 
 ### Test Strategy
 
@@ -499,7 +653,7 @@ configure({
 afterEach(() => resetDependencies());
 ```
 
-## 12. Security
+## 13. Security
 
 ### Authentication
 
@@ -532,6 +686,99 @@ ws.on('open', async () => {
 });
 ```
 
+## 14. Theme Architecture
+
+### 14.1 Theme Types
+
+eXeLearning supports three types of themes:
+
+| Type | Source | Storage | Served By |
+|------|--------|---------|-----------|
+| **Base** | Built-in with eXeLearning | Server `/perm/themes/base/` | Server |
+| **Site** | Admin-installed for all users | Server `/perm/themes/site/` | Server |
+| **User** | Imported by user or from .elpx | Client IndexedDB + Yjs | **Never server** |
+
+### 14.2 Server Themes (Base & Site)
+
+**Base themes** are included with eXeLearning and synchronized at startup:
+- Located in `/public/files/perm/themes/base/`
+- Cannot be modified by users
+- Served directly by the server
+
+**Site themes** are installed by administrators for all users:
+- Located in `/perm/themes/site/`
+- Admin can activate/deactivate themes
+- Admin can set a default theme for new projects
+- Served directly by the server
+
+### 14.3 User Themes (Client-Side Only)
+
+> **Important**: User themes are NEVER stored or served by the server.
+
+User themes are stored entirely on the client side:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     USER THEME STORAGE                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  IndexedDB (per-user isolation)                                     │
+│  └── user-themes store: key = "userId:themeName"                    │
+│      └── Each user's themes isolated by userId prefix               │
+│      └── User "alice" cannot see user "bob"'s themes                │
+│                                                                     │
+│  Yjs themeFiles (project document)                                  │
+│  └── Currently selected user theme (for collaboration/export)       │
+│                                                                     │
+│  .elpx export                                                       │
+│  └── Embedded theme files (for portability)                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.4 User Theme Flow
+
+```
+1. IMPORT THEME
+   User uploads ZIP → Stored in IndexedDB (local storage)
+
+2. SELECT THEME
+   User selects theme → Copied to Yjs themeFiles
+   (enables collaboration and export)
+
+3. CHANGE TO ANOTHER THEME
+   User selects different theme → Removed from Yjs
+   (but remains in IndexedDB for future use)
+
+4. EXPORT PROJECT (.elpx)
+   If user theme selected → Embedded in ZIP
+
+5. OPEN PROJECT WITH EMBEDDED THEME
+   Another user opens .elpx → Theme extracted to their IndexedDB
+   (if ONLINE_THEMES_INSTALL is enabled)
+```
+
+### 14.5 Admin Configuration
+
+```bash
+# Allow users to import/install styles
+ONLINE_THEMES_INSTALL=1    # 1 = enabled (default), 0 = disabled
+```
+
+When disabled (`ONLINE_THEMES_INSTALL=0`):
+- Users cannot import external themes via the interface
+- Users cannot load custom embbeded themes in .elpx files
+
+### 14.6 Why User Themes Are Client-Side
+
+This design follows the same pattern as other user-specific data (like favorite iDevices):
+
+1. **Per-user storage**: Each user's themes are private to them
+2. **No server storage**: Themes don't consume server disk space
+3. **Collaboration via Yjs**: Selected theme is shared with collaborators in real-time
+4. **Portability**: Themes embedded in .elpx can be opened anywhere
+5. **Offline capability**: Themes work without server connectivity
+
 ---
 
 ## Further Reading
@@ -539,4 +786,4 @@ ws.on('open', async () => {
 - [Real-Time Collaboration](development/real-time.md) - WebSocket and Yjs details
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage
-
+- [Creating Styles](development/styles.md) - How to create custom themes

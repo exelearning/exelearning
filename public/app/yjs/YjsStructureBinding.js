@@ -563,6 +563,347 @@ class YjsStructureBinding {
   }
 
   /**
+   * Normalize selected IDs for grouped movement:
+   * - keep existing pages only
+   * - remove duplicates
+   * - keep only top-most selected nodes (exclude descendants of selected nodes)
+   * @param {Array<string>} pageIds
+   * @returns {Array<string>}
+   */
+  _normalizeGroupSelection(pageIds) {
+    const uniqueIds = [];
+    const seen = new Set();
+    (pageIds || []).forEach((id) => {
+      if (!id || seen.has(id)) return;
+      if (!this.getPageMap(id)) return;
+      seen.add(id);
+      uniqueIds.push(id);
+    });
+
+    return uniqueIds.filter((id) => {
+      return !uniqueIds.some((otherId) => otherId !== id && this.isDescendant(id, otherId));
+    });
+  }
+
+  /**
+   * Get child IDs for a parent sorted by order.
+   * parentId may be null for top-level pages.
+   * @param {string|null} parentId
+   * @returns {Array<string>}
+   */
+  _getChildrenIds(parentId) {
+    const navigation = this.manager.getNavigation();
+    const children = [];
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const currentParentId = pageMap.get('parentId') ?? null;
+      if (currentParentId === (parentId ?? null)) {
+        children.push({
+          id: pageMap.get('id'),
+          order: pageMap.get('order') ?? i,
+        });
+      }
+    }
+
+    return children.sort((a, b) => a.order - b.order).map((child) => child.id);
+  }
+
+  /**
+   * Check grouped move up feasibility (all-or-nothing).
+   * A grouped selection cannot move up if the first sibling in any affected parent group is selected.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupPrev(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    for (const [parentId, selectedSet] of byParent.entries()) {
+      const siblings = this._getChildrenIds(parentId);
+      if (siblings.length > 0 && selectedSet.has(siblings[0])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Move grouped selection up (all affected groups move one position up as a block).
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupPrev(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupPrev(selectedIds)) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    this.manager.getDoc().transact(() => {
+      for (const [parentId, selectedSet] of byParent.entries()) {
+        const siblings = this._getChildrenIds(parentId);
+        const reordered = [...siblings];
+
+        for (let i = 1; i < reordered.length; i++) {
+          if (selectedSet.has(reordered[i]) && !selectedSet.has(reordered[i - 1])) {
+            const temp = reordered[i - 1];
+            reordered[i - 1] = reordered[i];
+            reordered[i] = temp;
+          }
+        }
+
+        reordered.forEach((id, index) => {
+          const pageMap = this.getPageMap(id);
+          if (pageMap) pageMap.set('order', index);
+        });
+      }
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(`[YjsStructureBinding] Group moved up: ${selectedIds.join(', ')}`);
+    return true;
+  }
+
+  /**
+   * Check grouped move down feasibility (all-or-nothing).
+   * A grouped selection cannot move down if the last sibling in any affected parent group is selected.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupNext(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    for (const [parentId, selectedSet] of byParent.entries()) {
+      const siblings = this._getChildrenIds(parentId);
+      if (siblings.length > 0 && selectedSet.has(siblings[siblings.length - 1])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Move grouped selection down (all affected groups move one position down as a block).
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupNext(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupNext(selectedIds)) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    this.manager.getDoc().transact(() => {
+      for (const [parentId, selectedSet] of byParent.entries()) {
+        const siblings = this._getChildrenIds(parentId);
+        const reordered = [...siblings];
+
+        for (let i = reordered.length - 2; i >= 0; i--) {
+          if (selectedSet.has(reordered[i]) && !selectedSet.has(reordered[i + 1])) {
+            const temp = reordered[i + 1];
+            reordered[i + 1] = reordered[i];
+            reordered[i] = temp;
+          }
+        }
+
+        reordered.forEach((id, index) => {
+          const pageMap = this.getPageMap(id);
+          if (pageMap) pageMap.set('order', index);
+        });
+      }
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(`[YjsStructureBinding] Group moved down: ${selectedIds.join(', ')}`);
+    return true;
+  }
+
+  /**
+   * Check grouped move right feasibility (all-or-nothing).
+   * Rule: all selected roots must be siblings, and first selected must have a previous sibling.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupRight(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    if (!firstMap) return false;
+    const sourceParentId = firstMap.get('parentId') ?? null;
+
+    // Keep coherent group semantics: same parent only
+    const sameParent = selectedIds.every((id) => {
+      const map = this.getPageMap(id);
+      return (map?.get('parentId') ?? null) === sourceParentId;
+    });
+    if (!sameParent) return false;
+
+    const siblings = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = siblings.filter((id) => selectedSet.has(id));
+    if (orderedSelected.length === 0) return false;
+
+    const firstSelectedId = orderedSelected[0];
+    const firstIndex = siblings.indexOf(firstSelectedId);
+    return firstIndex > 0;
+  }
+
+  /**
+   * Move grouped selection right as a block.
+   * Rule: all selected roots become children of the sibling preceding the first selected root.
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupRight(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupRight(selectedIds)) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    const siblings = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = siblings.filter((id) => selectedSet.has(id));
+    const firstSelectedId = orderedSelected[0];
+    const firstIndex = siblings.indexOf(firstSelectedId);
+    const targetParentId = siblings[firstIndex - 1];
+
+    const remainingSource = siblings.filter((id) => !selectedSet.has(id));
+    const targetChildren = this._getChildrenIds(targetParentId);
+    const newTargetChildren = [...targetChildren, ...orderedSelected];
+
+    this.manager.getDoc().transact(() => {
+      orderedSelected.forEach((id) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) {
+          pageMap.set('parentId', targetParentId);
+        }
+      });
+
+      remainingSource.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+
+      newTargetChildren.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(
+      `[YjsStructureBinding] Group moved right under ${targetParentId}: ${orderedSelected.join(', ')}`
+    );
+    return true;
+  }
+
+  /**
+   * Check grouped move left feasibility (all-or-nothing).
+   * Rule: all selected roots must share parent, and that parent must exist (not top-level).
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupLeft(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    if (!firstMap) return false;
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    if (sourceParentId === null) return false;
+
+    const sameParent = selectedIds.every((id) => {
+      const map = this.getPageMap(id);
+      return (map?.get('parentId') ?? null) === sourceParentId;
+    });
+    if (!sameParent) return false;
+
+    return !!this.getPageMap(sourceParentId);
+  }
+
+  /**
+   * Move grouped selection left as a block.
+   * Rule: selected roots keep order and are inserted after their current parent.
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupLeft(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupLeft(selectedIds)) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    const sourceParentMap = this.getPageMap(sourceParentId);
+    const grandparentId = sourceParentMap?.get('parentId') ?? null;
+
+    const sourceChildren = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = sourceChildren.filter((id) => selectedSet.has(id));
+    const remainingSource = sourceChildren.filter((id) => !selectedSet.has(id));
+
+    const grandChildren = this._getChildrenIds(grandparentId);
+    const insertPos = Math.max(0, grandChildren.indexOf(sourceParentId) + 1);
+    const newGrandChildren = [
+      ...grandChildren.slice(0, insertPos),
+      ...orderedSelected,
+      ...grandChildren.slice(insertPos),
+    ];
+
+    this.manager.getDoc().transact(() => {
+      orderedSelected.forEach((id) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) {
+          pageMap.set('parentId', grandparentId);
+        }
+      });
+
+      remainingSource.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+
+      newGrandChildren.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(
+      `[YjsStructureBinding] Group moved left to parent ${grandparentId}: ${orderedSelected.join(', ')}`
+    );
+    return true;
+  }
+
+  /**
    * Move page UP (↑) - swap with previous sibling
    * @param {string} pageId
    * @returns {boolean}
@@ -1101,6 +1442,31 @@ class YjsStructureBinding {
   }
 
   /**
+   * Get a block by blockId (searches all pages)
+   * @param {string} blockId
+   * @returns {Object|null} - Block data object or null if not found
+   */
+  getBlock(blockId) {
+    const navigation = this.manager.getNavigation();
+    if (!navigation) return null;
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap.get('blocks');
+      if (!blocks) continue;
+
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        const bId = blockMap.get('id') || blockMap.get('blockId');
+        if (bId === blockId) {
+          return this.mapToBlock(blockMap, j);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Create a new block in a page
    * @param {string} pageId
    * @param {string} blockName
@@ -1142,7 +1508,6 @@ class YjsStructureBinding {
       propsMap.set('teacherOnly', 'false');
       propsMap.set('allowToggle', 'true');
       propsMap.set('minimized', 'false');
-      propsMap.set('identifier', '');
       propsMap.set('cssClass', '');
       blockMap.set('properties', propsMap);
 
@@ -1202,6 +1567,62 @@ class YjsStructureBinding {
       console.error(`[YjsStructureBinding] Error deleting block:`, error);
       return false;
     }
+  }
+
+  /**
+   * Locate a block in the navigation by id. Returns the page Y.Map, the
+   * page's blocks Y.Array, and the block's current index in that array,
+   * or null if the block isn't found.
+   *
+   * @param {string} blockId
+   * @returns {{ pageMap: any, blocks: any, index: number } | null}
+   */
+  findBlockLocation(blockId) {
+    const navigation = this.manager.getNavigation();
+    if (!navigation) return null;
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap.get('blocks');
+      if (!blocks) continue;
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        if (blockMap.get('id') === blockId || blockMap.get('blockId') === blockId) {
+          return { pageMap, blocks, index: j };
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Move a block by `delta` positions inside its current page, reading the
+   * block's CURRENT position from the Y.Doc (the source of truth) instead
+   * of trusting a stale per-instance counter.
+   *
+   * Use `delta = +1` for the "move down" arrow, `delta = -1` for "move up".
+   * Larger deltas are accepted and clamped to the page's block range.
+   *
+   * This is the method the click handlers in
+   * public/app/workarea/project/idevices/content/blockNode.js MUST use, so
+   * that consecutive arrow clicks on different blocks do not feed
+   * updateBlockOrder a target index computed from a stale local snapshot.
+   * See issue #1665 for the bug class this avoids.
+   *
+   * @param {string} blockId
+   * @param {number} delta - relative move (+1 down, -1 up, ...)
+   * @returns {boolean} - true if the move was applied
+   */
+  moveBlockRelative(blockId, delta) {
+    if (!Number.isFinite(delta) || delta === 0) return false;
+    const location = this.findBlockLocation(blockId);
+    if (!location) {
+      console.warn(`[YjsStructureBinding] Block ${blockId} not found for relative move`);
+      return false;
+    }
+    const { blocks, index } = location;
+    const targetIndex = Math.min(Math.max(0, index + delta), blocks.length - 1);
+    if (targetIndex === index) return false;
+    return this.updateBlockOrder(blockId, targetIndex);
   }
 
   /**
@@ -1650,6 +2071,14 @@ class YjsStructureBinding {
             ytext.delete(0, ytext.length);
             ytext.insert(0, safeValue);
           }
+
+          // Once htmlContent/content holds the authoritative value, drop any stale
+          // htmlView plain-string fallback populated by the initial import path
+          // (createComponentMapFromApi / ElpxImporter). Keeping it around causes
+          // stale reference counts in the File Manager after in-place edits (issue #1674).
+          if ((key === 'htmlContent' || key === 'content') && compMap.get('htmlView') !== undefined) {
+            compMap.delete('htmlView');
+          }
         } else if (key === 'properties' && typeof value === 'object') {
           // Handle properties as a Y.Map with checkbox conversion
           let propsMap = compMap.get('properties');
@@ -1665,6 +2094,15 @@ class YjsStructureBinding {
             }
             propsMap.set(propKey, finalValue);
           });
+        } else if (key === 'jsonProperties') {
+          // Prepare JSON for sync: convert blob:// URLs to asset:// refs
+          // This centralizes blob URL recovery for iDevices like image-gallery, map, etc.
+          let safeValue = typeof value === 'string' ? value : JSON.stringify(value);
+          const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+          if (assetManager && safeValue && typeof assetManager.prepareJsonForSync === 'function') {
+            safeValue = assetManager.prepareJsonForSync(safeValue);
+          }
+          compMap.set(key, safeValue);
         } else {
           compMap.set(key, value);
         }
@@ -2341,15 +2779,23 @@ class YjsStructureBinding {
     const rawHtmlView = compMap.get('htmlView');
     let htmlContent;
 
+    // DEBUG: Log what we're getting from Yjs
+    const compId = compMap.get('id');
+    console.debug(`[YjsStructureBinding] mapToComponent ${compId}: rawHtmlContent type=${typeof rawHtmlContent}, isYText=${rawHtmlContent instanceof this.Y.Text}, rawHtmlView type=${typeof rawHtmlView}, rawHtmlView length=${rawHtmlView?.length || 0}`);
+
     if (rawHtmlContent instanceof this.Y.Text) {
       htmlContent = rawHtmlContent.toString();
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using Y.Text htmlContent, length=${htmlContent.length}`);
     } else if (typeof rawHtmlContent === 'string' && rawHtmlContent) {
       htmlContent = rawHtmlContent;
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using string htmlContent, length=${htmlContent.length}`);
     } else if (typeof rawHtmlView === 'string' && rawHtmlView) {
       // Fallback to htmlView (used during import when Y.Text is not created)
       htmlContent = rawHtmlView;
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using htmlView fallback, length=${htmlContent.length}`);
     } else {
       htmlContent = '';
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: No content found, using empty string`);
     }
 
     // Get jsonProperties - handle both Y.Map and string storage
@@ -2393,6 +2839,10 @@ class YjsStructureBinding {
       }
     }
 
+    // Get component properties (visibility, teacherOnly, etc.)
+    const rawProps = compMap.get('properties');
+    const properties = rawProps && typeof rawProps.toJSON === 'function' ? rawProps.toJSON() : {};
+
     return {
       id: compMap.get('id'),
       ideviceId: compMap.get('ideviceId'),
@@ -2400,14 +2850,28 @@ class YjsStructureBinding {
       order: compMap.get('order') ?? index,
       htmlContent: htmlContent,
       jsonProperties: jsonProperties,
+      properties: properties,
       createdAt: compMap.get('createdAt'),
       updatedAt: compMap.get('updatedAt'),
       _ymap: compMap,
     };
   }
 
+  /**
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
+   * @param {string} prefix - ID prefix
+   * @returns {string}
+   */
   generateId(prefix) {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!prefix) {
+      throw new Error('generateId: prefix is required');
+    }
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 11);
+    return `${prefix}-${timestamp}-${random}`;
   }
 
   // ===== Import from API Structure =====

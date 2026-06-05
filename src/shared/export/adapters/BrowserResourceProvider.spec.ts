@@ -13,9 +13,11 @@ interface MockResourceFetcherInterface {
     fetchScormFiles(): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
-    fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
+    fetchI18nFile(language: string): Promise<string | null>;
+    fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
 // Create a mock Blob
@@ -34,9 +36,9 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
     private scormFiles: Map<string, Blob> = new Map();
     private libraryFiles: Map<string, Blob> = new Map();
     private libraryDirectories: Map<string, Map<string, Blob>> = new Map();
-    private schemas: Map<string, Map<string, Blob>> = new Map();
     private exeLogo: Blob | null = null;
     private contentCss: Map<string, Blob> = new Map();
+    private globalFonts: Map<string, Map<string, Blob>> = new Map();
 
     // Setup methods for testing
     setTheme(themeName: string, files: Map<string, Blob>): void {
@@ -67,12 +69,12 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         this.libraryDirectories.set(name, files);
     }
 
-    setSchemas(format: string, files: Map<string, Blob>): void {
-        this.schemas.set(format, files);
-    }
-
     setContentCss(files: Map<string, Blob>): void {
         this.contentCss = files;
+    }
+
+    setGlobalFontFiles(fontId: string, files: Map<string, Blob>): void {
+        this.globalFonts.set(fontId, files);
     }
 
     // Interface methods
@@ -100,16 +102,35 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         return this.libraryDirectories.get(libraryName) || new Map();
     }
 
-    async fetchSchemas(format: string): Promise<Map<string, Blob>> {
-        return this.schemas.get(format) || new Map();
-    }
-
     async fetchExeLogo(): Promise<Blob | null> {
         return this.exeLogo;
     }
 
     async fetchContentCss(): Promise<Map<string, Blob>> {
         return this.contentCss;
+    }
+
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>> {
+        return this.globalFonts.get(fontId) || new Map();
+    }
+
+    private i18nFile: string | null = null;
+    private i18nTranslations: Record<string, string> = {};
+
+    setI18nFile(content: string | null): void {
+        this.i18nFile = content;
+    }
+
+    setI18nTranslations(translations: Record<string, string>): void {
+        this.i18nTranslations = translations;
+    }
+
+    async fetchI18nFile(_language: string): Promise<string | null> {
+        return this.i18nFile;
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Record<string, string>> {
+        return this.i18nTranslations;
     }
 }
 
@@ -131,25 +152,26 @@ describe('BrowserResourceProvider', () => {
     describe('fetchTheme', () => {
         it('should return theme files as Uint8Array map', async () => {
             const themeFiles = new Map<string, Blob>();
-            themeFiles.set('content.css', createMockBlob('/* theme css */'));
-            themeFiles.set('default.js', createMockBlob('// theme js'));
+            // Theme files use original names (style.css, style.js) - never renamed
+            themeFiles.set('style.css', createMockBlob('/* theme css */'));
+            themeFiles.set('style.js', createMockBlob('// theme js'));
             mockFetcher.setTheme('base', themeFiles);
 
             const result = await provider.fetchTheme('base');
 
             expect(result).toBeInstanceOf(Map);
-            expect(result.has('content.css')).toBe(true);
-            expect(result.has('default.js')).toBe(true);
+            expect(result.has('style.css')).toBe(true);
+            expect(result.has('style.js')).toBe(true);
         });
 
         it('should convert Blob to Uint8Array', async () => {
             const cssContent = '/* CSS content */';
             const themeFiles = new Map<string, Blob>();
-            themeFiles.set('content.css', createMockBlob(cssContent));
+            themeFiles.set('style.css', createMockBlob(cssContent));
             mockFetcher.setTheme('blue', themeFiles);
 
             const result = await provider.fetchTheme('blue');
-            const buffer = result.get('content.css');
+            const buffer = result.get('style.css');
 
             expect(buffer).toBeInstanceOf(Uint8Array);
             expect(new TextDecoder().decode(buffer!)).toBe(cssContent);
@@ -181,6 +203,53 @@ describe('BrowserResourceProvider', () => {
             const result = await provider.fetchIdeviceResources('NonexistentIdevice');
 
             expect(result.size).toBe(0);
+        });
+
+        it('should filter out .test.js files', async () => {
+            const ideviceFiles = new Map<string, Blob>();
+            ideviceFiles.set('idevice.js', createMockBlob('// idevice script'));
+            ideviceFiles.set('idevice.test.js', createMockBlob('// test file'));
+            ideviceFiles.set('utils.test.js', createMockBlob('// another test'));
+            mockFetcher.setIdevice('quiz', ideviceFiles);
+
+            const result = await provider.fetchIdeviceResources('quiz');
+
+            expect(result.has('idevice.js')).toBe(true);
+            expect(result.has('idevice.test.js')).toBe(false);
+            expect(result.has('utils.test.js')).toBe(false);
+            expect(result.size).toBe(1);
+        });
+
+        it('should filter out .spec.js files', async () => {
+            const ideviceFiles = new Map<string, Blob>();
+            ideviceFiles.set('gallery.js', createMockBlob('// gallery code'));
+            ideviceFiles.set('gallery.spec.js', createMockBlob('// spec file'));
+            ideviceFiles.set('helpers.spec.js', createMockBlob('// another spec'));
+            mockFetcher.setIdevice('gallery', ideviceFiles);
+
+            const result = await provider.fetchIdeviceResources('gallery');
+
+            expect(result.has('gallery.js')).toBe(true);
+            expect(result.has('gallery.spec.js')).toBe(false);
+            expect(result.has('helpers.spec.js')).toBe(false);
+            expect(result.size).toBe(1);
+        });
+
+        it('should keep non-test files while filtering test files', async () => {
+            const ideviceFiles = new Map<string, Blob>();
+            ideviceFiles.set('main.js', createMockBlob('// main'));
+            ideviceFiles.set('styles.css', createMockBlob('/* css */'));
+            ideviceFiles.set('template.html', createMockBlob('<div>'));
+            ideviceFiles.set('main.test.js', createMockBlob('// test'));
+            ideviceFiles.set('main.spec.js', createMockBlob('// spec'));
+            mockFetcher.setIdevice('custom', ideviceFiles);
+
+            const result = await provider.fetchIdeviceResources('custom');
+
+            expect(result.size).toBe(3);
+            expect(result.has('main.js')).toBe(true);
+            expect(result.has('styles.css')).toBe(true);
+            expect(result.has('template.html')).toBe(true);
         });
     });
 
@@ -224,38 +293,6 @@ describe('BrowserResourceProvider', () => {
         });
     });
 
-    describe('fetchScormSchemas', () => {
-        it('should return SCORM 1.2 schemas', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp_rootv1p1p2.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp_rootv1p2.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm12', schemas);
-
-            const result = await provider.fetchScormSchemas('1.2');
-
-            expect(result.has('imscp_rootv1p1p2.xsd')).toBe(true);
-            expect(result.has('adlcp_rootv1p2.xsd')).toBe(true);
-        });
-
-        it('should return SCORM 2004 schemas', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp_v1p1.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp_v1p3.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm2004', schemas);
-
-            const result = await provider.fetchScormSchemas('2004');
-
-            expect(result.has('imscp_v1p1.xsd')).toBe(true);
-            expect(result.has('adlcp_v1p3.xsd')).toBe(true);
-        });
-
-        it('should return empty map for missing schemas', async () => {
-            const result = await provider.fetchScormSchemas('1.2');
-
-            expect(result.size).toBe(0);
-        });
-    });
-
     describe('fetchLibraryFiles', () => {
         it('should return requested library files', async () => {
             const libFiles = new Map<string, Blob>();
@@ -267,6 +304,73 @@ describe('BrowserResourceProvider', () => {
 
             expect(result.has('lib1.js')).toBe(true);
             expect(result.has('lib2.js')).toBe(true);
+        });
+
+        it('should fetch entire directory when isDirectory pattern is provided', async () => {
+            // Setup: exe_atools directory contains multiple files
+            const dirFiles = new Map<string, Blob>();
+            dirFiles.set('exe_atools.js', createMockBlob('// exe_atools main'));
+            dirFiles.set('config.json', createMockBlob('{}'));
+            dirFiles.set('styles.css', createMockBlob('/* styles */'));
+            mockFetcher.setLibraryDirectory('exe_atools', dirFiles);
+
+            const patterns = [{ name: 'exe_atools', files: ['exe_atools/exe_atools.js'], isDirectory: true }];
+
+            const result = await provider.fetchLibraryFiles(['exe_atools/exe_atools.js'], patterns);
+
+            // Should include ALL files from directory, not just the requested file
+            expect(result.has('exe_atools.js')).toBe(true);
+            expect(result.has('config.json')).toBe(true);
+            expect(result.has('styles.css')).toBe(true);
+        });
+
+        it('should filter test files from directory patterns', async () => {
+            const dirFiles = new Map<string, Blob>();
+            dirFiles.set('main.js', createMockBlob('// main'));
+            dirFiles.set('main.test.js', createMockBlob('// test'));
+            dirFiles.set('utils.spec.js', createMockBlob('// spec'));
+            mockFetcher.setLibraryDirectory('mylib', dirFiles);
+
+            const patterns = [{ name: 'mylib', files: ['mylib/main.js'], isDirectory: true }];
+
+            const result = await provider.fetchLibraryFiles(['mylib/main.js'], patterns);
+
+            expect(result.has('main.js')).toBe(true);
+            expect(result.has('main.test.js')).toBe(false);
+            expect(result.has('utils.spec.js')).toBe(false);
+        });
+
+        it('should handle mix of regular files and directory patterns', async () => {
+            const regularFiles = new Map<string, Blob>();
+            regularFiles.set('jquery.min.js', createMockBlob('// jquery'));
+            mockFetcher.setLibraryFiles(regularFiles);
+
+            const dirFiles = new Map<string, Blob>();
+            dirFiles.set('plugin.js', createMockBlob('// plugin'));
+            mockFetcher.setLibraryDirectory('myplugin', dirFiles);
+
+            const patterns = [{ name: 'myplugin', files: ['myplugin/plugin.js'], isDirectory: true }];
+
+            const result = await provider.fetchLibraryFiles(['jquery.min.js', 'myplugin/plugin.js'], patterns);
+
+            expect(result.has('jquery.min.js')).toBe(true);
+            expect(result.has('plugin.js')).toBe(true);
+        });
+
+        it('should return empty map when no files requested', async () => {
+            const result = await provider.fetchLibraryFiles([]);
+
+            expect(result.size).toBe(0);
+        });
+
+        it('should work without patterns parameter', async () => {
+            const libFiles = new Map<string, Blob>();
+            libFiles.set('simple.js', createMockBlob('// simple'));
+            mockFetcher.setLibraryFiles(libFiles);
+
+            const result = await provider.fetchLibraryFiles(['simple.js']);
+
+            expect(result.has('simple.js')).toBe(true);
         });
     });
 
@@ -281,20 +385,6 @@ describe('BrowserResourceProvider', () => {
 
             expect(result.has('lib.js')).toBe(true);
             expect(result.has('lib.css')).toBe(true);
-        });
-    });
-
-    describe('fetchSchemas', () => {
-        it('should return schema files for format', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm12', schemas);
-
-            const result = await provider.fetchSchemas('scorm12');
-
-            expect(result.has('imscp.xsd')).toBe(true);
-            expect(result.has('adlcp.xsd')).toBe(true);
         });
     });
 
@@ -470,6 +560,118 @@ describe('BrowserResourceProvider', () => {
         it('should handle empty string by returning text', () => {
             const result = provider.normalizeIdeviceType('');
             expect(result).toBe('text');
+        });
+    });
+
+    describe('fetchGlobalFontFiles', () => {
+        it('should return empty map for default font', async () => {
+            const result = await provider.fetchGlobalFontFiles('default');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should return empty map for empty font id', async () => {
+            const result = await provider.fetchGlobalFontFiles('');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should return font files as Uint8Array map', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/opendyslexic/OpenDyslexic-Regular.woff', createMockBlob('WOFF_FONT_DATA'));
+            fontFiles.set('fonts/global/opendyslexic/OpenDyslexic-Bold.woff', createMockBlob('WOFF_FONT_DATA_BOLD'));
+            mockFetcher.setGlobalFontFiles('opendyslexic', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(2);
+            expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
+        });
+
+        it('should convert Blob to Uint8Array correctly', async () => {
+            const fontContent = 'MOCK_WOFF_CONTENT';
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/nunito/Nunito-Regular.woff2', createMockBlob(fontContent));
+            mockFetcher.setGlobalFontFiles('nunito', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('nunito');
+            const buffer = result.get('fonts/global/nunito/Nunito-Regular.woff2');
+
+            expect(buffer).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(buffer!)).toBe(fontContent);
+        });
+
+        it('should return empty map for non-existent font', async () => {
+            const result = await provider.fetchGlobalFontFiles('nonexistent');
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should handle font files with OFL license', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', createMockBlob('PLAYWRITE_FONT_DATA'));
+            fontFiles.set('fonts/global/playwrite-es/OFL.txt', createMockBlob('SIL Open Font License'));
+            mockFetcher.setGlobalFontFiles('playwrite-es', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('playwrite-es');
+
+            expect(result.size).toBe(2);
+            expect(result.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+            expect(result.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
+
+            const license = new TextDecoder().decode(result.get('fonts/global/playwrite-es/OFL.txt')!);
+            expect(license).toBe('SIL Open Font License');
+        });
+
+        it('should handle andika font with multiple weights', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/andika/Andika-Regular.woff2', createMockBlob('REGULAR'));
+            fontFiles.set('fonts/global/andika/Andika-Bold.woff2', createMockBlob('BOLD'));
+            fontFiles.set('fonts/global/andika/Andika-Italic.woff2', createMockBlob('ITALIC'));
+            fontFiles.set('fonts/global/andika/Andika-BoldItalic.woff2', createMockBlob('BOLDITALIC'));
+            mockFetcher.setGlobalFontFiles('andika', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('andika');
+
+            expect(result.size).toBe(4);
+            expect(result.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-Bold.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-Italic.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-BoldItalic.woff2')).toBe(true);
+        });
+    });
+
+    describe('fetchI18nFile', () => {
+        it('should return empty string when fetcher returns null', async () => {
+            mockFetcher.setI18nFile(null);
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe('');
+        });
+
+        it('should return pre-built file content from fetcher', async () => {
+            const content = '$exe_i18n = { "previous": "Anterior", "next": "Siguiente" };';
+            mockFetcher.setI18nFile(content);
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe(content);
+        });
+    });
+
+    describe('fetchI18nTranslations', () => {
+        it('should return empty Map when fetcher returns empty object', async () => {
+            mockFetcher.setI18nTranslations({});
+            const result = await provider.fetchI18nTranslations('es');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should convert Record to Map correctly', async () => {
+            mockFetcher.setI18nTranslations({ Previous: 'Anterior', Next: 'Siguiente' });
+            const result = await provider.fetchI18nTranslations('es');
+            expect(result.get('Previous')).toBe('Anterior');
+            expect(result.get('Next')).toBe('Siguiente');
         });
     });
 });

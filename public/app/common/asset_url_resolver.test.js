@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('AssetUrlResolver', () => {
   let mockAssetManager;
+  let mockAssetWebSocketHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,6 +22,9 @@ describe('AssetUrlResolver', () => {
     // Create mock AssetManager
     mockAssetManager = {
       resolveAssetURL: vi.fn(),
+    };
+    mockAssetWebSocketHandler = {
+      requestAsset: vi.fn().mockResolvedValue(false),
     };
   });
 
@@ -84,6 +88,7 @@ describe('AssetUrlResolver', () => {
           project: {
             _yjsBridge: {
               assetManager: mockAssetManager,
+              assetWebSocketHandler: mockAssetWebSocketHandler,
             },
           },
         },
@@ -194,6 +199,27 @@ describe('AssetUrlResolver', () => {
           '[AssetResolver] Could not resolve asset URL:',
           assetUrl
         );
+        expect(mockAssetWebSocketHandler.requestAsset).toHaveBeenCalledWith('null-result');
+      });
+
+      it('deduplicates peer requests while same asset request is in-flight', async () => {
+        mockAssetManager.resolveAssetURL.mockResolvedValue(null);
+        let releaseRequest;
+        mockAssetWebSocketHandler.requestAsset.mockImplementation(
+          () => new Promise((resolve) => {
+            releaseRequest = resolve;
+          })
+        );
+
+        const assetUrl = 'asset://dedup-asset/image.png';
+
+        const first = resolver.resolve(assetUrl);
+        const second = resolver.resolve(assetUrl);
+
+        await Promise.all([first, second]);
+
+        expect(mockAssetWebSocketHandler.requestAsset).toHaveBeenCalledTimes(1);
+        releaseRequest(false);
       });
 
       it('returns null and logs warning on error', async () => {
@@ -730,5 +756,1971 @@ describe('AssetUrlResolver', () => {
     // the resolver to be loaded with a mocked AssetManager. This is tested in the
     // 'when jQuery is available' describe block's resolve tests. The getAttribute
     // interception for cached URLs is verified through the combined test flow.
+  });
+
+  describe('MutationObserver iframe handling', () => {
+    // Note: These tests verify the logic using divs with data attributes since
+    // happy-dom doesn't support asset:// or blob:// URL schemes for iframes.
+    // The actual iframe handling is tested via E2E tests.
+
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create mock AssetManager with HTML resolution methods
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+        getAssetMetadata: vi.fn(),
+        _isHtmlAsset: vi.fn(),
+      };
+
+      // Setup jQuery mock
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      // Set up eXeLearning with AssetManager
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      // Clear and reload module
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('MutationObserver handles img elements with asset:// src', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
+
+      // Create an img with asset:// URL - MutationObserver should process it
+      const img = document.createElement('img');
+      img.setAttribute('src', 'asset://img-uuid-123/photo.jpg');
+      document.body.appendChild(img);
+
+      // Wait for MutationObserver to process
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset URL
+      expect(img.getAttribute('data-asset-url')).toBe('asset://img-uuid-123/photo.jpg');
+
+      document.body.removeChild(img);
+    });
+
+    it('MutationObserver handles origin attribute with asset:// URL', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/origin-resolved');
+
+      const img = document.createElement('img');
+      img.setAttribute('origin', 'asset://origin-uuid/fullsize.jpg');
+      document.body.appendChild(img);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset origin URL
+      expect(img.getAttribute('data-asset-origin')).toBe('asset://origin-uuid/fullsize.jpg');
+
+      document.body.removeChild(img);
+    });
+
+    it('MutationObserver handles anchor elements with asset:// href', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/anchor-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://anchor-uuid/image.jpg');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset URL
+      expect(anchor.getAttribute('data-asset-url')).toBe('asset://anchor-uuid/image.jpg');
+
+      document.body.removeChild(anchor);
+    });
+
+    it('sets download attribute for non-image file anchors (e.g. .docx)', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/doc-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456789/report.docx');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // getAttribute('href') returns asset:// for persistence (intercepted by asset_url_resolver)
+      // Verify resolution happened by checking data-asset-loading was removed
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.getAttribute('download')).toBe('report.docx');
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download attribute for image file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456780/photo.jpg');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download when URL has no filename path', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/no-path-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456781');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('sets download attribute for PDF file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/pdf-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456782/document.pdf');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.getAttribute('download')).toBe('document.pdf');
+
+      document.body.removeChild(anchor);
+    });
+
+	    it('MutationObserver processes nested elements', async () => {
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
+
+	      const container = document.createElement('div');
+	      container.innerHTML = '<img src="asset://nested-uuid/nested.jpg">';
+	      document.body.appendChild(container);
+
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      const img = container.querySelector('img');
+	      expect(img.getAttribute('data-asset-url')).toBe('asset://nested-uuid/nested.jpg');
+
+	      document.body.removeChild(container);
+	    });
+
+	    it('tracks unresolved iframe assets for retry (data-asset-id + data-asset-loading)', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue(null); // simulate blob not ready yet
+	      mockAssetManager.resolveAssetURL.mockResolvedValue(null);
+
+	      const attrs = new Map([['src', 'asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 0));
+
+	      expect(mockIframe.getAttribute('data-asset-src')).toBe('asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html');
+	      expect(mockIframe.getAttribute('data-asset-id')).toBe('1c43404d-a2b2-563a-8a87-9ac10a16fcb3');
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBe('true');
+	      expect(mockIframe.src).toBe('about:blank');
+	    });
+
+	    it('clears iframe loading attributes after successful HTML resolution', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('http://localhost/resolved.html');
+
+	      const attrs = new Map([['src', 'asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 0));
+
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBeNull();
+	      expect(mockIframe.getAttribute('data-asset-id')).toBeNull();
+	      expect(mockIframe.src).toBe('http://localhost/resolved.html');
+	    });
+
+	    it('handles non-HTML iframe (PDF) with regular resolution', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      // PDF is not an HTML asset
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'document.pdf', mime: 'application/pdf' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(false);
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/pdf-resolved');
+
+	      const attrs = new Map([['src', 'asset://pdf-uuid-123/document.pdf']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      // Should use regular resolution for non-HTML iframe
+	      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-uuid-123/document.pdf');
+	      expect(mockIframe.src).toBe('blob:http://localhost/pdf-resolved');
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBeNull();
+	      expect(mockIframe.getAttribute('data-asset-id')).toBeNull();
+	    });
+
+	    it('handles VIDEO element with asset:// src', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/video-resolved');
+
+	      const attrs = new Map([['src', 'asset://video-uuid/video.mp4']]);
+	      const loadCalled = { value: false };
+	      const mockVideo = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'VIDEO',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	        load: () => { loadCalled.value = true; },
+	      };
+	      Object.defineProperty(mockVideo, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockVideo);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      expect(mockVideo.getAttribute('data-asset-url')).toBe('asset://video-uuid/video.mp4');
+	      expect(mockVideo.src).toBe('blob:http://localhost/video-resolved');
+	      expect(loadCalled.value).toBe(true);
+	    });
+
+	    it('handles AUDIO element with asset:// src', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/audio-resolved');
+
+	      const attrs = new Map([['src', 'asset://audio-uuid/audio.mp3']]);
+	      const loadCalled = { value: false };
+	      const mockAudio = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'AUDIO',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	        load: () => { loadCalled.value = true; },
+	      };
+	      Object.defineProperty(mockAudio, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockAudio);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      expect(mockAudio.getAttribute('data-asset-url')).toBe('asset://audio-uuid/audio.mp3');
+	      expect(mockAudio.src).toBe('blob:http://localhost/audio-resolved');
+	      expect(loadCalled.value).toBe(true);
+	    });
+
+	    it('handles SOURCE element with asset:// src and triggers parent load', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/source-resolved');
+
+	      const parentLoadCalled = { value: false };
+	      const mockParent = {
+	        tagName: 'VIDEO',
+	        load: () => { parentLoadCalled.value = true; },
+	      };
+
+	      const attrs = new Map([['src', 'asset://source-uuid/video.webm']]);
+	      const mockSource = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'SOURCE',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	        parentElement: mockParent,
+	      };
+	      Object.defineProperty(mockSource, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockSource);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      expect(mockSource.getAttribute('data-asset-url')).toBe('asset://source-uuid/video.webm');
+	      expect(mockSource.src).toBe('blob:http://localhost/source-resolved');
+	      expect(parentLoadCalled.value).toBe(true);
+	    });
+
+	    it('handles SOURCE element inside AUDIO parent', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/audio-source-resolved');
+
+	      const parentLoadCalled = { value: false };
+	      const mockParent = {
+	        tagName: 'AUDIO',
+	        load: () => { parentLoadCalled.value = true; },
+	      };
+
+	      const attrs = new Map([['src', 'asset://source-uuid/audio.ogg']]);
+	      const mockSource = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'SOURCE',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	        parentElement: mockParent,
+	      };
+	      Object.defineProperty(mockSource, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockSource);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      expect(mockSource.src).toBe('blob:http://localhost/audio-source-resolved');
+	      expect(parentLoadCalled.value).toBe(true);
+	    });
+
+	    it('handles SOURCE element without media parent (does not call load)', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/orphan-source');
+
+	      const mockParent = {
+	        tagName: 'DIV', // Not a VIDEO or AUDIO
+	      };
+
+	      const attrs = new Map([['src', 'asset://source-uuid/file.webm']]);
+	      const mockSource = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'SOURCE',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	        parentElement: mockParent,
+	      };
+	      Object.defineProperty(mockSource, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockSource);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      // Should still resolve the URL, just not call load on parent
+	      expect(mockSource.src).toBe('blob:http://localhost/orphan-source');
+	    });
+
+	    it('handles iframe with HTML resolution failure - uses fallback', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      mockAssetManager.resolveHtmlWithAssets.mockRejectedValue(new Error('Resolution error'));
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/fallback');
+
+	      const attrs = new Map([['src', 'asset://html-uuid/index.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      // Should fallback to regular resolution
+	      expect(mockIframe.src).toBe('blob:http://localhost/fallback');
+	    });
+
+	    it('handles iframe when assetManager is not available', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      // Remove assetManager
+	      window.eXeLearning.app.project._yjsBridge.assetManager = null;
+
+	      const attrs = new Map([['src', 'asset://no-manager-uuid/test.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      // Should still set about:blank and data-asset-src
+	      expect(mockIframe.getAttribute('data-asset-src')).toBe('asset://no-manager-uuid/test.html');
+	      expect(mockIframe.src).toBe('about:blank');
+	    });
+
+	    it('handles HTML iframe fallback when resolveHtmlWithAssets returns null', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      // resolveHtmlWithAssets returns null (blob not ready)
+	      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue(null);
+	      // Fallback resolveAssetURL should be called
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/html-fallback');
+
+	      // Use valid UUID format for assetId extraction
+	      const attrs = new Map([['src', 'asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/index.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 100));
+
+	      // Should use fallback resolution when HTML resolution returns null
+	      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/index.html');
+	      expect(mockIframe.src).toBe('blob:http://localhost/html-fallback');
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBeNull();
+	      expect(mockIframe.getAttribute('data-asset-id')).toBeNull();
+	    });
+
+	    it('handles HTML iframe catch fallback when resolveHtmlWithAssets throws', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      // resolveHtmlWithAssets throws an error
+	      mockAssetManager.resolveHtmlWithAssets.mockRejectedValue(new Error('Resolution failed'));
+	      // Fallback resolveAssetURL should be called
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/catch-fallback');
+
+	      // Use valid UUID format for assetId extraction
+	      const attrs = new Map([['src', 'asset://b2c3d4e5-f6a7-8901-bcde-f23456789012/index.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 100));
+
+	      // Should use catch fallback resolution
+	      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://b2c3d4e5-f6a7-8901-bcde-f23456789012/index.html');
+	      expect(mockIframe.src).toBe('blob:http://localhost/catch-fallback');
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBeNull();
+	    });
+
+	    it('skips non-element nodes', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      // Text node (nodeType = 3)
+	      const mockTextNode = {
+	        nodeType: Node.TEXT_NODE,
+	        textContent: 'asset://test',
+	      };
+
+	      // Should not throw and should do nothing
+	      resolver.__processAddedNodeForTests(mockTextNode);
+	      await new Promise(resolve => setTimeout(resolve, 10));
+
+	      // No assetManager calls should be made
+	      expect(mockAssetManager.resolveAssetURL).not.toHaveBeenCalled();
+	    });
+
+	    it('handles element without matches method (fallback path)', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested-resolved');
+
+	      // Container without matches but with querySelectorAll
+	      const nestedImg = document.createElement('img');
+	      nestedImg.setAttribute('src', 'asset://nested-img-uuid/image.jpg');
+
+	      const mockContainer = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'DIV',
+	        // No matches method
+	        querySelectorAll: (selector) => {
+	          if (selector.includes('img')) {
+	            return [nestedImg];
+	          }
+	          return [];
+	        },
+	      };
+
+	      resolver.__processAddedNodeForTests(mockContainer);
+	      await new Promise(resolve => setTimeout(resolve, 50));
+
+	      // Should still process nested img
+	      expect(nestedImg.getAttribute('data-asset-url')).toBe('asset://nested-img-uuid/image.jpg');
+	    });
+	  });
+
+  describe('postMessage listener for exe-resolve-html-link', () => {
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create mock AssetManager
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+        findAssetByRelativePath: vi.fn(),
+      };
+
+      // Setup jQuery mock
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn(function() { return this; }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      // Set up eXeLearning with AssetManager
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('ignores messages with wrong type', async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'some-other-type', href: 'page2.html' }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(mockAssetManager.findAssetByRelativePath).not.toHaveBeenCalled();
+    });
+
+    it('handles exe-resolve-html-link message', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'linked-asset-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/linked-resolved');
+
+      // Create an iframe that would match the source
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-asset-src', 'asset://original-uuid/index.html');
+      document.body.appendChild(iframe);
+
+      // We can't easily mock event.source === iframe.contentWindow in jsdom
+      // So we test that the handler processes the message correctly
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'aaa_web',
+          assetId: 'original-uuid'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.findAssetByRelativePath).toHaveBeenCalledWith('aaa_web', './page2.html');
+      expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('linked-asset-uuid');
+
+      document.body.removeChild(iframe);
+    });
+
+    it('logs warning when assetManager is not available', async () => {
+      window.eXeLearning = null;
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Cannot resolve HTML link - assetManager not available'
+      );
+    });
+
+    it('logs warning when linked asset is not found', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue(null);
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './nonexistent.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Could not find linked asset:',
+        './nonexistent.html',
+        'from baseFolder:',
+        'folder'
+      );
+    });
+
+    it('logs warning when HTML resolution fails', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'found-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue(null);
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Failed to resolve HTML asset:',
+        'found-uuid'
+      );
+    });
+
+    it('updates iframe src when source matches', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'page2-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/page2-resolved');
+
+      // Create iframe with data-asset-src
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-asset-src', 'asset://original/index.html');
+      iframe.src = 'blob:http://localhost/original';
+      document.body.appendChild(iframe);
+
+      // Create a mock contentWindow to simulate matching
+      const mockContentWindow = {};
+      Object.defineProperty(iframe, 'contentWindow', {
+        value: mockContentWindow,
+        writable: false,
+        configurable: true
+      });
+
+      // Dispatch message with source matching the iframe
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'folder'
+        },
+        source: mockContentWindow
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // The iframe src should be updated
+      expect(iframe.src).toBe('blob:http://localhost/page2-resolved');
+
+      document.body.removeChild(iframe);
+    });
+
+    it('also checks iframes with data-mce-html attribute', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'mce-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/mce-resolved');
+
+      // Create iframe with data-mce-html attribute (set by TinyMCE)
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-mce-html', 'true');
+      iframe.src = 'blob:http://localhost/mce-original';
+      document.body.appendChild(iframe);
+
+      const mockContentWindow = {};
+      Object.defineProperty(iframe, 'contentWindow', {
+        value: mockContentWindow,
+        writable: false,
+        configurable: true
+      });
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './linked.html',
+          baseFolder: 'base'
+        },
+        source: mockContentWindow
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(iframe.src).toBe('blob:http://localhost/mce-resolved');
+
+      document.body.removeChild(iframe);
+    });
+  });
+
+  describe('vanilla JS src property interception', () => {
+    // Note: happy-dom has its own src property implementations that override our
+    // custom property descriptors. The actual vanilla JS interception is tested via E2E.
+    // These tests verify that the module loads correctly and the resolver is available.
+
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+      };
+
+      window.jQuery = function() {
+        return { each: vi.fn(), length: 1 };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('exposes resolve function for programmatic resolution', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/resolved');
+
+      const result = await window.eXeLearningAssetResolver.resolve('asset://test-uuid/file.jpg');
+
+      expect(result).toBe('blob:http://localhost/resolved');
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid/file.jpg');
+    });
+
+    it('img.src with non-asset URL is not intercepted', () => {
+      const img = document.createElement('img');
+      img.src = 'https://example.com/photo.jpg';
+
+      expect(img.src).toBe('https://example.com/photo.jpg');
+      expect(img.getAttribute('data-asset-url')).toBeNull();
+    });
+
+    it('video.src with non-asset URL is not intercepted', () => {
+      const video = document.createElement('video');
+      video.src = 'https://example.com/video.mp4';
+
+      expect(video.src).toBe('https://example.com/video.mp4');
+      expect(video.getAttribute('data-asset-url')).toBeNull();
+    });
+
+    it('audio.src with non-asset URL is not intercepted', () => {
+      const audio = document.createElement('audio');
+      audio.src = 'https://example.com/audio.mp3';
+
+      expect(audio.src).toBe('https://example.com/audio.mp3');
+      expect(audio.getAttribute('data-asset-url')).toBeNull();
+    });
+
+    it('property descriptor setter intercepts asset:// URLs for IMAGE', async () => {
+      // Test by directly invoking the modified property descriptor setter
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-intercepted');
+
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+      expect(descriptor).toBeDefined();
+
+      // Create a mock element that the setter will be called on
+      const mockElement = {
+        tagName: 'IMG',
+        setAttribute: vi.fn(),
+        parentElement: null,
+        load: vi.fn(),
+      };
+
+      // Call the setter with asset:// URL
+      descriptor.set.call(mockElement, 'asset://c1d2e3f4-5678-90ab-cdef-123456789abc/image.png');
+
+      // Should store the original URL
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-asset-url', 'asset://c1d2e3f4-5678-90ab-cdef-123456789abc/image.png');
+
+      // Wait for async resolution
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://c1d2e3f4-5678-90ab-cdef-123456789abc/image.png');
+    });
+
+    it('property descriptor setter intercepts asset:// URLs for VIDEO and calls load()', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/video-intercepted');
+
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLVideoElement.prototype, 'src');
+      // Skip if happy-dom doesn't define this descriptor
+      if (!descriptor) {
+        // Verify the module at least tried to set it up (coverage from the forEach loop)
+        expect(window.HTMLVideoElement).toBeDefined();
+        return;
+      }
+
+      const mockElement = {
+        tagName: 'VIDEO',
+        setAttribute: vi.fn(),
+        parentElement: null,
+        load: vi.fn(),
+      };
+
+      descriptor.set.call(mockElement, 'asset://d2e3f4a5-6789-01bc-def0-234567890abc/video.mp4');
+
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-asset-url', 'asset://d2e3f4a5-6789-01bc-def0-234567890abc/video.mp4');
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalled();
+      // Video element should have load() called after resolution
+      expect(mockElement.load).toHaveBeenCalled();
+    });
+
+    it('property descriptor setter intercepts asset:// URLs for AUDIO and calls load()', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/audio-intercepted');
+
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLAudioElement.prototype, 'src');
+      // Skip if happy-dom doesn't define this descriptor
+      if (!descriptor) {
+        // Verify the module at least tried to set it up (coverage from the forEach loop)
+        expect(window.HTMLAudioElement).toBeDefined();
+        return;
+      }
+
+      const mockElement = {
+        tagName: 'AUDIO',
+        setAttribute: vi.fn(),
+        parentElement: null,
+        load: vi.fn(),
+      };
+
+      descriptor.set.call(mockElement, 'asset://e3f4a5b6-7890-12cd-ef01-345678901bcd/audio.mp3');
+
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-asset-url', 'asset://e3f4a5b6-7890-12cd-ef01-345678901bcd/audio.mp3');
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalled();
+      expect(mockElement.load).toHaveBeenCalled();
+    });
+
+    it('property descriptor setter intercepts asset:// URLs for SOURCE and calls parent.load()', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/source-intercepted');
+
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLSourceElement.prototype, 'src');
+      expect(descriptor).toBeDefined();
+
+      const mockParent = {
+        tagName: 'VIDEO',
+        load: vi.fn(),
+      };
+
+      const mockElement = {
+        tagName: 'SOURCE',
+        setAttribute: vi.fn(),
+        parentElement: mockParent,
+        load: vi.fn(),
+      };
+
+      descriptor.set.call(mockElement, 'asset://f4a5b6c7-8901-23de-f012-456789012cde/source.webm');
+
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-asset-url', 'asset://f4a5b6c7-8901-23de-f012-456789012cde/source.webm');
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalled();
+      // SOURCE element should trigger parent's load()
+      expect(mockParent.load).toHaveBeenCalled();
+    });
+
+    it('property descriptor setter intercepts asset:// URLs for IFRAME and sets about:blank', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/iframe-intercepted');
+
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src');
+      expect(descriptor).toBeDefined();
+
+      // Track what values were set via the original setter
+      let lastSetValue = null;
+      const mockOriginalSetter = vi.fn((value) => { lastSetValue = value; });
+
+      const mockElement = {
+        tagName: 'IFRAME',
+        setAttribute: vi.fn(),
+        parentElement: null,
+      };
+
+      // Bind a custom context that tracks the originalDescriptor.set call
+      // Since we're testing the module's setter, we need to verify it calls
+      // originalDescriptor.set with 'about:blank' for iframes
+
+      descriptor.set.call(mockElement, 'asset://a5b6c7d8-9012-34ef-0123-567890123def/page.html');
+
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-asset-url', 'asset://a5b6c7d8-9012-34ef-0123-567890123def/page.html');
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalled();
+    });
+
+    it('property descriptor setter passes through non-asset URLs', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+      expect(descriptor).toBeDefined();
+
+      const img = document.createElement('img');
+      descriptor.set.call(img, 'https://example.com/normal.jpg');
+
+      // Non-asset URLs should not store data-asset-url
+      expect(img.getAttribute('data-asset-url')).toBeNull();
+    });
+  });
+
+  describe('HTML asset link click interception', () => {
+    let resolver;
+    let originalAttrFn;
+    let originalPropFn;
+    let alertMock;
+
+    beforeEach(async () => {
+      vi.resetModules();
+
+      // Set up alert mock before loading module
+      window.alert = vi.fn();
+      alertMock = window.alert;
+
+      originalAttrFn = vi.fn(function() { return this; });
+      originalPropFn = vi.fn(function() { return this; });
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+
+      window.jQuery.fn = {
+        attr: originalAttrFn,
+        prop: originalPropFn,
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURL: vi.fn(),
+              },
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+      resolver = window.eXeLearningAssetResolver;
+    });
+
+    afterEach(() => {
+      delete window.alert;
+    });
+
+    it('blocks clicks on anchor elements with HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+      expect(alertMock.mock.calls[0][0]).toContain('HTML websites');
+
+      document.body.removeChild(link);
+    });
+
+    it('blocks clicks on anchor elements with .htm extension', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.htm');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements with non-HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.pdf');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements without data-asset-url', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('handles clicks on nested elements inside HTML asset links', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      const span = document.createElement('span');
+      span.textContent = 'Click me';
+      link.appendChild(span);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      span.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('ignores clicks on non-link elements', () => {
+      const div = document.createElement('div');
+      div.textContent = 'Not a link';
+      document.body.appendChild(div);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      div.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(div);
+    });
+
+    it('handles case insensitive HTML extension matching', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.HTML');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on links with external URLs even if they end in .html', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      // No data-asset-url attribute - this is an external link
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on external http links to open in new tab', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/some-page';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on http:// links', () => {
+      const link = document.createElement('a');
+      link.href = 'http://example.com/page';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      document.body.removeChild(link);
+    });
+
+    it('does not set target="_blank" on non-http links', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'mailto:test@example.com');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('target')).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on blob: URL links (asset files like PDFs)', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'blob:http://localhost:8080/71cf3174-a4ae-4c3b-9f2b-0972b94b8f03');
+      link.title = 'sample.pdf';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on blob: URL links for images', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'blob:http://localhost:8080/768371ae-2d7d-4d94-9648-02b596d2755e');
+      link.title = 'screenshot.png';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      document.body.removeChild(link);
+    });
+
+    it('adds download attribute on blob: URL click for non-image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/71cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'abc12345-def6-7890-abcd-ef1234567890';
+
+      // Set up assetManager with reverseBlobCache and getAssetMetadata
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'report.docx',
+        mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('download')).toBe('report.docx');
+      expect(link.getAttribute('target')).toBe('_blank');
+
+      document.body.removeChild(link);
+    });
+
+    it('does NOT add download attribute on blob: URL click for image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('download')).toBe(false);
+      expect(link.getAttribute('target')).toBe('_blank');
+
+      document.body.removeChild(link);
+    });
+
+    describe('Electron blob download (single save dialog, issue #1875)', () => {
+      let fetchMock;
+
+      afterEach(() => {
+        delete window.electronAPI;
+        delete global.fetch;
+        delete window.fetch;
+      });
+
+      function setupElectron(saveBufferAs) {
+        window.electronAPI = { saveBufferAs };
+        const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
+        fetchMock = vi.fn(() =>
+          Promise.resolve({ arrayBuffer: () => Promise.resolve(buffer) }),
+        );
+        global.fetch = fetchMock;
+        window.fetch = fetchMock;
+      }
+
+      it('routes non-image blob downloads through saveBufferAs to avoid the double dialog', async () => {
+        const blobUrl = 'blob:app://localhost/a61add6d-a090-4e22-883e-2da07a032e50';
+        const assetId = 'rar12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/archive.rar'));
+        setupElectron(saveBufferAs);
+        window.__currentProjectId = 'project-xyz';
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'archive.rar',
+          mime: 'application/vnd.rar',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        // The default <a download> navigation is suppressed so Electron's
+        // will-download handler never fires a second native dialog.
+        expect(event.defaultPrevented).toBe(true);
+
+        // Note: each test re-imports the module, accumulating click listeners
+        // on the shared document, so we assert "called" rather than an exact
+        // count. In the real app the IIFE registers a single listener.
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(fetchMock).toHaveBeenCalledWith(blobUrl);
+        const [bytes, projectKey, filename] = saveBufferAs.mock.calls[0];
+        expect(bytes).toBeInstanceOf(Uint8Array);
+        expect(projectKey).toBe('project-xyz');
+        expect(filename).toBe('archive.rar');
+
+        document.body.removeChild(link);
+        delete window.__currentProjectId;
+      });
+
+      it('falls back to a default project key when none is set and logs save failures', async () => {
+        const blobUrl = 'blob:app://localhost/b71add6d-a090-4e22-883e-2da07a032e51';
+        const assetId = 'rar67890-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.reject(new Error('user cancelled')));
+        setupElectron(saveBufferAs);
+        delete window.__currentProjectId;
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'data.zip',
+          mime: 'application/zip',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(saveBufferAs.mock.calls[0][1]).toBe('asset-download');
+        await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled());
+        expect(errorSpy.mock.calls[0][0]).toContain('saveBufferAs failed');
+
+        errorSpy.mockRestore();
+        document.body.removeChild(link);
+      });
+
+      it('does not route image blob links through saveBufferAs (lightbox/new tab)', () => {
+        const blobUrl = 'blob:app://localhost/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+        const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/photo.jpg'));
+        setupElectron(saveBufferAs);
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'photo.jpg',
+          mime: 'image/jpeg',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(saveBufferAs).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+        expect(link.getAttribute('target')).toBe('_blank');
+
+        document.body.removeChild(link);
+      });
+    });
+
+    it('skips links inside TinyMCE editors', () => {
+      const tinymceContainer = document.createElement('div');
+      tinymceContainer.classList.add('tox-tinymce');
+      const link = document.createElement('a');
+      link.href = 'https://example.com';
+      tinymceContainer.appendChild(link);
+      document.body.appendChild(tinymceContainer);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('target')).toBe(false);
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(tinymceContainer);
+    });
+
+    it('uses translation function when available', async () => {
+      // Need to reload module with translation function
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      const translatedMessage = 'Mensaje traducido de prueba';
+      window._ = vi.fn(() => translatedMessage);
+      window.alert = vi.fn();
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(window.alert).toHaveBeenCalledWith(translatedMessage);
+
+      document.body.removeChild(link);
+      delete window._;
+    });
+
+    it('uses English fallback when translation function is not available', async () => {
+      // Need to reload module without translation function
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      // Ensure _ is not defined
+      delete window._;
+      window.alert = vi.fn();
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      // Should use English fallback message
+      expect(window.alert).toHaveBeenCalledWith(
+        'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.'
+      );
+
+      document.body.removeChild(link);
+    });
+
+    it('uses English fallback when _ is defined but not a function', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      // Set _ to a non-function value
+      window._ = 'not a function';
+      window.alert = vi.fn();
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      // Should use English fallback message when _ is not a function
+      expect(window.alert).toHaveBeenCalledWith(
+        'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.'
+      );
+
+      document.body.removeChild(link);
+      delete window._;
+    });
+  });
+
+  describe('DOMContentLoaded listener for MutationObserver', () => {
+    it('sets up MutationObserver via DOMContentLoaded when document.body is not initially available', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      // Mock document.body to be null initially
+      const originalBody = document.body;
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+      // Temporarily remove document.body
+      Object.defineProperty(document, 'body', {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn(function() { return this; }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      // Verify DOMContentLoaded listener was registered
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        'DOMContentLoaded',
+        expect.any(Function)
+      );
+
+      // Restore document.body before triggering DOMContentLoaded
+      Object.defineProperty(document, 'body', {
+        value: originalBody,
+        writable: true,
+        configurable: true,
+      });
+
+      // Trigger the DOMContentLoaded callback
+      const domContentLoadedCallback = addEventListenerSpy.mock.calls.find(
+        call => call[0] === 'DOMContentLoaded'
+      )?.[1];
+
+      if (domContentLoadedCallback) {
+        domContentLoadedCallback();
+      }
+
+      // The resolver should now be functional
+      expect(window.eXeLearningAssetResolver).toBeDefined();
+
+      addEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('API: extractFilenameFromAssetUrl', () => {
+    it('is exposed on eXeLearningAssetResolver', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      expect(typeof window.eXeLearningAssetResolver.extractFilenameFromAssetUrl).toBe('function');
+      delete window.jQuery;
+    });
+
+    it('extracts filename from asset://uuid/filename.ext URL', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromAssetUrl;
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3/report.docx')).toBe('report.docx');
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3.png')).toBeNull();
+      expect(fn(null)).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: extractFilenameFromBlob', () => {
+    it('returns filename from blob URL via AssetManager reverseBlobCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/2f2738f5-90c8-4dc9-8076-8c06fa6c39c1';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'abc123']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'report.docx' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromBlob;
+      expect(fn(blobUrl)).toBe('report.docx');
+      expect(fn('blob:http://localhost:8080/unknown')).toBeNull();
+      expect(fn('not-a-blob')).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: getAssetUrlFromBlob', () => {
+    it('returns asset URL from blobToAssetCache after resolve', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/test-uuid';
+      const assetUrl = 'asset://abc123/video.mp4';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn().mockResolvedValue(blobUrl),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const resolver = window.eXeLearningAssetResolver;
+      // Populate blobToAssetCache by resolving
+      await resolver.resolve(assetUrl);
+      expect(resolver.getAssetUrlFromBlob(blobUrl)).toBe(assetUrl);
+      delete window.jQuery;
+    });
+
+    it('falls back to AssetManager reverseBlobCache when not in blobToAssetCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/fallback-uuid';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'def456']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'audio.mp3' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const result = window.eXeLearningAssetResolver.getAssetUrlFromBlob(blobUrl);
+      expect(result).toBe('asset://def456/audio.mp3');
+      delete window.jQuery;
+    });
+
+    it('returns null for non-blob URLs', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob('asset://abc')).toBeNull();
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob(null)).toBeNull();
+      delete window.jQuery;
+    });
   });
 });

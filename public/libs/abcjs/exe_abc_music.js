@@ -165,7 +165,7 @@ function setTune(userAction, index) {
     if (!visualObjList) return;
     var visualObj = visualObjList[0];
     var midi = window.ABCJS.synth.getMidiFile(abc[index],{
-        downloadLabel : "MIDI",
+        downloadLabel : $exe_i18n.download,
         fileName : "midi"
     });
     midiButtons[index].innerHTML = midi;
@@ -226,10 +226,18 @@ $exeABCmusic = {
   appendFilesAbcNotation() {
     if (window.eXeLearning === undefined) return; // Not load the scripts dynamically in the export
 
-    // Use versioned path for cache busting: {basePath}/{version}/libs/...
-    const basePath = eXeLearning.config.basePath || '';
-    const version = eXeLearning.version || 'v1.0.0';
-    let libsPath = `${basePath}/${version}/libs`;
+    // Determine libs path based on mode
+    let libsPath;
+    if (window.__EXE_STATIC_MODE__) {
+      // Static mode: use relative paths without version prefix
+      const basePath = eXeLearning.config.basePath || '.';
+      libsPath = `${basePath}/libs`;
+    } else {
+      // Server mode: use versioned paths for cache busting
+      const basePath = eXeLearning.config.basePath || '';
+      const version = eXeLearning.version || 'v1.0.0';
+      libsPath = `${basePath}/${version}/libs`;
+    }
     let abcmusicPath = `${libsPath}/tinymce_5/js/tinymce/plugins/abcmusic`;
 
     let head = document.querySelector("head");
@@ -323,11 +331,11 @@ $exeABCmusic = {
    *
    */
   setButtonsBehaviour() {
-    $(`.abc-audio-tooglebutton`).on('click', function (e) {
+    $(`.abc-audio-tooglebutton`).off('click').on('click', function (e) {
       e.preventDefault();
       $(this).parent().parent().next().toggle();
     });
-    $(`.abc-tooglebutton`).on('click', function (e) {
+    $(`.abc-tooglebutton`).off('click').on('click', function (e) {
       e.preventDefault();
       $(this).parent().parent().next().next().toggle();
     });

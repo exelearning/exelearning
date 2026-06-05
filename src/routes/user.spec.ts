@@ -12,6 +12,11 @@ const TEST_JWT_SECRET = process.env.APP_SECRET || 'test-secret-for-user-routes-t
 
 // Override APP_SECRET for tests
 const originalAppSecret = process.env.APP_SECRET;
+// user.ts:getJwtSecret() prefers JWT_SECRET over APP_SECRET. Other specs in the
+// same Bun process (auth.spec.ts, admin.spec.ts, api/v1/*.spec.ts, ...) set
+// process.env.JWT_SECRET and don't clean it up, which would make jwt.verify()
+// use a different secret than the one this test signs with, breaking auth.
+const originalJwtSecret = process.env.JWT_SECRET;
 
 describe('User Routes', () => {
     let app: Elysia;
@@ -27,8 +32,8 @@ describe('User Routes', () => {
         return {
             db: {} as any, // Not used directly, queries use it
             queries: {
-                findAllPreferencesForUser: async (_db: any, userId: string) => {
-                    const userPrefs = savedPreferences.get(userId);
+                findAllPreferencesForUser: async (_db: any, ownerId: number) => {
+                    const userPrefs = savedPreferences.get(String(ownerId));
                     if (!userPrefs) return [];
 
                     return Array.from(userPrefs.entries()).map(([key, value]) => ({
@@ -36,18 +41,19 @@ describe('User Routes', () => {
                         value: value,
                     }));
                 },
-                findPreference: async (_db: any, userId: string, key: string) => {
-                    const userPrefs = savedPreferences.get(userId);
+                findPreference: async (_db: any, ownerId: number, key: string) => {
+                    const userPrefs = savedPreferences.get(String(ownerId));
                     if (!userPrefs) return undefined;
                     const value = userPrefs.get(key);
                     if (value === undefined) return undefined;
                     return { preference_key: key, value };
                 },
-                setPreference: async (_db: any, userId: string, key: string, value: string) => {
-                    if (!savedPreferences.has(userId)) {
-                        savedPreferences.set(userId, new Map());
+                setPreference: async (_db: any, ownerId: number, key: string, value: string) => {
+                    const ownerKey = String(ownerId);
+                    if (!savedPreferences.has(ownerKey)) {
+                        savedPreferences.set(ownerKey, new Map());
                     }
-                    savedPreferences.get(userId)!.set(key, value);
+                    savedPreferences.get(ownerKey)!.set(key, value);
                 },
                 findUserById: async (_db: any, userId: number) => {
                     return mockUsers.get(userId) || null;
@@ -66,8 +72,10 @@ describe('User Routes', () => {
     }
 
     beforeEach(async () => {
-        // Set test secret
+        // Set test secret on both vars so getJwtSecret() (JWT_SECRET || APP_SECRET)
+        // always resolves to the same value this spec signs with.
         process.env.APP_SECRET = TEST_JWT_SECRET;
+        process.env.JWT_SECRET = TEST_JWT_SECRET;
 
         savedPreferences = new Map();
         mockUsers = new Map();
@@ -106,11 +114,16 @@ describe('User Routes', () => {
     });
 
     afterEach(() => {
-        // Restore original APP_SECRET
+        // Restore original APP_SECRET / JWT_SECRET
         if (originalAppSecret) {
             process.env.APP_SECRET = originalAppSecret;
         } else {
             delete process.env.APP_SECRET;
+        }
+        if (originalJwtSecret !== undefined) {
+            process.env.JWT_SECRET = originalJwtSecret;
+        } else {
+            delete process.env.JWT_SECRET;
         }
     });
 
@@ -162,8 +175,9 @@ describe('User Routes', () => {
 
             const body = await res.json();
             expect(body.userPreferences).toBeDefined();
-            expect(body.userPreferences.locale.value).toBe('es'); // default
+            expect(body.userPreferences.locale.value).toBe('en'); // default (APP_LOCALE or 'en')
             expect(body.userPreferences.theme.value).toBe('base'); // default
+            expect(body.userPreferences.defaultAI.value).toBe('https://chatgpt.com/?q='); // default
         });
 
         it('should handle JSON-wrapped preference values', async () => {
@@ -225,6 +239,7 @@ describe('User Routes', () => {
                         theme: 'dark',
                         locale: 'en',
                         advancedMode: 'false',
+                        defaultAI: 'https://claude.ai/new?q=',
                     }),
                     headers: {
                         'Content-Type': 'application/json',
@@ -237,6 +252,7 @@ describe('User Routes', () => {
             expect(savedPreferences.get('1')?.get('theme')).toBe('dark');
             expect(savedPreferences.get('1')?.get('locale')).toBe('en');
             expect(savedPreferences.get('1')?.get('advancedMode')).toBe('false');
+            expect(savedPreferences.get('1')?.get('defaultAI')).toBe('https://claude.ai/new?q=');
         });
 
         it('should handle object values by stringifying', async () => {
@@ -524,7 +540,7 @@ describe('User Routes', () => {
             const body = await res.json();
             // Should return defaults even when query fails
             expect(body.userPreferences).toBeDefined();
-            expect(body.userPreferences.locale.value).toBe('es'); // default
+            expect(body.userPreferences.locale.value).toBe('en'); // default (APP_LOCALE or 'en')
         });
 
         it('should handle setPreference errors gracefully (logged but not propagated)', async () => {
@@ -701,6 +717,76 @@ describe('User Routes', () => {
     });
 
     describe('preference value parsing edge cases', () => {
+        it('should handle corrupted JSON in preference values gracefully', async () => {
+            // Store invalid JSON - should fall back to raw value
+            savedPreferences.set('1', new Map([['corruptedPref', '{invalid json']]));
+
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    headers: { Cookie: authCookie },
+                }),
+            );
+
+            const body = await res.json();
+            // Corrupted JSON should be treated as raw string value
+            expect(body.userPreferences.corruptedPref.value).toBe('{invalid json');
+        });
+
+        it('should handle empty preferences object in POST request', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+
+        it('should handle empty preferences object in PUT request', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'PUT',
+                    body: JSON.stringify({}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+
+        it('should handle null preference value', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: JSON.stringify({ nullPref: null }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // null is JSON-stringified to "null"
+            expect(savedPreferences.get('1')?.get('nullPref')).toBe('null');
+        });
+
         it('should handle non-JSON string preference values', async () => {
             savedPreferences.set('1', new Map([['simplePref', 'just a string']]));
 

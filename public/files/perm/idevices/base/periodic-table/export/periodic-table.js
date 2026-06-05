@@ -83,8 +83,9 @@ var $periodicTable = {
         $periodicTable.options = [];
 
         $periodicTable.activities.each(function (i) {
-            let dl = $('.periodic-table-DataGame', this),
-                mOption = $periodicTable.loadDataGame(dl),
+            let dl = $('.periodic-table-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            let mOption = $periodicTable.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 
             mOption.scorerp = 0;

@@ -12,14 +12,16 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
 } from '../interfaces';
 
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
     private pages: ExportPage[];
+    private contentXml: string | null;
 
-    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = []) {
+    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = [], contentXml: string | null = null) {
         this.metadata = {
             title: 'Test EPUB Project',
             author: 'Test Author',
@@ -30,6 +32,7 @@ class MockDocument implements ExportDocument {
             ...metadata,
         };
         this.pages = pages;
+        this.contentXml = contentXml;
     }
 
     getMetadata(): ExportMetadata {
@@ -39,14 +42,19 @@ class MockDocument implements ExportDocument {
     getNavigation(): ExportPage[] {
         return this.pages;
     }
+
+    async getContentXml(): Promise<string | null> {
+        return this.contentXml;
+    }
 }
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -82,12 +90,28 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
+        return null;
+    }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
     async getAsset(_path: string): Promise<Buffer | null> {
         return null;
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return [];
     }
 
     async getAllAssets(): Promise<
@@ -111,14 +135,22 @@ class MockZipProvider implements ZipProvider {
         this.files.set(path, content);
     }
 
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
     async generateAsync(): Promise<Buffer> {
         // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {};
+        const zipData: Record<string, Uint8Array | [Uint8Array, { level: 0 | 1 }]> = {};
         for (const [path, content] of this.files) {
             const data = typeof content === 'string' ? strToU8(content) : new Uint8Array(content);
             // EPUB requires mimetype to be first and uncompressed (level 0)
             if (path === 'mimetype') {
-                zipData[path] = [data, { level: 0 }];
+                zipData[path] = [data, { level: 0 as 0 }];
             } else {
                 zipData[path] = data;
             }
@@ -402,6 +434,64 @@ describe('Epub3Exporter', () => {
             expect(navXhtml).toContain('href="index.xhtml"');
             expect(navXhtml).toMatch(/href="html\/[^"]+\.xhtml"/);
         });
+
+        it('should exclude hidden pages from navigation but keep them in export', async () => {
+            const hiddenPages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Visible Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'page-2',
+                    title: 'Hidden Page',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: {
+                        visibility: 'false', // String "false" as per interface inspection or common pattern
+                    },
+                },
+                {
+                    id: 'page-3',
+                    title: 'Hidden Page Boolean',
+                    parentId: null,
+                    order: 2,
+                    blocks: [],
+                    properties: {
+                        visibility: false,
+                    },
+                },
+            ];
+            document = new MockDocument({}, hiddenPages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const navXhtml = zip.files.get('EPUB/nav.xhtml') as string;
+
+            // Should contain visible page
+            expect(navXhtml).toContain('Visible Page');
+
+            // Should NOT contain hidden pages in TOC
+            expect(navXhtml).not.toContain('Hidden Page');
+            expect(navXhtml).not.toContain('Hidden Page Boolean');
+
+            // Should be in spine/manifest even if hidden in usage
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            // Check that files are in the manifest
+            expect(packageOpf).toContain('href="html/hidden-page.xhtml"');
+            expect(packageOpf).toContain('href="html/hidden-page-boolean.xhtml"');
+
+            // Check spine has all 3 pages
+            const spineMatches = packageOpf.match(/<itemref/g);
+            expect(spineMatches?.length).toBe(3);
+
+            // And file should exist
+            expect(zip.files.has('EPUB/html/hidden-page.xhtml')).toBe(true);
+        });
     });
 
     describe('XHTML Page Generation', () => {
@@ -457,6 +547,38 @@ describe('Epub3Exporter', () => {
             const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
             expect(indexXhtml).toContain('Welcome to the course');
         });
+
+        it('should include made-with-eXe link by default', async () => {
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('made-with-eXe');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).not.toContain('made-with-eXe');
+        });
+
+        it('should include exe_powered_logo.png when addExeLink is true (default)', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content/img/exe_powered_logo.png')).toBe(false);
+        });
     });
 
     describe('Error Handling', () => {
@@ -480,9 +602,18 @@ describe('Epub3Exporter', () => {
             // Create a failing zip provider
             const failingZip: ZipProvider = {
                 addFile: () => {},
+                hasFile: () => false,
+                getFilePaths: () => [],
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
+                createZip: () => ({
+                    addFile: () => {},
+                    addFiles: () => {},
+                    hasFile: () => false,
+                    getFilePaths: () => [],
+                    generate: async () => new Uint8Array(),
+                }),
             };
             exporter = new Epub3Exporter(document, resources, assets, failingZip);
 
@@ -557,5 +688,334 @@ describe('Epub3Exporter', () => {
             const packageOpf = zip.files.get('EPUB/package.opf') as string;
             expect(packageOpf).toContain('dcterms:modified');
         });
+    });
+
+    describe('Favicon Handling', () => {
+        it('should detect theme favicon.ico and use it in pages', async () => {
+            // Override fetchTheme to include a favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.ico', Buffer.from('fake-ico-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico"');
+        });
+
+        it('should detect theme favicon.png and use it in pages', async () => {
+            // Override fetchTheme to include a PNG favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.png', Buffer.from('fake-png-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png"');
+        });
+
+        it('should use default libs/favicon.ico when theme has no favicon', async () => {
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico"');
+        });
+
+        it('should always include libs/favicon.ico in export regardless of theme favicon', async () => {
+            // Override fetchBaseLibraries to include favicon
+            resources.fetchBaseLibraries = async () => {
+                const files = new Map<string, Buffer>();
+                files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+                files.set('common.js', Buffer.from('// common'));
+                files.set('favicon.ico', Buffer.from('default-favicon-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // libs/favicon.ico should be in the ZIP
+            expect(zip.files.has('EPUB/libs/favicon.ico')).toBe(true);
+        });
+
+        it('should include favicon.ico in EPUB manifest', async () => {
+            // Override fetchBaseLibraries to include favicon
+            resources.fetchBaseLibraries = async () => {
+                const files = new Map<string, Buffer>();
+                files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+                files.set('common.js', Buffer.from('// common'));
+                files.set('favicon.ico', Buffer.from('default-favicon-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('libs/favicon.ico');
+        });
+
+        it('should use correct relative path for favicon in sub-pages', async () => {
+            // Override fetchTheme to include a favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.ico', Buffer.from('fake-ico-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // Check sub-page (chapter-1.xhtml) has correct relative path
+            const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
+            expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
+        });
+    });
+
+    describe('Content XML and DTD Handling', () => {
+        it('should include content.xml in EPUB when document provides it', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            const contentXml = zip.files.get('EPUB/content.xml') as string;
+            expect(contentXml).toContain('<test>data</test>');
+        });
+
+        it('should include content.dtd alongside content.xml', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml in EPUB manifest', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('id="content-xml"');
+            expect(packageOpf).toContain('href="content.xml"');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: false }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(false);
+        });
+
+        it('should include content.xml when exportSource is true', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: true }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should not fail when getContentXml returns null', async () => {
+            // Default MockDocument with null contentXml
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            // content.xml should not be in the archive when not provided
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+        });
+    });
+});
+
+describe('Library Transformations', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: Epub3Exporter;
+
+    beforeEach(() => {
+        document = new MockDocument({}, samplePages);
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+    });
+
+    it('should patch exe_effects.js for EPUB export', async () => {
+        const originalJs = `
+function test() {
+var k = "exe";
+$("." + k + "-accordion").each(function (i) {
+    // HTML generation
+    h2.eq(y).wrap('<a class="fx-accordion-title" href="#' + id + '" id="' + id + '-trigger"></a>');
+
+    // Click handler
+    var currentAttrValue = $(this).attr('href');
+
+    // IE7 retrieves link#hash instead of #hash
+    currentAttrValue = currentAttrValue.split("#");
+    currentAttrValue = "#" + currentAttrValue[1];
+    // / IE7
+    
+    // more code
+});
+}`;
+        // Setup page with accordion to trigger library detection
+        const pageWithAccordion: ExportPage[] = [
+            {
+                id: 'p1',
+                title: 'T',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'd',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'c1',
+                                type: 'text',
+                                order: 0,
+                                content: '<div class="exe-accordion">test</div>',
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pageWithAccordion);
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+
+        // Mock library fetch to return our sample JS
+        resources.fetchLibraryFiles = async files => {
+            const result = new Map<string, Buffer>();
+            // The exporter might request full paths, but we just need to ensuring we provide the file
+            // when requested. The key in the map should match what the exporter expects.
+            result.set('exe_effects/exe_effects.js', Buffer.from(originalJs));
+            return result;
+        };
+
+        // Also override fetchBaseLibraries just in case
+        resources.fetchBaseLibraries = async () => {
+            return new Map();
+        };
+
+        await exporter.export();
+
+        // Check if file exists in ZIP
+        const zipPath = 'EPUB/libs/exe_effects/exe_effects.js';
+        expect(zip.files.has(zipPath)).toBe(true);
+
+        const content = zip.files.get(zipPath);
+        const contentStr = typeof content === 'string' ? content : new TextDecoder().decode(content as Buffer);
+
+        // Verify transformations
+        // 1. Click handler patch
+        expect(contentStr).not.toContain("$(this).attr('href')");
+        expect(contentStr).toContain('var targetId = this.id.replace("-trigger", "").replace(/_/g, "-");');
+
+        // 2. Link generation patch (javascript:void(0))
+        expect(contentStr).not.toContain('href="#\' + id + \'"');
+        expect(contentStr).toContain('href="javascript:void(0)"');
+    });
+});
+
+describe('Icon Resolution via setThemeIconFiles', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: Epub3Exporter;
+
+    beforeEach(() => {
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+    });
+
+    it('should resolve SVG icons when theme has SVG icon files', async () => {
+        const pagesWithIcon: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Test Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity',
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pagesWithIcon);
+
+        resources.fetchTheme = async (_name: string) => {
+            const files = new Map<string, Buffer>();
+            files.set('style.css', Buffer.from('/* theme css */'));
+            files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+            return files;
+        };
+
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+        await exporter.export();
+
+        const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(indexXhtml).toContain('theme/icons/activity.svg');
+    });
+
+    it('should fall back to .png when theme has no icon files', async () => {
+        const pagesWithIcon: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Test Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity',
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pagesWithIcon);
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+        await exporter.export();
+
+        const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(indexXhtml).toContain('theme/icons/activity.png');
     });
 });

@@ -156,6 +156,7 @@ describe('YjsDocumentAdapter', () => {
         it('should return metadata from manager', () => {
             manager = new MockYjsDocumentManager({
                 title: 'Test Project',
+                subtitle: 'Test Subtitle',
                 author: 'Test Author',
                 language: 'es',
                 description: 'Test description',
@@ -169,6 +170,7 @@ describe('YjsDocumentAdapter', () => {
             const metadata = adapter.getMetadata();
 
             expect(metadata.title).toBe('Test Project');
+            expect(metadata.subtitle).toBe('Test Subtitle');
             expect(metadata.author).toBe('Test Author');
             expect(metadata.language).toBe('es');
             expect(metadata.description).toBe('Test description');
@@ -185,9 +187,48 @@ describe('YjsDocumentAdapter', () => {
             const metadata = adapter.getMetadata();
 
             expect(metadata.title).toBe('eXeLearning');
+            expect(metadata.subtitle).toBe('');
             expect(metadata.author).toBe('');
             expect(metadata.language).toBe('en');
             expect(metadata.theme).toBe('base');
+        });
+
+        it('should fall back to APP_VERSION env var when neither yjs field nor window are set', () => {
+            const originalAppVersion = process.env.APP_VERSION;
+            process.env.APP_VERSION = 'v9.9.9-test';
+            try {
+                manager = new MockYjsDocumentManager({});
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                const metadata = adapter.getMetadata();
+
+                expect(metadata.exelearningVersion).toBe('v9.9.9-test');
+            } finally {
+                if (originalAppVersion === undefined) {
+                    delete process.env.APP_VERSION;
+                } else {
+                    process.env.APP_VERSION = originalAppVersion;
+                }
+            }
+        });
+
+        it('should prefer the yjs exelearning_version field over APP_VERSION', () => {
+            const originalAppVersion = process.env.APP_VERSION;
+            process.env.APP_VERSION = 'v9.9.9-test';
+            try {
+                manager = new MockYjsDocumentManager({ exelearning_version: '4.1.0' });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                const metadata = adapter.getMetadata();
+
+                expect(metadata.exelearningVersion).toBe('4.1.0');
+            } finally {
+                if (originalAppVersion === undefined) {
+                    delete process.env.APP_VERSION;
+                } else {
+                    process.env.APP_VERSION = originalAppVersion;
+                }
+            }
         });
 
         it('should include custom styles when present', () => {
@@ -199,6 +240,63 @@ describe('YjsDocumentAdapter', () => {
             const metadata = adapter.getMetadata();
 
             expect(metadata.customStyles).toBe('.custom { color: red; }');
+        });
+
+        it('should compute licenseUrl for Creative Commons license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Creative Commons: Attribution - Share Alike 4.0',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Creative Commons: Attribution - Share Alike 4.0');
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should compute licenseUrl for CC-BY-NC license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Creative Commons: Attribution - Non Commercial 4.0',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-nc/4.0/');
+        });
+
+        it('should return empty licenseUrl for proprietary license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Proprietary License',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Proprietary License');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl for empty license', () => {
+            manager = new MockYjsDocumentManager({
+                license: '',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl when license is not set', () => {
+            manager = new MockYjsDocumentManager({});
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
         });
     });
 
@@ -280,6 +378,33 @@ describe('YjsDocumentAdapter', () => {
             const page2Children = pages.filter(p => p.parentId === 'page-2');
             expect(page2Children).toHaveLength(1);
             expect(page2Children[0].id).toBe('page-2-1');
+        });
+
+        it('should not overflow stack when page hierarchy contains a cycle', () => {
+            const cyclicRoot = createMockPage('cycle-a', 'Cycle A', [], 'cycle-b', 0);
+            const cyclicChild = createMockPage('cycle-b', 'Cycle B', [], 'cycle-a', 0);
+
+            manager = new MockYjsDocumentManager({}, [cyclicRoot, cyclicChild]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages).toHaveLength(2);
+            expect(pages.map(p => p.id).sort()).toEqual(['cycle-a', 'cycle-b']);
+        });
+
+        it('should include orphan pages with missing parents', () => {
+            const root = createMockPage('root', 'Root', [], null, 0);
+            const orphan = createMockPage('orphan', 'Orphan', [], 'missing-parent', 0);
+
+            manager = new MockYjsDocumentManager({}, [root, orphan]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages).toHaveLength(2);
+            expect(pages.map(p => p.id)).toContain('root');
+            expect(pages.map(p => p.id)).toContain('orphan');
         });
 
         it('should convert blocks correctly', () => {
@@ -772,18 +897,6 @@ describe('YjsDocumentAdapter', () => {
             expect(pages[0].blocks[0].properties?.minimized).toBe('true');
         });
 
-        it('should extract identifier property from block', () => {
-            const block = createMockBlock('b1', 'Block 1', [], { identifier: 'custom-block-id' });
-            const page = createMockPage('p1', 'Page', [block]);
-
-            manager = new MockYjsDocumentManager({}, [page]);
-            adapter = new YjsDocumentAdapter(manager as any);
-
-            const pages = adapter.getNavigation();
-
-            expect(pages[0].blocks[0].properties?.identifier).toBe('custom-block-id');
-        });
-
         it('should extract cssClass property from block', () => {
             const block = createMockBlock('b1', 'Block 1', [], { cssClass: 'my-custom-class' });
             const page = createMockPage('p1', 'Page', [block]);
@@ -814,7 +927,6 @@ describe('YjsDocumentAdapter', () => {
                 teacherOnly: 'true',
                 allowToggle: 'true',
                 minimized: 'false',
-                identifier: 'my-id',
                 cssClass: 'my-class',
             });
             const page = createMockPage('p1', 'Page', [block]);
@@ -829,7 +941,6 @@ describe('YjsDocumentAdapter', () => {
                 teacherOnly: 'true',
                 allowToggle: 'true',
                 minimized: 'false',
-                identifier: 'my-id',
                 cssClass: 'my-class',
             });
         });
@@ -848,7 +959,7 @@ describe('YjsDocumentAdapter', () => {
     });
 
     describe('getContentXml', () => {
-        it('should generate valid XML from document structure', async () => {
+        it('should generate valid ODE XML from document structure', async () => {
             const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Test content</p>');
             const block = createMockBlock('b1', 'Test Block', [component]);
             const page = createMockPage('p1', 'Test Page', [block]);
@@ -866,13 +977,14 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            // Should be valid XML
+            // Should be valid ODE XML with DOCTYPE declaration
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-            expect(xml).toContain('<exe_document>');
-            expect(xml).toContain('</exe_document>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
+            expect(xml).toContain('</ode>');
         });
 
-        it('should include metadata in XML', async () => {
+        it('should include metadata in odeProperties section', async () => {
             const page = createMockPage('p1', 'Page');
 
             manager = new MockYjsDocumentManager(
@@ -891,12 +1003,12 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<meta>');
+            expect(xml).toContain('<odeProperties>');
             expect(xml).toContain('My Project');
             expect(xml).toContain('John Doe');
         });
 
-        it('should include navigation structure in XML', async () => {
+        it('should include navigation structure in odeNavStructures', async () => {
             const page1 = createMockPage('p1', 'First Page', [], null, 0);
             const page2 = createMockPage('p2', 'Second Page', [], null, 1);
 
@@ -905,7 +1017,7 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<navigation>');
+            expect(xml).toContain('<odeNavStructures>');
             expect(xml).toContain('First Page');
             expect(xml).toContain('Second Page');
         });
@@ -941,15 +1053,17 @@ describe('YjsDocumentAdapter', () => {
             expect(xml).toContain('MultipleChoiceIdevice');
         });
 
-        it('should handle empty document', async () => {
+        it('should handle empty document with empty odeNavStructures', async () => {
             manager = new MockYjsDocumentManager({ title: 'Empty Project' }, []);
             adapter = new YjsDocumentAdapter(manager as any);
 
-            // Should throw because buildFromStructure requires at least one root page
-            await expect(adapter.getContentXml()).rejects.toThrow();
+            // With * cardinality, empty navigation is now valid
+            const xml = await adapter.getContentXml();
+            expect(xml).toContain('<odeNavStructures>');
+            expect(xml).toContain('</odeNavStructures>');
         });
 
-        it('should include export options in metadata', async () => {
+        it('should include export options in odeProperties', async () => {
             const page = createMockPage('p1', 'Page');
 
             manager = new MockYjsDocumentManager(
@@ -966,7 +1080,7 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<meta>');
+            expect(xml).toContain('<odeProperties>');
             // Export options should be in the XML
             expect(xml).toBeDefined();
         });
@@ -998,9 +1112,10 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            // Should still generate valid XML with defaults
+            // Should still generate valid ODE XML with defaults
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-            expect(xml).toContain('<exe_document>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
         });
 
         it('should correctly calculate page levels for deep hierarchy', async () => {
@@ -1037,5 +1152,91 @@ describe('YjsDocumentAdapter', () => {
             expect(xml).toBeDefined();
             expect(xml.length).toBeGreaterThan(100);
         });
+    });
+});
+
+describe('YjsDocumentAdapter.getMetadata - stable identifiers (#1784)', () => {
+    it('forwards odeIdentifier, odeVersionId and scormIdentifier from the Y.Map (mocked)', () => {
+        const manager = new MockYjsDocumentManager({
+            title: 'Stable IDs',
+            odeIdentifier: '20251201123456ABCDEF',
+            odeVersionId: '20251201123456FEDCBA',
+            scormIdentifier: 'CUSTOM-SCORM-XYZ',
+        });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(meta.odeVersionId).toBe('20251201123456FEDCBA');
+        expect(meta.scormIdentifier).toBe('CUSTOM-SCORM-XYZ');
+    });
+
+    it('returns undefined for unset stable identifiers (legacy projects)', () => {
+        const manager = new MockYjsDocumentManager({ title: 'Legacy' });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBeUndefined();
+        expect(meta.odeVersionId).toBeUndefined();
+        expect(meta.scormIdentifier).toBeUndefined();
+    });
+
+    it('returns undefined for stable identifiers on a completely empty real Y.Map', async () => {
+        // Defensive: brand-new project Y.Doc has no metadata at all. The adapter
+        // must not throw and must leave odeIdentifier / odeVersionId / scormIdentifier
+        // unset so the export-side fallback (`BaseExporter.getManifestIdentifier`)
+        // runs instead of inheriting garbage from a partially-initialized map.
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        doc.getMap('metadata'); // touch but don't write anything
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => doc.getMap('metadata'),
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'empty-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBeUndefined();
+        expect(exportMeta.odeVersionId).toBeUndefined();
+        expect(exportMeta.scormIdentifier).toBeUndefined();
+        // Sanity: defaults for required fields still apply.
+        expect(exportMeta.title).toBe('eXeLearning');
+        expect(exportMeta.theme).toBe('base');
+
+        doc.destroy();
+    });
+
+    it('reads stable identifiers from a real Y.Doc through YjsDocumentAdapter (no mocks)', async () => {
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        const meta = doc.getMap('metadata');
+        meta.set('title', 'Real Y.Doc');
+        meta.set('odeIdentifier', '20251201123456ABCDEF');
+        meta.set('odeVersionId', '20251201123456FEDCBA');
+        // Minimal navigation so the adapter is happy.
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => meta,
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'real-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(exportMeta.odeVersionId).toBe('20251201123456FEDCBA');
+
+        doc.destroy();
     });
 });

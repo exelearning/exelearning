@@ -10,6 +10,7 @@ import * as path from 'path';
 import {
     createProjectRoutes,
     createSymfonyCompatProjectRoutes,
+    buildDefaultThemePayload,
     type ProjectDependencies,
     type SessionManagerDeps,
     type FileHelperDeps,
@@ -17,6 +18,7 @@ import {
     type QueriesDeps,
     type UtilsDeps,
 } from './project';
+import type { Theme } from '../db/types';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
 
@@ -1405,7 +1407,7 @@ describe('Project Routes', () => {
             expect(newSnapshot?.project_id).toBe(newProjectId);
         });
 
-        it('should duplicate project assets with new client_ids', async () => {
+        it('should duplicate project assets preserving client_ids', async () => {
             const sourceProject = createTestProject(902, 'uuid-902-with-assets', 1);
 
             // Create source asset file on disk
@@ -1440,12 +1442,12 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Verify new asset was created with different client_id
+            // Verify new asset was created preserving client_id
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(1);
-            expect(newAssets![0].client_id).not.toBe(sourceClientId);
+            expect(newAssets![0].client_id).toBe(sourceClientId);
             expect(newAssets![0].filename).toBe('test-image.png');
             expect(newAssets![0].project_id).toBe(newProjectId);
         });
@@ -1570,15 +1572,15 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Get the new asset's client_id
+            // Get duplicated asset client_id (should be preserved)
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(1);
             const newClientId = newAssets![0].client_id;
-            expect(newClientId).not.toBe(sourceClientId);
+            expect(newClientId).toBe(sourceClientId);
 
-            // Verify Yjs document was updated with new client_id
+            // Verify Yjs document still references the same client_id
             const newSnapshot = mockSnapshots.get(newProjectId);
             expect(newSnapshot).toBeDefined();
 
@@ -1594,7 +1596,6 @@ describe('Project Routes', () => {
             const newInnerHtml = newIdevice?.get('innerHtml') as string;
 
             expect(newInnerHtml).toContain(newClientId);
-            expect(newInnerHtml).not.toContain(sourceClientId);
             newYdoc.destroy();
         });
 
@@ -1635,15 +1636,15 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Verify all assets were duplicated with new client_ids
+            // Verify all assets were duplicated preserving client_ids
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(3);
 
-            // Verify all client_ids are new (not in original list)
+            // Verify all original client_ids are present
             for (const newAsset of newAssets!) {
-                expect(clientIds).not.toContain(newAsset.client_id);
+                expect(clientIds).toContain(newAsset.client_id as string);
             }
         });
     });
@@ -1664,12 +1665,29 @@ describe('Project Routes', () => {
             return project;
         }
 
-        it('should delete project by UUID', async () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should delete project by UUID when owner', async () => {
             createTestProject(950, 'uuid-950', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-950', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1679,10 +1697,41 @@ describe('Project Routes', () => {
             expect(mockProjectsByUuid.has('uuid-950')).toBe(false);
         });
 
+        it('should reject delete by non-owner', async () => {
+            createTestProject(951, 'uuid-951', 1);
+            const token = await createAuthToken(2); // user 2 is not owner
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-951', {
+                    method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            expect(mockProjectsByUuid.has('uuid-951')).toBe(true); // project still exists
+        });
+
+        it('should reject delete by unauthenticated user', async () => {
+            createTestProject(952, 'uuid-952', 1);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-952', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            expect(mockProjectsByUuid.has('uuid-952')).toBe(true); // project still exists
+        });
+
         it('should return 404 for non-existent project', async () => {
+            const token = await createAuthToken(1);
+
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/non-existent', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -2000,7 +2049,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
-            expect(body.usedFiles[0].usedFiles).toBe('No files found');
+            expect(body.usedFiles).toEqual([]);
         });
 
         it('should detect asset:// URLs', async () => {
@@ -2267,9 +2316,12 @@ describe('Project Routes', () => {
                 sessionId: 'current-users-session',
                 fileName: 'Test.elp',
             });
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
-                new Request('http://localhost/api/odes/current-users?odeSessionId=current-users-session'),
+                new Request('http://localhost/api/odes/current-users?odeSessionId=current-users-session', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
             );
 
             expect(res.status).toBe(200);
@@ -2278,8 +2330,11 @@ describe('Project Routes', () => {
         });
 
         it('should return empty for non-existent session', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
-                new Request('http://localhost/api/odes/current-users?odeSessionId=non-existent'),
+                new Request('http://localhost/api/odes/current-users?odeSessionId=non-existent', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
             );
 
             expect(res.status).toBe(200);
@@ -2288,10 +2343,11 @@ describe('Project Routes', () => {
         });
 
         it('should register current user', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/current-users', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2302,9 +2358,11 @@ describe('Project Routes', () => {
         });
 
         it('should unregister current user', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/current-users', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -2314,10 +2372,11 @@ describe('Project Routes', () => {
         });
 
         it('should check before leave', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/check-before-leave', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2328,10 +2387,11 @@ describe('Project Routes', () => {
         });
 
         it('should close session', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/session/close', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2342,11 +2402,30 @@ describe('Project Routes', () => {
         });
 
         it('should return empty when no session id provided for current-users', async () => {
-            const res = await app.handle(new Request('http://localhost/api/odes/current-users'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/current-users', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.currentUsers).toEqual([]);
+        });
+
+        it('odes endpoints reject anonymous callers', async () => {
+            const endpoints: Array<[string, string]> = [
+                ['GET', 'http://localhost/api/odes/current-users'],
+                ['POST', 'http://localhost/api/odes/current-users'],
+                ['DELETE', 'http://localhost/api/odes/current-users'],
+                ['POST', 'http://localhost/api/odes/check-before-leave'],
+                ['POST', 'http://localhost/api/odes/session/close'],
+            ];
+            for (const [method, url] of endpoints) {
+                const res = await app.handle(new Request(url, { method }));
+                expect(res.status).toBe(401);
+            }
         });
 
         it('should get user recent projects when authenticated', async () => {
@@ -4740,7 +4819,7 @@ describe('Project Routes', () => {
             expect(body.usedFiles).toBeDefined();
         });
 
-        it('should extract filename from asset URL path when no metadata', async () => {
+        it('should fallback to asset UUID when no metadata', async () => {
             const assetId = 'c3d4e5f6-7890-12ab-cdef-345678901234';
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
@@ -4749,7 +4828,7 @@ describe('Project Routes', () => {
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: `<img src="asset://${assetId}/my-image.png">`,
+                                html: `<img src="asset://${assetId}.png">`,
                                 pageName: 'Page 1',
                                 blockName: 'Block 1',
                             },
@@ -4761,8 +4840,8 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.usedFiles.length).toBe(1);
-            // Should extract filename from URL path
-            expect(body.usedFiles[0].usedFiles).toBe('my-image.png');
+            // Without metadata, filename should fallback to UUID
+            expect(body.usedFiles[0].usedFiles).toBe(assetId);
             expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
         });
 
@@ -5028,5 +5107,43 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             // The URL parser should catch this and return error
         });
+    });
+});
+
+describe('buildDefaultThemePayload', () => {
+    const siteTheme = {
+        dir_name: 'my-site-style',
+        display_name: 'My Site Style',
+        is_enabled: 1,
+        is_builtin: 0,
+        updated_at: 1700000000000,
+    } as unknown as Theme;
+
+    it('returns a cache-busted site URL for an enabled non-builtin theme', () => {
+        const payload = buildDefaultThemePayload(siteTheme, 'my-site-style', 'v3.0.0');
+        expect(payload).toEqual({
+            dirName: 'my-site-style',
+            displayName: 'My Site Style',
+            url: '/v3.0.0-1700000000000/site-files/themes/my-site-style',
+            type: 'site',
+        });
+    });
+
+    it('falls back to the base theme URL when no matching theme record exists', () => {
+        const payload = buildDefaultThemePayload(undefined, 'base', 'v3.0.0');
+        expect(payload).toEqual({
+            dirName: 'base',
+            displayName: 'base',
+            url: '/files/perm/themes/base/base',
+            type: 'base',
+        });
+    });
+
+    it('treats a disabled or builtin theme as base and keeps its display name', () => {
+        const builtin = { ...siteTheme, is_builtin: 1 } as unknown as Theme;
+        const payload = buildDefaultThemePayload(builtin, 'my-site-style', 'v3.0.0');
+        expect(payload.type).toBe('base');
+        expect(payload.url).toBe('/files/perm/themes/base/my-site-style');
+        expect(payload.displayName).toBe('My Site Style');
     });
 });

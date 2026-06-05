@@ -59,6 +59,9 @@ describe('ModalStyleManager', () => {
                             },
                         },
                     },
+                    endpoints: {
+                        api_themes_download: { path: '/api/themes/{themeId}/download', methods: ['GET'] },
+                    },
                     postUploadTheme: vi.fn().mockResolvedValue({ responseMessage: 'ERROR' }),
                     postNewTheme: vi.fn(),
                     putEditTheme: vi.fn(),
@@ -952,47 +955,53 @@ describe('ModalStyleManager', () => {
         });
 
         describe('downloadThemeZip', () => {
-            it('should download theme as zip file', async () => {
-                const response = {
-                    zipFileName: 'theme.zip',
-                    zipBase64: 'base64data',
+            it('should download theme as zip file from bundle', async () => {
+                const mockBlob = new Blob(['test'], { type: 'application/zip' });
+                const mockResponse = {
+                    ok: true,
+                    blob: vi.fn().mockResolvedValue(mockBlob),
                 };
+                global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-                window.eXeLearning.app.api.getThemeZip.mockResolvedValue(response);
+                const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+                const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+                const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-                const theme = { dirName: 'test-theme' };
+                const theme = { dirName: 'test-theme', name: 'Test Theme' };
+                modal.downloadThemeZip(theme);
 
-                const mockLink = {
-                    setAttribute: vi.fn(),
-                    click: vi.fn(),
-                    remove: vi.fn(),
-                };
-                vi.spyOn(document, 'createElement').mockReturnValue(mockLink);
+                // Wait for async operations to complete
+                await new Promise(resolve => setTimeout(resolve, 50));
 
-                await modal.downloadThemeZip(theme);
+                expect(fetch).toHaveBeenCalledWith('/base/bundles/themes/test-theme.zip');
+                expect(createObjectURLSpy).toHaveBeenCalled();
+                expect(clickSpy).toHaveBeenCalled();
+                expect(revokeObjectURLSpy).toHaveBeenCalled();
 
-                expect(window.eXeLearning.app.api.getThemeZip).toHaveBeenCalledWith(
-                    'test-session-123',
-                    'test-theme'
-                );
-                expect(mockLink.setAttribute).toHaveBeenCalledWith('type', 'hidden');
-                expect(mockLink.download).toBe('theme.zip');
-                expect(mockLink.click).toHaveBeenCalled();
-                expect(mockLink.remove).toHaveBeenCalled();
+                createObjectURLSpy.mockRestore();
+                revokeObjectURLSpy.mockRestore();
+                clickSpy.mockRestore();
             });
 
-            it('should not download if response is invalid', async () => {
-                const response = {};
+            it('should show error when bundle not found', async () => {
+                const mockResponse = {
+                    ok: false,
+                    status: 404,
+                };
+                global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-                window.eXeLearning.app.api.getThemeZip.mockResolvedValue(response);
+                const alertSpy = vi.spyOn(modal, 'showElementAlert');
 
-                const theme = { dirName: 'test-theme' };
+                const theme = { dirName: 'nonexistent', name: 'Nonexistent Theme' };
+                modal.downloadThemeZip(theme);
 
-                const createElementSpy = vi.spyOn(document, 'createElement');
+                // Wait for async operations to complete
+                await new Promise(resolve => setTimeout(resolve, 50));
 
-                await modal.downloadThemeZip(theme);
-
-                expect(createElementSpy).not.toHaveBeenCalled();
+                expect(alertSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('Failed to download'),
+                    expect.objectContaining({ error: expect.stringContaining('not found') })
+                );
             });
         });
     });

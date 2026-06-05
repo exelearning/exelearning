@@ -38,6 +38,9 @@ class YjsPropertiesBinding {
     // Observer for ALL title changes (syncs to header)
     this.titleSyncObserver = null;
 
+    // Observer for ALL language changes (reloads content translations)
+    this.languageSyncObserver = null;
+
     // Flag to prevent feedback loops
     this.isUpdatingFromYjs = false;
 
@@ -45,7 +48,9 @@ class YjsPropertiesBinding {
     this.titleElement = null;
     this.titleInputListener = null;
 
-    // Property key mapping: pp_title -> title, pp_author -> author, etc.
+    // Property key mapping: XML key (pp_title) -> internal Yjs key (title)
+    // Source of truth for these mappings: src/shared/export/metadata-properties.ts
+    // When adding new properties, update both this map AND metadata-properties.ts
     this.propertyKeyMap = {
       'pp_title': 'title',
       'pp_subtitle': 'subtitle',
@@ -58,6 +63,7 @@ class YjsPropertiesBinding {
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
+      'pp_globalFont': 'globalFont',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -155,6 +161,17 @@ class YjsPropertiesBinding {
     // Create input listener with debouncing
     const inputListener = (event) => {
       if (this.isUpdatingFromYjs) return;
+
+      // If this is a select with legacy warning and user selected a valid option, clean up immediately
+      if (inputType === 'select' && input.dataset.legacyValue === 'true') {
+        const selectedValue = input.value;
+        const isValidOption = Array.from(input.options).some(
+          opt => opt.value === selectedValue && !opt.dataset.legacySynthetic
+        );
+        if (isValidOption) {
+          this.removeLegacyWarning(input);
+        }
+      }
 
       // Notify immediately that there are pending changes (for instant UI feedback)
       // This enables undo buttons before the debounce timer fires
@@ -302,6 +319,17 @@ class YjsPropertiesBinding {
           input.checked = value === 'true' || value === true;
           break;
         case 'select':
+          // Check if value exists in options (excluding synthetic legacy options)
+          const optionExists = Array.from(input.options).some(
+            opt => opt.value === value && !opt.dataset.legacySynthetic
+          );
+          if (value && !optionExists) {
+            // Value not in options (legacy license) - inject synthetic option
+            this.injectLegacyOption(input, value);
+          } else {
+            // Valid value selected - remove legacy warning if present
+            this.removeLegacyWarning(input);
+          }
           input.value = value;
           break;
         case 'text':
@@ -314,6 +342,42 @@ class YjsPropertiesBinding {
     } finally {
       this.isUpdatingFromYjs = false;
     }
+  }
+
+  /**
+   * Inject a synthetic option for legacy values not in the select options.
+   * CSS styling is handled via [data-legacy-value] attribute selector.
+   * @param {HTMLSelectElement} select - The select element
+   * @param {string} value - The legacy value to inject
+   */
+  injectLegacyOption(select, value) {
+    // Remove any existing synthetic option first
+    this.removeLegacyWarning(select);
+
+    // Create synthetic option with warning text
+    const syntheticOption = document.createElement('option');
+    syntheticOption.value = value;
+    syntheticOption.textContent = `${value} — ⚠️ ${_('Legacy license, please review')}`;
+    syntheticOption.selected = true;
+    syntheticOption.dataset.legacySynthetic = 'true';
+    select.insertBefore(syntheticOption, select.firstChild);
+
+    // Mark select for CSS styling via data attribute
+    select.dataset.legacyValue = 'true';
+
+    Logger.log(`[YjsPropertiesBinding] Injected legacy option: ${value}`);
+  }
+
+  /**
+   * Remove legacy warning and synthetic option from select.
+   * @param {HTMLSelectElement} select - The select element
+   */
+  removeLegacyWarning(select) {
+    const syntheticOption = select.querySelector('option[data-legacy-synthetic]');
+    if (syntheticOption) {
+      syntheticOption.remove();
+    }
+    delete select.dataset.legacyValue;
   }
 
   /**
@@ -330,8 +394,8 @@ class YjsPropertiesBinding {
       if (isOwnInputChange) return;
 
       event.changes.keys.forEach((change, key) => {
-        if (change.action === 'add' || change.action === 'update') {
-          this.onMetadataKeyChanged(key);
+        if (change.action === 'add' || change.action === 'update' || change.action === 'delete') {
+          this.onMetadataKeyChanged(key, change.action);
         }
       });
     };
@@ -340,6 +404,9 @@ class YjsPropertiesBinding {
 
     // Setup separate observer for title sync to header (ALL changes, including 'user')
     this.setupTitleSyncObserver();
+
+    // Setup separate observer for language sync (reloads content translations)
+    this.setupLanguageSyncObserver();
   }
 
   /**
@@ -374,6 +441,14 @@ class YjsPropertiesBinding {
 
     const title = this.metadata.get('title') || _('Untitled document');
 
+    // Delegate to title component when available so raw title text is kept in sync
+    // and LaTeX gets typeset immediately for collaborative updates.
+    const titleElementController = window.eXeLearning?.app?.interface?.odeTitleElement;
+    if (titleElementController?.onRemoteTitleChange) {
+      titleElementController.onRemoteTitleChange(title);
+      return;
+    }
+
     // Only update if different
     if (headerTitle.textContent !== title) {
       headerTitle.textContent = title;
@@ -387,10 +462,58 @@ class YjsPropertiesBinding {
   }
 
   /**
+   * Setup observer to reload content translations when language changes
+   * This ensures iDevice custom texts use the correct language
+   */
+  setupLanguageSyncObserver() {
+    if (this.languageSyncObserver) return; // Already setup
+
+    this.languageSyncObserver = (event) => {
+      event.changes.keys.forEach((change, key) => {
+        if (key === 'language' && (change.action === 'add' || change.action === 'update')) {
+          this.syncLanguageToApp();
+        }
+      });
+    };
+
+    this.metadata.observe(this.languageSyncObserver);
+  }
+
+  /**
+   * Sync language from Yjs to app (reload content translations)
+   * Called on ALL language changes (including from form input)
+   */
+  async syncLanguageToApp() {
+    const language = this.metadata.get('language');
+    if (!language) return;
+
+    // Update pp_lang.value in project properties
+    const projectProperties = window.eXeLearning?.app?.project?.properties;
+    if (projectProperties?.properties?.pp_lang) {
+      const currentValue = projectProperties.properties.pp_lang.value;
+      if (currentValue !== language) {
+        projectProperties.properties.pp_lang.value = language;
+        Logger.log(`[YjsPropertiesBinding] Updated pp_lang.value: ${language}`);
+      }
+    }
+
+    // Reload content translations and refresh $exe_i18n globals
+    const locale = window.eXeLearning?.app?.locale;
+    if (locale?.loadContentTranslationsStrings) {
+      await locale.loadContentTranslationsStrings(language);
+      Logger.log(`[YjsPropertiesBinding] Reloaded content translations for: ${language}`);
+    }
+    if (locale?.refreshI18nGlobals) {
+      await locale.refreshI18nGlobals();
+    }
+  }
+
+  /**
    * Handle metadata key change from remote
    * @param {string} metadataKey - The changed key
+   * @param {string} action - Yjs key change action ('add' | 'update' | 'delete')
    */
-  onMetadataKeyChanged(metadataKey) {
+  onMetadataKeyChanged(metadataKey, action = 'update') {
     // Skip internal keys
     if (metadataKey === 'modifiedAt' || metadataKey === 'createdAt') return;
 
@@ -402,7 +525,23 @@ class YjsPropertiesBinding {
       const input = this.formElement.querySelector(`.property-value[property="${propertyKey}"]`);
       if (input) {
         const inputType = input.getAttribute('data-type') || input.type;
-        this.updateInputFromYjs(input, metadataKey, inputType);
+        if (action === 'delete') {
+          this.isUpdatingFromYjs = true;
+          try {
+            if (inputType === 'checkbox') {
+              input.checked = false;
+            } else {
+              input.value = '';
+              if (inputType === 'select') {
+                this.removeLegacyWarning(input);
+              }
+            }
+          } finally {
+            this.isUpdatingFromYjs = false;
+          }
+        } else {
+          this.updateInputFromYjs(input, metadataKey, inputType);
+        }
         Logger.log(`[YjsPropertiesBinding] Remote update: ${metadataKey}`);
       }
     }
@@ -440,6 +579,12 @@ class YjsPropertiesBinding {
     if (this.titleSyncObserver) {
       this.metadata.unobserve(this.titleSyncObserver);
       this.titleSyncObserver = null;
+    }
+
+    // Remove language sync observer
+    if (this.languageSyncObserver) {
+      this.metadata.unobserve(this.languageSyncObserver);
+      this.languageSyncObserver = null;
     }
 
     this.formElement = null;
@@ -568,6 +713,12 @@ class YjsPropertiesBinding {
     if (this.titleSyncObserver) {
       this.metadata.unobserve(this.titleSyncObserver);
       this.titleSyncObserver = null;
+    }
+
+    // Remove language sync observer if still active
+    if (this.languageSyncObserver) {
+      this.metadata.unobserve(this.languageSyncObserver);
+      this.languageSyncObserver = null;
     }
 
     this.documentManager = null;

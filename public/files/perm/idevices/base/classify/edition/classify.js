@@ -21,8 +21,14 @@ var $exeDevice = {
         _('Group') + ' ' + 2,
         _('Group') + ' ' + 3,
         _('Group') + ' ' + 4,
+        _('Group') + ' ' + 5,
+        _('Group') + ' ' + 6,
+        _('Group') + ' ' + 7,
+        _('Group') + ' ' + 8,
+        _('Group') + ' ' + 9,
     ],
     numberGroups: 2,
+    maxGroups: 9,
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
@@ -36,6 +42,8 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
@@ -46,6 +54,9 @@ var $exeDevice = {
         ); // Avoid invalid HTML
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('clasificaQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -73,7 +84,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -171,9 +182,6 @@ var $exeDevice = {
         msgs.msgCompleteImage = _(
             'You must link an image or sound to this card'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -184,11 +192,10 @@ var $exeDevice = {
         const path = this.idevicePath,
             html = `
         <div id="clasificaQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create interactive activities in which players have to classify cards with images, texts and/or sounds.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create interactive activities in which players have to classify cards with images, texts and/or sounds.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/clasifica.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -219,35 +226,53 @@ var $exeDevice = {
                             </span>
                         </div>
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            <span>${_('Number of categories')}:</span>
-                            <div id="quextNumber2Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber2" type="radio" name="qxtnumber" value="2" checked="checked" />
-                                <label class="form-check-label" for="quextNumber2">2</label>
-                            </div>
-                            <div id="quextNumber3Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber3" type="radio" name="qxtnumber" value="3" />
-                                <label class="form-check-label" for="quextNumber3">3</label>
-                            </div>
-                            <div id="quextNumber4Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber4" type="radio" name="qxtnumber" value="4" />
-                                <label class="form-check-label" for="quextNumber4">4</label>
-                            </div>
+                            <label for="clasificaENumGroups" class="mb-0">${_('Number of categories')}:</label>
+                            <select id="clasificaENumGroups" class="form-select form-select-sm" style="width:8ch">
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
                         </div>
                         <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle0" class="mb-0">${_('Category')} 1:</label>
                             <input type="text" id="clasificaTitle0" class="CQE-EGroup form-control" value="${_('Group')} 1"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle1" class="mb-0">${_('Category')} 2:</label>
                             <input type="text" id="clasificaTitle1" class="CQE-EGroup form-control" value="${_('Group')} 2"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle2" class="mb-0">${_('Category')} 3:</label>
                             <input type="text" id="clasificaTitle2" class="CQE-EGroup form-control" value="${_('Group')} 3"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle3" class="mb-0">${_('Category')} 4:</label>
                             <input type="text" id="clasificaTitle3" class="CQE-EGroup form-control" value="${_('Group')} 4"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle4" class="mb-0">${_('Category')} 5:</label>
+                            <input type="text" id="clasificaTitle4" class="CQE-EGroup form-control" value="${_('Group')} 5"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle5" class="mb-0">${_('Category')} 6:</label>
+                            <input type="text" id="clasificaTitle5" class="CQE-EGroup form-control" value="${_('Group')} 6"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle6" class="mb-0">${_('Category')} 7:</label>
+                            <input type="text" id="clasificaTitle6" class="CQE-EGroup form-control" value="${_('Group')} 7"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle7" class="mb-0">${_('Category')} 8:</label>
+                            <input type="text" id="clasificaTitle7" class="CQE-EGroup form-control" value="${_('Group')} 8"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle8" class="mb-0">${_('Category')} 9:</label>
+                            <input type="text" id="clasificaTitle8" class="CQE-EGroup form-control" value="${_('Group')} 9"/>
                         </div>
                         <div class="mb-3">
                             <span class="toggle-item" role="switch" aria-checked="false">
@@ -272,7 +297,7 @@ var $exeDevice = {
                             </span>                              
                             <label for="clasificaEPercentajeFB" class="mb-0">${_('Percent')}</label>
                             <input type="number" name="clasificaEPercentajeFB" id="clasificaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                            <span>${_('&percnt; right to see the feedback')}</span>
+                            <span>${_('% right to see the feedback')}</span>
                         </div>
                         <p id="clasificaEFeedbackP" class="CQE-EFeedbackP">
                             <textarea id="clasificaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
@@ -300,26 +325,8 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            <span class="toggle-item mb-0" data-target="clasificaEEvaluationIDWrapper" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="clasificaEEvaluation" class="toggle-input">
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="clasificaEEvaluation">${_('Progress report')}.</label>
-                            </span>
-                            <span id="clasificaEEvaluationIDWrapper" class="d-inline-flex align-items-center gap-1">
-                                <label for="clasificaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" id="clasificaEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
-                            </span>
-                            <strong class="GameModeLabel">
-                                <a href="#clasificaEEvaluationHelp" id="clasificaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                </a>
-                            </strong>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="clasificaEEvaluationHelp" class="CQE-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -404,6 +411,11 @@ var $exeDevice = {
                         <option value="1">${_('Group')} 2</option>
                         <option value="2">${_('Group')} 3</option>
                         <option value="3">${_('Group')} 4</option>
+                        <option value="4">${_('Group')} 5</option>
+                        <option value="5">${_('Group')} 6</option>
+                        <option value="6">${_('Group')} 7</option>
+                        <option value="7">${_('Group')} 8</option>
+                        <option value="8">${_('Group')} 9</option>
                     </select>
                 </span>
            </p>
@@ -446,7 +458,7 @@ var $exeDevice = {
                </div>
            </div>
            <span id="clasificaETitleAudio">${_('Audio')}</span>
-           <div class="CQE-EInputAudio d-flex align-items-center flex-nowrap gap-2" id="clasificaEInputAudio">
+           <div class="CQE-EInputAudio d-flex align-items-center flex-nowrap gap-2" id="clasificaEInputAudio" data-voice-recorder data-voice-input="#clasificaEURLAudio">
                <label class="sr-av" for="clasificaEURLAudio">URL</label>
                <input type="text" class="exe-file-picker CQE-EURLAudio form-control me-0" id="clasificaEURLAudio"/>
                <a href="#" id="clasificaEPlayAudio" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="CQE-EButtonImage " /></a>
@@ -513,7 +525,7 @@ var $exeDevice = {
         $('#clasificaEMessageKO').val(p.msgError);
         $('#clasificaENumberQuestion').val(i + 1);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     hexToRgba: function (hex, alpha = 1) {
@@ -821,7 +833,7 @@ var $exeDevice = {
             msgs = $exeDevice.msgs,
             p = {};
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         p.type = parseInt($('input[name=qxtmediatype]:checked').val());
         p.x = parseFloat($('#clasificaEXImage').val());
@@ -829,7 +841,7 @@ var $exeDevice = {
         p.author = $('#clasificaEAuthor').val();
         p.alt = $('#clasificaEAlt').val();
         p.url = $('#clasificaEURLImage').val().trim();
-        p.audio = $('#clasificaEURLAudio').val();
+        p.audio = $('#clasificaEURLAudio').val().trim();
         p.eText = $('#clasificaEText').val();
         p.color = $('#clasificaEColor').val();
         p.backcolor = $('#clasificaEBackColor').val();
@@ -837,28 +849,18 @@ var $exeDevice = {
         p.msgHit = $('#clasificaEMessageOK').val();
         p.msgError = $('#clasificaEMessageKO').val();
 
-        if (p.type === 0 && p.url.length < 5 && p.audio.length === 0) {
+        if (p.type === 0 && p.url.length < 5) {
             message = msgs.msgCompleteImage;
-        } else if (
-            p.type === 1 &&
-            p.eText.length === 0 &&
-            p.audio.length === 0
-        ) {
+        } else if (p.type === 1 && p.eText.trim().length === 0) {
             message = msgs.msgCompleteText;
         } else if (
             p.type === 2 &&
-            (p.eText.length === 0 || p.url.length === 0)
+            (p.eText.trim().length === 0 || p.url.length < 5)
         ) {
             message = msgs.msgCompleteBoth;
         }
 
-        if (p.type === 0) {
-            p.eText = '';
-        } else if (p.type === 1) {
-            p.url = '';
-        } else if (p.type === 2) {
-            ///
-        }
+        p = $exeDevice.normalizeQuestionByType(p);
 
         if (message.length === 0) {
             $exeDevice.wordsGame[$exeDevice.active] = p;
@@ -898,18 +900,15 @@ var $exeDevice = {
             ),
             time = parseInt(clear($('#clasificaETime').val())),
             author = $('#clasificaEAuthor').val(),
-            numberGroups = parseInt($('input[name=qxtnumber]:checked').val()),
+            numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
-            evaluation = $('#clasificaEEvaluation').is(':checked'),
-            evaluationID = $('#clasificaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             imgCard = $('#clasificaEURLImgCard').val(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
 
         if ($exeDevice.wordsGame.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -934,14 +933,17 @@ var $exeDevice = {
             return false;
         }
 
-        for (const mquestion of $exeDevice.wordsGame) {
+        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
+            const mquestion = $exeDevice.normalizeQuestionByType(
+                $exeDevice.wordsGame[i]
+            );
+            $exeDevice.wordsGame[i] = mquestion;
             if (
-                (mquestion.type === 0 &&
-                    mquestion.url.length < 4 &&
-                    mquestion.audio.length === 0) ||
-                (mquestion.type === 1 &&
-                    mquestion.eText.length === 0 &&
-                    mquestion.audio.length === 0)
+                (mquestion.type === 0 && mquestion.url.length < 4) ||
+                (mquestion.type === 1 && mquestion.eText.trim().length === 0) ||
+                (mquestion.type === 2 &&
+                    (mquestion.url.length < 4 ||
+                        mquestion.eText.trim().length === 0))
             ) {
                 $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
                 return false;
@@ -972,8 +974,8 @@ var $exeDevice = {
             groups: $exeDevice.groups,
             numberGroups,
             gameLevel,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             imgCard: imgCard,
             id,
         };
@@ -996,6 +998,20 @@ var $exeDevice = {
             }
         );
         return false;
+    },
+
+    normalizeQuestionByType: function (question) {
+        const q = { ...question };
+        if (q.type === 0) {
+            q.eText = '';
+        } else if (q.type === 1) {
+            q.url = '';
+            q.x = 0;
+            q.y = 0;
+            q.author = '';
+            q.alt = '';
+        }
+        return q;
     },
 
     showImage: function (url, x, y, alt) {
@@ -1141,8 +1157,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#clasificaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1279,8 +1294,7 @@ var $exeDevice = {
                 $exeDevice.wordsGame[$exeDevice.active].audio = selectedFile;
             }
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                  $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1310,7 +1324,7 @@ var $exeDevice = {
 
         $exeDevice.showGroups($exeDevice.numberGroups);
 
-        $('input.CQE-Number').on('click', function () {
+        $('#clasificaENumGroups').on('change', function () {
             const number = parseInt($(this).val());
             $exeDevice.showGroups(number);
         });
@@ -1349,15 +1363,7 @@ var $exeDevice = {
             }
         });
 
-        $('#clasificaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#clasificaEEvaluationID').prop('disabled', !marcado);
-        });
-        $('#clasificaEEvaluationHelpLnk').on('click', (e) => {
-            e.preventDefault();
-            $('#clasificaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -1628,15 +1634,26 @@ var $exeDevice = {
             game.percentajeQuestions !== undefined
                 ? game.percentajeQuestions
                 : 100;
-        game.evaluation =
-            game.evaluation !== undefined ? game.evaluation : false;
-        game.evaluationID =
-            game.evaluationID !== undefined ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         game.imgCard = game.imgCard ?? '';
+
+        // Retrocompatibilidad: numberGroups podía guardarse como null/NaN.
+        // Si el valor es inválido, se infiere del grupo máximo de las tarjetas.
+        const ng = parseInt(game.numberGroups);
+        if (Number.isFinite(ng) && ng >= 2 && ng <= 9) {
+            game.numberGroups = ng;
+        } else {
+            const maxGroup = Array.isArray(game.wordsGame)
+                ? game.wordsGame.reduce((max, w) => {
+                      const g = parseInt(w.group);
+                      return Number.isFinite(g) ? Math.max(max, g) : max;
+                  }, 1)
+                : 1;
+            game.numberGroups = Math.min(Math.max(maxGroup + 1, 2), 9);
+        }
 
         $('#clasificaEShowMinimize').prop('checked', game.showMinimize);
         $('#clasificaEHasFeedBack').prop('checked', game.feedBack);
@@ -1645,14 +1662,12 @@ var $exeDevice = {
         $('#clasificaETime').val(game.time);
         $('#clasificaEAuthor').val(game.author);
 
-        $(
-            `input.CQE-Number[name='qxtnumber'][value='${game.numberGroups}']`
-        ).prop('checked', true);
+        $('#clasificaENumGroups').val(game.numberGroups);
         $('#clasificaECustomMessages').prop('checked', game.customMessages);
-        $('#clasificaEEvaluation').prop('checked', game.evaluation);
-        $('#clasificaEEvaluationID')
-            .val(game.evaluationID)
-            .prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.wordsGame = game.wordsGame;
         $exeDevice.updateGameMode(game.feedBack);
@@ -1669,7 +1684,12 @@ var $exeDevice = {
         $exeDevice.showSelectOrder(game.customMessages && game.gameLevel !== 1);
         $exeDevice.updateQuestionsNumber();
 
-        $exeDevice.groups = game.groups;
+        // Retrocompatibilidad: versiones antiguas solo guardaban 4 grupos
+        $exeDevice.groups = game.groups.slice();
+        while ($exeDevice.groups.length < $exeDevice.maxGroups) {
+            const i = $exeDevice.groups.length;
+            $exeDevice.groups.push(_('Group') + ' ' + (i + 1));
+        }
         $exeDevice.numberGroups = game.numberGroups;
 
         $exeDevice.showGroups($exeDevice.numberGroups);
@@ -1688,7 +1708,7 @@ var $exeDevice = {
     },
 
     insertWords: function (lines) {
-        const lineFormat = /^(0|1|2|3)#([^#]+)$/;
+        const lineFormat = /^([0-8])#([^#]+)$/;
         let questions = [],
             valids = [];
 
@@ -1709,10 +1729,7 @@ var $exeDevice = {
         const numgroups = $exeDevice.validateGroups(valids);
         if (numgroups) {
             $exeDevice.numberGroups = numgroups;
-            $(`input.CQE-Number[name='qxtnumber'][value='${numgroups}']`).prop(
-                'checked',
-                true
-            );
+            $('#clasificaENumGroups').val(numgroups);
             $exeDevice.showGroups(numgroups);
         } else {
             $exeDevice.showMessage(_('Incorrect group number'));
@@ -1752,7 +1769,7 @@ var $exeDevice = {
 
         for (const element of elements) {
             const [group] = element.split('#');
-            if (group >= 0 && group <= 3) {
+            if (group >= 0 && group <= 8) {
                 groups[group] = (groups[group] || 0) + 1;
             } else {
                 return false;
@@ -1760,13 +1777,12 @@ var $exeDevice = {
         }
 
         const numGroups = Object.keys(groups).length;
-        const allGroupsPresent = [0, 1, 2, 3]
-            .slice(0, numGroups)
+        const allGroupsPresent = Array.from({ length: numGroups }, (_, i) => i)
             .every((group) =>
                 Object.prototype.hasOwnProperty.call(groups, group)
             );
 
-        return numGroups >= 2 && numGroups <= 4 && allGroupsPresent
+        return numGroups >= 2 && numGroups <= 9 && allGroupsPresent
             ? numGroups
             : false;
     },

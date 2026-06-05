@@ -17,7 +17,6 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 // Import from shared export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -28,6 +27,9 @@ import {
 
 // Import XML parser for loading ELP
 import { parseFromString } from '../../src/services/xml/xml-parser';
+
+// Import test helpers
+import { createDocumentFromStructure } from '../helpers/document-test-utils';
 
 const fixturesPath = path.join(process.cwd(), 'test', 'fixtures');
 const elpFixturePath = path.join(fixturesPath, 'old_el_cid.elp');
@@ -80,7 +82,7 @@ describe('HTML5 Export Fixture Comparison', () => {
         parsedStructure = parseFromString(contentXml);
 
         // Create exporters and export
-        const document = new ElpDocumentAdapter(parsedStructure, extractedPath);
+        const document = createDocumentFromStructure(parsedStructure, extractedPath);
         const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
         const assets = new FileSystemAssetProvider(extractedPath);
         const zip = new FflateZipProvider();
@@ -144,25 +146,29 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('libs/bootstrap/bootstrap.bundle.min.js');
         });
 
-        it('should include exe_lightbox scripts', async () => {
+        it('should include exe_lightbox because fixture content uses rel="lightbox noopener"', async () => {
             if (!exportedIndexHtml) return;
 
+            // The fixture contains rel="lightbox noopener" links, so exe_lightbox must be included.
+            // Detection matches any rel attribute containing "lightbox" (e.g. "lightbox", "lightbox[X]", "lightbox noopener").
             expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.js');
             expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.css');
         });
 
-        it('should use theme/content.css (not style.css)', async () => {
+        it('should preserve original theme/style.css filename (not rename to content.css)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('theme/content.css');
-            expect(exportedIndexHtml).not.toContain('theme/style.css');
+            // Theme file names should be preserved as-is from the source
+            expect(exportedIndexHtml).toContain('theme/style.css');
+            expect(exportedIndexHtml).not.toContain('theme/content.css');
         });
 
-        it('should use theme/default.js (not style.js)', async () => {
+        it('should preserve original theme/style.js filename (not rename to default.js)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('theme/default.js');
-            expect(exportedIndexHtml).not.toContain('theme/style.js');
+            // Theme file names should be preserved as-is from the source
+            expect(exportedIndexHtml).toContain('theme/style.js');
+            expect(exportedIndexHtml).not.toContain('theme/default.js');
         });
 
         it('should have idevice CSS/JS in correct order', async () => {
@@ -232,10 +238,10 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('exe-web-site');
         });
 
-        it('should have lang attribute on body', async () => {
+        it('should have lang attribute on html element', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toMatch(/<body[^>]*lang="/);
+            expect(exportedIndexHtml).toMatch(/<html[^>]*lang="/);
         });
     });
 
@@ -290,12 +296,20 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('id="siteFooterContent"');
         });
 
-        it('should have packageLicense inside footer', async () => {
-            if (!exportedIndexHtml) return;
+        it('should have packageLicense inside footer when license is set', async () => {
+            if (!exportedIndexHtml || !parsedStructure) return;
 
-            expect(exportedIndexHtml).toContain('id="packageLicense"');
-            expect(exportedIndexHtml).toContain('class="license-label"');
-            expect(exportedIndexHtml).toContain('class="license"');
+            // packageLicense is only rendered when license is set in metadata
+            const hasLicense = !!parsedStructure.meta?.license;
+            if (hasLicense) {
+                expect(exportedIndexHtml).toContain('id="packageLicense"');
+                expect(exportedIndexHtml).toContain('class="license-label"');
+                expect(exportedIndexHtml).toContain('class="license"');
+            } else {
+                // When no license, footer exists but without packageLicense
+                expect(exportedIndexHtml).toContain('id="siteFooter"');
+                expect(exportedIndexHtml).not.toContain('id="packageLicense"');
+            }
         });
 
         it('should have made-with-eXe credit', async () => {
@@ -355,10 +369,11 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(themeFiles.length).toBeGreaterThan(0);
         });
 
-        it('should contain theme/content.css (renamed from style.css)', async () => {
+        it('should contain theme/style.css (preserving original filename)', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip['theme/content.css']).toBeDefined();
+            // Issue #905: Theme files should preserve their original names
+            expect(exportedZip['theme/style.css']).toBeDefined();
         });
 
         it('should contain libs/ directory', async () => {
@@ -424,8 +439,8 @@ describe('HTML5 Export Fixture Comparison', () => {
                 exportedIndexHtml.includes('data-idevice-type="text"');
 
             if (hasTextIdevice) {
-                // Text iDevices should have exe-text class with content inside
-                expect(exportedIndexHtml).toContain('class="exe-text"');
+                // Validate text iDevice content is present without coupling to legacy inner wrappers.
+                expect(exportedIndexHtml).toContain('data-idevice-type="text"');
             }
         });
     });
@@ -454,7 +469,7 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!parsedStructure) return;
 
             // Get block names from parsed structure
-            const pages = new ElpDocumentAdapter(parsedStructure, extractedPath).getNavigation();
+            const pages = createDocumentFromStructure(parsedStructure, extractedPath).getNavigation();
             const blockNames = pages.flatMap(p => (p.blocks || []).map(b => b.name));
 
             // At least one block should have a real name (not empty or "Block")

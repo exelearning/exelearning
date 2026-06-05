@@ -2,8 +2,20 @@ export default class Theme {
     constructor(manager, data) {
         this.manager = manager;
         this.id = data.dirName;
+        this.dirName = data.dirName; // Store dirName for theme editing
         this.setConfigValues(data);
-        this.path = `${manager.symfonyURL}${data.url}/`;
+        // Admin-approved uploaded themes may ship with an absolute URL
+        // (host integrations serving from a writable uploads directory).
+        // In that case use the URL verbatim. Otherwise, if the server already
+        // emitted the URL with BASE_PATH (post #1802 / #1804) we must NOT
+        // prepend manager.symfonyURL again or the browser asks for
+        // "/{base}/{base}/...style.css" and 404s. The legacy symfonyURL prefix
+        // still applies to any URL that does not already start with it.
+        this.path = /^(?:data:|blob:|https?:)\/\//i.test(data.url)
+            ? `${data.url.replace(/\/$/, '')}/`
+            : manager.symfonyURL && data.url.startsWith(manager.symfonyURL)
+              ? `${data.url.replace(/\/$/, '')}/`
+              : `${manager.symfonyURL}${data.url}/`;
         this.valid = data.valid;
     }
 
@@ -104,6 +116,10 @@ export default class Theme {
         });
         // Load css theme
         await this.loadCss();
+        // Resolve icon blob URLs for user themes
+        if (this.isUserTheme) {
+            await this.resolveIconBlobUrls();
+        }
         // Reload page
         if (eXeLearning.app.project.structure.nodeSelected) {
             if (
@@ -125,15 +141,122 @@ export default class Theme {
     }
 
     /**
-     *
+     * Load theme CSS files
+     * Handles both server themes and user themes (from Yjs storage)
      */
     async loadCss() {
+        // Check if this is a user theme (stored in Yjs, not on server)
+        if (this.isUserTheme || this.path.startsWith('user-theme://')) {
+            await this.loadUserThemeCss();
+            return;
+        }
+
+        // Standard server theme loading
         for (let i = 0; i < this.cssFiles.length; i++) {
             let pathCss = this.path + this.cssFiles[i];
             await this.loadStyleByInsertingIt(
                 this.getResourceServicePath(pathCss)
             );
         }
+    }
+
+    /**
+     * Load CSS for user themes (stored in IndexedDB/ResourceFetcher)
+     * @private
+     */
+    async loadUserThemeCss() {
+        const resourceFetcher = eXeLearning.app.resourceFetcher;
+        if (!resourceFetcher) {
+            console.error('[Theme] ResourceFetcher not available for user theme');
+            return;
+        }
+
+        // Get theme files from ResourceFetcher (async to support IndexedDB fallback)
+        let themeFiles = resourceFetcher.getUserTheme(this.id);
+        if (!themeFiles && resourceFetcher.getUserThemeAsync) {
+            // Try async method that fetches from IndexedDB
+            themeFiles = await resourceFetcher.getUserThemeAsync(this.id);
+        }
+
+        if (!themeFiles) {
+            console.error(`[Theme] User theme '${this.id}' files not found in ResourceFetcher`);
+            return;
+        }
+
+        // Load each CSS file
+        for (const cssFileName of this.cssFiles) {
+            const cssBlob = themeFiles.get(cssFileName);
+            if (cssBlob) {
+                const cssText = await cssBlob.text();
+                await this.injectUserThemeCss(cssText, cssFileName);
+            } else {
+                console.warn(`[Theme] CSS file '${cssFileName}' not found in user theme '${this.id}'`);
+            }
+        }
+    }
+
+    /**
+     * Inject user theme CSS into the page
+     * @param {string} cssText - CSS content
+     * @param {string} fileName - CSS file name (for debugging)
+     * @private
+     */
+    async injectUserThemeCss(cssText, fileName) {
+        const style = document.createElement('style');
+        style.classList.add('exe');
+        style.classList.add('theme-style');
+        style.setAttribute('data-user-theme', this.id);
+        style.setAttribute('data-file', fileName);
+
+        // For user themes, we need to convert relative URLs to blob URLs
+        // This is handled by rewriting url() references to use blob URLs from the theme files
+        const resourceFetcher = eXeLearning.app.resourceFetcher;
+        const themeFiles = resourceFetcher?.getUserTheme(this.id);
+
+        if (themeFiles) {
+            cssText = await this.rewriteCssUrls(cssText, themeFiles);
+        }
+
+        style.innerHTML = cssText;
+        document.querySelector('head').append(style);
+        return style;
+    }
+
+    /**
+     * Rewrite CSS url() references to use blob URLs for user theme resources
+     * @param {string} cssText - Original CSS
+     * @param {Map<string, Blob>} themeFiles - Theme files map
+     * @returns {Promise<string>} CSS with rewritten URLs
+     * @private
+     */
+    async rewriteCssUrls(cssText, themeFiles) {
+        // Find all url() references
+        const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+        const matches = [...cssText.matchAll(urlRegex)];
+
+        // Process each URL reference
+        for (const match of matches) {
+            const originalUrl = match[1];
+
+            // Skip absolute URLs, data URLs, and external URLs
+            if (originalUrl.startsWith('http') ||
+                originalUrl.startsWith('data:') ||
+                originalUrl.startsWith('//')) {
+                continue;
+            }
+
+            // Get the file from theme files
+            const cleanPath = originalUrl.replace(/^\.\//, '');
+            const fileBlob = themeFiles.get(cleanPath);
+
+            if (fileBlob) {
+                // Create blob URL for the resource
+                const blobUrl = URL.createObjectURL(fileBlob);
+                cssText = cssText.replace(match[0], `url('${blobUrl}')`);
+            }
+        }
+
+        return cssText;
     }
 
     /**
@@ -181,15 +304,25 @@ export default class Theme {
      * @returns {String}
      */
     getResourceServicePath(path) {
-        // Site themes are served directly from /site-files/themes/
+        // Site themes and user themes from FILES_DIR are served directly
         // No need to go through the idevices download service
-        if (path.includes('/site-files/') || path.includes('/admin-files/')) {
+        if (path.includes('/site-files/') || path.includes('/admin-files/') || path.includes('/user-files/')) {
             return path;
         }
 
-        let pathServiceResources =
-            this.manager.app.api.endpoints.api_idevices_download_file_resources
-                .path;
+        // Static mode: bundled theme files in /files/perm/themes/ are served directly
+        if (path.includes('/files/perm/themes/')) {
+            return path;
+        }
+
+        // Check if endpoint exists (may not exist in static mode)
+        const endpoint =
+            this.manager.app.api.endpoints.api_idevices_download_file_resources;
+        if (!endpoint) {
+            return path; // Return as-is if no endpoint available
+        }
+
+        let pathServiceResources = endpoint.path;
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
         pathParam = '/' + pathParam;
@@ -230,10 +363,93 @@ export default class Theme {
         style.classList.add('theme-style');
         // Get css
         let cssText = await eXeLearning.app.api.func.getText(path);
-        // Replace idevice style urls
-        cssText = cssText.replace(/url\((?:(?!http))/gm, `url(${this.path}`);
+        // Rewrite relative URLs to absolute, preserving quotes
+        // Skip absolute URLs (http:, https:, data:, blob:) and root-relative paths (/)
+        cssText = cssText.replace(
+            /url\(\s*(['"]?)(?!data:|http:|https:|blob:|\/)([^'")]+)\1\s*\)/g,
+            (match, quote, path) => `url(${quote}${this.path}${path}${quote})`
+        );
         style.innerHTML = cssText;
         document.querySelector('head').append(style);
         return style;
+    }
+
+    /**
+     * Resolve icon blob URLs for user themes
+     * Converts relative icon paths to blob URLs using theme files from ResourceFetcher
+     * @private
+     */
+    async resolveIconBlobUrls() {
+        // Only process user themes with icons that have relative paths
+        if (!this.isUserTheme || !this.icons || Object.keys(this.icons).length === 0) {
+            return;
+        }
+
+        const resourceFetcher = eXeLearning.app.resourceFetcher;
+        if (!resourceFetcher) {
+            console.warn('[Theme] ResourceFetcher not available for icon resolution');
+            return;
+        }
+
+        // Get theme files (async to support IndexedDB fallback)
+        let themeFiles = resourceFetcher.getUserTheme(this.id);
+        if (!themeFiles && resourceFetcher.getUserThemeAsync) {
+            themeFiles = await resourceFetcher.getUserThemeAsync(this.id);
+        }
+
+        if (!themeFiles) {
+            console.warn(`[Theme] Theme files not found for icon resolution: ${this.id}`);
+            return;
+        }
+
+        // Track blob URLs for cleanup
+        if (!this._iconBlobUrls) {
+            this._iconBlobUrls = [];
+        }
+
+        // Resolve each icon's blob URL
+        for (const [iconId, icon] of Object.entries(this.icons)) {
+            // Skip if not a proper icon object or already a blob URL
+            if (typeof icon !== 'object' || !icon._relativePath) {
+                continue;
+            }
+
+            // Skip if already resolved to blob URL
+            if (icon.value && icon.value.startsWith('blob:')) {
+                continue;
+            }
+
+            const iconPath = icon._relativePath;
+            const iconBlob = themeFiles.get(iconPath);
+
+            if (iconBlob) {
+                const blobUrl = URL.createObjectURL(iconBlob);
+                icon.value = blobUrl;
+                this._iconBlobUrls.push(blobUrl);
+            } else {
+                console.warn(`[Theme] Icon file not found: ${iconPath}`);
+            }
+        }
+    }
+
+    /**
+     * Revoke icon blob URLs to prevent memory leaks
+     * Called when theme is deselected
+     * @private
+     */
+    revokeIconBlobUrls() {
+        if (this._iconBlobUrls && this._iconBlobUrls.length > 0) {
+            for (const blobUrl of this._iconBlobUrls) {
+                URL.revokeObjectURL(blobUrl);
+            }
+            this._iconBlobUrls = [];
+
+            // Reset icon values to relative paths for potential re-selection
+            for (const icon of Object.values(this.icons)) {
+                if (typeof icon === 'object' && icon._relativePath) {
+                    icon.value = icon._relativePath;
+                }
+            }
+        }
     }
 }

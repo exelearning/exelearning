@@ -15,8 +15,9 @@ import type {
     ComponentRenderOptions,
     BlockRenderOptions,
     ExportBlockProperties,
+    ExportComponentProperties,
 } from '../interfaces';
-import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
 
 /**
  * CSS link for an iDevice
@@ -40,6 +41,44 @@ export interface IdeviceJsScript {
  */
 export class IdeviceRenderer {
     /**
+     * Private icon resolution map: baseName → filename with extension
+     * Configured via setThemeIconFiles() before rendering
+     */
+    private iconResolutionMap: Map<string, string> = new Map();
+
+    /**
+     * Configure icon resolution from theme files.
+     * Call this once before rendering blocks.
+     *
+     * @param themeFilesMap - Map of theme file paths (e.g., 'icons/activity.svg')
+     */
+    setThemeIconFiles(themeFilesMap: Map<string, unknown> | null): void {
+        this.iconResolutionMap.clear();
+        if (!themeFilesMap) return;
+
+        for (const [filePath] of themeFilesMap) {
+            if (filePath.startsWith('icons/') && /\.(svg|png|gif|jpe?g|webp)$/i.test(filePath)) {
+                const filename = filePath.replace('icons/', '');
+                const baseName = filename.replace(/\.(svg|png|gif|jpe?g|webp)$/i, '');
+                this.iconResolutionMap.set(baseName, filename);
+            }
+        }
+    }
+
+    /**
+     * Resolve icon baseName to filename with extension.
+     * Returns baseName + '.png' as fallback if not found (backwards compatibility).
+     */
+    private resolveIconName(baseName: string): string {
+        const resolved = this.iconResolutionMap.get(baseName);
+        if (resolved) {
+            return resolved;
+        }
+        // Fallback to .png for backwards compatibility with legacy themes
+        return `${baseName}.png`;
+    }
+
+    /**
      * Render a single iDevice component to HTML
      * @param component - Component data
      * @param options - Rendering options
@@ -49,13 +88,16 @@ export class IdeviceRenderer {
         component: ExportComponent,
         options: ComponentRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true } = options;
+        const { basePath = '', includeDataAttributes = true, assetExportPathMap } = options;
 
         const type = component.type || 'text';
         const config = getIdeviceConfig(type);
         const ideviceId = component.id;
         const htmlContent = component.content || '';
-        const properties = component.properties || {};
+        // Structure properties (visibility, teacherOnly, cssClass, identifier)
+        const structProps: ExportComponentProperties = component.structureProperties || {};
+        // jsonProperties for iDevice-specific config
+        const jsonProps = component.properties || {};
 
         // Build CSS classes
         const classes = ['idevice_node', config.cssClass];
@@ -63,18 +105,18 @@ export class IdeviceRenderer {
             classes.push('db-no-data');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (structProps.visibility === false || structProps.visibility === 'false') {
             classes.push('novisible');
         }
         if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
-            properties.visibilityType === 'teacher'
+            structProps.teacherOnly === true ||
+            structProps.teacherOnly === 'true' ||
+            (jsonProps as Record<string, unknown>).visibilityType === 'teacher'
         ) {
             classes.push('teacher-only');
         }
-        if (properties.cssClass && typeof properties.cssClass === 'string') {
-            classes.push(properties.cssClass);
+        if (structProps.cssClass && typeof structProps.cssClass === 'string') {
+            classes.push(structProps.cssClass);
         }
 
         // Build data attributes
@@ -102,15 +144,21 @@ export class IdeviceRenderer {
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
-                // Add JSON data for iDevices with properties
+                // Add JSON data for iDevices with jsonProperties (iDevice-specific config)
                 // Transform asset URLs in properties the same way as content
-                if (Object.keys(properties).length > 0) {
-                    const transformedProps = this.transformPropertiesUrls(properties, basePath, isPreviewModeForUrls);
+                // Text idevices only need ideviceId, not full properties (hide jsondata)
+                const isTextType = normalizedType === 'text';
+
+                if (isTextType || Object.keys(jsonProps).length > 0) {
+                    // For text idevices, use object with only ideviceId; for others, transform URLs in properties
+                    const transformedProps = isTextType
+                        ? { ideviceId }
+                        : this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls, assetExportPathMap);
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
-                // Always add template for JSON components (including text)
-                if (config.template) {
+                // Always add template for JSON components (except text which doesn't need it)
+                if (config.template && !isTextType) {
                     dataAttrs += ` data-idevice-template="${this.escapeAttr(config.template)}"`;
                 }
             }
@@ -118,15 +166,12 @@ export class IdeviceRenderer {
 
         // Fix asset URLs in content (uses same mode detection as properties)
         const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
-        const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode);
+        const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode, assetExportPathMap);
 
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
 
-        // Wrap text iDevice content in exe-text div (as per legacy format)
-        const isTextIdevice = type === 'text' || type === 'FreeTextIdevice' || type === 'TextIdevice';
-        const contentHtml =
-            isTextIdevice && escapedContent ? `<div class="exe-text">${escapedContent}</div>` : escapedContent;
+        const contentHtml = escapedContent;
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>
@@ -144,7 +189,7 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, themeIconBasePath } = options;
+        const { basePath = '', includeDataAttributes = true, themeIconBasePath, assetExportPathMap } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
@@ -160,74 +205,70 @@ ${contentHtml}
             classes.push('no-header');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.minimized === true || properties.minimized === 'true') {
+        if (String(properties.minimized) === 'true') {
             classes.push('minimized');
         }
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (String(properties.visibility) === 'false') {
             classes.push('novisible');
         }
-        if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
-            properties.visibilityType === 'teacher'
-        ) {
+        if (String(properties.teacherOnly) === 'true' || properties.visibilityType === 'teacher') {
             classes.push('teacher-only');
         }
         if (properties.cssClass) {
-            classes.push(properties.cssClass);
+            classes.push(properties.cssClass as string);
         }
 
-        // Build block header
-        let headerHtml = '';
-        if (hasHeader) {
-            const hasIcon = iconName && iconName.trim() !== '';
-            const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+        // Build block header - always render icon and toggle if enabled, even without title text
+        const hasIcon = iconName && iconName.trim() !== '';
+        const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
-            // Build icon HTML if iconName exists
-            let iconHtml = '';
-            if (hasIcon) {
-                // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
-                const iconPath = themeIconBasePath
-                    ? `${themeIconBasePath}${iconName}.png`
-                    : `${basePath}theme/icons/${iconName}.png`;
-                iconHtml = `<div class="box-icon exe-icon">
+        // Build icon HTML if iconName exists
+        // iconName is stored WITHOUT extension (e.g., "share") to allow cross-theme compatibility
+        // We use resolveIconName() to resolve to actual filename with extension (e.g., "share.svg")
+        let iconHtml = '';
+        if (hasIcon) {
+            // Resolve icon baseName to actual filename with extension
+            const resolvedIconName = this.resolveIconName(iconName);
+            const iconPath = themeIconBasePath
+                ? `${themeIconBasePath}${resolvedIconName}`
+                : `${basePath}theme/icons/${resolvedIconName}`;
+            iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>
 `;
-            }
-
-            // Build toggle button if allowToggle is enabled
-            let toggleHtml = '';
-            if (properties.allowToggle === true || properties.allowToggle === 'true') {
-                const toggleClass =
-                    properties.minimized === true || properties.minimized === 'true'
-                        ? 'box-toggle box-toggle-off'
-                        : 'box-toggle box-toggle-on';
-                toggleHtml = `<button class="${toggleClass}" title="Toggle content">
-<span>Toggle content</span>
-</button>`;
-            }
-
-            headerHtml = `<header class="${headerClass}">
-${iconHtml}<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
-${toggleHtml}</header>`;
-        } else {
-            headerHtml = '<div class="box-head"></div>';
         }
+
+        // Build toggle button if allowToggle is enabled (default: true when undefined)
+        // allowToggle defaults to true for backwards compatibility - users must explicitly disable it
+        let toggleHtml = '';
+        const shouldShowToggle = properties.allowToggle !== false && properties.allowToggle !== 'false';
+        if (shouldShowToggle) {
+            const toggleClass =
+                properties.minimized === true || properties.minimized === 'true'
+                    ? 'box-toggle box-toggle-off'
+                    : 'box-toggle box-toggle-on';
+            // Static text - will be translated at runtime by exe_export.js using $exe_i18n.toggleContent
+            const toggleText = 'Toggle content';
+            toggleHtml = `<button class="${toggleClass}" title="${this.escapeAttr(toggleText)}">
+<span>${this.escapeHtml(toggleText)}</span>
+</button>`;
+        }
+        // Build title only if blockName has text
+        const titleHtml = hasHeader
+            ? `<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
+`
+            : '';
+
+        const headerHtml = `<header class="${headerClass}">
+${iconHtml}${titleHtml}${toggleHtml}</header>`;
 
         // Render all iDevices in the block
         let contentHtml = '';
         for (const component of components) {
-            contentHtml += this.render(component, { basePath, includeDataAttributes });
+            contentHtml += this.render(component, { basePath, includeDataAttributes, assetExportPathMap });
         }
 
-        // Build additional attributes (identifier support)
-        let extraAttrs = '';
-        if (properties.identifier) {
-            extraAttrs += ` identifier="${this.escapeAttr(properties.identifier)}"`;
-        }
-
-        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}"${extraAttrs}>
+        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}">
 ${headerHtml}
 <div class="box-content">
 ${contentHtml}
@@ -263,6 +304,10 @@ ${contentHtml}
             result = result.replace(/\{\{context_path\}\}\/([^"'\s]+)/g, (_match, assetPath) => {
                 if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
                     return _match;
+                }
+                // Avoid double prefix: if path already starts with content/resources/, just use basePath + path
+                if (assetPath.startsWith('content/resources/')) {
+                    return `${basePath}${assetPath}`;
                 }
                 return `${basePath}content/resources/${assetPath}`;
             });
@@ -516,7 +561,13 @@ ${contentHtml}
                 // Get ALL JS files from export folder (main file first, then dependencies)
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
-                    scripts.push(`<script src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
+                    // Plugins like the 3D Viewer iDevice (issue #1810) ship ES module
+                    // scripts (three.module.min.js, STLLoader.js, OrbitControls.js).
+                    // Without type="module" the browser throws a SyntaxError on
+                    // `import`/`export`, which cascades into the failure to load STL
+                    // assets at runtime.
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
+                    scripts.push(`<script${typeAttr} src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
                 }
             }
         }
@@ -577,9 +628,10 @@ ${contentHtml}
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
                     const src = `${basePath}idevices/${typeName}/${jsFile}`;
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
                     scripts.push({
                         src,
-                        tag: `<script src="${src}"></script>`,
+                        tag: `<script${typeAttr} src="${src}"></script>`,
                     });
                 }
             }

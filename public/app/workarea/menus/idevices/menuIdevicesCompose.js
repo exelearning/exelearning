@@ -18,23 +18,25 @@ export default class MenuIdevicesCompose {
         );
         this.readers = [];
     }
-    categoriesTitle = {
-        information: _('Information and presentation'),
-        evaluation: _('Assessment and tracking'),
-        games: _('Games'),
-        interactive: _('Interactive activities'),
-        science: _('Science'),
-        imported: _('Imported'),
+
+    // English category keys used in config.xml files - these are constant
+    // DO NOT translate these - they must match the backend category values
+    categoryKeys = {
+        information: 'Information and presentation',
+        evaluation: 'Assessment and tracking',
+        games: 'Games',
+        interactive: 'Interactive activities',
+        science: 'Science',
+        imported: 'Imported',
     };
 
-    categoriesFirst = [
-        this.categoriesTitle.information,
-        this.categoriesTitle.evaluation,
-        this.categoriesTitle.games,
-        this.categoriesTitle.interactive,
-        this.categoriesTitle.science,
-        // this.categoriesTitle.imported, // To do (see #381)
-    ];
+    // Order of categories to display (using English keys)
+    categoriesOrder = ['information', 'evaluation', 'games', 'interactive', 'science'];
+
+    // Get translated title for a category key (called at render time)
+    getCategoryTitle(key) {
+        return _(this.categoryKeys[key] || key);
+    }
 
     /**
      * Generate the HTML in the idevices menu
@@ -44,28 +46,32 @@ export default class MenuIdevicesCompose {
         // Clean menu
         this.categoriesExtra = [];
         this.categoriesIdevices = {};
-        this.categoriesIcons = [];
+        this.categoryKeyToIcon = {};
         this.menuIdevices.innerHTML = '';
-        // Set categories
-        for (let [key, title] of Object.entries(this.categoriesTitle)) {
-            this.categoriesIdevices[title] = [];
-            this.categoriesIcons[title] = key;
+
+        // Build reverse lookup: English category name -> icon key
+        this.englishToKey = {};
+        for (let [iconKey, englishName] of Object.entries(this.categoryKeys)) {
+            this.englishToKey[englishName] = iconKey;
+            this.categoriesIdevices[englishName] = [];
+            this.categoryKeyToIcon[englishName] = iconKey;
         }
+
         this.addIdevicesToCategory();
 
-        // Generate elements
-        this.orderedCategories = this.categoriesFirst.concat(
-            this.categoriesExtra
-        );
-        this.orderedCategories.forEach((category) => {
-            if (
-                this.categoriesIdevices[category]
-                //&& this.categoriesIdevices[category].length > 0
-            ) {
+        // Generate elements - use English category names for lookup
+        const orderedEnglishCategories = this.categoriesOrder.map(key => this.categoryKeys[key]);
+        const allCategories = orderedEnglishCategories.concat(this.categoriesExtra);
+
+        allCategories.forEach((englishCategory) => {
+            if (this.categoriesIdevices[englishCategory]) {
+                // Use known icon key, or create a safe CSS class name for unknown categories
+                const iconKey = this.categoryKeyToIcon[englishCategory] ||
+                    englishCategory.toLowerCase().replace(/[^a-z0-9]/g, '-');
                 this.createDivCategoryIdevices(
-                    category,
-                    this.categoriesIdevices[category],
-                    this.categoriesIcons[category]
+                    englishCategory,
+                    this.categoriesIdevices[englishCategory],
+                    iconKey
                 );
             }
         });
@@ -73,31 +79,33 @@ export default class MenuIdevicesCompose {
 
     /**
      * Add idevices to categories
+     * Uses English category names from backend to match with known categories
      *
      * @return dict
      */
     addIdevicesToCategory() {
         for (let [key, idevice] of Object.entries(this.idevicesInstalled)) {
-            // TODO commented only for develop -> if (idevice.visible) {
-            if (!this.categoriesIdevices[idevice.category]) {
-                this.categoriesIdevices[idevice.category] = [];
-                this.categoriesExtra.push(idevice.category);
+            // idevice.category is in English (from config.xml)
+            const category = idevice.category;
+            if (!this.categoriesIdevices[category]) {
+                this.categoriesIdevices[category] = [];
+                this.categoriesExtra.push(category);
             }
-            this.categoriesIdevices[idevice.category].push(idevice);
-            // }
+            this.categoriesIdevices[category].push(idevice);
         }
     }
 
     /**
      * Create node parent category
      *
-     * @param {*} categoryTitle
+     * @param {string} englishCategory - English category name (e.g., "Information and presentation")
      * @param {*} idevices
+     * @param {string} icon - Icon key (e.g., "information")
      */
-    createDivCategoryIdevices(categoryTitle, idevices, icon) {
-        // The Text iDevice should be in the first place
-        if (categoryTitle == this.categoriesTitle.information) {
-            // Find the object widh id == "text"
+    createDivCategoryIdevices(englishCategory, idevices, icon) {
+        // The Text iDevice should be in the first place for "Information and presentation"
+        if (englishCategory === this.categoryKeys.information) {
+            // Find the object with id == "text"
             const index = idevices.findIndex((obj) => obj.id === 'text');
             if (index > -1) {
                 // Put Text in the first place
@@ -105,8 +113,10 @@ export default class MenuIdevicesCompose {
                 idevices.unshift(item);
             }
         }
-        let nodeDivCategory = this.elementDivCategory(categoryTitle);
-        nodeDivCategory.append(this.elementLabelCategory(categoryTitle, icon));
+        // Translate the category title for display
+        const translatedTitle = _(englishCategory);
+        let nodeDivCategory = this.elementDivCategory(translatedTitle);
+        nodeDivCategory.append(this.elementLabelCategory(translatedTitle, icon));
         nodeDivCategory.append(this.elementDivIdevicesParent(idevices, icon));
         this.menuIdevices.append(nodeDivCategory);
     }

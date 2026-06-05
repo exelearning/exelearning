@@ -1016,7 +1016,7 @@ var $exeDevices = {
                         formattedScore = !isNaN(scoreNumber) ? scoreNumber.toFixed(2) : '0',
                         $header = $main.closest(`.${game.idevice}`);
 
-                    let icon = 'exequextsq.png',
+                    let icon = 'exequextsq.svg',
                         text = game.msgs.msgUncompletedActivity;
 
                     if (state === 1) {

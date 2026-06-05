@@ -55,6 +55,17 @@
     text-decoration: underline
 }
 
+/* Underlined links */
+.box-content a {
+    text-decoration: underline;
+}
+.box-content a:hover {
+    text-decoration: none;
+}
+.box-content a:focus {
+    text-decoration: underline;
+}
+
 @media print {
     .external-iframe-src {
         display: block !important;
@@ -81,6 +92,10 @@
     margin: 2em 1em;
     overflow: auto;
     padding: 20px
+}
+
+.highlighted-code {
+    margin: 2em 1em;
 }
 
 .exe-dl {
@@ -693,6 +708,11 @@ video {
 #exe-client-search-reset.visible {
     display: inline;
 }
+.exe-client-search-result{
+    padding:0;
+    background-color: #FFF3A0;
+    color: #1A1A1A;
+}
 
 /* Box toggler */
 .exe-export article.minimized .box-content{
@@ -735,6 +755,31 @@ html:not(.mode-teacher) .js .teacher-only {
     margin-bottom: 2em;
     color: #555;
     font-size: 0.95em;
+}
+
+/* Skip navigation link */
+#skipNav {
+    position: fixed;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #000;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.95em;
+    text-decoration: underline;
+    padding: 0.5em 1em;
+    z-index: 1000;
+    display: inline-block;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    outline: 3px solid #fff;
+    outline-offset: -3px;
+    transition: top 0.3s ease, opacity 0.3s ease;
+}
+
+#skipNav:focus {
+    top: 5px;
 }
 
 /* Print styles for header elements */

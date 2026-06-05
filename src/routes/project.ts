@@ -42,14 +42,95 @@ import {
 } from '../services/link-validator';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getPreferenceValue } from '../db/queries/preferences';
+
+/**
+ * Resolves the dirName of the theme that should be baked into a brand-new
+ * project, applying the agreed precedence:
+ *
+ *   1. The user's "defaultTheme" preference, when set AND when the referenced
+ *      theme still exists in the themes table and is enabled.
+ *   2. The admin-wide global default theme stored in app_settings.
+ *   3. The hard-coded fallback "base".
+ *
+ * Exported so it can be unit-tested without booting an Elysia app, and so the
+ * create-quick handler is just glue on top of a small, predictable function.
+ *
+ * Failures from query layers (missing tables, etc.) are swallowed so that
+ * callers always get a usable theme name back.
+ */
+export async function resolveDefaultThemeForNewProject(
+    db: Kysely<Database>,
+    userId: number,
+    deps: {
+        getDefaultTheme: typeof getDefaultThemeDefault;
+        findThemeByDirName: typeof findThemeByDirName;
+        getPreferenceValue: typeof getPreferenceValue;
+    } = {
+        getDefaultTheme: getDefaultThemeDefault,
+        findThemeByDirName,
+        getPreferenceValue,
+    },
+): Promise<string> {
+    let themeDirName = 'base';
+    try {
+        const globalDefault = await deps.getDefaultTheme(db);
+        themeDirName = globalDefault.dirName;
+    } catch {
+        // app_settings may not exist yet (pre-migration); ignore
+    }
+    try {
+        const userPref = await deps.getPreferenceValue(db, userId, 'defaultTheme');
+        if (userPref) {
+            const themeRecord = await deps.findThemeByDirName(db, userPref);
+            if (themeRecord && themeRecord.is_enabled === 1) {
+                themeDirName = userPref;
+            }
+        }
+    } catch {
+        // users_preferences/themes may not exist yet (pre-migration); ignore
+    }
+    return themeDirName;
+}
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
 } from '../websocket/access-notifier';
 import { createBlankYjsDocument } from '../services/yjs-initializer';
+import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
-import type { Database, Project, User } from '../db/types';
+import type { Database, Project, User, Theme } from '../db/types';
+
+/**
+ * Build the `defaultTheme` payload returned to the client when a project is
+ * created. A site theme (admin-uploaded, enabled, non-builtin) gets a
+ * cache-busted `/site-files/themes/...` URL (consistent with config.ts /
+ * themes.ts); anything else falls back to the bundled base theme URL.
+ *
+ * Pure helper extracted from the create route so both branches stay testable.
+ */
+export function buildDefaultThemePayload(
+    themeRecord: Theme | undefined,
+    themeDirName: string,
+    version: string,
+): { dirName: string; displayName: string; url: string; type: 'base' | 'site' } {
+    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
+        return {
+            dirName: themeRecord.dir_name,
+            displayName: themeRecord.display_name,
+            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
+            type: 'site',
+        };
+    }
+    return {
+        dirName: themeDirName,
+        displayName: themeRecord?.display_name || themeDirName,
+        url: `/files/perm/themes/base/${themeDirName}`,
+        type: 'base',
+    };
+}
 import type {
     ProjectUploadChunkRequest,
     ProjectPropertiesRequest,
@@ -490,7 +571,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // NOTE: Export is handled by routes/export.ts (ElpDocumentAdapter, Yjs-based).
+            // NOTE: Export is handled by routes/export.ts (Yjs-based via YjsDocumentAdapter).
             // Old session-based /api/project/export endpoint was removed.
 
             // =====================================================
@@ -517,14 +598,9 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     saved_once: 0,
                 });
 
-                // Get global default theme early so we can use it for Yjs document initialization
-                let themeDirName = 'base';
-                try {
-                    const globalDefault = await getDefaultThemeDefault(db);
-                    themeDirName = globalDefault.dirName;
-                } catch {
-                    // Silently ignore if tables don't exist yet
-                }
+                // Resolve the theme to bake into the initial Yjs document.
+                // Precedence: user's "defaultTheme" preference > admin global default > 'base'.
+                const themeDirName = await resolveDefaultThemeForNewProject(db, userId);
 
                 // Create initial Yjs document with blank structure (prevents duplicate page race condition)
                 if (upsertSnapshot) {
@@ -551,36 +627,24 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
                 console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
 
-                // Get global default theme (can be base or site)
+                // Compute the defaultTheme payload returned to the client. Reuses the
+                // already-resolved themeDirName (which already considers the user
+                // preference) so the response stays consistent with what we baked into
+                // the Yjs document.
                 let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
                     null;
                 try {
-                    const globalDefault = await getDefaultThemeDefault(db);
                     const version = getAppVersion();
-
-                    if (globalDefault.type === 'site') {
-                        // Get site theme details
-                        const siteTheme = await findThemeByDirName(db, globalDefault.dirName);
-                        if (siteTheme?.is_enabled) {
-                            defaultTheme = {
-                                dirName: siteTheme.dir_name,
-                                displayName: siteTheme.display_name,
-                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
-                                type: 'site',
-                            };
-                        }
-                    } else {
-                        // Base theme - use base path
-                        defaultTheme = {
-                            dirName: globalDefault.dirName,
-                            displayName: globalDefault.dirName, // Will be resolved by frontend
-                            url: `/files/perm/themes/base/${globalDefault.dirName}`,
-                            type: 'base',
-                        };
-                    }
+                    const themeRecord = await findThemeByDirName(db, themeDirName);
+                    defaultTheme = buildDefaultThemePayload(themeRecord, themeDirName, version);
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
+
+                logActivity(db, {
+                    eventType: 'project.create',
+                    userId: currentUser.id,
+                });
 
                 return {
                     success: true,
@@ -1321,7 +1385,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/projects/uuid/:uuid/duplicate - Duplicate project by UUID
-            .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set }) => {
+            .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
                 const project = await findProjectByUuid(db, uuid);
@@ -1336,7 +1400,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // Create duplicate project with new UUID
                 const duplicateProject = await createProjectWithUuid(db, newUuid, {
                     title: `${project.title} (copy)`,
-                    owner_id: project.owner_id,
+                    owner_id: currentUser?.id ?? project.owner_id,
                     description: project.description || undefined,
                     visibility: project.visibility as 'public' | 'private',
                     language: project.language || undefined,
@@ -1346,9 +1410,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 // =====================================================
                 // Duplicate assets (physical files + database records)
-                // Build client_id mapping for Yjs document update
                 // =====================================================
-                const clientIdMapping = new Map<string, string>();
                 const sourceAssets = await findAllAssetsForProject(db, project.id);
 
                 if (sourceAssets.length > 0) {
@@ -1357,16 +1419,17 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     for (const asset of sourceAssets) {
                         if (!asset.client_id) continue;
 
-                        // Generate new client_id for the duplicated asset
-                        const newClientId = crypto.randomUUID();
-                        clientIdMapping.set(asset.client_id, newClientId);
+                        // Preserve client_id on duplication.
+                        // This avoids broken references for any asset IDs that may exist in
+                        // alternate/legacy Yjs shapes or historical content fragments.
+                        const duplicatedClientId = asset.client_id;
 
                         // Copy physical file if it exists
                         if (asset.storage_path) {
                             try {
                                 const sourceExists = await fs.pathExists(asset.storage_path);
                                 if (sourceExists) {
-                                    const targetFile = path.join(targetAssetsDir, newClientId, asset.filename);
+                                    const targetFile = path.join(targetAssetsDir, duplicatedClientId, asset.filename);
                                     await fs.ensureDir(path.dirname(targetFile));
                                     await fs.copy(asset.storage_path, targetFile);
 
@@ -1377,9 +1440,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                                         storage_path: targetFile,
                                         mime_type: asset.mime_type,
                                         file_size: asset.file_size,
-                                        client_id: newClientId,
+                                        client_id: duplicatedClientId,
                                         component_id: asset.component_id,
                                         content_hash: asset.content_hash,
+                                        folder_path: asset.folder_path,
                                     });
                                 } else {
                                     console.warn(`[Project Duplicate] Asset file not found: ${asset.storage_path}`);
@@ -1391,8 +1455,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // Copy Yjs document state if exists, updating the title in metadata
-                // and replacing old client_ids with new ones
+                // Copy Yjs document state if exists, updating title in metadata
                 const snapshot = findSnapshotByProjectId ? await findSnapshotByProjectId(db, project.id) : null;
                 if (snapshot) {
                     // Import Yjs to modify the document
@@ -1405,60 +1468,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     // Update title in metadata
                     const metadata = ydoc.getMap('metadata');
                     metadata.set('title', `${project.title} (copy)`);
-
-                    // Replace old client_ids with new ones in all content
-                    if (clientIdMapping.size > 0) {
-                        const replaceClientIds = (text: string): string => {
-                            let result = text;
-                            for (const [oldId, newId] of clientIdMapping) {
-                                result = result.replaceAll(oldId, newId);
-                            }
-                            return result;
-                        };
-
-                        // Update pages - iterate through the pages map and update HTML content
-                        const pages = ydoc.getMap('pages');
-                        for (const pageId of pages.keys()) {
-                            const page = pages.get(pageId) as Y.Map<unknown> | undefined;
-                            if (page && page instanceof Y.Map) {
-                                const blocks = page.get('blocks') as Y.Map<unknown> | undefined;
-                                if (blocks && blocks instanceof Y.Map) {
-                                    for (const blockId of blocks.keys()) {
-                                        const block = blocks.get(blockId) as Y.Map<unknown> | undefined;
-                                        if (block && block instanceof Y.Map) {
-                                            const idevices = block.get('idevices') as Y.Map<unknown> | undefined;
-                                            if (idevices && idevices instanceof Y.Map) {
-                                                for (const ideviceId of idevices.keys()) {
-                                                    const idevice = idevices.get(ideviceId) as
-                                                        | Y.Map<unknown>
-                                                        | undefined;
-                                                    if (idevice && idevice instanceof Y.Map) {
-                                                        // Update innerHtml if present
-                                                        const innerHtml = idevice.get('innerHtml');
-                                                        if (typeof innerHtml === 'string') {
-                                                            idevice.set('innerHtml', replaceClientIds(innerHtml));
-                                                        }
-                                                        // Update any field values that might contain asset references
-                                                        const fields = idevice.get('fields') as
-                                                            | Y.Map<unknown>
-                                                            | undefined;
-                                                        if (fields && fields instanceof Y.Map) {
-                                                            for (const fieldKey of fields.keys()) {
-                                                                const fieldValue = fields.get(fieldKey);
-                                                                if (typeof fieldValue === 'string') {
-                                                                    fields.set(fieldKey, replaceClientIds(fieldValue));
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // Encode modified state
                     const newState = Y.encodeStateAsUpdate(ydoc);
@@ -1486,13 +1495,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/projects/uuid/:uuid - Delete project by UUID
-            .delete('/api/projects/uuid/:uuid', async ({ params, set }) => {
+            .delete('/api/projects/uuid/:uuid', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const uuid = params.uuid;
 
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                // Only the project owner can delete it
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can delete this project' };
                 }
 
                 // Delete project (cascades to assets, yjs_documents, etc.)
@@ -1654,7 +1674,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // GET /api/odes/current-users - Get users currently working on ODE
-            .get('/api/odes/current-users', ({ query }) => {
+            .get('/api/odes/current-users', ({ query, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const odeSessionId = query.odeSessionId as string | undefined;
 
                 // In single-user mode, return empty array or minimal info
@@ -1686,7 +1710,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/current-users - Register user working on ODE (for collaboration)
-            .post('/api/odes/current-users', ({ body }) => {
+            .post('/api/odes/current-users', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as OdeCurrentUserRequest;
                 // In stateless mode, just acknowledge
                 return {
@@ -1697,7 +1725,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/odes/current-users - Unregister user from ODE (for collaboration)
-            .delete('/api/odes/current-users', () => {
+            .delete('/api/odes/current-users', ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1706,7 +1738,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/check-before-leave - Check if safe to leave (no other users editing)
-            .post('/api/odes/check-before-leave', ({ body }) => {
+            .post('/api/odes/check-before-leave', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CheckBeforeLeaveRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1726,7 +1762,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/session/close - Close an ODE session (called during logout)
-            .post('/api/odes/session/close', ({ body }) => {
+            .post('/api/odes/session/close', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CloseSessionRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -2070,14 +2110,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                             const metadata = assetId ? assetMetadata[assetId] : null;
 
                             // Use filename from metadata if available, otherwise use UUID
-                            let fileName: string;
-                            if (metadata?.filename) {
-                                fileName = metadata.filename;
-                            } else {
-                                // Fallback: extract from URL path or use UUID
-                                const urlParts = filePath.replace('asset://', '').split('/');
-                                fileName = urlParts.length > 1 ? urlParts[urlParts.length - 1] : assetId;
-                            }
+                            // Format: asset://uuid.ext - filename comes from metadata only
+                            const fileName = metadata?.filename || assetId;
 
                             // Use size from metadata if available
                             let fileSize: string;
@@ -2141,22 +2175,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // If no files found, return empty message
+                // If no files found, return empty array
                 if (allUsedFiles.length === 0) {
-                    return {
-                        responseMessage: 'OK',
-                        usedFiles: [
-                            {
-                                usedFiles: 'No files found',
-                                usedFilesPath: '',
-                                usedFilesSize: '',
-                                pageNamesUsedFiles: '',
-                                blockNamesUsedFiles: '',
-                                typeComponentSyncUsedFiles: '',
-                                orderComponentSyncUsedFiles: '',
-                            },
-                        ],
-                    };
+                    return { responseMessage: 'OK', usedFiles: [] };
                 }
 
                 return {

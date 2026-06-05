@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -84,6 +85,14 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
@@ -111,6 +120,14 @@ class MockZipProvider implements ZipProvider {
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -287,6 +304,36 @@ describe('Scorm2004Exporter', () => {
             expect(html).toContain('exe-scorm');
             expect(html).toContain('exe-scorm2004');
         });
+
+        it('should NOT include page-counter when addPagination is false', () => {
+            document = new MockDocument({ addPagination: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('page-counter');
+        });
+
+        it('should include page-counter when addPagination is true', () => {
+            document = new MockDocument({ addPagination: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('page-counter');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('made-with-eXe');
+        });
+
+        it('should include made-with-eXe link by default', () => {
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('made-with-eXe');
+        });
     });
 
     describe('SCORM 2004 Scripts', () => {
@@ -341,11 +388,92 @@ describe('Scorm2004Exporter', () => {
     });
 
     describe('Project ID Generation', () => {
-        it('should generate unique project IDs', () => {
+        it('should generate unique low-level project IDs (legacy random helper)', () => {
             const id1 = exporter.generateProjectId();
             const id2 = exporter.generateProjectId();
 
             expect(id1).not.toBe(id2);
+        });
+
+        it('should produce a STABLE manifest@identifier across exports when odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const zip1 = new MockZipProvider();
+            const exporter1 = new Scorm2004Exporter(document, resources, assets, zip1);
+            await exporter1.export();
+            const manifest1 = zip1.files.get('imsmanifest.xml') as string;
+            const idMatch1 = manifest1.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch1).not.toBeNull();
+            const id1 = idMatch1![1];
+
+            const zip2 = new MockZipProvider();
+            const exporter2 = new Scorm2004Exporter(document, resources, assets, zip2);
+            await exporter2.export();
+            const manifest2 = zip2.files.get('imsmanifest.xml') as string;
+            const idMatch2 = manifest2.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch2).not.toBeNull();
+            const id2 = idMatch2![1];
+
+            // BUG fix: re-exporting the same project must produce the SAME manifest identifier.
+            expect(id1).toBe(id2);
+            expect(id1).toContain('20251201123456ABCDEF');
+        });
+
+        it('should honour meta.scormIdentifier as a user override (#1785)', async () => {
+            document = new MockDocument(
+                {
+                    odeIdentifier: '20251201123456ABCDEF',
+                    scormIdentifier: 'CUSTOM-OVERRIDE-XYZ',
+                },
+                samplePages,
+            );
+            const localZip = new MockZipProvider();
+            exporter = new Scorm2004Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toBe('CUSTOM-OVERRIDE-XYZ');
+        });
+
+        it('should fall back to a generated eXe-MANIFEST-* identifier when neither override nor odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm2004Exporter(document, resources, assets, localZip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toMatch(/^eXe-MANIFEST-\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should derive manifest@identifier and LOM catalog/entry from the same odeIdentifier (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm2004Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+            expect(manifest).toContain('20251201123456ABCDEF');
+            expect(lom).toContain('20251201123456ABCDEF');
+        });
+
+        it('shares a single root id across manifest, organization and LOM entry on the FALLBACK path (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm2004Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            const lomEntryMatch = lom.match(/<entry[^>]*>\s*ODE-([A-Z0-9]+)/);
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(lomEntryMatch).not.toBeNull();
+            const root = manifestMatch![1];
+            expect(orgMatch![1]).toBe(root);
+            expect(lomEntryMatch![1]).toBe(root);
         });
     });
 
@@ -387,6 +515,69 @@ describe('Scorm2004Exporter', () => {
             const result = await exporter.export();
 
             expect(result.filename).toContain('_scorm2004');
+        });
+    });
+
+    describe('Icon Resolution via setThemeIconFiles', () => {
+        it('should resolve SVG icons when theme has SVG icon files', async () => {
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+                return files;
+            };
+
+            document = new MockDocument({}, pagesWithIcon);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/activity.svg');
+        });
+
+        it('should fall back to .png when theme has no icon files', async () => {
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/activity.png');
         });
     });
 });

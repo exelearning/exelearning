@@ -39,8 +39,8 @@ describe('translation service', () => {
             expect(PACKAGE_LOCALES.zh_CN).toBeDefined();
         });
 
-        it('should have DEFAULT_LOCALE as en', () => {
-            expect(DEFAULT_LOCALE).toBe('en');
+        it('should have DEFAULT_LOCALE as en (APP_LOCALE or en)', () => {
+            expect(DEFAULT_LOCALE).toBe(process.env.APP_LOCALE || 'en');
         });
 
         it('should have TRANS_PREFIX defined', () => {
@@ -114,6 +114,16 @@ describe('translation service', () => {
         it('should accept custom locale parameter', () => {
             const result = trans('test.key', {}, 'es');
             expect(typeof result).toBe('string');
+        });
+
+        it('should replace %s format parameters', () => {
+            const result = trans('Send to %s', { s: 'Moodle' });
+            expect(result).toBe('Send to Moodle');
+        });
+
+        it('should not replace partial matches like %str with %s', () => {
+            const result = trans('Send to %str', { s: 'Moodle' });
+            expect(result).toBe('Send to %str');
         });
     });
 
@@ -212,6 +222,19 @@ describe('translation service', () => {
         it('should work for non-existent locale', () => {
             const catalogue = getCatalogueWithFallback('xx');
             expect(typeof catalogue).toBe('object');
+        });
+
+        it('should never expose the "~" fuzzy marker in the catalogue', () => {
+            // XLF files keep "~" as a marker for machine-translated placeholders
+            // (so human translators can spot entries needing review), but the
+            // catalogue returned to the frontend must already have the marker
+            // stripped — otherwise it leaks into the UI and exports.
+            for (const locale of getAvailableLocales()) {
+                const catalogue = getCatalogueWithFallback(locale);
+                for (const value of Object.values(catalogue)) {
+                    expect(value.startsWith('~')).toBe(false);
+                }
+            }
         });
     });
 

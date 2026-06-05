@@ -61,6 +61,7 @@ export default class ModalFilemanager extends Modal {
         this.downloadBtn = null;
         this.moreBtn = null;
         this.extractBtn = null;
+        this.dropdownCopyUrlBtn = null;
         this.copyUrlBtn = null;
         this.fullSizeBtn = null;
     }
@@ -94,8 +95,34 @@ export default class ModalFilemanager extends Modal {
 
         // More options dropdown items
         this.extractBtn = footer?.querySelector('.media-library-extract-btn');
-        this.copyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
+        this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
+
+        // Mobile-only collapsed actions dropdown
+        this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
+        this.mobileActionsToggle = this.mobileActionsWrapper?.querySelector('.media-library-mobile-actions-toggle');
+        this.mobileActionTargets = {
+            delete: this.deleteBtn,
+            rename: this.renameBtn,
+            duplicate: this.duplicateBtn,
+            move: this.moveBtn,
+            download: this.downloadBtn,
+            'extract-zip': this.extractBtn,
+            copyurl: this.dropdownCopyUrlBtn,
+            fullsize: this.fullSizeBtn,
+        };
+        if (this.mobileActionsWrapper) {
+            this.mobileActionsWrapper.addEventListener('click', (event) => {
+                const item = event.target.closest('[data-mobile-action]');
+                if (!item) return;
+                event.preventDefault();
+                if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                const target = this.mobileActionTargets[item.dataset.mobileAction];
+                if (target && !target.disabled) {
+                    target.click();
+                }
+            });
+        }
 
         // WebSocket handler reference and bound event handlers for rename sync
         this._wsHandler = null;
@@ -115,6 +142,19 @@ export default class ModalFilemanager extends Modal {
         this.previewAudio = this.modalElement.querySelector('.media-library-preview-audio');
         this.previewFile = this.modalElement.querySelector('.media-library-preview-file');
         this.previewPdf = this.modalElement.querySelector('.media-library-preview-pdf');
+        if (!this.previewPdf) {
+            const previewContainer = this.modalElement.querySelector('.media-library-preview');
+            if (previewContainer) {
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.className = 'media-library-preview-pdf';
+                pdfIframe.style.display = 'none';
+                pdfIframe.style.width = '100%';
+                pdfIframe.style.height = '250px';
+                pdfIframe.style.border = '1px solid #ccc';
+                previewContainer.insertBefore(pdfIframe, this.previewFile || null);
+                this.previewPdf = pdfIframe;
+            }
+        }
 
         // Folder navigation elements
         this.breadcrumbs = this.modalElement.querySelector('.media-library-breadcrumbs');
@@ -128,6 +168,17 @@ export default class ModalFilemanager extends Modal {
         this.folderPickerCancel = this.modalElement.querySelector('.folder-picker-cancel');
         this.folderPickerClose = this.modalElement.querySelector('.folder-picker-close');
         this.folderPickerOverlay = this.modalElement.querySelector('.folder-picker-overlay');
+
+        // Rename dialog
+        this.renameDialog = this.modalElement.querySelector('.media-library-rename-dialog');
+        this.renameDialogTitle = this.modalElement.querySelector('.rename-dialog-title');
+        this.renameDialogLabel = this.modalElement.querySelector('.rename-dialog-label');
+        this.renameDialogInput = this.modalElement.querySelector('.rename-dialog-input');
+        this.renameDialogConfirm = this.modalElement.querySelector('.rename-dialog-confirm');
+        this.renameDialogCancel = this.modalElement.querySelector('.rename-dialog-cancel');
+        this.renameDialogClose = this.modalElement.querySelector('.rename-dialog-close');
+        this.renameDialogOverlay = this.modalElement.querySelector('.rename-dialog-overlay');
+        this._renameDialogResolve = null;
 
         // Metadata elements
         this.filenameSpan = this.modalElement.querySelector('.media-library-filename');
@@ -208,8 +259,8 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        if (this.copyUrlBtn) {
-            this.copyUrlBtn.addEventListener('click', (e) => {
+        if (this.dropdownCopyUrlBtn) {
+            this.dropdownCopyUrlBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.copyAssetUrl();
             });
@@ -360,6 +411,39 @@ export default class ModalFilemanager extends Modal {
         if (this.folderPickerConfirm) {
             this.folderPickerConfirm.addEventListener('click', () => {
                 this.confirmMove();
+            });
+        }
+
+        // Rename dialog events
+        if (this.renameDialogCancel) {
+            this.renameDialogCancel.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogClose) {
+            this.renameDialogClose.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogOverlay) {
+            this.renameDialogOverlay.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogConfirm) {
+            this.renameDialogConfirm.addEventListener('click', () => {
+                this._resolveRenameDialog(this.renameDialogInput?.value ?? null);
+            });
+        }
+        if (this.renameDialogInput) {
+            this.renameDialogInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this._resolveRenameDialog(this.renameDialogInput.value);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this._resolveRenameDialog(null);
+                }
             });
         }
     }
@@ -536,7 +620,16 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] Remote Yjs asset change detected`);
 
         // Reload assets from Yjs (fast - metadata only from memory)
-        this.loadAssets();
+        this.loadAssets().then(async () => {
+            // If a file is selected, refresh the sidebar with updated data
+            if (this.selectedAsset) {
+                const updatedAsset = this.assets.find(a => a.id === this.selectedAsset.id);
+                if (updatedAsset) {
+                    this.selectedAsset = updatedAsset;
+                    await this.showSidebarContent(updatedAsset);
+                }
+            }
+        });
     }
 
 
@@ -720,18 +813,36 @@ export default class ModalFilemanager extends Modal {
      * Create a new folder
      */
     async createNewFolder() {
-        const name = prompt(_('Enter folder name:'));
+        const name = await this._showRenameDialog(
+            _('New folder'),
+            _('Enter folder name:'),
+            '',
+            0,
+            _('Create')
+        );
         if (!name) return;
 
         // Validate folder name
         if (!this.isValidFolderName(name)) {
-            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
         // Check if folder already exists
         if (this.folders.includes(name)) {
-            alert(_('A folder with this name already exists.'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('A folder with this name already exists.'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
             return;
         }
 
@@ -800,10 +911,15 @@ export default class ModalFilemanager extends Modal {
                 if (this.acceptFilter === 'image' && !mime.startsWith('image/')) return false;
                 if (this.acceptFilter === 'audio' && !mime.startsWith('audio/')) return false;
                 if (this.acceptFilter === 'video' && !mime.startsWith('video/')) return false;
+                if (this.acceptFilter === '3d') {
+                    const filename = asset.filename || '';
+                    const is3D = mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
+                    if (!is3D) return false;
+                }
             }
             // Filter by type (user-selected filter)
             if (this.typeFilter) {
-                const category = this.getAssetTypeCategory(asset.mime);
+                const category = this.getAssetTypeCategory(asset.mime, asset.filename);
                 if (category !== this.typeFilter) return false;
             }
             // Filter by search term
@@ -887,8 +1003,10 @@ export default class ModalFilemanager extends Modal {
                     valB = (b.filename || '').toLowerCase();
                     return valA.localeCompare(valB) * modifier;
                 case 'date':
-                    valA = a.createdAt || 0;
-                    valB = b.createdAt || 0;
+                    valA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    valB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    valA = Number.isNaN(valA) ? 0 : valA;
+                    valB = Number.isNaN(valB) ? 0 : valB;
                     return (valA - valB) * modifier;
                 case 'size':
                     valA = a.size || 0;
@@ -947,29 +1065,57 @@ export default class ModalFilemanager extends Modal {
      * Update footer button states based on current selection
      */
     updateButtonStates() {
-        const hasFileSelection = this.selectedAsset !== null;
+        const selectedFilesCount = this.selectedAssets.length > 0
+            ? this.selectedAssets.length
+            : (this.selectedAsset ? 1 : 0);
+        const hasFileSelection = selectedFilesCount > 0;
         const hasFolderSelection = this.selectedFolder !== null;
         const hasSelection = hasFileSelection || hasFolderSelection;
+        const hasSingleSelection = (selectedFilesCount === 1 && !hasFolderSelection) || (!hasFileSelection && hasFolderSelection);
+        const canInsert = this.multiSelect ? hasFileSelection : selectedFilesCount === 1;
         const isZip = hasFileSelection && (
-            this.selectedAsset.mime === 'application/zip' ||
-            this.selectedAsset.mime === 'application/x-zip-compressed' ||
-            this.selectedAsset.filename?.toLowerCase().endsWith('.zip')
+            this.selectedAsset?.mime === 'application/zip' ||
+            this.selectedAsset?.mime === 'application/x-zip-compressed' ||
+            this.selectedAsset?.filename?.toLowerCase().endsWith('.zip')
         );
 
         // File/folder operation buttons
         if (this.deleteBtn) this.deleteBtn.disabled = !hasSelection;
-        if (this.renameBtn) this.renameBtn.disabled = !hasSelection;
+        if (this.renameBtn) this.renameBtn.disabled = !hasSingleSelection;
         if (this.moveBtn) this.moveBtn.disabled = !hasSelection;
 
         // File-only buttons
-        if (this.downloadBtn) this.downloadBtn.disabled = !hasFileSelection;
-        if (this.duplicateBtn) this.duplicateBtn.disabled = !hasFileSelection;
-        if (this.insertBtn) this.insertBtn.disabled = !hasFileSelection;
-        if (this.moreBtn) this.moreBtn.disabled = !hasFileSelection;
+        if (this.downloadBtn) this.downloadBtn.disabled = selectedFilesCount !== 1;
+        if (this.duplicateBtn) this.duplicateBtn.disabled = selectedFilesCount !== 1;
+        if (this.insertBtn) this.insertBtn.disabled = !canInsert;
+        if (this.moreBtn) this.moreBtn.disabled = selectedFilesCount !== 1;
 
         // Extract button visibility (only for ZIP files)
         if (this.extractBtn) {
             this.extractBtn.classList.toggle('d-none', !isZip);
+        }
+
+        this.syncMobileActions();
+    }
+
+    syncMobileActions() {
+        if (!this.mobileActionsWrapper) return;
+        let anyEnabled = false;
+        for (const [action, target] of Object.entries(this.mobileActionTargets)) {
+            const item = this.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+            if (!item) continue;
+            // Only `extract-zip` is genuinely hidden based on the target's d-none class (non-zip files).
+            // Main action buttons have d-none from `d-none d-md-inline-block`, which hides them on
+            // mobile only and must not propagate to the mobile dropdown items.
+            const hidden = !target || (action === 'extract-zip' && target.classList.contains('d-none'));
+            const disabled = !target || target.disabled;
+            item.classList.toggle('d-none', hidden);
+            item.classList.toggle('disabled', disabled);
+            item.setAttribute('aria-disabled', String(disabled));
+            if (!hidden && !disabled) anyEnabled = true;
+        }
+        if (this.mobileActionsToggle) {
+            this.mobileActionsToggle.disabled = !anyEnabled;
         }
     }
 
@@ -1250,9 +1396,9 @@ export default class ModalFilemanager extends Modal {
         if (this.showRefCount) {
             const usageCount = this.getAssetUsageCount(asset.id);
             const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            nameCell.innerHTML = `<span class="filename">${asset.filename || 'Unknown'}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
+            nameCell.innerHTML = `<span class="filename">${asset.filename || _('Unknown')}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
         } else {
-            nameCell.textContent = asset.filename || 'Unknown';
+            nameCell.textContent = asset.filename || _('Unknown');
         }
         row.appendChild(nameCell);
 
@@ -1294,12 +1440,12 @@ export default class ModalFilemanager extends Modal {
         const dateCell = document.createElement('td');
         dateCell.className = 'col-date';
         const date = asset.createdAt ? new Date(asset.createdAt) : null;
-        dateCell.textContent = date ? date.toLocaleDateString() : 'Unknown';
+        dateCell.textContent = date ? date.toLocaleDateString() : _('Unknown');
         row.appendChild(dateCell);
 
         // Click handler
-        row.addEventListener('click', () => {
-            this.selectAssetInList(asset, row);
+        row.addEventListener('click', (e) => {
+            this.selectAssetInList(asset, row, e);
         });
 
         // Double-click to insert
@@ -1314,12 +1460,13 @@ export default class ModalFilemanager extends Modal {
      * Get human-readable file type label
      */
     getFileTypeLabel(mime) {
-        if (!mime) return 'Unknown';
-        if (mime.startsWith('image/')) return 'Image';
-        if (mime.startsWith('video/')) return 'Video';
-        if (mime.startsWith('audio/')) return 'Audio';
-        if (mime.includes('pdf')) return 'PDF';
-        return 'File';
+        if (!mime) return _('Unknown');
+        if (mime.startsWith('image/')) return _('Image');
+        if (mime.startsWith('video/')) return _('Video');
+        if (mime.startsWith('audio/')) return _('Audio');
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return _('3D Model');
+        if (mime.includes('pdf')) return _('PDF');
+        return _('File');
     }
 
     /**
@@ -1336,7 +1483,7 @@ export default class ModalFilemanager extends Modal {
             if (mime.startsWith('audio/')) return 'audiotrack';
             if (mime === 'application/pdf') return 'picture_as_pdf';
             if (mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'folder_zip';
-            if (mime === 'model/stl' || mime === 'application/sla') return 'view_in_ar';
+            if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/sla' || mime === 'application/vnd.mmtf') return 'view_in_ar';
         }
 
         // Check by file extension
@@ -1359,6 +1506,18 @@ export default class ModalFilemanager extends Modal {
                 case 'fbx':
                 case 'gltf':
                 case 'glb':
+                case 'pdb':
+                case 'sdf':
+                case 'mol2':
+                case 'xyz':
+                case 'cif':
+                case 'mmcif':
+                case 'mmtf':
+                case 'gro':
+                case 'pqr':
+                case 'prmtop':
+                case 'vasp':
+                case 'cube':
                     return 'view_in_ar';
                 case 'doc':
                 case 'docx':
@@ -1398,11 +1557,13 @@ export default class ModalFilemanager extends Modal {
     /**
      * Get asset type category for filtering
      */
-    getAssetTypeCategory(mime) {
+    getAssetTypeCategory(mime, filename) {
         if (!mime) return 'other';
         if (mime.startsWith('image/')) return 'image';
         if (mime.startsWith('video/')) return 'video';
         if (mime.startsWith('audio/')) return 'audio';
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return 'model';
+        if (filename && /\.(glb|gltf|stl|obj|fbx)$/i.test(filename)) return 'model';
         if (mime === 'application/pdf') return 'pdf';
         return 'other';
     }
@@ -1416,7 +1577,7 @@ export default class ModalFilemanager extends Modal {
         // Get unique type categories from assets
         const typeCategories = new Set();
         for (const asset of this.assets) {
-            const category = this.getAssetTypeCategory(asset.mime);
+            const category = this.getAssetTypeCategory(asset.mime, asset.filename);
             typeCategories.add(category);
         }
 
@@ -1428,12 +1589,13 @@ export default class ModalFilemanager extends Modal {
             image: _('Images'),
             video: _('Videos'),
             audio: _('Audio'),
+            model: _('3D Models'),
             pdf: _('PDF'),
             other: _('Other')
         };
 
         // Type order for consistent display
-        const typeOrder = ['image', 'video', 'audio', 'pdf', 'other'];
+        const typeOrder = ['image', 'video', 'audio', 'model', 'pdf', 'other'];
 
         // Add options for existing types
         for (const type of typeOrder) {
@@ -1455,8 +1617,10 @@ export default class ModalFilemanager extends Modal {
     /**
      * Select asset in list view
      */
-    async selectAssetInList(asset, rowElement) {
-        if (this.multiSelect) {
+    async selectAssetInList(asset, rowElement, event = null) {
+        const additiveSelection = event?.ctrlKey || event?.metaKey;
+
+        if (this.multiSelect || additiveSelection) {
             // Multi-select mode: toggle selection
             const index = this.selectedAssets.findIndex(a => a.id === asset.id);
             if (index >= 0) {
@@ -1469,11 +1633,13 @@ export default class ModalFilemanager extends Modal {
                 rowElement.classList.add('selected');
             }
 
-            // Update sidebar to show last selected or empty
-            if (this.selectedAssets.length > 0) {
-                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
-                this.selectedAsset = lastSelected;
-                await this.showSidebarContent(lastSelected);
+            // Update sidebar to show aggregate summary for multi-selection
+            if (this.selectedAssets.length > 1) {
+                this.selectedAsset = null;
+                this.showMultiSelectionSidebarContent(this.selectedAssets);
+            } else if (this.selectedAssets.length === 1) {
+                this.selectedAsset = this.selectedAssets[0];
+                await this.showSidebarContent(this.selectedAsset);
             } else {
                 this.selectedAsset = null;
                 this.showSidebarEmpty();
@@ -1550,15 +1716,15 @@ export default class ModalFilemanager extends Modal {
             if (this.isSearchMode) {
                 // In search mode: show image with info overlay
                 item.innerHTML = `
-                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>
+                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>
                     ${usageBadge}
                     <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'Image')}</span>
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('Image'))}</span>
                         ${pathBadgeHtml}
                     </div>`;
             } else {
                 // Normal mode: just image
-                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>${usageBadge}`;
+                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>${usageBadge}`;
             }
         } else {
             // Use icon for non-image files
@@ -1571,7 +1737,7 @@ export default class ModalFilemanager extends Modal {
                     </div>
                     ${usageBadge}
                     <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'File')}</span>
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('File'))}</span>
                         ${pathBadgeHtml}
                     </div>`;
             } else {
@@ -1579,7 +1745,7 @@ export default class ModalFilemanager extends Modal {
                 item.innerHTML = `
                     <div class="media-thumbnail file-thumbnail">
                         <span class="exe-icon">${icon}</span>
-                        <span class="media-label">${this.escapeHtml(asset.filename || 'File')}</span>
+                        <span class="media-label">${this.escapeHtml(asset.filename || _('File'))}</span>
                     </div>${usageBadge}`;
             }
         }
@@ -1594,8 +1760,8 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Click handler
-        item.addEventListener('click', () => {
-            this.selectAsset(asset, item);
+        item.addEventListener('click', (e) => {
+            this.selectAsset(asset, item, e);
         });
 
         // Double-click to insert
@@ -1639,8 +1805,10 @@ export default class ModalFilemanager extends Modal {
      * @param {Object} asset
      * @param {HTMLElement} itemElement
      */
-    async selectAsset(asset, itemElement) {
-        if (this.multiSelect) {
+    async selectAsset(asset, itemElement, event = null) {
+        const additiveSelection = event?.ctrlKey || event?.metaKey;
+
+        if (this.multiSelect || additiveSelection) {
             // Multi-select mode: toggle selection
             const index = this.selectedAssets.findIndex(a => a.id === asset.id);
             if (index >= 0) {
@@ -1653,11 +1821,13 @@ export default class ModalFilemanager extends Modal {
                 itemElement.classList.add('selected');
             }
 
-            // Update sidebar to show last selected or empty
-            if (this.selectedAssets.length > 0) {
-                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
-                this.selectedAsset = lastSelected;
-                await this.showSidebarContent(lastSelected);
+            // Update sidebar to show aggregate summary for multi-selection
+            if (this.selectedAssets.length > 1) {
+                this.selectedAsset = null;
+                this.showMultiSelectionSidebarContent(this.selectedAssets);
+            } else if (this.selectedAssets.length === 1) {
+                this.selectedAsset = this.selectedAssets[0];
+                await this.showSidebarContent(this.selectedAsset);
             } else {
                 this.selectedAsset = null;
                 this.showSidebarEmpty();
@@ -1808,20 +1978,20 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Update metadata
-        if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || 'Unknown';
-        if (this.typeSpan) this.typeSpan.textContent = asset.mime || 'Unknown';
+        if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || _('Unknown');
+        if (this.typeSpan) this.typeSpan.textContent = asset.mime || _('Unknown');
         if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager.formatFileSize(asset.size || 0);
 
         // Date
         if (this.dateSpan) {
             const date = asset.createdAt ? new Date(asset.createdAt) : null;
-            this.dateSpan.textContent = date ? date.toLocaleDateString() : 'Unknown';
+            this.dateSpan.textContent = date ? date.toLocaleDateString() : _('Unknown');
         }
 
         // Usage count
         if (this.usageSpan) {
             const usageCount = this.getAssetUsageCount(asset.id);
-            this.usageSpan.textContent = `${usageCount} iDevices`;
+            this.usageSpan.textContent = _('%1 iDevices').replace('%1', usageCount);
         }
 
         // URL
@@ -1838,10 +2008,10 @@ export default class ModalFilemanager extends Modal {
                     if (dims) {
                         this.dimensionsSpan.textContent = `${dims.width} x ${dims.height} px`;
                     } else {
-                        this.dimensionsSpan.textContent = 'Unknown';
+                        this.dimensionsSpan.textContent = _('Unknown');
                     }
                 } catch (e) {
-                    this.dimensionsSpan.textContent = 'Unknown';
+                    this.dimensionsSpan.textContent = _('Unknown');
                 }
             } else {
                 this.dimensionsRow.style.display = 'none';
@@ -1861,6 +2031,46 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Show aggregate sidebar details for multiple selected files
+     * @param {Array} assets
+     */
+    showMultiSelectionSidebarContent(assets) {
+        if (!assets || assets.length < 2) return;
+
+        if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
+        if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+
+        // Hide all preview elements except generic file preview
+        if (this.previewImg) this.previewImg.style.display = 'none';
+        if (this.previewVideo) this.previewVideo.style.display = 'none';
+        if (this.previewAudio) this.previewAudio.style.display = 'none';
+        if (this.previewPdf) this.previewPdf.style.display = 'none';
+        if (this.previewFile) {
+            this.previewFile.style.display = 'flex';
+            const icon = this.previewFile.querySelector('.file-icon');
+            if (icon) icon.textContent = 'collections';
+        }
+
+        const totalSize = assets.reduce((sum, current) => sum + (current?.size || 0), 0);
+        const countLabel = _('%1 files selected').replace('%1', assets.length);
+
+        if (this.filenameSpan) this.filenameSpan.textContent = countLabel;
+        if (this.typeSpan) this.typeSpan.textContent = _('Multiple files');
+        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+        if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
+        if (this.dateSpan) this.dateSpan.textContent = '-';
+        if (this.usageSpan) this.usageSpan.textContent = '-';
+        if (this.urlInput) this.urlInput.value = '';
+        if (this.locationRow) this.locationRow.style.display = 'none';
+
+        // Ensure folder selection is cleared
+        this.selectedFolder = null;
+        this.selectedFolderPath = null;
+
+        this.updateButtonStates();
+    }
+
+    /**
      * Upload files
      * @param {FileList} files
      */
@@ -1870,13 +2080,15 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}, folder = "${this.currentPath}"`);
 
         let uploadedCount = 0;
+        let lastUploadedUrl = null;
 
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder
-                await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
                 uploadedCount++;
+                lastUploadedUrl = url;
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
             }
@@ -1885,6 +2097,28 @@ export default class ModalFilemanager extends Modal {
         if (uploadedCount > 0) {
             Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
             await this.loadAssets();
+
+            if (uploadedCount === 1 && lastUploadedUrl) {
+                const assetId = lastUploadedUrl.replace(/^asset:\/\//, '').replace(/\.[^.]*$/, '');
+                await this.autoSelectUploadedAsset(assetId);
+            }
+        }
+    }
+
+    /**
+     * Auto-select an asset after upload, as if the user clicked it.
+     * @param {string} assetId
+     */
+    async autoSelectUploadedAsset(assetId) {
+        const asset = this.assets.find(a => a.id === assetId);
+        if (!asset) return;
+
+        if (this.viewMode === 'list') {
+            const row = this.listTbody?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (row) await this.selectAssetInList(asset, row);
+        } else {
+            const item = this.grid?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (item) await this.selectAsset(asset, item);
         }
     }
 
@@ -1945,33 +2179,99 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to delete folder:', err);
-                alert(_('Failed to delete folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to delete folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
 
-        // Delete file
-        if (!this.selectedAsset) return;
+        const filesToDelete = this.selectedAssets.length > 0
+            ? [...this.selectedAssets]
+            : (this.selectedAsset ? [this.selectedAsset] : []);
+        if (filesToDelete.length === 0) return;
 
-        const filename = this.selectedAsset.filename || 'Unknown';
-        const usageCount = this.getAssetUsageCount(this.selectedAsset.id);
-
-        let confirmMsg = _('Delete "%1"?').replace('%1', filename);
-        if (usageCount > 0) {
-            confirmMsg += '\n' + _('This asset is referenced in %1 iDevices.').replace('%1', usageCount);
+        let confirmMsg;
+        if (filesToDelete.length === 1) {
+            const filename = filesToDelete[0].filename || _('Unknown');
+            const usageCount = this.getAssetUsageCount(filesToDelete[0].id);
+            confirmMsg = _('Delete "%1"?').replace('%1', filename);
+            if (usageCount > 0) {
+                confirmMsg += '\n' + _('This asset is referenced in %1 iDevices.').replace('%1', usageCount);
+            }
+        } else {
+            confirmMsg = _('Delete %1 selected files?').replace('%1', filesToDelete.length);
         }
 
         if (!confirm(confirmMsg)) return;
 
         try {
-            await this.assetManager.deleteAsset(this.selectedAsset.id);
-            Logger.log(`[MediaLibrary] Deleted asset: ${this.selectedAsset.id}`);
+            for (const asset of filesToDelete) {
+                await this.assetManager.deleteAsset(asset.id);
+            }
+            Logger.log(`[MediaLibrary] Deleted ${filesToDelete.length} asset(s)`);
 
             // Reload grid
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to delete asset:', err);
-            alert(_('Failed to delete file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to delete file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
+        }
+    }
+
+    /**
+     * Show a rename dialog and return a Promise that resolves with the entered
+     * value, or null if cancelled. For files, the selection covers only the
+     * base name (before the last dot) so the extension is not highlighted.
+     *
+     * @param {string} title - Dialog heading text
+     * @param {string} label - Label text above the input
+     * @param {string} currentValue - Pre-filled value for the input
+     * @param {number} selectUpTo - End index of the initial text selection (0..length)
+     * @param {string} [confirmLabel] - Text for the confirm button (defaults to 'Rename')
+     * @returns {Promise<string|null>}
+     */
+    _showRenameDialog(title, label, currentValue, selectUpTo, confirmLabel) {
+        return new Promise((resolve) => {
+            if (!this.renameDialog) {
+                resolve(null);
+                return;
+            }
+            this._renameDialogResolve = resolve;
+            if (this.renameDialogTitle) this.renameDialogTitle.textContent = title;
+            if (this.renameDialogLabel) this.renameDialogLabel.textContent = label;
+            if (this.renameDialogInput) this.renameDialogInput.value = currentValue;
+            if (this.renameDialogConfirm) this.renameDialogConfirm.textContent = confirmLabel ?? _('Rename');
+            this.renameDialog.style.display = 'flex';
+            if (this.renameDialogInput) {
+                this.renameDialogInput.focus();
+                this.renameDialogInput.setSelectionRange(0, selectUpTo);
+            }
+        });
+    }
+
+    /**
+     * Resolve and close the rename dialog.
+     *
+     * @param {string|null} value - The value to resolve with (null = cancelled)
+     */
+    _resolveRenameDialog(value) {
+        if (!this.renameDialog) return;
+        this.renameDialog.style.display = 'none';
+        if (this._renameDialogResolve) {
+            const resolve = this._renameDialogResolve;
+            this._renameDialogResolve = null;
+            resolve(value);
         }
     }
 
@@ -1984,19 +2284,36 @@ export default class ModalFilemanager extends Modal {
         // Check if folder is selected
         if (this.selectedFolder && this.selectedFolderPath) {
             const currentName = this.selectedFolder;
-            const newName = prompt(_('Enter new folder name:'), currentName);
+            const newName = await this._showRenameDialog(
+                _('Rename folder'),
+                _('Enter new folder name:'),
+                currentName,
+                currentName.length
+            );
 
             if (!newName || newName === currentName) return;
 
             // Validate folder name
             if (!this.isValidFolderName(newName)) {
-                alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 5000
+                });
                 return;
             }
 
             // Check if folder with same name already exists in parent
             if (this.folders.includes(newName)) {
-                alert(_('A folder with this name already exists.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A folder with this name already exists.'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2038,7 +2355,13 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to rename folder:', err);
-                alert(_('Failed to rename folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to rename folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
@@ -2047,13 +2370,26 @@ export default class ModalFilemanager extends Modal {
         if (!this.selectedAsset) return;
 
         const currentName = this.selectedAsset.filename || '';
-        const newName = prompt(_('Enter new filename:'), currentName);
+        const dotIndex = currentName.lastIndexOf('.');
+        const selectUpTo = dotIndex > 0 ? dotIndex : currentName.length;
+        const newName = await this._showRenameDialog(
+            _('Rename file'),
+            _('Enter new filename:'),
+            currentName,
+            selectUpTo
+        );
 
         if (!newName || newName === currentName) return;
 
         // Validate filename
         if (!this.isValidFolderName(newName)) {
-            alert(_('Invalid filename. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid filename. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
@@ -2077,7 +2413,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to rename asset:', err);
-            alert(_('Failed to rename file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to rename file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2123,8 +2465,13 @@ export default class ModalFilemanager extends Modal {
 
                         let found = false;
 
-                        // Check htmlView or htmlContent (Y.Text or string)
-                        const htmlContent = compMap.get('htmlView') || compMap.get('htmlContent');
+                        // Check htmlContent (Y.Text or string) or htmlView (legacy fallback).
+                        // htmlContent is refreshed on every save; htmlView is only populated
+                        // during initial ELP import and never updated after edits, so reading
+                        // it first causes stale reference counts after image deletion in
+                        // iDevices whose save path only touches jsonProperties/htmlContent
+                        // (issue #1674).
+                        const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
                         if (htmlContent) {
                             const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
                             if (assetRegex.test(content)) {
@@ -2255,7 +2602,13 @@ export default class ModalFilemanager extends Modal {
             }
 
             if (!blob) {
-                alert(_('Could not read file'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Could not read file'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2268,8 +2621,15 @@ export default class ModalFilemanager extends Modal {
             const originalName = asset.filename || 'file';
             const suggestedName = this.generateUniqueCopyName(originalName, existingNames);
 
-            // Prompt user for the new filename
-            const newName = prompt(_('Enter name for the duplicate:'), suggestedName);
+            // Show rename dialog for the new filename, selecting only the base name
+            const dotIndex = suggestedName.lastIndexOf('.');
+            const selectUpTo = dotIndex > 0 ? dotIndex : suggestedName.length;
+            const newName = await this._showRenameDialog(
+                _('Duplicate file'),
+                _('Enter name for the duplicate:'),
+                suggestedName,
+                selectUpTo
+            );
 
             // User cancelled
             if (newName === null) return;
@@ -2277,14 +2637,26 @@ export default class ModalFilemanager extends Modal {
             // Validate the name
             const trimmedName = newName.trim();
             if (!trimmedName) {
-                alert(_('Please enter a valid filename'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Please enter a valid filename'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
             // Check if name already exists (case-insensitive)
             const existingSet = new Set(existingNames.map(n => n.toLowerCase()));
             if (existingSet.has(trimmedName.toLowerCase())) {
-                alert(_('A file with this name already exists in this folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A file with this name already exists in this folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2300,7 +2672,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to duplicate asset:', err);
-            alert(_('Failed to duplicate file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to duplicate file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2311,7 +2689,8 @@ export default class ModalFilemanager extends Modal {
         if (!this.folderPicker) return;
 
         // Need either a file or folder selected
-        if (!this.selectedAsset && !this.selectedFolderPath) return;
+        const hasFileSelection = this.selectedAssets.length > 0 || !!this.selectedAsset;
+        if (!hasFileSelection && !this.selectedFolderPath) return;
 
         // Build list of available folders
         this.buildFolderPickerList();
@@ -2435,7 +2814,13 @@ export default class ModalFilemanager extends Modal {
      */
     async confirmMove() {
         if (this.selectedMoveTarget === null || this.selectedMoveTarget === undefined) {
-            alert(_('Please select a destination folder'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Please select a destination folder'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
             return;
         }
 
@@ -2457,7 +2842,13 @@ export default class ModalFilemanager extends Modal {
             const currentParent = parts.join('/');
 
             if (currentParent === destinationPath) {
-                alert(_('Folder is already in this location'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: _('Folder is already in this location'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 3000
+                });
                 return;
             }
 
@@ -2465,7 +2856,13 @@ export default class ModalFilemanager extends Modal {
             const newPath = destinationPath ? `${destinationPath}/${folderName}` : folderName;
             const existingFolders = this.deriveSubfolders(this.assets, destinationPath);
             if (existingFolders.includes(folderName)) {
-                alert(_('A folder with this name already exists in the destination.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A folder with this name already exists in the destination.'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2484,27 +2881,44 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to move folder:', err);
-                alert(_('Failed to move folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to move folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
 
-        // Moving a file
-        if (!this.selectedAsset) {
+        // Moving file(s)
+        const filesToMove = this.selectedAssets.length > 0
+            ? [...this.selectedAssets]
+            : (this.selectedAsset ? [this.selectedAsset] : []);
+        if (filesToMove.length === 0) {
             this.hideFolderPicker();
             return;
         }
 
-        const currentPath = this.selectedAsset.folderPath || '';
-
-        if (currentPath === destinationPath) {
-            alert(_('File is already in this folder'));
-            return;
-        }
-
         try {
-            await this.assetManager.updateAssetFolderPath(this.selectedAsset.id, destinationPath);
-            Logger.log(`[MediaLibrary] Moved asset ${this.selectedAsset.id} from "${currentPath}" to "${destinationPath}"`);
+            const movableAssets = filesToMove.filter(asset => (asset.folderPath || '') !== destinationPath);
+            if (movableAssets.length === 0) {
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: filesToMove.length > 1 ? _('Selected files are already in this folder') : _('File is already in this folder'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 3000
+                });
+                return;
+            }
+
+            for (const asset of movableAssets) {
+                const currentPath = asset.folderPath || '';
+                await this.assetManager.updateAssetFolderPath(asset.id, destinationPath);
+                Logger.log(`[MediaLibrary] Moved asset ${asset.id} from "${currentPath}" to "${destinationPath}"`);
+            }
 
             this.hideFolderPicker();
 
@@ -2512,21 +2926,28 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to move asset:', err);
-            alert(_('Failed to move file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to move file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
     /**
      * Insert selected asset(s) into editor
      */
-    insertSelectedAsset() {
+    async insertSelectedAsset() {
         const assetsToInsert = this.multiSelect ? this.selectedAssets : (this.selectedAsset ? [this.selectedAsset] : []);
         if (assetsToInsert.length === 0) return;
 
         // If callback provided, use it
         if (this.onSelectCallback) {
             // Build array of asset info for callback
-            const assetInfos = assetsToInsert.map(asset => {
+            const assetInfos = [];
+            for (const asset of assetsToInsert) {
                 const assetUrl = this.assetManager.getAssetUrl(asset.id, asset.filename);
 
                 // Get blob URL for immediate display (using synced method to ensure reverseBlobCache consistency)
@@ -2540,12 +2961,25 @@ export default class ModalFilemanager extends Modal {
                     this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
                 }
 
-                return {
+                // For HTML files, resolve internal URLs for proper display in iframes
+                if (asset.mime === 'text/html' ||
+                    (asset.filename && /\.html?$/i.test(asset.filename))) {
+                    try {
+                        const resolvedUrl = await this.assetManager.resolveHtmlWithAssets(asset.id);
+                        if (resolvedUrl) {
+                            blobUrl = resolvedUrl;
+                        }
+                    } catch (err) {
+                        console.warn('[MediaLibrary] Failed to resolve HTML with assets:', err);
+                    }
+                }
+
+                assetInfos.push({
                     assetUrl: assetUrl,
                     blobUrl: blobUrl,
                     asset: asset
-                };
-            });
+                });
+            }
 
             // For backwards compatibility, if single select mode, pass single object
             // If multi-select, pass array
@@ -2587,9 +3021,15 @@ export default class ModalFilemanager extends Modal {
             } else if (this.selectedAsset.mime === 'application/pdf') {
                 // Insert PDF as iframe using asset:// URL (resolved to blob:// by asset system)
                 editor.insertContent(`<iframe src="${assetUrl}" data-mce-pdf="true" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>`);
+            } else if (this.selectedAsset.mime === 'text/html' ||
+                       (this.selectedAsset.filename && /\.html?$/i.test(this.selectedAsset.filename))) {
+                // Insert HTML as iframe using asset:// URL (resolved to blob:// by resolveAssetUrlsInEditor)
+                // This ensures the asset:// URL is preserved in data-mce-p-src for correct persistence
+                // The resolveAssetUrlsInEditor function will use resolveHtmlWithAssets() for display
+                editor.insertContent(`<iframe src="${assetUrl}" data-mce-html="true" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>`);
             } else {
                 // Insert as link
-                editor.insertContent(`<a href="${blobUrl}" data-asset-url="${assetUrl}">${this.selectedAsset.filename || 'File'}</a>`);
+                editor.insertContent(`<a href="${blobUrl}" data-asset-url="${assetUrl}">${this.selectedAsset.filename || _('File')}</a>`);
             }
 
             Logger.log(`[MediaLibrary] Inserted asset into editor: ${this.selectedAsset.id}`);
@@ -2599,7 +3039,13 @@ export default class ModalFilemanager extends Modal {
             // Copy URL to clipboard as fallback
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(assetUrl);
-                alert(_('Asset URL copied to clipboard'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Success'),
+                    body: _('Asset URL copied to clipboard'),
+                    icon: 'check',
+                    modal: true,
+                    remove: 3000
+                });
             }
         }
     }
@@ -2699,17 +3145,25 @@ export default class ModalFilemanager extends Modal {
         const suggestedName = zipFilename.replace(/\.zip$/i, '');
 
         // Ask for target folder
-        const targetFolder = prompt(
-            _('Extract to folder:') + '\n\n' +
-            _('The internal folder structure of the ZIP will be preserved.'),
-            suggestedName
+        const targetFolder = await this._showRenameDialog(
+            _('Extract ZIP'),
+            _('Extract to folder (the internal folder structure of the ZIP will be preserved):'),
+            suggestedName,
+            suggestedName.length,
+            _('Extract')
         );
 
         if (targetFolder === null) return; // User cancelled
 
         // Validate folder name
         if (targetFolder && !this.isValidFolderName(targetFolder)) {
-            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
@@ -2728,13 +3182,25 @@ export default class ModalFilemanager extends Modal {
             }
 
             if (!blob) {
-                alert(_('Could not read ZIP file'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Could not read ZIP file'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
             // Check if fflate is available
             if (!window.fflate) {
-                alert(_('ZIP extraction is not available'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('ZIP extraction is not available'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2814,16 +3280,40 @@ export default class ModalFilemanager extends Modal {
 
             // Notify user
             if (skippedCount > 0) {
-                alert(_('Extracted %1 files. %2 files were skipped.').replace('%1', extractedCount).replace('%2', skippedCount));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Extraction complete'),
+                    body: _('Extracted %1 files. %2 files were skipped.').replace('%1', extractedCount).replace('%2', skippedCount),
+                    icon: 'info',
+                    modal: true,
+                    remove: 5000
+                });
             } else if (extractedCount > 0) {
-                alert(_('Extracted %1 files successfully.').replace('%1', extractedCount));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Success'),
+                    body: _('Extracted %1 files successfully.').replace('%1', extractedCount),
+                    icon: 'check',
+                    modal: true,
+                    remove: 4000
+                });
             } else {
-                alert(_('No files were extracted from the ZIP.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: _('No files were extracted from the ZIP.'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 4000
+                });
             }
 
         } catch (err) {
             console.error('[MediaLibrary] Failed to extract ZIP:', err);
-            alert(_('Failed to extract ZIP file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to extract ZIP file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
 
             // Restore button state
             if (this.moreBtn) {
@@ -2868,8 +3358,14 @@ export default class ModalFilemanager extends Modal {
             'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'ppt': 'application/vnd.ms-powerpoint',
             'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'odt':  'application/vnd.oasis.opendocument.text',
+            'ods':  'application/vnd.oasis.opendocument.spreadsheet',
+            'odp':  'application/vnd.oasis.opendocument.presentation',
             // Other
             'zip': 'application/zip',
+            'gz': 'application/gzip',
+            'tgz': 'application/gzip',
+            'tar': 'application/x-tar',
             'json': 'application/json',
             'xml': 'application/xml',
             'html': 'text/html',
@@ -2878,7 +3374,25 @@ export default class ModalFilemanager extends Modal {
             'txt': 'text/plain',
             'md': 'text/markdown',
             'csv': 'text/csv',
+            // 3D Models
             'stl': 'model/stl',
+            'glb': 'model/gltf-binary',
+            'gltf': 'model/gltf+json',
+            'obj': 'model/obj',
+            'fbx': 'model/fbx',
+            // Molecular / structural formats
+            'pdb': 'chemical/x-pdb',
+            'sdf': 'chemical/x-mdl-sdfile',
+            'mol2': 'chemical/x-mol2',
+            'xyz': 'chemical/x-xyz',
+            'cif': 'chemical/x-cif',
+            'mmcif': 'chemical/x-cif',
+            'mmtf': 'application/vnd.mmtf',
+            'gro': 'chemical/x-gromacs',
+            'pqr': 'chemical/x-pqr',
+            'prmtop': 'chemical/x-amber-prmtop',
+            'vasp': 'model/x-poscar',
+            'cube': 'chemical/x-gaussian-cube',
         };
         return mimeTypes[ext] || 'application/octet-stream';
     }

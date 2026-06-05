@@ -4,6 +4,11 @@
  * Backend provider that loads assets (images, media, documents) from an extracted ELP file.
  * Used by CLI commands to access user content from the extracted project directory.
  *
+ * FolderPath Extraction:
+ * - For assets in content/resources/{folder}/{filename}, extracts folderPath from the path
+ * - This determines where the asset is placed in the export (content/resources/{folderPath}/{filename})
+ * - The content.xml references assets as {{context_path}}/{folderPath}/{filename}
+ *
  * Usage:
  * ```typescript
  * const provider = new FileSystemAssetProvider('/tmp/session123/project');
@@ -15,43 +20,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { AssetProvider, ExportAsset } from '../interfaces';
-import { MIME_TO_EXTENSION } from '../constants';
-
-/**
- * Reverse lookup: extension to MIME type
- */
-const EXTENSION_TO_MIME: Record<string, string> = {};
-for (const [mime, ext] of Object.entries(MIME_TO_EXTENSION)) {
-    EXTENSION_TO_MIME[ext] = mime;
-}
-
-// Add common extensions
-Object.assign(EXTENSION_TO_MIME, {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp',
-    '.svg': 'image/svg+xml',
-    '.mp3': 'audio/mpeg',
-    '.mp4': 'video/mp4',
-    '.webm': 'video/webm',
-    '.ogg': 'audio/ogg',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.ppt': 'application/vnd.ms-powerpoint',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    '.zip': 'application/zip',
-    '.json': 'application/json',
-    '.xml': 'application/xml',
-    '.txt': 'text/plain',
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
-});
+import { EXTENSION_TO_MIME } from '../constants';
 
 /**
  * FileSystemAssetProvider class
@@ -99,17 +68,58 @@ export class FileSystemAssetProvider implements AssetProvider {
         const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
         const filename = path.basename(normalizedPath);
 
+        // Extract folderPath from content/resources/{folder}/{filename} structure
+        // This determines where the asset is placed in the export
+        const folderPath = this.extractFolderPath(normalizedPath);
+
+        // Use folderPath/filename as unique ID (handles multiple files in same folder)
+        // If no folderPath, just use filename
+        const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+
         // Create asset conforming to ExportAsset interface
         const asset: ExportAsset = {
-            id: normalizedPath, // Use path as ID for filesystem assets
+            id: assetId,
             filename: filename,
             originalPath: normalizedPath,
+            folderPath,
             mime: mimeType,
             data: content,
         };
 
         this.assetCache.set(normalizedPath, asset);
         return asset;
+    }
+
+    /**
+     * Extract folderPath from asset path
+     * For content/resources/... paths, extracts the folder structure between content/resources/ and the filename
+     *
+     * Examples:
+     * - content/resources/file.jpg → '' (root)
+     * - content/resources/folder/file.jpg → 'folder'
+     * - content/resources/a/b/c/file.jpg → 'a/b/c'
+     * - content/resources/20251009090601DKVACR/file.jpg → '20251009090601DKVACR'
+     * - resources/images/photo.jpg → 'resources/images' (backward compat)
+     */
+    private extractFolderPath(relativePath: string): string {
+        // Handle content/resources/ prefix - extract folder relative to content/resources/
+        if (relativePath.startsWith('content/resources/')) {
+            const withoutPrefix = relativePath.slice('content/resources/'.length);
+            const folderPath = path.dirname(withoutPrefix);
+            return folderPath === '.' ? '' : folderPath;
+        }
+
+        // Handle content/img/ (for exe_powered_logo.png and similar)
+        if (relativePath.startsWith('content/img/')) {
+            const withoutPrefix = relativePath.slice('content/'.length);
+            const folderPath = path.dirname(withoutPrefix);
+            return folderPath === '.' ? '' : folderPath;
+        }
+
+        // For other paths (e.g., resources/images/photo.jpg), use full directory path
+        // This maintains backward compatibility where id = originalPath
+        const folderPath = path.dirname(relativePath);
+        return folderPath === '.' ? '' : folderPath;
     }
 
     /**
@@ -127,10 +137,16 @@ export class FileSystemAssetProvider implements AssetProvider {
     async getAllAssets(): Promise<ExportAsset[]> {
         const assets: ExportAsset[] = [];
 
-        // Common asset directories in ELP files
-        const assetDirs = ['resources', 'content', 'images', 'media', 'files'];
+        // User assets are stored in content/resources/ (v3.0 format)
+        // Other directories like content/css/, content/img/ are system files, not user assets
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        if (await fs.pathExists(contentResourcesPath)) {
+            await this.collectAssetsFromDirectory(contentResourcesPath, 'content/resources', assets);
+        }
 
-        for (const dir of assetDirs) {
+        // Legacy asset directories (v2.x format)
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
             const dirPath = path.join(this.basePath, dir);
             if (await fs.pathExists(dirPath)) {
                 await this.collectAssetsFromDirectory(dirPath, dir, assets);
@@ -148,6 +164,12 @@ export class FileSystemAssetProvider implements AssetProvider {
      * Only collects known asset file types to avoid including XML, etc.
      */
     private async collectRootAssets(assets: ExportAsset[]): Promise<void> {
+        // Guard against a missing assets dir (created lazily). Mirrors the
+        // existing guard in listAssetMetadata(). See issue #1842.
+        if (!(await fs.pathExists(this.basePath))) {
+            return;
+        }
+
         const entries = await fs.readdir(this.basePath, { withFileTypes: true });
         const assetExtensions = new Set([
             '.jpg',
@@ -238,6 +260,197 @@ export class FileSystemAssetProvider implements AssetProvider {
                 }
             }
         }
+    }
+
+    /**
+     * Process assets one at a time via callback.
+     * Reads each file from disk sequentially, so only one asset's data is in memory at a time.
+     *
+     * @returns Number of assets processed
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
+        let count = 0;
+        const processAsset = async (asset: ExportAsset) => {
+            await callback(asset);
+            count++;
+        };
+
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        if (await fs.pathExists(contentResourcesPath)) {
+            await this.forEachAssetInDirectory(contentResourcesPath, 'content/resources', processAsset);
+        }
+
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
+            const dirPath = path.join(this.basePath, dir);
+            if (await fs.pathExists(dirPath)) {
+                await this.forEachAssetInDirectory(dirPath, dir, processAsset);
+            }
+        }
+
+        // Root assets. Guard against a missing assets dir (created lazily);
+        // mirrors the guard in listAssetMetadata(). See issue #1842.
+        if (await fs.pathExists(this.basePath)) {
+            const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+            const assetExtensions = new Set([
+                '.jpg',
+                '.jpeg',
+                '.png',
+                '.gif',
+                '.webp',
+                '.svg',
+                '.bmp',
+                '.ico',
+                '.mp3',
+                '.wav',
+                '.ogg',
+                '.aac',
+                '.flac',
+                '.m4a',
+                '.mp4',
+                '.webm',
+                '.ogv',
+                '.avi',
+                '.mov',
+                '.pdf',
+                '.doc',
+                '.docx',
+                '.xls',
+                '.xlsx',
+                '.ppt',
+                '.pptx',
+                '.zip',
+                '.rar',
+                '.7z',
+            ]);
+            for (const entry of entries) {
+                if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    if (assetExtensions.has(ext)) {
+                        const asset = await this.getAsset(entry.name);
+                        if (asset) {
+                            await processAsset(asset);
+                        }
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Recursively process assets from a directory one at a time
+     */
+    private async forEachAssetInDirectory(
+        dirPath: string,
+        relativePath: string,
+        callback: (asset: ExportAsset) => Promise<void>,
+    ): Promise<void> {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            const entryRelativePath = `${relativePath}/${entry.name}`;
+
+            if (entry.isDirectory()) {
+                await this.forEachAssetInDirectory(fullPath, entryRelativePath, callback);
+            } else if (entry.isFile()) {
+                const asset = await this.getAsset(entryRelativePath);
+                if (asset) {
+                    await callback(asset);
+                }
+            }
+        }
+    }
+
+    /**
+     * List asset metadata without loading binary data.
+     * Scans directories for files and returns metadata only.
+     */
+    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+        const result: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = [];
+
+        const collectMetadata = async (dirPath: string, relativePath: string) => {
+            if (!(await fs.pathExists(dirPath))) return;
+            const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name);
+                const entryRelativePath = `${relativePath}/${entry.name}`;
+
+                if (entry.isDirectory()) {
+                    await collectMetadata(fullPath, entryRelativePath);
+                } else if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+                    const folderPath = this.extractFolderPath(entryRelativePath);
+                    const filename = entry.name;
+                    const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+
+                    result.push({ id: assetId, filename, folderPath, mime: mimeType });
+                }
+            }
+        };
+
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        await collectMetadata(contentResourcesPath, 'content/resources');
+
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
+            await collectMetadata(path.join(this.basePath, dir), dir);
+        }
+
+        // Root-level assets (legacy ELP format)
+        const assetExtensions = new Set([
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.svg',
+            '.bmp',
+            '.ico',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.aac',
+            '.flac',
+            '.m4a',
+            '.mp4',
+            '.webm',
+            '.ogv',
+            '.avi',
+            '.mov',
+            '.pdf',
+            '.doc',
+            '.docx',
+            '.xls',
+            '.xlsx',
+            '.ppt',
+            '.pptx',
+            '.zip',
+            '.rar',
+            '.7z',
+        ]);
+
+        if (await fs.pathExists(this.basePath)) {
+            const rootEntries = await fs.readdir(this.basePath, { withFileTypes: true });
+            for (const entry of rootEntries) {
+                if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    if (assetExtensions.has(ext)) {
+                        const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+                        const folderPath = this.extractFolderPath(entry.name);
+                        const filename = entry.name;
+                        const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+                        result.push({ id: assetId, filename, folderPath, mime: mimeType });
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     /**

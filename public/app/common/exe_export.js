@@ -1,4 +1,31 @@
-const $exeExport = window.$exeExport = {
+/**
+ * Get i18n text with fallback to default
+ * @param {string} key - Translation key
+ * @param {string} defaultText - Fallback text if translation not found
+ * @returns {string} Translated or default text
+ */
+function getI18nText(key, defaultText) {
+    return (typeof $exe_i18n !== 'undefined' && $exe_i18n[key])
+        ? $exe_i18n[key]
+        : defaultText;
+}
+
+/**
+ * Translate elements with data-i18n attribute
+ * @param {string} key - The i18n key to look up
+ * @param {string} defaultText - Fallback text
+ */
+function translateI18nElement(key, defaultText) {
+    var text = getI18nText(key, defaultText);
+    $('[data-i18n="' + key + '"]').each(function() {
+        $(this).attr('title', text);
+        $('span', this).text(text);
+    });
+}
+
+// Guard against multiple loads (EPUB readers may reload scripts when navigating)
+if (typeof window.$exeExport === 'undefined') {
+window.$exeExport = {
 
     isTogglingBox: false,
     delayLoadingPageTime: 200,
@@ -10,6 +37,7 @@ const $exeExport = window.$exeExport = {
     init: function () {
         try {
             this.addBoxToggleEvent();
+            this.translateNavButtons();
         } catch (err) {
             console.error('Error: Failed to initialize box toggle events');
         }
@@ -41,6 +69,13 @@ const $exeExport = window.$exeExport = {
                 console.error('Error: Failed to trigger print dialog');
             }
         }, this.delayLoadingPageTime);
+        setTimeout(() => {
+            try {
+                this.searchBar.highlightFromUrl();
+            } catch (err) {
+                // Failed to highlight search results
+            }
+        }, this.delayLoadingPageTime);
     },
 
     /**
@@ -70,8 +105,8 @@ const $exeExport = window.$exeExport = {
             if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
-            if ($("body").hasClass("exe-single-page")) $("header.package-header").before(btn);
-            else $("header.page-header").prepend(btn);
+            if ($("body").hasClass("exe-single-page")) $(".package-header").before(btn);
+            else $(".page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
             var enabled = this.isEnabled();
             if (enabled) {
@@ -149,7 +184,13 @@ const $exeExport = window.$exeExport = {
                             }
                             
                             // Check for SCORM data if jsonData is valid
-                            if (jsonData && jsonData.exportScorm && jsonData.exportScorm.saveScore) {
+                            if (
+                                jsonData &&
+                                (
+                                    (jsonData.exportScorm && jsonData.exportScorm.saveScore) ||
+                                    Number(jsonData.isScorm) > 0
+                                )
+                            ) {
                                 isSCORM = true;
                             }
                             break;
@@ -217,18 +258,24 @@ const $exeExport = window.$exeExport = {
             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
             let jsonData = null;
 
-            // Parse JSON data or create empty object if not valid
-            try {
-                if (jsonDataText) {
-                    jsonData = JSON.parse(jsonDataText);
-                }
-            } catch (e) {
-                jsonData = null;
-            }
-
-            // If jsonData is not an object, create an empty one
-            if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+            // Text idevices don't need JSON data parsing - use empty object directly
+            const currentIdeviceType = ideviceNode.getAttribute('data-idevice-type');
+            if (currentIdeviceType === 'text') {
                 jsonData = {};
+            } else {
+                // Parse JSON data or create empty object if not valid
+                try {
+                    if (jsonDataText) {
+                        jsonData = JSON.parse(jsonDataText);
+                    }
+                } catch (e) {
+                    jsonData = null;
+                }
+
+                // If jsonData is not an object, create an empty one
+                if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+                    jsonData = {};
+                }
             }
 
             jsonData.ideviceId = ideviceNode.id;
@@ -245,7 +292,15 @@ const $exeExport = window.$exeExport = {
             // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
             // and need renderView to generate the complete interface.
             // 'trueorfalse' added for legacy imports that have empty htmlView.
-            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
+            const jsonOnlyIdevices = [
+                'casestudy',
+                'form',
+                'image-gallery',
+                'magnifier',
+                'three-sixty-viewer',
+                'trueorfalse',
+                'adaptative-quiz',
+            ];
             const ideviceType = ideviceNode.getAttribute('data-idevice-type');
             const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
             if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
@@ -337,7 +392,15 @@ const $exeExport = window.$exeExport = {
      * Add functionality to the boxes toggle button
      */
     addBoxToggleEvent: function () {
-        
+        // Apply i18n text to toggle buttons (translations from common_i18n.js)
+        var toggleText = (typeof $exe_i18n !== 'undefined' && $exe_i18n.toggleContent)
+            ? $exe_i18n.toggleContent
+            : 'Toggle content';
+        $('article.box .box-head .box-toggle').each(function() {
+            $(this).attr('title', toggleText);
+            $('span', this).text(toggleText);
+        });
+
         $('article.box .box-head .box-toggle').on('click', function(){
             if ($exeExport.isTogglingBox) return;
             $exeExport.isTogglingBox = true;
@@ -354,12 +417,23 @@ const $exeExport = window.$exeExport = {
                 });
             }
         });
-        $('article.box .box-head').css('cursor', 'pointer').on('click', function(e){
+        $('article.box .box-head').has('.box-toggle').css('cursor', 'pointer').on('click', function(e){
             let t = $(e.target);
             if (t.hasClass('box-toggle')) return false;
             $('.box-toggle', this).trigger('click');
         });
-        
+
+    },
+
+    /**
+     * Translate navigation buttons using data-i18n attributes
+     * Applies translations from $exe_i18n (loaded from common_i18n.js)
+     */
+    translateNavButtons: function () {
+        if (typeof $exe_i18n === 'undefined') return;
+        translateI18nElement('previous', 'Previous');
+        translateI18nElement('next', 'Next');
+        translateI18nElement('menu', 'Menu');
     },
 
     /**
@@ -383,6 +457,10 @@ const $exeExport = window.$exeExport = {
         }
     }
 }
+} // End of if (typeof window.$exeExport === 'undefined')
+
+// Use local reference for cleaner code
+var $exeExport = window.$exeExport;
 
 $(function () {
     $exeExport.init();
@@ -391,14 +469,10 @@ $(function () {
 /* To review: This should be in a different file (exe_search.js) */
 $exeExport.searchBar = {
     deepLinking : false,
-    markResults : false,
+    markResults : true, // Mark results in list
+    removeAllMarksOnClick : true, // If true, clicking a mark removes all marks; if false, only that one
     query : '',
-    /**
-     * Normalize text for search comparison: lowercase and remove diacritical marks
-     * (accents, tildes, umlauts, cedillas, etc.)
-     * @param {string} text - The text to normalize
-     * @returns {string} - Normalized text without diacritical marks
-     */
+    // Normalize text for search comparison: lowercase and remove diacritical marks
     normalizeText : function(text) {
         if (!text) return '';
         return text
@@ -406,12 +480,29 @@ $exeExport.searchBar = {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
     },
+    // Mark search term in text (for search results display)
+    markText : function(text, term) {
+        if (!this.markResults || !text || !term) return text;
+        var normalizedText = this.normalizeText(text);
+        var result = '';
+        var lastIndex = 0;
+        var index = normalizedText.indexOf(term);
+        while (index !== -1) {
+            result += text.substring(lastIndex, index);
+            result += '<mark class="exe-client-search-result">' + text.substring(index, index + term.length) + '</mark>';
+            lastIndex = index + term.length;
+            index = normalizedText.indexOf(term, lastIndex);
+        }
+        result += text.substring(lastIndex);
+        return result;
+    },
     init : function(){
         var searchWrapper = $('#exe-client-search');
         if (searchWrapper.length != 1) return;
         $("body").addClass('exe-search-on');
         this.isIndex = $("html").attr('id') == 'exe-index';
-        this.isPreview = window.location.href.indexOf('/file/resources?resource=/tmp/') != -1;
+        // Service Worker preview serves content at /viewer/ path
+        this.isPreview = window.location.pathname.startsWith('/viewer/');
         this.createSearchForm();
         // Try window.exeSearchData first (from search_index.js), fallback to data-pages attribute
         if (window.exeSearchData) {
@@ -462,7 +553,7 @@ $exeExport.searchBar = {
                 <p>
                     <label for="exe-client-search-text" class="sr-av">${$exe_i18n.search}</label>
                     <input id="exe-client-search-text" type="text" placeholder="${$exe_i18n.search}">
-                    <input id="exe-client-search-submit" type="submit" value="Búsqueda">
+                    <input id="exe-client-search-submit" type="submit" value="${$exe_i18n.search || 'Search'}">
                     <a id="exe-client-search-reset" href="#main" title="${$exe_i18n.hide}"><span>${$exe_i18n.hide}</span></a>
                 </p>
             </form>
@@ -490,7 +581,9 @@ $exeExport.searchBar = {
             if (nodetitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
-                res += '<li><a href="' + lnk +'">' + nodeTitle + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
+                lnk = this.addSearchParam(lnk);
+                let displayTitle = this.markText(nodeTitle, str);
+                res += '<li><a href="' + lnk +'">' + displayTitle + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
             } else {
                 res += this.searchInBlocks(i, str, true);
             }
@@ -506,7 +599,21 @@ $exeExport.searchBar = {
         this.checkBlockLinks();
     },
     getLink : function(lnk){
-        if (this.isPreview) return lnk;
+        if (this.isPreview) {
+            // Check if we're on a subpage (/viewer/html/*)
+            var currentPath = window.location.pathname;
+            var isOnSubpage = currentPath.indexOf('/html/') !== -1;
+
+            if (isOnSubpage) {
+                // From /viewer/html/current.html, need to go up one level
+                // html/page.html → ../html/page.html
+                // index.html → ../index.html
+                if (lnk.indexOf('../') !== 0 && lnk.indexOf('/') !== 0) {
+                    return '../' + lnk;
+                }
+            }
+            return lnk;
+        }
         if (!this.isIndex) {
             lnk = lnk.replace('html/','');
             if (lnk == 'index.html') lnk = '../' + lnk;
@@ -531,7 +638,11 @@ $exeExport.searchBar = {
             spans.remove();
         }
         $("#exe-client-search-results-list a").on("click", function(){
-            if (!$("#siteNav").is(":visible")) this.href += '?nav=false';
+            if (!$("#siteNav").is(":visible")) {
+                // Use & if URL already has parameters, otherwise use ?
+                var separator = this.href.indexOf('?') !== -1 ? '&' : '?';
+                this.href += separator + 'nav=false';
+            }
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
             $("#exe-client-search-reset").removeClass("visible");
@@ -553,9 +664,12 @@ $exeExport.searchBar = {
         for (x in boxes) {
             boxCounter ++;
         }
+        var localBoxOrder = 0;
+        var pageLinked = false;
         for (x in boxes) {
+            localBoxOrder++;
             var box = boxes[x];
-            var boxOrder = box.order;
+            var boxOrder = localBoxOrder;
             var boxTitle = box.name;
             var boxtitle = this.normalizeText(boxTitle);
 
@@ -577,17 +691,154 @@ $exeExport.searchBar = {
             if (boxtitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
+                var blockLabel = (typeof $exe_i18n !== 'undefined' && $exe_i18n.block) ? $exe_i18n.block : 'block';
                 if (fullLink) {
-                    if (this.deepLinking) lnk += '#' + x;
-                    res += '<li><a href="' + lnk+ '">' + nodeTitle + '</a>';
-                    if (boxCounter > 1) res += '<span> (bloque ' + boxOrder + ')</span></li>';
+                    if (this.deepLinking) {
+                        lnk += '#' + x;
+                        lnk = this.addSearchParam(lnk);
+                        let displayTitle = this.markText(nodeTitle, str);
+                        res += '<li><a href="' + lnk+ '">' + displayTitle + '</a>';
+                        if (boxCounter > 1) res += '<span> (' + blockLabel + ' ' + boxOrder + ')</span></li>';
+                    } else if (!pageLinked) {
+                        lnk = this.addSearchParam(lnk);
+                        let displayTitle = this.markText(nodeTitle, str);
+                        res += '<li><a href="' + lnk+ '">' + displayTitle + '</a></li>';
+                        pageLinked = true;
+                    }
                 }
                 else {
-                    if (boxCounter > 1) res += ', <a href="' + lnk +'#' + x + '">bloque ' + boxOrder + '</a>';
+                    var blockLnk = lnk +'#' + x;
+                    blockLnk = this.addSearchParam(blockLnk);
+                    if (boxCounter > 1) res += ', <a href="' + blockLnk + '">' + blockLabel + ' ' + boxOrder + '</a>';
                 }
             }
         }
         return res;
+    },
+
+    // Add search parameter to a link
+    addSearchParam : function(lnk) {
+        if (!this.query) return lnk;
+        var searchParam = encodeURIComponent(this.query);
+        // Handle hash
+        var hashIndex = lnk.indexOf('#');
+        var hash = '';
+        if (hashIndex !== -1) {
+            hash = lnk.substring(hashIndex);
+            lnk = lnk.substring(0, hashIndex);
+        }
+        // Add parameter
+        if (lnk.indexOf('?') !== -1) {
+            lnk += '&q=' + searchParam;
+        } else {
+            lnk += '?q=' + searchParam;
+        }
+        return lnk + hash;
+    },
+
+    // Check URL for search parameter and highlight matches
+    highlightFromUrl : function() {
+        var params = new URLSearchParams(window.location.search);
+        var searchTerm = params.get('q');
+        if (searchTerm) {
+            this.markSearchResults(searchTerm);
+        }
+    },
+
+    // Mark search results in the page content
+    markSearchResults : function(term) {
+        var self = this;
+        var normalizedTerm = this.normalizeText(term);
+        if (!normalizedTerm) return;
+
+        // Tags where we should not search for text
+        var excludeTags = ['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION', 'NOSCRIPT', 'IFRAME', 'MARK', 'SVG', 'CODE', 'PRE'];
+
+        var container = document.querySelector('.exe-content') || document.body;
+
+        // Use TreeWalker to find text nodes
+        var walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Check if any ancestor is in the excludeTags
+                    var parent = node.parentNode;
+                    while (parent && parent !== container) {
+                        if (excludeTags.indexOf(parent.tagName) !== -1) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        parent = parent.parentNode;
+                    }
+                    // Skip empty or whitespace-only nodes
+                    if (!node.textContent.trim()) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        // Collect nodes to process
+        var nodesToProcess = [];
+        while (walker.nextNode()) {
+            var normalizedContent = self.normalizeText(walker.currentNode.textContent);
+            if (normalizedContent.indexOf(normalizedTerm) !== -1) {
+                nodesToProcess.push(walker.currentNode);
+            }
+        }
+
+        // Process each text node
+        nodesToProcess.forEach(function(textNode) {
+            var text = textNode.textContent;
+            var normalizedText = self.normalizeText(text);
+            var termLen = normalizedTerm.length;
+            var fragment = document.createDocumentFragment();
+            var lastIndex = 0;
+            var index = normalizedText.indexOf(normalizedTerm);
+
+            while (index !== -1) {
+                // Text before the match
+                if (index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex, index)));
+                }
+
+                // The match (use original text to preserve accents)
+                var mark = document.createElement('mark');
+                mark.className = 'exe-client-search-result';
+                mark.textContent = text.substring(index, index + termLen);
+                fragment.appendChild(mark);
+
+                lastIndex = index + termLen;
+                index = normalizedText.indexOf(normalizedTerm, lastIndex);
+            }
+
+            // Remaining text after last match
+            if (lastIndex < text.length) {
+                fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+            }
+
+            textNode.parentNode.replaceChild(fragment, textNode);
+        });
+
+        // Add click event to remove marks
+        document.addEventListener('click', function(e) {
+            if (e.target.matches && e.target.matches('mark.exe-client-search-result')) {
+                if ($exeExport.searchBar.removeAllMarksOnClick) {
+                    // Remove all marks
+                    var marks = document.querySelectorAll('mark.exe-client-search-result');
+                    marks.forEach(function(mark) {
+                        var text = document.createTextNode(mark.textContent);
+                        mark.parentNode.replaceChild(text, mark);
+                    });
+                } else {
+                    // Remove only the clicked mark
+                    var mark = e.target;
+                    var text = document.createTextNode(mark.textContent);
+                    mark.parentNode.replaceChild(text, mark);
+                }
+            }
+        });
     }
 };
 

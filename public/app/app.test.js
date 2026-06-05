@@ -189,6 +189,182 @@ describe('App utility methods', () => {
 
       window.location = originalLocation;
     });
+
+  });
+
+  describe('initializeModeDetection - basePath detection', () => {
+    it('detects basePath from URL in static mode when basePath is empty', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      // First parse the config, then detect mode
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+      // Also verify symfony shim gets the detected basePath
+      expect(window.eXeLearning.symfony.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects basePath from URL in static mode with trailing slash', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/app');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not override existing basePath in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":"/existing"}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/different/path/', protocol: 'https:', pathname: '/different/path/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/existing');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not detect basePath in non-static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"basePath":""}';
+      delete window.__EXE_STATIC_MODE__;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // basePath should remain empty in non-static mode
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+    });
+
+    it('detects empty basePath for root deployment in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/index.html', protocol: 'https:', pathname: '/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // Root deployment should result in empty basePath
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /workarea SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // SPA route: /workarea is handled by index.html, not a real subdirectory
+      window.location = { href: 'https://example.com/workarea?project=test', protocol: 'https:', pathname: '/workarea' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /workarea is a known SPA route - basePath should be empty, not '/workarea'
+      expect(window.eXeLearning.config.basePath).toBe('');
+      expect(window.eXeLearning.symfony.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /login SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/login', protocol: 'https:', pathname: '/login' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /login is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /viewer SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/viewer/index.html', protocol: 'https:', pathname: '/viewer/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /viewer is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects real subdirectory basePath even with SPA-like segment in path', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // Real subdirectory that happens to contain 'workarea' but is not the SPA route
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // This is a real subdirectory, not a SPA route
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
   });
 
   describe('showProvisionalDemoWarning', () => {
@@ -231,10 +407,10 @@ describe('App utility methods', () => {
       expect(document.getElementById('eXeBetaWarning')).toBeNull();
     });
 
-    it('shows expiry message for expired offline demo', async () => {
+    it('shows expiry message for expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       window.eXeLearning.expires = '20200101'; // Past date
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
@@ -242,11 +418,11 @@ describe('App utility methods', () => {
       expect(document.querySelector('.expired')).not.toBeNull();
     });
 
-    it('shows days remaining for non-expired offline demo', async () => {
+    it('shows days remaining for non-expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       // Set expiry to far future
       window.eXeLearning.expires = '20991231';
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
@@ -663,6 +839,9 @@ describe('App utility methods', () => {
         info: ['Error 1', 'Error 2'],
       };
 
+      // Mock isStaticMode to return false so we test the normal check flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       await appInstance.check();
 
       expect(showSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -798,6 +977,32 @@ describe('App utility methods', () => {
       delete window.electronAPI;
     });
 
+    it('notifies main process when renderer open-file handler is ready', () => {
+      const onOpenFileSpy = vi.fn();
+      const notifyRendererReadySpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+        notifyRendererReadyForOpenFile: notifyRendererReadySpy,
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+
+      expect(onOpenFileSpy).toHaveBeenCalledTimes(1);
+      expect(notifyRendererReadySpy).toHaveBeenCalledTimes(1);
+      delete window.electronAPI;
+    });
+
+    it('binds file open handler only once', () => {
+      const onOpenFileSpy = vi.fn();
+      window.electronAPI = { onOpenFile: onOpenFileSpy };
+
+      appInstance.bindElectronFileOpenHandler();
+      appInstance.bindElectronFileOpenHandler();
+
+      expect(onOpenFileSpy).toHaveBeenCalledTimes(1);
+      delete window.electronAPI;
+    });
+
     it('calls openFileFromPath when file is received', async () => {
       const openFileFromPathSpy = vi.spyOn(appInstance, 'openFileFromPath').mockResolvedValue(undefined);
 
@@ -814,9 +1019,93 @@ describe('App utility methods', () => {
       expect(openFileFromPathSpy).toHaveBeenCalledWith('/path/to/file.elpx');
       delete window.electronAPI;
     });
+
+    it('registers onGetCloseCopy handler when available', () => {
+      const onOpenFileSpy = vi.fn();
+      const onGetCloseCopySpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+        onGetCloseCopy: onGetCloseCopySpy,
+        sendCloseCopy: vi.fn(),
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+
+      expect(onGetCloseCopySpy).toHaveBeenCalledTimes(1);
+      delete window.electronAPI;
+    });
+
+    it('does not register onGetCloseCopy handler when not available', () => {
+      const onOpenFileSpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+      };
+
+      expect(() => appInstance.bindElectronFileOpenHandler()).not.toThrow();
+      delete window.electronAPI;
+    });
+
+    it('calls sendCloseCopy with translated strings when close handler is triggered', () => {
+      const sendCloseCopySpy = vi.fn();
+      let closeHandler;
+      window.electronAPI = {
+        onOpenFile: vi.fn(),
+        onGetCloseCopy: (cb) => { closeHandler = cb; },
+        sendCloseCopy: sendCloseCopySpy,
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+      expect(closeHandler).toBeDefined();
+
+      closeHandler();
+
+      expect(sendCloseCopySpy).toHaveBeenCalledTimes(1);
+      const args = sendCloseCopySpy.mock.calls[0][0];
+      expect(args).toHaveProperty('title');
+      expect(args).toHaveProperty('message');
+      expect(args).toHaveProperty('detail');
+      expect(args).toHaveProperty('stayButtonLabel');
+      expect(args).toHaveProperty('discardButtonLabel');
+      delete window.electronAPI;
+    });
   });
 
   describe('openFileFromPath', () => {
+    it('queues file when modal upload handler is not ready', async () => {
+      appInstance.modals = {};
+      window.electronAPI = {
+        readFile: vi.fn(),
+      };
+
+      await appInstance.openFileFromPath('/test/queued.elpx');
+
+      expect(appInstance.pendingElectronOpenFiles).toEqual(['/test/queued.elpx']);
+      expect(window.electronAPI.readFile).not.toHaveBeenCalled();
+      delete window.electronAPI;
+    });
+
+    it('queues file in static mode when Yjs bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+
+      window.electronAPI = {
+        readFile: vi.fn().mockResolvedValue({
+          ok: true,
+          base64: btoa('test content'),
+          mtimeMs: Date.now(),
+        }),
+      };
+
+      await appInstance.openFileFromPath('/test/static-queued.elpx');
+
+      expect(appInstance.pendingElectronOpenFiles).toEqual(['/test/static-queued.elpx']);
+      expect(window.electronAPI.readFile).not.toHaveBeenCalled();
+      delete window.electronAPI;
+    });
+
     it('handles file read error', async () => {
       window.electronAPI = {
         readFile: vi.fn().mockResolvedValue({ ok: false, error: 'Read error' }),
@@ -834,18 +1123,20 @@ describe('App utility methods', () => {
         openuserodefiles: { largeFilesUpload: largeFilesUploadSpy },
       };
 
+      const setSavedPath = vi.fn().mockResolvedValue(true);
       window.electronAPI = {
         readFile: vi.fn().mockResolvedValue({
           ok: true,
           base64: btoa('test content'),
           mtimeMs: Date.now(),
         }),
-        setSavedPath: vi.fn(),
+        setSavedPath,
       };
 
       await appInstance.openFileFromPath('/test/project.elpx');
 
       expect(largeFilesUploadSpy).toHaveBeenCalledWith(expect.any(File));
+      expect(setSavedPath).toHaveBeenCalledWith('/test/project.elpx');
       delete window.electronAPI;
     });
 
@@ -869,6 +1160,124 @@ describe('App utility methods', () => {
       await expect(appInstance.openFileFromPath('/test/path.elpx')).resolves.not.toThrow();
 
       delete window.electronAPI;
+    });
+  });
+
+  describe('flushPendingElectronOpenFiles', () => {
+    it('opens all queued files and clears queue', async () => {
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+      appInstance.pendingElectronOpenFiles = ['/a.elpx', '/b.elpx'];
+      const openFileFromPathSpy = vi
+        .spyOn(appInstance, 'openFileFromPath')
+        .mockResolvedValue(undefined);
+
+      await appInstance.flushPendingElectronOpenFiles();
+
+      expect(openFileFromPathSpy).toHaveBeenCalledTimes(2);
+      expect(openFileFromPathSpy).toHaveBeenNthCalledWith(1, '/a.elpx');
+      expect(openFileFromPathSpy).toHaveBeenNthCalledWith(2, '/b.elpx');
+      expect(appInstance.pendingElectronOpenFiles).toEqual([]);
+    });
+
+    it('returns early when queue is empty', async () => {
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+      appInstance.pendingElectronOpenFiles = [];
+      const openFileFromPathSpy = vi
+        .spyOn(appInstance, 'openFileFromPath')
+        .mockResolvedValue(undefined);
+
+      await appInstance.flushPendingElectronOpenFiles();
+
+      expect(openFileFromPathSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps queue in static mode when Yjs bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+      appInstance.pendingElectronOpenFiles = ['/a.elpx'];
+      const openFileFromPathSpy = vi
+        .spyOn(appInstance, 'openFileFromPath')
+        .mockResolvedValue(undefined);
+
+      await appInstance.flushPendingElectronOpenFiles();
+
+      expect(openFileFromPathSpy).not.toHaveBeenCalled();
+      expect(appInstance.pendingElectronOpenFiles).toEqual(['/a.elpx']);
+    });
+  });
+
+  describe('openStaticFile', () => {
+    it('queues file when static mode bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+      await appInstance.openStaticFile(mockFile);
+
+      expect(appInstance.pendingStaticOpenFiles).toEqual([mockFile]);
+      expect(appInstance.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+
+    it('uploads file when static mode is ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = {
+        _yjsBridge: {
+          getDocumentManager: vi.fn(() => ({})),
+        },
+      };
+      const largeFilesUploadSpy = vi.fn();
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: largeFilesUploadSpy },
+      };
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+      await appInstance.openStaticFile(mockFile);
+
+      expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+    });
+  });
+
+  describe('deferred URL error from static mode', () => {
+    it('shows alert when __exeStaticUrlError is set during init', async () => {
+      window.__exeStaticUrlError = 'Could not download file: HTTP 404 Not Found';
+      const alertShowSpy = vi.fn();
+
+      appInstance.initializedToasts = vi.fn();
+      appInstance.initializedModals = vi.fn();
+      appInstance.loadApiParameters = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadLocale = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadIdevicesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadThemesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadUser = vi.fn().mockResolvedValue(undefined);
+      appInstance.showModalLopd = vi.fn().mockResolvedValue(undefined);
+      appInstance.showProvisionalDemoWarning = vi.fn().mockResolvedValue(undefined);
+      appInstance.tmpStringList = vi.fn().mockResolvedValue(undefined);
+      appInstance.addNoTranslateForGoogle = vi.fn().mockResolvedValue(undefined);
+      appInstance.runCustomJavaScriptCode = vi.fn().mockResolvedValue(undefined);
+      appInstance.initializedShortcuts = vi.fn().mockResolvedValue(undefined);
+      appInstance.bindElectronDownloadToasts = vi.fn();
+      appInstance.bindElectronFileOpenHandler = vi.fn();
+      appInstance.initExePackageProtocolHandler = vi.fn();
+      appInstance.modals = { alert: { show: alertShowSpy } };
+
+      await appInstance.init();
+
+      expect(alertShowSpy).toHaveBeenCalledWith({
+        title: 'Import Error',
+        body: 'Could not download file: HTTP 404 Not Found',
+        contentId: 'error',
+      });
+      expect(window.__exeStaticUrlError).toBeNull();
     });
   });
 
@@ -1070,6 +1479,9 @@ describe('App utility methods', () => {
       const hideSpy = vi.fn();
       const loadModalsContentSpy = vi.fn();
 
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       appInstance.project = { loadModalsContent: loadModalsContentSpy };
       appInstance.interface = { loadingScreen: { hide: hideSpy } };
       appInstance.modals = {
@@ -1090,6 +1502,9 @@ describe('App utility methods', () => {
       window.eXeLearning.user = { acceptedLopd: true };
       const loadSpy = vi.fn();
       const checkSpy = vi.spyOn(appInstance, 'check').mockImplementation(() => {});
+
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
 
       appInstance.project = { load: loadSpy };
 
@@ -1174,7 +1589,7 @@ describe('App utility methods', () => {
     it('sets up session monitor for online installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":false,"basePath":""}',
+        config: '{"isOfflineInstallation":false,"basePath":"","fullURL":"http://localhost:8080"}',
       };
 
       const app = new App(window.eXeLearning);
@@ -1215,6 +1630,981 @@ describe('App utility methods', () => {
       expect(app.actions).toBeDefined();
       expect(app.shortcuts).toBeDefined();
     });
+  });
+
+  describe('Service Worker Preview Methods', () => {
+    let mockController;
+    let mockRegistration;
+    let originalServiceWorker;
+    let originalIsSecureContext;
+
+    beforeEach(() => {
+      mockController = {
+        postMessage: vi.fn(),
+      };
+      mockRegistration = {
+        scope: 'http://localhost/',
+        active: mockController,
+        installing: null,
+        addEventListener: vi.fn(),
+      };
+      originalServiceWorker = navigator.serviceWorker;
+      originalIsSecureContext = window.isSecureContext;
+
+      // Mock secure context (required for SW registration)
+      Object.defineProperty(window, 'isSecureContext', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock navigator.serviceWorker
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: {
+          controller: mockController,
+          ready: Promise.resolve(mockRegistration),
+          register: vi.fn().mockResolvedValue(mockRegistration),
+          getRegistration: vi.fn().mockResolvedValue(null), // No existing registration by default
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      // Set up the preview SW registration on the app instance
+      // (getPreviewServiceWorker checks this first in static mode)
+      appInstance._previewSwRegistration = mockRegistration;
+    });
+
+    afterEach(() => {
+      // Restore original serviceWorker
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: originalServiceWorker,
+        writable: true,
+        configurable: true,
+      });
+      // Restore isSecureContext
+      Object.defineProperty(window, 'isSecureContext', {
+        value: originalIsSecureContext,
+        writable: true,
+        configurable: true,
+      });
+      // Clean up app instance
+      appInstance._previewSwRegistration = null;
+      appInstance._previewSwRegistrationPromise = null;
+    });
+
+    describe('registerPreviewServiceWorker', () => {
+      it('returns null when Service Workers not supported', async () => {
+        // Remove serviceWorker property entirely so 'serviceWorker' in navigator returns false
+        delete navigator.serviceWorker;
+
+        const result = await appInstance.registerPreviewServiceWorker();
+
+        expect(result).toBeNull();
+
+        // Restore for other tests
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: originalServiceWorker,
+          writable: true,
+          configurable: true,
+        });
+      });
+
+      it('checks for existing registration first (eXeViewer pattern)', async () => {
+        // Uses window.location.pathname to derive basePath (jsdom default is /)
+        const getRegSpy = navigator.serviceWorker.getRegistration;
+
+        appInstance.registerPreviewServiceWorker();
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(getRegSpy).toHaveBeenCalledWith('/');
+      });
+
+      it('registers new SW when no existing registration', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+        const registerSpy = navigator.serviceWorker.register;
+        // Mock active worker with already activated state
+        mockRegistration.active = { ...mockController, state: 'activated', postMessage: vi.fn() };
+        mockRegistration.installing = null;
+        mockRegistration.waiting = null;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Path derived from window.location.pathname (/ in jsdom)
+        // Uses /viewer/ scope to avoid conflicts with PWA SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
+      });
+
+      it('reuses existing registration if preview SW is already active', async () => {
+        // Simulate existing registration found with active PREVIEW SW
+        // (must have scriptURL ending with 'preview-sw.js' to be recognized)
+        const existingReg = {
+          ...mockRegistration,
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/preview-sw.js',
+          },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should NOT call register since existing preview SW registration is available
+        expect(registerSpy).not.toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration).toBe(existingReg);
+        expect(existingReg.update).toHaveBeenCalled();
+      });
+
+      it('registers new SW when existing registration is for PWA SW not preview SW', async () => {
+        // Simulate existing registration found but for PWA SW (service-worker.js), not preview SW
+        const existingPwaReg = {
+          ...mockRegistration,
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/service-worker.js', // PWA SW, not preview SW
+          },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingPwaReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should call register because existing registration is for PWA SW, not preview SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
+      });
+
+      it('handles registration failure', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+        const error = new Error('Registration failed');
+        navigator.serviceWorker.register = vi.fn().mockRejectedValue(error);
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Registration failed:', error);
+      });
+
+      it('waits for SW activation before returning (eXeViewer pattern)', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        // Track if statechange listener was added
+        let stateChangeListenerAdded = false;
+        const mockInstallingSW = {
+          state: 'installing',
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'statechange') {
+              stateChangeListenerAdded = true;
+              // Immediately trigger activation to unblock the promise
+              mockInstallingSW.state = 'activated';
+              cb();
+            }
+          }),
+          removeEventListener: vi.fn(),
+        };
+
+        const testRegistration = {
+          ...mockRegistration,
+          installing: mockInstallingSW,
+          waiting: null,
+          active: { ...mockController, postMessage: vi.fn() },
+          addEventListener: vi.fn(),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(testRegistration);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Verify statechange listener was added for activation waiting
+        expect(stateChangeListenerAdded).toBe(true);
+        expect(mockInstallingSW.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
+      });
+
+      it('handles updatefound event with new worker installation', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        const mockNewWorker = {
+          state: 'installing',
+          addEventListener: vi.fn(),
+          postMessage: vi.fn(),
+        };
+
+        // Track if updatefound listener was added and immediately trigger it
+        let updateFoundListenerAdded = false;
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              updateFoundListenerAdded = true;
+              // Simulate updatefound event by setting installing and calling callback
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Verify updatefound listener was added
+        expect(updateFoundListenerAdded).toBe(true);
+        expect(regWithActive.addEventListener).toHaveBeenCalledWith('updatefound', expect.any(Function));
+
+        // Verify statechange listener was added to new worker
+        expect(mockNewWorker.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
+      });
+
+      it('handles new worker state change to installed', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        const mockNewWorker = {
+          state: 'installed',
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'statechange') {
+              // Immediately trigger the callback to simulate state change
+              cb();
+            }
+          }),
+          postMessage: vi.fn(),
+        };
+
+        // Mock registration with active SW already
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              // Simulate updatefound event
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should send SKIP_WAITING when new worker is installed
+        expect(mockNewWorker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+      });
+    });
+
+    describe('getPreviewServiceWorker', () => {
+      it('returns controller when available', () => {
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockController);
+      });
+
+      it('returns null when serviceWorker is undefined and no registration', () => {
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: undefined,
+          writable: true,
+          configurable: true,
+        });
+        appInstance._previewSwRegistration = null;
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+
+      it('returns registration.active when controller is null but registration has active SW', () => {
+        navigator.serviceWorker.controller = null;
+        const mockActiveSW = { postMessage: vi.fn(), state: 'activated' };
+        appInstance._previewSwRegistration = { active: mockActiveSW };
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockActiveSW);
+      });
+
+      it('returns null when both controller and registration.active are not available', () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistration = null;
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+
+      it('returns null when controller is null and registration exists but has no active SW', () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistration = { active: null };
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+
+      it('returns registration.active even when controller is PWA SW', () => {
+        // Simulate PWA SW as controller (no preview-sw.js in scriptURL)
+        navigator.serviceWorker.controller = { postMessage: vi.fn() }; // No scriptURL
+
+        // But we have the preview SW registration
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockController); // Returns from _previewSwRegistration.active
+      });
+    });
+
+    describe('waitForPreviewServiceWorker', () => {
+      it('throws when Service Workers not supported', async () => {
+        // Remove serviceWorker property entirely
+        delete navigator.serviceWorker;
+
+        await expect(appInstance.waitForPreviewServiceWorker()).rejects.toThrow('Service Workers not supported');
+
+        // Restore for other tests
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: originalServiceWorker,
+          writable: true,
+          configurable: true,
+        });
+      });
+
+      it('returns immediately when controller is available', async () => {
+        const result = await appInstance.waitForPreviewServiceWorker();
+        expect(result).toBe(mockController);
+      });
+
+      it('waits for registration promise when no controller', async () => {
+        navigator.serviceWorker.controller = null;
+
+        // Set up a registration promise with active SW (controller not required)
+        const activeSW = { ...mockController, state: 'activated' };
+        mockRegistration.active = activeSW;
+        appInstance._previewSwRegistrationPromise = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(mockRegistration);
+          }, 10);
+        });
+
+        const result = await appInstance.waitForPreviewServiceWorker();
+        // Now returns the active SW from registration, not the controller
+        expect(result).toBe(activeSW);
+      });
+
+      it('throws on timeout when registration promise never resolves', async () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistrationPromise = new Promise(() => {}); // Never resolves
+
+        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration timeout');
+      });
+
+      it('throws when registration returns null', async () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistrationPromise = Promise.resolve(null); // Registration failed
+
+        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration failed');
+      });
+
+      it('returns active SW even when controller not set after registration', async () => {
+        navigator.serviceWorker.controller = null;
+        // Registration has an active SW
+        mockRegistration.active = { postMessage: vi.fn(), state: 'activated' };
+        appInstance._previewSwRegistrationPromise = Promise.resolve(mockRegistration);
+
+        // Now returns the active SW instead of throwing
+        const result = await appInstance.waitForPreviewServiceWorker(100);
+        expect(result).toBe(mockRegistration.active);
+      });
+    });
+
+    describe('sendContentToPreviewSW', () => {
+      it('throws when SW not available', async () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        await expect(appInstance.sendContentToPreviewSW({}, {})).rejects.toThrow('Preview Service Worker not available');
+      });
+
+      it('sends content to SW and waits for READY_VERIFIED', async () => {
+        const files = {
+          'index.html': new ArrayBuffer(10),
+          'style.css': 'body {}',
+        };
+        const options = { openExternalLinksInNewWindow: true };
+
+        // Track MessageChannel instances created
+        const messageChannels = [];
+
+        // Mock MessageChannel for SW communication - must be a proper constructor
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
+          const channel = {
+            port1: { onmessage: null, close: vi.fn() },
+            port2: { name: `port2-${messageChannels.length}` },
+          };
+          messageChannels.push(channel);
+          return channel;
+        };
+
+        // Capture the postMessage calls to trigger responses
+        mockController.postMessage = vi.fn((msg, transferables) => {
+          if (msg.type === 'SET_CONTENT') {
+            // Simulate CONTENT_READY response on first channel
+            setTimeout(() => {
+              messageChannels[0].port1.onmessage({
+                data: { type: 'CONTENT_READY', fileCount: 2 },
+              });
+            }, 10);
+          } else if (msg.type === 'VERIFY_READY') {
+            // Simulate READY_VERIFIED response on verify channel (second channel)
+            setTimeout(() => {
+              messageChannels[1].port1.onmessage({
+                data: { ready: true, fileCount: 2 },
+              });
+            }, 5);
+          }
+        });
+
+        const result = await appInstance.sendContentToPreviewSW(files, options);
+
+        expect(result.fileCount).toBe(2);
+        expect(mockController.postMessage).toHaveBeenCalledWith(
+          {
+            type: 'SET_CONTENT',
+            data: { files, options },
+          },
+          expect.arrayContaining([messageChannels[0].port2, files['index.html']]),
+        );
+        expect(messageChannels[0].port1.close).toHaveBeenCalled();
+
+        globalThis.MessageChannel = OriginalMessageChannel;
+      });
+
+      it('times out after 10 seconds', async () => {
+        vi.useFakeTimers();
+
+        const mockPort1 = { onmessage: null, close: vi.fn() };
+        const mockPort2 = {};
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
+          return { port1: mockPort1, port2: mockPort2 };
+        };
+
+        const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
+
+        vi.advanceTimersByTime(10001);
+
+        await expect(promise).rejects.toThrow('Timeout waiting for SW content ready');
+        expect(mockPort1.close).toHaveBeenCalled();
+
+        vi.useRealTimers();
+        globalThis.MessageChannel = OriginalMessageChannel;
+      });
+    });
+
+    describe('updatePreviewSWFiles', () => {
+      it('throws when SW not available', async () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        await expect(appInstance.updatePreviewSWFiles({})).rejects.toThrow('Preview Service Worker not available');
+      });
+
+      it('sends UPDATE_FILES message with transferables', async () => {
+        const files = {
+          'page.html': new ArrayBuffer(5),
+          'deleted.html': null, // null means delete
+        };
+
+        await appInstance.updatePreviewSWFiles(files);
+
+        expect(mockController.postMessage).toHaveBeenCalledWith(
+          {
+            type: 'UPDATE_FILES',
+            data: { files },
+          },
+          [files['page.html']], // Only ArrayBuffers in transferables
+        );
+      });
+    });
+
+    describe('clearPreviewSWContent', () => {
+      it('sends CLEAR_CONTENT message when SW available', () => {
+        appInstance.clearPreviewSWContent();
+
+        expect(mockController.postMessage).toHaveBeenCalledWith({ type: 'CLEAR_CONTENT' });
+      });
+
+      it('does nothing when SW not available', () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        appInstance.clearPreviewSWContent();
+
+        expect(mockController.postMessage).not.toHaveBeenCalled();
+      });
+    });
+  });
+});
+
+describe('refreshTranslations', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+  });
+
+  it('calls _domTranslator.refresh when domTranslator exists', () => {
+    const mockRefresh = vi.fn();
+    appInstance._domTranslator = { refresh: mockRefresh };
+
+    appInstance.refreshTranslations();
+
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('does nothing when _domTranslator is null', () => {
+    appInstance._domTranslator = null;
+
+    // Should not throw
+    expect(() => appInstance.refreshTranslations()).not.toThrow();
+  });
+
+  it('does nothing when _domTranslator is undefined', () => {
+    appInstance._domTranslator = undefined;
+
+    // Should not throw
+    expect(() => appInstance.refreshTranslations()).not.toThrow();
+  });
+});
+
+describe('_waitForController edge cases', () => {
+  let appInstance;
+  let originalServiceWorker;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    originalServiceWorker = navigator.serviceWorker;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('resolves immediately when controller already exists', async () => {
+    const mockController = { postMessage: vi.fn() };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: mockController,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const result = await appInstance._waitForController(1000);
+
+    expect(result).toBe(mockController);
+  });
+
+  it('resolves when controllerchange event fires', async () => {
+    const mockController = { postMessage: vi.fn() };
+    let controllerChangeCallback;
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        addEventListener: vi.fn((event, cb) => {
+          if (event === 'controllerchange') {
+            controllerChangeCallback = cb;
+          }
+        }),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const promise = appInstance._waitForController(5000);
+
+    // Simulate controller becoming available
+    navigator.serviceWorker.controller = mockController;
+    controllerChangeCallback();
+
+    const result = await promise;
+    expect(result).toBe(mockController);
+    expect(navigator.serviceWorker.removeEventListener).toHaveBeenCalledWith('controllerchange', controllerChangeCallback);
+  });
+
+  it('rejects on timeout and cleans up event listener', async () => {
+    vi.useFakeTimers();
+
+    let controllerChangeCallback;
+    const removeEventListenerSpy = vi.fn();
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        addEventListener: vi.fn((event, cb) => {
+          if (event === 'controllerchange') {
+            controllerChangeCallback = cb;
+          }
+        }),
+        removeEventListener: removeEventListenerSpy,
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const promise = appInstance._waitForController(100);
+
+    vi.advanceTimersByTime(150);
+
+    await expect(promise).rejects.toThrow('Controller timeout');
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('controllerchange', controllerChangeCallback);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('registerPreviewServiceWorker secure context checks', () => {
+  let appInstance;
+  let originalServiceWorker;
+  let originalIsSecureContext;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    originalServiceWorker = navigator.serviceWorker;
+    originalIsSecureContext = window.isSecureContext;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: originalIsSecureContext,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('registers SW when protocol is app: (Electron)', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    const mockRegistration = {
+      active: { postMessage: vi.fn(), state: 'activated' },
+      installing: null,
+      addEventListener: vi.fn(),
+    };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn().mockResolvedValue(mockRegistration),
+        getRegistration: vi.fn().mockResolvedValue(null),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'app:', hostname: 'app', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+
+  it('registers SW when hostname is 127.0.0.1', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    const mockRegistration = {
+      active: { postMessage: vi.fn(), state: 'activated' },
+      installing: null,
+      addEventListener: vi.fn(),
+    };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn().mockResolvedValue(mockRegistration),
+        getRegistration: vi.fn().mockResolvedValue(null),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'http:', hostname: '127.0.0.1', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+
+  it('returns null in non-secure context without allowed protocols', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn(),
+        getRegistration: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'http:', hostname: 'example.com', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(result).toBeNull();
+    expect(navigator.serviceWorker.register).not.toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+});
+
+describe('_resolvePreviewServiceWorkerBasePath', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+  });
+
+  it('uses embeddingConfig basePath when available', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: '/embed/path/' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+
+  it('normalizes embeddingConfig basePath without leading slash', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: 'embed/path//' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+});
+
+describe('sendContentToPreviewSW READY_VERIFIED path', () => {
+  let appInstance;
+  let mockController;
+  let originalServiceWorker;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    mockController = { postMessage: vi.fn() };
+    originalServiceWorker = navigator.serviceWorker;
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { controller: mockController },
+      writable: true,
+      configurable: true,
+    });
+    appInstance._previewSwRegistration = { active: mockController };
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('resolves directly on READY_VERIFIED response without verify step', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        // SW responds directly with READY_VERIFIED on same channel
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'READY_VERIFIED', ready: true, fileCount: 1 },
+          });
+        }, 10);
+      }
+    });
+
+    const result = await appInstance.sendContentToPreviewSW(files);
+
+    expect(result.fileCount).toBe(1);
+    expect(messageChannels[0].port1.close).toHaveBeenCalled();
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+
+  it('rejects when READY_VERIFIED returns not ready', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'READY_VERIFIED', ready: false, fileCount: 0 },
+          });
+        }, 10);
+      }
+    });
+
+    await expect(appInstance.sendContentToPreviewSW(files)).rejects.toThrow('SW content not ready after verification');
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+
+  it('rejects when VERIFY_READY returns not ready', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'CONTENT_READY', fileCount: 1 },
+          });
+        }, 10);
+      } else if (msg.type === 'VERIFY_READY') {
+        setTimeout(() => {
+          messageChannels[1].port1.onmessage({
+            data: { ready: false, fileCount: 0 },
+          });
+        }, 5);
+      }
+    });
+
+    await expect(appInstance.sendContentToPreviewSW(files)).rejects.toThrow('SW content not ready after verification');
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+});
+
+describe('bindElectronDownloadToasts exception handling', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    delete window.electronAPI;
+    document.body.innerHTML = '';
+  });
+
+  it('handles exception in download handler gracefully', () => {
+    let downloadCallback;
+    window.electronAPI = {
+      onDownloadDone: (cb) => { downloadCallback = cb; },
+    };
+    appInstance.toasts = {
+      createToast: vi.fn(() => { throw new Error('Toast creation failed'); }),
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    appInstance.bindElectronDownloadToasts();
+
+    // Should not throw even when toast creation fails
+    expect(() => downloadCallback({ ok: true, path: '/test/path.elpx' })).toThrow('Toast creation failed');
   });
 });
 
@@ -1265,19 +2655,25 @@ describe('Module-level event handlers', () => {
     }
   });
 
-  it('beforeunload handler returns undefined', () => {
+  it('beforeunload handler is installed via UnsavedChangesHelper', () => {
+    // Mock UnsavedChangesHelper
+    const setupSpy = vi.fn();
+    window.UnsavedChangesHelper = { setupBeforeUnloadHandler: setupSpy };
+
     // Simulate user interaction to trigger the installation of beforeunload
     const event = new Event('pointerdown');
     window.dispatchEvent(event);
 
-    // Now check if onbeforeunload returns undefined (no confirmation dialog)
-    if (typeof window.onbeforeunload === 'function') {
-      const result = window.onbeforeunload({});
-      expect(result).toBeUndefined();
-    }
+    expect(setupSpy).toHaveBeenCalled();
+
+    delete window.UnsavedChangesHelper;
   });
 
   it('beforeunload is installed only once', () => {
+    // Mock UnsavedChangesHelper
+    const setupSpy = vi.fn();
+    window.UnsavedChangesHelper = { setupBeforeUnloadHandler: setupSpy };
+
     // Simulate multiple user interactions
     const pointerEvent = new Event('pointerdown');
     const keyEvent = new Event('keydown');
@@ -1285,7 +2681,172 @@ describe('Module-level event handlers', () => {
     window.dispatchEvent(pointerEvent);
     window.dispatchEvent(keyEvent);
 
-    // Should not throw and onbeforeunload should be set
-    expect(typeof window.onbeforeunload).toBe('function');
+    // Should only be called once (second event listener already removed via {once: true})
+    expect(setupSpy.mock.calls.length).toBeLessThanOrEqual(1);
+
+    delete window.UnsavedChangesHelper;
+  });
+});
+
+describe('Embedding bridge wiring', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = `
+      <div id="main"><div id="workarea"><div id="node-content-container"></div></div></div>
+      <div id="node-content"></div>
+    `;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete window.__EXE_EMBEDDING_CONFIG__;
+    delete window.__EXE_STATIC_MODE__;
+    delete global._;
+    document.body.innerHTML = '';
+    document.body.removeAttribute('data-embedded');
+    document.body.removeAttribute('data-exe-hide-file-menu');
+    document.body.removeAttribute('data-exe-hide-save');
+    document.body.removeAttribute('data-exe-hide-share');
+    document.body.removeAttribute('data-exe-hide-user-menu');
+    document.body.removeAttribute('data-exe-hide-download');
+    document.body.removeAttribute('data-exe-hide-help');
+    vi.clearAllMocks();
+  });
+
+  it('should not create embeddingBridge when not embedded', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(appInstance.embeddingBridge).toBeNull();
+  });
+
+  it('should create embeddingBridge when embedded is enabled', () => {
+    // Set up embedding config to make isEmbedded true
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+      trustedOrigins: ['https://example.com'],
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(appInstance.embeddingBridge).not.toBeNull();
+    expect(appInstance.embeddingBridge.trustedOrigins).toEqual(['https://example.com']);
+  });
+
+  it('should create ready promise on window.eXeLearning', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(window.eXeLearning.ready).toBeInstanceOf(Promise);
+  });
+
+  it('should create documentReady promise on window.eXeLearning', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(window.eXeLearning.documentReady).toBeInstanceOf(Promise);
+  });
+
+  it('should store _documentReadyResolve function', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(typeof appInstance._documentReadyResolve).toBe('function');
+  });
+
+  it('documentReady should resolve when _documentReadyResolve is called', async () => {
+    appInstance = new App(window.eXeLearning);
+    const documentReadyPromise = window.eXeLearning.documentReady;
+
+    // Resolve it
+    appInstance._documentReadyResolve();
+
+    // Should resolve without error
+    await expect(documentReadyPromise).resolves.toBeUndefined();
+    expect(appInstance._documentReadyResolve).not.toBeNull();
+  });
+
+  it('should resolve ready promise after init', async () => {
+    window.eXeLearning.version = '4.0.0';
+    appInstance = new App(window.eXeLearning);
+
+    // Mock all init dependencies
+    appInstance.api = { init: vi.fn(), loadApiParameters: vi.fn() };
+    appInstance.locale = { init: vi.fn() };
+    appInstance.toasts = { init: vi.fn() };
+    appInstance.modals = { init: vi.fn(), behaviour: vi.fn() };
+    appInstance.idevices = { loadIdevicesFromAPI: vi.fn() };
+    appInstance.themes = { loadThemesFromAPI: vi.fn() };
+    appInstance.user = { loadUserPreferences: vi.fn() };
+    appInstance.project = { load: vi.fn() };
+    appInstance.shortcuts = { init: vi.fn() };
+    appInstance.showModalLopd = vi.fn();
+    appInstance.showProvisionalDemoWarning = vi.fn();
+    appInstance.tmpStringList = vi.fn();
+    appInstance.addNoTranslateForGoogle = vi.fn();
+    appInstance.runCustomJavaScriptCode = vi.fn();
+    appInstance.registerPreviewServiceWorker = vi.fn();
+    appInstance.bindElectronDownloadToasts = vi.fn();
+    appInstance.bindElectronFileOpenHandler = vi.fn();
+    appInstance.initExePackageProtocolHandler = vi.fn();
+
+    const readyPromise = window.eXeLearning.ready;
+    await appInstance.init();
+
+    const result = await readyPromise;
+    expect(result.version).toBe('4.0.0');
+    expect(result.capabilities).toEqual([]);
+  });
+
+  it('should apply embedded UI visibility with data attributes', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+      hideUI: { fileMenu: true, saveButton: true },
+    };
+
+    appInstance = new App(window.eXeLearning);
+    appInstance._applyEmbeddedUIVisibility();
+
+    expect(document.body.getAttribute('data-embedded')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-file-menu')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-save')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-share')).toBeNull();
+  });
+
+  it('should not set data attributes for visible UI elements', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+    };
+
+    appInstance = new App(window.eXeLearning);
+    appInstance._applyEmbeddedUIVisibility();
+
+    expect(document.body.getAttribute('data-embedded')).toBe('true');
+    // All UI should be visible (no hideUI config)
+    expect(document.body.getAttribute('data-exe-hide-file-menu')).toBeNull();
+    expect(document.body.getAttribute('data-exe-hide-save')).toBeNull();
+  });
+
+  it('should override basePath from embedding config', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/wp-content/plugins/exelearning/static',
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(appInstance.eXeLearning.config.basePath).toBe('/wp-content/plugins/exelearning/static');
+  });
+
+  it('should update symfony shim when basePath overridden', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/custom/path',
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(window.eXeLearning.symfony.basePath).toBe('/custom/path');
   });
 });

@@ -2,6 +2,7 @@ var $magnifier = {
     msgs: {
         msgFullScreen: 'Pantalla completa',
         msgNotImage: 'La imagen no está disponible',
+        msgAuthor: 'Authorship',
     },
 
     renderView: function (data, accesibility, template, ideviceId) {
@@ -45,6 +46,8 @@ var $magnifier = {
             align,
             glassSize,
             initialZSize,
+            author: data.author || '',
+            alt: data.alt || '',
             idevicePath: $magnifier.idevicePath,
             msgs: data.msgs || $magnifier.msgs,
             ideviceId: id,
@@ -203,10 +206,12 @@ var $magnifier = {
                         <img id="magnifier-${instance}"
                              src="${data.image}"
                              data-magnifysrc="${data.image}"
+                             alt="${data.alt || ''}"
                              width="${data.width}"
                              data-size="${data.glassSize}"
                              data-zoom="${data.initialZSize}">
                     </div>
+                    ${data.author ? `<p class="MNF-Author" style="width:${data.width}px; text-align:center;"><span class="sr-av">${data.msgs.msgAuthor}: </span>${data.author}</p>` : ''}
                 </div>
             </div>
         </div>
@@ -235,7 +240,7 @@ var $magnifier = {
             .attr({
                 'data-magnifysrc': data.image,
                 src: data.image,
-                alt: 'Image',
+                alt: data.alt || '',
             });
     },
 

@@ -40,6 +40,7 @@ var $eXeRelaciona = {
 
         $eXeRelaciona.activities.each(function (i) {
             const dl = $('.relaciona-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const mOption = $eXeRelaciona.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
@@ -94,8 +95,9 @@ var $eXeRelaciona = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.relaciona-LinkImages', sthis),
             $audiosLink = $('.relaciona-LinkAudios', sthis),
@@ -172,7 +174,8 @@ var $eXeRelaciona = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
@@ -638,7 +641,14 @@ var $eXeRelaciona = {
         $eXeRelaciona.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
-
+        const nodeGame = document.querySelector('#rlcContainerGame-' + instance);
+        if (nodeGame) {
+            if ($exeDevices.iDevice.gamification.math.hasLatex(nodeGame.innerHTML)) {
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '#rlcContainerGame-' + instance,
+                );
+            }
+        }
         $('#rlcMessage-' + instance).hide();
     },
 
@@ -684,7 +694,7 @@ var $eXeRelaciona = {
         $(`#rlcButtons-${instance}`).css('display', 'flex');
         $(`#rlcResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeRelaciona.showScoreGame(instance);
         $eXeRelaciona.saveEvaluation(instance, true);
 
@@ -885,10 +895,7 @@ var $eXeRelaciona = {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $eXeRelaciona.setupEventHandlers(instance);
@@ -1014,10 +1021,7 @@ var $eXeRelaciona = {
             isDragging = false;
 
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    sound,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(sound);
             }
         });
 
@@ -1389,7 +1393,7 @@ var $eXeRelaciona = {
     adjustFontSize: function ($container) {
         const $text = $container.find('.RLCP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 22,
+            maxFontSize = window.innerWidth <= 500 ? 16 : 22,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 

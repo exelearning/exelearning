@@ -34,8 +34,24 @@
   // Get basePath and version from eXeLearning (set by pages.controller.ts)
   const getBasePath = () => window.eXeLearning?.config?.basePath || '';
   const getVersion = () => window.eXeLearning?.version || 'v1.0.0';
+  // Note: Direct __EXE_STATIC_MODE__ check required here because this runs very early,
+  // before App is initialized and capabilities are available
+  const isStaticMode = () => window.__EXE_STATIC_MODE__ === true;
   // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/yjs/yjs.min.js)
-  const assetPath = (path) => `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  // In static mode, use relative paths (version query string added separately)
+  const assetPath = (path) => {
+    if (isStaticMode()) {
+      return `.${path.startsWith('/') ? path : '/' + path}`;
+    }
+    return `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  };
+  // Add version query string for cache busting (only used in static mode)
+  const addVersionQueryString = (url) => {
+    if (isStaticMode()) {
+      return `${url}?v=${getVersion()}`;
+    }
+    return url;
+  };
 
   // Paths are computed lazily to ensure eXeLearning globals are available
   const getLIBS_PATH = () => assetPath('/libs/yjs');
@@ -64,60 +80,33 @@
 
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
+  // Note: Paths starting with '/' are absolute and use assetPath() for versioning
   const LOCAL_MODULE_GROUPS = [
-    // Group 0: Legacy iDevice handlers (must load BEFORE LegacyXmlParser)
-    // BaseLegacyHandler must load first, then handlers, then registry
+    // Group 0: Shared importers bundle (TypeScript from src/shared/import/)
+    // Contains LegacyHandlerRegistry, LegacyXmlParser, ElpxImporter, and all legacy iDevice handlers
     [
-      'legacy/BaseLegacyHandler.js',  // Base class for all handlers
-    ],
-    // Group 0.5: Individual handlers (all depend on BaseLegacyHandler)
-    [
-      'legacy/handlers/MultichoiceHandler.js',
-      'legacy/handlers/TrueFalseHandler.js',
-      'legacy/handlers/FillHandler.js',
-      'legacy/handlers/DropdownHandler.js',
-      'legacy/handlers/ScormTestHandler.js',
-      'legacy/handlers/CaseStudyHandler.js',
-      'legacy/handlers/GalleryHandler.js',
-      'legacy/handlers/ExternalUrlHandler.js',
-      'legacy/handlers/FileAttachHandler.js',
-      'legacy/handlers/ImageMagnifierHandler.js',
-      'legacy/handlers/GeogebraHandler.js',
-      'legacy/handlers/InteractiveVideoHandler.js',
-      'legacy/handlers/GameIdeviceHandler.js',
-      'legacy/handlers/FpdSolvedExerciseHandler.js',
-      'legacy/handlers/WikipediaHandler.js',
-      'legacy/handlers/RssHandler.js',
-      'legacy/handlers/NotaHandler.js',
-      'legacy/handlers/FreeTextHandler.js',
-      'legacy/handlers/DefaultHandler.js',
-    ],
-    // Group 0.75: Handler registry (depends on all handlers)
-    [
-      'legacy/handlerRegistry.js',  // Initializes LegacyHandlerRegistry with all handlers
+      '/app/yjs/importers.bundle.js',  // Compiled from src/shared/import/browser/index.ts
     ],
     // Group 1: Core managers (no dependencies between them)
     [
+      'ProjectTabTracker.js',  // Tab tracking for cleanup (must load before YjsDocumentManager)
       'YjsDocumentManager.js',
       'YjsLockManager.js',
       'YjsStructureBinding.js',
-      'AssetCacheManager.js',
       'AssetManager.js',
       'AssetWebSocketHandler.js',
-      'LegacyXmlParser.js',  // Now can use LegacyHandlerRegistry
       'ResourceCache.js',    // IndexedDB cache for ResourceFetcher
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
+    // NOTE: ElpxImporter is now in importers.bundle.js (unified TypeScript version)
     [
-      'ElpxImporter.js',
-      'ElpxExporter.js',
       'ComponentImporter.js',  // Imports .idevice/.block files
       'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],
     // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
     // Contains all export functionality: Html5, SCORM, IMS, EPUB3, Preview
     [
-      'exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
+      '/app/yjs/exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
     ],
     // Group 4: Bridge components (depend on exporters)
     [
@@ -144,18 +133,21 @@
    */
   function loadScript(src) {
     return new Promise((resolve, reject) => {
-      // Check if already loaded
-      const existing = document.querySelector(`script[src="${src}"]`);
+      // Add version query string for cache busting in static mode
+      const finalSrc = addVersionQueryString(src);
+
+      // Check if already loaded (use finalSrc for consistency)
+      const existing = document.querySelector(`script[src="${finalSrc}"]`);
       if (existing) {
         resolve();
         return;
       }
 
       const script = document.createElement('script');
-      script.src = src;
+      script.src = finalSrc;
       script.async = false;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load: ${src}`));
+      script.onerror = () => reject(new Error(`Failed to load: ${finalSrc}`));
       document.head.appendChild(script);
     });
   }
@@ -283,7 +275,13 @@
         Logger.log('[YjsLoader] Loading local modules (parallel groups)...');
         for (let i = 0; i < LOCAL_MODULE_GROUPS.length; i++) {
           const group = LOCAL_MODULE_GROUPS[i];
-          const groupUrls = group.map((m) => `${basePath}/${m}`);
+          // Resolve module paths: absolute paths use assetPath(), relative paths use basePath
+          const groupUrls = group.map((m) => {
+            if (m.startsWith('/')) {
+              return assetPath(m);  // Absolute path like '/bundles/...'
+            }
+            return `${basePath}/${m}`;  // Relative path like 'YjsDocumentManager.js'
+          });
           // Last group (index.js etc) must be sequential for correct initialization
           if (i === LOCAL_MODULE_GROUPS.length - 1) {
             await loadScriptsSequentially(groupUrls);

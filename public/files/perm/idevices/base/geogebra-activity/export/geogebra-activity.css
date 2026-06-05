@@ -34,6 +34,12 @@
     text-align: center;
 }
 
+.auto-geogebra-title {
+    margin-top: 0.3em;
+    width: 100%;
+    text-align: center;
+}
+
 .Games-ReportIconDiv {
     display: flex;
     justify-content: flex-start;

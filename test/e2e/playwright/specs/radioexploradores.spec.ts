@@ -12,56 +12,10 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
+import { openElpFile, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'radioexploradores.elp';
-
-/**
- * Import the ELP fixture via File menu
- */
-async function importElpFixture(page: Page): Promise<void> {
-    const fixturePath = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
-
-    // Open File menu
-    await page.locator('#dropdownFile').click();
-    await page.waitForTimeout(300);
-
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
-
-    // Click Continue in confirmation dialog (supports both English and Spanish)
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
-
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
-
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
-
-    // Wait for import to complete by checking Yjs navigation has pages
-    await page.waitForFunction(
-        () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
-        },
-        { timeout: 90000 },
-    );
-
-    // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-
-    // Additional wait for all handlers to complete
-    await page.waitForTimeout(3000);
-}
+const FIXTURE_PATH = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
 
 /**
  * Get iDevice data directly from Yjs by searching for component type
@@ -159,20 +113,11 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Import ELP
-            await importElpFixture(page);
+            // Open ELP
+            await openElpFile(page, FIXTURE_PATH);
 
             // Get relate data directly from Yjs
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
@@ -199,20 +144,11 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Import ELP
-            await importElpFixture(page);
+            // Open ELP
+            await openElpFile(page, FIXTURE_PATH);
 
             // Find which page contains the relate iDevice
             const pageWithRelate = await page.evaluate(() => {
@@ -269,7 +205,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             }, pageWithRelate!);
 
             // Wait for the page to render
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get relate data and check Edit button
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
@@ -305,23 +241,14 @@ test.describe('radioexploradores.elp Import Tests', () => {
             });
 
             const projectUuid = await createProject(page, 'Full Import Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Import ELP
-            await importElpFixture(page);
+            // Open ELP
+            await openElpFile(page, FIXTURE_PATH);
 
             // Wait for processing
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Verify no critical errors
             expect(errors.length).toBeLessThan(5);

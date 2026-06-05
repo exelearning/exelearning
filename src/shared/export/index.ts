@@ -5,8 +5,16 @@
  *
  * Usage (Backend/CLI):
  * ```typescript
- * import { ElpDocumentAdapter, Html5Exporter } from './shared/export';
- * const doc = await ElpDocumentAdapter.fromElpFile('project.elp');
+ * import { ElpxImporter, FileSystemAssetHandler } from './shared/import';
+ * import { ServerYjsDocumentWrapper, YjsDocumentAdapter, Html5Exporter } from './shared/export';
+ *
+ * const ydoc = new Y.Doc();
+ * const assetHandler = new FileSystemAssetHandler(extractDir);
+ * const importer = new ElpxImporter(ydoc, assetHandler);
+ * await importer.importFromBuffer(elpBuffer);
+ *
+ * const wrapper = new ServerYjsDocumentWrapper(ydoc, 'export');
+ * const doc = new YjsDocumentAdapter(wrapper);
  * const exporter = new Html5Exporter(doc, resourceProvider, assetProvider);
  * const result = await exporter.export();
  * ```
@@ -19,6 +27,9 @@
  * const result = await exporter.export();
  * ```
  */
+
+// Enums
+export { ExportFormatType } from './interfaces';
 
 // Interfaces
 export type {
@@ -95,13 +106,6 @@ export type { ImsGenerateOptions } from './generators/ImsManifest';
 export { LomMetadataGenerator } from './generators/LomMetadata';
 
 // Adapters
-export { ElpDocumentAdapter } from './adapters/ElpDocumentAdapter';
-export type {
-    ParsedOdeStructure,
-    OdeXmlMeta,
-    NormalizedPage,
-    NormalizedComponent,
-} from './adapters/ElpDocumentAdapter';
 export { YjsDocumentAdapter } from './adapters/YjsDocumentAdapter';
 export { ServerYjsDocumentWrapper } from './adapters/ServerYjsDocumentWrapper';
 export { BrowserResourceProvider } from './adapters/BrowserResourceProvider';
@@ -109,8 +113,6 @@ export { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
 
 // Asset Resolvers
 export { ExportAssetResolver } from './adapters/ExportAssetResolver';
-export { PreviewAssetResolver } from './adapters/PreviewAssetResolver';
-export type { AssetCacheManager } from './adapters/PreviewAssetResolver';
 
 // Providers
 export { FileSystemResourceProvider } from './providers/FileSystemResourceProvider';
@@ -137,9 +139,17 @@ export { Scorm2004Exporter } from './exporters/Scorm2004Exporter';
 export { ImsExporter } from './exporters/ImsExporter';
 export { Epub3Exporter } from './exporters/Epub3Exporter';
 export { ElpxExporter } from './exporters/ElpxExporter';
-export { WebsitePreviewExporter } from './exporters/WebsitePreviewExporter';
-export type { PreviewOptions, PreviewResult } from './exporters/WebsitePreviewExporter';
+export { PageElpxExporter } from './exporters/PageElpxExporter';
 export { PrintPreviewExporter } from './exporters/PrintPreviewExporter';
 export type { PrintPreviewOptions, PrintPreviewResult } from './exporters/PrintPreviewExporter';
 export { ComponentExporter } from './exporters/ComponentExporter';
 export type { ComponentExportResult, ComponentExportOptions } from './exporters/ComponentExporter';
+
+// Server-side Pre-renderers (for CLI export)
+export { ServerLatexPreRenderer, ServerMermaidPreRenderer } from './prerender';
+export type {
+    ServerLatexPreRendererInterface,
+    ServerMermaidPreRendererInterface,
+    LatexPreRenderResult,
+    MermaidPreRenderResult,
+} from './prerender';

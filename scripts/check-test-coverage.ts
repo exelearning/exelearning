@@ -7,10 +7,10 @@ const IGNORE_PATTERNS = [
     /\.spec\.ts$/,
     /\.test\.ts$/,
     /index\.ts$/,
-    /index-node\.ts$/, // Legacy Node.js entry point
     /\.d\.ts$/,
     /types\.ts$/,
     /src\/db\/migrations\//, // Migrations are declarative and tested implicitly
+    /src\/shared\/import\/legacy-handlers\//, // Handlers tested in combined handlers.spec.ts
 ]
 
 async function getFiles(dir: string): Promise<string[]> {
@@ -33,7 +33,9 @@ async function main() {
     const missing: string[] = []
 
     for (const file of files) {
-        const shouldIgnore = IGNORE_PATTERNS.some(p => p.test(file))
+        // `path.join()` uses platform separators. Normalize for regex patterns.
+        const normalizedFile = file.replace(/\\/g, '/')
+        const shouldIgnore = IGNORE_PATTERNS.some(p => p.test(normalizedFile))
         if (shouldIgnore) continue
 
         const specFile = file.replace(/\.ts$/, '.spec.ts')

@@ -14,6 +14,19 @@ import type {
     ZipProvider,
 } from '../interfaces';
 
+function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefined): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+
+    if (!content) {
+        return '';
+    }
+
+    const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
+    return new TextDecoder().decode(bytes);
+}
+
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
@@ -43,10 +56,20 @@ class MockDocument implements ExportDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
+    faviconToReturn: string | null = null;
+
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
+
+        if (this.faviconToReturn === 'ico') {
+            files.set('img/favicon.ico', Buffer.from('ico-data'));
+        } else if (this.faviconToReturn === 'png') {
+            files.set('img/favicon.png', Buffer.from('png-data'));
+        }
+
         return files;
     }
 
@@ -81,6 +104,33 @@ class MockResourceProvider implements ResourceProvider {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
+    }
+
+    async fetchScormSchemas(_version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
+
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+        const files = new Map<string, Buffer>();
+        if (fontId === 'opendyslexic') {
+            files.set('fonts/global/opendyslexic/OpenDyslexic-Regular.woff', Buffer.from('mock-font-data'));
+            files.set('fonts/global/opendyslexic/OFL.txt', Buffer.from('SIL OFL License'));
+        } else if (fontId === 'playwrite-es') {
+            files.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', Buffer.from('mock-playwrite-font'));
+            files.set('fonts/global/playwrite-es/OFL.txt', Buffer.from('SIL OFL License'));
+        }
+        return files;
+    }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
     }
 }
 
@@ -117,12 +167,78 @@ class MockAssetProvider implements AssetProvider {
     }
 }
 
+// Mock asset provider with forEachAsset support (for memory-efficient preview tests)
+class MockAssetProviderWithForEach extends MockAssetProvider {
+    private assetList: Array<{
+        id: string;
+        filename: string;
+        originalPath: string;
+        folderPath?: string;
+        mime: string;
+        data: Buffer;
+    }> = [];
+
+    addAsset(id: string, filename: string, mime: string, data: Buffer, folderPath?: string): void {
+        this.assetList.push({
+            id,
+            filename,
+            originalPath: `${id}/${filename}`,
+            folderPath,
+            mime,
+            data,
+        });
+    }
+
+    async getAllAssets() {
+        return this.assetList.map(a => ({
+            id: a.id,
+            filename: a.filename,
+            path: a.originalPath,
+            originalPath: a.originalPath,
+            folderPath: a.folderPath,
+            mime: a.mime,
+            data: a.data,
+        }));
+    }
+
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
+        const assets = await this.getAllAssets();
+        for (const asset of assets) {
+            await callback({
+                id: asset.id,
+                filename: asset.filename,
+                originalPath: asset.originalPath,
+                folderPath: asset.folderPath,
+                mime: asset.mime,
+                data: asset.data,
+            });
+        }
+    }
+}
+
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
     files = new Map<string, string | Buffer>();
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -252,11 +368,12 @@ describe('Html5Exporter', () => {
             expect(zip.files.has('content/css/base.css')).toBe(true);
         });
 
-        it('should include theme files', async () => {
+        it('should include theme files with original names (not renamed)', async () => {
             await exporter.export();
 
-            expect(zip.files.has('theme/content.css')).toBe(true);
-            expect(zip.files.has('theme/default.js')).toBe(true);
+            // Theme file names should be preserved as-is
+            expect(zip.files.has('theme/style.css')).toBe(true);
+            expect(zip.files.has('theme/style.js')).toBe(true);
         });
 
         it('should include library references in HTML', async () => {
@@ -400,6 +517,50 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('Favicon Detection', () => {
+        it('should detect theme favicon.ico in export', async () => {
+            resources.faviconToReturn = 'ico';
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
+        });
+
+        it('should detect theme favicon.png in export', async () => {
+            resources.faviconToReturn = 'png';
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
+
+        it('should detect theme favicon.ico in generateForPreview', async () => {
+            resources.faviconToReturn = 'ico';
+            const files = await exporter.generateForPreview();
+
+            const indexHtml = decodePreviewFile(files.get('index.html'));
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
+        });
+
+        it('should use default favicon when theme one is missing', async () => {
+            resources.faviconToReturn = null;
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should allow overriding favicon in options', async () => {
+            await exporter.export({
+                faviconPath: 'custom/favicon.png',
+                faviconType: 'image/png',
+            } as any);
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/png" href="custom/favicon.png">');
+        });
+    });
+
     describe('Theme and Library Integration', () => {
         it('should handle theme fetch failure gracefully', async () => {
             // Override fetchTheme to throw
@@ -409,9 +570,9 @@ describe('Html5Exporter', () => {
 
             const result = await exporter.export();
 
-            // Should still succeed with fallback (uses legacy names: content.css, default.js)
+            // Should still succeed with fallback (uses style.css, style.js)
             expect(result.success).toBe(true);
-            expect(zip.files.has('theme/content.css')).toBe(true);
+            expect(zip.files.has('theme/style.css')).toBe(true);
         });
 
         it('should handle library fetch failure gracefully', async () => {
@@ -574,6 +735,57 @@ describe('Html5Exporter', () => {
             expect(result.success).toBe(true);
         });
 
+        // Regression test for exelearning/exelearning#1769:
+        // saving and exporting must NOT bundle each asset twice (once under its
+        // friendly filename and once under a UUID-shaped duplicate). The screenshot
+        // attached to that issue showed `pie_pagina_FEDER_2027.png` and a paired
+        // `2c161d17-249b-9bcd-7e0d-f9a4d758bae9.png` with identical content/CRC32.
+        it('should not duplicate assets under UUID-shaped paths (issue #1769)', async () => {
+            const assetsWithUuids: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: '2c161d17-249b-9bcd-7e0d-f9a4d758bae9',
+                            filename: 'pie_pagina_FEDER_2027.png',
+                            originalPath: 'pie_pagina_FEDER_2027.png',
+                            folderPath: '',
+                            mime: 'image/png',
+                            data: Buffer.from('feder-banner-data'),
+                        },
+                        {
+                            id: '49d44e76-3d6a-4b21-b911-41746ab60814',
+                            filename: 'photo_2024-09-05_12-31-44.jpg',
+                            originalPath: 'photo_2024-09-05_12-31-44.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('photo-data'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithUuidAssets = new Html5Exporter(document, resources, assetsWithUuids, zip);
+            const result = await exporterWithUuidAssets.export();
+
+            expect(result.success).toBe(true);
+
+            // Friendly filenames are present...
+            expect(zip.files.has('content/resources/pie_pagina_FEDER_2027.png')).toBe(true);
+            expect(zip.files.has('content/resources/photo_2024-09-05_12-31-44.jpg')).toBe(true);
+
+            // ...and the UUID-shaped duplicates that PR #1740 used to write must NOT be.
+            const uuidDuplicates = Array.from(zip.files.keys()).filter(p =>
+                /content\/resources\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.[a-z0-9]+$/i.test(p),
+            );
+            expect(uuidDuplicates).toEqual([]);
+        });
+
         it('should export root assets directly under content/resources/', async () => {
             // Assets without folderPath (at root level)
             const assetsWithoutFolder: AssetProvider = {
@@ -716,6 +928,103 @@ describe('Html5Exporter', () => {
             expect(baseCss).toBeDefined();
             const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
             expect(cssContent).not.toContain('.exe-math-rendered');
+        });
+
+        it('should not include MathJax automatically when addMathJax=false and pre-render leaves raw LaTeX (export)', async () => {
+            const latexPages: ExportPage[] = [
+                {
+                    id: 'page-latex',
+                    title: 'LaTeX',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-latex',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-latex',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Formula: \\(x^2\\)</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ addMathJax: false }, latexPages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let requestedLibs: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibs = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+
+            await exporter.export({
+                preRenderLatex: async html => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('should not include MathJax automatically when addMathJax=false and pre-render leaves raw LaTeX (preview)', async () => {
+            const latexPages: ExportPage[] = [
+                {
+                    id: 'page-latex',
+                    title: 'LaTeX',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-latex',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-latex',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Formula: \\(x^2\\)</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ addMathJax: false }, latexPages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let requestedLibs: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibs = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async html => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            const indexHtml = files.get('index.html');
+            const indexHtmlText = decodePreviewFile(indexHtml);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
 
@@ -1026,6 +1335,44 @@ describe('Html5Exporter', () => {
             expect(manifest.files).toContain('content.xml');
             expect(manifest.files).toContain('content/css/base.css');
             expect(manifest.files).toContain('index.html');
+        });
+
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
         });
 
         it('should only add manifest script to pages with download-source-file iDevice', async () => {
@@ -1395,6 +1742,881 @@ describe('Html5Exporter', () => {
 
             // Should NOT have search_index.js file
             expect(zip.files.has('search_index.js')).toBe(false);
+        });
+    });
+
+    describe('Global Font Support', () => {
+        let resources: MockResourceProvider;
+        let assets: MockAssetProvider;
+        let zip: MockZipProvider;
+
+        const simplePage: ExportPage = {
+            id: 'page1',
+            title: 'Page 1',
+            parentId: null,
+            order: 0,
+            blocks: [],
+        };
+
+        function createExporter(globalFont: string, res = resources): Html5Exporter {
+            const doc = new MockDocument({ globalFont }, [simplePage]);
+            return new Html5Exporter(doc, res, assets, zip);
+        }
+
+        beforeEach(() => {
+            resources = new MockResourceProvider();
+            assets = new MockAssetProvider();
+            zip = new MockZipProvider();
+        });
+
+        it('should include global font files when globalFont is set', async () => {
+            await createExporter('opendyslexic').export();
+
+            expect(zip.files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(zip.files.has('fonts/global/opendyslexic/OFL.txt')).toBe(true);
+        });
+
+        it('should include Playwrite ES Guides font files when selected', async () => {
+            await createExporter('playwrite-es').export();
+
+            expect(zip.files.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+            expect(zip.files.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
+        });
+
+        it('should not include global font files when globalFont is default', async () => {
+            await createExporter('default').export();
+
+            expect(zip.files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(false);
+            expect(zip.files.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(false);
+        });
+
+        it('should include global font CSS in rendered pages', async () => {
+            await createExporter('opendyslexic').export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('OpenDyslexic');
+        });
+
+        it('should handle fetchGlobalFontFiles errors gracefully', async () => {
+            const errorResources = new MockResourceProvider();
+            errorResources.fetchGlobalFontFiles = async () => {
+                throw new Error('Font fetch failed');
+            };
+
+            const result = await createExporter('opendyslexic', errorResources).export();
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe('generateForPreview', () => {
+        it('should generate preview files as a Map', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files).toBeInstanceOf(Map);
+            expect(files.size).toBeGreaterThan(0);
+        });
+
+        it('should generate index.html', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('index.html')).toBe(true);
+            const indexHtml = files.get('index.html');
+            expect(indexHtml).toBeInstanceOf(ArrayBuffer);
+
+            const html = decodePreviewFile(indexHtml);
+            expect(html).toContain('<!DOCTYPE html>');
+            expect(html).toContain('Introduction');
+        });
+
+        it('should generate HTML files for other pages', async () => {
+            const files = await exporter.generateForPreview();
+
+            // Find HTML files in html/ directory
+            const htmlFiles = Array.from(files.keys()).filter(f => f.startsWith('html/'));
+            expect(htmlFiles.length).toBe(1);
+        });
+
+        it('should NOT include content.xml (not needed for preview)', async () => {
+            const files = await exporter.generateForPreview();
+
+            // Preview should not include content.xml to save space
+            expect(files.has('content.xml')).toBe(false);
+        });
+
+        it('should include base CSS', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/css/base.css')).toBe(true);
+        });
+
+        it('should include theme files', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('theme/style.css')).toBe(true);
+            expect(files.has('theme/style.js')).toBe(true);
+        });
+
+        it('should include base libraries', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('libs/jquery/jquery.min.js')).toBe(true);
+            expect(files.has('libs/common.js')).toBe(true);
+        });
+
+        it('should return ArrayBuffer content for all files', async () => {
+            const files = await exporter.generateForPreview();
+
+            for (const [, content] of files) {
+                expect(content).toBeInstanceOf(ArrayBuffer);
+            }
+        });
+
+        it('should handle empty pages array', async () => {
+            document = new MockDocument({}, []);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should still generate theme and library files
+            expect(files.size).toBeGreaterThan(0);
+        });
+
+        it('should handle theme fetch failure gracefully', async () => {
+            resources.fetchTheme = async () => {
+                throw new Error('Theme not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should use fallback theme
+            expect(files.has('theme/style.css')).toBe(true);
+            expect(files.has('theme/style.js')).toBe(true);
+        });
+
+        it('should use custom theme when provided in options', async () => {
+            const files = await exporter.generateForPreview({ theme: 'custom-theme' });
+
+            // Theme files should be included (from mock)
+            expect(files.has('theme/style.css')).toBe(true);
+        });
+
+        it('should generate search_index.js when addSearchBox is enabled', async () => {
+            document = new MockDocument({ addSearchBox: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('search_index.js')).toBe(true);
+        });
+
+        it('should call preRenderLatex hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (LaTeX rendered)'),
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should call preRenderMermaid hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (Mermaid rendered)'),
+                        hasMermaid: true,
+                        mermaidRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderLatex hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async () => {
+                    throw new Error('LaTeX render failed');
+                },
+            });
+
+            // Should still succeed, just without LaTeX pre-rendering
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderMermaid hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async () => {
+                    throw new Error('Mermaid render failed');
+                },
+            });
+
+            // Should still succeed, just without Mermaid pre-rendering
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should include project assets in preview files', async () => {
+            // Create asset provider with assets
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'asset-1',
+                            filename: 'image.png',
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/images/image.png')).toBe(true);
+        });
+
+        it('should handle asset fetch failure gracefully', async () => {
+            // Create asset provider that throws
+            const failingAssets = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    throw new Error('Asset fetch failed');
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, failingAssets, zip);
+            const files = await exporter.generateForPreview();
+
+            // Should still generate HTML and theme files
+            expect(files.has('index.html')).toBe(true);
+            expect(files.has('theme/style.css')).toBe(true);
+        });
+
+        it('should handle base CSS fetch failure gracefully', async () => {
+            resources.fetchContentCss = async () => {
+                return new Map(); // Empty map, no base.css
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still generate other files
+            expect(files.has('index.html')).toBe(true);
+            expect(files.has('theme/style.css')).toBe(true);
+            // base.css should not be present since fetch returned empty
+            expect(files.has('content/css/base.css')).toBe(false);
+        });
+
+        it('should handle base libraries fetch failure gracefully', async () => {
+            resources.fetchBaseLibraries = async () => {
+                throw new Error('Libraries not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle library files fetch failure gracefully', async () => {
+            resources.fetchLibraryFiles = async () => {
+                throw new Error('Additional libraries not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should append pre-rendered CSS to base CSS when LaTeX is rendered', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const cssText = decodePreviewFile(baseCss);
+            expect(cssText).toContain('exe-math-rendered');
+        });
+
+        it('should append pre-rendered CSS to base CSS when Mermaid is rendered', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const cssText = decodePreviewFile(baseCss);
+            expect(cssText).toContain('exe-mermaid-rendered');
+        });
+
+        it('should call preRenderDataGameLatex hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (DataGame LaTeX)'),
+                        hasLatex: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderDataGameLatex hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async () => {
+                    throw new Error('DataGame LaTeX failed');
+                },
+            });
+
+            // Should still succeed
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should create ELPX manifest when download-source-file is used', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+
+            const manifestContent = files.get('libs/elpx-manifest.js');
+            const manifestJs = decodePreviewFile(manifestContent);
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            expect(manifestJs).toContain('"files"');
+        });
+
+        it('should include libs/elpx-manifest.js in the manifest file list for preview', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            const manifestContent = files.get('libs/elpx-manifest.js');
+            const manifestJs = decodePreviewFile(manifestContent);
+
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should create ELPX manifest when exe-package:elp class is in content', async () => {
+            const pagesWithElpClass: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p class="exe-download-package-link">Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithElpClass);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+        });
+
+        it('should include eXeLearning logo when available', async () => {
+            resources.fetchExeLogo = async () => new Uint8Array([1, 2, 3, 4]);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should handle eXeLearning logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+            // Logo should not be present
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle iDevice resource fetch failure gracefully', async () => {
+            resources.fetchIdeviceResources = async () => {
+                throw new Error('iDevice resources not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should not skip LaTeX pre-rendering when addMathJax is true', async () => {
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let latexHookCalled = false;
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => {
+                    latexHookCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            // LaTeX hook should NOT be called when addMathJax is true
+            expect(latexHookCalled).toBe(false);
+            expect(files.has('index.html')).toBe(true);
+        });
+    });
+
+    describe('detectFavicon', () => {
+        it('should prioritize favicon.ico over favicon.png', () => {
+            // Create theme files with both ico and png
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.ico', new Uint8Array([1, 2, 3]));
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            // Access protected method via indexing
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            // Should prefer .ico over .png
+            expect(result).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+
+        it('should return png favicon when ico is not present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toEqual({ path: 'theme/img/favicon.png', type: 'image/png' });
+        });
+
+        it('should return null when no favicon is present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('style.css', new Uint8Array([1, 2, 3]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('prepareThemeData', () => {
+        it('should extract root-level CSS and JS files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('style.js', Buffer.from('// js'));
+                files.set('extra.css', Buffer.from('/* extra */'));
+                files.set('subfolder/nested.css', Buffer.from('/* nested */'));
+                files.set('subfolder/nested.js', Buffer.from('// nested js'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('test-theme');
+
+            // Should only include root-level CSS/JS files (no path separator)
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeRootFiles).toContain('extra.css');
+            // Should NOT include nested files
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.css');
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.js');
+        });
+
+        it('should use fallback when theme fetch fails', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                throw new Error('Theme not found');
+            };
+
+            const result = await (exporter as any).prepareThemeData('nonexistent-theme');
+
+            // Should use fallback files
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeFilesMap).toBeNull();
+            expect(result.faviconInfo).toBeNull();
+        });
+
+        it('should detect favicon from theme files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('img/favicon.ico', Buffer.from('ico-data'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('theme-with-favicon');
+
+            expect(result.faviconInfo).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+    });
+
+    describe('Combined LaTeX and Mermaid CSS', () => {
+        it('should append both LaTeX and Mermaid CSS when both are rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssContent).toContain('.exe-math-rendered');
+            expect(cssContent).toContain('.exe-mermaid-rendered');
+        });
+
+        it('should append both LaTeX and Mermaid CSS in generateForPreview', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const cssText = decodePreviewFile(baseCss);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssText).toContain('.exe-math-rendered');
+            expect(cssText).toContain('.exe-mermaid-rendered');
+        });
+    });
+
+    describe('Icon Resolution via setThemeIconFiles', () => {
+        it('should configure IdeviceRenderer with theme icon files', async () => {
+            // Override fetchTheme to include icon files
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+                files.set('icons/check.png', Buffer.from('png-data'));
+                files.set('icons/star.gif', Buffer.from('gif-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // Verify icon files are copied to theme/icons/
+            expect(zip.files.has('theme/icons/activity.svg')).toBe(true);
+            expect(zip.files.has('theme/icons/check.png')).toBe(true);
+            expect(zip.files.has('theme/icons/star.gif')).toBe(true);
+        });
+
+        it('should only resolve image files from icons/ folder', async () => {
+            // Override fetchTheme to include various file types
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/info.svg', Buffer.from('<svg></svg>'));
+                files.set('icons/readme.txt', Buffer.from('text file')); // Not an image
+                files.set('icons/config.json', Buffer.from('{}')); // Not an image
+                return files;
+            };
+
+            await exporter.export();
+
+            // Only SVG should be in theme/icons/ as an image file
+            expect(zip.files.has('theme/icons/info.svg')).toBe(true);
+            // Non-image files should still be copied (they're in the theme)
+            expect(zip.files.has('theme/icons/readme.txt')).toBe(true);
+        });
+
+        it('should handle theme with no icon files', async () => {
+            // Override fetchTheme with no icons
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('style.js', Buffer.from('// js'));
+                return files;
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            // Should work fine without icons
+        });
+
+        it('should map icon baseName to filename with extension', async () => {
+            // Create a page with a block that has an icon using baseName
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'lightbulb', // baseName without extension
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+
+            // Override fetchTheme to return icon with extension
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/lightbulb.svg', Buffer.from('<svg></svg>'));
+                return files;
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            // The generated HTML should have the resolved icon name with extension
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/lightbulb.svg');
+            expect(indexHtml).not.toContain('lightbulb.png');
+        });
+
+        it('should handle multiple icon formats in different themes', async () => {
+            // Test that the same icon baseName can resolve to different extensions
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'star', // baseName
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+
+            // Theme with PNG icon
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/star.png', Buffer.from('png-data'));
+                return files;
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should resolve to PNG (whatever the theme provides)
+            expect(indexHtml).toContain('theme/icons/star.png');
+        });
+
+        it('should support all common image extensions for icon resolution', async () => {
+            // Override fetchTheme with various image formats
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/icon1.svg', Buffer.from('svg'));
+                files.set('icons/icon2.png', Buffer.from('png'));
+                files.set('icons/icon3.gif', Buffer.from('gif'));
+                files.set('icons/icon4.jpg', Buffer.from('jpg'));
+                files.set('icons/icon5.jpeg', Buffer.from('jpeg'));
+                files.set('icons/icon6.webp', Buffer.from('webp'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // All image formats should be included
+            expect(zip.files.has('theme/icons/icon1.svg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon2.png')).toBe(true);
+            expect(zip.files.has('theme/icons/icon3.gif')).toBe(true);
+            expect(zip.files.has('theme/icons/icon4.jpg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon5.jpeg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon6.webp')).toBe(true);
+        });
+    });
+
+    describe('generateForPreview with forEachAsset', () => {
+        it('should use forEachAsset for memory-efficient asset loading in preview', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-preview-1', 'photo.jpg', 'image/jpeg', Buffer.from('jpeg-data'));
+            forEachAssets.addAsset('uuid-preview-2', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/photo.jpg')).toBe(true);
+            expect(files.has('content/resources/doc.pdf')).toBe(true);
+        });
+
+        it('should fall back to getAllAssets in preview when forEachAsset is not available', async () => {
+            // Use the regular MockAssetProvider (no forEachAsset)
+            const regularAssets = new MockAssetProvider();
+
+            const previewExporter = new Html5Exporter(document, resources, regularAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            // Should still work (no assets to add)
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should skip assets without export path in forEachAsset preview path', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-known-prev', 'known.png', 'image/png', Buffer.from('png'));
+
+            // Override forEachAsset to also yield an orphan asset
+            const origForEach = forEachAssets.forEachAsset.bind(forEachAssets);
+            forEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
+                await origForEach(callback);
+                await callback({
+                    id: 'uuid-orphan-prev',
+                    filename: 'orphan.txt',
+                    originalPath: 'orphan.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan'),
+                });
+            };
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/known.png')).toBe(true);
+            expect(files.has('content/resources/orphan.txt')).toBe(false);
         });
     });
 });

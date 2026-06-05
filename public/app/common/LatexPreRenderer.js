@@ -26,7 +26,8 @@
         // Display: $$...$$ (may span multiple lines with <br>)
         { regex: /\$\$([\s\S]*?)\$\$/g, display: 'block' },
         // Block: \begin{...}...\end{...} (may span multiple lines with <br>)
-        { regex: /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, display: 'block' },
+        // Exclude TikZ/circuitikz environments (handled by TikZJax, not MathJax)
+        { regex: /\\begin\{(?!(?:tikzpicture|circuitikz)\})[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, display: 'block' },
         // Inline: \(...\) (typically single line but support multi)
         { regex: /\\\([\s\S]*?\\\)/g, display: 'inline' },
         // Bare \ref{...} and \eqref{...} - used in text mode to reference equations
@@ -158,17 +159,12 @@
     const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea', 'noscript']);
 
     /**
-     * Pattern to detect <span style="...color:..."> which indicates example code
-     * Users show LaTeX examples in colored spans, while using \color{} for actual colored math
-     */
-    const COLORED_SPAN_PATTERN = /<span\s+[^>]*style\s*=\s*["'][^"']*color\s*:/i;
-
-    /**
-     * Check if a position in HTML is inside an attribute value, skip element, or colored span
+     * Check if a position in HTML is inside an attribute value, skip element,
+     * or inside an already pre-rendered math wrapper.
      * This prevents processing LaTeX that appears in:
      * - title="...", data-*="...", etc.
      * - <script>...</script>, <code>...</code>, <pre>...</pre>, etc.
-     * - <span style="color:...">...</span> (example code shown in color)
+     * - <span class="exe-math-rendered">...</span> (already rendered math)
      * @param {string} html - The HTML string
      * @param {number} position - Position to check
      * @returns {boolean} True if position should be skipped
@@ -178,7 +174,7 @@
         let inAttrValue = false;
         let attrQuoteChar = null;
         let skipElementStack = []; // Stack of skip element names we're inside
-        let coloredSpanDepth = 0; // Track nested colored spans
+        let renderedSpanDepth = 0; // Track nested already-rendered spans
 
         for (let i = 0; i < position; i++) {
             const char = html[i];
@@ -216,19 +212,19 @@
                     }
                 }
 
-                // Check for colored span (span with style containing color:)
+                // Track already pre-rendered math wrappers to avoid double-processing
                 if (tagName === 'span') {
                     if (isClosing) {
-                        if (coloredSpanDepth > 0) {
-                            coloredSpanDepth--;
+                        if (renderedSpanDepth > 0) {
+                            renderedSpanDepth--;
                         }
                     } else {
-                        // Find the end of this tag to check for style="...color:..."
+                        // Find the end of this tag and check for class="...exe-math-rendered..."
                         let tagEnd = html.indexOf('>', i);
                         if (tagEnd !== -1) {
                             const tagContent = html.substring(i, tagEnd + 1);
-                            if (/style\s*=\s*["'][^"']*color\s*:/i.test(tagContent)) {
-                                coloredSpanDepth++;
+                            if (/class\s*=\s*["'][^"']*\bexe-math-rendered\b[^"']*["']/i.test(tagContent)) {
+                                renderedSpanDepth++;
                             }
                         }
                     }
@@ -251,8 +247,8 @@
             }
         }
 
-        // Skip if inside attribute value, skip element, OR colored span
-        return inAttrValue || skipElementStack.length > 0 || coloredSpanDepth > 0;
+        // Skip if inside attribute value, skip element, OR already-rendered wrapper
+        return inAttrValue || skipElementStack.length > 0 || renderedSpanDepth > 0;
     }
 
     /**
@@ -527,6 +523,104 @@
     }
 
     /**
+     * Fallback pass: process LaTeX in text nodes directly.
+     * Used when the main innerHTML pass finds LaTeX but renders 0 expressions.
+     * This guarantees inline formulas in simple span/text structures are not missed.
+     * @param {Document} doc
+     * @returns {Promise<{replaced: number, errors: number}>}
+     */
+    async function processTextNodesFallback(doc) {
+        let totalReplaced = 0;
+        let totalErrors = 0;
+
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let current = walker.nextNode();
+        while (current) {
+            textNodes.push(current);
+            current = walker.nextNode();
+        }
+
+        for (const textNode of textNodes) {
+            const parent = textNode.parentElement;
+            if (!parent) continue;
+
+            const parentTag = parent.tagName.toLowerCase();
+            if (SKIP_ELEMENTS.has(parentTag)) continue;
+            if (parent.closest('.exe-math-rendered')) continue;
+
+            const text = textNode.nodeValue || '';
+            if (!HAS_LATEX_PATTERN.test(text)) continue;
+
+            const matches = [];
+            for (const pattern of LATEX_PATTERNS) {
+                pattern.regex.lastIndex = 0;
+                let match;
+                while ((match = pattern.regex.exec(text)) !== null) {
+                    matches.push({
+                        value: match[0],
+                        start: match.index,
+                        end: match.index + match[0].length,
+                        display: pattern.display,
+                    });
+                }
+            }
+
+            if (matches.length === 0) continue;
+            matches.sort((a, b) => a.start - b.start);
+
+            const filtered = [];
+            let lastEnd = -1;
+            for (const m of matches) {
+                if (m.start >= lastEnd) {
+                    filtered.push(m);
+                    lastEnd = m.end;
+                }
+            }
+
+            if (filtered.length === 0) continue;
+
+            const fragment = doc.createDocumentFragment();
+            let cursor = 0;
+            let nodeChanged = false;
+
+            for (const m of filtered) {
+                if (m.start > cursor) {
+                    fragment.appendChild(doc.createTextNode(text.slice(cursor, m.start)));
+                }
+
+                const cleanLatex = cleanLatexFromHtml(m.value);
+                try {
+                    const { svg, mathml } = await renderLatexExpression(cleanLatex, m.display);
+                    const wrapper = doc.createElement('span');
+                    wrapper.className = 'exe-math-rendered';
+                    if (m.display === 'block') wrapper.setAttribute('data-display', 'block');
+                    wrapper.setAttribute('data-latex', cleanLatex);
+                    wrapper.innerHTML = svg + (mathml || '');
+                    fragment.appendChild(wrapper);
+                    totalReplaced++;
+                    nodeChanged = true;
+                } catch (error) {
+                    fragment.appendChild(doc.createTextNode(m.value));
+                    totalErrors++;
+                }
+
+                cursor = m.end;
+            }
+
+            if (cursor < text.length) {
+                fragment.appendChild(doc.createTextNode(text.slice(cursor)));
+            }
+
+            if (nodeChanged && textNode.parentNode) {
+                textNode.parentNode.replaceChild(fragment, textNode);
+            }
+        }
+
+        return { replaced: totalReplaced, errors: totalErrors };
+    }
+
+    /**
      * Elements whose content should be preserved from DOMParser
      * DOMParser can corrupt content inside these (e.g., <link> tags inside <code> blocks)
      */
@@ -628,8 +722,41 @@
     }
 
     /**
+     * Process LaTeX content in a JSON properties object
+     * For JSON iDevices, LaTeX content is stored in properties like textTextarea
+     * @param {Object} jsonData - Parsed JSON properties object
+     * @returns {Promise<{updated: boolean, count: number, jsonData: Object}>}
+     */
+    async function processJsonProperties(jsonData) {
+        let updated = false;
+        let count = 0;
+
+        for (const [key, value] of Object.entries(jsonData)) {
+            // Only process string values that might contain LaTeX
+            if (typeof value !== 'string' || !HAS_LATEX_PATTERN.test(value)) {
+                continue;
+            }
+
+            // Pre-render LaTeX in this string value
+            const processedValue = await preRenderString(value);
+
+            if (processedValue !== value) {
+                jsonData[key] = processedValue;
+                updated = true;
+                // Count approximate number of replacements
+                const origMatches = value.match(HAS_LATEX_PATTERN);
+                count += origMatches ? origMatches.length : 1;
+            }
+        }
+
+        return { updated, count, jsonData };
+    }
+
+    /**
      * Pre-render LaTeX per iDevice to maintain proper equation numbering
      * Each iDevice gets its own equation numbering scope (starting from 1)
+     * Also processes LaTeX content inside data-idevice-json-data attributes
+     * for JSON iDevices (like text iDevice)
      * @param {string} html - Full HTML with multiple iDevices
      * @param {Map<string, string>} preserved - Preserved content map
      * @returns {Promise<{html: string, hasLatex: boolean, latexRendered: boolean, count: number}>}
@@ -643,7 +770,31 @@
         let totalReplaced = 0;
         let totalErrors = 0;
 
-        // Process each iDevice with its own equation numbering scope
+        // FIRST: Process LaTeX content inside data-idevice-json-data attributes
+        // This is needed for JSON iDevices where content is stored in properties, not HTML body
+        const jsonDataElements = doc.querySelectorAll('[data-idevice-json-data]');
+        for (const element of Array.from(jsonDataElements)) {
+            const jsonStr = element.getAttribute('data-idevice-json-data');
+            if (!jsonStr || !HAS_LATEX_PATTERN.test(jsonStr)) {
+                continue;
+            }
+
+            try {
+                const jsonData = JSON.parse(jsonStr);
+                const result = await processJsonProperties(jsonData);
+                if (result.updated) {
+                    // Update the attribute with pre-rendered content
+                    const newJsonStr = JSON.stringify(result.jsonData);
+                    element.setAttribute('data-idevice-json-data', newJsonStr);
+                    totalReplaced += result.count;
+                    console.log(`[LatexPreRenderer] Pre-rendered LaTeX in JSON data`);
+                }
+            } catch (err) {
+                console.warn('[LatexPreRenderer] Failed to process JSON data attribute:', err);
+            }
+        }
+
+        // SECOND: Process each iDevice DOM content with its own equation numbering scope
         for (const idevice of idevices) {
             const result = await processIdeviceWithNumbering(idevice, doc);
             totalReplaced += result.replaced;
@@ -663,9 +814,6 @@
         for (const container of allContainers) {
             // Skip if inside an iDevice (already processed)
             if (container.closest('.idevice_node')) continue;
-            // Skip if already has rendered math
-            if (container.querySelector('.exe-math-rendered')) continue;
-
             const result = await processNode(container, doc);
             totalReplaced += result.replaced;
             totalErrors += result.errors;
@@ -747,6 +895,15 @@
 
         // Process the document body
         const result = await processNode(doc.body, doc);
+
+        if (result.replaced === 0) {
+            // Fallback for cases missed by innerHTML pass (e.g. some inline span formulas)
+            const fallback = await processTextNodesFallback(doc);
+            if (fallback.replaced > 0) {
+                result.replaced = fallback.replaced;
+                result.errors += fallback.errors;
+            }
+        }
 
         if (result.replaced === 0) {
             return {
@@ -843,25 +1000,60 @@
             return text;
         }
 
-        let result = text;
-
-        // Process each LaTeX pattern
+        // Collect ALL matches from all patterns with their positions
+        const allMatches = [];
         for (const pattern of LATEX_PATTERNS) {
             pattern.regex.lastIndex = 0;
             const matches = [...text.matchAll(pattern.regex)];
 
             for (const match of matches) {
-                const latexWithDelimiters = match[0];
-                const cleanLatex = cleanLatexFromHtml(latexWithDelimiters);
-
-                try {
-                    const { svg, mathml } = await renderLatexExpression(cleanLatex, pattern.display);
-                    const rendered = createRenderedWrapperHtml(latexWithDelimiters, cleanLatex, pattern.display, svg, mathml);
-                    result = result.replace(latexWithDelimiters, rendered);
-                } catch (error) {
-                    console.warn('[LatexPreRenderer] Failed to pre-render in game data:', cleanLatex, error);
-                    // Keep original LaTeX on error
+                // Skip matches inside attributes (like data-latex="...")
+                if (shouldSkipPosition(text, match.index)) {
+                    continue;
                 }
+
+                allMatches.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    latexWithDelimiters: match[0],
+                    display: pattern.display,
+                });
+            }
+        }
+
+        if (allMatches.length === 0) {
+            return text;
+        }
+
+        // Sort by start position and remove overlapping matches
+        allMatches.sort((a, b) => a.start - b.start);
+        const filteredMatches = [];
+        let lastEnd = -1;
+        for (const m of allMatches) {
+            if (m.start >= lastEnd) {
+                filteredMatches.push(m);
+                lastEnd = m.end;
+            }
+        }
+
+        // Render all matches
+        for (const m of filteredMatches) {
+            const cleanLatex = cleanLatexFromHtml(m.latexWithDelimiters);
+            try {
+                const { svg, mathml } = await renderLatexExpression(cleanLatex, m.display);
+                m.rendered = createRenderedWrapperHtml(m.latexWithDelimiters, cleanLatex, m.display, svg, mathml);
+            } catch (error) {
+                console.warn('[LatexPreRenderer] Failed to pre-render in string:', cleanLatex, error);
+                m.rendered = null; // Keep original on error
+            }
+        }
+
+        // Build result by replacing from END to START (preserves positions)
+        let result = text;
+        for (let i = filteredMatches.length - 1; i >= 0; i--) {
+            const m = filteredMatches[i];
+            if (m.rendered) {
+                result = result.substring(0, m.start) + m.rendered + result.substring(m.end);
             }
         }
 

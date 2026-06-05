@@ -3,6 +3,7 @@ import {
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+import { parseCssClassList } from './cssClassHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -51,10 +52,9 @@ export default class IdeviceNode {
         this.checkDeviceLoadInterval = null;
         // Time (ms) of loop
         this.interval = 100;
-        // Number of loops
-        this.checkDeviceLoadNumMax = Math.round(
-            this.engine.clientCallWaitingTime / this.interval
-        );
+        // Number of loops (default to 5000ms / 100ms = 50 iterations if not configured)
+        const waitingTime = this.engine.clientCallWaitingTime || 5000;
+        this.checkDeviceLoadNumMax = Math.round(waitingTime / this.interval);
         // Check if is valid
         this.checkIsValid();
 
@@ -75,12 +75,16 @@ export default class IdeviceNode {
 
     /**
      * Idevice properties
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odeComponentsSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+            : app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params
@@ -248,13 +252,6 @@ export default class IdeviceNode {
      *
      */
     setPropertiesClassesToElement() {
-        // identifier
-        if (this.properties.identifier.value != '') {
-            this.ideviceContent.setAttribute(
-                'identifier',
-                this.properties.identifier.value
-            );
-        }
         // visibility
         if (this.properties.visibility.value != '') {
             this.ideviceContent.setAttribute(
@@ -262,14 +259,86 @@ export default class IdeviceNode {
                 this.properties.visibility.value
             );
         }
+        this.updateVisibilityIndicator();
         // css class
-        if (this.properties.cssClass.value != '') {
-            let cssClasses = this.properties.cssClass.value
-                ? this.properties.cssClass.value.split(' ')
-                : [];
-            cssClasses.forEach((cls) => {
-                this.ideviceContent.classList.add(cls);
-            });
+        parseCssClassList(this.properties.cssClass.value).forEach((cls) => {
+            this.ideviceContent.classList.add(cls);
+        });
+        // teacher only - workarea visual indicator (separate class to avoid export hide rule)
+        if (this.properties.teacherOnly?.value == 'true') {
+            this.ideviceContent.classList.add('exe-teacher-highlight');
+        }
+        this.updateTeacherOnlyIndicator();
+    }
+
+    /**
+     * Update the visibility indicator based on the visibility property
+     */
+    updateVisibilityIndicator() {
+        if (!this.ideviceButtons) return;
+        
+        let indicator = this.ideviceButtons.querySelector('.visibility-off-indicator');
+        const visibilityValue = this.properties.visibility?.value;
+        const isVisible = visibilityValue !== 'false' && visibilityValue !== false;
+        
+        if (isVisible) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('visibility-off-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Hidden from export'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+                indicator.innerHTML = `<i class="small-icon exe-visibility-off-green-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Hidden from export')}</span>`;
+
+                // Make indicator absolutely positioned to the far left
+                indicator.style.position = 'absolute';
+                indicator.style.left = '12px';
+                indicator.style.top = '50%';
+                indicator.style.transform = 'translateY(-50%)';
+                indicator.style.marginRight = '0';
+
+                this.ideviceButtons.appendChild(indicator);
+            }
+        }
+    }
+
+    /**
+     * Update the teacher-only indicator based on the teacherOnly property
+     */
+    updateTeacherOnlyIndicator() {
+        if (!this.ideviceButtons) return;
+
+        let indicator = this.ideviceButtons.querySelector('.teacher-only-indicator');
+        const isTeacherOnly = this.properties.teacherOnly?.value === 'true';
+
+        if (!isTeacherOnly) {
+            if (indicator) indicator.remove();
+        } else {
+            const hasVisibilityOff = !!this.ideviceButtons.querySelector('.visibility-off-indicator');
+            const leftPosition = hasVisibilityOff ? '41px' : '12px';
+
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('teacher-only-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Teacher only'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+                indicator.innerHTML = `<i class="small-icon exe-teacher-only-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Teacher only')}</span>`;
+
+                indicator.style.position = 'absolute';
+                indicator.style.top = '50%';
+                indicator.style.transform = 'translateY(-50%)';
+                indicator.style.marginRight = '0';
+
+                this.ideviceButtons.appendChild(indicator);
+            }
+            indicator.style.left = leftPosition;
         }
     }
 
@@ -333,10 +402,9 @@ export default class IdeviceNode {
                 blockButtonsHTML = `
                 <div class="exe-actions-menu">
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-save-idevice" type="button" id=saveIdevice${id} title="${_('Save')}"><span class="small-icon save-icon-green" aria-hidden="true"></span>${_('Save')}</button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice exe-advanced" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice exe-advanced" type="button" id=deleteIdevice${id} title="${_('Delete iDevice')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete iDevice')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center btn-undo-idevice" type="button" id=undoIdevice${id} title="${_('Discard changes')}"><span class="small-icon undo-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Discard changes')}</span></button>
                 </div>`;
-                // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
                 // drag&drop
                 this.ideviceButtons.setAttribute('draggable', false);
@@ -345,7 +413,6 @@ export default class IdeviceNode {
                 this.addBehaviourUndoIdeviceButton();
                 this.addBehaviourDeleteIdeviceButton();
                 this.addNoTranslateForGoogle();
-                // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
             case 'export':
                 // action edition
@@ -354,6 +421,7 @@ export default class IdeviceNode {
 
                 // Check if locked by another user via Yjs
                 const isLockedByOther = this.isLockedByOtherUser();
+                const lockedDisabled = isLockedByOther ? 'disabled' : '';
 
                 if (this.haveEdition && this.valid && !isLockedByOther) {
                     // In some cases the idevice will not be able to be edited
@@ -364,8 +432,8 @@ export default class IdeviceNode {
                 if (isLockedByOther) {
                     const lockInfo = this.getLockInfo();
                     const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
-                    const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
-                    lockIndicator = `<span class="lock-indicator" style="color: ${lockUserColor}; font-size: 10px; margin-left: 4px;" title="${_('Editing by')} ${lockUserName}">🔒 ${lockUserName}</span>`;
+                    // const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
+                    lockIndicator = `<span class="lock-indicator visually-hidden">${lockUserName}</span>`;
                 }
                 // Set the Minify iDevice icon
                 let minifyIdeviceIcon = 'chevron-down-icon-green';
@@ -381,23 +449,22 @@ export default class IdeviceNode {
                 <div class="dropdown exe-actions-menu">
                     <div class="idevice-editor-avatar" data-component-id="${id}"></div>
                     ${ideviceTypeIcon}
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}" ${lockedDisabled}><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}" ${lockedDisabled}><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}${lockIndicator}</button>
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>                    
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="micro-icon dots-menu-horizontal-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete iDevice')}" ${lockedDisabled}><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete iDevice')}</span></button>
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}" ${lockedDisabled}><span class="micro-icon dots-menu-vertical-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
                     <ul class="dropdown-menu${dropdownColumns} button-action-block exe-advanced" aria-labelledby="dropdownMenuButtonIdevice${id}">
-                        <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('Properties')}</button></li>
-                        <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone')}</button></li>
-                        <li><button class="dropdown-item button-action-block" id="moveIdevice${id}"><span class="small-icon move-icon-green" aria-hidden="true"></span>${_('Move to')}</button></li>
-                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export')}</span></button></li>
+                        <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('iDevice properties')}</button></li>
+                        <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone iDevice')}</button></li>
+                        <li><button class="dropdown-item button-action-block" id="moveIdevice${id}"><span class="small-icon move-icon-green" aria-hidden="true"></span>${_('Move to page')}</button></li>
+                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export iDevice')}</span></button></li>
                     </ul>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-minify-idevice" type="button" id=minifyIdevice${id} title="${_('Toggle content')}"><span id="minifyIdevice${id}icon" class="small-icon ${minifyIdeviceIcon}" aria-hidden="true"></span><span class='visually-hidden'>${_('Toggle content')}</span></button>
                 </div>`;
-                // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
-                // drag&drop
-                this.ideviceButtons.setAttribute('draggable', true);
+                // drag&drop (disabled when locked by another user)
+                this.ideviceButtons.setAttribute('draggable', !isLockedByOther);
                 // Event listeners
                 this.addBehaviourEditionIdeviceButton();
                 this.addBehaviourMoveUpIdeviceButton();
@@ -409,10 +476,11 @@ export default class IdeviceNode {
                 this.addBehaviourExportIdeviceButton();
                 this.addBehaviourMinifyIdeviceButton();
                 this.addNoTranslateForGoogle();
-                // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
         }
         this.addTooltips();
+        this.updateVisibilityIndicator();
+        this.updateTeacherOnlyIndicator();
         return this.ideviceButtons;
     }
 
@@ -424,7 +492,7 @@ export default class IdeviceNode {
     toogleIdeviceButtonsState(disable) {
         if (!this.ideviceButtons) return;
         this.ideviceButtons
-            .querySelectorAll('.button-action-idevice')
+            .querySelectorAll('.btn-action-menu')
             .forEach((button) => {
                 button.disabled = disable;
             });
@@ -525,6 +593,38 @@ export default class IdeviceNode {
      */
     getLockManager() {
         return this.engine?.project?._yjsBridge?.lockManager || null;
+    }
+
+    /**
+     * Release the Yjs editing lock for this iDevice
+     * Call this when exiting edition mode (save, undo, delete)
+     */
+    releaseYjsEditingLock() {
+        if (!this.isYjsEnabled()) return;
+
+        const componentId = this.yjsComponentId || this.odeIdeviceId;
+        const bridge = this.engine?.project?._yjsBridge;
+
+        // Release the lock
+        const lockManager = this.getLockManager();
+        if (lockManager) {
+            lockManager.releaseLock(componentId);
+        }
+
+        // Clear lock info from the component in Yjs
+        if (bridge?.structureBinding) {
+            bridge.structureBinding.updateComponent(componentId, {
+                lockedBy: null,
+                lockUserName: null,
+                lockUserColor: null
+            });
+        }
+
+        // Clear editing component in awareness
+        const documentManager = bridge?.getDocumentManager();
+        if (documentManager?.setEditingComponent) {
+            documentManager.setEditingComponent(null);
+        }
     }
 
     /**
@@ -920,6 +1020,34 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
+                            // Expand iDevice if minimized before entering edit mode
+                            // Check the minify icon class to determine collapsed state
+                            // (more reliable than jQuery's :hidden selector)
+                            const minifyIcon =
+                                this.ideviceButtons.querySelector(
+                                    '#minifyIdevice' +
+                                        this.odeIdeviceId +
+                                        'icon'
+                                );
+                            if (
+                                minifyIcon &&
+                                minifyIcon.classList.contains(
+                                    'chevron-up-icon-green'
+                                )
+                            ) {
+                                const iDeviceBody = $(
+                                    "div.idevice_body[idevice-id='" +
+                                        this.odeIdeviceId +
+                                        "']"
+                                );
+                                iDeviceBody.show();
+                                minifyIcon.classList.remove(
+                                    'chevron-up-icon-green'
+                                );
+                                minifyIcon.classList.add(
+                                    'chevron-down-icon-green'
+                                );
+                            }
                             this.edition();
                         }
                     });
@@ -979,6 +1107,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#deleteIdevice' + this.odeIdeviceId)
             .addEventListener('click', (e) => {
+                // Prevent deleting iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 const parent = e.target.closest('.idevice_node');
                 if (parent && parent.getAttribute('mode') === 'export') {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
@@ -1003,14 +1133,39 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
+                            const isLastInBlock =
+                                this.block &&
+                                this.block.idevices.length === 1;
+                            const checkboxId =
+                                'delete-associated-box-' +
+                                this.odeIdeviceId;
+                            const checkboxHtml = isLastInBlock
+                                ? `<div class="delete-idevice-option-box">
+                                    <label>
+                                        <input type="checkbox" id="${checkboxId}" checked>
+                                        ${_('Also delete associated box')}
+                                    </label>
+                                   </div>`
+                                : '';
+
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete iDevice'),
-                                body: _(
-                                    'Delete iDevice? This cannot be undone.'
-                                ),
+                                body:
+                                    _(
+                                        'Delete iDevice? This cannot be undone.'
+                                    ) + checkboxHtml,
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
+                                    const alsoDeleteBox =
+                                        isLastInBlock &&
+                                        document.getElementById(checkboxId)
+                                            ?.checked;
+                                    this._skipBlockRemoveDialog = true;
                                     this.remove(true);
+                                    if (alsoDeleteBox && this.block) {
+                                        this.block.remove(true);
+                                        eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                                    }
                                 },
                             });
                         }
@@ -1029,9 +1184,12 @@ export default class IdeviceNode {
                     title: _('Discard changes'),
                     body: _('Discard all changes?'),
                     confirmButtonText: _('Yes'),
-                    confirmExec: () => {
+                    confirmExec: async () => {
                         // Clear the inactivity timer
                         this.cleanupInactivityTracker();
+
+                        // Release Yjs editing lock
+                        this.releaseYjsEditingLock();
 
                         // Create the "Add Text" button
                         this.createAddTextBtn();
@@ -1047,14 +1205,9 @@ export default class IdeviceNode {
                                 eXeLearning.app.project.structure.getSelectNodePageId() // Collaborative
                         );
 
-                        let idevicesExceptionsList = [];
-                        this.engine.components.idevices.forEach((idevice) => {
-                            if (idevice.id != this.id) {
-                                idevicesExceptionsList.push(idevice.id);
-                            }
-                        });
-                        this.loadInitScriptIdevice('export');
-                        this.engine.resetCurrentIdevicesExportView([]);
+                        // Re-init this iDevice, then reset the rest
+                        await this.loadInitScriptIdevice('export');
+                        await this.engine.resetCurrentIdevicesExportView([this.id]);
                     },
                 });
             });
@@ -1089,6 +1242,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#moveUpIdevice' + this.odeIdeviceId)
             .addEventListener('click', (element) => {
+                // Prevent moving iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // check component Flag
                 eXeLearning.app.project
@@ -1121,7 +1276,7 @@ export default class IdeviceNode {
                                     this.apiUpdateOrder().then((response) => {
                                         if (response.responseMessage == 'OK') {
                                             // Move element
-                                            this.block.blockContent.insertBefore(
+                                            this.block.boxContent.insertBefore(
                                                 this.ideviceContent,
                                                 previousIdevice
                                             );
@@ -1141,6 +1296,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#moveDownIdevice' + this.odeIdeviceId)
             .addEventListener('click', (element) => {
+                // Prevent moving iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // Check odeComponent flag
                 eXeLearning.app.project
@@ -1172,7 +1329,7 @@ export default class IdeviceNode {
                                     this.apiUpdateOrder().then((response) => {
                                         if (response.responseMessage == 'OK') {
                                             // Move element
-                                            this.block.blockContent.insertBefore(
+                                            this.block.boxContent.insertBefore(
                                                 this.ideviceContent,
                                                 nextIdevice.nextSibling
                                             );
@@ -1335,36 +1492,6 @@ export default class IdeviceNode {
     }
 
     /**
-     *
-     */
-    /* To review (disabled)
-    addBehaviouCheckBrokenLinksIdeviceButton() {
-        this.ideviceButtons
-            .querySelector('#checkLinksIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                let ideviceId = this.odeIdeviceId;
-                this.getOdeIdeviceBrokenLinksEvent(ideviceId).then(
-                    (response) => {
-                        if (!response.responseMessage) {
-                            // Show eXe OdeBrokenList modal
-                            eXeLearning.app.modals.odebrokenlinks.show(
-                                response,
-                            );
-                        } else {
-                            // Open eXe alert modal
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Broken Links'),
-                                body: "There aren't broken links",
-                            });
-                        }
-                    },
-                );
-            },
-        );
-    }
-    */
-
-    /**
      * Download iDevice as .idevice file
      * @param {*} odeBlockId
      * @param {*} odeIdeviceId
@@ -1374,7 +1501,7 @@ export default class IdeviceNode {
             // Get the Yjs bridge and document manager
             const yjsBridge = eXeLearning.app.project._yjsBridge;
             if (!yjsBridge) {
-                throw new Error('Yjs bridge not initialized');
+                throw new Error('Collaboration service not ready');
             }
             const documentManager = yjsBridge.documentManager;
             const assetCache = eXeLearning.app.project._assetCache || null;
@@ -1387,13 +1514,27 @@ export default class IdeviceNode {
                 null,
                 assetManager
             );
-            const result = await exporter.exportAndDownload(odeBlockId, odeIdeviceId);
-            if (!result.success) {
+            // Use exportComponent instead of exportAndDownload to support Electron save dialog
+            const result = await exporter.exportComponent(odeBlockId, odeIdeviceId);
+            if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
                     body: result.error || _('Failed to export iDevice'),
                     contentId: 'error',
                 });
+                return;
+            }
+
+            // Use downloadComponentFile for proper Electron support (always show Save As dialog)
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, result.filename, {
+                    typeKeySuffix: 'idevice',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
             }
         } catch (error) {
             console.error('[ideviceNode] Export failed:', error);
@@ -1452,6 +1593,7 @@ export default class IdeviceNode {
                 break;
             case 'export':
                 this.restartExeIdeviceValue();
+                await this.loadExportIdevice();
                 await this.ideviceInitExport();
                 break;
         }
@@ -1460,6 +1602,16 @@ export default class IdeviceNode {
         setTimeout(() => {
             this.makeIdeviceButtonsElement();
         }, 100);
+    }
+
+    /**
+     * Load export scripts and styles for this iDevice
+     * Similar to loadEditionIdevice() but for export mode
+     */
+    async loadExportIdevice() {
+        // Load idevice export files (scripts and styles)
+        this.loadScriptsExport();
+        await this.loadStylesExport();
     }
 
     /*********************************
@@ -1687,25 +1839,12 @@ export default class IdeviceNode {
 
         // Create placeholder HTML
         const placeholderHtml = `
-            <div class="idevice-locked-placeholder" style="
-                background-color: #f8f9fa;
-                border: 2px dashed ${userColor};
-                border-radius: 8px;
-                padding: 30px 20px;
-                text-align: center;
-                min-height: 100px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
-            ">
-                <span style="font-size: 24px;">🔒</span>
+            <div class="idevice-locked-placeholder">
                 <p style="margin: 0; color: #666; font-size: 14px;">
                     ${_('Being edited by')}
-                    <strong style="color: ${userColor};">${userName}</strong>
+                    <strong>${userName}</strong>
                 </p>
-                <p style="margin: 0; color: #999; font-size: 12px;">
+                <p>
                     ${_('Content will appear when saved')}
                 </p>
             </div>
@@ -1739,7 +1878,29 @@ export default class IdeviceNode {
                 response = await this.exportProcessIdeviceHtml();
                 break;
         }
+
+        // Typeset LaTeX in iDevice content after loading
+        this.typesetLatexInContent();
+
         return response;
+    }
+
+    /**
+     * Typeset LaTeX formulas in the iDevice content using MathJax
+     * Called after content is loaded into the DOM
+     */
+    typesetLatexInContent() {
+        if (!this.ideviceBody) return;
+
+        // Check if content contains LaTeX delimiters
+        const content = this.ideviceBody.textContent || '';
+        if (/(?:\\\(|\\\[|\\begin\{|\$\$)/.test(content)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.ideviceBody]).catch(err => {
+                    Logger.log('[IdeviceNode] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**
@@ -2029,9 +2190,10 @@ export default class IdeviceNode {
         eXeLearning.app.api.postActivateCurrentOdeUsersUpdateFlag(params2);
         let params = ['odeComponentsSyncId', 'odePagStructureSyncId'];
         // Check if new block (not yet saved in the database)
-        if (
-            this.block.id == eXeLearning.app.api.parameters.generateNewItemKey
-        ) {
+        // In static mode, check if ID starts with 'new-' prefix
+        const isNewBlock = this.block.id?.toString().startsWith('new-') ||
+            this.block.id == eXeLearning.app?.api?.parameters?.generateNewItemKey;
+        if (isNewBlock) {
             params = params.concat([
                 'odeVersionId',
                 'odeSessionId',
@@ -2056,8 +2218,10 @@ export default class IdeviceNode {
             true
         );
         if (response.responseMessage == 'OK') {
-            // Update list of components to assign the idevices to their respective blocks
-            this.engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Update list of components to rebuild block-iDevice relationships
+            // Note: Empty block check is handled by the caller (dropIdeviceContentInContent)
+            // which has access to the previous block ID
+            this.engine.setParentsAndChildrenIdevicesBlocks();
         }
         // Error saving idevice
         else {
@@ -2102,8 +2266,10 @@ export default class IdeviceNode {
             }
 
             if (success) {
-                // Update list of components to assign the idevices to their respective blocks
-                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                // Update list of components to rebuild block-iDevice relationships
+                // Note: Empty block check is handled by the caller (dropIdeviceContentInContent)
+                // which has access to the previous block ID
+                this.engine.setParentsAndChildrenIdevicesBlocks();
                 return { responseMessage: 'OK' };
             }
 
@@ -2128,6 +2294,9 @@ export default class IdeviceNode {
             return await this.moveToPageViaYjs(odeNavStructureSyncId);
         }
 
+        // Store previous block ID before changing (for empty block check)
+        const previousBlockId = this.blockId;
+
         // Required parameters
         let params = [
             'odeComponentsSyncId',
@@ -2143,9 +2312,11 @@ export default class IdeviceNode {
             'odeIdeviceTypeName',
         ];
         // Generate new block
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         let blockData = {
             odePagStructureSyncId:
-                eXeLearning.app.api.parameters.generateNewItemKey,
+                eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey(),
             iconName: '', //this.idevice.icon.name,
             blockName: this.idevice.title,
         };
@@ -2162,8 +2333,8 @@ export default class IdeviceNode {
         if (response.responseMessage == 'OK') {
             // Remove idevice view
             this.remove();
-            // Update list of components to assign the idevices to their respective blocks
-            this.engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Update list of components and check only the source block for emptiness
+            this.engine.setParentsAndChildrenIdevicesBlocks(previousBlockId);
         }
         // Error saving idevice in database
         else {
@@ -2203,14 +2374,16 @@ export default class IdeviceNode {
             }
 
             if (result) {
+                // Store previous block ID before changing (for empty block check)
+                const previousBlockId = this.blockId;
                 // Update internal references
                 this.odeNavStructureSyncId = targetPageId;
                 this.blockId = result.blockId;
 
                 // Remove idevice view
                 this.remove();
-                // Update list of components to assign the idevices to their respective blocks
-                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                // Update list of components and check only the source block for emptiness
+                this.engine.setParentsAndChildrenIdevicesBlocks(previousBlockId);
                 return { responseMessage: 'OK' };
             }
 
@@ -2478,18 +2651,12 @@ export default class IdeviceNode {
                 // Create asset using AssetManager
                 const assetUrl = await assetManager.insertImage(fileObj);
 
-                // Parse the asset URL: asset://uuid/filename
-                const assetMatch = assetUrl.match(/^asset:\/\/([^/]+)\/(.+)$/);
-                if (assetMatch) {
-                    const assetId = assetMatch[1];
-                    const assetFilename = assetMatch[2];
-
-                    // Update response to use asset:// URLs
-                    // savedPath ends with / so savedPath + savedFilename = asset://uuid/filename
-                    response.savedPath = `asset://${assetId}/`;
-                    response.savedFilename = assetFilename;
-                    // Use same asset for thumbnail (full image works as thumbnail)
-                    response.savedThumbnailName = assetFilename;
+                // insertImage() always returns asset://uuid.ext format
+                // No need to parse - just use the URL directly
+                if (assetUrl && assetUrl.startsWith('asset://')) {
+                    response.savedPath = '';
+                    response.savedFilename = assetUrl;
+                    response.savedThumbnailName = assetUrl;
 
                     // Provide a blob URL for preview in dialogs (audio/video players can't use asset:// directly)
                     const blobUrl = await assetManager.resolveAssetURL(assetUrl);
@@ -2532,6 +2699,37 @@ export default class IdeviceNode {
                 response = {
                     code: _('Error uploading file'),
                 };
+            }
+        }
+
+        // Also create asset for client-side display (same as apiUploadFile)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Extract file from FormData
+                const file = formData.get('file');
+                if (file instanceof File) {
+                    const assetUrl = await assetManager.insertImage(file);
+                    if (assetUrl && assetUrl.startsWith('asset://')) {
+                        response.savedPath = '';
+                        response.savedFilename = assetUrl;
+                        response.savedThumbnailName = assetUrl;
+
+                        const blobUrl =
+                            await assetManager.resolveAssetURL(assetUrl);
+                        if (blobUrl) {
+                            response.previewUrl = blobUrl;
+                        }
+                        Logger.log(
+                            `[IdeviceNode] Created asset for large file upload: ${assetUrl}`
+                        );
+                    }
+                }
+            } catch (e) {
+                Logger.warn(
+                    '[IdeviceNode] Failed to create asset from large file upload:',
+                    e
+                );
             }
         }
 
@@ -2854,6 +3052,10 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when exiting edition mode
+        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        }
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();
         // Desactivate user flags
@@ -2866,30 +3068,8 @@ export default class IdeviceNode {
 
         // Release the lock and clear editing state in Yjs
         // Skip for collaborative iDevices - they don't use locks
-        if (this.isYjsEnabled() && !this.isCollaborativeIdevice()) {
-            const componentId = this.yjsComponentId || this.odeIdeviceId;
-            const bridge = this.engine?.project?._yjsBridge;
-
-            // Release the lock
-            const lockManager = this.getLockManager();
-            if (lockManager) {
-                lockManager.releaseLock(componentId);
-            }
-
-            // Clear lock info from the component in Yjs
-            if (bridge?.structureBinding) {
-                bridge.structureBinding.updateComponent(componentId, {
-                    lockedBy: null,
-                    lockUserName: null,
-                    lockUserColor: null
-                });
-            }
-
-            // Clear editing component in awareness
-            const documentManager = bridge?.getDocumentManager();
-            if (documentManager?.setEditingComponent) {
-                documentManager.setEditingComponent(null);
-            }
+        if (!this.isCollaborativeIdevice()) {
+            this.releaseYjsEditingLock();
         }
 
         if (saveOk) {
@@ -2897,19 +3077,20 @@ export default class IdeviceNode {
             // Note: generateContentExportView is called by loadInitScriptIdevice('export')
             // through ideviceInitExportLoadSuccess after ensuring export scripts are loaded
 
-            this.resetWindowHash();
-            this.goWindowToIdevice(100);
             if (loadPage) {
                 // Reload all components in page
-                this.engine.resetCurrentIdevicesExportView([this.id]);
+                await this.engine.resetCurrentIdevicesExportView([this.id]);
                 await this.loadInitScriptIdevice('export');
             } else {
                 // Only load current idevice
                 await this.loadInitScriptIdevice('export');
-                // Load plugins
             }
-            setTimeout(() => this.loadLegacyExeFunctionalitiesExport(), 100);
+            this.loadLegacyExeFunctionalitiesExport();
+            // Wire up exe-node: links in the freshly rendered export HTML
+            this.engine.enableInternalLinks();
             this.engine.unsetIdeviceActive();
+            // Scroll back to the saved iDevice after all DOM changes are complete
+            this.goWindowToIdevice(0);
         } else {
             this.toogleIdeviceButtonsState(false);
             setTimeout(() => {
@@ -2934,7 +3115,40 @@ export default class IdeviceNode {
      */
     edition() {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when entering edition mode
+        if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice?.gamification?.media?.stopSound) {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        }
         if (this.engine.mode == 'view') {
+            // Acquire Yjs CRDT lock before entering edit mode
+            if (this.isYjsEnabled()) {
+                const componentId = this.yjsComponentId || this.odeIdeviceId;
+                const lockManager = this.getLockManager();
+                if (lockManager) {
+                    const lockAcquired = lockManager.requestLock(componentId);
+                    if (!lockAcquired) {
+                        const lockInfo = this.getLockInfo();
+                        const lockUserName = lockInfo?.lockUserName || _('Another user');
+                        eXeLearning.app.modals.alert.show({
+                            title: _('iDevice locked'),
+                            body: _('This iDevice is being edited by') + ' ' + lockUserName,
+                            contentId: 'warning',
+                        });
+                        this.toogleIdeviceButtonsState(false);
+                        return;
+                    }
+                    // Write lock metadata to structureBinding for remote visibility
+                    const bridge = this.engine?.project?._yjsBridge;
+                    if (bridge?.structureBinding) {
+                        bridge.structureBinding.updateComponent(componentId, {
+                            lockedBy: lockManager.getClientId(),
+                            lockUserName: lockManager.getCurrentUser()?.name || 'Unknown',
+                            lockUserColor: lockManager.getCurrentUser()?.color || '#999',
+                        });
+                    }
+                }
+            }
+
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');
             this.engine.updateMode();
@@ -2966,6 +3180,9 @@ export default class IdeviceNode {
     remove(bbdd) {
         clearInterval(this.checkDeviceLoadInterval);
         if (this.mode == 'edition') {
+            // Release Yjs editing lock
+            this.releaseYjsEditingLock();
+
             if (typeof $exeDevice !== 'undefined') {
                 $exeDevice = undefined;
             }
@@ -2994,6 +3211,10 @@ export default class IdeviceNode {
      * @returns
      */
     removeBlockParentProcess(bbdd) {
+        if (this._skipBlockRemoveDialog) {
+            this._skipBlockRemoveDialog = false;
+            return;
+        }
         // Check if the block has more idevices
         if (this.block?.idevices?.length == 0) {
             // Collaborative
@@ -3251,13 +3472,18 @@ export default class IdeviceNode {
      *
      */
     loadLegacyExeFunctionalitiesExport() {
+        // Legacy $exe_effects object
+        $exeFX.init();
+        // Legacy $exe_games object
+        $exeGames.init();
+        // Legacy $exe_highlighter object
+        $exeHighlighter.init();
         // Legacy $exeABCmusic object
         $exeABCmusic.init();
-
-        $exeFX.init();
-
-        // Render mermaid diagrams after save
-        $exe.mermaid.init();
+        // Legacy $exe object
+        $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**
@@ -3323,6 +3549,8 @@ export default class IdeviceNode {
                     accept = 'audio';
                 } else if (id.toLowerCase().includes('video')) {
                     accept = 'video';
+                } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
+                    accept = '3d';
                 }
                 // If generic exe-file-picker, accept = null (show all files)
 
@@ -3535,9 +3763,19 @@ export default class IdeviceNode {
         } else {
             hashId = this.odeIdeviceId;
         }
-        let element = document.getElementById(hashId);
         setTimeout(() => {
-            this.nodeContainer.scrollTop = element.offsetTop;
+            const element = document.getElementById(hashId);
+            if (!element) return;
+            const scrollContainer =
+                document.querySelector('.template-page') ?? this.nodeContainer;
+            if (typeof scrollContainer.getBoundingClientRect === 'function') {
+                const offset =
+                    element.getBoundingClientRect().top -
+                    scrollContainer.getBoundingClientRect().top;
+                scrollContainer.scrollTop += offset;
+            } else {
+                scrollContainer.scrollTop = element.offsetTop;
+            }
         }, time);
     }
 

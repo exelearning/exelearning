@@ -9,6 +9,7 @@ import {
     resetIdeviceConfigCache,
     setIdevicesBasePath,
     getIdeviceExportFiles,
+    isIdeviceJsModule,
 } from './idevice-config-browser';
 
 describe('idevice-config-browser', () => {
@@ -142,6 +143,12 @@ describe('idevice-config-browser', () => {
             expect(getIdeviceConfig('text').componentType).toBe('json');
             expect(getIdeviceConfig('freetext').componentType).toBe('json');
             expect(getIdeviceConfig('reflection').componentType).toBe('json');
+            // markdown-text shares the text feedback toggle wiring; without
+            // componentType="json" exe_export.js never binds the toggle.
+            expect(getIdeviceConfig('markdown-text').componentType).toBe('json');
+            // adaptative-quiz stores the rendered view in jsonProperties; preview
+            // needs data-idevice-json-data so exe_export.js can call renderView().
+            expect(getIdeviceConfig('adaptative-quiz').componentType).toBe('json');
 
             // HTML idevices (no JS initialization needed)
             expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
@@ -264,21 +271,24 @@ describe('idevice-config-browser', () => {
             const files = getIdeviceExportFiles('image-gallery', '.css');
             expect(files).toContain('image-gallery.css');
             expect(files).toContain('simple-lightbox.min.css');
-            expect(files[0]).toBe('image-gallery.css'); // main file first
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('image-gallery.css');
         });
 
         it('includes html2canvas.js for checklist', () => {
             const files = getIdeviceExportFiles('checklist', '.js');
             expect(files).toContain('checklist.js');
             expect(files).toContain('html2canvas.js');
-            expect(files[0]).toBe('checklist.js'); // main file first
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('checklist.js');
         });
 
         it('includes html2canvas.js for progress-report', () => {
             const files = getIdeviceExportFiles('progress-report', '.js');
             expect(files).toContain('progress-report.js');
             expect(files).toContain('html2canvas.js');
-            expect(files[0]).toBe('progress-report.js'); // main file first
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('progress-report.js');
         });
 
         it('includes mansory-jq.js for select-media-files', () => {
@@ -293,9 +303,76 @@ describe('idevice-config-browser', () => {
             expect(files).toContain('simple-lightbox.min.js');
         });
 
+        it('includes three.min.js and OrbitControls.js for three-sixty-viewer', () => {
+            const files = getIdeviceExportFiles('three-sixty-viewer', '.js');
+            expect(files).toContain('three-sixty-viewer.js');
+            expect(files).toContain('three.min.js');
+            expect(files).toContain('OrbitControls.js');
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('three-sixty-viewer.js');
+            // three.min.js MUST come before OrbitControls.js
+            const threeIdx = files.indexOf('three.min.js');
+            const orbitIdx = files.indexOf('OrbitControls.js');
+            expect(threeIdx).toBeLessThan(orbitIdx);
+        });
+
+        it('includes model-viewer and Three.js dependencies for three-d-viewer', () => {
+            const files = getIdeviceExportFiles('three-d-viewer', '.js');
+            expect(files).toContain('three-d-viewer.js');
+            expect(files).toContain('model-viewer.min.js');
+            expect(files).toContain('three.module.min.js');
+            expect(files).toContain('STLLoader.js');
+            expect(files).toContain('OrbitControls.js');
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('three-d-viewer.js');
+            // All dependencies should be before the main file
+            expect(files.indexOf('model-viewer.min.js')).toBeLessThan(files.indexOf('three-d-viewer.js'));
+            expect(files.indexOf('three.module.min.js')).toBeLessThan(files.indexOf('three-d-viewer.js'));
+        });
+
         it('returns just main file for iDevice without dependencies', () => {
             const files = getIdeviceExportFiles('text', '.js');
             expect(files).toEqual(['text.js']);
+        });
+    });
+
+    // Regression for issue #1810. The browser bundle can't read JS files, so it cannot
+    // content-sniff `import` / `export` to detect ES modules. STLLoader.js and
+    // OrbitControls.js shipped by the 3D Viewer iDevice are ES modules without the
+    // `.module.js` / `.mjs` naming convention, so they were emitted as classic scripts
+    // and the browser threw `SyntaxError: Cannot use import statement outside a module`.
+    describe('isIdeviceJsModule', () => {
+        it('returns true for files using the .mjs extension', () => {
+            expect(isIdeviceJsModule('whatever', 'OrbitControls.mjs')).toBe(true);
+        });
+
+        it('returns true for files using the .module.js convention', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three.module.min.js')).toBe(true);
+        });
+
+        it('returns true for three-d-viewer STLLoader.js (declared module)', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'STLLoader.js')).toBe(true);
+        });
+
+        it('returns true for three-d-viewer OrbitControls.js (declared module)', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'OrbitControls.js')).toBe(true);
+        });
+
+        it('returns false for the classic three-d-viewer.js bootstrap', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three-d-viewer.js')).toBe(false);
+        });
+
+        it('returns false for the UMD model-viewer.min.js', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'model-viewer.min.js')).toBe(false);
+        });
+
+        it('returns false for classic checklist scripts', () => {
+            expect(isIdeviceJsModule('checklist', 'checklist.js')).toBe(false);
+            expect(isIdeviceJsModule('checklist', 'html2canvas.js')).toBe(false);
+        });
+
+        it('returns false for non-JS filenames', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three-d-viewer.css')).toBe(false);
         });
     });
 });

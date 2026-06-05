@@ -287,4 +287,102 @@ describe('flipcards iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+
+  describe('createForm', () => {
+    let originalExeLearning;
+    let originalExeDevicesEdition;
+    let container;
+
+    beforeEach(() => {
+      container = document.createElement('div');
+      $exeDevice.ideviceBody = container;
+      $exeDevice.idevicePath = '/test/';
+      $exeDevice.ci18n = {};
+
+      originalExeLearning = global.eXeLearning;
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+
+      global.eXeLearning = {
+        app: {
+          project: { odeId: 'ode-id' },
+        },
+      };
+      global.$exeDevicesEdition = {
+        iDevice: {
+          tabs: { init: vi.fn() },
+          common: {
+            getTextFieldset: vi.fn(() => '<div class="mock-after"></div>'),
+            getIdeviceDescription: vi.fn(
+              () =>
+                '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
+            ),
+          },
+          gamification: {
+            instructions: { getFieldset: vi.fn(() => '<div class="mock-instructions"></div>') },
+            itinerary: {
+              getTab: vi.fn(() => '<div class="mock-itinerary"></div>'),
+              addEvents: vi.fn(),
+            },
+            scorm: {
+              getTab: vi.fn(() => '<div class="mock-scorm"></div>'),
+              init: vi.fn(),
+            },
+            common: { getLanguageTab: vi.fn(() => '<div class="mock-language"></div>') },
+            share: {
+              getTab: vi.fn(() => '<div class="mock-share"></div>'),
+              getTabIA: vi.fn(() => '<div class="mock-share-ia"></div>'),
+              addEvents: vi.fn(),
+            },
+            progressBar: {
+              getContents: vi.fn(() => '<div class="mock-progress-bar"></div>'),
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+              addEvents: vi.fn(),
+            },
+          },
+        },
+      };
+      $exeDevice.enableForm = vi.fn();
+    });
+
+    afterEach(() => {
+      global.eXeLearning = originalExeLearning;
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('renders shared progress bar contents through the helper', () => {
+      $exeDevice.createForm();
+      const progressBar = global.$exeDevicesEdition.iDevice.gamification.progressBar;
+      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
+    });
+  });
+
+  describe('addEvents', () => {
+    let originalExeDevicesEdition;
+
+    beforeEach(() => {
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            itinerary: { addEvents: vi.fn() },
+            share: { addEvents: vi.fn() },
+            progressBar: { addEvents: vi.fn() },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('registers shared progress bar events', () => {
+      $exeDevice.addEvents();
+      expect(
+        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+      ).toHaveBeenCalledTimes(1);
+    });
+  });
 });

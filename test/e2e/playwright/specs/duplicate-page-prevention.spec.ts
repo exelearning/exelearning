@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../helpers/sync-helpers';
 
 /**
@@ -28,7 +28,12 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
 // The initial Yjs document with one page is created when the project is created,
 // preventing the race condition where multiple clients would create duplicate pages.
 test.describe('Duplicate Page Prevention', () => {
-    test.setTimeout(120000); // 2 minutes per test
+    test.setTimeout(90000); // 2 minutes per test
+
+    // Skip all tests in static mode (requires WebSocket collaboration)
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
 
     test('should have exactly 1 page when second client joins unsaved public project', async ({
         authenticatedPage,
@@ -60,7 +65,7 @@ test.describe('Duplicate Page Prevention', () => {
         await waitForYjsSync(secondAuthenticatedPage);
 
         // Additional wait to ensure all sync operations complete
-        await authenticatedPage.waitForTimeout(2000);
+        await authenticatedPage.waitForTimeout(500);
 
         // Step 6: Count pages on both clients
         const countPagesOnClient = async (page: typeof authenticatedPage) => {
@@ -108,7 +113,7 @@ test.describe('Duplicate Page Prevention', () => {
         // Wait for sync
         await waitForYjsSync(authenticatedPage);
         await waitForYjsSync(secondAuthenticatedPage);
-        await authenticatedPage.waitForTimeout(2000);
+        await authenticatedPage.waitForTimeout(500);
 
         // Verify page count
         const getPageCount = async (page: typeof authenticatedPage) => {
@@ -150,7 +155,7 @@ test.describe('Duplicate Page Prevention', () => {
         // Wait for full sync
         await waitForYjsSync(authenticatedPage);
         await waitForYjsSync(secondAuthenticatedPage);
-        await authenticatedPage.waitForTimeout(3000);
+        await authenticatedPage.waitForTimeout(500);
 
         // Check navigation structure via UI elements
         const countNavigationItems = async (page: typeof authenticatedPage) => {

@@ -73,8 +73,9 @@ var $quickquestions = {
     loadGame: function () {
         $quickquestions.options = [];
         $quickquestions.activities.each(function (i) {
+            const dl = $('.quext-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.quext-version', this).eq(0).text(),
-                dl = $('.quext-DataGame', this),
                 imagesLink = $('.quext-LinkImages', this),
                 audioLink = $('.quext-LinkAudios', this),
                 mOption = $quickquestions.loadDataGame(
@@ -272,7 +273,7 @@ var $quickquestions = {
                         <video class="QXTP-Video" id="quextVideoLocal-${instance}" preload="auto" controls></video>
                         <div class="QXTP-Protector" id="quextProtector-${instance}"></div>
                         <a href="#" class="QXTP-LinkAudio" id="quextLinkAudio-${instance}" title="${msgs.msgAudio}">
-                            <img src="${path}exequextaudio.png" class="QXTP-Activo" alt="${msgs.msgAudio}">
+                            <img src="${path}exequextaudio.svg" class="QXTP-Activo" alt="${msgs.msgAudio}">
                         </a>
                     </div>
                     <div class="QXTP-GameOver" id="quextGamerOver-${instance}">
@@ -467,12 +468,11 @@ var $quickquestions = {
             }
         });
         mOptions.questionsGame =
-            mOptions.percentajeQuestions < 100
-                ? $exeDevices.iDevice.gamification.helpers.getQuestions(
-                      mOptions.questionsGame,
-                      mOptions.percentajeQuestions
-                  )
-                : mOptions.questionsGame;
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                mOptions.questionsGame,
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
+            );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             const question = mOptions.questionsGame[i];
             if (mOptions.customScore) {
@@ -481,13 +481,6 @@ var $quickquestions = {
                 question.customScore = 1;
                 mOptions.scoreTotal += question.customScore;
             }
-        }
-
-        if (mOptions.optionsRamdon) {
-            mOptions.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.questionsGame
-                );
         }
 
         mOptions.numberQuestions = mOptions.questionsGame.length;
@@ -831,8 +824,7 @@ var $quickquestions = {
         $('#quextLinkAudio-' + instance).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         if (mOptions.gameMode === 2) {
@@ -1229,7 +1221,7 @@ var $quickquestions = {
 
         $quickquestions.startVideo('', 0, 0, instance, 0);
         $quickquestions.stopVideo(mOptions);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#quextImage-' + instance).hide();
         $('#quextEText-' + instance).hide();
@@ -1432,13 +1424,10 @@ var $quickquestions = {
             $('#quextLinkAudio-' + instance).show();
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (q.type !== 2 && q.audio.trim().length > 5) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
 
         $quickquestions.drawQuestions(instance);

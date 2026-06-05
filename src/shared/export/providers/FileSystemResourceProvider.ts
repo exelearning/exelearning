@@ -16,6 +16,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
+import { parseXlfTranslations } from '../generators/I18nGenerator';
 
 /**
  * Resource file entry
@@ -31,24 +32,69 @@ export interface ResourceFile {
  */
 export class FileSystemResourceProvider implements ResourceProvider {
     private publicDir: string;
+    private extractedDir: string | null;
 
     /**
      * @param publicDir - Path to the public/ directory containing themes and libs
+     * @param extractedDir - Optional path to extracted ELP/ELPX directory (for embedded themes)
      */
-    constructor(publicDir: string) {
+    constructor(publicDir: string, extractedDir: string | null = null) {
         this.publicDir = publicDir;
+        this.extractedDir = extractedDir;
     }
 
     /**
      * Fetch all files for a theme
-     * @param themeName - Name of the theme (e.g., 'base', 'intef')
+     * Checks for embedded themes in the extracted directory first (custom themes),
+     * then falls back to base themes in public/files/perm/themes/base/.
+     *
+     * @param themeName - Name of the theme (e.g., 'base', 'intef', or custom like 'chiquito')
      * @returns Map of file paths to content
      */
     async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
-        // Themes are in public/files/perm/themes/base/{themeName}/
+        // 1. Check for embedded theme in extracted directory (custom themes from ELPX)
+        if (this.extractedDir) {
+            const extractedThemePath = path.join(this.extractedDir, 'theme');
+            if (await fs.pathExists(extractedThemePath)) {
+                // Check config.xml for downloadable flag
+                const configPath = path.join(extractedThemePath, 'config.xml');
+                if (await fs.pathExists(configPath)) {
+                    try {
+                        const configContent = await fs.readFile(configPath, 'utf-8');
+                        const downloadableMatch = configContent.match(/<downloadable>(\d)<\/downloadable>/);
+                        const isDownloadable = downloadableMatch && downloadableMatch[1] === '1';
+
+                        if (isDownloadable) {
+                            // Use embedded theme
+                            console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
+                            return this.readDirectoryRecursive(extractedThemePath, '');
+                        }
+                    } catch (e) {
+                        console.warn(`[FileSystemResourceProvider] Error reading theme config.xml:`, e);
+                    }
+                }
+            }
+        }
+
+        // 2. Try base themes from public/files/perm/themes/base/{themeName}/
         const themePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', themeName);
-        // No prefix - files go directly to theme/ folder (prefix added by caller)
-        return this.readDirectoryRecursive(themePath, '');
+        if (await fs.pathExists(themePath)) {
+            console.log(`[FileSystemResourceProvider] Using base theme '${themeName}' from ${themePath}`);
+            return this.readDirectoryRecursive(themePath, '');
+        }
+
+        // 3. Final fallback to 'base' theme
+        if (themeName !== 'base') {
+            const basePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', 'base');
+            if (await fs.pathExists(basePath)) {
+                console.warn(`[FileSystemResourceProvider] Theme '${themeName}' not found, falling back to 'base'`);
+                return this.readDirectoryRecursive(basePath, '');
+            }
+        }
+
+        // No theme found - return empty map (exporter will use fallback CSS)
+        console.warn(`[FileSystemResourceProvider] No theme found for '${themeName}'`);
+        return new Map();
     }
 
     /**
@@ -89,6 +135,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch base libraries (jQuery, Bootstrap, common.js, etc.)
+     * Only truly essential libraries - content-specific libraries (exe_lightbox, exe_tooltips,
+     * exe_effects, jquery-ui, etc.) are detected and included via LibraryDetector
      * @returns Map of file paths to content
      */
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
@@ -108,10 +156,9 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
-            { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
-            // exe_lightbox (always included - hardcoded in PageRenderer)
-            { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
-            { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },
+            // Favicon
+            { src: 'favicon.ico', dest: 'favicon.ico' },
+            // Note: common_i18n.js is generated dynamically by I18nGenerator per project language
         ];
 
         for (const { src, dest } of libsMapping) {
@@ -155,37 +202,53 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'exe_slidesjs',
             'exe_media_link',
             'exe_math', // MathJax library
-            'exe_atools', // Accessibility toolbar (also exists in libs/)
             'mermaid', // Mermaid diagram library
         ]);
 
         // Build lookup for directory patterns
-        const directoryPatterns = new Set<string>();
+        // When isDirectory is true, we extract the directory name from file paths
+        // e.g., 'exe_atools/exe_atools.js' -> 'exe_atools' should include the entire directory
+        const directoriesToInclude = new Set<string>();
         if (patterns) {
             for (const lib of patterns) {
                 if (lib.isDirectory) {
                     for (const file of lib.files) {
-                        directoryPatterns.add(file);
+                        // Extract directory name (first path component)
+                        const dirName = file.split('/')[0];
+                        directoriesToInclude.add(dirName);
                     }
                 }
             }
         }
 
+        // Track which directories we've already processed to avoid duplicates
+        const processedDirectories = new Set<string>();
+
         for (const filePath of filePaths) {
-            // Check if this is a directory pattern (entire directory should be included)
-            if (directoryPatterns.has(filePath)) {
-                // Recursively read all files from directory
-                const firstPart = filePath.split('/')[0];
+            const dirName = filePath.split('/')[0];
+
+            // Check if this file's directory should be fully included
+            if (directoriesToInclude.has(dirName) && !processedDirectories.has(dirName)) {
+                // Recursively read all files from the directory
                 let dirPath: string;
-                if (appCommonLibraries.has(firstPart)) {
-                    dirPath = path.join(this.publicDir, 'app/common', filePath);
+                if (appCommonLibraries.has(dirName)) {
+                    dirPath = path.join(this.publicDir, 'app/common', dirName);
                 } else {
-                    dirPath = path.join(this.publicDir, 'libs', filePath);
+                    dirPath = path.join(this.publicDir, 'libs', dirName);
                 }
-                const dirFiles = await this.readDirectoryRecursive(dirPath, filePath);
+                const dirFiles = await this.readDirectoryRecursive(dirPath, dirName);
                 for (const [subPath, content] of dirFiles) {
-                    files.set(subPath, content);
+                    // Filter out test files
+                    if (!subPath.endsWith('.test.js') && !subPath.endsWith('.spec.js')) {
+                        files.set(subPath, content);
+                    }
                 }
+                processedDirectories.add(dirName);
+                continue;
+            }
+
+            // Skip if this file is from a directory we already processed
+            if (processedDirectories.has(dirName)) {
                 continue;
             }
 
@@ -196,8 +259,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
                 sourcePath = path.join(this.publicDir, commonFilesMapping[filePath]);
             } else {
                 // Check if this is an app/common library (exe_* libraries)
-                const firstPart = filePath.split('/')[0];
-                if (appCommonLibraries.has(firstPart)) {
+                if (appCommonLibraries.has(dirName)) {
                     sourcePath = path.join(this.publicDir, 'app/common', filePath);
                 } else {
                     // Default: libs/ folder
@@ -252,18 +314,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
         }
 
         return files;
-    }
-
-    /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of file paths to content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Buffer>> {
-        // Schema files are in app/schemas/scorm12/ or app/schemas/scorm2004/
-        const schemaDir = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const schemaPath = path.join(this.publicDir, 'app', 'schemas', schemaDir);
-        return this.readDirectoryRecursive(schemaPath, '');
     }
 
     /**
@@ -333,5 +383,89 @@ export class FileSystemResourceProvider implements ResourceProvider {
             return fs.readFile(logoPath);
         }
         return null;
+    }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es','atkinson-hyperlegible-next')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+
+        // Global fonts are stored in public/files/perm/fonts/global/{fontId}/
+        const fontPath = path.join(this.publicDir, 'files', 'perm', 'fonts', 'global', fontId);
+
+        if (!(await fs.pathExists(fontPath))) {
+            console.warn(`[FileSystemResourceProvider] Global font not found: ${fontId}`);
+            return new Map();
+        }
+
+        // Read all font files from directory with proper prefix
+        const files = await this.readDirectoryRecursive(fontPath, `fonts/global/${fontId}`);
+
+        // Filter to only include font files (woff, woff2, ttf) and attribution
+        const fontFiles = new Map<string, Buffer>();
+        for (const [filePath, content] of files) {
+            const ext = path.extname(filePath).toLowerCase();
+            if (['.woff', '.woff2', '.ttf', '.txt'].includes(ext)) {
+                fontFiles.set(filePath, content);
+            }
+        }
+
+        return fontFiles;
+    }
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Reads from `public/app/common/i18n/common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
+     */
+    async fetchI18nFile(language: string): Promise<string> {
+        const i18nDir = path.join(this.publicDir, 'app', 'common', 'i18n');
+        const lang = language.split('-')[0];
+
+        // Try exact language first, then base language, then English
+        for (const candidate of [language, lang, 'en']) {
+            const filePath = path.join(i18nDir, `common_i18n.${candidate}.js`);
+            if (await fs.pathExists(filePath)) {
+                return fs.readFile(filePath, 'utf-8');
+            }
+        }
+
+        console.warn('[FileSystemResourceProvider] common_i18n.{lang}.js not found for:', language);
+        return '';
+    }
+
+    /**
+     * Fetch i18n translations for a specific language from the XLF file.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Map<englishSource, translatedTarget>, empty if not found
+     */
+    async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
+        // XLF files live one level above publicDir, in translations/
+        const translationsDir = path.join(this.publicDir, '..', 'translations');
+        const xlfPath = path.join(translationsDir, `messages.${language}.xlf`);
+
+        if (await fs.pathExists(xlfPath)) {
+            const xlfContent = await fs.readFile(xlfPath, 'utf-8');
+            return parseXlfTranslations(xlfContent);
+        }
+
+        // Try base language (e.g. 'pt' for 'pt-BR')
+        const baseLang = language.split('-')[0];
+        if (baseLang !== language) {
+            const basePath = path.join(translationsDir, `messages.${baseLang}.xlf`);
+            if (await fs.pathExists(basePath)) {
+                const xlfContent = await fs.readFile(basePath, 'utf-8');
+                return parseXlfTranslations(xlfContent);
+            }
+        }
+
+        return new Map();
     }
 }

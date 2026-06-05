@@ -66,8 +66,9 @@ var $quickquestionsmultiplechoice = {
     loadGame: function () {
         $quickquestionsmultiplechoice.options = [];
         $quickquestionsmultiplechoice.activities.each(function (i) {
+            const dl = $('.selecciona-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.selecciona-version', this).eq(0).text(),
-                dl = $('.selecciona-DataGame', this),
                 imagesLink = $('.selecciona-LinkImages', this),
                 audioLink = $('.selecciona-LinkAudios', this),
                 mOption = $quickquestionsmultiplechoice.loadDataGame(
@@ -193,7 +194,7 @@ var $quickquestionsmultiplechoice = {
                     <video class="SLCNP-Video" id="seleccionaVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="SLCNP-Protector" id="seleccionaProtector-${instance}"></div>
                     <a href="#" class="SLCNP-LinkAudio" id="seleccionaLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="SLCNP-Activo" alt="${msgs.msgAudio}" />
+                        <img src="${path}exequextaudio.svg" class="SLCNP-Activo" alt="${msgs.msgAudio}" />
                     </a>
                     <div class="SLCNP-GameOver" id="seleccionaGamerOver-${instance}">
                         <div class="SLCNP-DataImage">
@@ -437,11 +438,12 @@ var $quickquestionsmultiplechoice = {
             mOptions.order = mOptions.optionsRamdon ? 1 : 0;
         }
 
-        if (mOptions.order != 2 && mOptions.percentajeQuestions < 100) {
+        if (mOptions.order != 2) {
             mOptions.selectsGame =
                 $exeDevices.iDevice.gamification.helpers.getQuestions(
                     mOptions.selectsGame,
-                    mOptions.percentajeQuestions
+                    mOptions.percentajeQuestions,
+                    mOptions.order == 1
                 );
         }
 
@@ -452,13 +454,6 @@ var $quickquestionsmultiplechoice = {
                 mOptions.selectsGame[i].customScore = 1;
                 mOptions.scoreTotal += mOptions.selectsGame[i].customScore;
             }
-        }
-
-        if (mOptions.order == 1) {
-            mOptions.selectsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.selectsGame
-                );
         }
         mOptions.numberQuestions = mOptions.selectsGame.length;
         return mOptions;
@@ -519,7 +514,7 @@ var $quickquestionsmultiplechoice = {
     showStartedButton: function () {
         $quickquestionsmultiplechoice.options.forEach((option, i) => {
             if (!option.gameStarted && !option.gameOver) {
-                $(`#seleccionaStartGame-${ì}`).show();
+                $(`#seleccionaStartGame-${i}`).show();
                 $quickquestionsmultiplechoice.showMessage(1, '', i);
             }
         });
@@ -982,8 +977,10 @@ var $quickquestionsmultiplechoice = {
 
         $(`#seleccionaLinkAudio-${instance}`).on('click', (e) => {
             e.preventDefault();
-            const audio = mOptions.selectsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            const question = mOptions.selectsGame[mOptions.activeQuestion];
+            if (question) {
+                $exeDevices.iDevice.gamification.media.playSound(question.audio);
+            }
         });
 
         $(`#seleccionaLinkVideoIntroShow-${instance}`).on(
@@ -1434,11 +1431,11 @@ var $quickquestionsmultiplechoice = {
                         ) {
                             const currentQuestion =
                                 mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion.typeSelect !== 2) {
+                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
                                 $quickquestionsmultiplechoice.drawSolution(
                                     instance
                                 );
-                            } else {
+                            } else if (currentQuestion) {
                                 $quickquestionsmultiplechoice.drawPhrase(
                                     currentQuestion.solutionQuestion,
                                     currentQuestion.quextion,
@@ -1507,7 +1504,7 @@ var $quickquestionsmultiplechoice = {
         ).hide();
 
         $quickquestionsmultiplechoice.stopVideo(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         const message =
             type === 0
@@ -1647,7 +1644,7 @@ var $quickquestionsmultiplechoice = {
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaWordDiv-${instance}`
+                `#seleccionaWordDiv-${instance}`
             );
         }
 
@@ -1811,17 +1808,14 @@ var $quickquestionsmultiplechoice = {
         }
 
         $quickquestionsmultiplechoice.saveEvaluation(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (
             q.type !== 2 &&
             q.audio.trim().length > 5 &&
             !mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
     },
 
@@ -1858,7 +1852,7 @@ var $quickquestionsmultiplechoice = {
                 instance
             );
 
-        if (mActiveQuestion === null) {
+        if (mActiveQuestion === null || !mOptions.selectsGame[mActiveQuestion]) {
             $(`#seleccionaPNumber-${instance}`).text('0');
             $quickquestionsmultiplechoice.gameOver(0, instance);
         } else {
@@ -1937,7 +1931,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
 
-        if (!mOptions.gameActived) return;
+        if (!mOptions.gameActived || !question) return;
 
         mOptions.gameActived = false;
         let correct = true,
@@ -1992,10 +1986,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
 
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -2051,7 +2042,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
 
-        if (!mOptions.gameActived) return;
+        if (!mOptions.gameActived || !question) return;
 
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
@@ -2067,10 +2058,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
 
@@ -2135,6 +2123,9 @@ var $quickquestionsmultiplechoice = {
     updateScore: function (correctAnswer, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
+
+        if (!question) return;
+
         let message = '',
             obtainedPoints = 0,
             type = 1,
@@ -2198,8 +2189,11 @@ var $quickquestionsmultiplechoice = {
 
     updateScoreThree: function (correctAnswer, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
-            question = mOptions.selectsGame[mOptions.activeQuestion],
-            answerScore = question.answerScore;
+            question = mOptions.selectsGame[mOptions.activeQuestion];
+
+        if (!question) return;
+
+        const answerScore = question.answerScore;
 
         let message = '',
             obtainedPoints = 0,
@@ -2306,14 +2300,17 @@ var $quickquestionsmultiplechoice = {
                 true,
                 instance
             ),
-            pts = mOptions.msgs.msgPoints || 'puntos';
+            pts = mOptions.msgs.msgPoints || 'puntos',
+            question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = '';
 
         if (
             mOptions.customMessages &&
-            mOptions.selectsGame[mOptions.activeQuestion].msgHit.length > 0
+            question &&
+            question.msgHit &&
+            question.msgHit.length > 0
         ) {
-            message = mOptions.selectsGame[mOptions.activeQuestion].msgHit;
+            message = question.msgHit;
             if (mOptions.gameMode < 2) {
                 message += `. ${npts} ${pts}`;
             }
@@ -2333,14 +2330,17 @@ var $quickquestionsmultiplechoice = {
                 false,
                 instance
             ),
-            pts = mOptions.msgs.msgPoints || 'puntos';
+            pts = mOptions.msgs.msgPoints || 'puntos',
+            question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = '';
 
         if (
             mOptions.customMessages &&
-            mOptions.selectsGame[mOptions.activeQuestion].msgError.length > 0
+            question &&
+            question.msgError &&
+            question.msgError.length > 0
         ) {
-            message = mOptions.selectsGame[mOptions.activeQuestion].msgError;
+            message = question.msgError;
             if (mOptions.gameMode !== 2) {
                 message += mOptions.useLives
                     ? `. ${mOptions.msgs.msgLoseLive}`
@@ -2359,7 +2359,8 @@ var $quickquestionsmultiplechoice = {
     },
 
     getMessageErrorAnswerRepeat: function (instance) {
-        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        const mOptions = $quickquestionsmultiplechoice.options[instance],
+            question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = $quickquestionsmultiplechoice.getRetroFeedMessages(
             false,
             instance
@@ -2367,16 +2368,19 @@ var $quickquestionsmultiplechoice = {
 
         if (
             mOptions.customMessages &&
-            mOptions.selectsGame[mOptions.activeQuestion].msgError.length > 0
+            question &&
+            question.msgError &&
+            question.msgError.length > 0
         ) {
-            message = mOptions.selectsGame[mOptions.activeQuestion].msgError;
+            message = question.msgError;
         }
 
         return message;
     },
 
     getMessageCorrectAnswerRepeat: function (instance) {
-        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        const mOptions = $quickquestionsmultiplechoice.options[instance],
+            question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = $quickquestionsmultiplechoice.getRetroFeedMessages(
             true,
             instance
@@ -2384,9 +2388,11 @@ var $quickquestionsmultiplechoice = {
 
         if (
             mOptions.customMessages &&
-            mOptions.selectsGame[mOptions.activeQuestion].msgHit.length > 0
+            question &&
+            question.msgHit &&
+            question.msgHit.length > 0
         ) {
-            message = mOptions.selectsGame[mOptions.activeQuestion].msgHit;
+            message = question.msgHit;
         }
 
         return message;
@@ -2418,7 +2424,8 @@ var $quickquestionsmultiplechoice = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
+        // Word questions (typeSelect 2) have no options to shuffle.
+        if (question.typeSelect === 2) return;
 
         let l = 0;
         const solutions = question.solution;
@@ -2434,11 +2441,20 @@ var $quickquestionsmultiplechoice = {
                 .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
-        respuestasNuevas.forEach((respuesta, index) => {
-            if (respuestaCorrectas.includes(respuesta)) {
-                solucionesNuevas += letters[index];
-            }
-        });
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is a sequence, so keep the correct
+            // ordering and remap each option to its new shuffled position.
+            solucionesNuevas = respuestaCorrectas
+                .map((respuesta) => letters[respuestasNuevas.indexOf(respuesta)])
+                .join('');
+        } else {
+            // Select questions: the solution is a set of correct options.
+            respuestasNuevas.forEach((respuesta, index) => {
+                if (respuestaCorrectas.includes(respuesta)) {
+                    solucionesNuevas += letters[index];
+                }
+            });
+        }
 
         question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
         question.solution = solucionesNuevas;
@@ -2475,15 +2491,18 @@ var $quickquestionsmultiplechoice = {
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaQuestionDiv-${instance}`
+                `#seleccionaQuestionDiv-${instance}`
             );
         }
     },
 
     drawSolution: function (instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
-            question = mOptions.selectsGame[mOptions.activeQuestion],
-            solution = question.solution,
+            question = mOptions.selectsGame[mOptions.activeQuestion];
+
+        if (!question) return;
+
+        const solution = question.solution,
             letters = 'ABCD';
 
         mOptions.gameActived = false;

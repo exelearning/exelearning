@@ -42,8 +42,9 @@ var $eXeDragDrop = {
         $eXeDragDrop.options = [];
 
         $eXeDragDrop.activities.each(function (i) {
-            const dl = $('.dragdrop-DataGame', this),
-                mOption = $eXeDragDrop.loadDataGame(dl, this);
+            const dl = $('.dragdrop-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeDragDrop.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeDragDrop.idevicePath;
@@ -82,8 +83,9 @@ var $eXeDragDrop = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.dragdrop-LinkImages', sthis),
             $audiosLink = $('.dragdrop-LinkAudios', sthis);
@@ -136,7 +138,8 @@ var $eXeDragDrop = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
@@ -357,10 +360,8 @@ var $eXeDragDrop = {
             }, 1000);
             $eXeDragDrop.updateTime(mOptions.time * 60, instance);
         }
-        setTimeout(function () {
-            $eXeDragDrop.initializeDragAndDrop(instance);
-            mOptions.gameStarted = true;
-        }, 2000);
+        $eXeDragDrop.initializeDragAndDrop(instance);
+        mOptions.gameStarted = true;
     },
 
     initializeDragAndDrop: function (instance) {
@@ -453,8 +454,7 @@ var $eXeDragDrop = {
                     const audioData = $audio.data('audio');
                     if (audioData && audioData.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
-                            audioData,
-                            mOptions
+                            audioData
                         );
                     }
                 }
@@ -485,17 +485,6 @@ var $eXeDragDrop = {
             },
         });
 
-        $dadPGameContainer.on('click', '.DADP-TAudio', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            const data = $(this).data('audio');
-            if (data && data.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    data,
-                    mOptions
-                );
-            }
-        });
         $dadPGameContainer
             .find('.DADP-Card1')
             .on('mousedown touchstart', function (event) {
@@ -504,6 +493,8 @@ var $eXeDragDrop = {
                     $eXeDragDrop.checkAudio(this, instance);
                 }
             });
+
+        $eXeDragDrop.setupTouchDragAndDrop(instance);
     },
 
     createInterfaceCards: function (instance) {
@@ -685,24 +676,23 @@ var $eXeDragDrop = {
             );
         }
 
+        // Play target audio when text is dropped on the correct target (typeDrag=1)
+        if (mOptions.typeDrag == 1 && correctAnswer) {
+            const $targetAudio = $container
+                .closest('.DADP-DragTargetContainer')
+                .find('.DADP-TAudio');
+            if ($targetAudio.length == 1) {
+                const audioData = $targetAudio.data('audio');
+                if (audioData && audioData.length > 3) {
+                    $exeDevices.iDevice.gamification.media.playSound(audioData);
+                }
+            }
+        }
+
         if (mOptions.type == 0) {
             mOptions.hits++;
             if (mOptions.hits >= mOptions.realNumberCards) {
                 $eXeDragDrop.checkState(instance);
-            }
-            if (mOptions.typeDrag == 1 && correctAnswer) {
-                const $existingAudio = $container
-                    .closest('.DADP-DragTargetContainer')
-                    .find('.DADP-TAudio');
-                if ($existingAudio.length == 1) {
-                    let data = $existingAudio.data('audio');
-                    if (data && data.length > 3) {
-                        $exeDevices.iDevice.gamification.media.playSound(
-                            data,
-                            mOptions
-                        );
-                    }
-                }
             }
         }
     },
@@ -814,7 +804,7 @@ var $eXeDragDrop = {
         $(`#dadPButtons-${instance}`).css('display', 'flex');
         $(`#dadPResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeDragDrop.showScoreGame(instance);
         $eXeDragDrop.saveEvaluation(instance, true);
 
@@ -871,7 +861,10 @@ var $eXeDragDrop = {
         $('#dadPCheckButton-' + instance).off('click');
 
         $dadPGameContainer.off('click', '.DADP-TAudio');
+        $dadPGameContainer.off('touchstart', '.DADP-TAudio');
         $dadPGameContainer.off('click', '.DADP-FullLinkImage');
+
+        $eXeDragDrop.removeTouchDragAndDrop(instance);
     },
 
     addEvents: function (instance) {
@@ -990,13 +983,18 @@ var $eXeDragDrop = {
         });
 
         $dadPGameContainer.on('click', '.DADP-TAudio', function () {
-            if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
+        });
+
+        // Mobile: tap on audio icon plays audio and never starts a drag
+        $dadPGameContainer.on('touchstart', '.DADP-TAudio', function (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const audio = $(this).data('audio');
+            if (audio && audio.length > 3)
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $(`#dadPContainerGame-${instance}`).hide();
@@ -1135,6 +1133,106 @@ var $eXeDragDrop = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeDragDrop.previousScore = mOptions.previousScore;
+    },
+
+    setupTouchDragAndDrop: function (instance) {
+        $eXeDragDrop.removeTouchDragAndDrop(instance);
+
+        const mOptions = $eXeDragDrop.options[instance];
+        const gameContainer = document.querySelector(`#dadPGameContainer-${instance}`);
+        if (!gameContainer) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $draggable = $(element).closest('.DADP-DS');
+            if (!$draggable.length) return;
+
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+
+            const $audio = $draggable.find('.DADP-TAudio');
+            if ($audio.length === 1) {
+                const audioData = $audio.data('audio');
+                if (audioData && audioData.length > 3) {
+                    $exeDevices.iDevice.gamification.media.playSound(audioData);
+                }
+            }
+
+            touchHelper = $draggable.clone()
+                .addClass('DADP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 10000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+            // Hide helper temporarily so elementFromPoint can detect the element below
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+
+            const $target = $(elementBelow).closest('.DADP-DragTargetContainer');
+            $(`#dadPGameContainer-${instance} .DADP-DragTargetContainer`).removeClass('DADP-Over');
+            if ($target.length) $target.addClass('DADP-Over');
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(`#dadPGameContainer-${instance} .DADP-DragTargetContainer`).removeClass('DADP-Over');
+
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $target = $(elementBelow).closest('.DADP-DragTargetContainer');
+
+            if ($target.length) {
+                $eXeDragDrop.moveCard($(touchedEl), $target, instance);
+            }
+            touchedEl = null;
+        };
+
+        gameContainer.addEventListener('touchstart', touchStartHandler, { passive: false });
+        gameContainer.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        gameContainer.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        mOptions._touchDragStart = touchStartHandler;
+        mOptions._touchDragMove = touchMoveHandler;
+        mOptions._touchDragEnd = touchEndHandler;
+        mOptions._touchDragContainer = gameContainer;
+    },
+
+    removeTouchDragAndDrop: function (instance) {
+        const mOptions = $eXeDragDrop.options && $eXeDragDrop.options[instance];
+        if (!mOptions) return;
+        const container = mOptions._touchDragContainer;
+        if (!container) return;
+        if (mOptions._touchDragStart) { container.removeEventListener('touchstart', mOptions._touchDragStart); mOptions._touchDragStart = null; }
+        if (mOptions._touchDragMove) { container.removeEventListener('touchmove', mOptions._touchDragMove); mOptions._touchDragMove = null; }
+        if (mOptions._touchDragEnd) { container.removeEventListener('touchend', mOptions._touchDragEnd); mOptions._touchDragEnd = null; }
+        mOptions._touchDragContainer = null;
     },
 };
 $(function () {

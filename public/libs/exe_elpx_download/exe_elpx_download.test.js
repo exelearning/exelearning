@@ -34,9 +34,9 @@ describe('exe_elpx_download', () => {
         originalFflate = global.fflate;
         originalFetch = global.fetch;
 
-        // Mock fflate
+        // Mock fflate (no global options — per-file options are inline)
         global.fflate = {
-            zip: vi.fn((files, options, callback) => {
+            zip: vi.fn((files, callback) => {
                 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic bytes
                 setTimeout(() => callback(null, mockZipData), 0);
             }),
@@ -103,6 +103,20 @@ describe('exe_elpx_download', () => {
         });
     });
 
+    describe('i18n helper', () => {
+        it('has i18n helper function', () => {
+            expect(scriptContent).toContain('function i18n(key, fallback)');
+        });
+
+        it('reads from $exe_i18n global', () => {
+            expect(scriptContent).toContain('$exe_i18n[key]');
+        });
+
+        it('falls back when $exe_i18n is unavailable', () => {
+            expect(scriptContent).toContain("typeof $exe_i18n !== 'undefined'");
+        });
+    });
+
     describe('manifest-based approach', () => {
         it('reads manifest from window.__ELPX_MANIFEST__', () => {
             expect(scriptContent).toContain('window.__ELPX_MANIFEST__');
@@ -156,26 +170,8 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('.exe-download-package-link a, .exe-download-package-link button');
         });
 
-        it('has translations object for multiple languages', () => {
-            expect(scriptContent).toContain('var FILE_PROTOCOL_WARNINGS = {');
-            expect(scriptContent).toContain("en: 'Local mode:");
-            expect(scriptContent).toContain("es: 'Modo local:");
-            expect(scriptContent).toContain("ca: 'Mode local:");
-            expect(scriptContent).toContain("eu: 'Modu lokala:");
-            expect(scriptContent).toContain("gl: 'Modo local:");
-            expect(scriptContent).toContain("fr: 'Mode local :");
-            expect(scriptContent).toContain("de: 'Lokaler Modus:");
-            expect(scriptContent).toContain("it: 'Modalità locale:");
-            expect(scriptContent).toContain("pt: 'Modo local:");
-        });
-
-        it('has getFileProtocolWarning function for translation', () => {
-            expect(scriptContent).toContain('function getFileProtocolWarning()');
-            expect(scriptContent).toContain('document.documentElement.lang');
-        });
-
-        it('falls back to English for unknown languages', () => {
-            expect(scriptContent).toContain('FILE_PROTOCOL_WARNINGS[lang] || FILE_PROTOCOL_WARNINGS.en');
+        it('uses $exe_i18n for file protocol warning translation', () => {
+            expect(scriptContent).toContain("i18n('elpxFileProtocolWarning'");
         });
 
         it('adds native tooltip to entire button', () => {
@@ -253,6 +249,11 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain("relativePath.includes('/.')");
         });
 
+        it('reads files in parallel with Promise.all', () => {
+            expect(scriptContent).toContain('var readPromises = fileArray');
+            expect(scriptContent).toContain('await Promise.all(readPromises)');
+        });
+
         it('reads files as arrayBuffer', () => {
             expect(scriptContent).toContain('file.arrayBuffer()');
         });
@@ -267,6 +268,23 @@ describe('exe_elpx_download', () => {
 
         it('exports downloadElpxViaFolderPicker for testing', () => {
             expect(scriptContent).toContain('downloadElpxViaFolderPicker: downloadElpxViaFolderPicker');
+        });
+
+        it('has a timeout mechanism for folder picker dialog', () => {
+            expect(scriptContent).toContain('FOLDER_PICKER_TIMEOUT');
+        });
+
+        it('provides helpful error when webkitdirectory returns empty files in file:// context', () => {
+            expect(scriptContent).toContain("i18n('elpxFolderPickerEmpty'");
+            expect(scriptContent).toContain('No files were returned by the folder picker');
+        });
+
+        it('cleans up timeout on successful selection or cancel', () => {
+            expect(scriptContent).toContain('clearTimeout(timeoutId)');
+        });
+
+        it('uses $exe_i18n for timeout error messages', () => {
+            expect(scriptContent).toContain("i18n('elpxFolderPickerTimeout'");
         });
     });
 
@@ -348,8 +366,8 @@ describe('exe_elpx_download', () => {
     });
 
     describe('fetchAllAssets', () => {
-        it('limits concurrent requests to 6', () => {
-            expect(scriptContent).toContain('var concurrency = 6');
+        it('limits concurrent requests to 10', () => {
+            expect(scriptContent).toContain('var concurrency = 10');
         });
 
         it('handles failed fetches gracefully', () => {
@@ -361,14 +379,18 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('updateProgress(completed, total)');
         });
 
-        it('processes in batches', () => {
-            expect(scriptContent).toContain('manifest.files.slice(i, i + concurrency)');
+        it('uses a sliding worker pool pattern', () => {
+            expect(scriptContent).toContain('async function fetchWorker()');
+            expect(scriptContent).toContain('Math.min(concurrency, fileEntries.length)');
         });
     });
 
     describe('createZipAndDownload', () => {
-        it('uses fflate.zip with compression level 6', () => {
-            expect(scriptContent).toContain('fflate.zip(files, { level: 6 }');
+        it('uses per-file compression: STORE for compressed formats, level 6 for others', () => {
+            expect(scriptContent).toContain('STORE_EXTENSIONS');
+            expect(scriptContent).toContain('{ level: 0 }');
+            expect(scriptContent).toContain('{ level: 6 }');
+            expect(scriptContent).toContain('fflate.zip(zipInput,');
         });
 
         it('creates blob with application/zip type', () => {
@@ -401,21 +423,41 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('.exe-download-package-link');
         });
 
-        it('stores original text', () => {
-            expect(scriptContent).toContain('data-original-text');
+        it('stores original innerHTML and classes', () => {
+            expect(scriptContent).toContain('data-original-html');
+            expect(scriptContent).toContain('data-original-class');
         });
 
-        it('shows generating message', () => {
-            expect(scriptContent).toContain("'Generating...'");
+        it('shows processing label via i18n', () => {
+            expect(scriptContent).toContain("i18n('elpxProcessing', 'Processing...')");
         });
 
         it('disables button during generation', () => {
-            expect(scriptContent).toContain("style.opacity = '0.7'");
             expect(scriptContent).toContain("style.pointerEvents = 'none'");
         });
 
+        it('adds Bootstrap utility classes for progress host', () => {
+            expect(scriptContent).toContain("'position-relative'");
+            expect(scriptContent).toContain("'overflow-hidden'");
+        });
+
+        it('injects a Bootstrap-styled progress overlay span', () => {
+            expect(scriptContent).toContain('exe-elpx-progress-bar');
+            expect(scriptContent).toContain('position-absolute top-0 start-0 h-100 bg-dark bg-opacity-25');
+        });
+
+        it('injects a progress label span', () => {
+            expect(scriptContent).toContain('exe-elpx-progress-label');
+        });
+
+        it('sets aria-busy while running', () => {
+            expect(scriptContent).toContain("setAttribute('aria-busy', 'true')");
+            expect(scriptContent).toContain("removeAttribute('aria-busy')");
+        });
+
         it('restores original state', () => {
-            expect(scriptContent).toContain("btn.getAttribute('data-original-text')");
+            expect(scriptContent).toContain("btn.getAttribute('data-original-html')");
+            expect(scriptContent).toContain("btn.getAttribute('data-original-class')");
         });
     });
 
@@ -426,6 +468,64 @@ describe('exe_elpx_download', () => {
 
         it('logs progress in debug mode', () => {
             expect(scriptContent).toContain('[ELPX Download] Progress:');
+        });
+
+        it('computes a clamped percentage', () => {
+            expect(scriptContent).toContain('Math.round((completed / total) * 100)');
+            expect(scriptContent).toContain('Math.min(100');
+        });
+
+        it('updates the progress bar width and label text', () => {
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            // Simulate the indicator being shown (sync DOM mutation) by
+            // manually replicating the markup the show path produces.
+            const btn = document.querySelector('.exe-download-package-link a');
+            btn.classList.add('position-relative', 'overflow-hidden');
+            btn.innerHTML =
+                '<span class="exe-elpx-progress-bar position-absolute top-0 start-0 h-100 bg-dark bg-opacity-25" style="width: 0%;"></span>' +
+                '<span class="exe-elpx-progress-label position-relative">Processing...</span>';
+
+            // Dispatch a manifest-free call by using the exported helper-less path:
+            // re-evaluate the script to access updateProgress indirectly via the
+            // full workflow below; here we just assert the script wires it.
+            expect(scriptContent).toContain("querySelector('.exe-elpx-progress-bar')");
+            expect(scriptContent).toContain("querySelector('.exe-elpx-progress-label')");
+        });
+
+        it('reflects progress in the button during a full download', async () => {
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['a.txt', 'b.txt', 'c.txt', 'd.txt'],
+                projectTitle: 'Test',
+                basePath: '',
+            };
+
+            global.fetch.mockResolvedValue({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+            });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            await window.downloadElpx();
+
+            // After completion the button should be restored to its original text
+            const btn = document.querySelector('.exe-download-package-link a');
+            expect(btn).not.toBeNull();
+            expect(btn.textContent).toBe('Download');
+            expect(btn.hasAttribute('data-original-html')).toBe(false);
+            expect(btn.hasAttribute('aria-busy')).toBe(false);
         });
     });
 

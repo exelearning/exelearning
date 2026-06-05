@@ -836,7 +836,7 @@
 }
 
 .DescubreQP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
@@ -846,7 +846,7 @@
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-IconReboot {
-    background-image: url(exequextreload.png);
+    background-image: url(exequextreload.svg);
     background-size: 100% 100%;
 }
 

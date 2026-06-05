@@ -1,6 +1,25 @@
 const rememberedComponentKeys = new Set();
 const STORAGE_PREFIX = '__exe_component_download:';
 
+/**
+ * Check if a URL is a blob: URL that needs special handling in Electron.
+ * @param {string} url - The URL to check
+ * @returns {boolean} True if it's a blob: URL
+ */
+function isBlobUrl(url) {
+    return typeof url === 'string' && url.startsWith('blob:');
+}
+
+// The Electron main process (normalizeBinaryPayload in app/main.js) accepts
+// Uint8Array / ArrayBuffer / Array as the first positional arg. When the
+// handler resolves with { saved: false, ... } the helper must treat that as
+// a failure so the browser fallback can fire.
+function isElectronSaveSuccessful(result) {
+    if (result === true) return true;
+    if (result && typeof result === 'object') return result.saved === true;
+    return false;
+}
+
 function isKeyRemembered(storageKey) {
     if (rememberedComponentKeys.has(storageKey)) return true;
     try {
@@ -67,9 +86,28 @@ async function runElectronDownload(
     storageKey,
     fileName
 ) {
-    if (!electronAPI || typeof electronAPI[mode] !== 'function') return false;
+    if (!electronAPI) return false;
+
     try {
-        return await electronAPI[mode](url, storageKey, fileName);
+        // Handle blob: URLs specially - they cannot be streamed via Node.js HTTP.
+        // Pass a Uint8Array to the buffer APIs; the main process expects binary
+        // (Uint8Array/ArrayBuffer/Array), not a base64 string — see #1659.
+        if (isBlobUrl(url)) {
+            const bufferMode = mode === 'save' ? 'saveBuffer' : 'saveBufferAs';
+            if (typeof electronAPI[bufferMode] !== 'function') return false;
+
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+
+            const result = await electronAPI[bufferMode](bytes, storageKey, fileName);
+            return isElectronSaveSuccessful(result);
+        }
+
+        // Standard URL handling via streaming
+        if (typeof electronAPI[mode] !== 'function') return false;
+        const result = await electronAPI[mode](url, storageKey, fileName);
+        return isElectronSaveSuccessful(result);
     } catch (_e) {
         return false;
     }
@@ -83,18 +121,25 @@ export async function downloadComponentFile(url, suggestedName, keyOptions) {
     const preferElectron =
         !!electronAPI && eXeLearning?.config?.isOfflineInstallation === true;
 
+    // Check if alwaysAskLocation is requested (for page/idevice/block exports in Electron)
+    const alwaysAsk =
+        keyOptions && typeof keyOptions === 'object' && keyOptions.alwaysAskLocation === true;
+
     if (preferElectron) {
-        const hasRemembered = isKeyRemembered(storageKey);
         let success = false;
 
-        if (hasRemembered) {
-            success = await runElectronDownload(
-                electronAPI,
-                'save',
-                url,
-                storageKey,
-                fileName
-            );
+        // If alwaysAskLocation is true, skip the remembered check and always use saveAs
+        if (!alwaysAsk) {
+            const hasRemembered = isKeyRemembered(storageKey);
+            if (hasRemembered) {
+                success = await runElectronDownload(
+                    electronAPI,
+                    'save',
+                    url,
+                    storageKey,
+                    fileName
+                );
+            }
         }
 
         if (!success) {
@@ -105,7 +150,8 @@ export async function downloadComponentFile(url, suggestedName, keyOptions) {
                 storageKey,
                 fileName
             );
-            if (success) markKeyRemembered(storageKey);
+            // Only remember if NOT alwaysAsk mode
+            if (success && !alwaysAsk) markKeyRemembered(storageKey);
         }
 
         if (success) return;

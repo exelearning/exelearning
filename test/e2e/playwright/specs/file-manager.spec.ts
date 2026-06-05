@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, waitForLoadingScreen, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -46,7 +47,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -55,6 +56,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -113,6 +115,17 @@ async function openFileManager(page: Page): Promise<void> {
 }
 
 /**
+ * Helper to open the File Manager modal via Utilities menu.
+ * Useful for imported projects where no editable iDevice is selected yet.
+ */
+async function openFileManagerFromUtilitiesMenu(page: Page): Promise<void> {
+    await page.locator('#dropdownUtilities').click();
+    await page.waitForTimeout(200);
+    await page.locator('#navbar-button-filemanager').click();
+    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+}
+
+/**
  * Helper to close the File Manager modal
  */
 async function closeFileManager(page: Page): Promise<void> {
@@ -135,6 +148,7 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
             return items.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -145,12 +159,14 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
  * Helper to create a new folder
  */
 async function createFolder(page: Page, folderName: string): Promise<void> {
-    page.once('dialog', async dialog => {
-        await dialog.accept(folderName);
-    });
-
     const newFolderBtn = page.locator('#modalFileManager .media-library-newfolder-btn');
     await newFolderBtn.click();
+
+    const renameDialog = page.locator('#modalFileManager .media-library-rename-dialog');
+    await renameDialog.waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     await page.waitForSelector(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`, {
         timeout: 10000,
@@ -189,6 +205,7 @@ async function navigateToRoot(page: Page): Promise<void> {
             const items = breadcrumbs?.querySelectorAll('.breadcrumb-item');
             return items && items.length === 1;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -209,7 +226,8 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 /**
- * Helper to duplicate selected file and wait for new file to appear
+ * Helper to duplicate selected file and wait for new file to appear.
+ * Confirms the suggested name in the custom rename dialog.
  */
 async function duplicateSelectedFile(page: Page, expectedCount: number): Promise<void> {
     const duplicateBtn = page.locator('#modalFileManager .media-library-duplicate-btn');
@@ -218,41 +236,14 @@ async function duplicateSelectedFile(page: Page, expectedCount: number): Promise
     // Get the current file count before duplicating
     const countBefore = await getFileCount(page);
 
-    // Listen for console messages to capture any errors
-    const consoleLogs: string[] = [];
-    page.on('console', msg => {
-        consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
-    });
-
-    // Set up one-time dialog handler before clicking
-    const dialogHandler = async (dialog: any) => {
-        console.log(
-            `Dialog appeared: type=${dialog.type()}, message=${dialog.message()}, default=${dialog.defaultValue()}`,
-        );
-        // Accept with the default value (prompt's pre-filled text)
-        if (dialog.type() === 'prompt') {
-            await dialog.accept(dialog.defaultValue());
-        } else {
-            await dialog.accept();
-        }
-    };
-    page.once('dialog', dialogHandler);
-
-    // Click duplicate button
+    // Click duplicate button — this opens the custom rename dialog
     await duplicateBtn.click();
 
-    // Wait for the duplicate operation to complete
-    await page.waitForTimeout(2000);
-
-    // Print all console logs related to MediaLibrary
-    const mediaLogs = consoleLogs.filter(
-        log => log.includes('MediaLibrary') || log.includes('error') || log.includes('Error'),
-    );
-    if (mediaLogs.length > 0) {
-        console.log('MediaLibrary console logs:', mediaLogs.join('\n'));
-    } else {
-        console.log('No MediaLibrary console logs found');
-    }
+    // Confirm the suggested name in the custom rename dialog
+    const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+    await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+    // Accept the pre-filled suggested name as-is
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     // Wait for the file count to increase
     await page.waitForFunction(
@@ -292,67 +283,99 @@ async function getFolderCount(page: Page): Promise<number> {
 }
 
 /**
- * Helper to import an ELP/ELPX file via File menu
+ * Helper to import/open an ELP/ELPX file via File menu.
+ * Uses File > Open.
  */
 async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Open File menu
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
+    const openOfflineOption = page.locator('#navbar-button-open-offline');
+    const openOnlineOption = page.locator('#navbar-button-openuserodefiles');
+    const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
+    await expect(openOption).toHaveCount(1);
 
-    // Click Continue in confirmation dialog (supports both English and Spanish)
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    // In static mode Open triggers a file chooser; in online mode it opens a modal with file inputs.
+    const fileChooserPromise = page
+        .waitForEvent('filechooser', { timeout: 12000 })
+        .then(fileChooser => ({ type: 'filechooser' as const, fileChooser }))
+        .catch(() => null);
+    await openOption.click({ force: true });
 
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
+    const modalUploadInput = page.locator('#local-ode-modal-file-upload');
+    const staticOpenInput = page.locator('#static-open-file-input');
 
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+    await page
+        .waitForSelector('#local-ode-modal-file-upload, #static-open-file-input', {
+            state: 'attached',
+            timeout: 12000,
+        })
+        .catch(() => {});
+
+    if (await modalUploadInput.count()) {
+        await modalUploadInput.setInputFiles(fixturePath);
+    } else {
+        if (await staticOpenInput.count()) {
+            await staticOpenInput.setInputFiles(fixturePath);
+        } else {
+            const chooserResult = await fileChooserPromise;
+            if (!chooserResult) {
+                throw new Error('Open did not expose a file input or file chooser');
+            }
+            await chooserResult.fileChooser.setFiles(fixturePath);
+        }
+    }
 
     // Wait for import to complete by checking Yjs navigation has pages
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                return navigation && navigation.length >= 1;
+            } catch {
+                return false;
+            }
         },
+        undefined,
         { timeout: 90000 },
     );
 
     // Wait for page count to stabilize (no changes for 2 seconds)
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            if (!navigation) return false;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return false;
 
-            const win = window as any;
-            const currentCount = navigation.length;
-            if (!win.__importPageCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
+                const win = window as any;
+                const currentCount = navigation.length;
+                if (!win.__importPageCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                if (win.__importPageCount !== currentCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                return Date.now() - win.__importStableTime >= 2000;
+            } catch {
                 return false;
             }
-
-            if (win.__importPageCount !== currentCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
-                return false;
-            }
-
-            return Date.now() - win.__importStableTime >= 2000;
         },
+        undefined,
         { timeout: 90000, polling: 500 },
     );
 
@@ -364,12 +387,9 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     });
 
     // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
+    await waitForLoadingScreen(page);
 
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 test.describe('File Manager', () => {
@@ -385,24 +405,19 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'Import ELPX Format Test');
 
             // Navigate to the project workarea
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app to fully initialize
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Import the .elpx file
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are folders in the file manager (from content/resources/*)
             const folderCount = await getFolderCount(page);
@@ -439,24 +454,19 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'Import Legacy ELP Format Test');
 
             // Navigate to the project workarea
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app to fully initialize
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Import the legacy .elp file
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are files at root level (no folder structure in legacy format)
             const fileCount = await getFileCount(page);
@@ -497,19 +507,10 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Create Folder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
-            await openFileManager(page);
+            await waitForAppReady(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             const folderName = `TestFolder_${Date.now()}`;
             await createFolder(page, folderName);
@@ -522,18 +523,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Navigation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -561,18 +553,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Upload to Folder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder and navigate into it
@@ -601,18 +584,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Duplicate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -636,18 +610,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Duplicate Increment Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -672,18 +637,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Rename File Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -702,13 +658,14 @@ test.describe('File Manager', () => {
             const renameBtn = page.locator('#modalFileManager .media-library-rename-btn');
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt
             const newName = `renamed-file-${Date.now()}.jpg`;
-            page.once('dialog', async dialog => {
-                await dialog.accept(newName);
-            });
-
             await renameBtn.click();
+
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for the filename to update in sidebar
             await page.waitForFunction(
@@ -729,18 +686,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Rename Folder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create an empty folder
@@ -768,16 +716,14 @@ test.describe('File Manager', () => {
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
             await expect(renameBtn).toBeEnabled({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt BEFORE clicking
             const newFolderName = `RenamedFolder_${Date.now()}`;
+            await renameBtn.click();
 
-            // Handle dialog and click simultaneously using Promise.all
-            await Promise.all([
-                page.waitForEvent('dialog').then(async dialog => {
-                    await dialog.accept(newFolderName);
-                }),
-                renameBtn.click(),
-            ]);
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newFolderName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder with new name to appear in the grid
             await page.waitForFunction(
@@ -804,18 +750,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Delete File Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -847,6 +784,7 @@ test.describe('File Manager', () => {
                     );
                     return items.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -859,18 +797,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Delete Folder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -903,6 +832,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -915,18 +845,9 @@ test.describe('File Manager', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'File Manager - Delete Folder Contents Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -962,6 +883,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -977,18 +899,9 @@ test.describe('File Manager', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'File Manager - Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -1002,32 +915,35 @@ test.describe('File Manager', () => {
             // Close file manager
             await closeFileManager(page);
 
-            // Close TinyMCE dialog if open
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
+            // Firefox can keep a TinyMCE backdrop active, which blocks Save button clicks.
+            const tinyDialog = page.locator('.tox-dialog');
+            if ((await tinyDialog.count()) > 0) {
+                const closeBtn = page
+                    .locator(
+                        '.tox-dialog .tox-dialog__header-close, .tox-dialog button[aria-label="Close"], .tox-dialog .tox-button:has-text("Cancel"), .tox-dialog .tox-button:has-text("Cancelar")',
+                    )
+                    .first();
+                if ((await closeBtn.count()) > 0) {
+                    await closeBtn.click({ force: true }).catch(() => {});
+                } else {
+                    await page.keyboard.press('Escape').catch(() => {});
+                }
+                await page
+                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), undefined, {
+                        timeout: 5000,
+                    })
+                    .catch(() => {});
             }
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Open File Manager again
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Verify folder still exists at root
             const folder = page.locator(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`);
@@ -1064,18 +980,9 @@ test.describe('File Manager', () => {
 
             // Create first project and upload image
             const projectUuidA = await createProject(page, 'Cross-Project Test A');
-            await page.goto(`/workarea?project=${projectUuidA}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuidA);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload image to Project A
@@ -1104,18 +1011,9 @@ test.describe('File Manager', () => {
 
             // Create second project
             const projectUuidB = await createProject(page, 'Cross-Project Test B');
-            await page.goto(`/workarea?project=${projectUuidB}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuidB);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload SAME image to Project B (same content = same hash = same assetId)
@@ -1156,18 +1054,9 @@ test.describe('File Manager', () => {
 
             // Create first project and upload image
             const projectUuidA = await createProject(page, 'Console Log Test A');
-            await page.goto(`/workarea?project=${projectUuidA}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuidA);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             await uploadFile(page, 'test/fixtures/sample-2.jpg');
@@ -1180,18 +1069,9 @@ test.describe('File Manager', () => {
 
             // Create second project and upload same image
             const projectUuidB = await createProject(page, 'Console Log Test B');
-            await page.goto(`/workarea?project=${projectUuidB}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuidB);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Clear previous logs
@@ -1200,16 +1080,10 @@ test.describe('File Manager', () => {
             await uploadFile(page, 'test/fixtures/sample-2.jpg');
 
             // Wait for async operations
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the correct log message appears (not "Asset already exists for this project")
             // The fix should show "Storing blob for current project" instead
-            const hasCorrectLog = consoleLogs.some(
-                log =>
-                    log.includes('Storing blob for current project') ||
-                    log.includes('New asset stored') ||
-                    log.includes('putAsset'),
-            );
             const hasIncorrectLog = consoleLogs.some(log => log.includes('Asset already exists for this project'));
 
             // If we see "Storing blob for current project", that's the fix working
@@ -1220,6 +1094,106 @@ test.describe('File Manager', () => {
             // The key is that if it's cross-project, we should NOT see "already exists for this project"
             // We should see either "Storing blob for current project" or "New asset stored"
             expect(hasIncorrectLog).toBe(false);
+        });
+    });
+
+    test.describe('Image Insertion No Duplication', () => {
+        /**
+         * This test verifies the fix for the bug where selecting an existing image
+         * from the File Manager and inserting it into TinyMCE would cause the image
+         * to be duplicated in the File Manager.
+         *
+         * Root cause: TinyMCE's images_upload_handler metadata does NOT automatically
+         * become HTML attributes. When data-asset-id was passed as metadata, it wasn't
+         * set as an attribute on the <img> element, so convertBlobURLsToAssetRefs()
+         * couldn't find it and would fall back to blob URL lookup, potentially
+         * creating duplicates.
+         *
+         * Fix: Added MutationObserver and SetContent handler in tinymce_5_settings.js
+         * to explicitly add data-asset-id as HTML attribute on images with blob URLs.
+         */
+        test('should NOT duplicate image when inserting existing asset from file manager', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'File Manager - No Duplicate Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            // Step 1: Open File Manager and upload an image
+            await openFileManager(page);
+            await uploadFile(page, 'test/fixtures/sample-2.jpg');
+
+            // Verify initial count is 1
+            const initialCount = await getFileCount(page);
+            expect(initialCount).toBe(1);
+
+            // Step 2: Select the image and insert it
+            await selectFirstFile(page);
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // Wait for File Manager to close
+            await page.waitForTimeout(500);
+
+            // Step 3: Fill alternative description to avoid prompt
+            // Locate by label text (works for both English "Alternative description" and Spanish "Descripción alternativa")
+            const altTextField = page
+                .locator('.tox-dialog .tox-form__group')
+                .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
+                .locator('.tox-textfield');
+            if ((await altTextField.count()) > 0) {
+                await altTextField.fill('Test image description');
+            }
+
+            // Step 5: Save the TinyMCE dialog (which inserts the image)
+            const saveBtn = page.locator(
+                '.tox-dialog .tox-button[title="Save"], .tox-dialog .tox-button:has-text("Save")',
+            );
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.first().click();
+            }
+
+            await page.waitForTimeout(500);
+
+            // Step 6: Save the iDevice
+            const idevice = page.locator('#node-content article .idevice_node.text').first();
+            const saveIdeviceBtn = idevice.locator('.btn-save-idevice');
+            if ((await saveIdeviceBtn.count()) > 0) {
+                await saveIdeviceBtn.click();
+            }
+
+            // Wait for iDevice to exit edit mode
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Step 7: Open File Manager again and verify count is still 1
+            // First, enter edit mode again
+            const editIdeviceBtn = idevice.locator('.btn-edit-idevice');
+            await editIdeviceBtn.click();
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Open File Manager via TinyMCE image button
+            await openFileManager(page);
+
+            // CRITICAL ASSERTION: Image should NOT be duplicated
+            const finalCount = await getFileCount(page);
+            expect(finalCount).toBe(1); // Should still be 1, not 2
+
+            // Verify the same image is present (by filename)
+            const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
+            const filename = await fileItem.getAttribute('data-filename');
+            expect(filename).toContain('sample-2');
         });
     });
 
@@ -1237,12 +1211,8 @@ test.describe('File Manager', () => {
         test('should search files recursively across all subfolders', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Recursive Search Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create nested folder structure
@@ -1271,12 +1241,8 @@ test.describe('File Manager', () => {
         test('should show search indicator instead of breadcrumbs', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Search Indicator Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file so we have something to search
@@ -1304,12 +1270,8 @@ test.describe('File Manager', () => {
         test('should display path badge in grid view during search', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Path Badge Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1331,12 +1293,8 @@ test.describe('File Manager', () => {
         test('should navigate to folder when clicking path badge', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Path Navigation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1368,12 +1326,8 @@ test.describe('File Manager', () => {
         }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Sidebar Location Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1409,12 +1363,8 @@ test.describe('File Manager', () => {
         test('should clear search when clicking X button', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Clear Search Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload file and create folder
@@ -1455,12 +1405,8 @@ test.describe('File Manager', () => {
         }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'File Manager - Home Icon Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create nested structure

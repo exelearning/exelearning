@@ -13,6 +13,10 @@ on:
       - tikismaker
       - 'release/*'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -22,11 +26,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        browser: [chromium, firefox]
+        browser: [chromium, firefox, static]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -43,16 +47,19 @@ jobs:
         run: make bundle
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          if [ "${{ matrix.browser }}" = "static" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install --with-deps ${{ matrix.browser }}
+          fi
 
       - name: E2E Tests (${{ matrix.browser }})
-        run: |
-          set -e
-          npx playwright test --project=${{ matrix.browser }}
+        run: make test-e2e-${{ matrix.browser }}
 
       - name: Upload Playwright Report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ matrix.browser }}
           path: playwright-report/

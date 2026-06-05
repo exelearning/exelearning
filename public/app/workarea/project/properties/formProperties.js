@@ -16,6 +16,10 @@ export default class FormProperties {
         this.yjsBinding = null;
     }
 
+    isCheckedValue(value) {
+        return value === true || value === 'true';
+    }
+
     show() {
         this.combineMetadataProperties();
         const formElement = this.makeBodyElement(this.metadataProperties);
@@ -112,7 +116,7 @@ export default class FormProperties {
         propertiesTableElement.classList.add('exe-table-content');
         propertiesTableElement.classList.add('pb-1');
 
-        this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
+        this.addRowsWithTabs(properties, propertiesTableElement);
 
         // No save button - changes sync automatically via Yjs
         formContentElement.append(propertiesTableElement);
@@ -120,6 +124,171 @@ export default class FormProperties {
         setTimeout(() => element.classList.remove('loading'), 100);
 
         return element;
+    }
+
+    /**
+     * Create tabs structure for properties grouped by sections
+     */
+    addRowsWithTabs(properties, table) {
+        // Define tab configuration
+        const tabConfig = [
+            { key: 'properties_package', title: _('Content metadata') },
+            { key: 'export', title: _('Export options') },
+            { key: 'custom_code', title: _('Custom code') },
+            { key: 'screenshot', title: _('Screenshot'), custom: true },
+        ];
+
+        // Create tabs navigation
+        const tabsNav = document.createElement('div');
+        tabsNav.classList.add('project-properties-tabs');
+        tabsNav.setAttribute('role', 'tablist');
+
+        // Create tab content container
+        const tabContent = document.createElement('div');
+        tabContent.classList.add('project-properties-tab-content');
+
+        // Group properties by their group key
+        const groupedProperties = this.groupPropertiesByGroup(properties);
+
+        // Create tabs and content panes
+        tabConfig.forEach((tab, index) => {
+            const isActive = index === 0;
+            const tabId = `props-tab-${tab.key}`;
+            const paneId = `props-pane-${tab.key}`;
+
+            // Create tab button
+            const tabButton = document.createElement('button');
+            tabButton.type = 'button';
+            tabButton.classList.add('project-properties-tab');
+            if (isActive) tabButton.classList.add('active');
+            tabButton.setAttribute('role', 'tab');
+            tabButton.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tabButton.setAttribute('aria-controls', paneId);
+            tabButton.setAttribute('data-tab-target', paneId);
+            tabButton.id = tabId;
+            tabButton.textContent = tab.title;
+
+            // Tab click behavior
+            tabButton.addEventListener('click', () => {
+                this.activateTab(tabsNav, tabContent, tabButton, paneId);
+            });
+
+            tabsNav.appendChild(tabButton);
+
+            // Create tab pane
+            const tabPane = document.createElement('div');
+            tabPane.classList.add('project-properties-tab-pane');
+            if (isActive) tabPane.classList.add('active');
+            tabPane.setAttribute('role', 'tabpanel');
+            tabPane.setAttribute('aria-labelledby', tabId);
+            tabPane.id = paneId;
+
+            // Add properties for this group
+            if (tab.custom && tab.key === 'screenshot') {
+                this.buildScreenshotPane(tabPane);
+            } else {
+                const groupProperties = groupedProperties.get(tab.key) || [];
+                this.addPropertiesToPane(groupProperties, tabPane);
+            }
+
+            tabContent.appendChild(tabPane);
+        });
+
+        table.appendChild(tabsNav);
+        table.appendChild(tabContent);
+    }
+
+    /**
+     * Group properties by their group key
+     */
+    groupPropertiesByGroup(properties) {
+        const grouped = new Map();
+        let propertiesArray = Object.entries(properties);
+
+        // Sort properties
+        propertiesArray = propertiesArray.sort((a, b) => {
+            if (
+                a[1].multipleId &&
+                b[1].multipleId &&
+                a[1].multipleId === b[1].multipleId
+            ) {
+                if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
+            } else if (
+                a[1].multipleId &&
+                b[1].multipleId &&
+                a[1].prefix === b[1].prefix
+            ) {
+                if (a[1].multipleIndex === b[1].multipleIndex) {
+                    if (a[1].index === b[1].index) return 0;
+                    return a[1].index > b[1].index ? 1 : -1;
+                } else {
+                    if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                    return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
+                }
+            } else {
+                return 0;
+            }
+        });
+
+        for (const [key, property] of propertiesArray) {
+            let groupKey = '__no_group__';
+            if (property.groups && Object.keys(property.groups).length) {
+                groupKey = Object.keys(property.groups)[0];
+            }
+
+            if (!grouped.has(groupKey)) {
+                grouped.set(groupKey, []);
+            }
+            grouped.get(groupKey).push([key, property]);
+        }
+
+        return grouped;
+    }
+
+    /**
+     * Add properties to a tab pane
+     */
+    addPropertiesToPane(propertiesArray, pane) {
+        const container = document.createElement('div');
+        container.classList.add(
+            'properties-group',
+            'properties-body-container',
+            'form-properties'
+        );
+
+        for (const [key, property] of propertiesArray) {
+            const propertyRow = this.makeRowElement(key, property);
+            if (propertyRow) container.appendChild(propertyRow);
+        }
+
+        pane.appendChild(container);
+    }
+
+    /**
+     * Activate a tab and show its content pane
+     */
+    activateTab(tabsNav, tabContent, activeButton, activePaneId) {
+        // Deactivate all tabs
+        tabsNav.querySelectorAll('.project-properties-tab').forEach((tab) => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+        });
+
+        // Deactivate all panes
+        tabContent.querySelectorAll('.project-properties-tab-pane').forEach((pane) => {
+            pane.classList.remove('active');
+        });
+
+        // Activate selected tab
+        activeButton.classList.add('active');
+        activeButton.setAttribute('aria-selected', 'true');
+
+        // Activate selected pane
+        const activePane = tabContent.querySelector(`#${activePaneId}`);
+        if (activePane) {
+            activePane.classList.add('active');
+        }
     }
     addRowsFlatWithSectionTitles(properties, table) {
         let propertiesArray = Object.entries(properties);
@@ -179,7 +348,7 @@ export default class FormProperties {
             groupElementTitle.setAttribute('aria-controls', collapseId);
 
             let titleText =
-                "<span class='title-text'>" + topGroupTitle + '</span>';
+                "<span class='title-text'>" + _(topGroupTitle) + '</span>';
             const catKey = Object.keys(property.category || { '': '' })[0];
             if (catKey == this.cataloguingCategoryKey) {
                 if (property.required) {
@@ -377,10 +546,26 @@ export default class FormProperties {
 
     makeRowElementLabel(id, property) {
         const propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
-        if (property.required) propertyTitleText = '* ' + propertyTitleText;
-        propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+            }
+        }
+
         return propertyTitle;
     }
 
@@ -393,7 +578,7 @@ export default class FormProperties {
                 break;
             case 'checkbox':
                 valueElement = document.createElement('input');
-                valueElement.checked = property.value == 'true' ? true : false;
+                valueElement.checked = this.isCheckedValue(property.value);
                 valueElement.classList.add('toggle-input');
                 break;
             case 'date':
@@ -405,19 +590,23 @@ export default class FormProperties {
                 valueElement.innerHTML = property.value;
                 valueElement.value = property.value;
                 break;
-            case 'select':
+            case 'select': {
                 valueElement = document.createElement('select');
                 for (let [value, text] of Object.entries(
                     property.options || {}
                 )) {
                     const optionElement = document.createElement('option');
                     optionElement.value = value;
-                    optionElement.innerHTML = text;
-                    if (value === property.value)
+                    optionElement.innerHTML = _(text);
+                    if (value === property.value) {
                         optionElement.setAttribute('selected', 'selected');
+                    }
                     valueElement.append(optionElement);
                 }
+                // Legacy license handling is done in YjsPropertiesBinding.updateInputFromYjs()
+                // which runs after form creation and loads the actual value from Yjs
                 break;
+            }
             default:
                 valueElement = document.createElement('div');
                 break;
@@ -528,7 +717,7 @@ export default class FormProperties {
 
             const helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content', 'help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
 
             helpContainer.append(helpIcon, helpSpanText);
             return helpContainer;
@@ -710,6 +899,291 @@ export default class FormProperties {
     }
 
     /*******************************************************************************
+     * SCREENSHOT TAB
+     *******************************************************************************/
+
+    /**
+     * Build the screenshot tab pane content
+     * @param {HTMLElement} pane - The tab pane container
+     */
+    buildScreenshotPane(pane) {
+        const container = document.createElement('div');
+        container.classList.add('screenshot-panel', 'p-4');
+
+        // === ROW: Preview (col-lg-7) + Info (col-lg-5) ===
+        const row = document.createElement('div');
+        row.classList.add('row', 'g-4');
+
+        // --- Left column: preview card + buttons ---
+        const leftCol = document.createElement('div');
+        leftCol.classList.add('col-12', 'col-lg-7', 'd-flex', 'flex-column', 'align-items-center');
+
+        // Preview card
+        const previewCard = document.createElement('div');
+        previewCard.classList.add('card', 'w-100', 'mb-3', 'shadow-sm');
+
+        const previewCardBody = document.createElement('div');
+        previewCardBody.classList.add('card-body', 'text-center', 'bg-light');
+
+        const previewImg = document.createElement('img');
+        previewImg.classList.add('img-fluid', 'border');
+        previewImg.alt = _('Current project screenshot preview');
+        previewImg.style.cssText = 'max-height:300px;object-fit:contain;display:none;';
+
+        const noScreenshotText = document.createElement('p');
+        noScreenshotText.classList.add('text-muted', 'fst-italic', 'py-5', 'mb-0');
+        noScreenshotText.textContent = _('No screenshot yet. It will be auto-generated when you save or export.');
+
+        previewCardBody.append(previewImg);
+        previewCardBody.append(noScreenshotText);
+        previewCard.append(previewCardBody);
+
+        // Helper to update preview visibility consistently
+        let removeBtn;
+        const updatePreview = (screenshot) => {
+            if (screenshot) {
+                previewImg.src = screenshot;
+                previewImg.style.display = 'block';
+                noScreenshotText.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = '';
+            } else {
+                previewImg.src = '';
+                previewImg.style.display = 'none';
+                noScreenshotText.style.display = '';
+                if (removeBtn) removeBtn.style.display = 'none';
+            }
+        };
+
+        // Clean up previous observer if pane is rebuilt
+        if (this._screenshotMetadata && this._screenshotObserver) {
+            this._screenshotMetadata.unobserve(this._screenshotObserver);
+            this._screenshotMetadata = null;
+            this._screenshotObserver = null;
+        }
+
+        // Load current screenshot from Yjs and observe live changes
+        const documentManager = this.properties.project?._yjsBridge?.getDocumentManager();
+        if (documentManager) {
+            const metadata = documentManager.getMetadata();
+            updatePreview(metadata?.get('screenshot') || null);
+
+            const observer = (event) => {
+                if (event.keysChanged.has('screenshot')) {
+                    updatePreview(metadata.get('screenshot') || null);
+                }
+            };
+            metadata.observe(observer);
+            this._screenshotMetadata = metadata;
+            this._screenshotObserver = observer;
+        }
+
+        // Buttons row
+        const buttonsRow = document.createElement('div');
+        buttonsRow.classList.add('d-flex', 'flex-wrap', 'justify-content-center', 'gap-2', 'w-100');
+
+        // Upload button
+        const uploadBtn = document.createElement('button');
+        uploadBtn.type = 'button';
+        uploadBtn.classList.add('btn', 'btn-primary', 'd-flex', 'align-items-center');
+        uploadBtn.setAttribute('aria-describedby', 'screenshot-help-text');
+        uploadBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">upload</span> ${_('Upload custom image')}`;
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/png,image/jpeg,image/webp';
+        fileInput.style.display = 'none';
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('File too large'),
+                    body: _('Screenshot must be smaller than 2 MB.'),
+                    contentId: 'warning',
+                });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const ratio = img.naturalWidth / img.naturalHeight;
+                    const is16x9 = Math.abs(ratio - 16 / 9) < 0.05;
+                    const hasMinWidth = img.naturalWidth >= 600;
+                    if (!is16x9 || !hasMinWidth) {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Invalid image'),
+                            body: _('The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.'),
+                            contentId: 'warning',
+                        });
+                        fileInput.value = '';
+                        return;
+                    }
+                    const pngDataUrl = this.resizeAndConvertToPng(img);
+                    this.setScreenshot(pngDataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            fileInput.value = '';
+        });
+
+        // Regenerate button
+        const regenerateBtn = document.createElement('button');
+        regenerateBtn.type = 'button';
+        regenerateBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
+        regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+
+        regenerateBtn.addEventListener('click', async () => {
+            const bridge = this.properties.project?._yjsBridge;
+            if (!bridge?.generateScreenshotFromFirstPage) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Not available'),
+                    body: _('Screenshot generation is not available.'),
+                    contentId: 'warning',
+                });
+                return;
+            }
+
+            const doRegenerate = async () => {
+                // Clear existing screenshot so auto-generation runs
+                const dm = bridge.getDocumentManager();
+                if (dm) {
+                    dm.getMetadata().delete('screenshot');
+                }
+
+                regenerateBtn.disabled = true;
+                regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generating...')}`;
+
+                try {
+                    await bridge.generateScreenshotFromFirstPage();
+                } catch (error) {
+                    console.error('[FormProperties] Screenshot regeneration failed:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Generation failed'),
+                        body: _('Could not generate screenshot from content. Try uploading an image instead.'),
+                        contentId: 'warning',
+                    });
+                } finally {
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+                }
+            };
+
+            const hasScreenshot = previewImg.style.display !== 'none' && previewImg.src;
+            if (hasScreenshot) {
+                eXeLearning.app.modals.confirm.show({
+                    title: _('Replace screenshot'),
+                    body: _('This will delete the current image. Do you want to continue?'),
+                    confirmButtonText: _('Continue'),
+                    cancelButtonText: _('Cancel'),
+                    confirmExec: doRegenerate,
+                });
+            } else {
+                await doRegenerate();
+            }
+        });
+
+        // Remove button
+        removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
+        removeBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">delete</span> ${_('Delete')}`;
+        if (!previewImg.src || previewImg.style.display === 'none') {
+            removeBtn.style.display = 'none';
+        }
+
+        removeBtn.addEventListener('click', () => {
+            eXeLearning.app.modals.confirm.show({
+                title: _('Delete screenshot'),
+                body: _('Delete the current image? This action cannot be undone.'),
+                confirmButtonText: _('Delete'),
+                cancelButtonText: _('Cancel'),
+                confirmExec: () => {
+                    updatePreview(null);
+                    const dm = this.properties.project?._yjsBridge?.getDocumentManager();
+                    if (dm) {
+                        dm.getMetadata().delete('screenshot');
+                    }
+                },
+            });
+        });
+
+        buttonsRow.append(fileInput);
+        buttonsRow.append(uploadBtn);
+        buttonsRow.append(regenerateBtn);
+        buttonsRow.append(removeBtn);
+
+        leftCol.append(previewCard);
+        leftCol.append(buttonsRow);
+
+        // --- Right column: info panel ---
+        const rightCol = document.createElement('div');
+        rightCol.classList.add('col-12', 'col-lg-5');
+
+        const infoAlert = document.createElement('div');
+        infoAlert.classList.add('alert', 'alert-light', 'd-flex');
+        infoAlert.id = 'screenshot-help-text';
+        infoAlert.setAttribute('role', 'note');
+        infoAlert.innerHTML = `
+            <div>
+                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
+                <p class="mb-2 small">
+                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
+                </p>
+                <p class="mb-0 small text-muted">
+                    ${_('The image will be used as a preview of this educational resource across different platforms.')}
+                </p>
+            </div>
+        `;
+
+        rightCol.append(infoAlert);
+
+        row.append(leftCol);
+        row.append(rightCol);
+        container.append(row);
+
+        pane.appendChild(container);
+    }
+
+    /**
+     * Resize image and convert to PNG data URL (max 1280x720)
+     */
+    resizeAndConvertToPng(img) {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxWidth = 1280;
+        const maxHeight = 720;
+        if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        return canvas.toDataURL('image/png');
+    }
+
+    /**
+     * Set screenshot in preview and Yjs metadata
+     */
+    setScreenshot(pngDataUrl) {
+        // Setting Yjs metadata triggers the observer which updates the UI
+        const dm = this.properties.project?._yjsBridge?.getDocumentManager();
+        if (dm) {
+            dm.getMetadata().set('screenshot', pngDataUrl);
+        }
+    }
+
+    /*******************************************************************************
      * BEHAVIOUR
      *******************************************************************************/
 
@@ -789,7 +1263,7 @@ export default class FormProperties {
             if (!element) continue;
             switch (property.type) {
                 case 'checkbox':
-                    element.checked = property.value == 'true' ? true : false;
+                    element.checked = this.isCheckedValue(property.value);
                     break;
                 case 'select': {
                     const select = element.querySelector(

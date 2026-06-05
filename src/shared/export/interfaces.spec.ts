@@ -371,7 +371,7 @@ describe('Export Constants', () => {
         });
 
         it('should have LOM namespaces', () => {
-            expect(LOM_NAMESPACES.lom).toContain('LOM');
+            expect(LOM_NAMESPACES.lom).toContain('imsmd');
         });
     });
 });

@@ -33,18 +33,18 @@ var $exeDevice = {
             '\
       <div id="websiteIdeviceForm">\
         <div id="websiteContainer">\
-          <label class="text1" for="websiteUrl">' +
+          <label class="wif_text1" for="websiteUrl">' +
             _('URL') +
             ': </label>\
           <input type="text" id="websiteUrl" />\
-          <p class="text2">' +
+          <p class="wif_text2">' +
             _(
                 'Remember that in HTTPS sites it is not possible to include HTTP pages'
             ) +
             '</p>\
         </div>\
         <div id="sizeSelectorContainer">\
-          <label class="text1" for="sizeSelector"> ' +
+          <label class="wif_text1" for="sizeSelector"> ' +
             _('Frame height:') +
             '</label>\
           <select id="sizeSelector">\

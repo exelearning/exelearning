@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="24px"
+   viewBox="0 -960 960 960"
+   width="24px"
+   fill="#df6069"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="number3_grey.svg"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="8"
+     inkscape:cx="17.5"
+     inkscape:cy="21.9375"
+     inkscape:window-width="1312"
+     inkscape:window-height="682"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1" />
+  <path
+     d="M360-280h160q33 0 56.5-23.5T600-360v-60q0-26-17-43t-43-17q26 0 43-17t17-43v-60q0-33-23.5-56.5T520-680H360v80h160v80h-80v80h80v80H360v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Z"
+     fill="#e0e0e0"
+     id="path1" />
+  <path
+     style="fill:#261314;stroke:#df6069;stroke-width:0.003125;stroke-linejoin:bevel"
+     d="M 9,16.007576 V 15.0625 h 2 2 V 14 12.9375 H 12 11 V 12 11.0625 h 1 1 V 10 8.9375 H 11 9 V 7.9924237 7.0473473 l 2.34375,0.038826 c 2.221804,0.036806 2.364986,0.053973 2.751886,0.3299311 0.535293,0.3817996 0.765417,0.8512846 0.859776,1.7540585 0.157645,1.5082741 -0.246975,2.5018351 -1.122026,2.7551751 -0.296062,0.08571 -0.327386,0.117458 -0.124227,0.125889 0.437851,0.01817 1.021667,0.601328 1.177975,1.176648 0.178986,0.658787 0.07286,2.182687 -0.187007,2.685207 -0.107995,0.20884 -0.380016,0.510706 -0.604491,0.670813 -0.3869,0.275959 -0.530082,0.293125 -2.751886,0.329931 L 9,16.952653 Z"
+     id="path2"
+     transform="matrix(40,0,0,40,0,-960)" />
+</svg>

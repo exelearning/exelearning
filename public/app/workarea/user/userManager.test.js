@@ -25,7 +25,8 @@ describe('UserManager', () => {
           postDeleteOdeFilesByDate: vi.fn().mockResolvedValue({}),
         },
         locale: {
-          setLocaleLang: vi.fn(),
+          setLocaleLang: vi.fn().mockResolvedValue(),
+          loadTranslationsStrings: vi.fn().mockResolvedValue(),
         }
       }
     };
@@ -99,9 +100,10 @@ describe('UserManager', () => {
   });
 
   describe('reloadLang', () => {
-    it('should call setLocaleLang', () => {
-      userManager.reloadLang('es');
+    it('should call setLocaleLang and loadTranslationsStrings', async () => {
+      await userManager.reloadLang('es');
       expect(globalThis.eXeLearning.app.locale.setLocaleLang).toHaveBeenCalledWith('es');
+      expect(globalThis.eXeLearning.app.locale.loadTranslationsStrings).toHaveBeenCalled();
     });
   });
 });

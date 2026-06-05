@@ -6,7 +6,7 @@
  * Yjs documents, IndexedDB asset cache, and fetch-based resource loading.
  *
  * Bundle this file for browser use:
- *   bun build src/shared/export/browser/index.ts --outfile public/app/yjs/exporters.bundle.js --target browser
+ *   bun run bundle:exporters (outputs to public/app/yjs/exporters.bundle.js)
  *
  * Usage in browser:
  * ```javascript
@@ -20,7 +20,6 @@ import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
 import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
-import { PreviewAssetResolver } from '../adapters/PreviewAssetResolver';
 
 // Import providers
 import { FflateZipProvider } from '../providers/FflateZipProvider';
@@ -33,11 +32,10 @@ import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
-import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
-import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
+import { PageElpxExporter } from '../exporters/PageElpxExporter';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -51,6 +49,7 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
+import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
 import type { ExportOptions } from '../interfaces';
@@ -114,7 +113,10 @@ function createNullResourceProvider() {
         fetchLibraryFiles: async () => new Map<string, Uint8Array>(),
         fetchLibraryDirectory: async () => new Map<string, Uint8Array>(),
         fetchSchemas: async () => new Map<string, Uint8Array>(),
+        fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+        fetchExeLogo: async () => null,
+        fetchGlobalFontFiles: async () => new Map<string, Uint8Array>(),
     };
 }
 
@@ -156,23 +158,36 @@ export function createExporter(
     }
 
     // Create adapters with null-safe wrappers
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
 
     // Create resource provider with null-safe fallback
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
+    // Create resource provider with null-safe fallback
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
 
     // Create asset provider with null-safe fallback
     // BrowserAssetProvider now supports both assetCache and assetManager
     // assetManager is preferred as it contains actual imported assets
-    const assets =
-        assetCache || assetManager
-            ? new BrowserAssetProvider(
-                  assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                  assetManager as Parameters<typeof BrowserAssetProvider>[1],
-              )
-            : createNullAssetProvider();
+    // Create asset provider with null-safe fallback
+    // BrowserAssetProvider now supports both assetCache and assetManager
+    // assetManager is preferred as it contains actual imported assets
+    let assets;
+    if (assetCache || assetManager) {
+        assets = new BrowserAssetProvider(
+            // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+            assetCache as any,
+            // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+            assetManager as any,
+        );
+    } else {
+        assets = createNullAssetProvider();
+    }
 
     const zip = new FflateZipProvider();
 
@@ -208,6 +223,10 @@ export function createExporter(
         case 'elp':
             return new ElpxExporter(document, resources, assets, zip);
 
+        case 'pageelpx':
+        case 'pageelp':
+            return new PageElpxExporter(document, resources, assets, zip);
+
         case 'component':
         case 'block':
         case 'idevice':
@@ -237,13 +256,197 @@ interface MermaidPreRendererHooks {
     ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
 }
 
+interface LatexDebugEntry {
+    step: string;
+    timestamp: number;
+    details?: Record<string, unknown>;
+}
+
+function pushLatexDebug(step: string, details?: Record<string, unknown>): void {
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as {
+        __latexExportDebug?: LatexDebugEntry[];
+    };
+    if (!w.__latexExportDebug) {
+        w.__latexExportDebug = [];
+    }
+    w.__latexExportDebug.push({
+        step,
+        timestamp: Date.now(),
+        details,
+    });
+}
+
+let latexPreRendererLoadPromise: Promise<boolean> | null = null;
+
+async function ensureLatexPreRendererLoaded(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const windowWithLatex = window as unknown as {
+        LatexPreRenderer?: {
+            preRender: (
+                html: string,
+            ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+            preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
+        };
+    };
+
+    if (windowWithLatex.LatexPreRenderer) {
+        pushLatexDebug('ensureLatexPreRendererLoaded.alreadyLoaded');
+        return true;
+    }
+
+    if (latexPreRendererLoadPromise) {
+        pushLatexDebug('ensureLatexPreRendererLoaded.awaitExistingPromise');
+        return latexPreRendererLoadPromise;
+    }
+
+    latexPreRendererLoadPromise = new Promise<boolean>(resolve => {
+        const existing = Array.from(document.querySelectorAll('script[src]')).find(script =>
+            script.getAttribute('src')?.includes('/app/common/LatexPreRenderer.js'),
+        ) as HTMLScriptElement | undefined;
+
+        if (existing) {
+            pushLatexDebug('ensureLatexPreRendererLoaded.foundExistingScript', {
+                src: existing.getAttribute('src') || '',
+            });
+            existing.addEventListener('load', () => resolve(!!windowWithLatex.LatexPreRenderer), { once: true });
+            existing.addEventListener('error', () => resolve(false), { once: true });
+            // If already loaded, resolve immediately.
+            if (windowWithLatex.LatexPreRenderer) {
+                resolve(true);
+            }
+            return;
+        }
+
+        const exportersScript = Array.from(document.querySelectorAll('script[src]')).find(script => {
+            const src = script.getAttribute('src') || '';
+            return src.includes('/app/yjs/exporters.bundle.js') || src.endsWith('exporters.bundle.js');
+        }) as HTMLScriptElement | undefined;
+
+        const exportersSrc = exportersScript?.getAttribute('src') || '';
+        const latexSrc = exportersSrc
+            ? exportersSrc.replace(/\/yjs\/exporters\.bundle\.js(\?.*)?$/, '/common/LatexPreRenderer.js')
+            : '/app/common/LatexPreRenderer.js';
+
+        const script = document.createElement('script');
+        script.src = latexSrc;
+        script.async = true;
+        script.onload = () => {
+            pushLatexDebug('ensureLatexPreRendererLoaded.injectedScriptLoaded', { src: latexSrc });
+            resolve(!!windowWithLatex.LatexPreRenderer);
+        };
+        script.onerror = () => {
+            pushLatexDebug('ensureLatexPreRendererLoaded.injectedScriptError', { src: latexSrc });
+            resolve(false);
+        };
+        pushLatexDebug('ensureLatexPreRendererLoaded.injectedScript', { src: latexSrc });
+        document.head.appendChild(script);
+    });
+
+    const loaded = await latexPreRendererLoadPromise;
+    pushLatexDebug('ensureLatexPreRendererLoaded.resolved', { loaded });
+    if (!loaded) {
+        latexPreRendererLoadPromise = null;
+    }
+    return loaded;
+}
+
 /**
  * Get LaTeX pre-renderer hooks if available in browser context
  * @returns Object with preRenderLatex and preRenderDataGameLatex, or undefined
  */
-function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
+async function ensureMathJaxForLatexPreRender(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const windowWithMath = window as unknown as {
+        MathJax?: { tex2svg?: unknown };
+        $exe?: {
+            math?: {
+                loadMathJax?: (cb?: () => void) => void;
+            };
+        };
+    };
+
+    if (typeof windowWithMath.MathJax?.tex2svg === 'function') {
+        pushLatexDebug('ensureMathJaxForLatexPreRender.alreadyReady');
+        return true;
+    }
+
+    const loadMathJax = windowWithMath.$exe?.math?.loadMathJax;
+    if (typeof loadMathJax !== 'function') {
+        const exportersScript = Array.from(document.querySelectorAll('script[src]')).find(script => {
+            const src = script.getAttribute('src') || '';
+            return src.includes('/app/yjs/exporters.bundle.js') || src.endsWith('exporters.bundle.js');
+        }) as HTMLScriptElement | undefined;
+
+        const exportersSrc = exportersScript?.getAttribute('src') || '';
+        const mathJaxSrc = exportersSrc
+            ? exportersSrc.replace(/\/yjs\/exporters\.bundle\.js(\?.*)?$/, '/common/exe_math/tex-mml-svg.js')
+            : '/app/common/exe_math/tex-mml-svg.js';
+
+        if (!document.querySelector(`script[src="${mathJaxSrc}"]`)) {
+            // Minimal config for pre-rendering context (export/preview generation).
+            windowWithMath.MathJax = windowWithMath.MathJax || {
+                tex: {
+                    inlineMath: [['\\(', '\\)']],
+                    displayMath: [
+                        ['$$', '$$'],
+                        ['\\[', '\\]'],
+                    ],
+                    processEscapes: true,
+                    tags: 'ams',
+                },
+            };
+
+            await new Promise<void>(resolve => {
+                const script = document.createElement('script');
+                script.src = mathJaxSrc;
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => resolve();
+                pushLatexDebug('ensureMathJaxForLatexPreRender.injectScript', { src: mathJaxSrc });
+                document.head.appendChild(script);
+            });
+        }
+    } else {
+        pushLatexDebug('ensureMathJaxForLatexPreRender.useLoadMathJax');
+        await new Promise<void>(resolve => {
+            try {
+                loadMathJax(() => resolve());
+            } catch {
+                resolve();
+            }
+        });
+    }
+
+    // Wait briefly for tex2svg to become available after script load.
+    const maxWaitMs = 5000;
+    const intervalMs = 50;
+    let elapsed = 0;
+    while (elapsed < maxWaitMs) {
+        if (typeof windowWithMath.MathJax?.tex2svg === 'function') {
+            pushLatexDebug('ensureMathJaxForLatexPreRender.readyAfterWait', { elapsed });
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        elapsed += intervalMs;
+    }
+
+    pushLatexDebug('ensureMathJaxForLatexPreRender.failed');
+    return false;
+}
+
+async function getLatexPreRendererHooks(): Promise<LatexPreRendererHooks | undefined> {
     if (typeof window === 'undefined') return undefined;
 
+    const latexRendererReady = await ensureLatexPreRendererLoaded();
+    if (!latexRendererReady) {
+        pushLatexDebug('getLatexPreRendererHooks.rendererNotReady');
+        return undefined;
+    }
+
+    pushLatexDebug('getLatexPreRendererHooks.rendererReady');
     const windowLatexPreRenderer = (
         window as unknown as {
             LatexPreRenderer?: {
@@ -254,16 +457,32 @@ function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
             };
         }
     ).LatexPreRenderer;
-    const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
-
-    if (windowLatexPreRenderer && windowMathJax) {
-        return {
-            preRenderLatex: windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer),
-            preRenderDataGameLatex: windowLatexPreRenderer.preRenderDataGameLatex.bind(windowLatexPreRenderer),
-        };
+    if (!windowLatexPreRenderer) {
+        return undefined;
     }
 
-    return undefined;
+    return {
+        preRenderLatex: async (html: string) => {
+            const mathReady = await ensureMathJaxForLatexPreRender();
+            const result = await windowLatexPreRenderer.preRender(html);
+            pushLatexDebug('preRenderLatex.called', {
+                mathReady,
+                hasLatex: result.hasLatex,
+                latexRendered: result.latexRendered,
+                count: result.count,
+            });
+            return result;
+        },
+        preRenderDataGameLatex: async (html: string) => {
+            const mathReady = await ensureMathJaxForLatexPreRender();
+            const result = await windowLatexPreRenderer.preRenderDataGameLatex(html);
+            pushLatexDebug('preRenderDataGameLatex.called', {
+                mathReady,
+                count: result.count,
+            });
+            return result;
+        },
+    };
 }
 
 /**
@@ -320,7 +539,7 @@ export async function quickExport(
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
     const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
@@ -351,7 +570,7 @@ export async function exportAndDownload(
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
     const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
@@ -367,7 +586,8 @@ export async function exportAndDownload(
     const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
-    const blob = new Blob([result.data], { type: 'application/zip' });
+    // biome-ignore lint/suspicious/noExplicitAny: legacy blob data compatibility
+    const blob = new Blob([result.data as any], { type: 'application/zip' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -381,143 +601,65 @@ export async function exportAndDownload(
 }
 
 /**
- * Generate preview HTML from Yjs document
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
- * @param options - Preview options (baseUrl, basePath, version)
- * @returns Preview result with HTML string
- */
-export async function generatePreview(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-    options?: PreviewOptions,
-): Promise<PreviewResult> {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    const exporter = new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
-
-    // Wire up LaTeX pre-renderer hooks if available in browser context
-    // LatexPreRenderer uses DOM parsing to find LaTeX expressions in text nodes
-    // and renders them individually to SVG+MathML using MathJax.
-    // preRenderDataGameLatex handles LaTeX inside encrypted game iDevice data.
-    // This allows exports to skip bundling MathJax (~1MB)
-    const latexHooks = getLatexPreRendererHooks();
-    // Wire up Mermaid pre-renderer hooks if available in browser context
-    // MermaidPreRenderer converts <pre class="mermaid"> to static SVG
-    // This allows exports to skip bundling Mermaid (~2.7MB)
-    const mermaidHooks = getMermaidPreRendererHooks();
-
-    options = {
-        ...options,
-        ...latexHooks,
-        ...mermaidHooks,
-    };
-
-    return exporter.generatePreview(options);
-}
-
-/**
- * Generate preview HTML and open in a new window
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional)
- * @param options - Preview options
- * @returns The opened window reference, or null if failed
- */
-export async function openPreviewWindow(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-    options?: PreviewOptions,
-): Promise<Window | null> {
-    const result = await generatePreview(documentManager, resourceFetcher, options);
-
-    if (!result.success || !result.html) {
-        console.error('[SharedExporters] Preview generation failed:', result.error);
-        return null;
-    }
-
-    // Resolve asset:// URLs to blob:// URLs before opening the preview
-    // The HTML contains asset:// URLs that need to be converted to blob:// for display
-    let html = result.html;
-
-    // Use global resolveAssetUrlsAsync if available (from AssetManager.js)
-    const resolveAssetUrlsAsync = (window as unknown as { resolveAssetUrlsAsync?: (html: string) => Promise<string> })
-        .resolveAssetUrlsAsync;
-    if (typeof resolveAssetUrlsAsync === 'function') {
-        try {
-            html = await resolveAssetUrlsAsync(html);
-        } catch (error) {
-            console.warn('[SharedExporters] Failed to resolve asset URLs:', error);
-        }
-    }
-
-    // Open new window and write HTML
-    const previewWindow = window.open('', '_blank');
-    if (!previewWindow) {
-        console.error('[SharedExporters] Could not open preview window (popup blocked?)');
-        return null;
-    }
-
-    previewWindow.document.open();
-    previewWindow.document.write(html);
-    previewWindow.document.close();
-
-    return previewWindow;
-}
-
-/**
- * Create a preview exporter for advanced usage
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional)
- * @returns WebsitePreviewExporter instance
- */
-export function createPreviewExporter(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-): WebsitePreviewExporter {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    return new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
-}
-
-/**
  * Generate print preview HTML from Yjs document
  * Creates a single-page HTML with all pages visible for printing
  *
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
  * @param options - Preview options (baseUrl, basePath, version)
+ * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
  * @returns Preview result with HTML string
  */
 export async function generatePrintPreview(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
     options?: PrintPreviewOptions,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): Promise<PrintPreviewResult> {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    const exporter = new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        // Determine if it's the new Manager or old Cache based on property check
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    const exporter = new PrintPreviewExporter(
+        document,
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource provider compatibility
+        resources as any,
+        assets,
+    );
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
 
-    options = {
+    const previewOptions = {
         ...options,
         ...latexHooks,
         ...mermaidHooks,
     };
 
-    return exporter.generatePreview(options);
+    return exporter.generatePreview(previewOptions);
 }
 
 /**
@@ -525,17 +667,140 @@ export async function generatePrintPreview(
  *
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (optional)
  * @returns PrintPreviewExporter instance
  */
 export function createPrintPreviewExporter(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): PrintPreviewExporter {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    return new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    return new PrintPreviewExporter(
+        document,
+        // biome-ignore lint/suspicious/noExplicitAny: resource provider compatibility
+        resources as any,
+        assets,
+    );
+}
+
+/**
+ * Preview files result for Service Worker-based preview
+ */
+export interface PreviewFilesResult {
+    success: boolean;
+    files?: Record<string, ArrayBuffer>;
+    error?: string;
+}
+
+/**
+ * Generate preview files for Service Worker-based preview
+ *
+ * Uses Html5Exporter to generate the same files as HTML export,
+ * enabling unified preview/export rendering via the eXeViewer approach.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param options - Export options (theme override, etc.)
+ * @returns Preview files result with file map
+ */
+export async function generatePreviewForSW(
+    documentManager: YjsDocumentManagerLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | null,
+    options?: ExportOptions,
+): Promise<PreviewFilesResult> {
+    try {
+        // Validate required dependencies
+        if (!documentManager) {
+            throw new Error('[SharedExporters] documentManager is required for preview');
+        }
+
+        // Create adapters with null-safe wrappers
+        // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+        const document = new YjsDocumentAdapter(documentManager as any);
+
+        // Create resource provider with null-safe fallback
+        // Create resource provider with null-safe fallback
+        let resources;
+        if (resourceFetcher) {
+            // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+            resources = new BrowserResourceProvider(resourceFetcher as any);
+        } else {
+            resources = createNullResourceProvider();
+        }
+
+        // Create asset provider with null-safe fallback
+        // Create asset provider with null-safe fallback
+        let assets;
+        if (assetCache || assetManager) {
+            assets = new BrowserAssetProvider(
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+                assetCache as any,
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+                assetManager as any,
+            );
+        } else {
+            assets = createNullAssetProvider();
+        }
+
+        // Create a null zip provider (not needed for preview files)
+        const zip = new FflateZipProvider();
+
+        // Create Html5Exporter
+        const exporter = new Html5Exporter(document, resources, assets, zip);
+
+        // Wire up LaTeX pre-renderer hooks if available in browser context
+        const latexHooks = await getLatexPreRendererHooks();
+        // Wire up Mermaid pre-renderer hooks if available in browser context
+        const mermaidHooks = getMermaidPreRendererHooks();
+        const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
+
+        // Generate preview files (Map<string, ArrayBuffer>)
+        const filesMap = await exporter.generateForPreview(exportOptions);
+
+        // Preserve exporter-owned ArrayBuffers to avoid a second full copy before SW transfer.
+        const files = Object.fromEntries(filesMap) as Record<string, ArrayBuffer>;
+
+        console.log(`[SharedExporters] Generated ${Object.keys(files).length} preview files for SW`);
+
+        return {
+            success: true,
+            files,
+        };
+    } catch (error) {
+        console.error('[SharedExporters] generatePreviewForSW failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
 }
 
 // Export classes for advanced usage
@@ -545,7 +810,6 @@ export {
     BrowserResourceProvider,
     BrowserAssetProvider,
     ExportAssetResolver,
-    PreviewAssetResolver,
     // Providers
     FflateZipProvider,
     // Exporters
@@ -556,9 +820,9 @@ export {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
-    WebsitePreviewExporter,
     PrintPreviewExporter,
     ComponentExporter,
+    PageElpxExporter,
     // Renderers
     IdeviceRenderer,
     PageRenderer,
@@ -572,7 +836,6 @@ export {
 };
 
 // Export types for TypeScript consumers
-export type { PreviewOptions, PreviewResult };
 export type { PrintPreviewOptions, PrintPreviewResult };
 
 // Expose to window for browser use
@@ -582,10 +845,8 @@ if (typeof window !== 'undefined') {
         createExporter,
         quickExport,
         exportAndDownload,
-        // Preview functions
-        generatePreview,
-        openPreviewWindow,
-        createPreviewExporter,
+        // SW-based preview functions
+        generatePreviewForSW,
         // Print preview functions
         generatePrintPreview,
         createPrintPreviewExporter,
@@ -594,7 +855,6 @@ if (typeof window !== 'undefined') {
         BrowserResourceProvider,
         BrowserAssetProvider,
         ExportAssetResolver,
-        PreviewAssetResolver,
         // Providers
         FflateZipProvider,
         // Exporters
@@ -605,9 +865,9 @@ if (typeof window !== 'undefined') {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
-        WebsitePreviewExporter,
         PrintPreviewExporter,
         ComponentExporter,
+        PageElpxExporter,
         // Renderers
         IdeviceRenderer,
         PageRenderer,
@@ -632,6 +892,10 @@ if (typeof window !== 'undefined') {
     // Also expose createExporter at window level for compatibility
     (window as unknown as { createSharedExporter: typeof createExporter }).createSharedExporter = createExporter;
     (window as unknown as { createExporter: typeof createExporter }).createExporter = createExporter;
+
+    // Expose ElpxExporter at window level for legacy compatibility
+    // This ensures the shared TypeScript ElpxExporter is used instead of the fallback in public/app/yjs/ElpxExporter.js
+    (window as unknown as { ElpxExporter: typeof ElpxExporter }).ElpxExporter = ElpxExporter;
 
     console.log('[SharedExporters] Browser export system loaded');
 }

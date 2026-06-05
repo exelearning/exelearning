@@ -105,14 +105,12 @@ var $casestudy = {
                     ${
                         hasFeedback
                             ? `
-                    <div class="iDevice_buttons feedback-button">
-                        <button type="button" class="CSP-FeedbackBtn feedbacktooglebutton">
-                            ${button}
-                        </button>
+                    <div class="iDevice_buttons feedback-button js-required">
+                        <input type="button" class="CSP-FeedbackBtn feedbacktooglebutton" value="${button}">
                     </div>`
                             : ''
                     }
-                    <div class="CSP-FeedbackText" style="display: none;">
+                    <div class="CSP-FeedbackText feedback js-feedback js-hidden" style="display: none;">
                         ${feedback}
                     </div>
                 </div>
@@ -135,10 +133,19 @@ var $casestudy = {
     },
 
     addEvents: function (data) {
+        $(`.CSP-FeedbackBtn`).each(function () {
+            const $btn = $(this);
+            if ($btn.attr('data-text-a')) return;
+            const [textA, textB = textA] = $btn.val().split('|');
+            $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
+        });
         $(`.CSP-Activities`).off('click', '.CSP-FeedbackBtn');
         $(`.CSP-Activities`).on('click', '.CSP-FeedbackBtn', function () {
-            const $activityDiv = $(this).closest('.CSP-ActivityDiv');
+            const $btn = $(this);
+            const $activityDiv = $btn.closest('.CSP-ActivityDiv');
             const $fb = $activityDiv.find('.CSP-FeedbackText');
+            const isVisible = $fb.is(':visible');
+            $btn.val(isVisible ? $btn.attr('data-text-a') : $btn.attr('data-text-b'));
             $fb.slideToggle(200, function () {
                 $exeDevices.iDevice.gamification.math.updateLatex(
                     '.CSP-FeedbackText'

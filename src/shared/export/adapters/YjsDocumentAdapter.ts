@@ -25,8 +25,18 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 
-import { buildFromStructure } from '../../../services/xml/xml-builder';
-import type { NormalizedPage, OdeXmlMeta, NormalizedComponent } from '../../../services/xml/interfaces';
+import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { getLicenseUrl } from '../constants';
+
+// Declare the global eXeLearning object for browser context
+declare global {
+    interface Window {
+        eXeLearning?: {
+            version?: string;
+            [key: string]: unknown;
+        };
+    }
+}
 
 /**
  * Type definitions for Yjs structures used by YjsDocumentManager
@@ -74,13 +84,18 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         return {
             title: (meta.get('title') as string) || 'eXeLearning',
+            subtitle: (meta.get('subtitle') as string) || '',
             author: (meta.get('author') as string) || '',
             description: (meta.get('description') as string) || '',
             language: (meta.get('language') as string) || 'en',
             license: (meta.get('license') as string) || '',
+            licenseUrl: getLicenseUrl((meta.get('license') as string) || ''),
             keywords: (meta.get('keywords') as string) || '',
             theme: (meta.get('theme') as string) || 'base',
-            exelearningVersion: (meta.get('exelearning_version') as string) || undefined,
+            exelearningVersion:
+                (meta.get('exelearning_version') as string) ||
+                (typeof window !== 'undefined' ? window.eXeLearning?.version : undefined) ||
+                (typeof process !== 'undefined' ? process.env?.APP_VERSION : undefined),
             createdAt: (meta.get('createdAt') as string) || new Date().toISOString(),
             modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
@@ -93,10 +108,20 @@ export class YjsDocumentAdapter implements ExportDocument {
             addAccessibilityToolbar: this.parseBoolean(meta.get('addAccessibilityToolbar'), false),
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
+            globalFont: (meta.get('globalFont') as string) || 'default',
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
             footer: (meta.get('footer') as string) || undefined,
+
+            // Project screenshot/thumbnail
+            screenshot: (meta.get('screenshot') as string) || undefined,
+
+            // Stable identifiers (#1784, #1785) -- preserved across import/export so
+            // that content.xml diffs stay clean and LMS tracking survives SCORM re-uploads.
+            odeIdentifier: (meta.get('odeIdentifier') as string) || undefined,
+            odeVersionId: (meta.get('odeVersionId') as string) || undefined,
+            scormIdentifier: (meta.get('scormIdentifier') as string) || undefined,
         };
     }
 
@@ -149,8 +174,10 @@ export class YjsDocumentAdapter implements ExportDocument {
     private sortPagesHierarchically(pages: ExportPage[]): ExportPage[] {
         // Build children map: parentId -> children[]
         const childrenMap = new Map<string | null, ExportPage[]>();
+        const pageIds = new Set<string>();
 
         for (const page of pages) {
+            pageIds.add(page.id);
             const parentId = page.parentId;
             if (!childrenMap.has(parentId)) {
                 childrenMap.set(parentId, []);
@@ -165,17 +192,58 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         // Build result in reading order using DFS
         const result: ExportPage[] = [];
+        const visited = new Set<string>();
+        const recursionStack = new Set<string>();
 
-        const addPageAndChildren = (parentId: string | null): void => {
+        const addPageAndChildren = (parentId: string | null, path: string[] = []): void => {
             const children = childrenMap.get(parentId) || [];
             for (const child of children) {
+                // Avoid duplicate visits from malformed structures
+                if (visited.has(child.id)) {
+                    continue;
+                }
+
+                // Detect cyclic parent-child references and skip problematic branch
+                if (recursionStack.has(child.id)) {
+                    console.warn(
+                        `[YjsDocumentAdapter] Detected cycle in page hierarchy: ${[...path, child.id].join(' -> ')}`,
+                    );
+                    continue;
+                }
+
+                recursionStack.add(child.id);
                 result.push(child);
-                addPageAndChildren(child.id);
+                visited.add(child.id);
+                addPageAndChildren(child.id, [...path, child.id]);
+                recursionStack.delete(child.id);
             }
         };
 
         // Start with root pages (parentId = null)
         addPageAndChildren(null);
+
+        // Include pages that were unreachable from root (orphaned/cyclic structures)
+        for (const page of pages) {
+            if (visited.has(page.id)) {
+                continue;
+            }
+
+            if (!page.parentId || !pageIds.has(page.parentId)) {
+                console.warn(
+                    `[YjsDocumentAdapter] Found orphan page "${page.id}" (parentId: ${String(page.parentId)}), adding as root`,
+                );
+                addPageAndChildren(page.parentId ?? null, [page.id]);
+                if (!visited.has(page.id)) {
+                    result.push(page);
+                    visited.add(page.id);
+                }
+                continue;
+            }
+
+            console.warn(`[YjsDocumentAdapter] Found unreachable page "${page.id}", adding directly`);
+            result.push(page);
+            visited.add(page.id);
+        }
 
         return result;
     }
@@ -229,7 +297,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             components.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
 
-        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, allowToggle)
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, allowToggle)
         const propsMap = blockMap.get('properties') as YMap | undefined;
         const rawProps: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
 
@@ -239,7 +307,6 @@ export class YjsDocumentAdapter implements ExportDocument {
             teacherOnly: rawProps.teacherOnly as string | undefined,
             allowToggle: rawProps.allowToggle as string | undefined,
             minimized: rawProps.minimized as string | undefined,
-            identifier: rawProps.identifier as string | undefined,
             cssClass: rawProps.cssClass as string | undefined,
         };
 
@@ -300,7 +367,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             }
         }
 
-        // Get structure properties (visibility, teacherOnly, identifier, cssClass)
+        // Get structure properties (visibility, teacherOnly, cssClass)
         // These are stored in the component's 'properties' Y.Map
         const structPropsMap = compMap.get('properties') as YMap | undefined;
         const rawStructProps: Record<string, unknown> = structPropsMap ? structPropsMap.toJSON() : {};
@@ -308,7 +375,6 @@ export class YjsDocumentAdapter implements ExportDocument {
         const structureProperties: ExportComponentProperties = {
             visibility: rawStructProps.visibility as string | undefined,
             teacherOnly: rawStructProps.teacherOnly as string | undefined,
-            identifier: rawStructProps.identifier as string | undefined,
             cssClass: rawStructProps.cssClass as string | undefined,
         };
 
@@ -367,119 +433,13 @@ export class YjsDocumentAdapter implements ExportDocument {
     /**
      * Generate content.xml from Yjs document structure
      * This enables SCORM exports to include the ODE XML for re-editing
-     * @returns ODE-format XML string
+     * @returns ODE-format XML string with DOCTYPE declaration
      */
     async getContentXml(): Promise<string> {
         const metadata = this.getMetadata();
         const pages = this.getNavigation();
 
-        // Convert ExportMetadata → OdeXmlMeta
-        const meta: OdeXmlMeta = {
-            title: metadata.title,
-            author: metadata.author,
-            description: metadata.description || '',
-            language: metadata.language,
-            license: metadata.license || '',
-            keywords: metadata.keywords || '',
-            theme: metadata.theme || 'base',
-            version: '3.0',
-            exelearning_version: metadata.exelearningVersion || '3.0',
-            created: metadata.createdAt || new Date().toISOString(),
-            modified: new Date().toISOString(),
-            // Export options
-            addExeLink: metadata.addExeLink,
-            addPagination: metadata.addPagination,
-            addSearchBox: metadata.addSearchBox,
-            addAccessibilityToolbar: metadata.addAccessibilityToolbar,
-            addMathJax: metadata.addMathJax,
-            exportSource: metadata.exportSource,
-            // Custom content
-            extraHeadContent: metadata.extraHeadContent,
-            footer: metadata.footer,
-        };
-
-        // Calculate page levels from parent hierarchy
-        const pageLevels = this.calculatePageLevels(pages);
-
-        // Convert ExportPage[] → NormalizedPage[]
-        const normalizedPages: NormalizedPage[] = pages.map((page, idx) => ({
-            id: page.id,
-            title: page.title,
-            level: pageLevels.get(page.id) || 0,
-            parent_id: page.parentId,
-            position: page.order ?? idx,
-            components: this.flattenBlocksToComponents(page.blocks),
-        }));
-
-        // Build ODE XML using existing builder
-        return buildFromStructure({
-            meta,
-            pages: normalizedPages,
-            navigation: { page: [] },
-            raw: { ode: {} },
-        });
-    }
-
-    /**
-     * Calculate page levels based on parent hierarchy
-     */
-    private calculatePageLevels(pages: ExportPage[]): Map<string, number> {
-        const levels = new Map<string, number>();
-        const pageMap = new Map<string, ExportPage>();
-
-        // Build page map
-        for (const page of pages) {
-            pageMap.set(page.id, page);
-        }
-
-        // Calculate level for each page
-        const getLevel = (pageId: string): number => {
-            if (levels.has(pageId)) {
-                return levels.get(pageId)!;
-            }
-
-            const page = pageMap.get(pageId);
-            if (!page || !page.parentId) {
-                levels.set(pageId, 0);
-                return 0;
-            }
-
-            const parentLevel = getLevel(page.parentId);
-            const level = parentLevel + 1;
-            levels.set(pageId, level);
-            return level;
-        };
-
-        for (const page of pages) {
-            getLevel(page.id);
-        }
-
-        return levels;
-    }
-
-    /**
-     * Flatten blocks and their components into NormalizedComponent array
-     */
-    private flattenBlocksToComponents(blocks: ExportBlock[]): NormalizedComponent[] {
-        const components: NormalizedComponent[] = [];
-
-        for (const block of blocks) {
-            for (const comp of block.components) {
-                components.push({
-                    id: comp.id,
-                    type: comp.type,
-                    content: comp.content,
-                    order: comp.order,
-                    blockId: block.id,
-                    blockName: block.name,
-                    blockIconName: block.iconName,
-                    blockProperties: block.properties as Record<string, string | number | boolean | null>,
-                    properties: comp.structureProperties as Record<string, string | number | boolean | null>,
-                    data: comp.properties,
-                });
-            }
-        }
-
-        return components;
+        // Use unified ODE XML generator
+        return generateOdeXml(metadata, pages);
     }
 }

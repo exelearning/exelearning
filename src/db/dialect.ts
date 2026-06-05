@@ -22,10 +22,19 @@ const defaultIsBun = typeof (globalThis as any).Bun !== 'undefined';
 
 export interface DialectDependencies {
     isBun: boolean;
+    /** Platform identifier (e.g., 'darwin', 'linux', 'win32') */
+    platform: NodeJS.Platform;
+    /** Check if a path exists */
+    existsSync: typeof existsSync;
+    /** Create a directory */
+    mkdirSync: typeof mkdirSync;
 }
 
 const defaultDeps: DialectDependencies = {
     isBun: defaultIsBun,
+    platform: process.platform,
+    existsSync,
+    mkdirSync,
 };
 
 let deps = { ...defaultDeps };
@@ -202,8 +211,30 @@ function createSqliteDialect(dbPath: string): Dialect {
     // Ensure directory exists (only for file-based)
     if (dbPath !== ':memory:') {
         const dir = dirname(fullPath);
-        if (!existsSync(dir)) {
-            mkdirSync(dir, { recursive: true });
+
+        // Check if we're trying to use a Docker-style path on non-Linux
+        // Common Docker paths: /mnt/data/, /var/lib/, /app/data/
+        if (fullPath.startsWith('/mnt/') && deps.platform !== 'linux') {
+            throw new Error(
+                `DB_PATH "${dbPath}" appears to be a Docker/Linux path but you're running on ${deps.platform}.\n` +
+                    'For local development, set DB_PATH in your .env file to a local path:\n' +
+                    '  DB_PATH=data/exelearning.db\n\n' +
+                    'Or use the Makefile which sets correct paths automatically:\n' +
+                    '  make create-user EMAIL=x PASSWORD=y',
+            );
+        }
+
+        if (!deps.existsSync(dir)) {
+            try {
+                deps.mkdirSync(dir, { recursive: true });
+            } catch (err) {
+                const errMsg = err instanceof Error ? err.message : String(err);
+                throw new Error(
+                    `Failed to create database directory "${dir}": ${errMsg}\n\n` +
+                        'Please ensure DB_PATH is set to a writable location in your .env file.\n' +
+                        'For local development, use: DB_PATH=data/exelearning.db',
+                );
+            }
         }
     }
 

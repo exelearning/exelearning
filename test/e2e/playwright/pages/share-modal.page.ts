@@ -76,6 +76,7 @@ export class ShareModalPage {
                 const input = document.querySelector('#share-link-input') as HTMLInputElement;
                 return input?.value && input.value.length > 0;
             },
+            undefined,
             { timeout: 10000 },
         );
     }

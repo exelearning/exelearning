@@ -1,7 +1,28 @@
 // Effects Plugin for eXeLearning
 // By Ignacio Gros (http://www.gros.es/) for eXeLearning (http://exelearning.net/)
 // Creative Commons Attribution-ShareAlike (http://creativecommons.org/licenses/by-sa/3.0/)
-if (typeof ($exeFX_i18n) == 'undefined') $exeFX_i18n = { previous: "Previous", next: "Next", show: "Show", hide: "Hide", showFeedback: "Show Feedback", hideFeedback: "Hide Feedback", correct: "Correct", incorrect: "Incorrect", menu: "Menu", download: "Download", yourScoreIs: "Your score is ", dataError: "Error recovering data", epubJSerror: "This might not work in this ePub reader.", solution: "Solution", epubDisabled: "This activity does not work in ePub.", print: "Print" }
+
+// Use $exe_i18n (from common_i18n.js) as fallback for legacy $exeFX_i18n
+if (typeof $exeFX_i18n === 'undefined') {
+    $exeFX_i18n = (typeof $exe_i18n !== 'undefined') ? $exe_i18n : {
+        previous: "Previous",
+        next: "Next",
+        show: "Show",
+        hide: "Hide",
+        showFeedback: "Show Feedback",
+        hideFeedback: "Hide Feedback",
+        correct: "Correct",
+        incorrect: "Incorrect",
+        menu: "Menu",
+        download: "Download",
+        yourScoreIs: "Your score is ",
+        dataError: "Error recovering data",
+        epubJSerror: "This might not work in this ePub reader.",
+        solution: "Solution",
+        epubDisabled: "This activity does not work in ePub.",
+        print: "Print"
+    };
+}
 
 $exeFX = {
   baseClass: "exe",
@@ -600,10 +621,7 @@ $exeFX = {
         prevA.className = "fx-disabled-link";
         // Next
         nextLi.removeClass("fx-disabled");
-        nextA.onclick = function () {
-          $exeFX.carousel.show(gID, gID + "-1", 1);
-          return false;
-        }
+        nextA.className = "exeFXSlideLink" + gID + "_" + gID + "-1_1";
       } else {
         // Prev
         prevLi.removeClass("fx-disabled");

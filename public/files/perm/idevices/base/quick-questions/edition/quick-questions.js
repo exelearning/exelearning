@@ -59,6 +59,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initQuestions();
 
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
@@ -121,7 +124,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgVideoIntro: c_('Video Intro'),
             msgClose: c_('Close'),
@@ -178,9 +181,6 @@ var $exeDevice = {
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -708,10 +708,10 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
         if (p.type !== 2 && p.audio.trim().length > 4)
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
 
         $('#quextEURLAudio').val(p.audio);
         $('#quextENumberQuestion').val(i + 1);
@@ -968,10 +968,10 @@ var $exeDevice = {
         let path = $exeDevice.idevicePath,
             html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which students see a video, image or text and they have to choose the right answer.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which students see a video, image or text and they have to choose the right answer.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/test.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -1098,21 +1098,8 @@ var $exeDevice = {
                                 <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">                                
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="quextEEvaluation" class="toggle-input"/>
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label for="quextEEvaluation" class="toggle-label">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap ">
-                                    <label for="quextEEvaluationID" class="sr-av">${_('Identifier')}</label>
-                                    <input type="text" id="quextEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                </div>
-                                <strong class="GameModeLabel"><a href="#quextEEvaluationHelp" id="quextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="quextEEvaluationHelp" class="QXTE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1251,7 +1238,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="quextETitleAudio">${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="quextEInputAudio">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="quextEInputAudio" data-voice-recorder data-voice-input="#quextEURLAudio">
                                         <label class="sr-av" for="quextEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker w-100 form-control  me-0" id="quextEURLAudio"/>
                                         <a href="#" id="quextEPlayAudio" class="QXTE-ENavigationButton " title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="QXTE-ENavigationButton " /></a>
@@ -1598,9 +1585,10 @@ var $exeDevice = {
         );
         $('#quextECustomMessages').prop('checked', game.customMessages);
         $('#quextEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#quextEEvaluation').prop('checked', game.evaluation);
-        $('#quextEEvaluationID').val(game.evaluationID);
-        $('#quextEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#quextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
@@ -1756,7 +1744,7 @@ var $exeDevice = {
         p.url = $('#quextEURLImage').val().trim();
         p.audio = $('#quextEURLAudio').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
@@ -1885,21 +1873,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('test')}.txt`;
-
-        document.getElementById('gameQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('gameQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('test')}.txt`,
+            'gameQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questions) {
@@ -2159,14 +2137,15 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#quextEPercentajeQuestions').val())
             ),
-            evaluation = $('#quextEEvaluation').is(':checked'),
-            evaluationID = $('#quextEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
             globalTime = parseInt($('#quextEGlobalTimes').val(), 10),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -2174,10 +2153,6 @@ var $exeDevice = {
         }
         if (showSolution && timeShowSolution.toString().length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         for (let i = 0; i < questionsGame.length; i++) {
@@ -2262,8 +2237,8 @@ var $exeDevice = {
             version: 2,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             globalTime: globalTime,
             id: id,
         };
@@ -2654,8 +2629,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#quextEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2666,8 +2640,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2732,15 +2705,7 @@ var $exeDevice = {
             }
         });
 
-        $('#quextEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#quextEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#quextEEvaluationHelpLnk').on('click', function () {
-            $('#quextEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

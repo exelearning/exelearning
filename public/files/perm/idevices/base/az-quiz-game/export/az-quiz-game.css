@@ -386,31 +386,31 @@
 .rosco-EdReply {
     max-width: 300px;
     width: 60%;
-    margin: 0 0.3em;
+    margin: 0 0.5em;
     text-align: center;
 }
 
 .rosco-GameContainer .exeQuextIcons-MoveOne,
 .rosco-GameContainer .exeQuextIcons-Submit {
-    width: 1.7em;
-    height: 1.7em;
+    width: 2em;
+    height: 2em;
 }
 
 .rosco-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: cover;
     cursor: pointer;
 }
 
 .rosco-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: cover;
     cursor: pointer;
 }
 
 .rosco-GameContainer input[type="text"],
 input.rosco-EdReply {
-    margin: 0 .3em;
+    margin: 0 0.5em;
     padding: 0.4em 0.25em;
 }
 
@@ -447,7 +447,7 @@ input.rosco-EdReply {
 }
 
 .rosco-Cubierta .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     width: 1.7em;
@@ -702,7 +702,7 @@ a.rosco-WordsClose:hover {
 .rosco-GameContainer .exeQuextIcons {
     width: 1.6em;
     height: 1.6em;
-    margin-right: 0.2em;
+    margin-right: 0.35em;
 }
 
 .exeQuextIcons-Minimize {
@@ -741,22 +741,22 @@ a.rosco-WordsClose:hover {
 }
 
 .exeQuextIcons-RoscoRows {
-    background: url(exequextrosco.png) no-repeat;
+    background: url(exequextrosco.svg) no-repeat;
     background-size: cover
 }
 
 .exeQuextIcons-RoscoCanvas {
-    background: url(exequextroscorows.png) no-repeat;
+    background: url(exequextroscorows.svg) no-repeat;
     background-size: cover
 }
 
 .exeQuextIcons-OneRound {
-    background: url(exequextone.png);
+    background: url(exequextone.svg);
     background-size: cover;
 }
 
 .exeQuextIcons-TwoRounds {
-    background: url(exequexttwo.png) no-repeat;
+    background: url(exequexttwo.svg) no-repeat;
     background-size: cover;
 }
 
@@ -940,6 +940,9 @@ a.rosco-WordsClose:hover {
     }
    .rosco-MessageCodeAccessE {
         font-size: 1em;
+    }
+    .rosco-GameContainer .exeQuextIcons {
+        margin-right: 0.2em;
     }
 }
 

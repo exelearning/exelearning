@@ -100,11 +100,19 @@ class ComponentImporter {
       blockData.id = newBlockId;
       blockData.blockId = newBlockId;
 
-      // Generate new IDs for components
+      // Generate new IDs for components. When jsonProperties carries an
+      // embedded ideviceId (text/quiz iDevices store it for self-reference),
+      // rewrite it to the fresh id so the Y.Map field and the JSON payload
+      // stay in sync. See #1786.
       for (const comp of blockData.components) {
+        const originalCompId = comp.id;
         const newCompId = this.generateId('idevice');
         comp.id = newCompId;
         comp.ideviceId = newCompId;
+        if (originalCompId && comp.properties && typeof comp.properties === 'object'
+            && comp.properties.ideviceId === originalCompId) {
+          comp.properties.ideviceId = newCompId;
+        }
       }
 
       // Insert block into target page
@@ -137,7 +145,7 @@ class ComponentImporter {
             break;
           }
         }
-      });
+      }, ydoc.clientID);
 
       Logger.log(`[ComponentImporter] Import complete: ${newBlockId}`);
       return { success: true, blockId: newBlockId };
@@ -260,12 +268,13 @@ class ComponentImporter {
       }
     }
 
-    // Convert asset URLs in HTML content
+    // Convert {{context_path}} URLs to asset:// URLs (same as ELPX import)
+    // This is used when importing components exported with the new flat UUID format
     if (this.assetManager && this.assetMap.size > 0 && htmlView) {
-      htmlView = this.convertAssetPaths(htmlView);
+      htmlView = this.assetManager.convertContextPathToAssetRefs(htmlView, this.assetMap);
     }
 
-    // Convert asset URLs in properties
+    // Convert {{context_path}} in properties too
     if (this.assetManager && this.assetMap.size > 0 && properties) {
       properties = this.convertAssetPathsInObject(properties);
     }
@@ -284,19 +293,20 @@ class ComponentImporter {
 
   /**
    * Convert asset:// URLs with original UUIDs to new asset UUIDs
+   * Supports both formats:
+   * - New format: asset://uuid.ext
+   * - Legacy format: asset://uuid/path/filename
    * @param {string} content - HTML content with asset:// URLs
-   * @returns {string} Content with converted URLs
+   * @returns {string} Content with converted URLs (always new format)
    */
   convertAssetPaths(content) {
     if (!content || typeof content !== 'string') return content;
 
-    // The exported content has asset://originalUuid/filename format
-    // The assetMap maps originalPath (content/resources/uuid/filename) to new asset ID
-    // We need to convert asset://oldUuid/filename to asset://newUuid/filename
-
-    // First, collect all asset://uuid patterns from content
+    // Match both formats:
+    // - New format: asset://uuid.ext
+    // - Legacy format: asset://uuid/path/filename
     // UUID pattern matches both standard UUIDs and test IDs like "old-uuid-123"
-    const assetPattern = /asset:\/\/([a-zA-Z0-9_-]+)(\/[^"'\s)]+)?/gi;
+    const assetPattern = /asset:\/\/([a-zA-Z0-9_-]+)(\.[a-z0-9]+|\/[^"'\s)]+)?/gi;
     let match;
     const replacements = new Map();
 
@@ -306,17 +316,18 @@ class ComponentImporter {
 
       // Find the new asset ID for this old UUID
       // assetMap is: originalPath -> newAssetId
-      // originalPath is like "content/resources/uuid/filename"
+      // originalPath is like "content/resources/uuid/filename" or "uuid/filename"
       for (const [originalPath, newAssetId] of this.assetMap.entries()) {
         // Check if this originalPath contains our old UUID
         if (originalPath.includes(oldUuid)) {
-          // Extract filename from originalPath if suffix is empty
-          let newSuffix = suffix;
-          if (!newSuffix) {
-            const parts = originalPath.split('/');
-            newSuffix = '/' + parts[parts.length - 1];
-          }
-          replacements.set(`asset://${oldUuid}${suffix}`, `asset://${newAssetId}${newSuffix}`);
+          // Extract filename from originalPath to get extension
+          const parts = originalPath.split('/');
+          const filename = parts[parts.length - 1];
+          // Generate new format URL: asset://uuid.ext
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          const newUrl = ext ? `asset://${newAssetId}.${ext}` : `asset://${newAssetId}`;
+          // Map old URL (any format) to new URL
+          replacements.set(`asset://${oldUuid}${suffix || ''}`, newUrl);
           break;
         }
       }
@@ -332,7 +343,8 @@ class ComponentImporter {
   }
 
   /**
-   * Recursively convert asset paths in an object
+   * Recursively convert {{context_path}} refs in an object to asset:// URLs
+   * Uses AssetManager.convertContextPathToAssetRefs for string conversion.
    * @param {any} obj - Object to process
    * @returns {any} Processed object
    */
@@ -342,7 +354,11 @@ class ComponentImporter {
     }
 
     if (typeof obj === 'string') {
-      return this.convertAssetPaths(obj);
+      // Use convertContextPathToAssetRefs for {{context_path}} format (new format)
+      if (obj.includes('{{context_path}}') && this.assetManager) {
+        return this.assetManager.convertContextPathToAssetRefs(obj, this.assetMap);
+      }
+      return obj;
     }
 
     if (Array.isArray(obj)) {
@@ -458,13 +474,19 @@ class ComponentImporter {
   }
 
   /**
-   * Generate a unique ID
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
    * @param {string} prefix - ID prefix
    * @returns {string}
    */
   generateId(prefix) {
+    if (!prefix) {
+      throw new Error('generateId: prefix is required');
+    }
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
+    const random = Math.random().toString(36).substring(2, 11);
     return `${prefix}-${timestamp}-${random}`;
   }
 }

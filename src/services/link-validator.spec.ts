@@ -266,21 +266,44 @@ describe('Link Validator Service', () => {
         });
 
         it('should validate HTTP links and return error for broken ones', async () => {
-            // Use a domain that definitely doesn't exist
-            const result = await validateLink('https://this-domain-definitely-does-not-exist-12345.com', {
-                filesDir: tempDir,
-                timeout: 5000,
-            });
-            expect(result).toBeTruthy(); // Should return an error
+            // Deterministic: avoid relying on real DNS/network (can be hijacked in some environments).
+            const originalFetch = globalThis.fetch;
+            globalThis.fetch = async () => {
+                const err = new Error('getaddrinfo ENOTFOUND') as Error & { cause?: { code?: string } };
+                err.cause = { code: 'ENOTFOUND' };
+                throw err;
+            };
+
+            try {
+                const result = await validateLink('https://this-domain-definitely-does-not-exist-12345.com', {
+                    filesDir: tempDir,
+                    timeout: 5000,
+                });
+                expect(result).toBe('Could not resolve host');
+            } finally {
+                globalThis.fetch = originalFetch;
+            }
         });
 
         it('should handle protocol-relative URLs', async () => {
-            // This will try to validate //example.com as https://example.com
-            const result = await validateLink('//this-domain-definitely-does-not-exist-12345.com', {
-                filesDir: tempDir,
-                timeout: 5000,
-            });
-            expect(result).toBeTruthy(); // Should return an error
+            // Deterministic: avoid relying on real DNS/network (can be hijacked in some environments).
+            const originalFetch = globalThis.fetch;
+            globalThis.fetch = async () => {
+                const err = new Error('getaddrinfo ENOTFOUND') as Error & { cause?: { code?: string } };
+                err.cause = { code: 'ENOTFOUND' };
+                throw err;
+            };
+
+            try {
+                // This will normalize //... to https://...
+                const result = await validateLink('//this-domain-definitely-does-not-exist-12345.com', {
+                    filesDir: tempDir,
+                    timeout: 5000,
+                });
+                expect(result).toBe('Could not resolve host');
+            } finally {
+                globalThis.fetch = originalFetch;
+            }
         });
 
         it('should return 500 for file validation errors', async () => {

@@ -1,3 +1,8 @@
+const ASSET_URL_MEDIA_SELECTOR =
+    'img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]';
+const PLACEHOLDER_IMAGE_DATA_URL =
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
 var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
@@ -14,6 +19,7 @@ var $exeTinyMCE = {
     buttons3:
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
+    fontsize_formats: '80%=0.8rem 90%=0.9rem 100%=1rem 110%=1.1rem 115%=1.15rem 120%=1.2rem 125%=1.25rem 130%=1.3rem 140%=1.4rem 150%=1.5rem 160%=1.6rem 170%=1.7rem 200%=2rem 250%=2.5rem 300%=3rem',
 
     menubar: 'edit insert format table tools',
     menu: {
@@ -23,7 +29,7 @@ var $exeTinyMCE = {
         },
         insert: {
             title: 'Insert',
-            items: 'template | hr charmap anchor clearfloat addcontent | abbr insertdatetime',
+            items: 'template | hr charmap anchor clearfloat addcontent exemermaid | abbr insertdatetime',
         }, // ' | exegames_hangman' removed
         format: {
             title: 'Format',
@@ -118,6 +124,72 @@ var $exeTinyMCE = {
             '/' +
             eXeLearning.version;
         return assetUrl + url;
+    },
+
+    /**
+     * Detect the base path for static mode deployments.
+     * When deployed to a subdirectory (e.g., /dist/static/), we need to prepend
+     * this path to absolute URLs like /app/... and /libs/...
+     *
+     * Detection works by finding known path markers (/app/, /libs/) in the current pathname.
+     *
+     * @returns {string} The base path (e.g., '/dist/static') or empty string for root deployment
+     */
+    getStaticBasePath: function() {
+        var pathname = window.location.pathname;
+        // Look for /app/ to find where the static deployment ends
+        var appIndex = pathname.indexOf('/app/');
+        if (appIndex > 0) {
+            return pathname.substring(0, appIndex);
+        }
+        // Also check for /libs/ as fallback (some pages might be in libs/)
+        var libsIndex = pathname.indexOf('/libs/');
+        if (libsIndex > 0) {
+            return pathname.substring(0, libsIndex);
+        }
+        return '';
+    },
+
+    /**
+     * Removes Bun-injected scripts from HTML content.
+     * Bun injects scripts when serving HTML files for HMR (dev) and bundling (prod).
+     *
+     * Patterns to filter:
+     * - Dev: <script src="/_bun/client/..."> or <script data-bun-dev-server-script>
+     * - Prod: <script src="/../../...chunk-*.js"> (relative path traversal to chunk files)
+     * - Both: Inline scripts with Bun's visibilitychange/sendBeacon patterns
+     *
+     * @param {string} html - The HTML content to clean
+     * @returns {string} - The cleaned HTML content
+     */
+    stripBunInjectedScripts: function (html) {
+        if (!html) return html;
+
+        // Create a temporary DOM element to parse the HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Find and remove Bun-injected scripts
+        const scripts = temp.querySelectorAll('script');
+        scripts.forEach(function (script) {
+            const src = script.getAttribute('src') || '';
+            const hasBunAttr = script.hasAttribute('data-bun-dev-server-script');
+
+            // Pattern 1: Bun dev server scripts (/_bun/ path or data-bun-dev-server-script attr)
+            const isBunDevScript = src.includes('/_bun/') || hasBunAttr;
+
+            // Pattern 2: Bun bundler chunks (relative path traversal to chunk-*.js)
+            const isBunChunkScript = /^\/(\.\.\/)+(chunk-[a-z0-9]+\.js)$/i.test(src);
+
+            // Pattern 3: Bun's inline visibilitychange/unref script (no src, contains sendBeacon + /_bun/unref)
+            const isBunInlineScript = !src && script.textContent && script.textContent.includes('/_bun/unref');
+
+            if (isBunDevScript || isBunChunkScript || isBunInlineScript) {
+                script.remove();
+            }
+        });
+
+        return temp.innerHTML;
     },
 
     // Get classes from base.css and style.css
@@ -217,6 +289,16 @@ var $exeTinyMCE = {
         tinymce.init({
             language: this.language,
             selector: criteria,
+            // about:srcdoc cannot be parsed by tinymce.util.URI (regex
+            // /^([\w-]+):([^/]{2})/ consumes "about:" + "sr" and leaves
+            // .path / .directory undefined), so the default tinymce.documentBaseURL
+            // pulled from window.location.href makes editor.documentBaseURI
+            // crash on the first toAbsolute() against a relative URL inside
+            // iframe-srcdoc embedders on Firefox. document.baseURI is set to
+            // the embedder's <base href> under iframe-srcdoc and to the
+            // document URL in standalone deployments, so it is a safe anchor
+            // in every embedding mode. See #1799.
+            document_base_url: document.baseURI,
             height: 350,
             convert_urls: false,
             toolbar_mode: 'wrap', // To review. The default toolbar mode, floanting, sometimes causes unexpected errors when editing activities (theme.min.js. line 28818)
@@ -237,14 +319,25 @@ var $exeTinyMCE = {
             content_css: this.getContentCSS(),
             contextmenu: this.contextmenu,
             browser_spellcheck: this.browser_spellcheck,
+            // To review. Uncomment the following line to use relative instead of absolute units to improve accessibility:
+            // fontsize_formats: this.fontsize_formats,
             templates: this.getTemplates(),
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
             rel_list: this.rel_list,
 
             // Math plugin
-            edicuatex_url: this.getAssetURL(this.edicuatex_url),
-            edicuatex_mathjax_url: this.getAssetURL(this.edicuatex_mathjax_url),
+            // In static/offline mode, use RELATIVE paths (./app/...) which work regardless of subdirectory depth
+            // The browser resolves ./app/... relative to the current document location
+            // e.g., at /dist/static/index.html → ./app/... resolves to /dist/static/app/...
+            // e.g., at /index.html → ./app/... resolves to /app/...
+            // In server mode, use getAssetURL() to add version for cache busting
+            edicuatex_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
+                ? './app/common/edicuatex/index.html'
+                : this.getAssetURL(this.edicuatex_url),
+            edicuatex_mathjax_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
+                ? './app/common/exe_math/tex-mml-svg.js'
+                : this.getAssetURL(this.edicuatex_mathjax_url),
 
             // Images
             image_advtab: true,
@@ -258,7 +351,7 @@ var $exeTinyMCE = {
                             // result = { assetUrl, blobUrl, asset }
                             const field = document.getElementById(field_name);
                             if (field) {
-                                field.value = result.blobUrl;
+                                field.value = result.assetUrl || result.blobUrl || '';
                                 // Trigger change event for TinyMCE to pick up
                                 field.dispatchEvent(new Event('change'));
                             }
@@ -268,6 +361,13 @@ var $exeTinyMCE = {
             },
             /* enable automatic uploads of images represented by blob or data URIs*/
             automatic_uploads: true,
+            // Prevent TinyMCE from rewriting src/data-mce-src after images_upload_handler
+            // resolves. Our handler returns the blob URI (for display) and we manage the
+            // blob ↔ asset:// mapping ourselves via resolveAssetUrlsInEditor /
+            // prepareHtmlForSync; letting TinyMCE clobber data-mce-src with a blob URL
+            // corrupts previously-resolved images when a second asset:// image is inserted
+            // (issue #1664).
+            images_replace_blob_uris: false,
             file_picker_types: 'file image media',
             /* and here's our custom image picker - opens Media Library modal */
             file_picker_callback: function (cb, value, meta) {
@@ -288,25 +388,32 @@ var $exeTinyMCE = {
                                 return;
                             }
 
-                            // Use blob URL directly - it's already in AssetManager cache
-                            // When images_upload_handler is triggered by TinyMCE (automatic_uploads: true),
-                            // it will find this blob URL in reverseBlobCache and return immediately
-                            // without re-processing. Later, convertBlobUrlsToAssetUrls() will convert
-                            // blob:// to asset:// for persistence.
-                            const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-
-                            // Ensure blob URL is in cache (it should be, but verify)
-                            if (assetManager && result.blobUrl && result.asset?.id) {
-                                if (!assetManager.reverseBlobCache.has(result.blobUrl)) {
-                                    assetManager.reverseBlobCache.set(result.blobUrl, result.asset.id);
-                                    assetManager.blobURLCache.set(result.asset.id, result.blobUrl);
+                            // For HTML files, bypass TinyMCE's media dialog and insert iframe directly
+                            // TinyMCE's media dialog creates <video> elements for all sources, not <iframe>
+                            const filename = result.asset.filename || '';
+                            if (result.asset.mime === 'text/html' || /\.html?$/i.test(filename)) {
+                                // Get the active TinyMCE editor
+                                const editor = tinymce.activeEditor;
+                                if (editor) {
+                                    // Insert iframe directly with asset:// URL
+                                    // resolveAssetUrlsInEditor will use resolveHtmlWithAssets() for display
+                                    editor.insertContent(
+                                        '<iframe src="' + result.assetUrl + '" ' +
+                                        'data-mce-html="true" ' +
+                                        'style="width:100%; height:600px; border:1px solid #ccc;"></iframe>'
+                                    );
+                                    // Close the TinyMCE media dialog
+                                    editor.windowManager.close();
                                 }
+                                return;
                             }
 
-                            cb(result.blobUrl, {
+                            // Keep asset:// in the editor model; rendering resolves it later.
+                            cb(result.assetUrl || result.blobUrl || '', {
                                 title: result.asset.filename || '',
-                                alt: result.asset.filename || '',
-                                'data-asset-id': result.asset.id  // CRITICAL: Used by convertBlobURLsToAssetRefs
+                                text: result.asset.filename || '',
+                                alt: '',
+                                'data-asset-id': result.asset.id
                             });
                         }
                     });
@@ -317,6 +424,27 @@ var $exeTinyMCE = {
 
             // Drag and Drop
             paste_data_images: true,
+            // Warn when pasted HTML contains blob: URLs that are not known to the current
+            // AssetManager session. Known blobs (in reverseBlobCache) will be handled
+            // correctly by images_upload_handler; unknown blobs are stale references that
+            // will break and the user should use the Media Library or clone instead.
+            paste_preprocess: function (plugin, args) {
+                if (!args.content || !/blob:https?:\/\//.test(args.content)) return;
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager?.reverseBlobCache) {
+                    var blobs = args.content.match(/blob:https?:\/\/[^\s"'>]+/g) || [];
+                    if (blobs.length > 0 && blobs.every(function (blob) { return assetManager.reverseBlobCache.has(blob); })) return;
+                }
+                if ($exeTinyMCE._blobPasteWarningToast?.toastElement?.isConnected) return;
+                var toastsManager = window.eXeLearning?.app?.toasts;
+                if (toastsManager) {
+                    $exeTinyMCE._blobPasteWarningToast = toastsManager.createToast({
+                        icon: 'warning',
+                        title: _('Temporary files detected'),
+                        body: _('Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.'),
+                    });
+                }
+            },
             // Upload tab?
             image_uploadtab: false,
             images_upload_handler: async function (blobInfo, success, failure) {
@@ -325,39 +453,33 @@ var $exeTinyMCE = {
                 const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 
                 if (assetManager && blobUri && blobUri.startsWith('blob:')) {
-                    // Check if this blob URL is in our cache (meaning it's from AssetManager)
                     if (assetManager.reverseBlobCache.has(blobUri)) {
-                        // Already an asset, no upload needed - just return the blob URL
-                        success(blobUri);
+                        const assetId = assetManager.reverseBlobCache.get(blobUri);
+                        // Return the blob URL (not asset://) so TinyMCE can render it.
+                        // prepareHtmlForSync converts blob → asset:// on save.
+                        success(blobUri, { 'data-asset-id': assetId });
                         return;
                     }
                 }
 
                 // Store pasted/dropped images in AssetManager (IndexedDB)
                 if (assetManager) {
+                    // Reject empty blobs (TinyMCE data:→blob: conversion failures).
+                    const blob = blobInfo.blob();
+                    if (!blob || blob.size === 0) {
+                        console.warn('[TinyMCE] Skipping upload of empty blob (likely a stale placeholder)');
+                        failure(_('Error storing image'));
+                        return;
+                    }
+
                     $exeTinyMCE.lockScreen();
                     try {
-                        const blob = blobInfo.blob();
                         const file = new File([blob], blobInfo.filename() || 'image.png', { type: blob.type });
                         const assetUrl = await assetManager.insertImage(file);
-
-                        // Extract UUID from asset:// URL (insertImage returns "asset://uuid/filename")
                         const assetId = assetManager.extractAssetId(assetUrl);
-
-                        // Get or create blob URL for the asset (using synced method to ensure reverseBlobCache consistency)
-                        let newBlobUrl = assetManager.getBlobURLSynced?.(assetId) ?? assetManager.blobURLCache.get(assetId);
-                        if (!newBlobUrl) {
-                            // Use the original blob directly (works for both new and deduplicated assets)
-                            // since we already have it in memory
-                            newBlobUrl = URL.createObjectURL(blob);
-                            assetManager.blobURLCache.set(assetId, newBlobUrl);
-                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
-                        } else if (!assetManager.reverseBlobCache.has(newBlobUrl)) {
-                            // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
-                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
-                        }
-                        // CRITICAL: Pass data-asset-id so convertBlobURLsToAssetRefs can convert even if blob URL changes
-                        success(newBlobUrl, { 'data-asset-id': assetId });
+                        // Register blob → asset mapping; prepareHtmlForSync converts on save.
+                        assetManager.reverseBlobCache.set(blobUri, assetId);
+                        success(blobUri, { 'data-asset-id': assetId });
                     } catch (err) {
                         console.error('[TinyMCE] Failed to store in AssetManager:', err);
                         failure(_('Error storing image'));
@@ -473,24 +595,66 @@ var $exeTinyMCE = {
                 this.buttons2,
                 this.buttons3,
             ],
+            setup: function (ed) {
+                ed.on('BeforeSetContent', function(e) {
+                    if (typeof e.content !== 'string') return;
+
+                    e.content = $exeTinyMCE.prepareContentForEditorLoad(e.content);
+                });
+
+                // Register SetContent handler BEFORE content is loaded
+                // This is critical for resolving asset:// URLs in the initial content
+                ed.on('SetContent', function(e) {
+                    // Strip Bun-injected scripts from template content
+                    // This handles both dev (/_bun/client/) and prod (/../../chunk-) patterns
+                    // Only process non-initial content to avoid processing on editor load
+                    if (!e.initial && !e.paste) {
+                        const body = ed.getBody();
+                        if (body) {
+                            const scripts = body.querySelectorAll('script');
+                            scripts.forEach(function (script) {
+                                const src = script.getAttribute('src') || '';
+                                const hasBunAttr = script.hasAttribute('data-bun-dev-server-script');
+                                const isBunDevScript = src.includes('/_bun/') || hasBunAttr;
+                                const isBunChunkScript = /^\/(\.\.\/)+(chunk-[a-z0-9]+\.js)$/i.test(src);
+                                const isBunInlineScript = !src && script.textContent && script.textContent.includes('/_bun/unref');
+
+                                if (isBunDevScript || isBunChunkScript || isBunInlineScript) {
+                                    script.remove();
+                                }
+                            });
+                        }
+                    }
+
+                    $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                });
+
+                ed.on('GetContent', function(e) {
+                    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager?.prepareHtmlForSync && typeof e.content === 'string') {
+                        e.content = assetManager.prepareHtmlForSync(e.content);
+                    }
+                });
+            },
             init_instance_callback: function (ed) {
                 if (mode == 'multiple') {
                     if (divExists) div.removeAttr('style'); // FR 303
                     $exeTinyMCEToggler.init(ed.id, hide);
                 }
 
+                // Intercept image dialog so users see asset:// URLs instead of blob://.
+                // Must run after init when windowManager is available.
+                $exeTinyMCE._patchAssetDialogs(ed);
+
                 // Hook for Yjs collaborative editing - bind editor if Yjs is enabled
                 if (typeof $exeTinyMCE.onEditorInit === 'function') {
                     $exeTinyMCE.onEditorInit(ed);
                 }
 
-                // Resolve asset:// URLs to blob:// for media preview in editor
-                // This allows audio/video elements to play within TinyMCE
-                ed.on('SetContent', function() {
-                    $exeTinyMCE.resolveAssetUrlsInEditor(ed);
-                });
+                // Note: SetContent handler is now registered in setup() callback
+                // to catch the initial content load before init_instance_callback runs
 
-                // Also observe DOM changes for dynamically inserted media (e.g., audio recorder, PDF embed)
+                // Also observe DOM changes for dynamically inserted media (e.g., images, audio recorder, PDF embed)
                 const editorBody = ed.getBody();
                 if (editorBody) {
                     const observer = new MutationObserver(function(mutations) {
@@ -499,8 +663,8 @@ var $exeTinyMCE = {
                             if (mutation.type === 'childList') {
                                 for (const node of mutation.addedNodes) {
                                     if (node.nodeType === 1) {
-                                        const hasAssetUrl = node.querySelector?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]') ||
-                                            (node.matches?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]'));
+                                        const hasAssetUrl = node.querySelector?.(ASSET_URL_MEDIA_SELECTOR) ||
+                                            (node.matches?.(ASSET_URL_MEDIA_SELECTOR));
                                         if (hasAssetUrl) {
                                             hasNewMedia = true;
                                             break;
@@ -525,6 +689,113 @@ var $exeTinyMCE = {
         }); //End tinymce
     },
 
+    /**
+     * Patch TinyMCE's windowManager so the image dialog shows asset:// URLs
+     * instead of ephemeral blob:// URLs. On submit, waits for dialog close then
+     * re-resolves asset:// → blob:// via resolveAssetUrlsInEditor.
+     */
+    _patchAssetDialogs: function (ed) {
+        if (!ed.windowManager || ed.windowManager._assetPatched) return;
+        ed.windowManager._assetPatched = true;
+        var origOpen = ed.windowManager.open;
+        ed.windowManager.open = function (spec) {
+            var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (!assetManager) return origOpen.apply(this, arguments);
+
+            var needsResolveAfterClose = false;
+
+            // --- Image dialog: spec.initialData.src ---
+            var src = spec.initialData?.src;
+            if (src && typeof src.value === 'string' && src.value.startsWith('blob:')) {
+                var assetId = assetManager.reverseBlobCache.get(src.value);
+                if (assetId) {
+                    var metadata = assetManager.getAssetMetadata?.(assetId);
+                    var filename = metadata?.filename || metadata?.name;
+                    src.value = assetManager.getAssetUrl?.(assetId, filename) || ('asset://' + assetId);
+                    needsResolveAfterClose = true;
+                }
+            }
+
+            // --- Media dialog (exemedia): spec.initialData.source ---
+            var source = spec.initialData?.source;
+            if (source && typeof source.value === 'string' && source.value.startsWith('blob:')) {
+                var assetId = assetManager.reverseBlobCache.get(source.value);
+                if (assetId) {
+                    var metadata = assetManager.getAssetMetadata?.(assetId);
+                    var filename = metadata?.filename || metadata?.name;
+                    source.value = assetManager.getAssetUrl?.(assetId, filename) || ('asset://' + assetId);
+                    needsResolveAfterClose = true;
+                }
+            }
+
+            if (needsResolveAfterClose) {
+                var origSubmit = spec.onSubmit;
+                spec.onSubmit = function (api) {
+                    var node = ed.selection.getNode();
+                    if (node?.tagName === 'IMG') {
+                        node.removeAttribute('data-asset-src');
+                    }
+                    if (origSubmit) origSubmit.call(this, api);
+                    var handler = function () {
+                        ed.off('CloseWindow', handler);
+                        setTimeout(function () {
+                            var body = ed.getBody();
+                            if (!body) return;
+                            body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR).forEach(function (el) {
+                                el.removeAttribute('data-asset-src');
+                            });
+                            $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                        }, 50);
+                    };
+                    ed.on('CloseWindow', handler);
+                };
+            }
+
+            return origOpen.apply(this, arguments);
+        };
+        // Clean up flag when editor is destroyed so re-init can re-patch
+        ed.on('remove', function () { delete ed.windowManager._assetPatched; });
+    },
+
+    prepareContentForEditorLoad: function (content) {
+        if (typeof content !== 'string') return content;
+
+        var result = content;
+
+        // Recover stale blob:// URLs in src attributes to asset:// so
+        // resolveAssetUrlsInEditor can re-resolve them from the asset store.
+        // Blob URLs don't survive page reload, clone, or navigation.
+        if (result.includes('blob:')) {
+            var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                result = result.replace(
+                    /(<(?:img|audio|video|source)\b[^>]*?)src=(["'])(blob:[^"']+)\2/gi,
+                    function (match, before, quote, blobUrl) {
+                        var assetId = assetManager.reverseBlobCache.get(blobUrl);
+                        if (assetId) {
+                            var assetUrl = assetManager.getAssetUrl?.(assetId) || ('asset://' + assetId);
+                            return before + 'src=' + quote + assetUrl + quote;
+                        }
+                        // Fallback: recover from data-asset-id when blob is not in reverseBlobCache
+                        var idMatch = before.match(/data-asset-id=(["'])([^"']+)\1/);
+                        if (idMatch) {
+                            return before + 'src=' + quote + 'asset://' + idMatch[2] + quote;
+                        }
+                        return match;
+                    }
+                );
+            }
+        }
+
+        if (!result.includes('asset://')) return result;
+
+        // Strip data-mce-src="asset://..." — TinyMCE treats it as canonical src and
+        // would override the blob:// resolved by resolveAssetUrlsInEditor.
+        // Strip data-asset-src — runtime tracking attr that resolveAssetUrlsInEditor
+        // uses as a skip guard; stale persisted values would permanently block resolution.
+        return result.replace(/\s+(?:data-mce-src=(["'])asset:\/\/[^"']*\1|data-asset-src=(["'])[^"']*\2)/g, '');
+    },
+
     getSchema: function () {
         var s = 'html5';
         return s;
@@ -533,13 +804,18 @@ var $exeTinyMCE = {
     getContentCSS: function () {
         // Fallback theme path if theme not yet selected (timing issue during iDevice loading)
         var themePath = eXeLearning.app.themes.selected?.path || '/files/perm/themes/base/INTEF/';
+        // BASE_PATH-aware: apiUrlBase is just the origin (config.baseURL) and the
+        // BASE_PATH lives in apiUrlBasePath (config.basePath). Subdirectory deploys
+        // (see #1802 / #1804) need both, otherwise these CSS files 404 behind the
+        // reverse proxy.
+        var apiBase = eXeLearning.app.api.apiUrlBase + (eXeLearning.app.api.apiUrlBasePath || '');
         return (
-            themePath +
-            'style.css,' +
-            eXeLearning.app.api.apiUrlBase +
+            apiBase +
             '/app/editor/tinymce_5_extra.css,' +
-            eXeLearning.app.api.apiUrlBase +
-            '/libs/bootstrap/bootstrap.min.css'
+            apiBase +
+            '/libs/bootstrap/bootstrap.min.css,' +
+            themePath +
+            'style.css'
         );
     },
 
@@ -557,6 +833,9 @@ var $exeTinyMCE = {
         var e = '';
         return e;
     },
+
+    // Tracks the active blob-paste warning toast to avoid duplicates
+    _blobPasteWarningToast: null,
 
     lockScreen: function () {
         const loadScreen = document.getElementById('load-screen-node-content');
@@ -584,8 +863,9 @@ var $exeTinyMCE = {
     },
 
     /**
-     * Resolve asset:// URLs to blob:// URLs for audio/video elements in TinyMCE editor
-     * This allows media to play within the editor while keeping asset:// URLs for persistence
+     * Resolve asset:// URLs to blob:// URLs for editor-rendered media in TinyMCE.
+     * This allows images and media to render within the editor while keeping asset://
+     * URLs as the persisted format.
      *
      * NOTE: We intentionally DO NOT resolve iframes (PDFs) because:
      * 1. TinyMCE strips custom attributes like data-asset-src when processing media elements
@@ -601,35 +881,82 @@ var $exeTinyMCE = {
         const body = ed.getBody();
         if (!body) return;
 
-        // Find audio, video, and iframe elements with asset:// URLs
-        const mediaElements = body.querySelectorAll('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]');
+        // Wrap src mutations so they don't create undo levels (visual-only change).
+        function setSrcSilently(el, val) {
+            if (ed.undoManager?.ignore) {
+                ed.undoManager.ignore(function () { el.setAttribute('src', val); });
+            } else {
+                el.setAttribute('src', val);
+            }
+        }
+
+        // Find image, audio, video, and iframe elements with asset:// URLs
+        const mediaElements = body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR);
 
         for (const media of mediaElements) {
             const assetUrl = media.getAttribute('src');
             if (!assetUrl || !assetUrl.startsWith('asset://')) continue;
 
             const isIframe = media.tagName.toLowerCase() === 'iframe';
+            const isImage = media.tagName.toLowerCase() === 'img';
 
-            // For audio/video: Skip if already resolved (has data-asset-src)
+            // For images/audio/video: Skip if already resolved (has data-asset-src)
             // For iframes: Skip if src is already a blob URL (already resolved)
             if (!isIframe && media.getAttribute('data-asset-src')) continue;
             if (isIframe && media.getAttribute('src').startsWith('blob:')) continue;
 
-            // For audio/video: Store the original asset URL in data-asset-src
+            // For images/audio/video: Store the original asset URL in data-asset-src
             // For iframes: DON'T add data-asset-src - TinyMCE preserves the URL via data-mce-p-src
             // on the parent span.mce-preview-object
             if (!isIframe) {
                 media.setAttribute('data-asset-src', assetUrl);
             }
 
-            // Resolve to blob URL asynchronously
-            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
-                if (blobUrl) {
-                    media.setAttribute('src', blobUrl);
+            // Check if this is an HTML iframe (needs full resolution with internal URLs)
+            const isHtmlIframe = isIframe && (
+                media.getAttribute('data-mce-html') === 'true' ||
+                assetUrl.match(/\.html?$/i)
+            );
+
+            if (isHtmlIframe) {
+                // For HTML iframes, store original asset URL before resolving
+                // This is needed because TinyMCE doesn't wrap directly-inserted iframes in span.mce-preview-object
+                media.setAttribute('data-asset-src', assetUrl);
+
+                // For HTML iframes, use resolveHtmlWithAssets to resolve internal URLs
+                const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+                if (assetIdMatch) {
+                    assetManager.resolveHtmlWithAssets(assetIdMatch[1]).then(function(resolvedUrl) {
+                        if (resolvedUrl) {
+                            setSrcSilently(media, resolvedUrl);
+                            // Register in reverseBlobCache so convertBlobUrlsToAssetUrls can restore it
+                            assetManager.reverseBlobCache.set(resolvedUrl, assetIdMatch[1]);
+                        }
+                    }).catch(function(err) {
+                        console.warn('[TinyMCE] Failed to resolve HTML asset:', assetUrl, err);
+                    });
                 }
-            }).catch(function(err) {
-                console.warn('[TinyMCE] Failed to resolve asset URL:', assetUrl, err);
-            });
+            } else {
+                if (isImage) {
+                    // Keep asset:// as data-mce-src so TinyMCE serialises the original
+                    // URL on GetContent if the blob resolves after the user saves.
+                    // Do NOT set PLACEHOLDER_IMAGE_DATA_URL here: TinyMCE automatic_uploads
+                    // would convert any data: src to blob: and call images_upload_handler,
+                    // which would store the placeholder as a fake project asset.
+                    media.setAttribute('data-mce-src', assetUrl);
+                }
+
+                // Resolve to blob URL asynchronously (for images, audio, video, PDF iframes)
+                assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                    if (blobUrl) {
+                        setSrcSilently(media, blobUrl);
+                        // For images: keep data-mce-src = asset:// (set above) so
+                        // TinyMCE dialog shows the canonical URL, not the blob.
+                    }
+                }).catch(function(err) {
+                    console.warn('[TinyMCE] Failed to resolve asset URL:', assetUrl, err);
+                });
+            }
         }
 
         // Also handle TinyMCE's mce-preview-object spans (used for media preview)
@@ -650,20 +977,40 @@ var $exeTinyMCE = {
             if (!isIframe && innerMedia.getAttribute('data-asset-src')) continue;
             if (isIframe && innerMedia.getAttribute('src')?.startsWith('blob:')) continue;
 
-            // For audio/video: Store the original asset URL in data-asset-src
-            // For iframes: The span's data-mce-p-src already preserves it
-            if (!isIframe) {
-                innerMedia.setAttribute('data-asset-src', assetUrl);
-            }
+            // Store the original asset URL in data-asset-src for all media types
+            // This ensures the asset URL is preserved even if TinyMCE doesn't wrap in mce-preview-object
+            innerMedia.setAttribute('data-asset-src', assetUrl);
 
-            // Resolve to blob URL asynchronously
-            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
-                if (blobUrl) {
-                    innerMedia.setAttribute('src', blobUrl);
+            // Check if this is an HTML iframe (needs full resolution with internal URLs)
+            const isHtmlIframe = isIframe && (
+                innerMedia.getAttribute('data-mce-html') === 'true' ||
+                assetUrl.match(/\.html?$/i)
+            );
+
+            if (isHtmlIframe) {
+                // For HTML iframes, use resolveHtmlWithAssets to resolve internal URLs
+                const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+                if (assetIdMatch) {
+                    assetManager.resolveHtmlWithAssets(assetIdMatch[1]).then(function(resolvedUrl) {
+                        if (resolvedUrl) {
+                            setSrcSilently(innerMedia, resolvedUrl);
+                            // Register in reverseBlobCache so convertBlobUrlsToAssetUrls can restore it
+                            assetManager.reverseBlobCache.set(resolvedUrl, assetIdMatch[1]);
+                        }
+                    }).catch(function(err) {
+                        console.warn('[TinyMCE] Failed to resolve HTML asset in preview:', assetUrl, err);
+                    });
                 }
-            }).catch(function(err) {
-                console.warn('[TinyMCE] Failed to resolve asset URL in preview:', assetUrl, err);
-            });
+            } else {
+                // Resolve to blob URL asynchronously (for audio, video, PDF iframes)
+                assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                    if (blobUrl) {
+                        setSrcSilently(innerMedia, blobUrl);
+                    }
+                }).catch(function(err) {
+                    console.warn('[TinyMCE] Failed to resolve asset URL in preview:', assetUrl, err);
+                });
+            }
         }
     },
 };

@@ -14,12 +14,36 @@ import {
     findUserById as findUserByIdDefault,
     createUser as createUserDefault,
 } from '../db/queries';
+import { endImpersonationAuditSession } from '../db/queries/impersonation';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
-import { getAuthMethods, getSettingString } from '../services/app-settings';
+import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
+import { getPostLoginTarget } from '../services/maintenance';
+import { logActivity } from '../services/activity-logger';
+
+// Domain for temporary emails (CAS, OIDC, Guest users without real email)
+const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
+
+/**
+ * Whether SSO (CAS / OIDC) should auto-create unknown users on first login.
+ * Default is `true` as documented in `.env.dist` and `doc/development/authentication.md`
+ * (keep behaviour backward-compatible and avoid locking operators out on typos).
+ * Reads `process.env.AUTH_CREATE_USERS` on every call so runtime overrides (including
+ * tests that mutate `process.env`) take effect without restarting the module.
+ */
+export function shouldAutoCreateUsers(): boolean {
+    const raw = process.env.AUTH_CREATE_USERS;
+    if (raw === undefined || raw === null) return true;
+    const normalized = String(raw).toLowerCase().trim();
+    if (normalized === '') return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+    // Any other value (true/1/yes/on, or typos) falls back to the documented default.
+    return true;
+}
 
 /**
  * Dependency types for auth routes
@@ -49,6 +73,9 @@ export interface JwtPayload {
     roles: string[];
     isGuest?: boolean;
     authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
+    isImpersonated?: boolean;
+    impersonatedBy?: number;
+    impersonationSessionId?: string;
     iat?: number;
     exp?: number;
 }
@@ -56,6 +83,15 @@ export interface JwtPayload {
 // Get JWT secret from environment
 const getJwtSecret = (): string => {
     return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
+};
+
+const getRequestClientIp = (request: Request): string | null => {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (forwardedFor) {
+        const firstIp = forwardedFor.split(',')[0]?.trim();
+        if (firstIp) return firstIp;
+    }
+    return null;
 };
 
 // Login request body schema
@@ -152,6 +188,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
 
+                    if (!user.is_active) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
+                    }
+
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
@@ -171,6 +212,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     return {
                         access_token: token,
                         user: sanitizeUser(user),
@@ -182,6 +228,9 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             // POST /api/auth/logout - Logout
             .post('/api/auth/logout', async ({ cookie, auth }) => {
                 cookie.auth.remove();
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
+
                 return {
                     message: 'Logged out successfully',
                     wasAuthenticated: auth?.isAuthenticated || false,
@@ -202,6 +251,62 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 return {
                     user: sanitizeUser(auth.user),
                     isGuest: auth.isGuest,
+                };
+            })
+
+            // POST /api/auth/impersonation/stop - Restore original admin session
+            .post('/api/auth/impersonation/stop', async ({ jwt, cookie, request, set }) => {
+                const originalToken = cookie.impersonator_auth?.value;
+                const sessionId = cookie.impersonation_session?.value || null;
+
+                if (!originalToken) {
+                    set.status = 400;
+                    return { error: 'BAD_REQUEST', message: 'No active impersonation session' };
+                }
+
+                const originalPayload = (await jwt.verify(originalToken)) as JwtPayload | false;
+                if (!originalPayload || !originalPayload.sub) {
+                    cookie.impersonator_auth.remove();
+                    cookie.impersonation_session.remove();
+                    set.status = 401;
+                    return { error: 'UNAUTHORIZED', message: 'Original session is no longer valid' };
+                }
+
+                const originalUser = await findUserById(db, Number(originalPayload.sub));
+                if (!originalUser) {
+                    cookie.impersonator_auth.remove();
+                    cookie.impersonation_session.remove();
+                    set.status = 401;
+                    return { error: 'UNAUTHORIZED', message: 'Original user no longer exists' };
+                }
+
+                cookie.auth.set({
+                    value: originalToken,
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 7 * 24 * 60 * 60,
+                    path: '/',
+                });
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
+
+                if (sessionId) {
+                    try {
+                        await endImpersonationAuditSession(db, {
+                            sessionId,
+                            endedByIp: getRequestClientIp(request),
+                            endedUserAgent: request.headers.get('user-agent'),
+                        });
+                    } catch (error) {
+                        console.error('[Impersonation] Failed to write end audit event:', error);
+                    }
+                }
+
+                return {
+                    success: true,
+                    message: 'Impersonation ended',
+                    user: sanitizeUser(originalUser),
                 };
             })
 
@@ -242,6 +347,32 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (basePath === '/') basePath = '';
                 const loginUrl = `${basePath}/login`;
 
+                // Origin/Referer guard: this endpoint sets the auth cookie on
+                // form POST. SameSite=Lax cookies allow top-level form posts
+                // from any site, so without this check an attacker page could
+                // submit credentials and silently sign the visitor in as the
+                // attacker (session fixation). When an Origin or Referer is
+                // present, require it to match the request host.
+                const origin = request.headers.get('origin');
+                const referer = request.headers.get('referer');
+                const headerHost = origin || referer;
+                if (headerHost) {
+                    try {
+                        const headerUrl = new URL(headerHost);
+                        if (headerUrl.host !== url.host) {
+                            return Response.redirect(
+                                `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                                302,
+                            );
+                        }
+                    } catch {
+                        return Response.redirect(
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                            302,
+                        );
+                    }
+                }
+
                 if (!email || !password) {
                     // Redirect back to login with error
                     return Response.redirect(
@@ -268,6 +399,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     );
                 }
 
+                if (!user.is_active) {
+                    return Response.redirect(
+                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
+                        302,
+                    );
+                }
+
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                     sub: user.id,
                     email: user.email,
@@ -287,9 +425,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     path: '/',
                 });
 
-                // Redirect to returnUrl if valid, otherwise to workarea
+                logActivity(db, {
+                    eventType: 'auth.login',
+                    userId: user.id,
+                });
+
+                // Redirect to returnUrl if valid, otherwise to workarea (or /admin during maintenance)
                 const returnUrl = typedBody?.returnUrl;
-                const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                const defaultTarget = await getPostLoginTarget(db, parseRoles(user.roles));
+                const targetUrl = getSafeRedirectUrl(returnUrl, defaultTarget);
                 return Response.redirect(targetUrl, 302);
             })
 
@@ -299,6 +443,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                 // Remove auth cookie first
                 cookie.auth.remove();
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
 
                 // Build callback URL for SSO logout (include BASE_PATH)
                 const url = new URL(request.url);
@@ -378,7 +524,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas - CAS (Central Authentication Service) SSO login
-            .get('/login/cas', async ({ request, set, query }) => {
+            .get('/login/cas', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -395,9 +541,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 const loginUrl = `${casUrl}/${casLoginPath}?service=${encodeURIComponent(serviceUrl)}`;
 
@@ -416,7 +564,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas/callback - CAS callback after authentication
-            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -443,8 +591,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (must match what was sent to CAS login)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 try {
                     const validateUrl = `${casUrl}/${casValidatePath}?service=${encodeURIComponent(serviceUrl)}&ticket=${encodeURIComponent(ticket)}`;
@@ -476,20 +627,33 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         // casUser is already an email address
                         email = casUser;
                     } else {
-                        // casUser is just a username, add CAS domain
-                        email = `${casUser}@cas.local`;
+                        // casUser is just a username, add temp email domain
+                        email = `${casUser}@${TEMP_EMAIL_DOMAIN}`;
                     }
 
                     // Find or create user in database
                     let user = await findUserByEmail(db, email);
                     if (!user) {
+                        if (!shouldAutoCreateUsers()) {
+                            console.warn(
+                                `CAS login rejected for unknown user "${email}": AUTH_CREATE_USERS is disabled.`,
+                            );
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'CAS authentication failed.' };
+                        }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email,
                             user_id: `cas:${casUser}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -513,6 +677,12 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    // Audit log: CAS login
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     // Get returnUrl from cookie and redirect
                     const returnUrlCookie = request.headers
                         .get('cookie')
@@ -527,7 +697,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
-                    const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                    const ssoDefaultTarget = await getPostLoginTarget(db, payload.roles);
+                    const targetUrl = getSafeRedirectUrl(returnUrl, ssoDefaultTarget);
 
                     // Clear the sso_return_url cookie and redirect
                     return new Response(null, {
@@ -545,7 +716,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid - OpenID Connect SSO login
-            .get('/login/openid', async ({ request, set, query }) => {
+            .get('/login/openid', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -572,9 +743,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 // In production, consider using a more secure method
                 const oidcState = JSON.stringify({ codeVerifier, state, nonce });
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
                 const scope = await getSettingString(db, 'OIDC_SCOPE', process.env.OIDC_SCOPE || 'openid email');
                 const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
@@ -615,7 +788,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid/callback - OpenID callback after authentication
-            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -649,11 +822,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     .find(c => c.trim().startsWith('oidc_state='));
 
                 let codeVerifier = '';
+                let expectedNonce = '';
                 if (oidcStateCookie) {
                     try {
                         const stateJson = decodeURIComponent(oidcStateCookie.split('=')[1]);
                         const stateData = JSON.parse(stateJson);
                         codeVerifier = stateData.codeVerifier || '';
+                        expectedNonce = stateData.nonce || '';
 
                         // Verify state matches
                         if (query.state && stateData.state !== query.state) {
@@ -676,8 +851,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 try {
-                    const url = new URL(request.url);
-                    const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                    // Build callback URL (must match what was sent to OIDC provider)
+                    const serverContext: ServerContext = {
+                        requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                    };
+                    const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
 
                     // Exchange code for tokens
                     const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
@@ -709,19 +887,66 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const accessToken = tokenJson.access_token as string | undefined;
                     const idToken = tokenJson.id_token as string | undefined;
 
-                    // Decode ID token to get user info
+                    // Decode ID token to get user info.
+                    //
+                    // Security: when OIDC_JWKS_URI is configured we verify the
+                    // signature against the provider's published JWKS, which
+                    // is the only way to trust the claims. Without JWKS we
+                    // fall back to decoding (preserves legacy behaviour) but
+                    // log a loud warning so the operator notices. The nonce
+                    // claim, when our authorize request set one, is always
+                    // checked — that does not require knowing the key.
                     let userEmail: string | undefined;
                     let subject: string | undefined;
+                    let idTokenPayload: Record<string, unknown> | undefined;
 
                     if (idToken) {
-                        try {
-                            const [, payloadB64] = idToken.split('.');
-                            const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-                            const payload = JSON.parse(payloadJson);
-                            userEmail = payload.email || payload.preferred_username;
-                            subject = payload.sub;
-                        } catch {
-                            // Ignore decode errors
+                        const jwksUri = await getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || '');
+                        if (jwksUri) {
+                            try {
+                                const { jwtVerify, createRemoteJWKSet } = await import('jose');
+                                const jwks = createRemoteJWKSet(new URL(jwksUri));
+                                const verifyOpts: { audience?: string } = {};
+                                if (clientId) verifyOpts.audience = clientId;
+                                const { payload } = await jwtVerify(idToken, jwks, verifyOpts);
+                                idTokenPayload = payload as Record<string, unknown>;
+                            } catch (verifyErr) {
+                                console.warn(
+                                    `[auth/openid] id_token signature verification failed via JWKS ${jwksUri}:`,
+                                    verifyErr,
+                                );
+                                set.status = 401;
+                                return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                            }
+                        } else {
+                            console.warn(
+                                '[auth/openid] OIDC_JWKS_URI is not configured; id_token signature is NOT verified. ' +
+                                    'Set OIDC_JWKS_URI to enable signature verification in production.',
+                            );
+                            try {
+                                const [, payloadB64] = idToken.split('.');
+                                const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+                                idTokenPayload = JSON.parse(payloadJson);
+                            } catch {
+                                // ignore decode errors; fall through
+                            }
+                        }
+
+                        if (idTokenPayload) {
+                            userEmail =
+                                (idTokenPayload.email as string) || (idTokenPayload.preferred_username as string);
+                            subject = idTokenPayload.sub as string | undefined;
+
+                            // Nonce binding: if our authorize request set a
+                            // nonce, the returned id_token must echo it.
+                            if (expectedNonce) {
+                                const tokenNonce = idTokenPayload.nonce as string | undefined;
+                                if (tokenNonce !== expectedNonce) {
+                                    console.warn('[auth/openid] id_token nonce mismatch');
+                                    set.status = 401;
+                                    return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                                }
+                            }
                         }
                     }
 
@@ -746,21 +971,34 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             // subject is already an email address
                             userEmail = subject;
                         } else {
-                            // Generate fallback email with OIDC domain
-                            userEmail = `oidc_${subject || randomBytes(8).toString('hex')}@oidc.local`;
+                            // Generate fallback email with temp email domain
+                            userEmail = `${subject || randomBytes(8).toString('hex')}@${TEMP_EMAIL_DOMAIN}`;
                         }
                     }
 
                     // Find or create user in database
                     let user = await findUserByEmail(db, userEmail);
                     if (!user) {
+                        if (!shouldAutoCreateUsers()) {
+                            console.warn(
+                                `OpenID login rejected for unknown user "${userEmail}": AUTH_CREATE_USERS is disabled.`,
+                            );
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                        }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email: userEmail,
                             user_id: `oidc:${subject || userEmail}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -784,6 +1022,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     // Get returnUrl from cookie
                     const returnUrlCookie = request.headers
                         .get('cookie')
@@ -798,7 +1041,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
-                    const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                    const oidcDefaultTarget = await getPostLoginTarget(db, payload.roles);
+                    const targetUrl = getSafeRedirectUrl(returnUrl, oidcDefaultTarget);
 
                     // Store id_token for OpenID logout (needed for id_token_hint)
                     // This allows proper session termination at the OpenID provider
@@ -856,17 +1100,23 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const guestId = randomBytes(16).toString('hex');
-                const guestEmail = `guest_${guestId.slice(0, 8)}@guest.local`;
+                const guestEmail = `${guestId.slice(0, 8)}@${TEMP_EMAIL_DOMAIN}`;
 
                 let user = await findUserByEmail(db, guestEmail);
                 if (!user) {
                     const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                    const defaultQuota = await getSettingNumber(
+                        db,
+                        'DEFAULT_QUOTA',
+                        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                    );
                     user = await createUser(db, {
                         email: guestEmail,
-                        user_id: `guest_${guestId.slice(0, 32)}`,
+                        // user_id: not set for guest users (null) - they're not SSO
                         password: hashedPassword,
                         roles: ['ROLE_GUEST'],
                         is_lopd_accepted: 1,
+                        quota_mb: defaultQuota,
                     });
                 }
 
@@ -887,6 +1137,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',
+                });
+
+                logActivity(db, {
+                    eventType: 'auth.login',
+                    userId: user.id,
                 });
 
                 // Redirect to returnUrl if valid, otherwise to workarea
@@ -936,6 +1191,12 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
             roles: payload.roles as string[],
             isGuest: payload.isGuest as boolean | undefined,
             authMethod: payload.authMethod as JwtPayload['authMethod'],
+            isImpersonated: payload.isImpersonated as boolean | undefined,
+            impersonatedBy:
+                typeof payload.impersonatedBy === 'string'
+                    ? parseInt(payload.impersonatedBy, 10)
+                    : (payload.impersonatedBy as number | undefined),
+            impersonationSessionId: payload.impersonationSessionId as string | undefined,
             iat: payload.iat,
             exp: payload.exp,
         };

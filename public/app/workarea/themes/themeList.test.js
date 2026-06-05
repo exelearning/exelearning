@@ -71,13 +71,23 @@ describe('ThemeList', () => {
 
       expect(spy).toHaveBeenCalled();
     });
+
+    it('should call loadUserThemesFromIndexedDB after loadThemesInstalled', async () => {
+      const installedSpy = vi.spyOn(themeList, 'loadThemesInstalled');
+      const userThemesSpy = vi.spyOn(themeList, 'loadUserThemesFromIndexedDB').mockResolvedValue(undefined);
+
+      await themeList.load();
+
+      expect(installedSpy).toHaveBeenCalled();
+      expect(userThemesSpy).toHaveBeenCalled();
+    });
   });
 
   describe('loadThemesInstalled', () => {
-    it('should fetch themes from API', async () => {
+    it('should fetch themes from api', async () => {
       await themeList.loadThemesInstalled();
 
-      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+      expect(mockManager.app.api.getThemesInstalled).toHaveBeenCalled();
     });
 
     it('should create Theme instances for each theme', async () => {
@@ -116,7 +126,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle null API response', async () => {
-      mockApi.getThemesInstalled.mockResolvedValue(null);
+      mockManager.app.api.getThemesInstalled.mockResolvedValue(null);
 
       await themeList.loadThemesInstalled();
 
@@ -124,7 +134,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle missing themes property', async () => {
-      mockApi.getThemesInstalled.mockResolvedValue({});
+      mockManager.app.api.getThemesInstalled.mockResolvedValue({});
 
       await themeList.loadThemesInstalled();
 
@@ -133,10 +143,10 @@ describe('ThemeList', () => {
   });
 
   describe('loadThemeInstalled', () => {
-    it('should fetch themes from API', async () => {
+    it('should fetch themes from api', async () => {
       await themeList.loadThemeInstalled('theme-b');
 
-      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+      expect(mockManager.app.api.getThemesInstalled).toHaveBeenCalled();
     });
 
     it('should load only the specified theme', async () => {
@@ -367,6 +377,236 @@ describe('ThemeList', () => {
     });
   });
 
+  describe('loadUserThemesFromIndexedDB', () => {
+    let mockResourceCache;
+
+    beforeEach(() => {
+      mockResourceCache = {
+        listUserThemes: vi.fn(),
+      };
+    });
+
+    it('should return early if no resourceCache available', async () => {
+      mockManager.app.project = null;
+
+      await expect(themeList.loadUserThemesFromIndexedDB()).resolves.not.toThrow();
+    });
+
+    it('should return early if no user themes in IndexedDB', async () => {
+      mockManager.app.project = {
+        _yjsBridge: {
+          resourceCache: mockResourceCache,
+        },
+      };
+      mockResourceCache.listUserThemes.mockResolvedValue([]);
+
+      const spy = vi.spyOn(themeList, 'addUserTheme');
+      await themeList.loadUserThemesFromIndexedDB();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should load user themes from IndexedDB', async () => {
+      mockManager.app.project = {
+        _yjsBridge: {
+          resourceCache: mockResourceCache,
+        },
+      };
+      mockResourceCache.listUserThemes.mockResolvedValue([
+        { name: 'user-theme-1', config: { name: 'user-theme-1', dirName: 'user-theme-1' } },
+        { name: 'user-theme-2', config: { name: 'user-theme-2', dirName: 'user-theme-2' } },
+      ]);
+
+      const spy = vi.spyOn(themeList, 'addUserTheme').mockReturnValue({});
+      await themeList.loadUserThemesFromIndexedDB();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should use provided cache parameter', async () => {
+      await themeList.loadUserThemesFromIndexedDB(mockResourceCache);
+
+      expect(mockResourceCache.listUserThemes).toHaveBeenCalled();
+    });
+
+    it('should skip already loaded themes', async () => {
+      themeList.installed['user-theme-1'] = { id: 'user-theme-1' };
+
+      mockManager.app.project = {
+        _yjsBridge: {
+          resourceCache: mockResourceCache,
+        },
+      };
+      mockResourceCache.listUserThemes.mockResolvedValue([
+        { name: 'user-theme-1', config: { name: 'user-theme-1' } },
+        { name: 'user-theme-2', config: { name: 'user-theme-2', dirName: 'user-theme-2' } },
+      ]);
+
+      const spy = vi.spyOn(themeList, 'addUserTheme').mockReturnValue({});
+      await themeList.loadUserThemesFromIndexedDB();
+
+      expect(spy).toHaveBeenCalledTimes(1); // Only user-theme-2
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockManager.app.project = {
+        _yjsBridge: {
+          resourceCache: mockResourceCache,
+        },
+      };
+      mockResourceCache.listUserThemes.mockRejectedValue(new Error('DB error'));
+
+      await expect(themeList.loadUserThemesFromIndexedDB()).resolves.not.toThrow();
+    });
+
+    it('should order themes after loading', async () => {
+      mockManager.app.project = {
+        _yjsBridge: {
+          resourceCache: mockResourceCache,
+        },
+      };
+      mockResourceCache.listUserThemes.mockResolvedValue([
+        { name: 'user-theme', config: { name: 'user-theme', dirName: 'user-theme' } },
+      ]);
+
+      vi.spyOn(themeList, 'addUserTheme').mockReturnValue({});
+      const orderSpy = vi.spyOn(themeList, 'orderThemesInstalled');
+
+      await themeList.loadUserThemesFromIndexedDB();
+
+      expect(orderSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('addUserTheme', () => {
+    it('should create theme with user-theme:// URL', () => {
+      const config = {
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+        title: 'My User Theme',
+        cssFiles: ['style.css'],
+      };
+
+      themeList.addUserTheme(config);
+
+      expect(Theme).toHaveBeenCalledWith(
+        mockManager,
+        expect.objectContaining({
+          url: 'user-theme://my-user-theme',
+          valid: true,
+        })
+      );
+    });
+
+    it('should mark theme as isUserTheme', () => {
+      const config = {
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+      };
+
+      const result = themeList.addUserTheme(config);
+
+      expect(result.isUserTheme).toBe(true);
+    });
+
+    it('should add theme to installed object', () => {
+      const config = {
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+      };
+
+      themeList.addUserTheme(config);
+
+      expect(themeList.installed['my-user-theme']).toBeDefined();
+    });
+
+    it('should order themes after adding', () => {
+      const spy = vi.spyOn(themeList, 'orderThemesInstalled');
+
+      themeList.addUserTheme({
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+      });
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should return the created theme', () => {
+      const result = themeList.addUserTheme({
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.isUserTheme).toBe(true);
+    });
+
+    it('should preserve config properties', () => {
+      const config = {
+        name: 'my-user-theme',
+        dirName: 'my-user-theme',
+        title: 'My Theme Title',
+        cssFiles: ['style.css', 'layout.css'],
+        author: 'Test Author',
+      };
+
+      themeList.addUserTheme(config);
+
+      expect(Theme).toHaveBeenCalledWith(
+        mockManager,
+        expect.objectContaining({
+          name: 'my-user-theme',
+          title: 'My Theme Title',
+          cssFiles: ['style.css', 'layout.css'],
+          author: 'Test Author',
+        })
+      );
+    });
+  });
+
+  describe('themeRegistryOverride blockImportInstall', () => {
+    let warnSpy;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      window.eXeLearning = {
+        config: { themeRegistryOverride: { blockImportInstall: true } },
+      };
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+      delete window.eXeLearning;
+    });
+
+    it('refuses addUserTheme and returns null when import is blocked', () => {
+      const result = themeList.addUserTheme({
+        name: 'blocked-theme',
+        dirName: 'blocked-theme',
+      });
+
+      expect(result).toBeNull();
+      expect(themeList.installed['blocked-theme']).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Refusing to install theme 'blocked-theme'")
+      );
+    });
+
+    it('short-circuits loadUserThemesFromIndexedDB when import is blocked', async () => {
+      const addSpy = vi.spyOn(themeList, 'addUserTheme');
+      const fakeCache = {
+        listUserThemes: vi.fn().mockResolvedValue([
+          { name: 'x', config: { name: 'x', dirName: 'x' } },
+        ]),
+      };
+
+      await themeList.loadUserThemesFromIndexedDB(fakeCache);
+
+      expect(fakeCache.listUserThemes).not.toHaveBeenCalled();
+      expect(addSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('integration', () => {
     it('should load and order themes from API', async () => {
       await themeList.load();
@@ -382,7 +622,7 @@ describe('ThemeList', () => {
       await themeList.load();
       expect(Object.keys(themeList.installed)).toHaveLength(3);
 
-      mockApi.getThemesInstalled.mockResolvedValue({
+      mockManager.app.api.getThemesInstalled.mockResolvedValue({
         themes: [
           { name: 'new-theme', title: 'New Theme', valid: true, dirName: 'new-theme' },
         ],

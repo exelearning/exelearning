@@ -2,6 +2,8 @@
 
 This document explains the testing framework used in eXeLearning, including unit, integration, frontend, and end-to-end (E2E) tests.
 
+For runtime profiling of Electron save/export flows, see [profiling.md](./profiling.md).
+
 ## Test Structure
 
 Tests are organized by type and location:
@@ -264,7 +266,7 @@ make test-e2e
 make test-e2e-ui
 
 # Run specific test file
-npx playwright test test/e2e/playwright/specs/login.spec.ts
+bun x playwright test test/e2e/playwright/specs/login.spec.ts
 ```
 
 ### Structure

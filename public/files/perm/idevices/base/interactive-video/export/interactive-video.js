@@ -252,6 +252,15 @@ var $interactivevideo = {
 
         // es.html(es.html()+html);
         es[0].innerHTML += html;
+        if (
+            $interactivevideo.mOptions &&
+            $interactivevideo.mOptions.evaluation
+        ) {
+            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                $interactivevideo.mOptions,
+                $interactivevideo.isInExe
+            );
+        }
 
         // console.log(typeof top.interactiveVideoEditor.activityToSave);
         // Only show "no slides" message if there's truly no content at all
@@ -324,29 +333,105 @@ var $interactivevideo = {
         // Cover (poster)
         if (
             InteractiveVideo.coverType &&
-            InteractiveVideo.coverType == 'poster'
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
         ) {
-            var img = $(
-                '.interactive-videoIdevice .exe-interactive-video-poster'
-            );
-            if (img.length == 1) {
-                img = img.eq(0);
-                cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
-                cover +=
-                    "<span class='activity-cover-img-content'>" +
-                    img.html() +
-                    '</span>';
-                coverCSS = ' class="activity-cover-img"';
-            }
+            var posterUrl = InteractiveVideo.poster;
+            var posterAlt = InteractiveVideo.posterDescription || '';
+            cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
+            cover +=
+                "<span class='activity-cover-img-content'>" +
+                '<img id="exe-interactive-video-poster-img" src="" alt="' + posterAlt + '" style="display:none;" />' +
+                '</span>';
+            coverCSS = ' class="activity-cover-img"';
+            
         }
 
         $('#activity').prepend(
-            '<div id="activity-cover"><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
+            '<div id="activity-cover"' + coverCSS + '><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
                 cover +
                 '</div>' +
                 play +
                 '</div>'
         );
+
+        // Resolve poster URL after DOM is ready (must be after prepend)
+        if (
+            InteractiveVideo.coverType &&
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
+        ) {
+            var posterUrl = InteractiveVideo.poster;
+            var posterImg = document.getElementById('exe-interactive-video-poster-img');
+            if (posterImg) {
+                // Helper to display the image
+                var showPoster = function(url) {
+                    posterImg.src = url;
+                    posterImg.style.display = '';
+                };
+                
+                // Get AssetManager from parent/top context (for preview mode in iframe)
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   parent?.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   top?.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                
+                // If asset:// URL
+                if (posterUrl.indexOf('asset://') === 0) {
+                    // If AssetManager available (IDE mode), resolve to blob://
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(posterUrl).then(function(blobUrl) {
+                            showPoster(blobUrl || posterUrl);
+                        }).catch(function() {
+                            showPoster(posterUrl);
+                        });
+                    } else {
+                        // Export/preview mode: transform asset://uuid/path to content/resources/path
+                        var slashIndex = posterUrl.indexOf('/', 8); // after 'asset://'
+                        if (slashIndex !== -1) {
+                            var exportPath = posterUrl.substring(slashIndex + 1);
+                            showPoster('content/resources/' + exportPath);
+                        } else {
+                            showPoster(posterUrl);
+                        }
+                    }
+                }
+                // If resources/ path (legacy ELP 2.9 format)
+                else if (posterUrl.indexOf('resources/') === 0) {
+                    var filename = posterUrl.replace('resources/', '');
+                    
+                    // If AssetManager available (IDE mode), find asset and resolve to blob://
+                    if (assetManager && typeof assetManager.getAllAssetsMetadata === 'function') {
+                        var assets = assetManager.getAllAssetsMetadata();
+                        var foundAsset = null;
+                        for (var i = 0; i < assets.length; i++) {
+                            if (assets[i].filename === filename) {
+                                foundAsset = assets[i];
+                                break;
+                            }
+                        }
+                        if (foundAsset) {
+                            var assetUrl = 'asset://' + foundAsset.id + '/' + foundAsset.filename;
+                            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                                showPoster(blobUrl || assetUrl);
+                            }).catch(function() {
+                                // Fallback to content/resources/ path
+                                showPoster('content/resources/' + filename);
+                            });
+                        } else {
+                            // Asset not found in manager, use content/resources/ path
+                            showPoster('content/resources/' + filename);
+                        }
+                    } else {
+                        // No AssetManager (preview/export mode), use content/resources/ path
+                        showPoster('content/resources/' + filename);
+                    }
+                }
+                // Other URLs (http://, blob://, content/resources/, etc.)
+                else {
+                    showPoster(posterUrl);
+                }
+            }
+        }
 
         const videoHtml = $('.exe-interactive-video').html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(videoHtml)) {
@@ -362,17 +447,9 @@ var $interactivevideo = {
             );
             return;
         } else if (this.type == 'youtube') {
-            // Check if we're in a context where YouTube embeds cannot work
-            // YouTube requires HTTP/HTTPS origin - blob: and file: URLs are not supported
-            var currentOrigin = window.location.origin || '';
-            var isUnsupportedContext = currentOrigin.startsWith('blob:') ||
-                                       currentOrigin.startsWith('file:') ||
-                                       window.location.protocol === 'file:' ||
-                                       window.location.href.startsWith('blob:');
-
-            if (isUnsupportedContext) {
-                // Use HTTP wrapper iframe to load YouTube (works from blob: context)
-                $interactivevideo.loadYoutubeWrapper();
+            // For file: protocol, show fallback since YouTube requires HTTP/HTTPS
+            if (window.location.protocol === 'file:') {
+                $interactivevideo.showYoutubeFallback();
                 return;
             }
 
@@ -389,10 +466,21 @@ var $interactivevideo = {
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         } else if (this.type == 'local') {
+            // Get MIME type based on extension for proper video playback (especially with blob URLs)
+            var mimeTypes = {
+                'mp4': 'video/mp4',
+                'm4v': 'video/mp4',
+                'webm': 'video/webm',
+                'ogv': 'video/ogg',
+                'ogg': 'video/ogg',
+                'flv': 'video/x-flv'
+            };
+            var mimeType = mimeTypes[this.extension] || 'video/mp4';
+
             $('#player').html(
                 '<video width="448" height="356" class="mejs__player" controls="controls"><source src="' +
                     this.file +
-                    '" /></video>'
+                    '" type="' + mimeType + '" /></video>'
             );
         }
         // $interactivevideo.ready();
@@ -762,158 +850,7 @@ var $interactivevideo = {
     },
 
     /**
-     * Load YouTube via HTTP wrapper iframe (works from blob:/file: contexts)
-     *
-     * YOUTUBE EMBEDDING RESTRICTION:
-     * YouTube's IFrame Player API requires a valid HTTP/HTTPS origin to function.
-     * When the preview is loaded via blob: URL (e.g., blob:http://localhost:8080/...),
-     * YouTube rejects the embed with "Error 153: Video player configuration error"
-     * because blob: URLs have a null origin that YouTube doesn't recognize.
-     *
-     * SOLUTION:
-     * Instead of creating a YT.Player directly (which would fail in blob: context),
-     * we create an iframe that loads youtube-preview.html from the HTTP server.
-     * This wrapper has a valid HTTP origin, so YouTube works correctly inside it.
-     *
-     * COMMUNICATION:
-     * Since the YouTube player is now inside a nested iframe, we use postMessage
-     * to communicate between the interactive-video iDevice and the wrapper:
-     * - Wrapper sends: youtube-ready, youtube-time, youtube-state, youtube-error
-     * - Parent sends: youtube-play, youtube-pause, youtube-seek, youtube-stop
-     *
-     * The player object is replaced with a proxy that sends postMessage commands
-     * to maintain compatibility with existing code that calls player.playVideo(), etc.
-     *
-     * @see public/app/common/youtube-preview.html - The HTTP wrapper
-     * @see WebsitePreviewExporter.ts - Global transform for all YouTube embeds
-     */
-    loadYoutubeWrapper: function () {
-        var videoId = this.id;
-        var self = this;
-
-        // Determine the base URL for the wrapper
-        // In blob: context, we need to extract the real origin
-        var wrapperBaseUrl = '';
-        if (window.location.href.startsWith('blob:')) {
-            // Extract origin from blob URL: blob:http://localhost:8080/... -> http://localhost:8080
-            var blobUrl = window.location.href;
-            var match = blobUrl.match(/^blob:(https?:\/\/[^/]+)/);
-            if (match) {
-                wrapperBaseUrl = match[1];
-            }
-        } else if (window.location.protocol === 'file:') {
-            // For file: protocol, we can't determine the server URL
-            // Fall back to showing the fallback UI
-            this.showYoutubeFallback();
-            return;
-        }
-
-        // If we couldn't determine a valid base URL, show fallback
-        if (!wrapperBaseUrl) {
-            this.showYoutubeFallback();
-            return;
-        }
-
-        // Get basePath if set (for subdirectory installations)
-        var basePath = (typeof eXe !== 'undefined' && eXe.basePath) ? eXe.basePath : '';
-
-        // Build the wrapper URL
-        var wrapperUrl = wrapperBaseUrl + basePath + '/app/common/youtube-preview.html?v=' + encodeURIComponent(videoId);
-
-        // Create iframe for the wrapper
-        var iframe = document.createElement('iframe');
-        iframe.id = 'youtube-wrapper-iframe';
-        iframe.src = wrapperUrl;
-        iframe.width = '448';
-        iframe.height = '356';
-        iframe.frameBorder = '0';
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        iframe.allowFullscreen = true;
-        iframe.style.cssText = 'border:none;background:#000;';
-
-        // Clear player container and add iframe
-        var playerEl = document.getElementById('player');
-        playerEl.innerHTML = '';
-        playerEl.appendChild(iframe);
-
-        // Track if wrapper is ready
-        this.youtubeWrapperReady = false;
-        this._lastYoutubeTime = 0;
-
-        // Listen for messages from the wrapper
-        var messageHandler = function(event) {
-            // Validate origin
-            if (event.origin !== wrapperBaseUrl) return;
-
-            var data = event.data;
-            if (!data || typeof data.type !== 'string') return;
-
-            switch (data.type) {
-                case 'youtube-ready':
-                    self.youtubeWrapperReady = true;
-                    self.complete();
-                    break;
-
-                case 'youtube-time':
-                    self._lastYoutubeTime = data.time || 0;
-                    self.track(data.time || 0);
-                    break;
-
-                case 'youtube-state':
-                    // YT.PlayerState: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-                    if (data.state === 1) { // playing
-                        self.hasPlayed = true;
-                        self.checkSlides();
-                    }
-                    break;
-
-                case 'youtube-error':
-                    console.error('[InteractiveVideo] YouTube wrapper error:', data.message);
-                    // On error, show the static fallback
-                    self.showYoutubeFallback();
-                    break;
-            }
-        };
-
-        window.addEventListener('message', messageHandler);
-
-        // Store handler reference for cleanup
-        this._youtubeWrapperMessageHandler = messageHandler;
-
-        // Create a player-like interface for compatibility with existing code
-        this.player = {
-            getCurrentTime: function() {
-                return self._lastYoutubeTime || 0;
-            },
-            playVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-play' }, wrapperBaseUrl);
-                }
-            },
-            pauseVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-pause' }, wrapperBaseUrl);
-                }
-            },
-            seekTo: function(time) {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-seek', time: time }, wrapperBaseUrl);
-                }
-            },
-            stopVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-stop' }, wrapperBaseUrl);
-                }
-            }
-        };
-    },
-
-    /**
-     * Show fallback for YouTube when wrapper also fails (e.g., file: protocol)
+     * Show fallback for YouTube when direct embedding is not possible (e.g., file: protocol)
      * Displays a thumbnail with a link to watch on YouTube
      */
     showYoutubeFallback: function () {
@@ -1016,20 +953,13 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
-            // Get the origin for YouTube API (must be HTTP/HTTPS)
-            var origin = window.location.origin;
-            // If origin is not valid (blob:, file:, etc.), use the page's base URL
-            if (!origin || origin === 'null' || origin.startsWith('blob:') || origin.startsWith('file:')) {
-                origin = 'https://exelearning.net'; // Fallback origin
-            }
-
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
                 videoId: $interactivevideo.id,
                 host: 'https://www.youtube-nocookie.com', // Privacy-enhanced mode
                 playerVars: {
-                    origin: origin,
+                    origin: window.location.origin,
                     enablejsapi: 1,
                     rel: 0, // Don't show related videos at end
                     modestbranding: 1 // Minimal YouTube branding
@@ -1422,25 +1352,84 @@ var $interactivevideo = {
                 // Image
             } else if (e.type == 'image') {
                 var img = new Image();
-                img.src = $('#exe-interactive-video-img-' + e.url).attr('src');
-                img.onload = function () {
-                    slide.html(
-                        $interactivevideo.getImage(
-                            e,
-                            img.width,
-                            img.height,
-                            img.src
-                        )
-                    );
-                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
-                        if (e == InteractiveVideo.slides[i]) {
-                            $interactivevideo.updateResult(i, i18n.seen);
-                            e.results = {
-                                viewed: true,
-                            };
+                
+                // Determine the image source
+                // If e.url is a number (legacy format), find the element by ID
+                // If e.url is a URL (asset://, blob://, http://, etc.), use it directly
+                var imgSrc;
+                if (typeof e.url === 'number' || /^\d+$/.test(e.url)) {
+                    // Legacy format: e.url is an index, find the img element
+                    var imgElement = document.getElementById('exe-interactive-video-img-' + e.url);
+                    imgSrc = imgElement ? imgElement.src : '';
+                } else {
+                    // New format: e.url is already a URL
+                    imgSrc = e.url;
+                }
+                
+                // Helper function to load and display the image
+                var loadAndDisplayImage = function(src) {
+                    img.src = src;
+                    img.onload = function () {
+                        // Use saved dimensions if available, calculate proportionally if only one is set
+                        var naturalW = img.naturalWidth || img.width;
+                        var naturalH = img.naturalHeight || img.height;
+                        var displayWidth, displayHeight;
+                        
+                        if (e.width && e.height) {
+                            // Both dimensions saved
+                            displayWidth = parseInt(e.width);
+                            displayHeight = parseInt(e.height);
+                        } else if (e.width && !e.height) {
+                            // Only width saved, calculate height proportionally
+                            displayWidth = parseInt(e.width);
+                            displayHeight = Math.round((displayWidth * naturalH) / naturalW);
+                        } else if (!e.width && e.height) {
+                            // Only height saved, calculate width proportionally
+                            displayHeight = parseInt(e.height);
+                            displayWidth = Math.round((displayHeight * naturalW) / naturalH);
+                        } else {
+                            // No dimensions saved, use natural
+                            displayWidth = naturalW;
+                            displayHeight = naturalH;
                         }
-                    }
+                        slide.html(
+                            $interactivevideo.getImage(
+                                e,
+                                displayWidth,
+                                displayHeight,
+                                img.src
+                            )
+                        );
+                        for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                            if (e == InteractiveVideo.slides[i]) {
+                                $interactivevideo.updateResult(i, i18n.seen);
+                                e.results = {
+                                    viewed: true,
+                                };
+                            }
+                        }
+                    };
+                    img.onerror = function() {
+                        console.warn('[InteractiveVideo] Failed to load image:', src);
+                    };
                 };
+                
+                // If asset:// URL, resolve it first
+                if (imgSrc && imgSrc.indexOf('asset://') === 0) {
+                    var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(imgSrc).then(function(blobUrl) {
+                            loadAndDisplayImage(blobUrl || imgSrc);
+                        }).catch(function() {
+                            loadAndDisplayImage(imgSrc);
+                        });
+                    } else {
+                        // No AssetManager, try loading directly (won't work for asset://)
+                        loadAndDisplayImage(imgSrc);
+                    }
+                } else {
+                    loadAndDisplayImage(imgSrc);
+                }
 
                 // Single choice
             } else if (e.type == 'singleChoice') {
@@ -2746,7 +2735,11 @@ var $interactivevideo = {
             newW +
             '" height="' +
             newH +
-            '" style="display:block;margin-top:' +
+            '" style="display:block;width:' +
+            newW +
+            'px;height:' +
+            newH +
+            'px;margin-top:' +
             (maxH - newH) / 2 +
             'px" /><a href="' +
             src +
@@ -2814,7 +2807,10 @@ var $interactivevideo = {
         const $idevices = $('.idevice_node'),
             $video = $('.exe-interactive-video').eq(0),
             deviceId = $video.closest('.idevice_node').attr('id'),
-            index = $idevices.index($('#' + deviceId));
+            index = $idevices.index($('#' + deviceId)),
+            ideviceTarget = $video.closest('.interactive-videoIdevice').length
+                ? 'interactive-videoIdevice'
+                : 'idevice_node';
 
         let title =
             $video.closest('article').find('header .box-title').text() || '';
@@ -2829,11 +2825,11 @@ var $interactivevideo = {
             id: IV.ideviceID,
             scorerp: 0,
             weighted: IV.weighted != null ? IV.weighted : 100,
-            evaluation: !!(IV.evaluationID && IV.evaluationID.length),
+            evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
             isInExe: this.isInExe,
             main: '.exe-interactive-video',
-            idevice: 'exe-interactive-video',
+            idevice: ideviceTarget,
             idevicePath: this.idevicePath,
             textButtonScorm: IV.scorm.textButtonScorm,
             isScorm: IV.scorm.isScorm,
@@ -2846,6 +2842,19 @@ var $interactivevideo = {
 };
 
 $(function () {
+    // Helper to sanitize JSON from legacy formats (handles control characters)
+    var sanitizeJSON = function(jsonStr) {
+        if (typeof $exeDevices !== 'undefined' &&
+            $exeDevices.iDevice &&
+            $exeDevices.iDevice.gamification &&
+            $exeDevices.iDevice.gamification.helpers &&
+            $exeDevices.iDevice.gamification.helpers.sanitizeJSONString) {
+            return $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonStr);
+        }
+        return jsonStr;
+    };
+
+    // Try modern format first: <script id="exe-interactive-video-contents" type="application/json">
     var contentElement = document.getElementById(
         'exe-interactive-video-contents'
     );
@@ -2854,12 +2863,42 @@ $(function () {
         try {
             var jsonContent =
                 contentElement.textContent || contentElement.innerHTML;
-            jsonContent = jsonContent.trim();
+            jsonContent = sanitizeJSON(jsonContent.trim());
 
             InteractiveVideo = JSON.parse(jsonContent);
         } catch (error) {
             console.error('Interactive Video: Error parsing JSON', error);
             InteractiveVideo = { slides: [], i18n: $interactivevideo.i18n };
+        }
+    } else {
+        // Legacy format (eXe 2.9): <script type="text/javascript">var InteractiveVideo = {...}</script>
+        // The InteractiveVideo variable might already be set by the legacy script execution
+        if (typeof InteractiveVideo === 'undefined' || !InteractiveVideo.slides) {
+            // Try to find and parse the legacy script manually
+            var container = document.querySelector('.exe-interactive-video');
+            if (container) {
+                var legacyScript = container.querySelector('script[type="text/javascript"]');
+                if (legacyScript) {
+                    var scriptContent = legacyScript.textContent || legacyScript.innerHTML || '';
+                    // Remove CDATA markers and extract JSON
+                    scriptContent = scriptContent
+                        .replace(/\/\/<!\[CDATA\[/g, '')
+                        .replace(/\/\/\]\]>/g, '')
+                        .trim();
+
+                    var match = scriptContent.match(/var\s+InteractiveVideo\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+                    if (match && match[1]) {
+                        try {
+                            // Sanitize JSON to handle control characters from legacy versions
+                            var sanitizedJson = sanitizeJSON(match[1]);
+                            InteractiveVideo = JSON.parse(sanitizedJson);
+                        } catch (e) {
+                            console.error('Interactive Video: Error parsing legacy format', e);
+                            InteractiveVideo = { slides: [], i18n: $interactivevideo.i18n };
+                        }
+                    }
+                }
+            }
         }
     }
 

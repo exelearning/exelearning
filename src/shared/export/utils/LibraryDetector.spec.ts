@@ -121,12 +121,15 @@ describe('LibraryDetector', () => {
             expect(result.libraries[0].name).toBe('abcjs');
         });
 
-        it('should detect mermaid by class pattern', () => {
+        it('should NOT include mermaid library (always pre-rendered to SVG)', () => {
+            // Mermaid diagrams are always pre-rendered to static SVG in the workarea
+            // The mermaid.min.js library (~2.7MB) is NEVER included in exports
             const html = '<div class="mermaid">graph TD; A-->B;</div>';
             const result = detector.detectLibraries(html);
 
-            expect(result.count).toBe(1);
-            expect(result.libraries[0].name).toBe('mermaid');
+            // Mermaid should NOT be detected
+            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
+            expect(result.files).not.toContain('mermaid/mermaid.min.js');
         });
 
         it('should detect jquery-ui for ordena iDevice', () => {
@@ -142,6 +145,34 @@ describe('LibraryDetector', () => {
             const result = detector.detectLibraries(html);
 
             expect(result.files).toContain('jquery-ui/jquery-ui.min.js');
+        });
+
+        it('should detect exe_elpx_download by class pattern (download-source-file iDevice)', () => {
+            const html = '<a href="#" class="exe-download-package-link">Download</a>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.count).toBe(1);
+            expect(result.libraries[0].name).toBe('exe_elpx_download');
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+
+        it('should detect exe_elpx_download_protocol by exe-package:elp link', () => {
+            const html = '<a href="exe-package:elp" download="exe-package:elp-name">Download source</a>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.libraries.some(l => l.name === 'exe_elpx_download_protocol')).toBe(true);
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+
+        it('should detect exe_elpx_download for manual links in text iDevice content', () => {
+            // This simulates a manual link created in a text iDevice
+            const html = '<p>Click <a href="exe-package:elp">here</a> to download the source file.</p>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
         });
 
         it('should detect multiple libraries', () => {
@@ -189,6 +220,54 @@ describe('LibraryDetector', () => {
 
             expect(result.libraries.find(l => l.name === 'exe_atools')).toBeDefined();
             expect(result.files).toContain('exe_atools/exe_atools.js');
+        });
+
+        it('should include accessibility toolbar even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeAccessibilityToolbar: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_atools')).toBeDefined();
+            expect(result.files).toContain('exe_atools/exe_atools.js');
+            expect(result.files).toContain('exe_atools/exe_atools.css');
+        });
+
+        it('should include MathJax even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeMathJax: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_math')).toBeDefined();
+            expect(result.files).toContain('exe_math');
+        });
+
+        it('should mark exe_lightbox with isDirectory=true for full directory export', () => {
+            const html = '<a href="image.jpg" rel="lightbox">Image</a>';
+            const result = detector.detectLibraries(html);
+
+            const lightboxPattern = result.patterns.find(p => p.name === 'exe_lightbox');
+            expect(lightboxPattern).toBeDefined();
+            expect(lightboxPattern?.isDirectory).toBe(true);
+            // Should still have the main files for HTML references
+            expect(result.files).toContain('exe_lightbox/exe_lightbox.js');
+            expect(result.files).toContain('exe_lightbox/exe_lightbox.css');
+        });
+
+        it('should mark exe_lightbox_gallery with isDirectory=true for full directory export', () => {
+            const html = '<div class="imageGallery">Gallery</div>';
+            const result = detector.detectLibraries(html);
+
+            const galleryPattern = result.patterns.find(p => p.name === 'exe_lightbox_gallery');
+            expect(galleryPattern).toBeDefined();
+            expect(galleryPattern?.isDirectory).toBe(true);
+        });
+
+        it('should mark exe_atools with isDirectory=true for full directory export', () => {
+            const html = '<p>Normal content</p>';
+            const result = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
+
+            const atoolsPattern = result.patterns.find(p => p.name === 'exe_atools');
+            expect(atoolsPattern).toBeDefined();
+            expect(atoolsPattern?.isDirectory).toBe(true);
+            // Should still have the main files for HTML references
+            expect(result.files).toContain('exe_atools/exe_atools.js');
+            expect(result.files).toContain('exe_atools/exe_atools.css');
         });
     });
 
@@ -255,6 +334,30 @@ describe('LibraryDetector', () => {
             const jqueryCount = files.filter(f => f === 'jquery/jquery.min.js').length;
 
             expect(jqueryCount).toBe(1);
+        });
+    });
+
+    describe('incremental fragment scanning', () => {
+        it('should detect libraries across multiple fragments without concatenating them first', () => {
+            const result = detector.detectLibrariesFromFragments([
+                '<div class="exe-fx animated">Effects</div>',
+                '<pre class="highlighted-code">code</pre>',
+            ]);
+
+            expect(result.libraries.map(l => l.name)).toContain('exe_effects');
+            expect(result.libraries.map(l => l.name)).toContain('exe_highlighter');
+        });
+
+        it('should return required files and patterns from fragment iterables', () => {
+            const { files, patterns } = detector.getAllRequiredFilesWithPatternsFromFragments(
+                ['<a href="img.jpg" rel="lightbox">Image</a>', '<p>\\(x^2\\)</p>'],
+                { includeAccessibilityToolbar: true },
+            );
+
+            expect(files).toContain('exe_lightbox/exe_lightbox.js');
+            expect(files).toContain('exe_atools/exe_atools.js');
+            expect(patterns.some(pattern => pattern.name === 'exe_lightbox')).toBe(true);
+            expect(patterns.some(pattern => pattern.name === 'exe_math')).toBe(true);
         });
     });
 

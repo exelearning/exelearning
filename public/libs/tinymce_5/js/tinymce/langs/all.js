@@ -317,7 +317,7 @@ tinymce.addI18n('all',{
 // Insert Media
 'Insert/Edit Media': _('Insert/Edit Media'),
 'Title and Attribution': _('Title and Attribution'),
-'Use JavaScript player': _('Use JavaScript player'),
+'Player compatible with .srt subtitles. Check only if using .srt subtitles.': _('Player compatible with .srt subtitles. Check only if using .srt subtitles.'),
 'Use Controls': _('Use Controls'),
 'Use Autoplay': _('Use Autoplay'),
 'Detect automatically': _('Detect automatically'),
@@ -435,5 +435,8 @@ tinymce.addI18n('all',{
 "Extended Latin": _("Extended Latin"),
 "Symbols": _("Symbols"),
 "Arrows": _("Arrows"),
-
+// Mermaid diagram
+"Mermaid diagram": _("Mermaid diagram"),
+"Mermaid code": _("Mermaid code"),
+"Need help? Visit %s": _("Need help? Visit %s"),
 });

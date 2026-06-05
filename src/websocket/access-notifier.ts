@@ -8,8 +8,7 @@
  */
 import type { ServerWebSocket } from 'bun';
 import * as roomManagerDefault from './room-manager';
-
-const DEBUG = process.env.APP_DEBUG === '1';
+import { isDebugEnabled } from './config';
 
 /**
  * Asset message prefix byte (0xFF)
@@ -132,7 +131,7 @@ function sendAndClose(ws: ServerWebSocket<unknown>, message: Uint8Array, reason:
             }
         }, 100);
     } catch (err) {
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.error('[AccessNotifier] Error sending message:', err);
         }
         // Try to close anyway
@@ -160,7 +159,7 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
     const connectedUserIds = deps.roomManager.getConnectedUserIds(docName);
 
     if (connectedUserIds.length === 0) {
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[AccessNotifier] No users connected to project ${projectUuid}`);
         }
         return 0;
@@ -173,7 +172,7 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
     const usersToKick = connectedUserIds.filter(userId => !authorizedUsers.has(userId));
 
     if (usersToKick.length === 0) {
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[AccessNotifier] All connected users are authorized for project ${projectUuid}`);
         }
         return 0;
@@ -192,14 +191,14 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
             kickedCount++;
         }
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[AccessNotifier] Kicked user ${userId} from project ${projectUuid} (${connections.length} connections)`,
             );
         }
     }
 
-    if (DEBUG) {
+    if (isDebugEnabled()) {
         console.log(
             `[AccessNotifier] Visibility change: kicked ${usersToKick.length} users (${kickedCount} connections) from project ${projectUuid}`,
         );
@@ -222,7 +221,7 @@ export function notifyCollaboratorRemoved(projectUuid: string, removedUserId: nu
     const connections = deps.roomManager.getConnectionsByUserId(docName, removedUserId);
 
     if (connections.length === 0) {
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[AccessNotifier] User ${removedUserId} not connected to project ${projectUuid}`);
         }
         return 0;
@@ -237,7 +236,7 @@ export function notifyCollaboratorRemoved(projectUuid: string, removedUserId: nu
         sendAndClose(ws, encodedMessage, 'Collaborator access removed');
     }
 
-    if (DEBUG) {
+    if (isDebugEnabled()) {
         console.log(
             `[AccessNotifier] Collaborator removed: kicked user ${removedUserId} from project ${projectUuid} (${connections.length} connections)`,
         );

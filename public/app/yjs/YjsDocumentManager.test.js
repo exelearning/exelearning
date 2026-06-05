@@ -63,7 +63,20 @@ class MockWebsocketProvider {
     }
   }
 
-  disconnect() {}
+  connect() {
+    this.wsconnected = true;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'connected' }));
+    }
+  }
+
+  disconnect() {
+    this.wsconnected = false;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'disconnected' }));
+    }
+  }
+
   destroy() {}
 }
 
@@ -120,6 +133,8 @@ describe('YjsDocumentManager', () => {
   let originalLocation;
   let originalAddEventListener;
   let originalRemoveEventListener;
+  let originalLocalStorage;
+  let originalSessionStorage;
 
   beforeEach(() => {
     originalWindowY = global.window.Y;
@@ -130,6 +145,8 @@ describe('YjsDocumentManager', () => {
     originalLocation = global.window.location;
     originalAddEventListener = global.window.addEventListener;
     originalRemoveEventListener = global.window.removeEventListener;
+    originalLocalStorage = global.localStorage;
+    originalSessionStorage = global.sessionStorage;
 
     // Setup global mocks
     global.window.Y = global.window.Y || global.Y;
@@ -146,6 +163,24 @@ describe('YjsDocumentManager', () => {
     };
     global.window.addEventListener = mock(() => undefined);
     global.window.removeEventListener = mock(() => undefined);
+
+    // Mock localStorage for dirty state persistence
+    const localStorageData = {};
+    global.localStorage = {
+      getItem: mock((key) => localStorageData[key] || null),
+      setItem: mock((key, value) => { localStorageData[key] = value; }),
+      removeItem: mock((key) => { delete localStorageData[key]; }),
+    };
+
+    const sessionStorageData = {};
+    global.sessionStorage = {
+      getItem: mock((key) => sessionStorageData[key] || null),
+      setItem: mock((key, value) => { sessionStorageData[key] = value; }),
+      removeItem: mock((key) => { delete sessionStorageData[key]; }),
+      clear: mock(() => {
+        Object.keys(sessionStorageData).forEach((key) => delete sessionStorageData[key]);
+      }),
+    };
 
     global._ = mock((key) => key);
     Object.defineProperty(global, 'navigator', {
@@ -191,6 +226,8 @@ describe('YjsDocumentManager', () => {
     global.window.location = originalLocation;
     global.window.addEventListener = originalAddEventListener;
     global.window.removeEventListener = originalRemoveEventListener;
+    global.localStorage = originalLocalStorage;
+    global.sessionStorage = originalSessionStorage;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
@@ -218,6 +255,8 @@ describe('YjsDocumentManager', () => {
       expect(manager.isDirty).toBe(false);
       expect(manager.lastSavedAt).toBeNull();
       expect(manager.saveInProgress).toBe(false);
+      expect(manager._initialized).toBe(false);
+      expect(manager._suppressDirtyTracking).toBe(false);
     });
 
     it('initializes event listeners', () => {
@@ -330,7 +369,7 @@ describe('YjsDocumentManager', () => {
     });
   });
 
-  describe('getNavigation / getMetadata / getLocks / getDoc', () => {
+  describe('getNavigation / getMetadata / getLocks / getDoc / getThemeFiles', () => {
     beforeEach(async () => {
       await manager.initialize();
     });
@@ -358,17 +397,58 @@ describe('YjsDocumentManager', () => {
       expect(doc).toBeDefined();
       expect(doc).toBeInstanceOf(global.window.Y.Doc);
     });
+
+    it('getThemeFiles returns Y.Map for user themes', () => {
+      const themeFiles = manager.getThemeFiles();
+      expect(themeFiles).toBeDefined();
+      expect(themeFiles).toBeInstanceOf(global.window.Y.Map);
+    });
+
+    it('getThemeFiles throws when not initialized', () => {
+      const uninitManager = new YjsDocumentManager('uninitialized-project', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: true,
+      });
+
+      expect(() => uninitManager.getThemeFiles()).toThrow('YjsDocumentManager not initialized');
+    });
   });
 
   describe('dirty state management', () => {
     beforeEach(async () => {
       await manager.initialize();
+      // Enable dirty tracking by capturing baseline state
+      manager.captureBaselineState();
     });
 
-    it('markDirty sets isDirty to true', () => {
+    it('markDirty sets isDirty to true when _initialized', () => {
       expect(manager.isDirty).toBe(false);
       manager.markDirty();
       expect(manager.isDirty).toBe(true);
+    });
+
+    it('markDirty does not set isDirty when not _initialized', async () => {
+      // Create fresh manager without baseline capture
+      const uninitManager = new YjsDocumentManager('test-uninit', {
+        offline: true,
+      });
+      await uninitManager.initialize();
+      // Note: _initialized is still false because captureBaselineState wasn't called
+
+      expect(uninitManager._initialized).toBe(false);
+      uninitManager.markDirty();
+      expect(uninitManager.isDirty).toBe(false);
+
+      await uninitManager.destroy();
+    });
+
+    it('markDirty does not set isDirty when _suppressDirtyTracking is true', () => {
+      manager._suppressDirtyTracking = true;
+      manager.markDirty();
+      expect(manager.isDirty).toBe(false);
+      manager._suppressDirtyTracking = false;
     });
 
     it('markDirty emits saveStatus event', () => {
@@ -401,18 +481,189 @@ describe('YjsDocumentManager', () => {
       expect(manager.lastSavedAt).toBeInstanceOf(Date);
     });
 
+    it('markClean clears persisted dirty state', () => {
+      manager.markDirty();
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBe('true');
+
+      manager.markClean();
+
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBeNull();
+    });
+
     it('hasUnsavedChanges returns isDirty', () => {
       expect(manager.hasUnsavedChanges()).toBe(false);
       manager.markDirty();
       expect(manager.hasUnsavedChanges()).toBe(true);
     });
 
-    it('getSaveStatus returns status object', () => {
+    it('getSaveStatus returns status object with isInitialized', () => {
       const status = manager.getSaveStatus();
 
       expect(status).toHaveProperty('isDirty');
       expect(status).toHaveProperty('lastSavedAt');
       expect(status).toHaveProperty('saveInProgress');
+      expect(status).toHaveProperty('isInitialized');
+      expect(status.isInitialized).toBe(true);
+    });
+
+    it('captureBaselineState sets _initialized to true', async () => {
+      const newManager = new YjsDocumentManager('test-baseline', {
+        offline: true,
+      });
+      await newManager.initialize();
+
+      expect(newManager._initialized).toBe(false);
+      newManager.captureBaselineState();
+      expect(newManager._initialized).toBe(true);
+
+      await newManager.destroy();
+    });
+
+    it('captureBaselineState restores persisted dirty state', async () => {
+      const newManager = new YjsDocumentManager('test-persisted-dirty', {
+        offline: true,
+      });
+      await newManager.initialize();
+
+      global.localStorage.setItem(newManager._dirtyStateKey, 'true');
+      newManager.captureBaselineState();
+
+      expect(newManager.isDirty).toBe(true);
+
+      await newManager.destroy();
+    });
+
+    it('withSuppressedDirtyTracking suppresses dirty tracking during execution', async () => {
+      expect(manager.isDirty).toBe(false);
+
+      await manager.withSuppressedDirtyTracking(async () => {
+        manager.markDirty();
+      });
+
+      // markDirty was suppressed, so still not dirty
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('withSuppressedDirtyTracking restores previous state after execution', async () => {
+      manager._suppressDirtyTracking = false;
+
+      await manager.withSuppressedDirtyTracking(async () => {
+        expect(manager._suppressDirtyTracking).toBe(true);
+      });
+
+      expect(manager._suppressDirtyTracking).toBe(false);
+    });
+  });
+
+  describe('_isStaticMode', () => {
+    it('returns false when electronAPI is present', async () => {
+      await manager.initialize();
+      window.electronAPI = { someMethod: () => {} };
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.electronAPI;
+    });
+
+    it('returns true when storage.remote is false', async () => {
+      await manager.initialize();
+      window.eXeLearning = { app: { capabilities: { storage: { remote: false } } } };
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.eXeLearning;
+    });
+
+    it('returns true when __EXE_STATIC_MODE__ is true', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns false by default', async () => {
+      await manager.initialize();
+      delete window.electronAPI;
+      delete window.eXeLearning;
+      delete window.__EXE_STATIC_MODE__;
+
+      expect(manager._isStaticMode()).toBe(false);
+    });
+
+    it('handles errors gracefully and returns false', async () => {
+      await manager.initialize();
+      // Set up a getter that throws
+      Object.defineProperty(window, 'eXeLearning', {
+        get: () => { throw new Error('Access denied'); },
+        configurable: true,
+      });
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.eXeLearning;
+    });
+  });
+
+  describe('_persistDirtyState', () => {
+    it('does not persist in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('persists dirty state to localStorage', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey, 'true');
+    });
+
+    it('removes from localStorage when not dirty', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const removeItemSpy = spyOn(localStorage, 'removeItem');
+
+      manager._persistDirtyState(false);
+
+      expect(removeItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey);
+    });
+  });
+
+  describe('_getPersistedDirtyState', () => {
+    it('returns false in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns true when localStorage has dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue('true');
+
+      expect(manager._getPersistedDirtyState()).toBe(true);
+    });
+
+    it('returns false when localStorage has no dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue(null);
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
     });
   });
 
@@ -653,6 +904,16 @@ describe('YjsDocumentManager', () => {
       expect(manager.ydoc).toBeNull();
     });
 
+    it('resets dirty tracking flags', async () => {
+      manager._initialized = true;
+      manager._suppressDirtyTracking = true;
+
+      await manager.destroy();
+
+      expect(manager._initialized).toBe(false);
+      expect(manager._suppressDirtyTracking).toBe(false);
+    });
+
     it('clears listeners', async () => {
       manager.on('sync', mock(() => undefined));
       await manager.destroy();
@@ -777,6 +1038,29 @@ describe('YjsDocumentManager', () => {
 
       await manager.waitForWebSocketSync();
       // Should complete without waiting for full sync
+    });
+
+    it('waits for full sync when other users are present', async () => {
+      manager.config.skipSyncWait = false;
+      const mockProvider = {
+        synced: false,
+        once: mock((event, callback) => {
+          if (event === 'sync') {
+            setTimeout(() => callback(true), 10);
+          }
+        }),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+      manager.wsProvider = mockProvider;
+      manager.config.fullSyncTimeout = 1000;
+
+      // Simulate other users present
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(99999, { user: { id: 'other-user' } });
+      manager.config.awarenessCheckTimeout = 100;
+
+      await manager.waitForWebSocketSync();
     });
   });
 
@@ -1109,6 +1393,18 @@ describe('YjsDocumentManager', () => {
 
       const metadata = manager.getMetadata();
       expect(metadata.get('exelearning_version')).toBe('3.0.0');
+    });
+
+    it('uses runtime version when available', async () => {
+      global.window.eXeLearning = { version: '4.0.0-beta' };
+      global.fetch = mock(() => Promise.reject(new Error('Should not fetch')));
+
+      await manager._updateVersionMetadata();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('exelearning_version')).toBe('4.0.0-beta');
+      expect(global.fetch).not.toHaveBeenCalled();
+      delete global.window.eXeLearning;
     });
 
     it('handles fetch errors gracefully', async () => {
@@ -1471,6 +1767,80 @@ describe('YjsDocumentManager', () => {
       // Should still only have 1 page
       expect(navigation.length).toBe(1);
     });
+
+    it('uses user preference locale when available', () => {
+      // Setup user preferences with Spanish locale
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'es' }
+              }
+            }
+          },
+          locale: { lang: 'en' } // UI is in English
+        }
+      };
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      // Metadata should use user preference locale (es), not UI locale (en)
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('es');
+    });
+
+    it('falls back to app locale when user preference is not set', () => {
+      // Setup app locale without user preferences
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {} // No locale preference
+            }
+          },
+          locale: { lang: 'fr' }
+        }
+      };
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('fr');
+    });
+
+    it('falls back to document lang when app locale is not available', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {} // No user preferences or locale
+      };
+      global.document.documentElement.lang = 'de';
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('de');
+    });
   });
 
   describe('initialize blank structure behavior', () => {
@@ -1504,6 +1874,344 @@ describe('YjsDocumentManager', () => {
       expect(navigation.length).toBe(1);
 
       await onlineManager.destroy();
+    });
+  });
+
+  describe('_validateIndexedDb', () => {
+    it('returns true when IndexedDB is not available', async () => {
+      const originalIDB = global.window.indexedDB;
+      global.window.indexedDB = undefined;
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      global.window.indexedDB = originalIDB;
+    });
+
+    it('returns true when database open fails', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null };
+          setTimeout(() => req.onerror?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true when database has updates object store', async () => {
+      const mockDB = {
+        objectStoreNames: { contains: mock((name) => name === 'updates') },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns false when database lacks updates object store', async () => {
+      const mockDB = {
+        objectStoreNames: { contains: mock(() => false) },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(false);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns true on upgrade needed (new database)', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = {
+            onerror: null,
+            onsuccess: null,
+            onupgradeneeded: null,
+            transaction: { abort: mock(() => {}) },
+          };
+          setTimeout(() => req.onupgradeneeded?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when objectStoreNames check throws', async () => {
+      const mockDB = {
+        objectStoreNames: {
+          contains: mock(() => { throw new Error('Access error'); }),
+        },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(false);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns true after timeout', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          // Never fires any callback - simulates hanging
+          return { onerror: null, onsuccess: null, onupgradeneeded: null };
+        }),
+      };
+
+      // Override setTimeout for faster test
+      const originalSetTimeout = global.setTimeout;
+      global.setTimeout = (fn, ms) => originalSetTimeout(fn, 10);
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      global.setTimeout = originalSetTimeout;
+    });
+  });
+
+  describe('_handleVisibilityChange', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('does nothing when tab is hidden', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true });
+      manager.wsProvider = { wsconnected: false, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when wsProvider is null', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      manager.wsProvider = null;
+
+      // Should not throw
+      manager._handleVisibilityChange();
+    });
+
+    it('does nothing when already connected', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      manager.wsProvider = { wsconnected: true, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('reconnects when tab becomes visible and not connected', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      const emitSpy = spyOn(manager, 'emit');
+      manager.wsProvider = { wsconnected: false, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).toHaveBeenCalled();
+      expect(emitSpy).toHaveBeenCalledWith('connectionChange', { connected: false, reconnecting: true });
+    });
+  });
+
+  describe('dirty tracking with system origin', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('does not mark dirty for system origin updates', () => {
+      const markDirtySpy = spyOn(manager, 'markDirty');
+
+      // Simulate system origin update (like initialization)
+      manager.ydoc.transact(() => {
+        const metadata = manager.ydoc.getMap('metadata');
+        metadata.set('test', 'value');
+      }, 'system');
+
+      expect(markDirtySpy).not.toHaveBeenCalled();
+    });
+
+    it('marks dirty for non-system origin updates', () => {
+      // markDirty is called in the update handler
+      const markDirtySpy = spyOn(manager, 'markDirty');
+
+      // Simulate user update (not system origin)
+      manager.ydoc.transact(() => {
+        const metadata = manager.ydoc.getMap('metadata');
+        metadata.set('test', 'value');
+      }, null);
+
+      expect(markDirtySpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('locking with lockManager', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('requestLock delegates to lockManager', () => {
+      const mockLockManager = {
+        requestLock: mock(() => true),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.requestLock('comp-123');
+
+      expect(mockLockManager.requestLock).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(true);
+    });
+
+    it('releaseLock delegates to lockManager', () => {
+      const mockLockManager = {
+        releaseLock: mock(() => {}),
+      };
+      manager.lockManager = mockLockManager;
+
+      manager.releaseLock('comp-123');
+
+      expect(mockLockManager.releaseLock).toHaveBeenCalledWith('comp-123');
+    });
+
+    it('isLocked delegates to lockManager', () => {
+      const mockLockManager = {
+        isLocked: mock(() => true),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.isLocked('comp-123');
+
+      expect(mockLockManager.isLocked).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(true);
+    });
+
+    it('getLockInfo delegates to lockManager', () => {
+      const lockInfo = { user: { name: 'Test' }, clientId: 123, timestamp: Date.now() };
+      const mockLockManager = {
+        getLockInfo: mock(() => lockInfo),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.getLockInfo('comp-123');
+
+      expect(mockLockManager.getLockInfo).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(lockInfo);
+    });
+
+    it('requestLock returns false when lockManager denies lock', () => {
+      const mockLockManager = {
+        requestLock: mock(() => false),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.requestLock('comp-123');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('save status events', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+      manager.config.offline = false;
+    });
+
+    it('emits saving status at start of save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.isDirty = true;
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer();
+
+      const savingCall = callback.mock.calls.find(c => c[0].status === 'saving');
+      expect(savingCall).toBeDefined();
+    });
+
+    it('emits saved status on successful save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer();
+
+      const savedCall = callback.mock.calls.find(c => c[0].status === 'saved');
+      expect(savedCall).toBeDefined();
+      expect(savedCall[0].isDirty).toBe(false);
+    });
+
+    it('emits error status on failed save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
+      );
+
+      await expect(manager.saveToServer()).rejects.toThrow();
+
+      const errorCall = callback.mock.calls.find(c => c[0].status === 'error');
+      expect(errorCall).toBeDefined();
+      expect(errorCall[0].error).toBeDefined();
+    });
+
+    it('markClean emits saved status with timestamp', () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.isDirty = true;
+
+      manager.markClean();
+
+      expect(callback).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'saved',
+        isDirty: false,
+        savedAt: expect.any(Date),
+      }));
     });
   });
 
@@ -1555,6 +2263,439 @@ describe('YjsDocumentManager', () => {
       // Should not throw
       await manager.destroy({ saveBeforeDestroy: true });
       expect(console.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('_validateIndexedDb', () => {
+    it('returns true when indexedDB is not available', async () => {
+      const originalIndexedDB = window.indexedDB;
+      delete window.indexedDB;
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      window.indexedDB = originalIndexedDB;
+    });
+
+    it('returns true when database does not exist', async () => {
+      // Mock indexedDB.open that succeeds with 'updates' store
+      const mockDb = {
+        objectStoreNames: { contains: () => true },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when database is missing updates store', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: (name) => name !== 'updates' },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('invalid-db');
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true on open error', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onerror?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('error-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true on upgrade needed (new database)', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        transaction: { abort: mock(() => {}) },
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onupgradeneeded?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('handles exception in objectStoreNames check', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: () => { throw new Error('Test error'); } },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('exception-db');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('IndexedDB error recovery', () => {
+    it('manager can be initialized and destroyed without crashing', async () => {
+      // Basic smoke test - manager should handle IndexedDB issues gracefully
+      const newManager = new YjsDocumentManager('test-project-recovery', {
+        wsUrl: 'wss://localhost/yjs',
+        apiUrl: '/api',
+        offline: true,
+      });
+
+      // Should not throw
+      await newManager.initialize();
+      await newManager.destroy();
+    });
+  });
+
+  describe('setOnLastTabClosedCallback', () => {
+    it('stores the callback', () => {
+      const cb = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb);
+      expect(manager._onLastTabClosedCallback).toBe(cb);
+    });
+
+    it('replaces a previously set callback', () => {
+      const cb1 = mock(() => {});
+      const cb2 = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb1);
+      manager.setOnLastTabClosedCallback(cb2);
+      expect(manager._onLastTabClosedCallback).toBe(cb2);
+    });
+  });
+
+  describe('_cleanupOnLastTabClose', () => {
+    beforeEach(() => {
+      global.indexedDB = {
+        deleteDatabase: mock(() => ({ onsuccess: null, onerror: null, onblocked: null })),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('sets the needs-cleanup flag in localStorage', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.setItem).toHaveBeenCalledWith(
+        'exe-needs-cleanup-test-project-123',
+        'true',
+      );
+    });
+
+    it('does NOT call indexedDB.deleteDatabase (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.indexedDB.deleteDatabase).not.toHaveBeenCalled();
+    });
+
+    it('does NOT remove the dirty state flag (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.removeItem).not.toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+    });
+
+    it('does NOT invoke the external callback (deferred to initialize)', () => {
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+      manager._cleanupOnLastTabClose();
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when no external callback is set', () => {
+      manager._onLastTabClosedCallback = null;
+      expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
+    });
+  });
+
+  describe('initialize — needs-cleanup flag', () => {
+    let deleteRequest;
+    let openRequest;
+    let mockDB;
+
+    beforeEach(() => {
+      deleteRequest = { onsuccess: null, onerror: null, onblocked: null };
+      mockDB = {
+        objectStoreNames: { contains: mock((name) => name === 'updates') },
+        close: mock(() => {}),
+      };
+      openRequest = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+
+      // Provide a full indexedDB mock so _validateIndexedDb (open) and cleanup (deleteDatabase) both work
+      global.indexedDB = {
+        deleteDatabase: mock(() => {
+          setTimeout(() => { if (deleteRequest.onsuccess) deleteRequest.onsuccess(); }, 0);
+          return deleteRequest;
+        }),
+        open: mock(() => {
+          setTimeout(() => { if (openRequest.onsuccess) openRequest.onsuccess(); }, 0);
+          return openRequest;
+        }),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+      global.localStorage.removeItem('exe-needs-external-cleanup-test-project-123');
+      global.localStorage.removeItem('exelearning_dirty_state_test-project-123');
+      global.sessionStorage.removeItem('exe-tab-session-test-project-123');
+    });
+
+    it('performs full cleanup (deleteDatabase + dirty state) when the tab-session marker is absent', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.removeItem).toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+      // Flag must be consumed
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
+    });
+
+    it('skips IDB delete and dirty state removal when the tab-session marker is present', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+
+      await manager.initialize();
+
+      // Dirty state must NOT be removed (user is just refreshing)
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      // Flag must still be consumed so we don't retry on subsequent navigations
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('treats missing tab-session marker as a new tab even when navigation APIs are unavailable', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('invokes the external callback when the tab-session marker is absent', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it('stores a pending external-cleanup flag when cleanup runs before the callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
+    });
+
+    it('does NOT invoke the external callback when the tab-session marker is present', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('does not propagate errors thrown by the external callback during cleanup', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      manager._onLastTabClosedCallback = () => { throw new Error('cb error'); };
+
+      await expect(manager.initialize()).resolves.not.toThrow();
+    });
+
+    it('skips the cleanup branch entirely when the needs-cleanup flag is absent', async () => {
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+
+      await manager.initialize();
+
+      // Flag was never set, so it remains absent
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('always sets the tab-session marker during initialization', async () => {
+      await manager.initialize();
+
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
+      expect(global.sessionStorage.getItem('exe-tab-session-test-project-123')).toBe('true');
+    });
+  });
+
+  describe('flushPendingExternalCleanup', () => {
+    it('runs and clears pending external cleanup when callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+      const cb = mock(() => Promise.resolve());
+      manager.setOnLastTabClosedCallback(cb);
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('keeps the pending flag when no callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
+    });
+  });
+
+  describe('awareness rebroadcast', () => {
+    it('rebroadcastAwareness returns false when disconnected', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = false;
+
+      expect(manager.rebroadcastAwareness('test')).toBe(false);
+    });
+
+    it('rebroadcastAwareness sends awareness update when connected', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      manager.setUserInfo({
+        id: 'user-123',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+
+      const setLocalStateSpy = spyOn(manager.awareness, 'setLocalState');
+      const result = manager.rebroadcastAwareness('test');
+
+      expect(result).toBe(true);
+      expect(setLocalStateSpy).toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // createBlankProjectStructure — default-theme precedence
+  // -----------------------------------------------------------------------
+  // The blank Yjs document is the source of truth for new (especially static
+  // mode) projects, so the user's "Default style" preference has to be honored
+  // here too. Otherwise initialiceProject() finds Yjs already declaring a
+  // theme and skips the preference logic.
+  describe('createBlankProjectStructure default theme', () => {
+    function setupExeLearning({ siteDefault, userDefault, legacy } = {}) {
+      global.window.eXeLearning = {
+        config: { basePath: '', defaultTheme: siteDefault },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                ...(userDefault !== undefined ? { defaultTheme: { value: userDefault } } : {}),
+                ...(legacy !== undefined ? { theme: { value: legacy } } : {}),
+              },
+            },
+          },
+        },
+      };
+    }
+
+    it('uses the user defaultTheme preference when set', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to the site default when defaultTheme preference is empty', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: '' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('site-default');
+    });
+
+    it('honors the legacy theme preference when defaultTheme is missing', async () => {
+      setupExeLearning({ siteDefault: 'site-default', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('legacy-theme');
+    });
+
+    it('prefers defaultTheme over the legacy theme preference', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to "base" when nothing is configured', async () => {
+      global.window.eXeLearning = { config: { basePath: '' } };
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('base');
     });
   });
 });

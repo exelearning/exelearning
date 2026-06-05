@@ -455,7 +455,7 @@ a.SLCNP-ModeBoardShow {
 }
 
 .SLCNP-Cubierta .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     width: 1.7em;
@@ -706,7 +706,7 @@ a.SLCNP-ModeBoardShow {
 }
 
 .SLCNP-EdReply {
-    margin: auto 0.2em;
+    margin: auto 0.6em;
     max-width: 400px;
     width: 60%;
     text-align: center;
@@ -714,8 +714,8 @@ a.SLCNP-ModeBoardShow {
 
 .SLCNP-GameContainer .exeQuextIcons-MoveOne,
 .SLCNP-GameContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 /*  Video Introducción */
@@ -953,7 +953,7 @@ a.SLCNP-ModeBoardShow {
 }
 
 .exeQuextIcons-Preview {
-    background-image: url(exequextsq.png);
+    background-image: url(exequextsq.svg);
     background-size: 100% 100%;
 }
 
@@ -968,7 +968,7 @@ a.SLCNP-ModeBoardShow {
 }
 
 .exeQuextIcons-Reload {
-    background-image: url(exequextreload.png);
+    background-image: url(exequextreload.svg);
     background-size: 100% 100%;
 }
 
@@ -1083,12 +1083,12 @@ a.SLCNP-ModeBoardShow {
 }
 
 .SLCNP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .SLCNP-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 

@@ -7,7 +7,97 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn } from '../helpers';
+import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
+
+// ============================================================================
+// HELPER TYPES AND FUNCTIONS
+// ============================================================================
+
+/**
+ * Result type from a project + owner join query.
+ * Owner fields are aliased with 'owner_' prefix to avoid conflicts.
+ */
+type ProjectWithOwnerRow = Project & {
+    owner_id_join: number;
+    owner_email: string;
+    owner_user_id: string;
+    owner_password: string;
+    owner_roles: string;
+    owner_is_lopd_accepted: number;
+    owner_quota_mb: number | null;
+    owner_external_identifier: string | null;
+    owner_api_token: string | null;
+    owner_is_active: number;
+    owner_created_at: string | number | null;
+    owner_updated_at: string | number | null;
+};
+
+/**
+ * Extract User object from a joined project+owner query result.
+ * The owner fields are prefixed with 'owner_' to avoid column name conflicts.
+ */
+function extractOwnerFromResult(result: ProjectWithOwnerRow): User {
+    return {
+        id: result.owner_id_join,
+        email: result.owner_email,
+        user_id: result.owner_user_id,
+        password: result.owner_password,
+        roles: result.owner_roles,
+        is_lopd_accepted: result.owner_is_lopd_accepted,
+        quota_mb: result.owner_quota_mb,
+        external_identifier: result.owner_external_identifier,
+        api_token: result.owner_api_token,
+        is_active: result.owner_is_active,
+        created_at: result.owner_created_at,
+        updated_at: result.owner_updated_at,
+    };
+}
+
+/**
+ * Build ProjectWithOwner object from joined query result.
+ * Separates the flat joined row into nested Project + owner structure.
+ */
+function buildProjectWithOwner(result: ProjectWithOwnerRow): Project & { owner: User } {
+    return {
+        id: result.id,
+        uuid: result.uuid,
+        title: result.title,
+        description: result.description,
+        owner_id: result.owner_id,
+        status: result.status,
+        visibility: result.visibility,
+        language: result.language,
+        author: result.author,
+        license: result.license,
+        last_accessed_at: result.last_accessed_at,
+        saved_once: result.saved_once,
+        created_at: result.created_at,
+        updated_at: result.updated_at,
+        owner: extractOwnerFromResult(result),
+    };
+}
+
+/**
+ * Deduplicate projects by ID and sort by updated_at descending.
+ * Used when combining owned and collaborating projects.
+ */
+function deduplicateAndSortProjects(owned: Project[], collaborating: Project[]): Project[] {
+    const seen = new Set<number>();
+    const result: Project[] = [];
+
+    for (const p of [...owned, ...collaborating]) {
+        if (!seen.has(p.id)) {
+            seen.add(p.id);
+            result.push(p);
+        }
+    }
+
+    return result.sort((a, b) => {
+        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return dateB - dateA;
+    });
+}
 
 // ============================================================================
 // READ QUERIES
@@ -51,39 +141,7 @@ export async function findProjectWithOwner(
         .executeTakeFirst();
 
     if (!result) return undefined;
-
-    const owner: User = {
-        id: result.owner_id_join,
-        email: result.owner_email,
-        user_id: result.owner_user_id,
-        password: result.owner_password,
-        roles: result.owner_roles,
-        is_lopd_accepted: result.owner_is_lopd_accepted,
-        quota_mb: result.owner_quota_mb,
-        external_identifier: result.owner_external_identifier,
-        api_token: result.owner_api_token,
-        is_active: result.owner_is_active,
-        created_at: result.owner_created_at,
-        updated_at: result.owner_updated_at,
-    };
-
-    return {
-        id: result.id,
-        uuid: result.uuid,
-        title: result.title,
-        description: result.description,
-        owner_id: result.owner_id,
-        status: result.status,
-        visibility: result.visibility,
-        language: result.language,
-        author: result.author,
-        license: result.license,
-        last_accessed_at: result.last_accessed_at,
-        saved_once: result.saved_once,
-        created_at: result.created_at,
-        updated_at: result.updated_at,
-        owner,
-    };
+    return buildProjectWithOwner(result as ProjectWithOwnerRow);
 }
 
 export async function findProjectByUuidWithOwner(
@@ -112,39 +170,7 @@ export async function findProjectByUuidWithOwner(
         .executeTakeFirst();
 
     if (!result) return undefined;
-
-    const owner: User = {
-        id: result.owner_id_join,
-        email: result.owner_email,
-        user_id: result.owner_user_id,
-        password: result.owner_password,
-        roles: result.owner_roles,
-        is_lopd_accepted: result.owner_is_lopd_accepted,
-        quota_mb: result.owner_quota_mb,
-        external_identifier: result.owner_external_identifier,
-        api_token: result.owner_api_token,
-        is_active: result.owner_is_active,
-        created_at: result.owner_created_at,
-        updated_at: result.owner_updated_at,
-    };
-
-    return {
-        id: result.id,
-        uuid: result.uuid,
-        title: result.title,
-        description: result.description,
-        owner_id: result.owner_id,
-        status: result.status,
-        visibility: result.visibility,
-        language: result.language,
-        author: result.author,
-        license: result.license,
-        last_accessed_at: result.last_accessed_at,
-        saved_once: result.saved_once,
-        created_at: result.created_at,
-        updated_at: result.updated_at,
-        owner,
-    };
+    return buildProjectWithOwner(result as ProjectWithOwnerRow);
 }
 
 // ============================================================================
@@ -161,11 +187,7 @@ export async function getProjectCollaborators(db: Kysely<Database>, projectId: n
 }
 
 export async function addCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
-    await db
-        .insertInto('project_collaborators')
-        .values({ project_id: projectId, user_id: userId })
-        .onConflict(oc => oc.doNothing())
-        .execute();
+    await insertIgnore(db, 'project_collaborators', { project_id: projectId, user_id: userId });
 }
 
 export async function removeCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
@@ -233,24 +255,7 @@ export async function findProjectsAsCollaborator(
 export async function findAllProjectsForUser(db: Kysely<Database>, userId: number): Promise<Project[]> {
     const owned = await findProjectsByOwner(db, userId);
     const collaborating = await findProjectsAsCollaborator(db, userId);
-
-    // Deduplicate by id
-    const seen = new Set<number>();
-    const result: Project[] = [];
-
-    for (const p of [...owned, ...collaborating]) {
-        if (!seen.has(p.id)) {
-            seen.add(p.id);
-            result.push(p);
-        }
-    }
-
-    // Sort by updatedAt DESC
-    return result.sort((a, b) => {
-        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-        return dateB - dateA;
-    });
+    return deduplicateAndSortProjects(owned, collaborating);
 }
 
 export async function findSavedProjectsForUser(db: Kysely<Database>, userId: number): Promise<Project[]> {
@@ -285,22 +290,7 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
             .execute();
     }
 
-    // Deduplicate and sort
-    const seen = new Set<number>();
-    const result: Project[] = [];
-
-    for (const p of [...owned, ...collaborating]) {
-        if (!seen.has(p.id)) {
-            seen.add(p.id);
-            result.push(p);
-        }
-    }
-
-    return result.sort((a, b) => {
-        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-        return dateB - dateA;
-    });
+    return deduplicateAndSortProjects(owned, collaborating);
 }
 
 // ============================================================================
@@ -359,8 +349,23 @@ export async function markProjectAsSaved(db: Kysely<Database>, projectId: number
 }
 
 /**
+ * Update project title only (without marking as saved)
+ * Used for auto-persistence of Yjs documents when user navigates away
+ */
+export async function updateProjectTitle(db: Kysely<Database>, projectId: number, title: string): Promise<void> {
+    await db
+        .updateTable('projects')
+        .set({
+            title,
+            updated_at: now(),
+        })
+        .where('id', '=', projectId)
+        .execute();
+}
+
+/**
  * Update project title and mark as saved in a single operation
- * Used when saving Yjs document to sync title from metadata to database
+ * Used when user explicitly saves the project
  */
 export async function updateProjectTitleAndSave(db: Kysely<Database>, projectId: number, title: string): Promise<void> {
     await db
@@ -467,6 +472,19 @@ export async function findSavedProjectsByOwner(db: Kysely<Database>, ownerId: nu
         .where('status', 'in', ['active', 'archived'])
         .orderBy('updated_at', 'desc')
         .execute();
+}
+
+/**
+ * Find all projects owned by a user (regardless of status)
+ * Used for cleanup when deleting a user - need to clean up asset directories
+ * before the database cascade deletes the project records.
+ *
+ * @param db - Kysely database instance
+ * @param ownerId - The user ID to find projects for
+ * @returns Array of all projects owned by the user
+ */
+export async function findProjectsByOwnerId(db: Kysely<Database>, ownerId: number): Promise<Project[]> {
+    return db.selectFrom('projects').selectAll().where('owner_id', '=', ownerId).execute();
 }
 
 export async function createProjectWithUuid(
@@ -605,4 +623,64 @@ export async function updateProjectVisibilityByUuid(
         })
         .where('uuid', '=', uuid)
         .execute();
+}
+
+// ============================================================================
+// CLEANUP QUERIES
+// ============================================================================
+
+/**
+ * Find unsaved projects older than specified age
+ * Used for cleanup of abandoned projects that were never saved
+ *
+ * @param db - Kysely database instance
+ * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
+ * @returns Array of projects with saved_once = 0 older than maxAgeMs
+ */
+export async function findUnsavedProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
+    const cutoffTime = now() - maxAgeMs;
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('saved_once', '=', 0)
+        .where('created_at', '<', cutoffTime)
+        .execute();
+}
+
+/**
+ * Find projects owned by guest users older than specified age
+ * Guest users have email pattern: guest_*@guest.local
+ *
+ * @param db - Kysely database instance
+ * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
+ * @returns Array of projects owned by guest users older than maxAgeMs
+ */
+export async function findGuestProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
+    const cutoffTime = now() - maxAgeMs;
+    return db
+        .selectFrom('projects')
+        .innerJoin('users', 'projects.owner_id', 'users.id')
+        .selectAll('projects')
+        .where('users.email', 'like', 'guest_%@guest.local')
+        .where('projects.updated_at', '<', cutoffTime)
+        .execute();
+}
+
+/**
+ * Delete project and all related data in a transaction
+ * Handles foreign key constraints by deleting in correct order
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project ID to delete
+ */
+export async function deleteProjectWithRelatedData(db: Kysely<Database>, projectId: number): Promise<void> {
+    await db.transaction().execute(async trx => {
+        // Delete in order respecting foreign keys
+        await trx.deleteFrom('yjs_version_history').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('yjs_updates').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('assets').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('project_collaborators').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('projects').where('id', '=', projectId).execute();
+    });
 }

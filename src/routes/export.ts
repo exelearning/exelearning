@@ -11,9 +11,11 @@ import { Elysia } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
-import { getSession as getSessionDefault } from '../services/session-manager';
+import { buildContentDisposition } from '../shared/http/headers';
+import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
-import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent, OdeXmlMeta } from '../services/xml/interfaces';
+import { withJwtAuth } from '../utils/route-auth';
+import { hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -23,7 +25,6 @@ import {
 
 // Centralized export system - same as CLI and frontend
 import {
-    ElpDocumentAdapter as ElpDocumentAdapterDefault,
     FileSystemResourceProvider as FileSystemResourceProviderDefault,
     FileSystemAssetProvider as FileSystemAssetProviderDefault,
     FflateZipProvider as FflateZipProviderDefault,
@@ -34,14 +35,23 @@ import {
     ImsExporter as ImsExporterDefault,
     Epub3Exporter as Epub3ExporterDefault,
     ElpxExporter as ElpxExporterDefault,
+    PageElpxExporter as PageElpxExporterDefault,
     YjsDocumentAdapter as YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
+    ServerLatexPreRenderer as ServerLatexPreRendererDefault,
     type ExportResult,
     type ExportDocument,
     type ResourceProvider,
     type AssetProvider,
     type ZipProvider,
 } from '../shared/export';
+
+// Import system (ELP → Y.Doc)
+import {
+    ElpxImporter as ElpxImporterDefault,
+    FileSystemAssetHandler as FileSystemAssetHandlerDefault,
+} from '../shared/import';
+import * as Y from 'yjs';
 
 // Yjs persistence for server-side Yjs documents
 import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
@@ -77,7 +87,6 @@ export interface ExportFileHelperDeps {
  * Shared export system dependencies (for testability)
  */
 export interface ExportSystemDeps {
-    ElpDocumentAdapter: typeof ElpDocumentAdapterDefault;
     FileSystemResourceProvider: typeof FileSystemResourceProviderDefault;
     FileSystemAssetProvider: typeof FileSystemAssetProviderDefault;
     DatabaseAssetProvider: typeof DatabaseAssetProviderDefault;
@@ -90,8 +99,12 @@ export interface ExportSystemDeps {
     ImsExporter: typeof ImsExporterDefault;
     Epub3Exporter: typeof Epub3ExporterDefault;
     ElpxExporter: typeof ElpxExporterDefault;
+    PageElpxExporter: typeof PageElpxExporterDefault;
     YjsDocumentAdapter: typeof YjsDocumentAdapterDefault;
     ServerYjsDocumentWrapper: typeof ServerYjsDocumentWrapperDefault;
+    // Import system
+    ElpxImporter: typeof ElpxImporterDefault;
+    FileSystemAssetHandler: typeof FileSystemAssetHandlerDefault;
 }
 
 /**
@@ -136,7 +149,6 @@ const defaultFileHelper: ExportFileHelperDeps = {
 };
 
 const defaultExportSystem: ExportSystemDeps = {
-    ElpDocumentAdapter: ElpDocumentAdapterDefault,
     FileSystemResourceProvider: FileSystemResourceProviderDefault,
     FileSystemAssetProvider: FileSystemAssetProviderDefault,
     DatabaseAssetProvider: DatabaseAssetProviderDefault,
@@ -149,8 +161,12 @@ const defaultExportSystem: ExportSystemDeps = {
     ImsExporter: ImsExporterDefault,
     Epub3Exporter: Epub3ExporterDefault,
     ElpxExporter: ElpxExporterDefault,
+    PageElpxExporter: PageElpxExporterDefault,
     YjsDocumentAdapter: YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper: ServerYjsDocumentWrapperDefault,
+    // Import system
+    ElpxImporter: ElpxImporterDefault,
+    FileSystemAssetHandler: FileSystemAssetHandlerDefault,
 };
 
 const defaultYjsPersistence: ExportYjsDeps = {
@@ -173,124 +189,105 @@ const EXPORT_FORMATS = [
     { id: 'scorm2004', name: 'SCORM 2004', extension: 'zip', mimeType: 'application/zip' },
     { id: 'ims', name: 'IMS Content Package', extension: 'zip', mimeType: 'application/zip' },
     { id: 'epub3', name: 'EPUB3', extension: 'epub', mimeType: 'application/epub+zip' },
-    { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/x-exelearning' },
+    { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/zip' },
+    { id: 'elpx-page', name: 'eXeLearning Page Package', extension: 'elpx', mimeType: 'application/zip' },
 ];
 
 // ============================================================================
-// Yjs Structure Conversion
+// Yjs Structure Population
 // ============================================================================
 
 /**
- * Convert YjsExportStructure (from client) to ParsedOdeStructure (for export)
+ * Populate a Y.Doc from YjsExportStructure
+ * This allows us to use YjsDocumentAdapter for exports from client-sent structures
  *
- * The client sends a structure with blocks already grouped inside pages,
- * but ParsedOdeStructure expects flat components with blockName property.
- *
- * @param yjs - Yjs structure from client (blocks grouped inside pages)
- * @returns ParsedOdeStructure with flat components (blockName on each component)
+ * @param ydoc - Y.Doc to populate
+ * @param structure - YjsExportStructure from client
  */
-export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeStructure {
-    // Helper to parse boolean values (may be boolean or string 'true'/'false')
-    const parseBoolean = (value: boolean | string | undefined, defaultValue: boolean): boolean => {
-        if (value === undefined || value === null) return defaultValue;
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') return value.toLowerCase() === 'true';
-        return defaultValue;
-    };
+export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStructure): void {
+    // Set metadata
+    const metadata = ydoc.getMap('metadata');
+    const meta = structure.meta;
+    metadata.set('title', meta.title || 'Untitled');
+    metadata.set('author', meta.author || '');
+    metadata.set('description', meta.description || '');
+    metadata.set('language', meta.language || 'en');
+    metadata.set('license', meta.license || '');
+    metadata.set('theme', meta.theme || 'base');
+    metadata.set('addExeLink', meta.addExeLink ?? true);
+    metadata.set('addPagination', meta.addPagination ?? false);
+    metadata.set('addSearchBox', meta.addSearchBox ?? false);
+    metadata.set('addAccessibilityToolbar', meta.addAccessibilityToolbar ?? false);
+    metadata.set('exportSource', meta.exportSource ?? true);
+    if (meta.extraHeadContent) metadata.set('extraHeadContent', meta.extraHeadContent);
+    if (meta.footer) metadata.set('footer', meta.footer);
 
-    const meta: OdeXmlMeta = {
-        title: yjs.meta.title || 'Untitled',
-        author: yjs.meta.author || '',
-        description: yjs.meta.description || '',
-        language: yjs.meta.language || 'en',
-        license: yjs.meta.license || '',
-        theme: yjs.meta.theme || 'base',
-        keywords: '',
-        exelearning_version: '4.0',
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
+    // Stable identifiers (#1786) -- only write when the client supplied them so
+    // a browser export carrying a stable project identity reaches BaseExporter
+    // with the same odeId/scormId. Without these, the server-side export path
+    // falls back to a fresh generateOdeId() and the LMS sees a new course on
+    // every re-upload.
+    if (meta.odeIdentifier) metadata.set('odeIdentifier', meta.odeIdentifier);
+    if (meta.odeVersionId) metadata.set('odeVersionId', meta.odeVersionId);
+    if (meta.scormIdentifier) metadata.set('scormIdentifier', meta.scormIdentifier);
 
-        // Export options
-        addExeLink: parseBoolean(yjs.meta.addExeLink, true),
-        addPagination: parseBoolean(yjs.meta.addPagination, false),
-        addSearchBox: parseBoolean(yjs.meta.addSearchBox, false),
-        addAccessibilityToolbar: parseBoolean(yjs.meta.addAccessibilityToolbar, false),
-        exportSource: parseBoolean(yjs.meta.exportSource, true),
+    // Set navigation (pages with blocks)
+    const navigation = ydoc.getArray('navigation');
 
-        // Custom content
-        extraHeadContent: yjs.meta.extraHeadContent,
-        footer: yjs.meta.footer,
-    };
+    for (const page of structure.pages) {
+        const pageMap = new Y.Map();
+        pageMap.set('id', page.id);
+        pageMap.set('pageName', page.pageName);
+        pageMap.set('parentId', page.parentId || null);
 
-    // Build pages map for parent lookup
-    const pageMap = new Map<string, { id: string; parentId?: string | null }>();
-    for (const page of yjs.pages) {
-        pageMap.set(page.id, { id: page.id, parentId: page.parentId });
-    }
-
-    // Build hierarchical pages structure
-    const rootPages: NormalizedPage[] = [];
-    const pageById = new Map<string, NormalizedPage>();
-
-    // First pass: create all pages
-    for (const page of yjs.pages) {
-        // Flatten blocks into components with blockName
-        const components: NormalizedComponent[] = [];
-        let compOrder = 0;
-
-        for (const block of page.blocks || []) {
-            for (const comp of block.components || []) {
-                components.push({
-                    id: comp.id,
-                    type: comp.ideviceType || 'FreeTextIdevice',
-                    order: compOrder++,
-                    position: compOrder,
-                    content: comp.htmlContent || '',
-                    blockName: block.blockName || '',
-                    data: {},
-                    properties: comp.properties || {},
-                });
+        // Page properties
+        if (page.properties) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(page.properties)) {
+                propsMap.set(key, value);
             }
+            pageMap.set('properties', propsMap);
         }
 
-        const normalizedPage: NormalizedPage = {
-            id: page.id,
-            title: page.pageName,
-            parent_id: page.parentId || undefined,
-            position: 0,
-            children: [],
-            components,
-        };
+        // Blocks
+        const blocksArray = new Y.Array();
+        for (const block of page.blocks || []) {
+            const blockMap = new Y.Map();
+            blockMap.set('id', block.id);
+            blockMap.set('blockName', block.blockName || '');
+            blockMap.set('iconName', block.iconName || '');
 
-        pageById.set(page.id, normalizedPage);
-    }
+            // Block properties
+            if (block.properties) {
+                const blockPropsMap = new Y.Map();
+                for (const [key, value] of Object.entries(block.properties)) {
+                    blockPropsMap.set(key, value);
+                }
+                blockMap.set('properties', blockPropsMap);
+            }
 
-    // Second pass: build hierarchy
-    for (const page of yjs.pages) {
-        const normalizedPage = pageById.get(page.id)!;
+            // Components
+            const componentsArray = new Y.Array();
+            for (const comp of block.components || []) {
+                const compMap = new Y.Map();
+                compMap.set('id', comp.id);
+                compMap.set('type', comp.ideviceType || 'FreeTextIdevice');
+                compMap.set('htmlContent', comp.htmlContent || '');
 
-        if (page.parentId && pageById.has(page.parentId)) {
-            const parent = pageById.get(page.parentId)!;
-            parent.children.push(normalizedPage);
-        } else {
-            rootPages.push(normalizedPage);
+                // Component properties - store as JSON string in jsonProperties field
+                // This matches the browser-side ComponentImporter.createComponentYMap behavior
+                if (comp.properties && Object.keys(comp.properties).length > 0) {
+                    compMap.set('jsonProperties', JSON.stringify(comp.properties));
+                }
+
+                componentsArray.push([compMap]);
+            }
+            blockMap.set('components', componentsArray);
+            blocksArray.push([blockMap]);
         }
+        pageMap.set('blocks', blocksArray);
+        navigation.push([pageMap]);
     }
-
-    // Build navigation
-    const navigation = yjs.navigation.map((nav, index) => ({
-        id: nav.id,
-        navText: nav.navText,
-        parent_id: nav.parentId || undefined,
-        position: index,
-    }));
-
-    return {
-        meta,
-        pages: rootPages,
-        navigation,
-        raw: {} as ParsedOdeStructure['raw'], // Empty raw - not needed for export
-    };
 }
 
 // ============================================================================
@@ -313,7 +310,6 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
     // Destructure export system classes
     const {
-        ElpDocumentAdapter,
         FileSystemResourceProvider,
         FileSystemAssetProvider,
         DatabaseAssetProvider,
@@ -326,8 +322,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
+        PageElpxExporter,
         YjsDocumentAdapter,
         ServerYjsDocumentWrapper,
+        // Import system
+        ElpxImporter,
+        FileSystemAssetHandler,
     } = exportSystem;
 
     // ========================================================================
@@ -360,23 +360,94 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         // Track if we need to cleanup Yjs document after export
         let yjsDocWrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
 
+        // Helper to import ELP file from tempDir using ElpxImporter
+        async function importElpFromTempDir(): Promise<{
+            document: ExportDocument;
+            wrapper: InstanceType<typeof ServerYjsDocumentWrapper>;
+        } | null> {
+            // Look for ELP files in tempDir
+            const files = await fs.readdir(tempDir);
+            const elpFile = files.find(f => f.endsWith('.elp') || f.endsWith('.elpx'));
+
+            if (elpFile) {
+                const elpPath = path.join(tempDir, elpFile);
+                const elpBuffer = await fs.readFile(elpPath);
+
+                const ydoc = new Y.Doc();
+                const assetHandler = new FileSystemAssetHandler(tempDir);
+                const importer = new ElpxImporter(ydoc, assetHandler);
+                await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+                const wrapper = new ServerYjsDocumentWrapper(ydoc, 'import-export');
+                const document = new YjsDocumentAdapter(wrapper);
+                return { document, wrapper };
+            }
+
+            // Fallback: Try to parse content.xml directly
+            const contentXmlPath = path.join(tempDir, 'content.xml');
+            if (await fileExists(contentXmlPath)) {
+                // Read all files in tempDir to create a zip-like structure for ElpxImporter
+                const ydoc = new Y.Doc();
+                const assetHandler = new FileSystemAssetHandler(tempDir);
+                const importer = new ElpxImporter(ydoc, assetHandler);
+
+                // Read content.xml and resources
+                const contentXml = await fs.readFile(contentXmlPath);
+                const zipContents: Record<string, Uint8Array> = {
+                    'content.xml': new Uint8Array(contentXml),
+                };
+
+                // Check for contentv3.xml (legacy format)
+                const contentV3Path = path.join(tempDir, 'contentv3.xml');
+                if (await fileExists(contentV3Path)) {
+                    const contentV3 = await fs.readFile(contentV3Path);
+                    zipContents['contentv3.xml'] = new Uint8Array(contentV3);
+                }
+
+                // Add resources directory contents
+                const resourcesDir = path.join(tempDir, 'resources');
+                if (await fileExists(resourcesDir)) {
+                    const stats = await fs.stat(resourcesDir);
+                    if (stats.isDirectory()) {
+                        const resourceFiles = await fs.readdir(resourcesDir);
+                        for (const file of resourceFiles) {
+                            const filePath = path.join(resourcesDir, file);
+                            const fileStats = await fs.stat(filePath);
+                            if (fileStats.isFile()) {
+                                const fileContent = await fs.readFile(filePath);
+                                zipContents[`resources/${file}`] = new Uint8Array(fileContent);
+                            }
+                        }
+                    }
+                }
+
+                // Import from constructed zip-like structure
+                await importer.importFromZipContents(zipContents);
+
+                const wrapper = new ServerYjsDocumentWrapper(ydoc, 'xml-import-export');
+                const document = new YjsDocumentAdapter(wrapper);
+                return { document, wrapper };
+            }
+
+            return null;
+        }
+
         try {
             // Create document adapter from structure
             // Priority:
-            // 1. options.structure (Yjs from client)
+            // 1. options.structure (Yjs from client) - create Y.Doc from structure
             // 2. Yjs from database (server-side Yjs document)
-            // 3. session.structure (from ELP open)
-            // 4. content.xml (legacy fallback for CLI)
+            // 3. ELP file in tempDir - use ElpxImporter
+            // 4. content.xml (legacy fallback) - use ElpxImporter
             let document: ExportDocument;
 
             if (options.structure) {
-                // Yjs structure sent from client - convert to ParsedOdeStructure
-                console.log('[Export] Using Yjs structure from client');
-                console.log('[Export] Structure pages:', options.structure.pages?.length);
-                console.log('[Export] Structure meta theme:', options.structure.meta?.theme);
-                const parsedStructure = convertYjsStructureToParsed(options.structure);
-                console.log('[Export] Parsed theme:', parsedStructure.meta?.theme);
-                document = new ElpDocumentAdapter(parsedStructure, tempDir);
+                // Yjs structure sent from client - create Y.Doc directly
+                console.log('[Export] Creating Y.Doc from client structure');
+                const ydoc = new Y.Doc();
+                populateYDocFromStructure(ydoc, options.structure);
+                yjsDocWrapper = new ServerYjsDocumentWrapper(ydoc, 'client-structure');
+                document = new YjsDocumentAdapter(yjsDocWrapper);
             } else if (session.odeId) {
                 // Try to load Yjs document from database
                 try {
@@ -390,46 +461,57 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                                 console.log('[Export] Using Yjs document from database');
                                 document = new YjsDocumentAdapter(yjsDocWrapper);
                             } else {
-                                console.log('[Export] Yjs document empty, falling back to session structure');
+                                console.log('[Export] Yjs document empty, falling back to ELP import');
                                 yjsDocWrapper.destroy();
                                 yjsDocWrapper = null;
-                                if (session.structure) {
-                                    document = new ElpDocumentAdapter(session.structure, tempDir);
+                                // Try to import from ELP file
+                                const imported = await importElpFromTempDir();
+                                if (imported) {
+                                    document = imported.document;
+                                    yjsDocWrapper = imported.wrapper;
                                 } else {
                                     return { success: false, error: 'No project structure found' };
                                 }
                             }
-                        } else if (session.structure) {
-                            console.log('[Export] No Yjs document in database, using session structure');
-                            document = new ElpDocumentAdapter(session.structure, tempDir);
+                        } else {
+                            console.log('[Export] No Yjs document in database, falling back to ELP import');
+                            // Try to import from ELP file
+                            const imported = await importElpFromTempDir();
+                            if (imported) {
+                                document = imported.document;
+                                yjsDocWrapper = imported.wrapper;
+                            } else {
+                                return { success: false, error: 'No project structure found' };
+                            }
+                        }
+                    } else {
+                        console.log('[Export] Project not found in database, falling back to ELP import');
+                        const imported = await importElpFromTempDir();
+                        if (imported) {
+                            document = imported.document;
+                            yjsDocWrapper = imported.wrapper;
                         } else {
                             return { success: false, error: 'No project structure found' };
                         }
-                    } else if (session.structure) {
-                        console.log('[Export] Project not found in database, using session structure');
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
-                    } else {
-                        return { success: false, error: 'No project structure found' };
                     }
                 } catch (yjsError) {
-                    // Database/Yjs lookup failed - fall back to session structure
-                    console.warn('[Export] Yjs lookup failed, falling back to session structure:', yjsError);
-                    if (session.structure) {
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                    // Database/Yjs lookup failed - fall back to ELP import
+                    console.warn('[Export] Yjs lookup failed, falling back to ELP import:', yjsError);
+                    const imported = await importElpFromTempDir();
+                    if (imported) {
+                        document = imported.document;
+                        yjsDocWrapper = imported.wrapper;
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
                 }
-            } else if (session.structure) {
-                // Session structure from when ELP was opened
-                console.log('[Export] Using session structure (no odeId)');
-                document = new ElpDocumentAdapter(session.structure, tempDir);
             } else {
-                // Fallback: Try to parse content.xml directly (for CLI exports)
-                const contentXmlPath = path.join(tempDir, 'content.xml');
-                if (await fileExists(contentXmlPath)) {
-                    console.log('[Export] Fallback: parsing content.xml directly');
-                    document = await ElpDocumentAdapter.fromElpFile(tempDir);
+                // No odeId, try to import from ELP file directly
+                console.log('[Export] No odeId, trying ELP import');
+                const imported = await importElpFromTempDir();
+                if (imported) {
+                    document = imported.document;
+                    yjsDocWrapper = imported.wrapper;
                 } else {
                     return { success: false, error: 'No project structure found in session' };
                 }
@@ -439,6 +521,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             console.log('[Export] Using publicDir:', publicDir);
             const resources: ResourceProvider = new FileSystemResourceProvider(publicDir);
             const zip: ZipProvider = new FflateZipProvider();
+
+            // Ensure temp directory exists to prevent ENOENT errors in FileSystemAssetProvider
+            await fs.ensureDir(tempDir);
 
             // Create asset provider - combine database assets with filesystem assets
             const fsAssets = new FileSystemAssetProvider(tempDir);
@@ -487,12 +572,24 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 case 'elpx':
                     exporter = new ElpxExporter(document, resources, assets, zip);
                     break;
+                case 'elpx-page':
+                    exporter = new PageElpxExporter(document, resources, assets, zip);
+                    break;
                 default:
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
+            // Attach server-side LaTeX pre-render hooks so exports/previews render formulas
+            // even when addMathJax is disabled.
+            const latexRenderer = new ServerLatexPreRendererDefault();
+            const exportOptionsWithHooks = {
+                ...options,
+                preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+            };
+
             // Run export
-            const result = await exporter.export(options);
+            const result = await exporter.export(exportOptionsWithHooks);
 
             if (!result.success) {
                 return result;
@@ -521,14 +618,37 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     // Routes
     // ========================================================================
 
+    /**
+     * Authorisation rule used by both GET and POST download handlers.
+     * - Anonymous requests are rejected with 401.
+     * - For a real (in-memory) session, the caller must own it or be an admin.
+     * - For "Yjs-only" virtual sessions (where the caller supplies the
+     *   structure in the request body) we only require authentication; the
+     *   caller is exporting data they supplied themselves.
+     */
+    function authorizeExport(
+        session: ProjectSession | undefined,
+        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+    ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
+        const authErr = requireAuth(jwtPayload as any);
+        if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
+        if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
+        if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
+            return { ok: false, status: 403, message: 'Access denied' };
+        }
+        return { ok: true };
+    }
+
     return (
         new Elysia({ prefix: '/api/export' })
+            .use(withJwtAuth())
 
             // =====================================================
             // Get Available Formats
             // =====================================================
 
             // GET /api/export/formats - List available export formats
+            // Public: the list of supported formats is static metadata.
             .get('/formats', () => {
                 return {
                     success: true,
@@ -537,54 +657,20 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             })
 
             // =====================================================
-            // Preview Export
-            // =====================================================
-
-            // GET /api/export/:odeSessionId/preview - Preview exported content
-            .get('/:odeSessionId/preview', async ({ params, set }) => {
-                const { odeSessionId } = params;
-
-                const session = getSession(odeSessionId);
-                if (!session) {
-                    set.status = 404;
-                    return { success: false, error: 'Session not found' };
-                }
-
-                // Get temp directory
-                const tempDir = getOdeSessionTempDir(odeSessionId);
-
-                // Check for index.html
-                const indexPath = path.join(tempDir, 'index.html');
-                if (await fileExists(indexPath)) {
-                    const content = await readFile(indexPath);
-                    set.headers['content-type'] = 'text/html; charset=utf-8';
-                    return content.toString('utf-8');
-                }
-
-                // Generate basic preview
-                const contentXmlPath = path.join(tempDir, 'content.xml');
-                if (await fileExists(contentXmlPath)) {
-                    return {
-                        success: true,
-                        message: 'Project loaded, preview not yet generated',
-                        sessionId: odeSessionId,
-                        hasContent: true,
-                    };
-                }
-
-                set.status = 404;
-                return { success: false, error: 'No content found for preview' };
-            })
-
-            // =====================================================
             // Download Export (GET)
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
 
                 const session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
+
                 if (!session) {
                     set.status = 404;
                     return { success: false, error: 'Session not found' };
@@ -614,9 +700,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;
@@ -632,23 +719,27 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
 
                 let session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
 
                 // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
                 if (!session && options.structure) {
                     console.log('[Export] Yjs-only session detected, using structure from request body');
                     const projectTitle = options.structure.meta?.title || 'Untitled';
                     session = {
-                        id: odeSessionId,
+                        sessionId: odeSessionId,
                         fileName: `${projectTitle}.elp`,
-                        structure: convertYjsStructureToParsed(options.structure),
-                        created: new Date(),
-                        modified: new Date(),
-                    };
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    } as ProjectSession;
                 }
 
                 if (!session) {
@@ -683,9 +774,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;

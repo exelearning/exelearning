@@ -240,6 +240,7 @@
     }
 
     .modal-content {
+        position: relative; // Required for modal-toasts-container positioning
         width: max-content;
         min-width: 250px;
         padding-top: 8px;
@@ -318,8 +319,30 @@
     :is(.modal-body, .modal-footer) input[type="checkbox"] {
         accent-color: var(--dark-exe-color);
         max-width: 12px;
-        margin-right: var(--margin-m);
         height: 12px;
+        margin-right: var(--margin-m);
+        background-color: transparent;
+        border: 1px solid var(--dark-exe-color);
+
+        &:checked {
+            background-color: var(--dark-exe-color);
+            border-color: var(--dark-exe-color);
+        }
+    }
+
+    .delete-idevice-option-box {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            cursor: pointer;
+        }
     }
 
     .modal-body {
@@ -329,6 +352,15 @@
 
         table {
             width: calc(100% - var(--margin-m));
+        }
+
+        .image-optimizer-content .badge.bg-primary,
+        .form-range.image-optimizer-quality {
+            filter: grayscale(1);
+        }
+
+        .image-optimizer-savings .text-warning {
+            color: var(--gray-500) !important;
         }
     }
 
@@ -349,10 +381,6 @@
     }
 
 }
-
-
-
-
 
 /* Modal confirm */
 
@@ -459,6 +487,10 @@
             max-height: calc(100% - 32px);
             display: flex;
             flex-direction: column;
+        }
+
+        .form-control.media-library-url{
+            width:auto;
         }
     }
 
@@ -1230,6 +1262,88 @@
         }
 
         .folder-picker-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--gray-200, #e2e8f0);
+
+            .btn {
+                min-width: 100px;
+            }
+        }
+    }
+
+    // Rename Dialog (nested inside File Manager modal)
+    .media-library-rename-dialog {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+
+        .rename-dialog-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .rename-dialog-content {
+            position: relative;
+            background: var(--white, #fff);
+            border-radius: var(--radius, 8px);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+            width: 400px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+        }
+
+        .rename-dialog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200, #e2e8f0);
+
+            .rename-dialog-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--gray-800, #2d3748);
+                margin: 0;
+            }
+
+            .rename-dialog-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                line-height: 1;
+                color: var(--gray-500, #718096);
+                cursor: pointer;
+                padding: 0;
+
+                &:hover {
+                    color: var(--gray-800, #2d3748);
+                }
+            }
+        }
+
+        .rename-dialog-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .rename-dialog-footer {
             display: flex;
             justify-content: flex-end;
             gap: 12px;
@@ -2258,17 +2372,17 @@
                             width: 220px;
                             height: 10px;
                             border-radius: 999px;
-                            background: #eef2f7;
+                            background: var(--gray-100);
                             overflow: hidden;
                             .progress-bar {
                                 &.bg-success {
-                                    background: #22c55e;
+                                    background: var(--brand-primary);
                                 }
                                 &.bg-warning {
-                                    background: #f59e0b;
+                                    background: #ffc107;
                                 }
                                 &.bg-danger {
-                                    background: #ef4444;
+                                    background: #dc3545;
                                 }
                             }
                         }
@@ -2506,6 +2620,112 @@
         min-width: 700px;
         width: 100%;
     }
+}
+
+/* Easter egg: Aula Secreta 3D (About modal secret) */
+.easteregg-modal-body {
+    padding: 0;
+    background: #0b1020;
+    color: #e8eefc;
+}
+
+.easteregg-hud {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(
+        90deg,
+        rgba(15, 25, 50, 0.95),
+        rgba(15, 25, 50, 0.75)
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.easteregg-title {
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.easteregg-stats {
+    display: flex;
+    gap: 12px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.95;
+    white-space: nowrap;
+}
+
+.easteregg-help {
+    font-size: 12px;
+    opacity: 0.9;
+    text-align: right;
+}
+
+.easteregg-canvas-wrap {
+    position: relative;
+}
+
+.easteregg-canvas {
+    width: 100%;
+    height: min(60vh, 520px);
+    display: block;
+    background: #05070f;
+    outline: none;
+    touch-action: none;
+}
+
+.easteregg-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+}
+
+.easteregg-overlay.hidden {
+    display: none;
+}
+
+.easteregg-panel {
+    max-width: 560px;
+    width: 100%;
+    background: rgba(15, 25, 50, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 18px 18px 14px;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.easteregg-panel h2 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.easteregg-panel p {
+    margin: 0 0 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    opacity: 0.95;
+}
+
+.easteregg-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.easteregg-small {
+    font-size: 12px;
+    opacity: 0.85;
 }
 
 /* Modal share button */
@@ -2870,34 +3090,34 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     }
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) thead {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) thead {
     vertical-align: middle;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) th {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) th {
     font-weight: 500;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr td {
     max-width: 280px;
     word-wrap: break-word;
     font-size: 14px;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr td {
     padding: var(--margin-s) var(--margin-m);
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr th {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr th {
     padding: var(--margin-s) var(--margin-m);
     border-bottom: 2px solid var(--dark-exe-color);
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr :is(td, th):last-child {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr :is(td, th):last-child {
     border-right: none;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr:last-child td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr:last-child td {
     border-bottom: none;
 }
 
@@ -2933,13 +3153,47 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
                         gap: 15px;
                         justify-content: flex-start;
                         align-items: center;
+                        padding: 10px 15px;
                         .username {
                             font-size: 15px;
+                            max-width: 330px;
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/* ========================================================================
+   Image Optimizer Modal
+   ======================================================================== */
+#modalImageOptimizer {
+    .modal-dialog {
+        max-width: 900px;
+    }
+
+    .image-optimizer-settings {
+        border-bottom: 1px solid var(--gray-200, #e2e8f0);
+        padding-bottom: var(--margin-m);
+    }
+
+    .image-optimizer-queue {
+        border: 1px solid var(--gray-200, #e2e8f0);
+        border-radius: var(--radius, 4px);
+    }
+
+    .image-optimizer-thumbnail {
+        border-radius: 4px;
+        border: 1px solid var(--gray-200, #e2e8f0);
+    }
+
+    .image-optimizer-summary {
+        background-color: var(--gray-50, #f7fafc) !important;
+    }
+
+    .form-range {
+        width: 100px;
     }
 }
 
@@ -2990,12 +3244,65 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     #modalStyleManager,
     #modalIdeviceManager,
     #modalOdeBrokenLinks,
-    #modalOdeUsedFiles {
+    #modalOdeUsedFiles,
+    #modalImageOptimizer {
         .modal-dialog {
             min-width: auto !important;
             max-width: calc(100vw - 1rem) !important;
             width: calc(100vw - 1rem) !important;
             margin: 0 auto !important;
+        }
+    }
+
+    /* True fullscreen for modals opted in with `modal-fullscreen-md-down`.
+       Scoped to each modal ID so specificity beats the generic #modal... overrides above. */
+    #modalFileManager,
+    #modalOpenUserOdeFiles,
+    #modalProperties,
+    #modalAbout,
+    #modalEasterEgg {
+        padding: 0 !important;
+
+        .modal-dialog.modal-fullscreen-md-down {
+            max-width: 100vw !important;
+            width: 100vw !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            min-height: 100dvh !important;
+            height: 100dvh !important;
+
+            .modal-content {
+                width: 100% !important;
+                height: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                max-height: none !important;
+                border: 0;
+                border-radius: 0;
+            }
+            .modal-body {
+                max-height: none !important;
+            }
+        }
+    }
+
+    /* File manager: hide preview sidebar on mobile, let main pane take the full width */
+    #modalFileManager {
+        .media-library-sidebar {
+            display: none !important;
+        }
+        .media-library-main {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+        .media-library-footer {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .media-library-footer-actions {
+            flex-wrap: wrap;
+            gap: 6px;
         }
     }
 
@@ -3078,28 +3385,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         &:hover {
             background: var(--brand-primary-dark);
             border-color: var(--brand-primary-dark);
-        }
-    }
-
-    .print-preview-close-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        background: transparent;
-        color: var(--white, white);
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
-
-        .exe-icon {
-            font-size: 28px;
-        }
-
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
         }
     }
 
@@ -3227,4 +3512,519 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             box-shadow: none;
         }
     }
+}
+
+/* ============================================================================
+   Media Library UI
+   ============================================================================ */
+
+/* Ensure all icons in File Manager modal use the icon font */
+#modalFileManager .exe-icon {
+    font-family: var(--icons-ff);
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+}
+
+/* Header search */
+#modalFileManager .modal-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    padding-right: 70px; /* Space for absolute close button */
+    min-height: auto;
+}
+
+#modalFileManager .modal-header .modal-title {
+    flex: 1;
+    margin: 0;
+    line-height: 1.4;
+}
+
+#modalFileManager .modal-header .close {
+    top: 50%;
+    transform: translateY(-50%);
+    right: 16px;
+    padding: 0;
+    margin: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#modalFileManager .media-library-header-search {
+    position: relative;
+    width: 200px;
+    flex-shrink: 0;
+}
+
+#modalFileManager .media-library-header-search::before {
+    content: "search";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+    font-family: "Material icons Round", sans-serif;
+    font-size: 18px;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    z-index: 1;
+}
+
+#modalFileManager .media-library-header-search .form-control {
+    padding-left: 36px !important;
+    height: 36px;
+}
+
+/* Hide any leftover icon span in search (for cache cleanup) */
+#modalFileManager .media-library-header-search .exe-icon {
+    display: none !important;
+}
+
+/* Breadcrumbs - fixed height, no grow */
+#modalFileManager .media-library-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+/* Empty state - hidden when grid has content */
+#modalFileManager .media-library-empty {
+    flex-shrink: 0;
+}
+
+#modalFileManager .media-library-breadcrumbs .breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#modalFileManager .media-library-breadcrumbs .breadcrumb-item:hover {
+    background-color: var(--gray-100, #f3f4f6);
+    color: var(--brand-primary, #0BA1A1);
+    text-decoration: underline;
+}
+
+#modalFileManager .media-library-breadcrumbs .breadcrumb-item .exe-icon {
+    display: inline-block !important;
+    font-size: 18px;
+}
+
+#modalFileManager .media-library-breadcrumbs .breadcrumb-separator {
+    color: #adb5bd;
+    font-size: 12px;
+    user-select: none;
+}
+
+/* Search indicator (shown during recursive search) */
+#modalFileManager .media-library-search-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--gray-700, #374151);
+}
+
+#modalFileManager .media-library-search-indicator .breadcrumb-home {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+#modalFileManager .media-library-search-indicator .breadcrumb-home:hover {
+    background-color: var(--gray-100, #f3f4f6);
+    color: var(--brand-primary, #0BA1A1);
+}
+
+#modalFileManager .media-library-search-indicator .breadcrumb-separator {
+    color: #adb5bd;
+    font-size: 12px;
+    user-select: none;
+}
+
+#modalFileManager .media-library-search-indicator .search-term {
+    color: var(--brand-primary, #0BA1A1);
+}
+
+#modalFileManager .media-library-search-indicator .clear-search-btn {
+    color: #6b7280;
+    font-size: 16px;
+    line-height: 1;
+}
+
+#modalFileManager .media-library-search-indicator .clear-search-btn:hover {
+    color: var(--remove, #dc3545);
+}
+
+/* Grid item info overlay (for search results) */
+#modalFileManager .media-library-item .item-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    padding: 16px 4px 4px 4px;
+    color: white;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#modalFileManager .media-library-item .item-info .item-name {
+    position: static;
+    background: none;
+    padding: 0;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#modalFileManager .media-library-item .item-path-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 9px;
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#modalFileManager .media-library-item .item-path-badge .exe-icon {
+    font-size: 10px;
+    margin-bottom: 0;
+    color: white;
+}
+
+#modalFileManager .media-library-item .item-path-badge:hover {
+    background: var(--brand-dark, #087d7d);
+}
+
+/* Location column in list view */
+#modalFileManager .col-location {
+    min-width: 120px;
+    max-width: 180px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+#modalFileManager .col-location .location-link {
+    cursor: pointer;
+    color: var(--brand-primary, #0BA1A1);
+    text-decoration: none;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#modalFileManager .col-location .location-link:hover {
+    text-decoration: underline;
+    color: var(--brand-dark, #087d7d);
+}
+
+/* Location row in sidebar */
+#modalFileManager .media-library-location-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#modalFileManager .media-library-location-value {
+    color: var(--brand-primary, #0BA1A1);
+    font-size: 12px;
+}
+
+#modalFileManager .media-library-open-folder-btn {
+    color: #6b7280;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+#modalFileManager .media-library-open-folder-btn:hover {
+    color: var(--brand-primary, #0BA1A1);
+}
+
+/* Fixed modal height - NEVER changes based on content */
+#modalFileManager .modal-dialog {
+    max-width: 1100px;
+}
+
+#modalFileManager .modal-content {
+    height: 70vh;
+    max-height: 700px;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+#modalFileManager .modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Toolbar - fixed height */
+#modalFileManager .media-library-toolbar {
+    flex-shrink: 0;
+}
+
+/* Sort and filter selects - wider for longer text */
+#modalFileManager .media-library-sort {
+    min-width: 150px;
+}
+
+#modalFileManager .media-library-filter {
+    min-width: 120px;
+}
+
+/* Container with grid and sidebar - flex row */
+#modalFileManager .media-library-container {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Main area (grid + breadcrumbs) takes remaining space */
+#modalFileManager .media-library-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Grid/List scroll (infinite scroll, no pagination) */
+#modalFileManager .media-library-grid {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+#modalFileManager .media-library-list-container {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* Sidebar fixed width with scroll */
+#modalFileManager .media-library-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Preview image constraints */
+#modalFileManager .media-library-preview {
+    max-height: 200px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+#modalFileManager .media-library-preview-img {
+    max-width: 100%;
+    max-height: 200px;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+}
+
+#modalFileManager .media-library-preview-video {
+    max-width: 100%;
+    max-height: 200px;
+}
+
+#modalFileManager .media-library-preview-audio {
+    width: 100%;
+}
+
+#modalFileManager .media-library-preview-pdf {
+    width: 100%;
+    height: 200px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#modalFileManager .media-library-preview-file {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+#modalFileManager .media-library-preview-file .exe-icon {
+    font-size: 48px;
+    color: #6c757d;
+}
+
+/* Footer with action buttons - fixed height, no grow/shrink */
+#modalFileManager .media-library-footer {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.media-library-footer-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.media-library-footer .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+}
+
+.media-library-footer-actions .btn[disabled] {
+    color: inherit;
+}
+
+.media-library-footer .btn .exe-icon {
+    font-family: var(--icons-ff);
+    font-size: 18px;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
+
+#modalFileManager .media-library-toolbar .btn-primary {
+    padding-left: 8px !important;
+}
+
+.media-library-toolbar .btn-primary .exe-icon,
+.media-library-footer .btn-primary .exe-icon,
+.media-library-footer .btn-danger,
+.media-library-footer .btn-danger[disabled],
+.media-library-footer .btn-danger .exe-icon {
+    color: #fff;
+}
+
+/* Disabled buttons styling */
+.media-library-footer .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* More options dropdown items */
+.media-library-footer .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-library-footer .dropdown-item .exe-icon {
+    font-family: var(--icons-ff);
+    font-size: 18px;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    color: #6c757d;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+}
+
+/* Hide extract option by default (only show for ZIP files) */
+.media-library-extract-btn.d-none {
+    display: none !important;
+}
+
+/* Filename in metadata (bold text, not input) */
+.media-library-metadata .metadata-filename {
+    margin-bottom: 12px;
+}
+
+.media-library-metadata .metadata-filename .media-library-filename {
+    font-weight: 600;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+/* URL input group with copy button */
+.media-library-metadata .url-input-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.media-library-metadata .url-input-group .form-control {
+    flex: 1;
+    font-size: 12px;
+}
+
+.media-library-metadata .url-input-group .btn {
+    padding: 4px 8px;
+    flex-shrink: 0;
+}
+
+.media-library-metadata .url-input-group .btn .exe-icon {
+    font-family: var(--icons-ff);
+    font-size: 16px;
+}
+
+/* File count indicator in toolbar */
+.media-library-file-count {
+    margin-left: auto;
+    font-size: 13px;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.media-library-file-count .media-library-count-value {
+    font-weight: 600;
+    color: #495057;
 }

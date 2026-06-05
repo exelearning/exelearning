@@ -57,8 +57,9 @@ var $eXeIdentifica = {
     loadGame: function () {
         $eXeIdentifica.options = [];
         $eXeIdentifica.activities.each(function (i) {
-            const dl = $('.identifica-DataGame', this),
-                imagesLink = $('.identifica-LinkImages', this),
+            const dl = $('.identifica-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const imagesLink = $('.identifica-LinkImages', this),
                 audioLink = $('.identifica-LinkAudios', this),
                 mOption = $eXeIdentifica.loadDataGame(
                     dl,
@@ -166,7 +167,7 @@ var $eXeIdentifica = {
                         </div>
                         <div class="IDFP-Media">
                             <a href="#" id="idfLinkAudio-${instance}" class="IDFP-LinkAudio" title="${msgs.msgAudio}" style="position:absolute;top:8px;right:8px;z-index:1000;display:none;">
-                                <img src="${path}exequextaudio.png" class="IDFP-Audio" alt="Audio">
+                                <img src="${path}exequextaudio.svg" class="IDFP-Audio" alt="Audio">
                             </a>
                             <div id="idfCardDraw-${instance}" class="IDFP-CardDraw">
                                 <div class="IDFP-card">
@@ -181,7 +182,7 @@ var $eXeIdentifica = {
                                                 <img src="" id="idfBackImage-${instance}" class="IDFP-Image IDFP-Image-Back" alt="" />
                                                 <img class="IDFP-Cursor IDFP-Cursor-Back" id="idfBackCursor-${instance}" src="${path}exequextcursor.gif" alt="Cursor" />
                                                 <a href="#" class="IDFP-LinkAudio IDFP-LinkAudio-Back" id="idfBackAudio-${instance}" title="Audio">
-                                                    <img src="${path}exequextaudio.png" class="IDFP-Audio" alt="Audio">
+                                                    <img src="${path}exequextaudio.svg" class="IDFP-Audio" alt="Audio">
                                                 </a>
                                             </div>
                                             <div class="IDFP-AuthorLicence" id="idfAuthorLicence-${instance}">
@@ -214,7 +215,7 @@ var $eXeIdentifica = {
                         <a href="#" id="idfUseClue-${instance}" class="IDFP-BClue">${msgs.msgShowClue}</a>
                     </div>
                     <div id="idfMessageAnswer-${instance}" class="IDFP-MessageClue"></div>
-                    <div class="IDFP-DivSubmit" id="idfDivSubmit-${instance}">
+                    <div class="IDFP-DivSubmit mb-3" id="idfDivSubmit-${instance}">
                         <a href="#" id="idfBtnMoveOn-${instance}" title="${msgs.msgMoveOne}">
                             <strong><span class="sr-av">${msgs.msgMoveOne}</span></strong>
                             <div class="exeQuextIcons-MoveOne IDFP-Activo"></div>
@@ -380,17 +381,12 @@ var $eXeIdentifica = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.questionsRamdon
             );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             mOptions.scoreTotal += 1;
         }
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.questionsGame
-        );
-        mOptions.questionsGame = mOptions.questionsRamdon
-            ? al
-            : mOptions.questionsGame;
         mOptions.numberQuestions = mOptions.questionsGame.length;
         return mOptions;
     },
@@ -519,8 +515,7 @@ var $eXeIdentifica = {
                 mOptions.questionsGame[mOptions.activeQuestion].audio || ''
             ).trim();
             if (!audio || audio.length <= 4) return;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $gameContainerClue.on('click', '.IDFP-LinkClue', function (e) {
@@ -543,7 +538,7 @@ var $eXeIdentifica = {
                 .fadeOut(400)
                 .fadeIn(300);
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`
+                `#idfGameContainer-${instance}`
             );
         });
 
@@ -961,7 +956,7 @@ var $eXeIdentifica = {
         mOptions.gameStarted = false;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#idfCursor-' + instance).hide();
 
         let message = mOptions.msgs.msgGameEnd;
@@ -1105,7 +1100,7 @@ var $eXeIdentifica = {
             );
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         const hasAudio = q.audio && q.audio.trim().length > 4;
         if (hasAudio) {
             $(`#idfLinkAudio-${instance}`).show();
@@ -1123,7 +1118,7 @@ var $eXeIdentifica = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`
+                `#idfGameContainer-${instance}`
             );
         }
 

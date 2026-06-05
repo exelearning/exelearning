@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -60,7 +61,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -69,6 +70,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -93,7 +95,7 @@ async function addExternalWebsiteIdeviceFromPanel(page: Page): Promise<void> {
         if (isCollapsed) {
             const label = infoCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -108,7 +110,7 @@ async function addExternalWebsiteIdeviceFromPanel(page: Page): Promise<void> {
     await page.locator('#node-content article .idevice_node.external-website').first().waitFor({ timeout: 15000 });
 
     // Wait for the form to be created
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for the URL input to be visible
     await page
@@ -117,6 +119,7 @@ async function addExternalWebsiteIdeviceFromPanel(page: Page): Promise<void> {
                 const urlInput = document.querySelector('#websiteUrl');
                 return urlInput !== null;
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -180,7 +183,7 @@ async function saveExternalWebsiteIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for edition mode to end or iframe to appear
     await page
@@ -190,6 +193,7 @@ async function saveExternalWebsiteIdevice(page: Page): Promise<void> {
                 const iframe = document.querySelector('#node-content .external-website #iframeWebsiteIdevice iframe');
                 return (idevice && idevice.getAttribute('mode') !== 'edition') || iframe !== null;
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -227,18 +231,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add an External Website iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -264,18 +257,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website URL Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -301,18 +283,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice and set URL
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -321,21 +292,10 @@ test.describe('External Website iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -344,7 +304,7 @@ test.describe('External Website iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Wait for the iDevice to be rendered
@@ -354,6 +314,7 @@ test.describe('External Website iDevice', () => {
                         const idevice = document.querySelector('#node-content .external-website');
                         return idevice !== null;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .catch(() => {});
@@ -374,18 +335,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Small Height Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -407,18 +357,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Large Height Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -440,18 +379,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website SuperSize Height Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -475,18 +403,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Empty URL Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -497,7 +414,7 @@ test.describe('External Website iDevice', () => {
             await saveBtn.click();
 
             // Wait for alert modal to appear
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Check if an alert modal appeared
             const alertModal = page.locator('#modalAlert[data-open="true"], .modal.show');
@@ -511,18 +428,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Invalid URL Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -536,7 +442,7 @@ test.describe('External Website iDevice', () => {
             await saveBtn.click();
 
             // Wait for alert modal to appear
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Check if an alert modal appeared
             const alertModal = page.locator('#modalAlert[data-open="true"], .modal.show');
@@ -550,18 +456,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website HTTPS URL Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -587,18 +482,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice and set URL
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -607,7 +491,7 @@ test.describe('External Website iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -616,7 +500,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe container is visible in preview
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl);
@@ -627,18 +511,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Height Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice with large frame height
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -648,7 +521,7 @@ test.describe('External Website iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -657,7 +530,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe has correct height (500px for large)
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl, 500);
@@ -670,18 +543,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice with URL
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -691,12 +553,12 @@ test.describe('External Website iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click edit button to enter edit mode
             const editBtn = page.locator('#node-content .external-website button:has-text("Edit")').first();
             await editBtn.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Wait for the form to load
             await page.locator('#websiteUrl').waitFor({ state: 'visible', timeout: 10000 });
@@ -717,18 +579,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Update Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice with initial URL
             await addExternalWebsiteIdeviceFromPanel(page);
@@ -737,12 +588,12 @@ test.describe('External Website iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click edit button to enter edit mode
             const editBtn = page.locator('#node-content .external-website button:has-text("Edit")').first();
             await editBtn.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Wait for the form to load
             await page.locator('#websiteUrl').waitFor({ state: 'visible', timeout: 10000 });

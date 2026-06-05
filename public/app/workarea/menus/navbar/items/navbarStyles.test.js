@@ -22,6 +22,9 @@ global.eXeLearning = {
                 themeInfoFieldsConfig: {},
                 themeEditionFieldsConfig: {},
             },
+            endpoints: {
+                api_themes_download: { path: '/api/themes/{themeId}/download', methods: ['GET'] },
+            },
             postNewTheme: vi.fn(),
             putEditTheme: vi.fn(),
             deleteTheme: vi.fn(),
@@ -76,12 +79,13 @@ describe('NavbarStyles', () => {
                 <button id="dropdownStyles"></button>
                 <button id="navbar-button-styles"></button>
             </div>
+            <h1 class="styles-title">Styles</h1>
             <div id="styleslistContent">
                 <div id="exestylescontent"></div>
                 <div id="importedstylescontent"></div>
             </div>
-            <div id="exestylescontent-tab"></div>
-            <div id="importedstylescontent-tab"></div>
+            <div id="exestylescontent-tab">System</div>
+            <div id="importedstylescontent-tab">Imported</div>
             <div id="stylessidenav" class="sidenav"></div>
             <div id="sidenav-overlay"></div>
             <button id="stylessidenavclose"></button>
@@ -153,6 +157,23 @@ describe('NavbarStyles', () => {
             'site-1',
         ]);
         expect(navbarStyles.userThemes.map((t) => t.id)).toEqual(['user-1']);
+    });
+
+    it('translates static sidebar elements on initialization', () => {
+        // Verify that the translation function was called for sidebar elements
+        expect(global._).toHaveBeenCalledWith('Styles');
+        expect(global._).toHaveBeenCalledWith('System');
+        expect(global._).toHaveBeenCalledWith('Imported');
+
+        // Verify the elements have the translated text
+        const title = document.querySelector('.styles-title');
+        expect(title.textContent).toBe('Styles');
+
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        expect(systemTab.textContent).toBe('System');
+
+        const importedTab = document.querySelector('#importedstylescontent-tab');
+        expect(importedTab.textContent).toBe('Imported');
     });
 
     it('updates selected theme classes in both lists', () => {
@@ -313,7 +334,7 @@ describe('NavbarStyles', () => {
         vi.useRealTimers();
     });
 
-    it('handles editTheme success and error paths', async () => {
+    it('handles editTheme success and error paths for server themes', async () => {
         vi.useFakeTimers();
         const buildSpy = vi.spyOn(navbarStyles, 'buildUserListThemes');
         eXeLearning.app.api.putEditTheme.mockResolvedValue({
@@ -321,6 +342,7 @@ describe('NavbarStyles', () => {
             themes: { themes: [] },
         });
 
+        // 'dir' is not a user theme, so it uses API
         navbarStyles.editTheme('dir', { data: {} });
         await vi.runAllTimersAsync();
 
@@ -335,6 +357,41 @@ describe('NavbarStyles', () => {
         await navbarStyles.editTheme('dir', { data: {} });
         expect(alertSpy).toHaveBeenCalled();
         vi.useRealTimers();
+    });
+
+    it('handles editTheme for user themes via IndexedDB', async () => {
+        const mockResourceCache = {
+            updateUserThemeConfig: vi.fn().mockResolvedValue(),
+        };
+        eXeLearning.app.project._yjsBridge = {
+            resourceCache: mockResourceCache,
+        };
+
+        // 'user-1' is a user theme (type: 'user') with name: 'User Theme 1'
+        const buildSpy = vi.spyOn(navbarStyles, 'buildUserListThemes');
+        await navbarStyles.editTheme('user-1', { data: { title: 'New Title', author: 'New Author' } });
+
+        // Uses theme.name ('User Theme 1') as the key in IndexedDB
+        expect(mockResourceCache.updateUserThemeConfig).toHaveBeenCalledWith('User Theme 1', {
+            title: 'New Title',
+            author: 'New Author',
+        });
+        expect(buildSpy).toHaveBeenCalled();
+        expect(eXeLearning.app.api.putEditTheme).not.toHaveBeenCalled();
+    });
+
+    it('shows alert when user theme edit fails', async () => {
+        const mockResourceCache = {
+            updateUserThemeConfig: vi.fn().mockRejectedValue(new Error('DB error')),
+        };
+        eXeLearning.app.project._yjsBridge = {
+            resourceCache: mockResourceCache,
+        };
+
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+        await navbarStyles.editTheme('user-1', { data: { title: 'New Title' } });
+
+        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to edit'), expect.any(Object));
     });
 
     it('handles removeTheme success and error paths', async () => {
@@ -361,36 +418,169 @@ describe('NavbarStyles', () => {
         vi.useRealTimers();
     });
 
-    it('uploads theme and handles failure', async () => {
-        eXeLearning.app.api.postUploadTheme.mockResolvedValue({
-            responseMessage: 'OK',
-            theme: { id: 'new' },
-        });
-        const buildSpy = vi.spyOn(navbarStyles, 'buildUserListThemes');
-        navbarStyles.uploadTheme('theme.zip', 'data');
-        await Promise.resolve();
-        expect(eXeLearning.app.themes.list.loadTheme).toHaveBeenCalled();
-        expect(buildSpy).toHaveBeenCalled();
+    it('uploads theme (legacy method redirects to IndexedDB upload)', async () => {
+        // The uploadTheme method is deprecated and now redirects to uploadThemeToIndexedDB
+        const uploadToIndexedDBSpy = vi.spyOn(navbarStyles, 'uploadThemeToIndexedDB').mockResolvedValue();
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-        eXeLearning.app.api.postUploadTheme.mockResolvedValue({
-            responseMessage: 'ERR',
-            error: 'fail',
-        });
-        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        navbarStyles.uploadTheme('theme.zip', 'data');
+        // Test with base64 data
+        navbarStyles.uploadTheme('theme.zip', 'data:application/zip;base64,dGVzdA==');
         await Promise.resolve();
-        expect(alertSpy).toHaveBeenCalled();
+
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
+        expect(uploadToIndexedDBSpy).toHaveBeenCalled();
+
+        warnSpy.mockRestore();
+        uploadToIndexedDBSpy.mockRestore();
     });
 
-    it('downloads theme zip when data is available', async () => {
-        eXeLearning.app.api.getThemeZip.mockResolvedValue({
-            zipFileName: 'theme.zip',
-            zipBase64: 'dGVzdA==',
-        });
+    it('downloads theme zip from bundle (server theme)', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        const mockResponse = {
+            ok: true,
+            blob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-        await navbarStyles.downloadThemeZip({ dirName: 'user-1' });
+
+        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(fetch).toHaveBeenCalledWith('/bundles/themes/base-1.zip');
         expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
         clickSpy.mockRestore();
+    });
+
+    it('downloads site theme zip from API endpoint', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        const mockResponse = {
+            ok: true,
+            blob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        navbarStyles.downloadThemeZip({ dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(fetch).toHaveBeenCalledWith('/api/resources/bundle/theme/site-1');
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+    });
+
+    it('shows alert when theme is not downloadable', async () => {
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+        await navbarStyles.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
+        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
+        expect(eXeLearning.app.api.getThemeZip).not.toHaveBeenCalled();
+    });
+
+    it('downloads user theme from IndexedDB', async () => {
+        const mockResourceCache = {
+            getUserThemeRaw: vi.fn().mockResolvedValue({
+                compressedFiles: new Uint8Array([80, 75, 3, 4]), // ZIP magic bytes
+            }),
+        };
+        eXeLearning.app.project._yjsBridge = {
+            resourceCache: mockResourceCache,
+        };
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        await navbarStyles.downloadThemeZip({
+            name: 'user-theme',
+            type: 'user',
+            downloadable: '1',
+        });
+
+        expect(mockResourceCache.getUserThemeRaw).toHaveBeenCalledWith('user-theme');
+        expect(createObjectURLSpy).toHaveBeenCalled();
+        expect(clickSpy).toHaveBeenCalled();
+        expect(revokeObjectURLSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+    });
+
+    it('shows alert when user theme not found in IndexedDB', async () => {
+        const mockResourceCache = {
+            getUserThemeRaw: vi.fn().mockResolvedValue(null),
+        };
+        eXeLearning.app.project._yjsBridge = {
+            resourceCache: mockResourceCache,
+        };
+
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+        await navbarStyles.downloadThemeZip({
+            name: 'missing-theme',
+            type: 'user',
+            downloadable: '1',
+        });
+
+        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('not found'), expect.any(Object));
+    });
+
+    it('shows error when bundle download fails', async () => {
+        const mockResponse = {
+            ok: false,
+            status: 404,
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+        navbarStyles.downloadThemeZip({
+            dirName: 'nonexistent',
+            name: 'Nonexistent Theme',
+            downloadable: '1',
+        });
+
+        // Wait for async operations
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to download'),
+            expect.objectContaining({ error: expect.stringContaining('not found') })
+        );
+    });
+
+    describe('makeMenuThemeDownload', () => {
+        it('shows enabled download button when downloadable is 1', () => {
+            const theme = { downloadable: '1' };
+            const li = navbarStyles.makeMenuThemeDownload(theme);
+            expect(li.classList.contains('disabled')).toBe(false);
+            expect(li.querySelector('.download-icon-green')).toBeTruthy();
+        });
+
+        it('shows disabled download button when downloadable is not 1', () => {
+            const theme = { downloadable: '0' };
+            const li = navbarStyles.makeMenuThemeDownload(theme);
+            expect(li.classList.contains('disabled')).toBe(true);
+            expect(li.querySelector('.download-icon-disabled')).toBeTruthy();
+        });
+
+        it('does not call downloadThemeZip when disabled', async () => {
+            const theme = { downloadable: '0' };
+            const downloadSpy = vi.spyOn(navbarStyles, 'downloadThemeZip');
+            const li = navbarStyles.makeMenuThemeDownload(theme);
+            li.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            expect(downloadSpy).not.toHaveBeenCalled();
+        });
     });
 
     it('toggles sidenav state', () => {
@@ -473,5 +663,424 @@ describe('NavbarStyles', () => {
         await navbarStyles.confirmExecEvent({ id: 'user-1', dirName: 'user-1' });
         expect(editSpy).toHaveBeenCalled();
         expect(buildSpy).toHaveBeenCalled();
+    });
+
+    describe('uploadThemeToIndexedDB', () => {
+        let mockResourceCache;
+        let mockResourceFetcher;
+
+        beforeEach(() => {
+            mockResourceCache = {
+                setUserTheme: vi.fn().mockResolvedValue(),
+            };
+            mockResourceFetcher = {
+                setUserThemeFiles: vi.fn().mockResolvedValue(),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+            eXeLearning.app.resourceFetcher = mockResourceFetcher;
+            eXeLearning.app.themes.list.addUserTheme = vi.fn();
+
+            // Mock fflate
+            window.fflate = {
+                unzipSync: vi.fn().mockReturnValue({
+                    'config.xml': new TextEncoder().encode('<theme><name>Test Theme</name><version>1.0</version></theme>'),
+                    'style.css': new Uint8Array([1, 2, 3]),
+                }),
+                zipSync: vi.fn().mockReturnValue(new Uint8Array([80, 75, 3, 4])),
+            };
+        });
+
+        afterEach(() => {
+            delete window.fflate;
+            delete eXeLearning.app.project._yjsBridge;
+            delete eXeLearning.app.resourceFetcher;
+        });
+
+        it('parses ZIP and stores theme in IndexedDB', async () => {
+            const arrayBuffer = new ArrayBuffer(10);
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', arrayBuffer);
+
+            expect(window.fflate.unzipSync).toHaveBeenCalled();
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    name: 'test_theme',
+                    type: 'user',
+                    isUserTheme: true,
+                })
+            );
+            expect(mockResourceFetcher.setUserThemeFiles).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Object)
+            );
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+        });
+
+        it('shows alert when fflate is not loaded', async () => {
+            delete window.fflate;
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: 'fflate library not loaded' })
+            );
+        });
+
+        it('shows alert when config.xml is missing', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'style.css': new Uint8Array([1, 2, 3]),
+            });
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Invalid style'),
+                expect.any(Object)
+            );
+        });
+
+        it('shows alert when theme already exists', async () => {
+            eXeLearning.app.themes.list.installed['test_theme'] = { id: 'test_theme' };
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('already exists'),
+                expect.any(Object)
+            );
+        });
+
+        it('shows alert when theme is marked as non-downloadable', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode(
+                    '<theme><name>Blocked Theme</name><downloadable>0</downloadable></theme>'
+                ),
+                'style.css': new Uint8Array([1, 2, 3]),
+            });
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: expect.stringContaining('cannot be downloaded') })
+            );
+            expect(mockResourceCache.setUserTheme).not.toHaveBeenCalled();
+        });
+
+        it('shows alert when storage is not available', async () => {
+            delete eXeLearning.app.project._yjsBridge;
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: expect.stringContaining('Storage not available') })
+            );
+        });
+
+        it('detects CSS and JS files in theme', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode('<theme><name>CSS Theme</name></theme>'),
+                'main.css': new Uint8Array([1]),
+                'extra.css': new Uint8Array([2]),
+                'script.js': new Uint8Array([3]),
+                'icons/icon1.png': new Uint8Array([4]),
+            });
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'css_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    cssFiles: ['main.css', 'extra.css'],
+                    js: ['script.js'],
+                    icons: {
+                        icon1: {
+                            id: 'icon1',
+                            title: 'icon1',
+                            type: 'img',
+                            value: 'icons/icon1.png',
+                            _relativePath: 'icons/icon1.png',
+                        },
+                    },
+                })
+            );
+        });
+
+        it('supports multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode('<theme><name>Multi Icon Theme</name></theme>'),
+                'icons/share.svg': new Uint8Array([1]),
+                'icons/download.png': new Uint8Array([2]),
+                'icons/animate.gif': new Uint8Array([3]),
+                'icons/photo.jpg': new Uint8Array([4]),
+                'icons/image.jpeg': new Uint8Array([5]),
+                'icons/modern.webp': new Uint8Array([6]),
+            });
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'multi_icon_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    icons: {
+                        share: expect.objectContaining({ id: 'share', value: 'icons/share.svg' }),
+                        download: expect.objectContaining({ id: 'download', value: 'icons/download.png' }),
+                        animate: expect.objectContaining({ id: 'animate', value: 'icons/animate.gif' }),
+                        photo: expect.objectContaining({ id: 'photo', value: 'icons/photo.jpg' }),
+                        image: expect.objectContaining({ id: 'image', value: 'icons/image.jpeg' }),
+                        modern: expect.objectContaining({ id: 'modern', value: 'icons/modern.webp' }),
+                    },
+                })
+            );
+        });
+
+        it('copies theme to Yjs for collaboration when bridge is available', async () => {
+            const copyToYjsSpy = vi.fn().mockResolvedValue();
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = copyToYjsSpy;
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(copyToYjsSpy).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Object)
+            );
+        });
+
+        it('auto-selects the uploaded theme', async () => {
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = vi.fn().mockResolvedValue();
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(eXeLearning.app.themes.selectTheme).toHaveBeenCalledWith(
+                'test_theme',
+                true,
+                false
+            );
+        });
+
+        it('succeeds locally when _copyThemeToYjs throws', async () => {
+            const copyToYjsSpy = vi.fn().mockRejectedValue(new Error('Yjs error'));
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = copyToYjsSpy;
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(copyToYjsSpy).toHaveBeenCalled();
+            // Theme should still be installed locally despite Yjs error
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalled();
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+            warnSpy.mockRestore();
+        });
+
+        it('skips Yjs copy when bridge is not available', async () => {
+            delete eXeLearning.app.project._yjsBridge._copyThemeToYjs;
+            // Re-create bridge without _copyThemeToYjs
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            // Theme should still be installed locally
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalled();
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+        });
+    });
+
+    describe('removeTheme for user themes', () => {
+        let mockResourceCache;
+        let mockResourceFetcher;
+
+        beforeEach(() => {
+            mockResourceCache = {
+                deleteUserTheme: vi.fn().mockResolvedValue(),
+            };
+            mockResourceFetcher = {
+                userThemeFiles: new Map(),
+                cache: new Map(),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+            eXeLearning.app.resourceFetcher = mockResourceFetcher;
+
+            // Ensure the user-1 theme exists and is marked as user theme
+            eXeLearning.app.themes.list.installed['user-1'] = {
+                id: 'user-1',
+                type: 'user',
+                name: 'User Theme 1',
+                title: 'User 1',
+                manager: { selected: { name: 'User Theme 1' } },
+                dirName: 'user-1',
+                isUserTheme: true,
+            };
+        });
+
+        afterEach(() => {
+            delete eXeLearning.app.project._yjsBridge;
+            delete eXeLearning.app.resourceFetcher;
+        });
+
+        it('removes user theme from IndexedDB and caches', async () => {
+            mockResourceFetcher.userThemeFiles.set('user-1', {});
+            mockResourceFetcher.cache.set('theme:user-1', new Map());
+
+            const buildSpy = vi.spyOn(navbarStyles, 'buildUserListThemes');
+            await navbarStyles.removeTheme('user-1');
+
+            expect(mockResourceCache.deleteUserTheme).toHaveBeenCalledWith('user-1');
+            expect(mockResourceFetcher.userThemeFiles.has('user-1')).toBe(false);
+            expect(mockResourceFetcher.cache.has('theme:user-1')).toBe(false);
+            expect(eXeLearning.app.themes.list.removeTheme).toHaveBeenCalledWith('user-1');
+            expect(buildSpy).toHaveBeenCalled();
+        });
+
+        it('handles removal errors gracefully', async () => {
+            mockResourceCache.deleteUserTheme.mockRejectedValue(new Error('DB error'));
+
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+            await navbarStyles.removeTheme('user-1');
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to remove'),
+                expect.objectContaining({ error: 'DB error' })
+            );
+        });
+    });
+
+    describe('addNewReader', () => {
+        it('reads file as ArrayBuffer and calls uploadThemeToIndexedDB', async () => {
+            const uploadSpy = vi.spyOn(navbarStyles, 'uploadThemeToIndexedDB').mockResolvedValue();
+            const OriginalFileReader = global.FileReader;
+
+            let onloadCallback;
+            class MockFileReader {
+                constructor() {
+                    navbarStyles.readers.push(this);
+                }
+                readAsArrayBuffer(file) {
+                    setTimeout(() => {
+                        if (onloadCallback) {
+                            onloadCallback({ target: { result: new ArrayBuffer(10) } });
+                        }
+                    }, 0);
+                }
+                set onload(cb) {
+                    onloadCallback = cb;
+                }
+            }
+            global.FileReader = MockFileReader;
+
+            const file = new File(['content'], 'theme.zip', { type: 'application/zip' });
+            navbarStyles.addNewReader(file);
+
+            // Wait for async operation
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(uploadSpy).toHaveBeenCalledWith('theme.zip', expect.any(ArrayBuffer));
+
+            global.FileReader = OriginalFileReader;
+            uploadSpy.mockRestore();
+        });
+    });
+
+    describe('imported-styles tab visibility', () => {
+        // Minimal DOM scaffolding matching the bootstrap HTML structure.
+        function scaffoldTabs() {
+            document.body.innerHTML = `
+                <ul class="nav nav-tabs" id="styleslist" role="tablist">
+                    <li class="nav-item"><button id="exestylescontent-tab">System</button></li>
+                    <li class="nav-item"><button id="importedstylescontent-tab" class="active">Imported</button></li>
+                </ul>
+                <div id="exestylescontent"></div>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            delete window.eXeLearning.config.themeRegistryOverride;
+            delete window.eXeLearning.config.userStyles;
+            delete window.eXeLearning.config.isOfflineInstallation;
+        });
+
+        it('_isImportBlocked returns true when themeRegistryOverride.blockImportInstall is set', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.themeRegistryOverride = { blockImportInstall: true };
+            expect(ns._isImportBlocked()).toBe(true);
+        });
+
+        it('_isImportBlocked honors the legacy ONLINE_THEMES_INSTALL=false flag', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.userStyles = 0;
+            window.eXeLearning.config.isOfflineInstallation = false;
+            expect(ns._isImportBlocked()).toBe(true);
+        });
+
+        it('_isImportBlocked is false when neither flag disables imports', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.userStyles = 1;
+            expect(ns._isImportBlocked()).toBe(false);
+        });
+
+        it('_hideImportedStylesTab hides the Imported tab and activates System', () => {
+            scaffoldTabs();
+            const ns = Object.create(NavbarStyles.prototype);
+            ns._hideImportedStylesTab();
+
+            const navItem = document.querySelector('#importedstylescontent-tab').closest('li');
+            expect(navItem.style.display).toBe('none');
+            const pane = document.getElementById('importedstylescontent');
+            expect(pane.style.display).toBe('none');
+            expect(pane.classList.contains('show')).toBe(false);
+            const systemTab = document.getElementById('exestylescontent-tab');
+            expect(systemTab.classList.contains('active')).toBe(true);
+            const systemPane = document.getElementById('exestylescontent');
+            expect(systemPane.classList.contains('show')).toBe(true);
+            const tablist = document.getElementById('styleslist');
+            expect(tablist.classList.contains('d-none')).toBe(true);
+        });
+
+        it('_hideImportedStylesTab tolerates a missing tablist <ul>', () => {
+            // Tab + pane present but no <ul id="styleslist"> wrapper.
+            document.body.innerHTML = `
+                <li class="nav-item"><button id="importedstylescontent-tab" class="active">Imported</button></li>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+            const ns = Object.create(NavbarStyles.prototype);
+            expect(() => ns._hideImportedStylesTab()).not.toThrow();
+            expect(document.getElementById('styleslist')).toBeNull();
+        });
+
+        it('_hideImportedStylesTab falls back to the tab element when no nav-item wrapper exists', () => {
+            // Deliberate: button NOT wrapped in a <li> / .nav-item.
+            document.body.innerHTML = `
+                <button id="importedstylescontent-tab" class="active">Imported</button>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+            const ns = Object.create(NavbarStyles.prototype);
+            ns._hideImportedStylesTab();
+            const tab = document.getElementById('importedstylescontent-tab');
+            expect(tab.style.display).toBe('none');
+        });
+
+        it('_hideImportedStylesTab is a no-op when the tab and pane are absent', () => {
+            document.body.innerHTML = '<div></div>';
+            const ns = Object.create(NavbarStyles.prototype);
+            // Should not throw.
+            expect(() => ns._hideImportedStylesTab()).not.toThrow();
+        });
     });
 });

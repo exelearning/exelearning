@@ -17,7 +17,7 @@ if (isInExe) {
     // Setup for standalone execution (browser language detection or localStorage)
     const savedLang = localStorage.getItem('userLanguage');
     const browserLang = navigator.language.split('-')[0];
-    const supportedLangs = ['en', 'es', 'ca'];
+    const supportedLangs = ['en', 'es', 'ca', 'gl', 'eu', 'de'];
     function getLangParam() {
         var result = "",
             tmp = [];
@@ -54,13 +54,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // After defining _, update all texts
     if (!isInExe) {
-        setupLanguageSelector();
+        if (typeof setupLanguageSelector === 'function') {
+            setupLanguageSelector();
+        }
     } else {
         const editorLink = document.getElementById('menu-editor-link');
         if (editorLink) editorLink.href = editorLink.href + '?lang=' + document.documentElement.lang;
     }
-    updateAllDynamicTexts();
-    addFooter(); // Ensure footer is translated on load
+    if (typeof updateAllDynamicTexts === 'function') {
+        updateAllDynamicTexts();
+    }
+    if (typeof addFooter === 'function') {
+        addFooter(); // Ensure footer is translated on load
+    }
 });
 
 /* MATHJAX */
@@ -97,6 +103,35 @@ document.addEventListener("DOMContentLoaded", function() {
     var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js";
     if (isInExe) {
         url = parent.tinymce.activeEditor.settings.edicuatex_mathjax_url;
+
+        // Detect app base path from edicuatex iframe URL for subdirectory deployments
+        // e.g., /dist/static/app/common/edicuatex/index.html → /dist/static
+        var appBasePath = '';
+        var pathname = window.location.pathname;
+        var appIndex = pathname.indexOf('/app/');
+        if (appIndex > 0) {
+            appBasePath = pathname.substring(0, appIndex);
+        }
+
+        // The URL may be absolute (e.g., /app/...) but the <base> tag
+        // in this document would resolve it as relative, causing path duplication.
+        // Prepend origin + basePath to make it a fully qualified URL that ignores the <base> tag.
+        // Only prepend appBasePath if the URL doesn't already include it.
+        // In online mode, getAssetURL() already adds the base path to the URL.
+        if (url && url.startsWith('/')) {
+            // Check if URL already starts with appBasePath (online mode)
+            if (appBasePath && url.startsWith(appBasePath)) {
+                // URL already has base path, just prepend origin
+                url = window.location.origin + url;
+            } else {
+                // URL is root-relative, prepend origin + basePath
+                url = window.location.origin + appBasePath + url;
+            }
+        } else if (url && url.startsWith('./')) {
+            // Handle relative URLs with ./ prefix - convert to absolute from root
+            // This avoids the <base> tag resolving ./app/... as /app/common/edicuatex/app/...
+            url = window.location.origin + appBasePath + '/' + url.substring(2);
+        }
     }
     var s;
         s = document.createElement("script");

@@ -9,18 +9,21 @@
 import type {
     ExportDocument,
     ExportPage,
-    ExportBlock,
-    ExportComponent,
     ExportMetadata,
+    ExportAsset,
     ResourceProvider,
     AssetProvider,
     ZipProvider,
     ExportOptions,
     ExportResult,
+    LibraryDetectionOptions,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
+import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
+import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
  * Abstract base class for exporters
@@ -58,6 +61,59 @@ export abstract class BaseExporter {
         this.libraryDetector = new LibraryDetector();
     }
 
+    protected isElpxExportDebugEnabled(): boolean {
+        const browserGlobal = globalThis as unknown as {
+            eXeLearning?: {
+                config?: {
+                    debugElpxExport?: boolean;
+                };
+            };
+            window?: {
+                eXeLearning?: {
+                    config?: {
+                        debugElpxExport?: boolean;
+                    };
+                };
+            };
+        };
+
+        return (
+            browserGlobal.window?.eXeLearning?.config?.debugElpxExport === true ||
+            browserGlobal.eXeLearning?.config?.debugElpxExport === true
+        );
+    }
+
+    protected logElpxExportDebugPhase(phase: string, context: Record<string, unknown> = {}): void {
+        if (!this.isElpxExportDebugEnabled()) {
+            return;
+        }
+
+        const browserGlobal = globalThis as unknown as {
+            window?: {
+                __currentElpxExportTrace?: {
+                    startedMs: number;
+                    entries: Array<Record<string, unknown>>;
+                };
+            };
+        };
+
+        const trace = browserGlobal.window?.__currentElpxExportTrace;
+        if (!trace) {
+            return;
+        }
+
+        const now = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        const entry = {
+            phase,
+            ts: new Date().toISOString(),
+            elapsedMs: Math.round(now - trace.startedMs),
+            ...context,
+        };
+
+        trace.entries.push(entry);
+        console.log('[ELPX Export DEBUG]', entry);
+    }
+
     // =========================================================================
     // Abstract Methods (must be implemented by subclasses)
     // =========================================================================
@@ -76,6 +132,44 @@ export abstract class BaseExporter {
      * Get file suffix for this export format (e.g., '_web', '_scorm')
      */
     abstract getFileSuffix(): string;
+
+    // =========================================================================
+    // i18n Content Generation
+    // =========================================================================
+
+    /**
+     * Fetch the pre-built, pre-translated `common_i18n.js` content for the given language.
+     * The file is generated at build time by `scripts/build-i18n-bundles.js` and contains
+     * resolved string literals (no c_() calls) ready to include in the export ZIP.
+     */
+    protected async generateI18nContent(language: string): Promise<string> {
+        return this.resources.fetchI18nFile(language);
+    }
+
+    /**
+     * Fetch translated labels for navigation buttons (Previous / Next / Page counter).
+     * Labels are resolved from XLF translations so the exported HTML already
+     * contains the correct text for the content language — no runtime JS needed.
+     */
+    protected async fetchNavLabels(
+        language: string,
+        license?: string,
+    ): Promise<{ previous: string; next: string; page: string; license?: string }> {
+        const translations = await this.resources.fetchI18nTranslations(language);
+        let translatedLicense = license;
+
+        if (license) {
+            const key = formatLicenseText(license);
+            translatedLicense = translations.get(key) || key;
+        }
+
+        return {
+            previous: translations.get('Previous') || 'Previous',
+            next: translations.get('Next') || 'Next',
+            page: translations.get('Page') || 'Page',
+            license: translatedLicense,
+        };
+    }
 
     // =========================================================================
     // Structure Access Methods
@@ -150,6 +244,42 @@ export abstract class BaseExporter {
      */
     getChildPages(parentId: string, pages: ExportPage[]): ExportPage[] {
         return pages.filter(p => p.parentId === parentId);
+    }
+
+    // =========================================================================
+    // Visibility Helpers
+    // =========================================================================
+
+    /**
+     * Check if a page is visible in export
+     * A page is visible if:
+     * 1. It is the root page (always visible)
+     * 2. Its visibility property is not set to false/ 'false'
+     * 3. All its ancestors are visible
+     */
+    isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
+        // Root page (index 0) is always visible
+        if (page.id === allPages[0]?.id) {
+            return true;
+        }
+
+        // Check explicit visibility property
+        const visibility = page.properties?.visibility;
+        if (visibility === false || visibility === 'false') {
+            return false;
+        }
+
+        // Check ancestor visibility
+        if (page.parentId) {
+            const parent = allPages.find(p => p.id === page.parentId);
+            // If parent exists and is not visible, this page is not visible
+            // Recursive check handles the entire hierarchy
+            if (parent && !this.isPageVisible(parent, allPages)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // =========================================================================
@@ -232,6 +362,85 @@ export abstract class BaseExporter {
         return `${prefix}${timestamp}${random}`.toUpperCase();
     }
 
+    /**
+     * Cached manifest identifier for this exporter instance.
+     * Computed once on the first call and reused so the fallback path
+     * (no scormIdentifier, no odeIdentifier) does not regenerate a new
+     * random id on each subsequent call -- which would desynchronise the
+     * manifest, organization and LOM catalog/entry roots.
+     */
+    private _manifestIdentifier: string | undefined;
+
+    /**
+     * Stable identifier used in SCORM/IMS manifests and LOM catalog/entry.
+     *
+     * Derives from the project's odeIdentifier so the LMS treats updated
+     * re-uploads as the same course (preserving learner tracking). Honours
+     * an explicit `scormIdentifier` override from project metadata.
+     *
+     * Resolution order:
+     * 1. `meta.scormIdentifier` if set (user override -- used verbatim).
+     * 2. `'eXe-MANIFEST-' + meta.odeIdentifier` (default -- shares root with content.xml).
+     * 3. `'eXe-MANIFEST-' + generateOdeId()` (fallback for legacy projects).
+     *
+     * The result is memoized per exporter instance: a single export call must
+     * always observe the same manifest identifier so the manifest, the
+     * organization identifier and the LOM catalog/entry stay consistent.
+     *
+     * The returned string is the FINAL `manifest@identifier` value. Manifest
+     * generators must use it as-is (i.e. they must NOT prepend their own
+     * `eXe-MANIFEST-` prefix).
+     *
+     * Related: exelearning/exelearning#1785.
+     */
+    protected getManifestIdentifier(): string {
+        if (this._manifestIdentifier !== undefined) {
+            return this._manifestIdentifier;
+        }
+        const meta = this.getMetadata();
+        if (meta.scormIdentifier) {
+            this._manifestIdentifier = meta.scormIdentifier;
+        } else if (meta.odeIdentifier) {
+            this._manifestIdentifier = 'eXe-MANIFEST-' + meta.odeIdentifier;
+        } else {
+            this._manifestIdentifier = 'eXe-MANIFEST-' + generateOdeId();
+        }
+        return this._manifestIdentifier;
+    }
+
+    /**
+     * Bare project identifier (without the `eXe-MANIFEST-` prefix).
+     *
+     * Used for the manifest `organization@identifier` (`eXe-<bareId>`) and
+     * for the LOM `catalog/entry` (`ODE-<bareId>`) so a single project
+     * identity flows through every artifact in the export.
+     */
+    protected getBareProjectIdentifier(): string {
+        const fullId = this.getManifestIdentifier();
+        const PREFIX = 'eXe-MANIFEST-';
+        return fullId.startsWith(PREFIX) ? fullId.slice(PREFIX.length) : fullId;
+    }
+
+    // =========================================================================
+    // Asset Iteration
+    // =========================================================================
+
+    /**
+     * Iterate over all assets using the most efficient method available.
+     * Uses forEachAsset() when supported (streaming, memory-efficient),
+     * otherwise falls back to getAllAssets().
+     */
+    protected async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
+        if (this.assets.forEachAsset) {
+            await this.assets.forEachAsset(callback);
+        } else {
+            const assets = await this.assets.getAllAssets();
+            for (const asset of assets) {
+                await callback(asset);
+            }
+        }
+    }
+
     // =========================================================================
     // File Handling
     // =========================================================================
@@ -253,18 +462,17 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const assetId = asset.id;
                 const filename = asset.filename || `asset-${assetId}`;
-                // Use originalPath if available, otherwise construct from id/filename
                 const assetPath = asset.originalPath || `${assetId}/${filename}`;
                 const zipPath = prefix ? `${prefix}${assetPath}` : assetPath;
 
                 this.zip.addFile(zipPath, asset.data);
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -275,32 +483,45 @@ export abstract class BaseExporter {
     /**
      * Add assets to ZIP with content/resources/ prefix
      * Uses folderPath-based structure for cleaner exports
+     *
+     * Each asset is written exactly once, under its resolved export path
+     * (the friendly filename derived from metadata). HTML and content.xml
+     * always reference the same path because both transformations resolve
+     * `asset://uuid.ext` URLs through {@link buildAssetExportPathMap}, so a
+     * literal `content/resources/<uuid><ext>` URL only appears for genuinely
+     * missing assets — and writing the file under that path would not help,
+     * because the asset is not in the iteration in the first place.
+     *
      * @param trackingList - Optional array to track added file paths (for ELPX manifest)
      */
     async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:start');
             const exportPathMap = await this.buildAssetExportPathMap();
-            console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
                     console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
-                    continue;
+                    return;
                 }
 
-                console.log(`[BaseExporter] Adding asset: ${asset.id} -> content/resources/${exportPath}`);
-
-                // Store in content/resources/{exportPath}
                 const zipPath = `content/resources/${exportPath}`;
-
+                if (this.zip.hasFile(zipPath)) {
+                    return;
+                }
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:end', {
+                assetsAdded,
+                exportPaths: exportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -356,33 +577,7 @@ export abstract class BaseExporter {
      * Get file extension from MIME type
      */
     getExtensionFromMime(mime: string): string {
-        const mimeToExt: Record<string, string> = {
-            'image/jpeg': '.jpg',
-            'image/png': '.png',
-            'image/gif': '.gif',
-            'image/webp': '.webp',
-            'image/svg+xml': '.svg',
-            'image/bmp': '.bmp',
-            'image/tiff': '.tiff',
-            'image/x-icon': '.ico',
-            'application/pdf': '.pdf',
-            'video/mp4': '.mp4',
-            'video/webm': '.webm',
-            'video/ogg': '.ogv',
-            'video/quicktime': '.mov',
-            'audio/mpeg': '.mp3',
-            'audio/ogg': '.ogg',
-            'audio/wav': '.wav',
-            'audio/webm': '.weba',
-            'application/zip': '.zip',
-            'application/json': '.json',
-            'text/plain': '.txt',
-            'text/html': '.html',
-            'text/css': '.css',
-            'application/javascript': '.js',
-            'application/octet-stream': '.bin',
-        };
-        return mimeToExt[mime] || '.bin';
+        return getExtensionFromMimeType(mime, true);
     }
 
     /**
@@ -396,19 +591,28 @@ export abstract class BaseExporter {
         this.assetFilenameMap = new Map<string, string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
-                const id = asset.id;
-                let filename = asset.filename;
-
-                if (!filename) {
-                    // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(asset.mimeType || 'application/octet-stream');
-                    filename = `asset-${id.substring(0, 8)}${ext}`;
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            if (this.assets.listAssetMetadata) {
+                const metadata = await this.assets.listAssetMetadata();
+                for (const item of metadata) {
+                    let filename = item.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(item.mime || 'application/octet-stream');
+                        filename = `asset-${item.id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(item.id, filename);
                 }
-
-                this.assetFilenameMap.set(id, filename);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    const id = asset.id;
+                    let filename = asset.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
+                        filename = `asset-${id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(id, filename);
+                }
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset map:', e);
@@ -433,11 +637,35 @@ export abstract class BaseExporter {
         const usedPaths = new Set<string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
+            this.logElpxExportDebugPhase('exporter:asset-export-map:start');
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            const items: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = this.assets
+                .listAssetMetadata
+                ? await this.assets.listAssetMetadata()
+                : (await this.assets.getAllAssets()).map(a => ({
+                      id: a.id,
+                      filename: a.filename,
+                      folderPath: a.folderPath,
+                      mime: a.mime,
+                  }));
 
-            for (const asset of assets) {
-                const folderPath = asset.folderPath || '';
-                const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+            for (const item of items) {
+                let folderPath = item.folderPath || '';
+                // Treat 'unknown' same as missing: derive a proper name with extension from MIME
+                const filename =
+                    item.filename && item.filename !== 'unknown'
+                        ? item.filename
+                        : this._deriveFilenameFromMime(item.id, item.mime);
+
+                // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
+                // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
+                // This can happen from corrupted ELPX files or bugs in asset saving
+                if (folderPath === filename) {
+                    folderPath = '';
+                } else if (folderPath.endsWith(`/${filename}`)) {
+                    folderPath = folderPath.slice(0, -(filename.length + 1));
+                }
+
                 const basePath = folderPath ? `${folderPath}/${filename}` : filename;
 
                 // Handle filename collisions (case-insensitive for Windows compatibility)
@@ -453,8 +681,12 @@ export abstract class BaseExporter {
                 }
 
                 usedPaths.add(finalPath.toLowerCase());
-                this.assetExportPathMap.set(asset.id, finalPath);
+                this.assetExportPathMap.set(item.id, finalPath);
             }
+            this.logElpxExportDebugPhase('exporter:asset-export-map:end', {
+                assets: items.length,
+                uniquePaths: this.assetExportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset export path map:', e);
         }
@@ -463,67 +695,196 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Add export paths to asset:// URLs without changing the protocol
-     * Transforms asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-     * Uses folderPath-based export paths for cleaner structure
+     * Derive a fallback export filename from MIME type and asset ID.
+     * Used when an asset has no filename or has the placeholder value 'unknown'.
+     */
+    private _deriveFilenameFromMime(assetId: string, mime: string): string {
+        return deriveFilenameFromMime(assetId, mime);
+    }
+
+    /**
+     * Convert asset:// URLs directly to {{context_path}}/content/resources/ format
+     * for XML export. This is the single transformation step.
      *
      * Supported input formats:
-     * - asset://uuid (simple UUID)
      * - asset://uuid.ext (new format with extension)
-     * - asset://uuid/oldPath (legacy format with old path, which gets replaced)
+     * - asset://uuid (simple UUID without extension)
+     *
+     * Output: {{context_path}}/content/resources/{exportPath}
+     *
+     * Also fixes duplicated filename patterns that may exist in content
+     * (e.g., content/resources/file.pdf/file.pdf → content/resources/file.pdf)
      */
     async addFilenamesToAssetUrls(content: string): Promise<string> {
         if (!content) return '';
 
         const assetMap = await this.buildAssetExportPathMap();
-        if (assetMap.size === 0) {
-            return content;
-        }
 
-        // Transform asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-        // The pattern matches:
-        // - asset://uuid (36-char UUID)
-        // - asset://uuid.ext (UUID with extension)
-        // - asset://uuid/path (UUID with old path, to be replaced)
-        return content.replace(/asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+|\/[^"'\s)]+)?/gi, (match, uuid) => {
+        // Transform asset://uuid or asset://uuid.ext to {{context_path}}/content/resources/path
+        // Pattern matches: asset:// + 36-char UUID + optional extension
+        let result = content.replace(/asset:\/\/([a-f0-9-]{36})(\.[a-z0-9]+)?/gi, (_match, uuid, ext) => {
             const exportPath = assetMap.get(uuid);
             if (exportPath) {
-                return `asset://${uuid}/${exportPath}`;
+                // Resolved: use the proper export path from metadata
+                return `{{context_path}}/content/resources/${exportPath}`;
             }
-            return match;
+            // Unresolved: preserve UUID as filename for debugging.
+            // Log so the export side surfaces the mismatch -- downstream
+            // platforms (e.g. Moodle mod_exeweb / mod_exescorm,
+            // exelearning/mod_exeweb#42 and exelearning/mod_exescorm#55)
+            // will 404 on this URL because the ZIP has no file at that
+            // literal path. addAssetsToZipWithResourcePath() writes a
+            // matching fallback entry whenever the asset metadata is known,
+            // so this branch should only be hit for genuinely missing
+            // assets at this point.
+            console.warn(
+                `[BaseExporter] Unresolved asset reference in HTML; falling back to literal UUID URL: asset://${uuid}${ext || ''}`,
+            );
+            return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
+
+        // Transform asset://filename or asset://path/filename to {{context_path}}/content/resources/path
+        // Pattern matches: asset:// + filename with optional path (NOT a 36-char UUID)
+        // This handles filename-based asset IDs from legacy ELP imports
+        result = result.replace(/asset:\/\/([^"'\s]+)/g, (_match, assetPath) => {
+            // Skip if already processed (UUID format was already transformed)
+            if (assetPath.includes('{{context_path}}')) {
+                return _match;
+            }
+
+            // Look up in asset map using different key formats
+            const exportPath = assetMap.get(assetPath) || assetMap.get(`resources/${assetPath}`);
+            if (exportPath) {
+                return `{{context_path}}/content/resources/${exportPath}`;
+            }
+
+            // For simple filenames, try direct lookup and use as-is
+            const filename = assetPath.includes('/') ? assetPath.split('/').pop() : assetPath;
+            const filenameExportPath = assetMap.get(filename);
+            if (filenameExportPath) {
+                return `{{context_path}}/content/resources/${filenameExportPath}`;
+            }
+
+            // Unresolved: use the asset path as-is
+            return `{{context_path}}/content/resources/${assetPath}`;
+        });
+
+        // Fix duplicated filename patterns in existing content
+        // Pattern: content/resources/{filename}/{filename} where both filenames are identical
+        // This handles cases where the duplication is already in the source content.xml
+        result = result.replace(/content\/resources\/([^/"]+)\/\1(?=["'\s>])/g, 'content/resources/$1');
+
+        return result;
     }
 
     /**
      * Pre-process pages to add filenames to asset URLs in all component content
-     * Also replaces exe-package:elp protocol for download-source-file iDevice
      * And converts internal links (exe-node:) to proper page URLs
+     *
+     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
+     * so the XML content keeps the original protocol for re-import compatibility
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const meta = this.getMetadata();
-        const projectTitle = meta.title || 'eXeLearning';
+        const componentCount = pages.reduce((total, page) => {
+            const blocks = page.blocks || [];
+            return total + blocks.reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
+        }, 0);
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:start', {
+            pages: pages.length,
+            components: componentCount,
+        });
+
+        // Deep clone pages to avoid mutating the original document
+        // This ensures multiple exports on the same document work correctly
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
         // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(pages);
+        const pageUrlMap = this.buildPageUrlMap(clonedPages);
 
-        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-            const page = pages[pageIndex];
+        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
+            const page = clonedPages[pageIndex];
             const isIndex = pageIndex === 0;
 
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        // Add filenames to asset URLs
+                        // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Replace exe-package:elp protocol for client-side download
-                        component.content = this.replaceElpxProtocol(component.content, projectTitle);
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
+                    }
+                    // Also process properties (jsonProperties may contain asset URLs)
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
                     }
                 }
             }
         }
-        return pages;
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:end', {
+            pages: clonedPages.length,
+            components: componentCount,
+        });
+        return clonedPages;
+    }
+
+    /**
+     * Build a map of page IDs to unique filenames
+     * Handles collisions by incrementing trailing numbers or appending -1, -2, etc.
+     * First page is always index.html, others are {sanitized-title}.html
+     *
+     * For filenames ending with a number (e.g., "new-page-1"), collisions increment
+     * that number (e.g., "new-page-2", "new-page-3") instead of appending another number.
+     */
+    protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
+        const filenameMap = new Map<string, string>();
+        const usedFilenames = new Set<string>();
+        const maxAttempts = 20;
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+
+            if (i === 0) {
+                // First page is always index.html
+                filenameMap.set(page.id, 'index.html');
+                usedFilenames.add('index.html');
+                continue;
+            }
+
+            const baseFilename = this.sanitizePageFilename(page.title);
+            let filename = `${baseFilename}.html`;
+
+            if (usedFilenames.has(filename)) {
+                // Check if filename ends with a number pattern (e.g., "page-1" or "page1")
+                const match = baseFilename.match(/^(.*?)-?(\d+)$/);
+
+                if (match) {
+                    // Has trailing number: increment from that number
+                    const base = match[1] ? `${match[1]}-` : '';
+                    const startNum = parseInt(match[2], 10);
+                    let counter = startNum + 1;
+
+                    while (counter <= startNum + maxAttempts) {
+                        filename = `${base}${counter}.html`;
+                        if (!usedFilenames.has(filename)) break;
+                        counter++;
+                    }
+                } else {
+                    // No trailing number: append -2, -3, etc. (first page is implicitly "1")
+                    let counter = 2;
+                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+                        filename = `${baseFilename}-${counter}.html`;
+                        counter++;
+                    }
+                }
+            }
+
+            usedFilenames.add(filename);
+            filenameMap.set(page.id, filename);
+        }
+
+        return filenameMap;
     }
 
     /**
@@ -532,9 +893,11 @@ export abstract class BaseExporter {
      */
     protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
         const map = new Map<string, { url: string; urlFromSubpage: string }>();
+        const filenameMap = this.buildPageFilenameMap(pages);
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
+            const filename = filenameMap.get(page.id) || 'page.html';
             const isFirstPage = i === 0;
 
             if (isFirstPage) {
@@ -545,10 +908,9 @@ export abstract class BaseExporter {
                 });
             } else {
                 // Other pages are in html/ directory
-                const filename = this.sanitizePageFilename(page.title);
                 map.set(page.id, {
-                    url: `html/${filename}.html`,
-                    urlFromSubpage: `${filename}.html`,
+                    url: `html/${filename}`,
+                    urlFromSubpage: filename,
                 });
             }
         }
@@ -573,13 +935,18 @@ export abstract class BaseExporter {
             return content;
         }
 
-        // Replace href="exe-node:pageId" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
             const pageUrls = pageUrlMap.get(pageId);
             if (pageUrls) {
                 // Use the appropriate URL based on whether we're on index or subpage
                 const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}"`;
+                return `href="${url}${anchorFragment}"`;
             }
             // If page not found, leave the link unchanged (might be an external link or error)
             console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
@@ -605,10 +972,7 @@ export abstract class BaseExporter {
 
         // Replace href="exe-package:elp" with onclick handler
         // Uses <a onclick> approach for styling compatibility
-        let result = content.replace(
-            /href="exe-package:elp"/g,
-            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
-        );
+        let result = content.replace(/href="exe-package:elp"/g, `href="#" onclick="${ELPX_DOWNLOAD_ONCLICK}"`);
 
         // Replace download="exe-package:elp-name" with actual filename
         const safeTitle = this.escapeXml(projectTitle);
@@ -636,6 +1000,35 @@ export abstract class BaseExporter {
         return htmlParts.join('\n');
     }
 
+    /**
+     * Yield component HTML fragments lazily so callers can detect libraries
+     * without building one giant intermediate string.
+     */
+    protected *iteratePageContentFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        yield component.content;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Detect required libraries across all page fragments incrementally.
+     */
+    protected getRequiredLibraryFilesForPages(
+        pages: ExportPage[],
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
+            this.iteratePageContentFragments(pages),
+            options,
+        );
+    }
+
     // =========================================================================
     // Download Source File iDevice Detection
     // =========================================================================
@@ -650,6 +1043,7 @@ export abstract class BaseExporter {
 
     /**
      * Check if a specific page contains the download-source-file iDevice
+     * or a manual link using exe-package:elp protocol
      */
     protected pageHasDownloadSourceFile(page: ExportPage): boolean {
         for (const block of page.blocks || []) {
@@ -659,8 +1053,12 @@ export abstract class BaseExporter {
                 if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
                     return true;
                 }
-                // Also check content for the CSS class (more reliable)
+                // Check content for the CSS class (download-source-file iDevice)
                 if (component.content?.includes('exe-download-package-link')) {
+                    return true;
+                }
+                // Check for manual exe-package:elp links (in text iDevices, etc.)
+                if (component.content?.includes('exe-package:elp')) {
                     return true;
                 }
             }
@@ -669,8 +1067,67 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
-    // ELPX Manifest Generation (for download-source-file iDevice)
+    // ELPX Download Support (for download-source-file iDevice)
     // =========================================================================
+
+    /** Library files required for client-side ELPX download */
+    protected static readonly ELPX_LIB_FILES = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
+
+    /**
+     * Ensure ELPX download libraries (fflate, exe_elpx_download) are present in the ZIP.
+     * Call after library detection step so we only fetch what's missing.
+     */
+    protected async ensureElpxDownloadLibraries(
+        addFile: (path: string, content: Uint8Array | string) => void,
+        commonFiles?: string[],
+    ): Promise<void> {
+        const missingLibs = BaseExporter.ELPX_LIB_FILES.filter(f => !this.zip.hasFile(`libs/${f}`));
+        if (missingLibs.length === 0) return;
+        try {
+            const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+            for (const [libPath, content] of libContents) {
+                addFile(`libs/${libPath}`, content);
+                if (commonFiles) commonFiles.push(`libs/${libPath}`);
+            }
+        } catch {
+            // Continue without ELPX download libraries
+        }
+    }
+
+    /**
+     * Generate ELPX manifest and add it to the ZIP.
+     * Also adds HTML page paths to the file list before generating.
+     *
+     * @param fileList - Tracked file paths to include in manifest
+     * @param pageFileUrls - HTML page file URLs to add to the file list
+     * @param commonFiles - Optional SCORM/IMS common files array to update
+     */
+    protected addElpxManifestToZip(fileList: string[], pageFileUrls: string[], commonFiles?: string[]): void {
+        for (const url of pageFileUrls) {
+            if (!fileList.includes(url)) {
+                fileList.push(url);
+            }
+        }
+        fileList.push('libs/elpx-manifest.js');
+        const manifestJs = this.generateElpxManifestFile(fileList);
+        this.zip.addFile('libs/elpx-manifest.js', manifestJs);
+        if (commonFiles) commonFiles.push('libs/elpx-manifest.js');
+    }
+
+    /**
+     * Inject ELPX download script tags into HTML before </body> for pages
+     * that contain download-source-file iDevice or exe-package:elp links.
+     *
+     * @returns Modified HTML with injected scripts, or original HTML if not applicable
+     */
+    protected injectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
+        if (!this.pageHasDownloadSourceFile(page)) return html;
+        const basePath = isIndex ? '' : '../';
+        const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
+        const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
+        const manifestScript = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+        return html.replace(/<\/body>/i, `${fflateScript}\n${elpxDownloadScript}\n${manifestScript}\n</body>`);
+    }
 
     /**
      * Generate ELPX manifest as a standalone JS file
@@ -700,126 +1157,15 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
 
     /**
      * Generate content.xml from document structure
+     * Uses unified OdeXmlGenerator for consistent output across all exporters
+     *
+     * @param preprocessedPages - Optional preprocessed pages (with asset URLs already transformed).
+     *                            If not provided, uses raw navigation from document.
      */
-    generateContentXml(): string {
+    generateContentXml(preprocessedPages?: ExportPage[]): string {
         const metadata = this.getMetadata();
-        const pages = this.getNavigation();
-
-        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
-        xml += this.generatePropertiesXml(metadata);
-        xml += '<odeNavStructures>\n';
-
-        for (let i = 0; i < pages.length; i++) {
-            xml += this.generatePageXml(pages[i], i);
-        }
-
-        xml += '</odeNavStructures>\n';
-        xml += '</ode>';
-        return xml;
-    }
-
-    /**
-     * Generate properties XML section
-     */
-    protected generatePropertiesXml(metadata: ExportMetadata): string {
-        let xml = '<odeProperties>\n';
-        const props: Record<string, string> = {
-            pp_title: metadata.title || 'Untitled',
-            pp_author: metadata.author || '',
-            pp_lang: metadata.language || 'en',
-            pp_description: metadata.description || '',
-            pp_license: metadata.license || '',
-            pp_theme: metadata.theme || 'base',
-            // Export options
-            pp_addExeLink: String(metadata.addExeLink ?? true),
-            pp_addPagination: String(metadata.addPagination ?? false),
-            pp_addSearchBox: String(metadata.addSearchBox ?? false),
-            pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
-            pp_addMathJax: String(metadata.addMathJax ?? false),
-            exportSource: String(metadata.exportSource ?? true),
-        };
-
-        // Add custom content if present
-        if (metadata.extraHeadContent) {
-            props['pp_extraHeadContent'] = metadata.extraHeadContent;
-        }
-        if (metadata.footer) {
-            props['footer'] = metadata.footer;
-        }
-
-        for (const [key, value] of Object.entries(props)) {
-            xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
-        }
-
-        xml += '</odeProperties>\n';
-        return xml;
-    }
-
-    /**
-     * Generate page XML
-     */
-    protected generatePageXml(page: ExportPage, index: number): string {
-        const pageId = page.id;
-        const pageName = page.title || 'Page';
-        const parentId = page.parentId || '';
-        const order = page.order ?? index;
-
-        let xml = `<odeNavStructure odeNavStructureId="${this.escapeXml(pageId)}" `;
-        xml += `odePageName="${this.escapeXml(pageName)}" odeNavStructureOrder="${order}" `;
-        if (parentId) {
-            xml += `parentOdeNavStructureId="${this.escapeXml(parentId)}" `;
-        }
-        xml += `>\n`;
-
-        for (let i = 0; i < (page.blocks || []).length; i++) {
-            xml += this.generateBlockXml(page.blocks![i], i);
-        }
-
-        xml += '</odeNavStructure>\n';
-        return xml;
-    }
-
-    /**
-     * Generate block XML
-     */
-    protected generateBlockXml(block: ExportBlock, index: number): string {
-        const blockId = block.id;
-        const blockName = block.name || '';
-        const order = block.order ?? index;
-
-        let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
-        xml += `blockName="${this.escapeXml(blockName)}" odePagStructureOrder="${order}">\n`;
-
-        for (let i = 0; i < (block.components || []).length; i++) {
-            xml += this.generateComponentXml(block.components![i], i);
-        }
-
-        xml += '  </odePagStructure>\n';
-        return xml;
-    }
-
-    /**
-     * Generate component XML
-     */
-    protected generateComponentXml(component: ExportComponent, index: number): string {
-        const compId = component.id;
-        const ideviceType = component.type || 'FreeTextIdevice';
-        const order = component.order ?? index;
-
-        let xml = `    <odeComponent odeComponentId="${this.escapeXml(compId)}" `;
-        xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">\n`;
-
-        if (component.content) {
-            xml += `      <htmlView><![CDATA[${this.escapeCdata(component.content)}]]></htmlView>\n`;
-        }
-
-        if (component.properties && Object.keys(component.properties).length > 0) {
-            xml += `      <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(component.properties))}]]></jsonProperties>\n`;
-        }
-
-        xml += '    </odeComponent>\n';
-        return xml;
+        const pages = preprocessedPages || this.getNavigation();
+        return generateOdeXml(metadata, pages);
     }
 
     // =========================================================================

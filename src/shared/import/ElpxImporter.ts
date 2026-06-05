@@ -1,0 +1,2107 @@
+/**
+ * ElpxImporter
+ *
+ * Unified ELP/ELPX importer that works in both browser and server environments.
+ * Parses .elp/.elpx files and populates a Yjs document with the project structure.
+ *
+ * This is a TypeScript conversion of public/app/yjs/ElpxImporter.js
+ * designed to work in both browser (via bundle) and server (via direct import).
+ *
+ * Usage (Server/CLI):
+ * ```typescript
+ * import * as Y from 'yjs';
+ * import { ElpxImporter, FileSystemAssetHandler } from './shared/import';
+ *
+ * const ydoc = new Y.Doc();
+ * const assetHandler = new FileSystemAssetHandler('/tmp/extract');
+ * const importer = new ElpxImporter(ydoc, assetHandler);
+ * await importer.importFromBuffer(elpBuffer);
+ * ```
+ *
+ * Usage (Browser):
+ * The browser version is bundled and uses the existing AssetManager.
+ */
+
+import * as Y from 'yjs';
+import * as fflate from 'fflate';
+import { DOMParser } from '@xmldom/xmldom';
+
+import type {
+    AssetHandler,
+    ElpxImportOptions,
+    ElpxImportResult,
+    ImportProgress,
+    PageData,
+    BlockData,
+    ComponentData,
+    OdeMetadata,
+    Logger,
+} from './interfaces';
+
+import {
+    BLOCK_PROPERTY_DEFAULTS,
+    COMPONENT_PROPERTY_DEFAULTS,
+    PAGE_PROPERTY_DEFAULTS,
+    LEGACY_TYPE_ALIASES,
+    defaultLogger,
+} from './interfaces';
+import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+
+import { LegacyXmlParser } from './LegacyXmlParser';
+import { generateId } from '../ids';
+import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
+import { generateOdeId } from '../export/utils/odeId';
+
+/**
+ * ElpxImporter class
+ * Imports ELP/ELPX files into a Yjs document
+ */
+export class ElpxImporter {
+    private ydoc: Y.Doc;
+    private assetHandler: AssetHandler | null;
+    private assetMap: Map<string, string> = new Map();
+    private onProgress: ((progress: ImportProgress) => void) | null = null;
+    private logger: Logger;
+
+    /**
+     * Create a new ElpxImporter
+     * @param ydoc - Yjs document to populate
+     * @param assetHandler - Asset handler for storing assets (optional)
+     * @param logger - Logger for debug output (optional)
+     */
+    constructor(ydoc: Y.Doc, assetHandler: AssetHandler | null = null, logger: Logger = defaultLogger) {
+        this.ydoc = ydoc;
+        this.assetHandler = assetHandler;
+        this.logger = logger;
+    }
+
+    // =========================================================================
+    // DOM Query Helpers (compatible with @xmldom/xmldom)
+    // Note: @xmldom/xmldom doesn't support querySelector/querySelectorAll
+    // =========================================================================
+
+    /**
+     * Get all elements by tag name (compatible with @xmldom/xmldom)
+     */
+    private getElements(parent: Document | Element, tagName: string): Element[] {
+        const elements = parent.getElementsByTagName(tagName);
+        return Array.from(elements) as Element[];
+    }
+
+    /**
+     * Get first element by tag name (compatible with @xmldom/xmldom)
+     */
+    private getElement(parent: Document | Element, tagName: string): Element | null {
+        const elements = parent.getElementsByTagName(tagName);
+        return (elements[0] as Element) || null;
+    }
+
+    /**
+     * Report progress to callback if set
+     */
+    private reportProgress(phase: ImportProgress['phase'], percent: number, message: string): void {
+        if (this.onProgress) {
+            this.onProgress({ phase, percent, message });
+        }
+    }
+
+    /**
+     * If the ZIP's entries all live under a single top-level directory (and
+     * there are no files at root), strip that prefix. GitHub's repo archive
+     * downloads have this shape: "<repo>-<branch>/…".
+     * Returns the original zip unchanged when the pattern does not match.
+     */
+    private unwrapSingleTopLevelDirectory(zip: Record<string, Uint8Array>): Record<string, Uint8Array> {
+        const keys = Object.keys(zip);
+        if (keys.length === 0) return zip;
+
+        let singlePrefix: string | null = null;
+        for (const key of keys) {
+            const slashIdx = key.indexOf('/');
+            if (slashIdx === -1) return zip;
+            const prefix = key.slice(0, slashIdx);
+            if (singlePrefix === null) {
+                singlePrefix = prefix;
+            } else if (singlePrefix !== prefix) {
+                return zip;
+            }
+        }
+        if (!singlePrefix) return zip;
+
+        const prefixWithSlash = `${singlePrefix}/`;
+        const stripped: Record<string, Uint8Array> = {};
+        for (const [path, data] of Object.entries(zip)) {
+            const newPath = path.slice(prefixWithSlash.length);
+            if (newPath) stripped[newPath] = data;
+        }
+        this.logger.log(`[ElpxImporter] Stripped top-level directory wrapper '${prefixWithSlash}'`);
+        return stripped;
+    }
+
+    /**
+     * Get the navigation Y.Array from the document
+     */
+    private getNavigation(): Y.Array<unknown> {
+        return this.ydoc.getArray('navigation');
+    }
+
+    /**
+     * Get the metadata Y.Map from the document
+     */
+    private getMetadata(): Y.Map<unknown> {
+        return this.ydoc.getMap('metadata');
+    }
+
+    /**
+     * Import from a buffer (Uint8Array)
+     * This is the main entry point for server-side usage
+     * @param buffer - ELP/ELPX file as Uint8Array
+     * @param options - Import options
+     * @returns Import statistics
+     */
+    async importFromBuffer(buffer: Uint8Array, options: ElpxImportOptions = {}): Promise<ElpxImportResult> {
+        const { clearExisting = true, parentId = null, onProgress = null } = options;
+
+        if (onProgress) {
+            this.onProgress = onProgress;
+        }
+
+        this.logger.log('[ElpxImporter] Starting import from buffer');
+
+        // Phase 1: Decompressing (0-10%)
+        this.reportProgress('decompress', 0, 'Decompressing...');
+
+        // Decompress ZIP
+        const zip = fflate.unzipSync(buffer);
+
+        // Report decompression complete (10%)
+        this.reportProgress('decompress', 10, 'File decompressed');
+
+        // Strip a single top-level directory wrapper (GitHub-style archives)
+        // before running the nested-ELP / content.xml detection below.
+        let workingZip = this.unwrapSingleTopLevelDirectory(zip);
+
+        if (!workingZip['content.xml'] && !workingZip['contentv3.xml']) {
+            const elpFiles = Object.keys(workingZip).filter(
+                name =>
+                    !name.includes('/') &&
+                    (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
+            );
+
+            if (elpFiles.length === 1) {
+                this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
+                const nestedElpData = workingZip[elpFiles[0]];
+                workingZip = fflate.unzipSync(nestedElpData);
+            } else if (elpFiles.length > 1) {
+                throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
+            }
+        }
+
+        // Find content.xml
+        let contentFile = workingZip['content.xml'];
+        let isLegacyFormat = false;
+
+        if (!contentFile) {
+            // Check for legacy format
+            contentFile = workingZip['contentv3.xml'];
+            isLegacyFormat = true;
+        }
+
+        if (!contentFile) {
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (workingZip['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml)');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(workingZip)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        // Keep other files (like mimetype) as is, or ignore?
+                        // For eXeLearning import, we mainly care about what's inside EPUB/
+                        // but let's keep them just in case, though they won't be found by relative lookups
+                        rootedZip[path] = data;
+                    }
+                }
+                workingZip = rootedZip;
+                contentFile = workingZip['content.xml'];
+                isLegacyFormat = false; // EPUB3 uses modern format
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
+        }
+
+        const contentXml = new TextDecoder().decode(contentFile);
+
+        // Parse XML
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(contentXml, 'text/xml');
+
+        // Check for parsing errors
+        const parseError = xmlDoc.getElementsByTagName('parsererror')[0];
+        if (parseError) {
+            throw new Error(`XML parsing error: ${parseError.textContent}`);
+        }
+
+        // Check if it's Python pickle format (legacy)
+        const rootElement = xmlDoc.documentElement?.tagName;
+        if (rootElement === 'instance' || rootElement === 'dictionary') {
+            this.logger.log('[ElpxImporter] Legacy Python pickle format detected');
+            // Use LegacyXmlParser to parse and import
+            const legacyParser = new LegacyXmlParser(this.logger);
+            const parsedData = legacyParser.parse(contentXml);
+            const stats = await this.importLegacyStructure(parsedData, workingZip, { clearExisting, parentId });
+            // Note: detailed stats already logged in importLegacyStructure
+            return stats;
+        }
+
+        // Extract and import structure (modern format)
+        const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
+
+        // Note: detailed stats already logged in importStructure
+        return stats;
+    }
+
+    /**
+     * Import from already-unzipped contents (for server-side use when files are already extracted)
+     * @param zipContents - Object mapping file paths to their content as Uint8Array
+     * @param options - Import options
+     * @returns Import statistics
+     */
+    async importFromZipContents(
+        zipContents: Record<string, Uint8Array>,
+        options: ElpxImportOptions = {},
+    ): Promise<ElpxImportResult> {
+        const { clearExisting = true, parentId = null, onProgress = null } = options;
+
+        if (onProgress) {
+            this.onProgress = onProgress;
+        }
+
+        this.logger.log('[ElpxImporter] Starting import from zip contents');
+
+        // Skip decompression phase since contents are already extracted
+        this.reportProgress('decompress', 10, 'Files ready');
+
+        // Strip a single top-level directory wrapper (GitHub-style archives).
+        zipContents = this.unwrapSingleTopLevelDirectory(zipContents);
+
+        // Find content.xml
+        let contentFile = zipContents['content.xml'];
+        let isLegacyFormat = false;
+
+        if (!contentFile) {
+            contentFile = zipContents['contentv3.xml'];
+            isLegacyFormat = true;
+        }
+
+        if (!contentFile) {
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (zipContents['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml) in zip contents');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(zipContents)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        rootedZip[path] = data;
+                    }
+                }
+                // Update the reference to use the rooted zip
+                zipContents = rootedZip;
+                contentFile = zipContents['content.xml'];
+                isLegacyFormat = false;
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
+        }
+
+        const contentXml = new TextDecoder().decode(contentFile);
+
+        // Parse XML
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(contentXml, 'text/xml');
+
+        // Check for parsing errors
+        const parseError = xmlDoc.getElementsByTagName('parsererror')[0];
+        if (parseError) {
+            throw new Error(`XML parsing error: ${parseError.textContent}`);
+        }
+
+        // Check if it's Python pickle format (legacy)
+        const rootElement = xmlDoc.documentElement?.tagName;
+        if (rootElement === 'instance' || rootElement === 'dictionary') {
+            this.logger.log('[ElpxImporter] Legacy Python pickle format detected');
+            // Use LegacyXmlParser to parse and import
+            const legacyParser = new LegacyXmlParser(this.logger);
+            const parsedData = legacyParser.parse(contentXml);
+            const stats = await this.importLegacyStructure(parsedData, zipContents, { clearExisting, parentId });
+            // Note: detailed stats already logged in importLegacyStructure
+            return stats;
+        }
+
+        // Extract and import structure (modern format)
+        const stats = await this.importStructure(xmlDoc, zipContents, { clearExisting, parentId });
+
+        // Note: detailed stats already logged in importStructure
+        return stats;
+    }
+
+    /**
+     * Import document structure from parsed XML
+     */
+    async importStructure(
+        xmlDoc: Document,
+        zip: Record<string, Uint8Array>,
+        options: { clearExisting?: boolean; parentId?: string | null } = {},
+    ): Promise<ElpxImportResult> {
+        const { clearExisting = true, parentId = null } = options;
+        const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+
+        // Phase 2: Extracting assets (10-50%)
+        this.reportProgress('assets', 10, 'Extracting assets...');
+
+        // Extract assets FIRST to populate assetMap
+        stats.assets = await this.importAssets(zip);
+
+        // Assets extracted (50%)
+        this.reportProgress('assets', 50, 'Assets extracted');
+
+        // Get Y.Doc components
+        const navigation = this.getNavigation();
+        const metadata = this.getMetadata();
+
+        // Extract pages (odeNavStructures)
+        const odeNavStructures = this.findNavStructures(xmlDoc);
+
+        this.logger.log('[ElpxImporter] Root element:', xmlDoc.documentElement?.tagName);
+        this.logger.log('[ElpxImporter] Found odeNavStructure elements:', odeNavStructures.length);
+
+        // Build a map of all pages by ID for hierarchy lookup
+        const pageMap = new Map<string, Element>();
+        for (const navNode of odeNavStructures) {
+            const pageId = this.getPageId(navNode);
+            if (pageId) {
+                pageMap.set(pageId, navNode);
+            }
+        }
+
+        // Filter to only root-level pages
+        const rootNavStructures: Element[] = [];
+        for (const navNode of odeNavStructures) {
+            const navParentId = this.getParentPageId(navNode);
+            if (!navParentId || navParentId === '' || navParentId === 'null') {
+                rootNavStructures.push(navNode);
+            }
+        }
+
+        // Sort root pages by order
+        rootNavStructures.sort((a, b) => {
+            const orderA = this.getNavOrder(a);
+            const orderB = this.getNavOrder(b);
+            return orderA - orderB;
+        });
+
+        this.logger.log('[ElpxImporter] Root-level pages to import:', rootNavStructures.length);
+
+        // Extract metadata
+        const odeProperties = this.getElement(xmlDoc, 'odeProperties');
+        const metadataValues = this.extractMetadata(xmlDoc, odeProperties);
+
+        // Preserve stable identifiers from <odeResources> (odeId, odeVersionId).
+        // Without this, every round-trip generates a fresh pair, defeating
+        // diff stability and SCORM manifest identity. See #1784.
+        const odeResources = this.extractOdeResources(xmlDoc);
+        if (odeResources.odeId) {
+            metadataValues.odeIdentifier = odeResources.odeId;
+        }
+        if (odeResources.odeVersionId) {
+            metadataValues.odeVersionId = odeResources.odeVersionId;
+        }
+        if (odeResources.scormIdentifier) {
+            metadataValues.scormIdentifier = odeResources.scormIdentifier;
+        }
+
+        // Extract screenshot.png from archive root if present
+        const screenshot = this.extractScreenshotFromZip(zip);
+        if (screenshot) {
+            metadataValues.screenshot = screenshot;
+        }
+
+        // Calculate order offset for imported pages
+        let orderOffset = 0;
+        if (!clearExisting) {
+            orderOffset = this.getNextAvailableOrder(parentId);
+            this.logger.log('[ElpxImporter] Order offset for import:', orderOffset, 'at parent:', parentId);
+        }
+
+        // Build all page structures as a FLAT list
+        const pageStructures: PageData[] = [];
+        const idRemap = new Map<string, string>();
+        // Pre-seed the set of "ids already taken" with whatever lives in the
+        // target Y.Doc navigation when merging. On a fresh import (clearExisting)
+        // the navigation will be wiped inside the transaction below, so we start
+        // empty and let the original ids from content.xml flow through verbatim.
+        const usedIds = clearExisting ? new Set<string>() : this.collectExistingIds();
+        this.buildFlatPageList(
+            rootNavStructures,
+            zip,
+            odeNavStructures,
+            pageStructures,
+            parentId,
+            orderOffset,
+            idRemap,
+            true,
+            usedIds,
+        );
+        this.logger.log(
+            '[ElpxImporter] Built flat page list:',
+            pageStructures.length,
+            'pages, parentId:',
+            parentId,
+            'idRemap size:',
+            idRemap.size,
+        );
+
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, idRemap);
+
+        // Phase 3: Importing structure (50-80%)
+        this.reportProgress('structure', 50, 'Importing structure...');
+
+        // Wrap all Yjs operations in a single transaction
+        this.logger.log('[ElpxImporter] Starting Yjs transaction...');
+        try {
+            this.ydoc.transact(() => {
+                this.logger.log('[ElpxImporter] Inside transaction');
+
+                // Clear existing structure only if requested
+                if (clearExisting) {
+                    this.logger.log('[ElpxImporter] Clearing existing navigation, length:', navigation.length);
+                    while (navigation.length > 0) {
+                        navigation.delete(0);
+                    }
+                    this.logger.log('[ElpxImporter] Navigation cleared');
+                }
+
+                // Set metadata only if clearing (replacing) the document.
+                // <odeProperties> is optional per the DTD, so we also write
+                // when <odeResources> alone carried stable identifiers --
+                // otherwise odeIdentifier / odeVersionId would never reach
+                // the Y.Doc on those minimal documents.
+                const hasStableIdentifiers = Boolean(metadataValues.odeIdentifier || metadataValues.odeVersionId);
+                if (clearExisting && (odeProperties || hasStableIdentifiers)) {
+                    this.logger.log('[ElpxImporter] Setting metadata...');
+                    this.setMetadata(metadata, metadataValues);
+                    this.logger.log('[ElpxImporter] Metadata set');
+                }
+
+                // Create Y types and add to document inside the transaction
+                this.logger.log('[ElpxImporter] Creating', pageStructures.length, 'page structures...');
+                for (let i = 0; i < pageStructures.length; i++) {
+                    const pageData = pageStructures[i];
+                    this.logger.log(
+                        `[ElpxImporter] Processing page ${i + 1}/${pageStructures.length}: ${pageData.pageName}`,
+                    );
+
+                    const pageYMap = this.createPageYMap(pageData, stats);
+                    if (pageYMap) {
+                        navigation.push([pageYMap]);
+                        stats.pages++;
+                    }
+                }
+                this.logger.log('[ElpxImporter] All pages created');
+            }, this.ydoc.clientID);
+            this.logger.log('[ElpxImporter] Transaction completed successfully');
+
+            // Structure imported (80%)
+            this.reportProgress('structure', 80, 'Structure imported');
+        } catch (transactionErr) {
+            this.logger.error('[ElpxImporter] TRANSACTION ERROR:', transactionErr);
+            throw transactionErr;
+        }
+
+        // Phase 4: Precaching assets (80-100%)
+        this.reportProgress('precache', 80, 'Precaching assets...');
+
+        // Preload all assets for immediate rendering
+        if (this.assetHandler?.preloadAllAssets) {
+            await this.assetHandler.preloadAllAssets();
+        }
+
+        // Import complete (100%)
+        this.reportProgress('precache', 100, 'Import complete');
+
+        // Add theme to stats
+        stats.theme = metadataValues.theme || null;
+
+        // Cache zip contents for theme import (avoids re-unzipping)
+        stats.zipContents = zip;
+
+        const { zipContents: _zip, ...statsWithoutZip } = stats;
+        this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
+        return stats;
+    }
+
+    /**
+     * Import legacy structure from parsed LegacyXmlParser data
+     */
+    private async importLegacyStructure(
+        parsedData: LegacyParseResult,
+        zip: Record<string, Uint8Array>,
+        options: { clearExisting?: boolean; parentId?: string | null } = {},
+    ): Promise<ElpxImportResult> {
+        const { clearExisting = true, parentId = null } = options;
+        const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+
+        // Phase 2: Extracting assets (10-50%)
+        this.reportProgress('assets', 10, 'Extracting assets...');
+
+        // Extract assets FIRST to populate assetMap
+        stats.assets = await this.importAssets(zip);
+
+        // Assets extracted (50%)
+        this.reportProgress('assets', 50, 'Assets extracted');
+
+        // Get Y.Doc components
+        const navigation = this.getNavigation();
+        const metadata = this.getMetadata();
+
+        // Convert legacy pages to PageData format
+        // IMPORTANT: On incremental imports, apply order offset so new root pages append after existing siblings.
+        let orderOffset = 0;
+        if (!clearExisting) {
+            orderOffset = this.getNextAvailableOrder(parentId);
+            this.logger.log('[ElpxImporter] Legacy order offset for import:', orderOffset, 'at parent:', parentId);
+        }
+        const pageStructures: PageData[] = this.convertLegacyPagesToPageData(parsedData.pages, parentId, orderOffset);
+
+        this.logger.log('[ElpxImporter] Converted legacy pages:', pageStructures.length);
+
+        // Phase 3: Importing structure (50-80%)
+        this.reportProgress('structure', 50, 'Importing structure...');
+
+        // Wrap all Yjs operations in a single transaction
+        this.logger.log('[ElpxImporter] Starting Yjs transaction for legacy import...');
+        try {
+            this.ydoc.transact(() => {
+                this.logger.log('[ElpxImporter] Inside legacy transaction');
+
+                // Clear existing structure only if requested
+                if (clearExisting) {
+                    this.logger.log('[ElpxImporter] Clearing existing navigation, length:', navigation.length);
+                    while (navigation.length > 0) {
+                        navigation.delete(0);
+                    }
+                    this.logger.log('[ElpxImporter] Navigation cleared');
+                }
+
+                // Set metadata from legacy format (only if clearing)
+                if (clearExisting) {
+                    this.logger.log('[ElpxImporter] Setting legacy metadata...');
+                    this.setLegacyMetadata(metadata, parsedData.meta);
+                    // Extract screenshot.png from archive root if present
+                    const legacyScreenshot = this.extractScreenshotFromZip(zip);
+                    if (legacyScreenshot) {
+                        metadata.set('screenshot', legacyScreenshot);
+                    }
+                    this.logger.log('[ElpxImporter] Legacy metadata set');
+                }
+
+                // Create Y types and add to document inside the transaction
+                this.logger.log('[ElpxImporter] Creating', pageStructures.length, 'page structures...');
+                for (let i = 0; i < pageStructures.length; i++) {
+                    const pageData = pageStructures[i];
+                    this.logger.log(
+                        `[ElpxImporter] Processing legacy page ${i + 1}/${pageStructures.length}: ${pageData.pageName}`,
+                    );
+
+                    const pageYMap = this.createPageYMap(pageData, stats);
+                    if (pageYMap) {
+                        navigation.push([pageYMap]);
+                        stats.pages++;
+                    }
+                }
+                this.logger.log('[ElpxImporter] All legacy pages created');
+            }, this.ydoc.clientID);
+            this.logger.log('[ElpxImporter] Legacy transaction completed successfully');
+
+            // Structure imported (80%)
+            this.reportProgress('structure', 80, 'Structure imported');
+        } catch (transactionErr) {
+            this.logger.error('[ElpxImporter] LEGACY TRANSACTION ERROR:', transactionErr);
+            throw transactionErr;
+        }
+
+        // Phase 4: Precaching assets (80-100%)
+        this.reportProgress('precache', 80, 'Precaching assets...');
+
+        // Preload all assets for immediate rendering
+        if (this.assetHandler?.preloadAllAssets) {
+            await this.assetHandler.preloadAllAssets();
+        }
+
+        // Import complete (100%)
+        this.reportProgress('precache', 100, 'Import complete');
+
+        // Cache zip contents for theme import (avoids re-unzipping)
+        stats.zipContents = zip;
+
+        const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
+        this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
+        return stats;
+    }
+
+    /**
+     * Convert legacy pages to PageData format
+     */
+    private convertLegacyPagesToPageData(
+        legacyPages: LegacyPage[],
+        rootParentId: string | null,
+        rootOrderOffset = 0,
+    ): PageData[] {
+        const pageStructures: PageData[] = [];
+        const pageIdRemap = new Map<string, string>();
+
+        // Legacy IDs are stable inside .elp files (e.g. page-4, idevice-2).
+        // On repeated imports into the same Y.Doc we must remap to unique IDs to avoid collisions.
+        for (const legacyPage of legacyPages) {
+            pageIdRemap.set(legacyPage.id, generateId('page'));
+        }
+
+        for (const legacyPage of legacyPages) {
+            const pageId = pageIdRemap.get(legacyPage.id) || generateId('page');
+            const parentId =
+                legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
+            const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
+
+            const pageData: PageData = {
+                id: pageId,
+                pageId: pageId,
+                pageName: legacyPage.title,
+                title: legacyPage.title,
+                parentId: parentId,
+                order: order,
+                createdAt: new Date().toISOString(),
+                blocks: [],
+                properties: {},
+            };
+
+            // Convert legacy blocks to BlockData format
+            for (const legacyBlock of legacyPage.blocks) {
+                const blockData = this.convertLegacyBlockToBlockData(legacyBlock);
+                pageData.blocks.push(blockData);
+            }
+
+            pageStructures.push(pageData);
+        }
+
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, pageIdRemap);
+
+        return pageStructures;
+    }
+
+    /**
+     * Convert legacy block to BlockData format
+     */
+    private convertLegacyBlockToBlockData(legacyBlock: LegacyBlock): BlockData {
+        const blockId = generateId('block');
+
+        const blockData: BlockData = {
+            id: blockId,
+            blockId: blockId,
+            blockName: legacyBlock.name,
+            iconName: legacyBlock.iconName,
+            order: legacyBlock.position,
+            createdAt: new Date().toISOString(),
+            components: [],
+            properties: legacyBlock.blockProperties || {},
+        };
+
+        // Convert legacy iDevices to ComponentData format
+        for (const legacyIdevice of legacyBlock.idevices) {
+            const componentData = this.convertLegacyIdeviceToComponentData(legacyIdevice);
+            blockData.components.push(componentData);
+        }
+
+        return blockData;
+    }
+
+    /**
+     * Convert legacy iDevice to ComponentData format
+     */
+    private convertLegacyIdeviceToComponentData(legacyIdevice: LegacyIdevice): ComponentData {
+        const componentId = generateId('idevice');
+
+        // Build HTML view with feedback if present
+        let htmlView = legacyIdevice.htmlView || '';
+        htmlView = this.normalizeTextIdeviceHtml(legacyIdevice.type, htmlView);
+
+        // If there's feedback content, append feedback button and content
+        // BUT only if the HTML doesn't already have feedback embedded (prevents duplication)
+        if (legacyIdevice.feedbackHtml && !this.htmlHasFeedback(htmlView)) {
+            const buttonText = legacyIdevice.feedbackButton || 'Show Feedback';
+            htmlView += `<div class="iDevice_buttons feedback-button js-required">`;
+            htmlView += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(buttonText)}" `;
+            htmlView += `data-text-a="${this.escapeHtmlAttr(buttonText)}" data-text-b="${this.escapeHtmlAttr(buttonText)}">`;
+            htmlView += `</div>`;
+            htmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${legacyIdevice.feedbackHtml}</div>`;
+        }
+
+        // Convert {{context_path}} to asset:// URLs in htmlView
+        if (this.assetHandler && this.assetMap.size > 0 && htmlView) {
+            try {
+                htmlView = this.assetHandler.convertContextPathToAssetRefs(htmlView, this.assetMap);
+            } catch (convErr) {
+                this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
+            }
+        }
+
+        // For text iDevices, the editor expects the content in jsonProperties.textTextarea
+        // So we need to populate it from htmlView
+        let properties = legacyIdevice.properties || {};
+        if (legacyIdevice.type === 'text' && htmlView) {
+            properties = {
+                ...properties,
+                textTextarea: htmlView,
+            };
+        }
+
+        const componentData: ComponentData = {
+            id: componentId,
+            ideviceId: componentId,
+            ideviceType: legacyIdevice.type,
+            type: legacyIdevice.type,
+            order: legacyIdevice.position,
+            createdAt: new Date().toISOString(),
+            htmlView: htmlView,
+            properties: properties,
+            componentProps: {},
+            structureProps: {},
+        };
+
+        // Apply cssClass if present
+        if (legacyIdevice.cssClass) {
+            componentData.structureProps.cssClass = legacyIdevice.cssClass;
+        }
+
+        // Convert {{context_path}} and resources/ paths in properties
+        if (componentData.properties && this.assetHandler && this.assetMap.size > 0) {
+            try {
+                componentData.properties = this.convertAssetPathsInObject(componentData.properties) as Record<
+                    string,
+                    unknown
+                >;
+            } catch (convErr) {
+                this.logger.warn(`[ElpxImporter] Error converting paths in props for ${legacyIdevice.id}:`, convErr);
+            }
+        }
+
+        return componentData;
+    }
+
+    /**
+     * Set metadata on the Yjs document from legacy format
+     */
+    private setLegacyMetadata(metadata: Y.Map<unknown>, legacyMeta: LegacyMetadata): void {
+        metadata.set('title', legacyMeta.title);
+        metadata.set('subtitle', '');
+        metadata.set('author', legacyMeta.author);
+        metadata.set('language', legacyMeta.language || 'en');
+        metadata.set('description', legacyMeta.description);
+        metadata.set('license', legacyMeta.license);
+        metadata.set('theme', 'base');
+
+        // Export settings from legacy format (pp_ prefixed in meta)
+        metadata.set('addPagination', legacyMeta.pp_addPagination);
+        metadata.set('addSearchBox', legacyMeta.pp_addSearchBox);
+        metadata.set('addExeLink', legacyMeta.pp_addExeLink);
+        metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
+        metadata.set('exportSource', legacyMeta.exportSource);
+
+        // Legacy files don't have addMathJax or globalFont - use defaults
+        metadata.set('addMathJax', false);
+        metadata.set('globalFont', 'default');
+
+        metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
+        metadata.set('footer', legacyMeta.footer);
+
+        // Legacy contentv3.xml has no <odeResources>. Generate fresh stable
+        // identifiers once at import time so subsequent re-exports of the
+        // converted project keep the same odeId / odeVersionId. See #1784.
+        metadata.set('odeIdentifier', generateOdeId());
+        metadata.set('odeVersionId', generateOdeId());
+    }
+
+    /**
+     * Convert Uint8Array to base64 string
+     */
+    private uint8ArrayToBase64(bytes: Uint8Array): string {
+        const CHUNK = 0x8000;
+        const parts: string[] = [];
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+            parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
+        }
+        return btoa(parts.join(''));
+    }
+
+    /**
+     * Escape HTML special characters for attribute values
+     */
+    private escapeHtmlAttr(str: string): string {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Check if HTML content already contains feedback button elements
+     * This prevents duplicate feedback when the handler already embedded feedback in htmlView
+     *
+     * @param html - HTML content to check
+     * @returns true if feedback button already exists
+     */
+    private htmlHasFeedback(html: string): boolean {
+        if (!html) return false;
+        // Check for various feedback button patterns used in legacy exports
+        // - feedbacktooglebutton: standard class name (note the typo in original)
+        // - feedbackbutton: alternative class name used in some versions
+        // - iDevice_buttons feedback-button: container class pattern
+        return (
+            html.includes('feedbacktooglebutton') ||
+            html.includes('feedbackbutton') ||
+            html.includes('iDevice_buttons feedback-button') ||
+            html.includes('class="feedback-button')
+        );
+    }
+
+    /**
+     * Extract screenshot.png from archive root and return as data URL, or undefined.
+     */
+    private extractScreenshotFromZip(zip: Record<string, Uint8Array>): string | undefined {
+        if (!zip['screenshot.png']) return undefined;
+        try {
+            const base64 = this.uint8ArrayToBase64(zip['screenshot.png']);
+            this.logger.log('[ElpxImporter] Extracted screenshot.png from archive');
+            return `data:image/png;base64,${base64}`;
+        } catch (error) {
+            this.logger.warn('[ElpxImporter] Failed to read screenshot.png:', error);
+            return undefined;
+        }
+    }
+
+    /**
+     * Extract <odeResources> entries from a v4 content.xml document.
+     * Returns an empty object when the section is missing or empty so callers
+     * can fall back to fresh identifiers without crashing.
+     */
+    private extractOdeResources(xmlDoc: Document): Partial<Record<string, string>> {
+        const result: Partial<Record<string, string>> = {};
+        const container = this.getElement(xmlDoc, 'odeResources');
+        if (!container) return result;
+        const resources = this.getElements(container, 'odeResource');
+        for (const res of resources) {
+            const keyEl = this.getElement(res, 'key');
+            const valEl = this.getElement(res, 'value');
+            const key = keyEl?.textContent?.trim();
+            const value = valEl?.textContent?.trim();
+            if (key && value) {
+                result[key] = value;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Extract metadata from XML
+     */
+    private extractMetadata(xmlDoc: Document, odeProperties: Element | null): OdeMetadata {
+        // Extract theme from userPreferences or odeProperties
+        let themeFromXml = '';
+        const userPreferences = this.getElement(xmlDoc, 'userPreferences');
+        if (userPreferences) {
+            const themePrefs = this.getElements(userPreferences, 'userPreference');
+            for (const pref of themePrefs) {
+                const keyEl = this.getElement(pref, 'key');
+                const valueEl = this.getElement(pref, 'value');
+                if (keyEl?.textContent === 'theme' && valueEl) {
+                    themeFromXml = valueEl.textContent || '';
+                    break;
+                }
+            }
+        }
+        if (!themeFromXml && odeProperties) {
+            themeFromXml = this.getPropertyValue(odeProperties, 'pp_style') || '';
+        }
+
+        return {
+            title: this.getMetadataProperty(odeProperties, 'pp_title', 'Imported Project'),
+            subtitle: this.getMetadataProperty(odeProperties, 'pp_subtitle'),
+            author: this.getMetadataProperty(odeProperties, 'pp_author'),
+            language: this.getMetadataProperty(odeProperties, 'pp_lang', 'en'),
+            description: this.getMetadataProperty(odeProperties, 'pp_description'),
+            license: this.getMetadataProperty(odeProperties, 'pp_license'),
+            theme: themeFromXml,
+            addPagination: this.getBooleanMetadataProperty(odeProperties, 'pp_addPagination', false),
+            addSearchBox: this.getBooleanMetadataProperty(odeProperties, 'pp_addSearchBox', false),
+            addExeLink: this.getBooleanMetadataProperty(odeProperties, 'pp_addExeLink', true),
+            addAccessibilityToolbar: this.getBooleanMetadataProperty(
+                odeProperties,
+                'pp_addAccessibilityToolbar',
+                false,
+            ),
+            exportSource: this.getBooleanMetadataProperty(odeProperties, 'exportSource', true),
+            extraHeadContent: this.getMetadataProperty(odeProperties, 'pp_extraHeadContent'),
+            footer: this.getMetadataProperty(odeProperties, 'footer'),
+            addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
+            globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
+        };
+    }
+
+    /**
+     * Set metadata on the Yjs document
+     */
+    private setMetadata(metadata: Y.Map<unknown>, values: OdeMetadata): void {
+        metadata.set('title', values.title);
+        metadata.set('subtitle', values.subtitle);
+        metadata.set('author', values.author);
+        metadata.set('language', values.language);
+        metadata.set('description', values.description);
+        metadata.set('license', values.license);
+        metadata.set('theme', values.theme || 'base');
+        this.logger.log('[ElpxImporter] Theme set:', values.theme || 'base');
+        // Export settings
+        metadata.set('addPagination', values.addPagination);
+        metadata.set('addSearchBox', values.addSearchBox);
+        metadata.set('addExeLink', values.addExeLink);
+        metadata.set('addAccessibilityToolbar', values.addAccessibilityToolbar);
+        metadata.set('exportSource', values.exportSource);
+        metadata.set('addMathJax', values.addMathJax);
+        metadata.set('globalFont', values.globalFont);
+        metadata.set('extraHeadContent', values.extraHeadContent);
+        metadata.set('footer', values.footer);
+        // Screenshot (optional, extracted from archive root)
+        if (values.screenshot) {
+            metadata.set('screenshot', values.screenshot);
+        }
+        // Stable identifiers preserved from <odeResources>. Only set when present —
+        // export-side fallback (OdeXmlGenerator) generates fresh values otherwise.
+        if (values.odeIdentifier) {
+            metadata.set('odeIdentifier', values.odeIdentifier);
+        }
+        if (values.odeVersionId) {
+            metadata.set('odeVersionId', values.odeVersionId);
+        }
+        if (values.scormIdentifier) {
+            metadata.set('scormIdentifier', values.scormIdentifier);
+        }
+    }
+
+    /**
+     * Build a flat list of all pages (recursive helper)
+     */
+    private buildFlatPageList(
+        navNodes: Element[],
+        zip: Record<string, Uint8Array>,
+        allNavStructures: Element[],
+        flatList: PageData[],
+        parentId: string | null,
+        orderOffset: number,
+        idRemap: Map<string, string>,
+        isRootLevel: boolean,
+        usedIds: Set<string>,
+    ): void {
+        let siblingOrder = 0;
+
+        for (const navNode of navNodes) {
+            const originalPageId = this.getPageId(navNode);
+            // Preserve the original <odePageId> verbatim when it is present and
+            // does not collide with an id already used in the target Y.Doc or
+            // assigned earlier in this same import. Collisions only happen in
+            // merge-mode imports (clearExisting=false); when they do, we
+            // regenerate and the remap is later used to rewrite internal
+            // exe-node: links.
+            const newPageId = originalPageId && !usedIds.has(originalPageId) ? originalPageId : generateId('page');
+            usedIds.add(newPageId);
+
+            if (originalPageId && newPageId !== originalPageId) {
+                idRemap.set(originalPageId, newPageId);
+            }
+
+            const calculatedOrder = isRootLevel ? orderOffset + siblingOrder : siblingOrder;
+            const pageData = this.buildPageData(navNode, zip, parentId, newPageId, calculatedOrder, usedIds);
+
+            if (pageData) {
+                flatList.push(pageData);
+                siblingOrder++;
+
+                // Find child pages using ORIGINAL XML ID
+                const childNavNodes: Element[] = [];
+                for (const childNav of allNavStructures) {
+                    const childXmlParentId = this.getParentPageId(childNav);
+                    if (childXmlParentId === originalPageId) {
+                        childNavNodes.push(childNav);
+                    }
+                }
+
+                // Sort children by order and recursively add them
+                childNavNodes.sort((a, b) => this.getNavOrder(a) - this.getNavOrder(b));
+                if (childNavNodes.length > 0) {
+                    this.buildFlatPageList(
+                        childNavNodes,
+                        zip,
+                        allNavStructures,
+                        flatList,
+                        newPageId,
+                        0,
+                        idRemap,
+                        false,
+                        usedIds,
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Build plain JavaScript data structure from XML
+     */
+    private buildPageData(
+        navNode: Element,
+        zip: Record<string, Uint8Array>,
+        parentId: string | null,
+        newPageId: string,
+        calculatedOrder: number,
+        usedIds: Set<string>,
+    ): PageData {
+        const pageId = newPageId;
+        const pageName = this.getPageName(navNode);
+        const order = calculatedOrder;
+        const properties = this.getNavStructureProperties(navNode);
+
+        const pageData: PageData = {
+            id: pageId,
+            pageId: pageId,
+            pageName: pageName,
+            title: pageName,
+            parentId: parentId,
+            order: order,
+            createdAt: new Date().toISOString(),
+            blocks: [],
+            properties: properties,
+        };
+
+        // Extract blocks (odePagStructures)
+        const pagStructures = this.findPagStructures(navNode);
+        const sortedPagStructures = Array.from(pagStructures).sort((a, b) => {
+            return this.getPagOrder(a) - this.getPagOrder(b);
+        });
+
+        for (const pagNode of sortedPagStructures) {
+            const blockData = this.buildBlockData(pagNode, zip, usedIds);
+            if (blockData) {
+                pageData.blocks.push(blockData);
+            }
+        }
+
+        return pageData;
+    }
+
+    /**
+     * Build plain JavaScript data structure for a block
+     */
+    private buildBlockData(pagNode: Element, zip: Record<string, Uint8Array>, usedIds: Set<string>): BlockData {
+        // Preserve the original block id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalBlockId =
+            pagNode.getAttribute('odePagStructureId') || this.getTextContent(pagNode, 'odeBlockId') || null;
+        const blockId = originalBlockId && !usedIds.has(originalBlockId) ? originalBlockId : generateId('block');
+        usedIds.add(blockId);
+        const blockName = pagNode.getAttribute('blockName') || this.getTextContent(pagNode, 'blockName') || '';
+        const order = this.getPagOrder(pagNode);
+        const iconName = pagNode.getAttribute('iconName') || this.getTextContent(pagNode, 'iconName') || '';
+        const properties = this.getPagStructureProperties(pagNode);
+
+        const blockData: BlockData = {
+            id: blockId,
+            blockId: blockId,
+            blockName: blockName,
+            iconName: iconName,
+            order: order,
+            createdAt: new Date().toISOString(),
+            components: [],
+            properties: properties,
+        };
+
+        // Extract components (odeComponents)
+        const odeComponents = this.findOdeComponents(pagNode);
+        const sortedComponents = Array.from(odeComponents).sort((a, b) => {
+            return this.getComponentOrder(a) - this.getComponentOrder(b);
+        });
+
+        for (const compNode of sortedComponents) {
+            const compData = this.buildComponentData(compNode, zip, usedIds);
+            if (compData) {
+                blockData.components.push(compData);
+            }
+        }
+
+        return blockData;
+    }
+
+    /**
+     * Build plain JavaScript data structure for a component
+     */
+    private buildComponentData(
+        compNode: Element,
+        _zip: Record<string, Uint8Array>,
+        usedIds: Set<string>,
+    ): ComponentData {
+        // Preserve the original iDevice id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalComponentId =
+            compNode.getAttribute('odeComponentId') || this.getTextContent(compNode, 'odeIdeviceId') || null;
+        const componentId =
+            originalComponentId && !usedIds.has(originalComponentId) ? originalComponentId : generateId('idevice');
+        usedIds.add(componentId);
+
+        let ideviceType =
+            compNode.getAttribute('odeIdeviceTypeDirName') ||
+            compNode.getAttribute('odeIdeviceTypeName') ||
+            this.getTextContent(compNode, 'odeIdeviceTypeName') ||
+            'FreeTextIdevice';
+
+        // Normalize legacy type names
+        if (LEGACY_TYPE_ALIASES[ideviceType]) {
+            ideviceType = LEGACY_TYPE_ALIASES[ideviceType];
+        }
+
+        const order = this.getComponentOrder(compNode);
+
+        const compData: ComponentData = {
+            id: componentId,
+            ideviceId: componentId,
+            ideviceType: ideviceType,
+            type: ideviceType,
+            order: order,
+            createdAt: new Date().toISOString(),
+            htmlView: '',
+            properties: null,
+            componentProps: {},
+            structureProps: {},
+        };
+
+        // Extract HTML view content
+        const htmlViewNode = this.getElement(compNode, 'htmlView');
+        if (htmlViewNode) {
+            let htmlContent = this.getCdataAwareTextContent(htmlViewNode);
+            if (!this.hasCdataChild(htmlViewNode)) {
+                htmlContent = this.decodeHtmlContent(htmlContent);
+            }
+            htmlContent = this.normalizeTextIdeviceHtml(ideviceType, htmlContent);
+
+            // Convert {{context_path}} to asset:// URLs
+            if (this.assetHandler && this.assetMap.size > 0 && htmlContent) {
+                try {
+                    const converted = this.assetHandler.convertContextPathToAssetRefs(htmlContent, this.assetMap);
+                    htmlContent = typeof converted === 'string' ? converted : htmlContent;
+                } catch (convErr) {
+                    this.logger.warn(`[ElpxImporter] Error converting asset paths for ${componentId}:`, convErr);
+                }
+            }
+
+            compData.htmlView = typeof htmlContent === 'string' ? htmlContent : '';
+        }
+
+        // Extract JSON properties
+        const jsonPropsNode = this.getElement(compNode, 'jsonProperties');
+        if (jsonPropsNode) {
+            try {
+                const rawJsonStr = jsonPropsNode.textContent || '{}';
+                let props: Record<string, unknown> = {};
+
+                const parseCandidates = [
+                    rawJsonStr,
+                    this.decodeHtmlContentForJson(rawJsonStr),
+                    this.decodeHtmlContent(rawJsonStr),
+                ];
+
+                let parsed = false;
+                for (const candidate of parseCandidates) {
+                    try {
+                        props = JSON.parse(candidate);
+                        parsed = true;
+                        break;
+                    } catch {
+                        // Try next candidate.
+                    }
+                }
+
+                if (!parsed) {
+                    this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, using empty object`);
+                    props = {};
+                }
+
+                props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
+
+                // Convert {{context_path}} in parsed JSON values
+                if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
+                    try {
+                        props = this.convertAssetPathsInObject(props) as Record<string, unknown>;
+                    } catch (convErr) {
+                        this.logger.warn(`[ElpxImporter] Error converting paths in JSON for ${componentId}:`, convErr);
+                    }
+                }
+
+                if (typeof props.textTextarea === 'string') {
+                    props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
+                }
+
+                if (typeof props.htmlView === 'string') {
+                    props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
+                }
+
+                // When merge-mode collision regenerated the component id, an embedded
+                // `ideviceId` inside jsonProperties (commonly stored by text/quiz
+                // iDevices and used by the workarea for self-reference) would still
+                // point at the old XML id. Rewrite it so the Yjs field and the JSON
+                // payload stay in sync.
+                if (
+                    originalComponentId &&
+                    originalComponentId !== componentId &&
+                    typeof props.ideviceId === 'string' &&
+                    props.ideviceId === originalComponentId
+                ) {
+                    props.ideviceId = componentId;
+                }
+
+                compData.properties = props;
+            } catch (e) {
+                this.logger.warn(`[ElpxImporter] Failed to process JSON properties for ${componentId}:`, e);
+            }
+        }
+
+        // Extract component properties (odeComponentProperty) - legacy format
+        const componentProps = this.getElements(compNode, 'odeComponentProperty');
+        for (const propNode of componentProps) {
+            const key = propNode.getAttribute('key') || this.getTextContent(propNode, 'key');
+            const value =
+                propNode.getAttribute('value') || this.getTextContent(propNode, 'value') || propNode.textContent;
+            if (key && value) {
+                compData.componentProps[key] = value;
+            }
+        }
+
+        // Extract component-level properties (odeComponentsProperties)
+        const structureProps = this.getComponentsProperties(compNode);
+
+        // Merge properties from jsonProperties that override structure props
+        if (compData.properties && typeof compData.properties === 'object') {
+            const propsToMerge = ['visibility', 'teacherOnly', 'cssClass'];
+            for (const key of propsToMerge) {
+                if ((compData.properties as Record<string, unknown>)[key] !== undefined) {
+                    const value = (compData.properties as Record<string, unknown>)[key];
+                    if (typeof value === 'boolean') {
+                        structureProps[key] = value ? 'true' : 'false';
+                    } else {
+                        structureProps[key] = String(value);
+                    }
+                }
+            }
+        }
+
+        compData.structureProps = structureProps;
+
+        return compData;
+    }
+
+    private decodeHtmlContentForJson(text: string): string {
+        if (!text) return '';
+
+        // Keep &quot; intact here to avoid breaking JSON strings that embed HTML attributes.
+        return text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+    }
+
+    private hasCdataChild(element: Element): boolean {
+        return Array.from(element.childNodes || []).some(child => child.nodeType === 4);
+    }
+
+    private getCdataAwareTextContent(element: Element): string {
+        const childNodes = Array.from(element.childNodes || []);
+        if (childNodes.some(child => child.nodeType === 4)) {
+            return childNodes.map(child => child.nodeValue || '').join('');
+        }
+
+        return element.textContent || '';
+    }
+
+    private decodeLegacyEncodedHtmlInObject(obj: unknown): unknown {
+        if (typeof obj === 'string') {
+            if (/&lt;div\b/i.test(obj) && /exe-text/i.test(obj)) {
+                return this.decodeHtmlContent(obj);
+            }
+
+            return obj;
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.decodeLegacyEncodedHtmlInObject(item));
+        }
+
+        if (!obj || typeof obj !== 'object') {
+            return obj;
+        }
+
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            result[key] = this.decodeLegacyEncodedHtmlInObject(value);
+        }
+        return result;
+    }
+
+    private normalizeTextIdeviceHtml(ideviceType: string, html: string): string {
+        if (!html) return html;
+        const normalizedType = (ideviceType || '').toLowerCase();
+        const shouldNormalize = normalizedType === 'text' || normalizedType.includes('jsidevice');
+        if (!shouldNormalize) return html;
+        return stripLegacyExeTextWrapper(html);
+    }
+
+    /**
+     * Create Y.Map from plain page data (called INSIDE transaction)
+     */
+    private createPageYMap(pageData: PageData, stats: ElpxImportResult): Y.Map<unknown> {
+        const pageMap = new Y.Map();
+
+        pageMap.set('id', pageData.id);
+        pageMap.set('pageId', pageData.pageId);
+        pageMap.set('pageName', pageData.pageName);
+        pageMap.set('title', pageData.title);
+        pageMap.set('parentId', pageData.parentId);
+        pageMap.set('order', pageData.order);
+        pageMap.set('createdAt', pageData.createdAt);
+
+        // Create properties Y.Map if page has properties
+        if (pageData.properties && Object.keys(pageData.properties).length > 0) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(pageData.properties)) {
+                if (value !== undefined && value !== null) {
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
+                }
+            }
+            pageMap.set('properties', propsMap);
+        }
+
+        // Create blocks array
+        const blocksArray = new Y.Array();
+        for (const blockData of pageData.blocks) {
+            const blockMap = this.createBlockYMap(blockData, stats);
+            if (blockMap) {
+                blocksArray.push([blockMap]);
+                stats.blocks++;
+            }
+        }
+        pageMap.set('blocks', blocksArray);
+
+        return pageMap;
+    }
+
+    /**
+     * Create Y.Map from plain block data (called INSIDE transaction)
+     */
+    private createBlockYMap(blockData: BlockData, stats: ElpxImportResult): Y.Map<unknown> {
+        const blockMap = new Y.Map();
+
+        blockMap.set('id', blockData.id);
+        blockMap.set('blockId', blockData.blockId);
+        blockMap.set('blockName', blockData.blockName);
+        blockMap.set('iconName', blockData.iconName || '');
+        blockMap.set('order', blockData.order);
+        blockMap.set('createdAt', blockData.createdAt);
+
+        // Create properties Y.Map if block has properties
+        if (blockData.properties && Object.keys(blockData.properties).length > 0) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(blockData.properties)) {
+                if (value !== undefined && value !== null) {
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
+                }
+            }
+            blockMap.set('properties', propsMap);
+        }
+
+        // Create components array
+        const componentsArray = new Y.Array();
+        for (const compData of blockData.components) {
+            const compMap = this.createComponentYMap(compData);
+            if (compMap) {
+                componentsArray.push([compMap]);
+                stats.components++;
+            }
+        }
+        blockMap.set('components', componentsArray);
+
+        return blockMap;
+    }
+
+    /**
+     * Create Y.Map from plain component data (called INSIDE transaction)
+     */
+    private createComponentYMap(compData: ComponentData): Y.Map<unknown> {
+        const compMap = new Y.Map();
+
+        compMap.set('id', compData.id);
+        compMap.set('ideviceId', compData.ideviceId);
+        compMap.set('ideviceType', compData.ideviceType);
+        compMap.set('type', compData.type);
+        compMap.set('order', compData.order);
+        compMap.set('createdAt', compData.createdAt);
+
+        // Store htmlView as plain string
+        if (compData.htmlView) {
+            compMap.set('htmlView', compData.htmlView);
+            this.logger.log(
+                `[ElpxImporter] createComponentYMap: Stored htmlView for ${compData.id}, length=${compData.htmlView.length}`,
+            );
+        } else {
+            this.logger.log(`[ElpxImporter] createComponentYMap: No htmlView for ${compData.id}`);
+        }
+
+        // Store jsonProperties as plain string
+        if (compData.properties && typeof compData.properties === 'object') {
+            try {
+                const jsonStr = JSON.stringify(compData.properties);
+                compMap.set('jsonProperties', jsonStr);
+            } catch (err) {
+                this.logger.error('[ElpxImporter] ERROR stringifying properties:', err);
+            }
+        }
+
+        // Set component properties as flat values (legacy format)
+        if (compData.componentProps) {
+            for (const [key, value] of Object.entries(compData.componentProps)) {
+                if (value != null && typeof value !== 'object') {
+                    compMap.set(`prop_${key}`, String(value));
+                }
+            }
+        }
+
+        // Create properties Y.Map if component has structure properties
+        if (compData.structureProps && Object.keys(compData.structureProps).length > 0) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(compData.structureProps)) {
+                if (value !== undefined && value !== null) {
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
+                }
+            }
+            compMap.set('properties', propsMap);
+        }
+
+        return compMap;
+    }
+
+    /**
+     * Find all odeNavStructure elements using multiple strategies
+     */
+    private findNavStructures(xmlDoc: Document): Element[] {
+        // Strategy 1: Direct query
+        let structures = this.getElements(xmlDoc, 'odeNavStructure');
+        if (structures.length > 0) return structures;
+
+        // Strategy 2: Inside odeNavStructures container
+        const container = this.getElement(xmlDoc, 'odeNavStructures');
+        if (container) {
+            structures = this.getElements(container, 'odeNavStructure');
+            if (structures.length > 0) return structures;
+        }
+
+        this.logger.warn('[ElpxImporter] No odeNavStructure elements found');
+        return [];
+    }
+
+    /**
+     * Remap exe-node: internal links in all component htmlView fields after page IDs have been reassigned.
+     *
+     * When importing an ELP/ELPX, every page receives a new unique ID. Any existing
+     * href="exe-node:oldPageId[#anchor]" links inside iDevice HTML content still reference
+     * the old IDs, so they must be updated using the idRemap built during import.
+     *
+     * @param pageStructures - Flat list of imported pages (with new IDs already set)
+     * @param idRemap - Map of originalPageId → newPageId
+     */
+    private remapInternalPageLinks(pageStructures: PageData[], idRemap: Map<string, string>): void {
+        if (idRemap.size === 0) return;
+
+        // Sort keys by descending length so longer ids (e.g. "page-10") are tried
+        // before shorter prefixes (e.g. "page-1") in the regex alternation.
+        // Combined with the (?![A-Za-z0-9_-]) boundary lookahead below, this
+        // prevents partial-prefix remaps that would otherwise rewrite
+        // "exe-node:page-10" using the mapping for "page-1" and leave a stray "0".
+        const sortedKeys = Array.from(idRemap.keys()).sort((a, b) => b.length - a.length);
+        const escapedIds = sortedKeys.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(?![A-Za-z0-9_-])(#[^"'\\s]*)?`, 'g');
+
+        const replacer = (_m: string, prefix: string, oldId: string, fragment: string | undefined) => {
+            const newId = idRemap.get(oldId) ?? oldId;
+            return `${prefix}${newId}${fragment ?? ''}`;
+        };
+
+        for (const page of pageStructures) {
+            for (const block of page.blocks) {
+                for (const comp of block.components) {
+                    if (comp.htmlView?.includes('exe-node:')) {
+                        comp.htmlView = comp.htmlView.replace(pattern, replacer);
+                    }
+                    // Also remap links in properties (e.g., textTextarea for text idevices).
+                    // The workarea renders text idevice content from jsonProperties.textTextarea,
+                    // not from htmlView, so these must also be remapped.
+                    if (comp.properties) {
+                        this.remapLinksInObject(comp.properties as Record<string, unknown>, pattern, replacer);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Recursively remap exe-node: links in all string values of an object.
+     * Mirrors LegacyXmlParser.convertLinksInObject() but for ID remapping.
+     */
+    private remapLinksInObject(
+        obj: Record<string, unknown>,
+        pattern: RegExp,
+        replacer: (m: string, prefix: string, oldId: string, fragment: string | undefined) => string,
+    ): void {
+        for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (typeof val === 'string' && val.includes('exe-node:')) {
+                obj[key] = val.replace(pattern, replacer);
+            } else if (Array.isArray(val)) {
+                for (let i = 0; i < val.length; i++) {
+                    if (typeof val[i] === 'string' && val[i].includes('exe-node:')) {
+                        val[i] = val[i].replace(pattern, replacer);
+                    } else if (val[i] && typeof val[i] === 'object') {
+                        this.remapLinksInObject(val[i] as Record<string, unknown>, pattern, replacer);
+                    }
+                }
+            } else if (val && typeof val === 'object') {
+                this.remapLinksInObject(val as Record<string, unknown>, pattern, replacer);
+            }
+        }
+    }
+
+    /**
+     * Get page ID from nav structure
+     */
+    private getPageId(navNode: Element): string | null {
+        const id = navNode.getAttribute('odeNavStructureId');
+        if (id) return this.sanitizeId(id);
+
+        const idEl = this.getElement(navNode, 'odePageId');
+        if (idEl) return this.sanitizeId(idEl.textContent);
+
+        return null;
+    }
+
+    /**
+     * Get parent page ID from nav structure
+     */
+    private getParentPageId(navNode: Element): string | null {
+        const parentId = navNode.getAttribute('parentOdeNavStructureId');
+        if (parentId) return this.sanitizeId(parentId);
+
+        const parentEl = this.getElement(navNode, 'odeParentPageId');
+        if (parentEl) return this.sanitizeId(parentEl.textContent);
+
+        return null;
+    }
+
+    /**
+     * Get page name from nav structure
+     */
+    private getPageName(navNode: Element): string {
+        let name = navNode.getAttribute('odePageName');
+        if (name) return name;
+
+        name = navNode.getAttribute('pageName');
+        if (name) return name;
+
+        const nameEl = this.getElement(navNode, 'pageName');
+        if (nameEl?.textContent) return nameEl.textContent;
+
+        const odeNameEl = this.getElement(navNode, 'odePageName');
+        if (odeNameEl?.textContent) return odeNameEl.textContent;
+
+        return 'Untitled Page';
+    }
+
+    /**
+     * Get navigation order from nav structure
+     */
+    private getNavOrder(navNode: Element): number {
+        return this.getOrderValue(navNode, ['odeNavStructureOrder'], 'odeNavStructureOrder');
+    }
+
+    /**
+     * Generic helper to extract XML properties from a container element
+     * Consolidates the common pattern used by page, block, and component property extraction
+     *
+     * @param parentNode - The parent element containing the properties container
+     * @param containerTag - Tag name of the properties container (e.g., 'odeNavStructureProperties')
+     * @param propertyTag - Tag name of individual property elements (e.g., 'odeNavStructureProperty')
+     * @param defaults - Default property values to use as base
+     * @returns Record of extracted properties with defaults applied
+     */
+    private extractXmlProperties(
+        parentNode: Element,
+        containerTag: string,
+        propertyTag: string,
+        defaults: Record<string, unknown>,
+    ): Record<string, unknown> {
+        const properties: Record<string, unknown> = { ...defaults };
+
+        const propsContainer = this.getElement(parentNode, containerTag);
+        if (!propsContainer) return properties;
+
+        const propNodes = this.getElements(propsContainer, propertyTag);
+        for (const propNode of propNodes) {
+            const key = this.getTextContent(propNode, 'key');
+            const value = this.getTextContent(propNode, 'value');
+            if (key && value !== null) {
+                properties[key] = value === 'true' || value === 'false' ? value === 'true' : value;
+            }
+        }
+        return properties;
+    }
+
+    /**
+     * Extract page properties from odeNavStructureProperties
+     */
+    private getNavStructureProperties(navNode: Element): Record<string, unknown> {
+        return this.extractXmlProperties(
+            navNode,
+            'odeNavStructureProperties',
+            'odeNavStructureProperty',
+            PAGE_PROPERTY_DEFAULTS,
+        );
+    }
+
+    /**
+     * Extract block properties from odePagStructureProperties
+     */
+    private getPagStructureProperties(pagNode: Element): Record<string, unknown> {
+        return this.extractXmlProperties(
+            pagNode,
+            'odePagStructureProperties',
+            'odePagStructureProperty',
+            BLOCK_PROPERTY_DEFAULTS,
+        );
+    }
+
+    /**
+     * Extract component properties from odeComponentsProperties
+     */
+    private getComponentsProperties(compNode: Element): Record<string, unknown> {
+        return this.extractXmlProperties(
+            compNode,
+            'odeComponentsProperties',
+            'odeComponentsProperty',
+            COMPONENT_PROPERTY_DEFAULTS,
+        );
+    }
+
+    /**
+     * Find odePagStructure elements within a nav structure
+     */
+    private findPagStructures(navNode: Element): Element[] {
+        // Strategy 1: Inside odePagStructures container
+        const container = this.getElement(navNode, 'odePagStructures');
+        if (container) {
+            const structures = this.getElements(container, 'odePagStructure');
+            if (structures.length > 0) return structures;
+        }
+
+        // Strategy 2: Any descendant
+        return this.getElements(navNode, 'odePagStructure');
+    }
+
+    /**
+     * Generic helper to extract order value from an element
+     * Checks multiple attribute names and a child element for the order value
+     *
+     * @param node - The element to extract order from
+     * @param attrNames - Array of attribute names to check (in order of priority)
+     * @param childTagName - Child element tag name to check as fallback
+     * @returns The order value or 0 if not found
+     */
+    private getOrderValue(node: Element, attrNames: string[], childTagName: string): number {
+        for (const attrName of attrNames) {
+            const order = node.getAttribute(attrName);
+            if (order) return parseInt(order, 10) || 0;
+        }
+
+        const orderEl = this.getElement(node, childTagName);
+        if (orderEl) return parseInt(orderEl.textContent || '0', 10) || 0;
+
+        return 0;
+    }
+
+    /**
+     * Get block order from pag structure
+     */
+    private getPagOrder(pagNode: Element): number {
+        return this.getOrderValue(pagNode, ['odePagStructureOrder'], 'odePagStructureOrder');
+    }
+
+    /**
+     * Find odeComponent elements within a pag structure
+     */
+    private findOdeComponents(pagNode: Element): Element[] {
+        // Strategy 1: Inside odeComponents container
+        const container = this.getElement(pagNode, 'odeComponents');
+        if (container) {
+            const components = this.getElements(container, 'odeComponent');
+            if (components.length > 0) return components;
+        }
+
+        // Strategy 2: Any descendant
+        return this.getElements(pagNode, 'odeComponent');
+    }
+
+    /**
+     * Get component order
+     */
+    private getComponentOrder(compNode: Element): number {
+        return this.getOrderValue(compNode, ['odeComponentOrder', 'odeComponentsOrder'], 'odeComponentsOrder');
+    }
+
+    /**
+     * Import assets from ZIP file
+     */
+    private async importAssets(zip: Record<string, Uint8Array>): Promise<number> {
+        if (!this.assetHandler) {
+            this.logger.log('[ElpxImporter] No AssetHandler, skipping asset import');
+            return 0;
+        }
+
+        // Pass progress callback to report asset extraction progress (10% to 50% range)
+        this.assetMap = await this.assetHandler.extractAssetsFromZip(zip, (current, total, _filename) => {
+            // Map progress from 10% to 50% (assets phase range)
+            const percent = 10 + Math.round((current / total) * 40);
+            this.reportProgress('assets', percent, 'Extracting assets...');
+        });
+        this.logger.log(`[ElpxImporter] Imported ${this.assetMap.size} assets`);
+
+        // Also extract embedded theme files if present
+        if (this.assetHandler.extractThemeFromZip) {
+            try {
+                const themeInfo = await this.assetHandler.extractThemeFromZip(zip);
+                if (themeInfo.themeName) {
+                    this.logger.log(
+                        `[ElpxImporter] Extracted embedded theme: ${themeInfo.themeName} (downloadable: ${themeInfo.downloadable})`,
+                    );
+                }
+            } catch (e) {
+                this.logger.warn('[ElpxImporter] Error extracting theme:', e);
+            }
+        }
+
+        return this.assetMap.size;
+    }
+
+    /**
+     * Get property value from odeProperties container
+     */
+    private getPropertyValue(propsContainer: Element, key: string): string | null {
+        // Try direct child element with the key name
+        const directEl = this.getElement(propsContainer, key);
+        if (directEl) return directEl.textContent;
+
+        // Try odeProperty elements
+        const props = this.getElements(propsContainer, 'odeProperty');
+        for (const prop of props) {
+            const keyEl = this.getElement(prop, 'key');
+            const valueEl = this.getElement(prop, 'value');
+            if (keyEl?.textContent === key && valueEl) {
+                return valueEl.textContent;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse boolean property value from odeProperties container
+     */
+    private parseBooleanProperty(container: Element, key: string, defaultValue: boolean): boolean {
+        const value = this.getPropertyValue(container, key);
+        if (value === null || value === undefined || value === '') {
+            return defaultValue;
+        }
+        if (typeof value === 'string') {
+            const lower = value.toLowerCase();
+            if (lower === 'true' || lower === '1') return true;
+            if (lower === 'false' || lower === '0') return false;
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Helper to extract a string metadata property with a default value
+     * Simplifies the common pattern of checking for odeProperties existence
+     *
+     * @param odeProperties - The odeProperties container element (may be null)
+     * @param key - Property key to extract
+     * @param defaultValue - Default value if property not found
+     * @returns Property value or default
+     */
+    private getMetadataProperty(odeProperties: Element | null, key: string, defaultValue: string = ''): string {
+        if (!odeProperties) return defaultValue;
+        return this.getPropertyValue(odeProperties, key) || defaultValue;
+    }
+
+    /**
+     * Helper to extract a boolean metadata property with a default value
+     * Simplifies the common pattern of checking for odeProperties existence
+     *
+     * @param odeProperties - The odeProperties container element (may be null)
+     * @param key - Property key to extract
+     * @param defaultValue - Default value if property not found
+     * @returns Property value or default
+     */
+    private getBooleanMetadataProperty(odeProperties: Element | null, key: string, defaultValue: boolean): boolean {
+        if (!odeProperties) return defaultValue;
+        return this.parseBooleanProperty(odeProperties, key, defaultValue);
+    }
+
+    /**
+     * Decode HTML-encoded content
+     * Note: This is a simplified version for server-side use.
+     * The browser version uses a textarea element for more complete decoding.
+     */
+    private decodeHtmlContent(text: string): string {
+        if (!text) return '';
+
+        // Decode common HTML entities
+        return text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+    }
+
+    /**
+     * Get text content from a child element
+     */
+    private getTextContent(parent: Element, tagName: string): string | null {
+        const el = this.getElement(parent, tagName);
+        return el ? el.textContent : null;
+    }
+
+    /**
+     * Collect every page, block and component (iDevice) id currently present in
+     * the Y.Doc navigation. Used by merge-mode v4 imports to detect collisions
+     * with the existing document before deciding to preserve or regenerate ids.
+     *
+     * On a clean v4 import (clearExisting=true) the navigation will be wiped
+     * inside the import transaction, so the caller starts with an empty Set
+     * instead of invoking this scan.
+     */
+    private collectExistingIds(): Set<string> {
+        const ids = new Set<string>();
+        const navigation = this.getNavigation();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            if (!page) continue;
+            const pageIdValue = page.get('id');
+            if (typeof pageIdValue === 'string') ids.add(pageIdValue);
+            const pageIdMirror = page.get('pageId');
+            if (typeof pageIdMirror === 'string') ids.add(pageIdMirror);
+
+            const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+            if (!blocks || typeof blocks.length !== 'number') continue;
+            for (let j = 0; j < blocks.length; j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                if (!block) continue;
+                const blockIdValue = block.get('id');
+                if (typeof blockIdValue === 'string') ids.add(blockIdValue);
+                const blockIdMirror = block.get('blockId');
+                if (typeof blockIdMirror === 'string') ids.add(blockIdMirror);
+
+                const components = block.get('components') as Y.Array<unknown> | undefined;
+                if (!components || typeof components.length !== 'number') continue;
+                for (let k = 0; k < components.length; k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    if (!comp) continue;
+                    const compIdValue = comp.get('id');
+                    if (typeof compIdValue === 'string') ids.add(compIdValue);
+                    const compIdMirror = comp.get('ideviceId');
+                    if (typeof compIdMirror === 'string') ids.add(compIdMirror);
+                }
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Sanitize an ID string
+     */
+    private sanitizeId(id: string | null): string | null {
+        if (!id || typeof id !== 'string') return null;
+        const sanitized = id.trim();
+        return sanitized || null;
+    }
+
+    /**
+     * Calculate the next available order value at a given parent level
+     */
+    private getNextAvailableOrder(parentId: string | null): number {
+        const navigation = this.getNavigation();
+        let maxOrder = -1;
+
+        for (let i = 0; i < navigation.length; i++) {
+            const pageMap = navigation.get(i) as Y.Map<unknown>;
+            const pageParentId = pageMap.get('parentId');
+
+            const sameLevel = (parentId === null && !pageParentId) || parentId === pageParentId;
+
+            if (sameLevel) {
+                const order = (pageMap.get('order') as number) ?? 0;
+                if (order > maxOrder) {
+                    maxOrder = order;
+                }
+            }
+        }
+
+        return maxOrder + 1;
+    }
+
+    /**
+     * Recursively convert {{context_path}} references and resources/ paths to asset:// URLs in an object
+     */
+    private convertAssetPathsInObject(obj: unknown): unknown {
+        if (obj === null || obj === undefined) {
+            return obj;
+        }
+
+        if (typeof obj === 'string') {
+            // Handle {{context_path}}/... references (in HTML content)
+            if (obj.includes('{{context_path}}') && this.assetHandler) {
+                return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
+            }
+
+            // Handle resources/filename.jpg paths (legacy gallery/iDevice properties)
+            // These are just path strings, not HTML, so we look them up directly
+            if (obj.startsWith('resources/') && this.assetMap.size > 0) {
+                const assetUrl = this.findAssetUrlForPath(obj);
+                if (assetUrl) {
+                    return assetUrl;
+                }
+            }
+
+            return obj;
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.convertAssetPathsInObject(item));
+        }
+
+        if (typeof obj === 'object') {
+            const result: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(obj)) {
+                result[key] = this.convertAssetPathsInObject(value);
+            }
+            return result;
+        }
+
+        return obj;
+    }
+
+    /**
+     * Find asset URL for a given path, trying various lookup strategies
+     * Handles legacy ELP files where assets are at root level (just filename in assetMap)
+     * but referenced with resources/ prefix in iDevice properties
+     */
+    private findAssetUrlForPath(assetPath: string): string | null {
+        // Helper to generate new format asset URL: asset://uuid.ext
+        const buildAssetUrl = (assetId: string, filename: string): string => {
+            const ext = filename.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
+            return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        };
+
+        // Try exact match first
+        if (this.assetMap.has(assetPath)) {
+            const assetId = this.assetMap.get(assetPath)!;
+            const filename = assetPath.split('/').pop() || '';
+            return buildAssetUrl(assetId, filename);
+        }
+
+        // Try without resources/ prefix (legacy format stores assets at root)
+        if (assetPath.startsWith('resources/')) {
+            const pathWithoutPrefix = assetPath.substring('resources/'.length);
+            if (this.assetMap.has(pathWithoutPrefix)) {
+                const assetId = this.assetMap.get(pathWithoutPrefix)!;
+                const filename = pathWithoutPrefix.split('/').pop() || '';
+                return buildAssetUrl(assetId, filename);
+            }
+        }
+
+        // Try matching just the filename
+        const filename = assetPath.split('/').pop();
+        if (filename) {
+            for (const [path, assetId] of this.assetMap.entries()) {
+                if (path === filename || path.endsWith('/' + filename)) {
+                    return buildAssetUrl(assetId, filename);
+                }
+            }
+        }
+
+        return null;
+    }
+}

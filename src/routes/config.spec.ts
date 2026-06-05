@@ -79,6 +79,7 @@ describe('Config Routes', () => {
             expect(data.userPreferencesConfig).toBeDefined();
             expect(data.userPreferencesConfig.locale).toBeDefined();
             expect(data.userPreferencesConfig.theme).toBeDefined();
+            expect(data.userPreferencesConfig.defaultAI).toBeDefined();
         });
 
         it('should return iDevice info fields config', async () => {
@@ -375,7 +376,7 @@ describe('Config Routes', () => {
             const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             const data = await response.json();
-            expect(data.defaultLocale).toBe('en');
+            expect(data.defaultLocale).toBe('en'); // default (APP_LOCALE or 'en')
         });
 
         it('should return locale labels', async () => {
@@ -585,6 +586,44 @@ describe('Config Routes', () => {
 
             // Cleanup
             await db.deleteFrom('templates').where('id', '=', template!.id).execute();
+        });
+    });
+
+    describe('GET /api/config/default-theme', () => {
+        it('returns a cache-busted site URL when the default theme is a site theme', async () => {
+            const updatedAt = Date.now();
+            await db
+                .insertInto('themes')
+                .values({
+                    dir_name: 'config-site-default',
+                    display_name: 'Config Site Default',
+                    is_builtin: 0,
+                    is_enabled: 1,
+                    is_default: 1,
+                    sort_order: 0,
+                    created_at: updatedAt,
+                    updated_at: updatedAt,
+                })
+                .execute();
+            await setSetting(
+                db as any,
+                'default_theme',
+                JSON.stringify({ type: 'site', dirName: 'config-site-default' }),
+                'json',
+            );
+
+            try {
+                const response = await app.handle(new Request('http://localhost/api/config/default-theme'));
+                expect(response.status).toBe(200);
+                const data = await response.json();
+                expect(data.defaultTheme.type).toBe('site');
+                expect(data.defaultTheme.dirName).toBe('config-site-default');
+                // URL embeds updated_at as cache-buster (buildSiteThemeUrl).
+                expect(data.defaultTheme.url).toMatch(/^\/.+-\d+\/site-files\/themes\/config-site-default$/);
+            } finally {
+                await db.deleteFrom('app_settings').where('key', '=', 'default_theme').execute();
+                await db.deleteFrom('themes').where('dir_name', '=', 'config-site-default').execute();
+            }
         });
     });
 });

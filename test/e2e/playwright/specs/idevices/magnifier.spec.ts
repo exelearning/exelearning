@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -46,7 +47,7 @@ async function addMagnifierIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content
     await page
@@ -56,6 +57,7 @@ async function addMagnifierIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -136,7 +138,7 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
     await insertBtn.click();
 
     // Wait for modal to close and input to update
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Verify the input was updated
     const inputValue = await page.locator('#mnfFileInput').inputValue();
@@ -152,19 +154,10 @@ test.describe('Magnifier iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Magnifier Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a magnifier iDevice using the panel
             await addMagnifierIdeviceFromPanel(page);
@@ -188,18 +181,9 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Custom Image Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add magnifier iDevice
             await addMagnifierIdeviceFromPanel(page);
@@ -224,17 +208,21 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                undefined,
+                { timeout: 30000 },
             );
 
             // Verify the image container is visible in view mode
@@ -248,7 +236,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Debug: log the image src
             const imgSrc = await viewModeImg.getAttribute('src');
@@ -268,18 +256,9 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Image Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add magnifier iDevice
             await addMagnifierIdeviceFromPanel(page);
@@ -296,17 +275,21 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice (with default image)
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                undefined,
+                { timeout: 30000 },
             );
 
             // Verify the image container is visible in view mode
@@ -320,7 +303,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             const naturalWidth = await viewModeImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
 
@@ -334,18 +317,9 @@ test.describe('Magnifier iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Magnifier Hover Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add magnifier iDevice
             await addMagnifierIdeviceFromPanel(page);
@@ -353,17 +327,22 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice with default image
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500); // Brief wait for any animations
+
+            // Click save button
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                undefined,
+                { timeout: 30000 },
             );
 
             // Find the magnifier image container
@@ -377,7 +356,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(magnifierImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the magnifier is set up with proper data attributes
             // The image should have data-magnifysrc and data-zoom attributes for the magnifier effect
@@ -401,18 +380,9 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add magnifier iDevice
             await addMagnifierIdeviceFromPanel(page);
@@ -420,22 +390,26 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice with default image
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                undefined,
+                { timeout: 30000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -444,7 +418,7 @@ test.describe('Magnifier iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify magnifier container exists in preview
             const previewMagnifierContainer = iframe.locator('.MNF-MainContainer, .ImageMagnifierIdevice');
@@ -455,7 +429,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(previewImg.first()).toBeVisible({ timeout: 10000 });
 
             // Wait for image to load
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify image loaded correctly (not broken)
             const naturalWidth = await previewImg.first().evaluate((el: HTMLImageElement) => el.naturalWidth);

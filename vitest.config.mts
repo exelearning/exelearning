@@ -18,14 +18,17 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js'],
+        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
 
         // Exclude legacy code
         exclude: [
             '**/node_modules/**',
             '**/symfony_legacy/**',
             '**/nestjs_legacy/**',
-            'public/app/common/edicuatex/**',
+            'public/app/common/edicuatex/**/!(*.test).js',
+            'public/app/common/edicuatex/**/*.css',
+            'public/app/common/edicuatex/**/*.html',
+            'public/app/common/edicuatex/**/*.json',
             'public/app/common/mermaid/**',
             'public/app/common/mindmaps/**',
             'public/app/common/fix_webm_duration/**',
@@ -76,7 +79,10 @@ export default defineConfig({
                 'public/app/common/exe_magnify/**',
                 'public/app/common/exe_lightbox/**',
                 'public/app/common/exe_highlighter/**',
-                'public/app/common/edicuatex/**',
+                'public/app/common/edicuatex/**/!(*.test).js',
+                'public/app/common/edicuatex/**/*.css',
+                'public/app/common/edicuatex/**/*.html',
+                'public/app/common/edicuatex/**/*.json',
                 'public/files/perm/**',
             ],
         },

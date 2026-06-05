@@ -100,6 +100,10 @@ export interface JwtPayload {
     email: string;
     roles: string[];
     isGuest: boolean;
+    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
+    isImpersonated?: boolean;
+    impersonatedBy?: number;
+    impersonationSessionId?: string;
     exp: number;
     iat: number;
 }
@@ -129,15 +133,23 @@ export interface YjsExportStructure {
         // Custom content
         extraHeadContent?: string;
         footer?: string;
+        // Stable identifiers (#1786) -- forwarded from the browser Y.Map so the
+        // server-side YjsDocumentAdapter sees the same project identity and
+        // BaseExporter.getManifestIdentifier derives a stable manifest@identifier.
+        odeIdentifier?: string;
+        odeVersionId?: string;
+        scormIdentifier?: string;
     };
     pages: Array<{
         id: string;
         pageName: string;
         parentId?: string | null;
+        properties?: Record<string, unknown>;
         blocks: Array<{
             id: string;
             blockName?: string;
             iconName?: string;
+            properties?: Record<string, unknown>;
             components: Array<{
                 id: string;
                 ideviceType: string;
@@ -160,9 +172,11 @@ export interface ExportOptionsRequest {
     baseUrl?: string;
     theme?: string;
     singlePage?: boolean;
-    format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx';
+    format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx' | 'elpx-page';
     /** Structure from Yjs document (sent by client for real-time exports) */
     structure?: YjsExportStructure;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 /**

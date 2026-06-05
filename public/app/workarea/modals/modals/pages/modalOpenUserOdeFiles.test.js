@@ -84,7 +84,6 @@ describe('modalOpenUserOdeFiles', () => {
           odeVersion: '1',
           odeId: 'ode-1',
           openLoad: vi.fn().mockResolvedValue(),
-          reinitializeWithProject: vi.fn().mockResolvedValue(),
           importElpDirectly: vi.fn().mockResolvedValue({}),
           refreshAfterDirectImport: vi.fn().mockResolvedValue(),
           idevices: {
@@ -184,6 +183,29 @@ describe('modalOpenUserOdeFiles', () => {
       await modal.loadUploadLimits();
       expect(modal.uploadLimits.maxFileSize).toBe(100 * 1024 * 1024);
       expect(modal.uploadLimits.maxFileSizeFormatted).toBe('100 MB');
+    });
+
+    it('should use static mode defaults when capabilities.storage.remote is false', async () => {
+      // Clear any calls from modal construction
+      window.eXeLearning.app.api.getUploadLimits.mockClear();
+
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).not.toHaveBeenCalled();
+      expect(modal.uploadLimits.maxFileSize).toBe(100 * 1024 * 1024);
+      expect(modal.uploadLimits.maxFileSizeFormatted).toBe('100 MB');
+    });
+
+    it('should call API when capabilities.storage.remote is true', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: true } };
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalled();
+    });
+
+    it('should call API when capabilities is undefined', async () => {
+      delete window.eXeLearning.app.capabilities;
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalled();
     });
   });
 
@@ -496,8 +518,9 @@ describe('modalOpenUserOdeFiles', () => {
       const duplicateSpy = vi.spyOn(modal, 'duplicateOdeFileEvent');
       global.fetch = vi.fn().mockResolvedValue({
         json: vi.fn().mockResolvedValue({
-          responseMessage: 'OK',
-          data: { uuid: 'new-uuid' },
+          success: true,
+          newProjectId: 'new-uuid',
+          project: { uuid: 'new-uuid' },
         }),
       });
       const row = modal.renderOdeRow(ode, { principal: true }, false);
@@ -680,8 +703,10 @@ describe('modalOpenUserOdeFiles', () => {
       window.eXeLearning.app.project = { _yjsBridge: { authToken: 'token-1' } };
       global.fetch = vi.fn().mockResolvedValue({
         json: vi.fn().mockResolvedValue({
-          responseMessage: 'OK',
-          data: { uuid: 'new-uuid' },
+          success: true,
+          message: 'Project duplicated',
+          newProjectId: 'new-uuid',
+          project: { id: 1, uuid: 'new-uuid', title: 'Test (copy)' },
         }),
       });
 
@@ -1378,7 +1403,9 @@ describe('modalOpenUserOdeFiles', () => {
   });
 
   describe('openUserOdeFilesEvent', () => {
-    it('should close modal and redirect to project', async () => {
+    it('should close modal and redirect to project when no unsaved changes', async () => {
+      // No unsaved changes (no yjsBridge)
+      window.eXeLearning.app.project._yjsBridge = null;
       const closeSpy = vi.spyOn(modal, 'close');
       Object.defineProperty(window, 'location', {
         value: { href: '' },
@@ -1390,32 +1417,38 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.onbeforeunload).toBeNull();
       expect(window.location.href).toContain('/workarea?project=proj-1');
     });
-  });
 
-  describe('openUserOdeFilesWithOpenSession', () => {
-    it('should load project when response OK', async () => {
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
+    it('should redirect when hasUnsavedChanges returns false', async () => {
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      const closeSpy = vi.spyOn(modal, 'close');
+      Object.defineProperty(window, 'location', {
+        value: { href: '' },
+        writable: true,
       });
-      const loadSpy = vi.spyOn(modal, 'loadOdeTheme');
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      expect(window.eXeLearning.app.project.odeSession).toBe('s1');
-      expect(window.eXeLearning.app.project.openLoad).toHaveBeenCalled();
-      expect(loadSpy).toHaveBeenCalled();
+      await modal.openUserOdeFilesEvent('proj-1');
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.location.href).toContain('/workarea?project=proj-1');
+      expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
     });
 
-    it('should show error when response fails', async () => {
-      vi.useFakeTimers();
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'NOPE',
+    it('should show session logout when hasUnsavedChanges returns true', async () => {
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      const closeSpy = vi.spyOn(modal, 'close');
+      await modal.openUserOdeFilesEvent('proj-1');
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
+        title: 'Open project',
+        forceOpen: 'Open without saving',
+        pendingAction: { action: 'open', projectUuid: 'proj-1' },
       });
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
     });
   });
 
@@ -1432,6 +1465,12 @@ describe('modalOpenUserOdeFiles', () => {
     });
 
     it('should import idevice via ComponentImporter', async () => {
+      const preloadAllAssetsMock = vi.fn().mockResolvedValue(1);
+      window.eXeLearning.app.project._yjsBridge = {
+        authToken: 'token-1',
+        getDocumentManager: vi.fn(() => ({})),
+        assetManager: { preloadAllAssets: preloadAllAssetsMock },
+      };
       window.ComponentImporter = class {
         constructor() {}
         async importComponent() {
@@ -1440,6 +1479,31 @@ describe('modalOpenUserOdeFiles', () => {
       };
       const file = new File(['x'], 'sample.idevice', { type: 'application/octet-stream' });
       await modal.largeFilesUpload(file, true);
+      expect(window.eXeLearning.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+    });
+
+    it('should call preloadAllAssets after successful component import (issue #953 fix)', async () => {
+      // Setup: Mock preloadAllAssets to verify it's called
+      const preloadAllAssetsMock = vi.fn().mockResolvedValue(1);
+      window.eXeLearning.app.project._yjsBridge = {
+        authToken: 'token-1',
+        getDocumentManager: vi.fn(() => ({})),
+        assetManager: { preloadAllAssets: preloadAllAssetsMock },
+      };
+      window.ComponentImporter = class {
+        constructor() {}
+        async importComponent() {
+          return { success: true, blockId: 'block-1' };
+        }
+      };
+      const file = new File(['x'], 'sample.idevice', { type: 'application/octet-stream' });
+
+      // Execute import
+      await modal.largeFilesUpload(file, true);
+
+      // Verify preloadAllAssets was called BEFORE loadApiIdevicesInPage
+      // This ensures images display immediately without needing page refresh
+      expect(preloadAllAssetsMock).toHaveBeenCalled();
       expect(window.eXeLearning.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
     });
 
@@ -1454,15 +1518,24 @@ describe('modalOpenUserOdeFiles', () => {
     });
 
     it('should show session logout when unsaved changes detected', async () => {
-      window.eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValueOnce({
-        leaveSession: true,
-      });
+      // Setup Yjs bridge with unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
 
-    it('should process in-memory import and refresh UI', async () => {
+    it('should not show session logout when no unsaved changes', async () => {
+      // Setup Yjs bridge without unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
       window.history.pushState = vi.fn();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -1470,9 +1543,19 @@ describe('modalOpenUserOdeFiles', () => {
       });
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
-      expect(window.eXeLearning.app.project.reinitializeWithProject).toHaveBeenCalledWith('proj-1', { skipSyncWait: true });
-      expect(window.eXeLearning.app.project.importElpDirectly).toHaveBeenCalled();
-      expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
+    });
+
+    it('should use transitionToProject for import in online mode', async () => {
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+      const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
+      await modal.largeFilesUpload(file);
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: file,
+        skipSave: true,
+      });
     });
 
     it('should upload and open properties file', async () => {
@@ -1560,46 +1643,73 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
 
-    it('should request session check and open when empty session', async () => {
+    it('should use transitionToProject when no unsaved changes and originalFile available', async () => {
       window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
         responseMessage: 'ERROR',
       });
-      window.eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValueOnce({
-        leaveEmptySession: true,
+      // Setup Yjs bridge without unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+      const originalFile = new File(['x'], 'a.elp');
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false, null, false, originalFile);
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: originalFile,
+        skipSave: true,
       });
+    });
+
+    it('should show session logout when unsaved changes exist', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      // Setup Yjs bridge with unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
+    });
+
+    it('should show session logout with pendingAction when unsaved changes exist and originalFile available', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      const originalFile = new File(['x'], 'course.elp');
+      await modal.openLocalElpFile('course.elp', '/tmp/course.elp', false, null, false, originalFile);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pendingAction: { action: 'import', file: originalFile },
+        }),
+      );
+    });
+
+    it('should fall back to openUserLocalOdeFilesWithOpenSession when no originalFile and no transitionToProject', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      // Remove transitionToProject so else branch is hit
+      delete window.eXeLearning.app.project.transitionToProject;
       const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
       await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
       expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
-    });
-  });
-
-  describe('openUserLocalOdeFilesWithOpenSession', () => {
-    it('should redirect on Yjs response', async () => {
-      Object.defineProperty(window, 'location', {
-        value: { href: '' },
-        writable: true,
-      });
-      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
-        projectUuid: 'proj-1',
-        elpImportPath: '/tmp/a.elp',
-      });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      expect(window.location.href).toContain('/workarea?project=proj-1&import=');
-    });
-
-    it('should show error on failure', async () => {
-      vi.useFakeTimers();
-      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
-        responseMessage: 'ERROR',
-      });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
     });
   });
 
@@ -1658,6 +1768,221 @@ describe('modalOpenUserOdeFiles', () => {
         confirmExec();
         expect(window.eXeLearning.app.themes.selectTheme).toHaveBeenCalledWith('base', false);
       }
+    });
+  });
+
+  describe('largeFilesUpload static mode', () => {
+    it('should use YjsBridge.importFromElpx in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      // Note: second param is isImportIdevices (false), not filename
+      // Filename comes from file.name
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
+        mockFile,
+        expect.objectContaining({ onProgress: expect.any(Function) })
+      );
+    });
+
+    it('should call refreshAfterDirectImport after static mode import', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
+    });
+
+    it('should call clearAssetsForNewProject and clearMetadataForNewProject before import in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        clearAssetsForNewProject: vi.fn().mockResolvedValue(),
+        clearMetadataForNewProject: vi.fn(),
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(mockYjsBridge.clearAssetsForNewProject).toHaveBeenCalled();
+      expect(mockYjsBridge.clearMetadataForNewProject).toHaveBeenCalled();
+      expect(mockYjsBridge.importFromElpx).toHaveBeenCalled();
+    });
+
+    it('should fallback to legacy flow when yjsBridge is not available in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      window.eXeLearning.app.project._yjsBridge = null;
+
+      // Mock legacy upload path
+      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+        odeFileName: 'test.elpx',
+        odeFilePath: '/tmp/test.elpx',
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should log error and fallback to legacy flow
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[OpenFile] Error in direct client processing:',
+        expect.any(Error)
+      );
+      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should skip static mode when capabilities is undefined and use transitionToProject', async () => {
+      delete window.eXeLearning.app.capabilities;
+
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
+    });
+
+    it('should skip static mode when storage.remote is true and use transitionToProject', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: true } };
+
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
+    });
+  });
+
+  describe('Shared projects must not expose delete/multi-select UI', () => {
+    const sharedOde = {
+      odeId: 'shared-1',
+      role: 'editor',
+      versionName: '1',
+      title: 'Shared Project',
+      fileName: 'shared.elpx',
+      sizeFormatted: '2 MB',
+      updatedAt: new Date().toISOString(),
+      visibility: 'private',
+      ownerEmail: 'owner@example.com',
+      isManualSave: false,
+    };
+
+    const ownedOde = {
+      odeId: 'owned-1',
+      role: 'owner',
+      versionName: '1',
+      title: 'Owned Project',
+      fileName: 'owned.elpx',
+      sizeFormatted: '1 MB',
+      updatedAt: new Date().toISOString(),
+      visibility: 'private',
+      isManualSave: true,
+    };
+
+    it('should not render checkbox for shared projects', () => {
+      const row = modal.renderOdeRow(sharedOde, { principal: true }, false);
+      const checkbox = row.querySelector('.ode-check');
+      expect(checkbox).toBeFalsy();
+    });
+
+    it('should still render checkbox for owned projects', () => {
+      const row = modal.renderOdeRow(ownedOde, { principal: true }, false);
+      const checkbox = row.querySelector('.ode-check');
+      expect(checkbox).toBeTruthy();
+    });
+
+    it('should not allow shared projects to be added to odeFiles selection', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          s1: sharedOde,
+        },
+      };
+      modal.currentTab = 'shared-with-me';
+
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // There should be no checkboxes in the shared tab
+      const checkboxes = modal.modalElementBodyContent.querySelectorAll('.ode-check');
+      expect(checkboxes.length).toBe(0);
+    });
+
+    it('should not show bulk delete button when on shared-with-me tab', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          s1: sharedOde,
+        },
+      };
+      modal.currentTab = 'shared-with-me';
+
+      // Even if odeFiles is somehow populated, the delete button should not appear
+      modal.odeFiles = ['shared-1'];
+      modal.updateDeleteButtonState();
+
+      // The footer should not contain a delete button
+      const deleteBtn = modal.modalFooterContent.querySelector('.btn-danger');
+      expect(deleteBtn).toBeFalsy();
+    });
+
+    it('should not include shared projects in toggleSelectAll', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          o1: ownedOde,
+          s1: sharedOde,
+        },
+      };
+
+      // Render on my-projects tab first to get owned project
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.toggleSelectAll(true);
+
+      // Only owned project should be selected
+      expect(modal.odeFiles).toContain('owned-1');
+      expect(modal.odeFiles).not.toContain('shared-1');
     });
   });
 });

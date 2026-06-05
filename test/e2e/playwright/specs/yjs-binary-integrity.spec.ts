@@ -11,8 +11,10 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
+import { openElpFile, waitForAppReady, saveProject, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'basic-example.elp';
+const FIXTURES_DIR = path.resolve(__dirname, '../../../fixtures');
 
 interface PageData {
     id: string;
@@ -29,73 +31,6 @@ interface DocumentSnapshot {
     pageCount: number;
     pages: PageData[];
     totalBlocks: number;
-}
-
-/**
- * Import the ELP fixture via File menu
- */
-async function importElpFixture(page: Page, fixtureName: string): Promise<void> {
-    const fixturePath = path.resolve(__dirname, `../../../fixtures/${fixtureName}`);
-
-    // Open File menu
-    await page.locator('#dropdownFile').click();
-    await page.waitForTimeout(300);
-
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
-
-    // Click Continue in confirmation dialog
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
-
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
-
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
-
-    // Wait for import to complete
-    await page.waitForFunction(
-        () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
-        },
-        { timeout: 90000 },
-    );
-
-    // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-
-    await page.waitForTimeout(2000);
-}
-
-/**
- * Click the save button and wait for save to complete
- */
-async function saveProject(page: Page): Promise<void> {
-    const saveButton = page.locator('#head-top-save-button');
-    await expect(saveButton).toBeVisible({ timeout: 5000 });
-    await saveButton.click();
-
-    // Wait for save to complete
-    await page.waitForFunction(
-        () => {
-            const saveBtn = document.querySelector('#head-top-save-button');
-            return saveBtn && !saveBtn.classList.contains('saving');
-        },
-        { timeout: 30000 },
-    );
-
-    await page.waitForTimeout(2000);
 }
 
 /**
@@ -156,20 +91,6 @@ async function getDocumentSnapshot(page: Page): Promise<DocumentSnapshot> {
     });
 }
 
-/**
- * Wait for app to be fully initialized
- */
-async function waitForAppReady(page: Page): Promise<void> {
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-        timeout: 30000,
-    });
-
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-}
-
 test.describe('Yjs Binary Data Integrity', () => {
     test('should preserve all document data after save and reload', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -178,12 +99,11 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Binary Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFile(page, path.join(FIXTURES_DIR, ELP_FIXTURE));
 
         // Take snapshot BEFORE save
         const beforeSave = await getDocumentSnapshot(page);
@@ -193,9 +113,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         await saveProject(page);
 
         // Reload the page completely
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Take snapshot AFTER reload
         const afterReload = await getDocumentSnapshot(page);
@@ -234,12 +152,11 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Multi-Cycle Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFile(page, path.join(FIXTURES_DIR, ELP_FIXTURE));
 
         // Take initial snapshot
         const initialSnapshot = await getDocumentSnapshot(page);
@@ -250,9 +167,7 @@ test.describe('Yjs Binary Data Integrity', () => {
             await saveProject(page);
 
             // Reload
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Verify data after this cycle
             const cycleSnapshot = await getDocumentSnapshot(page);
@@ -275,12 +190,11 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Complex ELP Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // Import a more complex ELP - old_manual has many pages
-        await importElpFixture(page, 'old_manual_exe29_compressed.elp');
+        // Open a more complex ELP - old_manual has many pages
+        await openElpFile(page, path.join(FIXTURES_DIR, 'old_manual_exe29_compressed.elp'));
 
         // Take snapshot BEFORE save
         const beforeSave = await getDocumentSnapshot(page);
@@ -292,9 +206,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         await saveProject(page);
 
         // Reload
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Take snapshot AFTER reload
         const afterReload = await getDocumentSnapshot(page);
@@ -321,12 +233,11 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Binary Size Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFile(page, path.join(FIXTURES_DIR, ELP_FIXTURE));
 
         // Get Yjs document binary size before save
         const beforeSaveSize = await page.evaluate(() => {
@@ -347,9 +258,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         await saveProject(page);
 
         // Reload
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Get Yjs document binary size after reload
         const afterReloadSize = await page.evaluate(() => {
@@ -366,7 +275,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         // Binary size should be the same or very close (within 5% due to Yjs internal optimizations)
         const sizeDifference = Math.abs(afterReloadSize - beforeSaveSize);
         const tolerancePercent = 0.05;
-        const tolerance = beforeSaveSize * tolerancePercent;
+        const tolerance = Math.ceil(beforeSaveSize * tolerancePercent);
 
         expect(sizeDifference).toBeLessThanOrEqual(tolerance);
     });

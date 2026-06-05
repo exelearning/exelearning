@@ -324,6 +324,50 @@ describe('StructureEngine', () => {
       expect(result[0].order).toBe(0);
       expect(result[1].order).toBe(0);
     });
+
+    it('returns null for properties when properties is an array', () => {
+      engine.project._yjsBridge = {
+        structureBinding: {
+          getPages: () => [
+            {
+              id: 'page-1',
+              pageName: 'Test',
+              parentId: null,
+              order: 1,
+              properties: ['not', 'an', 'object']
+            }
+          ],
+          getBlocks: () => [],
+          getComponents: () => []
+        }
+      };
+
+      const result = engine.getStructureFromYjs();
+
+      expect(result[0].odeNavStructureSyncProperties).toBeNull();
+    });
+
+    it('returns null for properties when properties is null', () => {
+      engine.project._yjsBridge = {
+        structureBinding: {
+          getPages: () => [
+            {
+              id: 'page-1',
+              pageName: 'Test',
+              parentId: null,
+              order: 1,
+              properties: null
+            }
+          ],
+          getBlocks: () => [],
+          getComponents: () => []
+        }
+      };
+
+      const result = engine.getStructureFromYjs();
+
+      expect(result[0].odeNavStructureSyncProperties).toBeNull();
+    });
   });
 
   describe('compareNodesSort', () => {
@@ -557,7 +601,7 @@ describe('StructureEngine', () => {
   });
 
   describe('setDataFromYjs', () => {
-    it('processes data and reloads menu with selection', () => {
+    it('uses passed data directly and reloads menu with selection', () => {
       const navElement = document.createElement('div');
       navElement.className = 'nav-element';
       navElement.setAttribute('nav-id', 'page-1');
@@ -568,13 +612,79 @@ describe('StructureEngine', () => {
         compose: vi.fn()
       };
 
+      // Data with complete properties (as syncStructureToLegacy now provides)
+      const fullData = [{
+        id: 'page-1',
+        pageName: 'Page 1',
+        odeNavStructureSyncProperties: { highlight: { value: true } }
+      }];
       const processSpy = vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
       const reloadSpy = vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
 
-      engine.setDataFromYjs([{ id: 'page-1', pageName: 'Page 1' }]);
+      // setDataFromYjs should use the passed data directly
+      engine.setDataFromYjs(fullData);
 
-      expect(processSpy).toHaveBeenCalled();
+      // Verify it used the passed data
+      expect(engine.dataJson).toBe(fullData);
+      expect(processSpy).toHaveBeenCalledWith(fullData);
       expect(reloadSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('preserves highlighted class when data includes properties', () => {
+      const navElement = document.createElement('div');
+      navElement.className = 'nav-element';
+      navElement.setAttribute('nav-id', 'page-1');
+      engine.menuStructureBehaviour = {
+        nodeSelected: navElement
+      };
+      engine.menuStructureCompose = {
+        compose: vi.fn()
+      };
+
+      // Data with highlight property set to true
+      const dataWithHighlight = [{
+        id: 'page-1',
+        pageName: 'Page 1',
+        parent: 'root',
+        order: 1,
+        odeNavStructureSyncProperties: { highlight: { value: 'true' } }
+      }];
+
+      const processSpy = vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
+
+      engine.setDataFromYjs(dataWithHighlight);
+
+      // Verify data includes the highlight property
+      expect(engine.dataJson[0].odeNavStructureSyncProperties.highlight.value).toBe('true');
+    });
+
+    it('skips menu reload when menuStructureCompose is not available', () => {
+      engine.menuStructureBehaviour = {
+        nodeSelected: null
+      };
+      // Explicitly set menuStructureCompose to undefined
+      engine.menuStructureCompose = undefined;
+
+      const data = [{
+        id: 'page-1',
+        pageName: 'Page 1',
+        parent: 'root',
+        order: 1
+      }];
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(engine, 'reloadStructureMenu');
+
+      // Test that the code path goes to the else branch
+      expect(engine.menuStructureCompose).toBeUndefined();
+
+      engine.setDataFromYjs(data);
+
+      // Check that processStructureData was called (confirming the test ran correctly)
+      expect(engine.processStructureData).toHaveBeenCalledWith(data);
+
+      // reloadStructureMenu should NOT be called when menuStructureCompose is missing
+      expect(reloadSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -626,7 +736,8 @@ describe('StructureEngine', () => {
     it('handles remote structure changes and reloads page content', async () => {
       engine.project._yjsEnabled = true;
       engine.project._yjsBridge = {
-        onStructureChange: vi.fn()
+        onStructureChange: vi.fn(),
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set(['page-1']))
       };
       engine.menuStructureCompose = { compose: vi.fn() };
       engine.menuStructureBehaviour = {
@@ -656,6 +767,53 @@ describe('StructureEngine', () => {
       expect(selectSpy).toHaveBeenCalledWith('page-1');
       expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
       expect(mockProject.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
+    });
+
+    it('does not reload page content for remote changes handled incrementally', async () => {
+      engine.project._yjsEnabled = true;
+      engine.project._yjsBridge = {
+        onStructureChange: vi.fn(),
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set())
+      };
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = {
+        behaviour: vi.fn(),
+        selectFirst: vi.fn(),
+        menuNav: document.querySelector('#main'),
+        nodeSelected: (() => {
+          const el = document.createElement('div');
+          el.className = 'nav-element';
+          el.setAttribute('nav-id', 'page-1');
+          return el;
+        })()
+      };
+      document.querySelector('#main').appendChild(engine.menuStructureBehaviour.nodeSelected);
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([
+        { id: 'page-1', pageName: 'Page 1', parent: 'root', order: 1, odePagStructureSyncs: [] }
+      ]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {
+        engine.data = [{ id: 'page-1', parent: 'root', children: [] }];
+      });
+      const selectSpy = vi.spyOn(engine, 'selectNode').mockResolvedValue();
+
+      engine.subscribeToYjsChanges();
+      const callback = engine.project._yjsBridge.onStructureChange.mock.calls[0][0];
+      await callback(
+        [
+          {
+            path: [0, 'blocks', 0, 'components'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: false },
+      );
+
+      expect(selectSpy).toHaveBeenCalledWith('page-1');
+      expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
+      expect(mockProject.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
   });
 

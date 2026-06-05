@@ -7,7 +7,7 @@
  *
  * DTD Structure:
  * <!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
- * <!ELEMENT odeNavStructures (odeNavStructure+)>
+ * <!ELEMENT odeNavStructures (odeNavStructure*)>
  * <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, ...)>
  */
 
@@ -240,26 +240,16 @@ function validateOdeNavStructures(
     const structures = navStructures as Record<string, unknown>;
     const odeNavStructure = structures.odeNavStructure;
 
-    // DTD: odeNavStructure+ (at least one required)
+    // DTD: odeNavStructure* (zero or more allowed)
     if (!odeNavStructure) {
-        errors.push({
-            code: 'MISSING_NAV_STRUCTURE',
-            message: 'odeNavStructures must contain at least one <odeNavStructure> element',
-            path: '/ode/odeNavStructures',
-            severity: 'error',
-        });
+        // Empty navigation structures are valid with * cardinality
         return;
     }
 
     const navArray = Array.isArray(odeNavStructure) ? odeNavStructure : [odeNavStructure];
 
     if (navArray.length === 0) {
-        errors.push({
-            code: 'EMPTY_NAV_STRUCTURES',
-            message: 'odeNavStructures must contain at least one page',
-            path: '/ode/odeNavStructures',
-            severity: 'error',
-        });
+        // Empty navigation structures are valid with * cardinality
         return;
     }
 

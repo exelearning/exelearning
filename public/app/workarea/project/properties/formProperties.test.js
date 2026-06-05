@@ -73,6 +73,13 @@ describe('FormProperties', () => {
 
         mockDocumentManager = {
             initialized: true,
+            getMetadata: vi.fn(() => ({
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            })),
         };
 
         mockYjsBridge = {
@@ -441,6 +448,7 @@ describe('FormProperties', () => {
 
             expect(row.getAttribute('duplicate')).toBe('3');
         });
+
     });
 
     describe('makeRowElementLabel', () => {
@@ -451,8 +459,12 @@ describe('FormProperties', () => {
             const label = formProperties.makeRowElementLabel('test-id', property);
 
             expect(label.tagName).toBe('LABEL');
-            expect(label.innerHTML).toBe('* Test Title');
+            expect(label.textContent).toBe('* Test Title');
             expect(label.getAttribute('for')).toBe('test-id');
+            // For required fields, the translatable text is wrapped in a span
+            const span = label.querySelector('span[data-i18n]');
+            expect(span).not.toBeNull();
+            expect(span.getAttribute('data-i18n')).toBe('Test Title');
         });
 
         it('should create label for non-required property', () => {
@@ -496,9 +508,36 @@ describe('FormProperties', () => {
             expect(element.classList.contains('toggle-input')).toBe(true);
         });
 
+        it('should create checkbox input element from boolean true value', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'checkbox', value: true, id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.tagName).toBe('INPUT');
+            expect(element.checked).toBe(true);
+        });
+
         it('should create checkbox as unchecked for false value', () => {
             const formProperties = new FormProperties(mockProperties);
             const property = { type: 'checkbox', value: 'false', id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.checked).toBe(false);
+        });
+
+        it('should create checkbox as unchecked for boolean false value', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'checkbox', value: false, id: 'testId' };
 
             const element = formProperties.makeRowValueElement(
                 'test-id',
@@ -592,6 +631,9 @@ describe('FormProperties', () => {
 
             expect(element.tagName).toBe('DIV');
         });
+
+        // Note: Legacy license handling tests are in YjsPropertiesBinding.test.js
+        // as that's where the actual legacy detection and injection logic lives
     });
 
     describe('addAttributesRowValueElement', () => {
@@ -988,6 +1030,31 @@ describe('FormProperties', () => {
             expect(checkbox.checked).toBe(true);
         });
 
+        it('should reload checkbox boolean values to checked', () => {
+            const formProperties = new FormProperties(mockProperties);
+            formProperties.nodeContent = mockNodeContent;
+            formProperties.properties = {
+                properties: {
+                    testCheckbox: {
+                        type: 'checkbox',
+                        value: true,
+                        alwaysVisible: true,
+                    },
+                },
+                cataloguing: {},
+                project: mockProject,
+            };
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.setAttribute('property', 'testCheckbox');
+            mockNodeContent.querySelector = vi.fn(() => checkbox);
+
+            formProperties.reloadValues();
+
+            expect(checkbox.checked).toBe(true);
+        });
+
         it('should reload checkbox values to unchecked', () => {
             const formProperties = new FormProperties(mockProperties);
             formProperties.nodeContent = mockNodeContent;
@@ -1366,6 +1433,444 @@ describe('FormProperties', () => {
             formProperties.insertAfter(reference, newNode);
 
             expect(parent.children[1]).toBe(newNode);
+        });
+    });
+
+    describe('addRowsWithTabs', () => {
+        it('should create tab navigation with 3 tabs', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {
+                titleNode: {
+                    type: 'text',
+                    title: 'Title',
+                    value: 'Test',
+                    groups: { properties_package: 'Content metadata' },
+                    category: { properties: 'Properties' },
+                },
+            };
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const tabs = table.querySelectorAll('.project-properties-tab');
+            expect(tabs.length).toBe(4);
+        });
+
+        it('should create tab panes for each tab', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const panes = table.querySelectorAll('.project-properties-tab-pane');
+            expect(panes.length).toBe(4);
+        });
+
+        it('should set first tab as active by default', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const firstTab = table.querySelector('.project-properties-tab');
+            const firstPane = table.querySelector('.project-properties-tab-pane');
+            expect(firstTab.classList.contains('active')).toBe(true);
+            expect(firstPane.classList.contains('active')).toBe(true);
+        });
+
+        it('should have correct tab titles', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const tabs = table.querySelectorAll('.project-properties-tab');
+            expect(tabs[0].textContent).toBe('Content metadata');
+            expect(tabs[1].textContent).toBe('Export options');
+            expect(tabs[2].textContent).toBe('Custom code');
+        });
+
+        it('should have proper ARIA attributes on tabs', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const firstTab = table.querySelector('.project-properties-tab');
+            expect(firstTab.getAttribute('role')).toBe('tab');
+            expect(firstTab.getAttribute('aria-selected')).toBe('true');
+        });
+    });
+
+    describe('groupPropertiesByGroup', () => {
+        it('should group properties by their group key', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const properties = {
+                prop1: {
+                    groups: { properties_package: 'Package' },
+                },
+                prop2: {
+                    groups: { export: 'Export' },
+                },
+                prop3: {
+                    groups: { properties_package: 'Package' },
+                },
+            };
+
+            const grouped = formProperties.groupPropertiesByGroup(properties);
+
+            expect(grouped.get('properties_package').length).toBe(2);
+            expect(grouped.get('export').length).toBe(1);
+        });
+
+        it('should place properties without groups in __no_group__', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const properties = {
+                prop1: { groups: {} },
+                prop2: {},
+            };
+
+            const grouped = formProperties.groupPropertiesByGroup(properties);
+
+            expect(grouped.get('__no_group__').length).toBe(2);
+        });
+    });
+
+    describe('buildScreenshotPane', () => {
+        let mockMetadata;
+        let mockDm;
+
+        beforeEach(() => {
+            mockMetadata = {
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            };
+            mockDm = {
+                getMetadata: vi.fn(() => mockMetadata),
+            };
+            mockYjsBridge.getDocumentManager = vi.fn(() => mockDm);
+
+            global.eXeLearning.app.modals = {
+                alert: { show: vi.fn() },
+                confirm: { show: vi.fn() },
+            };
+        });
+
+        it('should create a container with screenshot-panel class', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const panel = pane.querySelector('.screenshot-panel');
+            expect(panel).not.toBe(null);
+        });
+
+        it('should create upload and remove buttons inside the pane', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            expect(buttons.length).toBeGreaterThanOrEqual(2);
+        });
+
+        it('should create an info panel with alert-info class', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const infoAlert = pane.querySelector('#screenshot-help-text');
+            expect(infoAlert).not.toBe(null);
+        });
+
+        it('should unobserve previous observer when pane is rebuilt', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            // Build once to register an observer
+            formProperties.buildScreenshotPane(pane);
+            const firstObserver = formProperties._screenshotObserver;
+            const firstMetadata = formProperties._screenshotMetadata;
+
+            // Build again — should unobserve the first observer
+            formProperties.buildScreenshotPane(pane);
+
+            expect(firstMetadata.unobserve).toHaveBeenCalledWith(firstObserver);
+        });
+
+        it('should observe metadata changes after building the pane', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            expect(mockMetadata.observe).toHaveBeenCalled();
+            expect(formProperties._screenshotObserver).toBeTypeOf('function');
+        });
+
+        it('regenerate button calls generateScreenshotFromFirstPage on bridge', async () => {
+            const generateScreenshot = vi.fn().mockResolvedValue(undefined);
+            const mockGetDm = vi.fn(() => ({
+                getMetadata: vi.fn(() => mockMetadata),
+            }));
+            mockYjsBridge.generateScreenshotFromFirstPage = generateScreenshot;
+            mockYjsBridge.getDocumentManager = mockGetDm;
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            // Find the regenerate button (no screenshot set, so no confirm dialog)
+            const buttons = pane.querySelectorAll('button');
+            const regenerateBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Generate from content'),
+            );
+            expect(regenerateBtn).not.toBeNull();
+
+            await regenerateBtn.dispatchEvent(new MouseEvent('click'));
+            // Wait for the async click handler
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(generateScreenshot).toHaveBeenCalled();
+        });
+
+        it('regenerate button disables during generation and re-enables after', async () => {
+            let resolveGenerate;
+            const generateScreenshot = vi.fn(
+                () => new Promise((resolve) => { resolveGenerate = resolve; }),
+            );
+            const mockGetDm = vi.fn(() => ({
+                getMetadata: vi.fn(() => mockMetadata),
+            }));
+            mockYjsBridge.generateScreenshotFromFirstPage = generateScreenshot;
+            mockYjsBridge.getDocumentManager = mockGetDm;
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            const regenerateBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Generate from content'),
+            );
+
+            // Click to start generation (no screenshot set, so no confirm dialog)
+            regenerateBtn.click();
+            // Yield to the event loop so the async handler starts
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(regenerateBtn.disabled).toBe(true);
+
+            // Resolve the pending generation
+            resolveGenerate();
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(regenerateBtn.disabled).toBe(false);
+        });
+
+        it('remove button calls metadata.delete with screenshot key after confirm', async () => {
+            let capturedConfirmExec;
+            global.eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            const removeBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Delete'),
+            );
+            expect(removeBtn).not.toBeNull();
+
+            removeBtn.click();
+
+            expect(global.eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            expect(capturedConfirmExec).toBeTypeOf('function');
+
+            capturedConfirmExec();
+
+            expect(mockMetadata.delete).toHaveBeenCalledWith('screenshot');
+        });
+
+        it('shows alert when uploaded file exceeds 2MB', async () => {
+            const mockAlert = vi.fn();
+            global.eXeLearning.app.modals = {
+                alert: { show: mockAlert },
+            };
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            // Find the hidden file input
+            const fileInput = pane.querySelector('input[type="file"]');
+            expect(fileInput).not.toBeNull();
+
+            // Create a fake file > 2MB
+            const largeFile = new File([new ArrayBuffer(3 * 1024 * 1024)], 'big.png', { type: 'image/png' });
+            Object.defineProperty(fileInput, 'files', { value: [largeFile], configurable: true });
+
+            fileInput.dispatchEvent(new Event('change'));
+
+            expect(mockAlert).toHaveBeenCalled();
+            expect(mockAlert.mock.calls[0][0].title).toBe('File too large');
+        });
+    });
+
+    describe('resizeAndConvertToPng', () => {
+        it('returns canvas data URL without resizing when image fits within limits', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const mockCtx = { drawImage: vi.fn() };
+            const mockCanvas = {
+                width: 0,
+                height: 0,
+                getContext: vi.fn(() => mockCtx),
+                toDataURL: vi.fn(() => 'data:image/png;base64,smallImg'),
+            };
+            const originalCreateElement = document.createElement.bind(document);
+            document.createElement = (tag) => {
+                if (tag === 'canvas') return mockCanvas;
+                return originalCreateElement(tag);
+            };
+
+            const img = { width: 640, height: 360 };
+            const result = formProperties.resizeAndConvertToPng(img);
+
+            expect(mockCanvas.width).toBe(640);
+            expect(mockCanvas.height).toBe(360);
+            expect(result).toBe('data:image/png;base64,smallImg');
+            document.createElement = originalCreateElement;
+        });
+
+        it('downscales an oversized image to fit within 1280x720 keeping aspect ratio', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const mockCtx = { drawImage: vi.fn() };
+            const mockCanvas = {
+                width: 0,
+                height: 0,
+                getContext: vi.fn(() => mockCtx),
+                toDataURL: vi.fn(() => 'data:image/png;base64,resized'),
+            };
+            const originalCreateElement = document.createElement.bind(document);
+            document.createElement = (tag) => {
+                if (tag === 'canvas') return mockCanvas;
+                return originalCreateElement(tag);
+            };
+
+            // 2560x1440 image — should be halved to 1280x720
+            const img = { width: 2560, height: 1440 };
+            const result = formProperties.resizeAndConvertToPng(img);
+
+            expect(mockCanvas.width).toBe(1280);
+            expect(mockCanvas.height).toBe(720);
+            expect(result).toBe('data:image/png;base64,resized');
+            document.createElement = originalCreateElement;
+        });
+    });
+
+    describe('setScreenshot', () => {
+        let mockMetadata;
+        let mockDm;
+
+        beforeEach(() => {
+            mockMetadata = {
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            };
+            mockDm = {
+                getMetadata: vi.fn(() => mockMetadata),
+            };
+            mockYjsBridge.getDocumentManager = vi.fn(() => mockDm);
+        });
+
+        it('should call metadata.set with screenshot key and dataUrl', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const dataUrl = 'data:image/png;base64,abc123';
+
+            formProperties.setScreenshot(dataUrl);
+
+            expect(mockDm.getMetadata).toHaveBeenCalled();
+            expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', dataUrl);
+        });
+
+        it('should not throw when documentManager is unavailable', () => {
+            mockYjsBridge.getDocumentManager = vi.fn(() => null);
+            const formProperties = new FormProperties(mockProperties);
+
+            expect(() => formProperties.setScreenshot('data:image/png;base64,x')).not.toThrow();
+        });
+    });
+
+    describe('activateTab', () => {
+        it('should activate selected tab and deactivate others', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const tabsNav = document.createElement('div');
+            const tab1 = document.createElement('button');
+            tab1.classList.add('project-properties-tab', 'active');
+            const tab2 = document.createElement('button');
+            tab2.classList.add('project-properties-tab');
+            tabsNav.appendChild(tab1);
+            tabsNav.appendChild(tab2);
+
+            const tabContent = document.createElement('div');
+            const pane1 = document.createElement('div');
+            pane1.id = 'pane-1';
+            pane1.classList.add('project-properties-tab-pane', 'active');
+            const pane2 = document.createElement('div');
+            pane2.id = 'pane-2';
+            pane2.classList.add('project-properties-tab-pane');
+            tabContent.appendChild(pane1);
+            tabContent.appendChild(pane2);
+
+            formProperties.activateTab(tabsNav, tabContent, tab2, 'pane-2');
+
+            expect(tab1.classList.contains('active')).toBe(false);
+            expect(tab2.classList.contains('active')).toBe(true);
+            expect(pane1.classList.contains('active')).toBe(false);
+            expect(pane2.classList.contains('active')).toBe(true);
+        });
+
+        it('should update aria-selected attributes', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const tabsNav = document.createElement('div');
+            const tab1 = document.createElement('button');
+            tab1.classList.add('project-properties-tab');
+            tab1.setAttribute('aria-selected', 'true');
+            const tab2 = document.createElement('button');
+            tab2.classList.add('project-properties-tab');
+            tab2.setAttribute('aria-selected', 'false');
+            tabsNav.appendChild(tab1);
+            tabsNav.appendChild(tab2);
+
+            const tabContent = document.createElement('div');
+            const pane = document.createElement('div');
+            pane.id = 'pane-2';
+            pane.classList.add('project-properties-tab-pane');
+            tabContent.appendChild(pane);
+
+            formProperties.activateTab(tabsNav, tabContent, tab2, 'pane-2');
+
+            expect(tab1.getAttribute('aria-selected')).toBe('false');
+            expect(tab2.getAttribute('aria-selected')).toBe('true');
         });
     });
 });

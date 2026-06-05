@@ -115,6 +115,10 @@ describe('ThemesManager', () => {
     it('should initialize isApplyingRemoteTheme as false', () => {
       expect(themesManager.isApplyingRemoteTheme).toBe(false);
     });
+
+    it('should initialize _boundMetadata as null', () => {
+      expect(themesManager._boundMetadata).toBeNull();
+    });
   });
 
   describe('initYjsBinding', () => {
@@ -147,14 +151,48 @@ describe('ThemesManager', () => {
       expect(spy).toHaveBeenCalledWith('test-theme', false, false, false);
     });
 
-    it('should not load theme if already selected', () => {
+    it('should call cleanup before initializing', () => {
+      mockMetadata._data.set('theme', 'test-theme');
+      const cleanupSpy = vi.spyOn(themesManager, 'cleanup');
+
+      themesManager.initYjsBinding();
+
+      expect(cleanupSpy).toHaveBeenCalled();
+    });
+
+    it('should always load theme after cleanup (even if same theme was selected)', () => {
+      // Set a previous theme selection (simulating previous project)
       themesManager.selected = { id: 'test-theme' };
       mockMetadata._data.set('theme', 'test-theme');
       const spy = vi.spyOn(themesManager, 'selectTheme');
 
       themesManager.initYjsBinding();
 
-      expect(spy).not.toHaveBeenCalled();
+      // Should call selectTheme because cleanup() resets this.selected to null
+      expect(spy).toHaveBeenCalledWith('test-theme', false, false, false);
+    });
+
+    it('should store metadata reference for cleanup', () => {
+      mockMetadata._data.set('theme', 'test-theme');
+
+      themesManager.initYjsBinding();
+
+      expect(themesManager._boundMetadata).toBe(mockMetadata);
+    });
+
+    it('should load default theme when project has no theme', () => {
+      // No theme set in metadata
+      const spy = vi.spyOn(themesManager, 'selectTheme');
+      themesManager.list.installed['base'] = {
+        id: 'base',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+
+      themesManager.initYjsBinding();
+
+      // Should use default theme ('default-theme' from window.eXeLearning.config)
+      // Note: save=false during init to avoid marking document dirty on load
+      expect(spy).toHaveBeenCalledWith('default-theme', false, false, false);
     });
 
     it('should observe metadata changes', () => {
@@ -181,6 +219,109 @@ describe('ThemesManager', () => {
       mockBridge.getDocumentManager.mockReturnValue(null);
 
       expect(() => themesManager.initYjsBinding()).not.toThrow();
+    });
+  });
+
+  describe('cleanup', () => {
+    it('should unobserve metadata when bound', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = mockMetadata;
+      const observer = vi.fn();
+      themesManager.metadataObserver = observer;
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).toHaveBeenCalledWith(observer);
+    });
+
+    it('should not unobserve if no bound metadata', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = null;
+      themesManager.metadataObserver = vi.fn();
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).not.toHaveBeenCalled();
+    });
+
+    it('should not unobserve if no observer', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = mockMetadata;
+      themesManager.metadataObserver = null;
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).not.toHaveBeenCalled();
+    });
+
+    it('should reset metadataObserver to null', () => {
+      themesManager.metadataObserver = vi.fn();
+
+      themesManager.cleanup();
+
+      expect(themesManager.metadataObserver).toBeNull();
+    });
+
+    it('should reset _boundMetadata to null', () => {
+      themesManager._boundMetadata = mockMetadata;
+
+      themesManager.cleanup();
+
+      expect(themesManager._boundMetadata).toBeNull();
+    });
+
+    it('should reset selected to null', () => {
+      themesManager.selected = { id: 'some-theme' };
+
+      themesManager.cleanup();
+
+      expect(themesManager.selected).toBeNull();
+    });
+
+    it('should reset isApplyingRemoteTheme to false', () => {
+      themesManager.isApplyingRemoteTheme = true;
+
+      themesManager.cleanup();
+
+      expect(themesManager.isApplyingRemoteTheme).toBe(false);
+    });
+
+    it('should handle cleanup when switching projects', () => {
+      // Setup first project binding
+      mockMetadata.unobserve = vi.fn();
+      themesManager.list.installed['theme-a'] = {
+        id: 'theme-a',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      mockMetadata._data.set('theme', 'theme-a');
+
+      themesManager.initYjsBinding();
+
+      expect(themesManager._boundMetadata).toBe(mockMetadata);
+      expect(themesManager.metadataObserver).not.toBeNull();
+
+      // Create new metadata for second project
+      const mockMetadata2 = new Map();
+      mockMetadata2.observe = vi.fn();
+      mockMetadata2.get = vi.fn((key) => mockMetadata2._data?.get(key));
+      mockMetadata2._data = new Map();
+      mockMetadata2._data.set('theme', 'theme-b');
+
+      themesManager.list.installed['theme-b'] = {
+        id: 'theme-b',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const oldObserver = themesManager.metadataObserver;
+      mockDocumentManager.getMetadata.mockReturnValue(mockMetadata2);
+
+      // Initialize second project
+      themesManager.initYjsBinding();
+
+      // Should have unobserved the old metadata
+      expect(mockMetadata.unobserve).toHaveBeenCalledWith(oldObserver);
+      // Should have new binding
+      expect(themesManager._boundMetadata).toBe(mockMetadata2);
     });
   });
 
@@ -371,6 +512,78 @@ describe('ThemesManager', () => {
       expect(themesManager.selected.id).toBe('default-theme');
     });
 
+    it("prefers the user's defaultTheme preference over the site default when the requested theme is missing", async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      themesManager.list.installed['user-pref-theme'] = {
+        id: 'user-pref-theme',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: 'user-pref-theme' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('user-pref-theme');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("falling back to user default 'user-pref-theme'")
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("falls back to the site default when the user's defaultTheme preference is also missing", async () => {
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: 'unknown-user-pref' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('default-theme');
+    });
+
+    it("ignores an empty user defaultTheme preference and uses the site default", async () => {
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: '' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('default-theme');
+    });
+
+    it('uses fallbackTheme from themeRegistryOverride when default is also missing', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // Remove the default theme so the normal fallback path fails.
+      delete themesManager.list.installed['default-theme'];
+      themesManager.list.installed['safe-base'] = {
+        id: 'safe-base',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      window.eXeLearning.config.themeRegistryOverride = {
+        fallbackTheme: 'safe-base',
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('safe-base');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Theme 'missing-theme' unavailable")
+      );
+      warnSpy.mockRestore();
+    });
+
     it('should select theme when forceReload is true', async () => {
       themesManager.selected = mockTheme;
 
@@ -402,6 +615,48 @@ describe('ThemesManager', () => {
       await themesManager.selectTheme('test-theme');
 
       expect(mockTheme.select).toHaveBeenCalled();
+    });
+
+    it('should call revokeIconBlobUrls on previous theme when switching themes', async () => {
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockPrevTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+      themesManager.list.installed['prev-theme'] = mockPrevTheme;
+      themesManager.selected = mockPrevTheme;
+
+      await themesManager.selectTheme('test-theme');
+
+      expect(mockRevokeIconBlobUrls).toHaveBeenCalled();
+      expect(themesManager.selected).toBe(mockTheme);
+    });
+
+    it('should not call revokeIconBlobUrls when selecting same theme', async () => {
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+      themesManager.selected = mockTheme;
+      mockTheme.select.mockClear();
+
+      await themesManager.selectTheme('test-theme', false, false);
+
+      expect(mockRevokeIconBlobUrls).not.toHaveBeenCalled();
+    });
+
+    it('should not throw if previous theme has no revokeIconBlobUrls method', async () => {
+      themesManager.list.installed['prev-theme'] = mockPrevTheme;
+      themesManager.selected = mockPrevTheme;
+      // mockPrevTheme does not have revokeIconBlobUrls
+
+      await expect(themesManager.selectTheme('test-theme')).resolves.not.toThrow();
+      expect(themesManager.selected).toBe(mockTheme);
+    });
+
+    it('should not call revokeIconBlobUrls when no previous theme', async () => {
+      themesManager.selected = null;
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+
+      await themesManager.selectTheme('test-theme');
+
+      expect(mockRevokeIconBlobUrls).not.toHaveBeenCalled();
     });
   });
 
@@ -463,6 +718,126 @@ describe('ThemesManager', () => {
       await themesManager.loadThemesFromAPI();
 
       expect(themesManager.list.load).toHaveBeenCalled();
+    });
+  });
+
+  describe('_ensureUserThemeInYjs', () => {
+    let mockThemeFilesMap;
+    let mockResourceCache;
+
+    beforeEach(() => {
+      mockThemeFilesMap = new Map();
+      mockThemeFilesMap.has = vi.fn((key) => mockThemeFilesMap._data?.has(key));
+      mockThemeFilesMap.set = vi.fn((key, value) => {
+        if (!mockThemeFilesMap._data) mockThemeFilesMap._data = new Map();
+        mockThemeFilesMap._data.set(key, value);
+      });
+      mockThemeFilesMap._data = new Map();
+
+      mockDocumentManager.getThemeFiles = vi.fn(() => mockThemeFilesMap);
+
+      mockResourceCache = {
+        getUserThemeRaw: vi.fn(),
+      };
+
+      mockBridge.resourceCache = mockResourceCache;
+      mockBridge._uint8ArrayToBase64 = vi.fn((arr) => 'base64data');
+    });
+
+    it('should not throw when bridge is not available', async () => {
+      themesManager.app.project._yjsBridge = null;
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+
+    it('should not throw when documentManager is not available', async () => {
+      mockBridge.getDocumentManager.mockReturnValue(null);
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+
+    it('should not copy if theme already in Yjs', async () => {
+      mockThemeFilesMap._data.set('user-theme', 'existing-data');
+      mockThemeFilesMap.has.mockReturnValue(true);
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockResourceCache.getUserThemeRaw).not.toHaveBeenCalled();
+    });
+
+    it('should not copy if resourceCache is not available', async () => {
+      mockBridge.resourceCache = null;
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockThemeFilesMap.set).not.toHaveBeenCalled();
+    });
+
+    it('should not copy if theme not found in IndexedDB', async () => {
+      mockResourceCache.getUserThemeRaw.mockResolvedValue(null);
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockThemeFilesMap.set).not.toHaveBeenCalled();
+    });
+
+    it('should copy theme to Yjs when not already there', async () => {
+      const mockCompressed = new Uint8Array([1, 2, 3]);
+      mockResourceCache.getUserThemeRaw.mockResolvedValue({
+        compressedFiles: mockCompressed,
+      });
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockBridge._uint8ArrayToBase64).toHaveBeenCalledWith(mockCompressed);
+      expect(mockThemeFilesMap.set).toHaveBeenCalledWith('user-theme', 'base64data');
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockResourceCache.getUserThemeRaw.mockRejectedValue(new Error('DB error'));
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+  });
+
+  describe('_removeUserThemeFromYjs', () => {
+    let mockThemeFilesMap;
+
+    beforeEach(() => {
+      mockThemeFilesMap = new Map();
+      mockThemeFilesMap.has = vi.fn((key) => mockThemeFilesMap._data?.has(key));
+      mockThemeFilesMap.delete = vi.fn((key) => mockThemeFilesMap._data?.delete(key));
+      mockThemeFilesMap._data = new Map();
+
+      mockDocumentManager.getThemeFiles = vi.fn(() => mockThemeFilesMap);
+    });
+
+    it('should not throw when bridge is not available', async () => {
+      themesManager.app.project._yjsBridge = null;
+
+      await expect(themesManager._removeUserThemeFromYjs('user-theme')).resolves.not.toThrow();
+    });
+
+    it('should not throw when documentManager is not available', async () => {
+      mockBridge.getDocumentManager.mockReturnValue(null);
+
+      await expect(themesManager._removeUserThemeFromYjs('user-theme')).resolves.not.toThrow();
+    });
+
+    it('should remove theme from Yjs themeFiles', async () => {
+      mockThemeFilesMap._data.set('user-theme', 'theme-data');
+      mockThemeFilesMap.has.mockReturnValue(true);
+
+      await themesManager._removeUserThemeFromYjs('user-theme');
+
+      expect(mockThemeFilesMap.delete).toHaveBeenCalledWith('user-theme');
+    });
+
+    it('should not throw if theme not in Yjs', async () => {
+      mockThemeFilesMap.has.mockReturnValue(false);
+
+      await expect(themesManager._removeUserThemeFromYjs('non-existent')).resolves.not.toThrow();
+      expect(mockThemeFilesMap.delete).not.toHaveBeenCalled();
     });
   });
 

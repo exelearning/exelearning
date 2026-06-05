@@ -18,6 +18,7 @@ import { cookie } from '@elysiajs/cookie';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { buildContentDisposition } from '../shared/http/headers';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
@@ -27,7 +28,6 @@ import type { ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -38,8 +38,14 @@ import {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
+    ServerYjsDocumentWrapper,
+    YjsDocumentAdapter,
     type ExportResult,
 } from '../shared/export';
+
+// Import system (ELP → Y.Doc)
+import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
+import * as Y from 'yjs';
 
 // =============================================================================
 // Types and Interfaces
@@ -52,6 +58,7 @@ export interface ConvertDependencies {
     };
     publicDir?: string;
     tempDir?: string;
+    fs?: typeof fs;
 }
 
 interface JwtPayload {
@@ -115,6 +122,7 @@ const defaultDeps: ConvertDependencies = {
     },
     publicDir: path.resolve(__dirname, '../../public'),
     tempDir: process.env.FILES_DIR ? path.join(process.env.FILES_DIR, 'tmp') : '/tmp/exelearning-convert',
+    fs: fs,
 };
 
 // Get JWT secret from environment
@@ -127,8 +135,9 @@ const getJwtSecret = (): string => {
 // =============================================================================
 
 export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
-    const { db, queries, publicDir, tempDir } = { ...defaultDeps, ...deps };
+    const { db, queries, publicDir, tempDir, fs: fsHelper } = { ...defaultDeps, ...deps };
     const { findUserById } = queries;
+    const fs = fsHelper!;
 
     /**
      * Validate uploaded file
@@ -181,17 +190,34 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
      * Run export using unified export system
      */
     async function runExport(
-        extractedPath: string,
+        elpFilePath: string,
         exportType: string,
         options: ExportOptions = {},
     ): Promise<ExportResult & { filename?: string }> {
+        let ydoc: Y.Doc | null = null;
+        let wrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
+
         try {
-            // Create document adapter from extracted ELP
-            const document = await ElpDocumentAdapter.fromElpFile(extractedPath);
+            // Read ELP file
+            const elpBuffer = await fs.readFile(elpFilePath);
+
+            // Create extraction directory for assets
+            const extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
+            await fs.ensureDir(extractDir);
+
+            // Import ELP to Y.Doc using unified import system
+            ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(extractDir);
+            const importer = new ElpxImporter(ydoc, assetHandler);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Wrap Y.Doc for export
+            wrapper = new ServerYjsDocumentWrapper(ydoc, 'convert-export');
+            const document = new YjsDocumentAdapter(wrapper);
 
             // Create providers
             const resources = new FileSystemResourceProvider(publicDir!);
-            const assets = new FileSystemAssetProvider(document.extractedPath);
+            const assets = new FileSystemAssetProvider(extractDir);
             const zip = new FflateZipProvider();
 
             // Select exporter based on format
@@ -230,6 +256,11 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[Convert] Error during ${exportType} export:`, error);
             return { success: false, error: errorMessage };
+        } finally {
+            // Cleanup Y.Doc
+            if (wrapper) {
+                wrapper.destroy();
+            }
         }
     }
 
@@ -332,7 +363,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         if (download && result.data) {
                             const exportFilename = result.filename || 'converted.elpx';
                             set.headers['content-type'] = 'application/x-exelearning';
-                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-disposition'] = buildContentDisposition(exportFilename);
                             set.headers['content-length'] = String(result.data.length);
                             return result.data;
                         }
@@ -425,7 +456,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         if (download && result.data) {
                             const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
                             set.headers['content-type'] = formatInfo.mimeType;
-                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-disposition'] = buildContentDisposition(exportFilename);
                             set.headers['content-length'] = String(result.data.length);
                             return result.data;
                         }

@@ -127,11 +127,11 @@ export default class ModalOdeBrokenLinks extends Modal {
         switch (status) {
             case 'pending':
             case 'validating':
-                return '<span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="Validating"></span>';
+                return `<span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="${_('Validating')}"></span>`;
             case 'valid':
-                return '<span class="text-success" title="Valid">&#10003;</span>';
+                return `<span class="text-success" title="${_('Valid')}">&#10003;</span>`;
             case 'broken':
-                return `<span class="text-danger" title="${error || 'Error'}">&#10007;</span>`;
+                return `<span class="text-danger" title="${error || _('Error')}">&#10007;</span>`;
             default:
                 return '';
         }
@@ -358,19 +358,21 @@ export default class ModalOdeBrokenLinks extends Modal {
     }
 
     /**
-     * Download broken links as CSV
+     * Download broken links as CSV by parsing the visible table
      */
     downloadCsv() {
         this.preventCloseModal = true;
 
-        if (!this.linkManager) {
-            console.warn('[ModalOdeBrokenLinks] No link manager available for CSV export');
+        // Find the table in the modal body
+        const table = this.modalElement.querySelector('table');
+        if (!table) {
+            console.warn('[ModalOdeBrokenLinks] No table found for CSV export');
             return;
         }
 
-        const brokenLinks = this.linkManager.toExportFormat(true);
-
-        if (brokenLinks.length === 0) {
+        // Check if there are any broken links (rows with table-danger class)
+        const brokenRows = table.querySelectorAll('tbody tr.table-danger');
+        if (brokenRows.length === 0) {
             eXeLearning.app.alerts.showToast({
                 type: 'info',
                 message: _('No broken links to export'),
@@ -378,31 +380,24 @@ export default class ModalOdeBrokenLinks extends Modal {
             return;
         }
 
-        const headerTitles = [
-            _('Link'),
-            _('Error'),
-            _('Times'),
-            _('Page name'),
-            _('Block name'),
-            _('iDevice'),
-            _('Position'),
-        ];
+        // Create a filtered table with only broken links for CSV export
+        const filteredTable = document.createElement('table');
+        const thead = table.querySelector('thead');
+        if (thead) {
+            filteredTable.appendChild(thead.cloneNode(true));
+        }
 
-        const csv = eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(
-            brokenLinks,
-            headerTitles
-        );
+        const tbody = document.createElement('tbody');
+        brokenRows.forEach((row) => {
+            tbody.appendChild(row.cloneNode(true));
+        });
+        filteredTable.appendChild(tbody);
 
-        const downloadLink = document.createElement('a');
-        const blob = new Blob(['\ufeff', csv]);
-        const url = URL.createObjectURL(blob);
-        downloadLink.href = url;
-        downloadLink.download = 'BrokenLinks.csv';
+        // Convert to CSV, skipping the first column (Status icon)
+        const csv = this.tableToCSV(filteredTable, { skipColumns: [0] });
 
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-        URL.revokeObjectURL(url);
+        // Download the CSV file
+        this.downloadCSVFile(csv, 'BrokenLinks.csv');
     }
 
     /**

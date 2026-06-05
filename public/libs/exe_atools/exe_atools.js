@@ -36,6 +36,7 @@ $exe.atools = {
         translate : $exe_i18n["translate"],
         drag_and_drop : $exe_i18n["drag_and_drop"],
         mode_toggler : $exe_i18n["mode_toggler"],
+        uppercase_text : $exe_i18n["uppercase_text"] || "Uppercase",
         accessibility_tools : $exe_i18n['accessibility_tools'],
         default_font : $exe_i18n["default_font"],
         increase_text_size : $exe_i18n["increase_text_size"],
@@ -73,6 +74,11 @@ $exe.atools = {
             if (e) return e;
             return "";
         },
+        getUppercaseStatus : function(){
+            var e = localStorage.getItem('exeAtoolsUppercase');
+            if (e==="on") return "on";
+            return "off";
+        },
         getToolbarPosition : function(){
             var e = localStorage.getItem('exeAtoolsToolbarStyles');
             if (e) return e;
@@ -81,6 +87,14 @@ $exe.atools = {
     },
     init : function(){
         if (typeof(localStorage)=='undefined') return;
+        // Custom options
+        try {
+            // Those values might be changed in HEADER / FOOTER
+            this.options.modeToggler = $exe.options.atools.modeToggler;
+            this.options.translator = $exe.options.atools.translator;
+        } catch(e) {
+            
+        }
         // Custom strings
         var strs = $exe.options.atools.i18n;
         for (i in strs) {
@@ -119,7 +133,7 @@ $exe.atools = {
                         <option value="od">OpenDyslexic</option>\
                         <option value="ah">Atkinson Hyperlegible</option>\
                         <option value="mo">Montserrat</option>\
-                    </select><button id="eXeAtoolsLgTextBtn">'+i18n["increase_text_size"]+'</button><button id="eXeAtoolsSmTextBtn">'+i18n["decrease_text_size"]+'</button><button id="eXeAtoolsResetBtn">'+i18n["reset"]+'</button>'+modeBtn+reader+translator+'<button id="eXeAtoolsCloseBtn">'+i18n["close_toolbar"]+'</button>\
+                    </select><button id="eXeAtoolsLgTextBtn">'+i18n["increase_text_size"]+'</button><button id="eXeAtoolsSmTextBtn">'+i18n["decrease_text_size"]+'</button><button id="eXeAtoolsUppercaseBtn">'+i18n["uppercase_text"]+'</button><button id="eXeAtoolsResetBtn">'+i18n["reset"]+'</button>'+modeBtn+reader+translator+'<button id="eXeAtoolsCloseBtn">'+i18n["close_toolbar"]+'</button>\
                 </div>\
             </div>\
         ';
@@ -138,6 +152,8 @@ $exe.atools = {
         }
         // Choose the font family
         $("#eXeAtoolsFont").val($exe.atools.storage.getFontFamily()).trigger("change");
+        // Check if uppercase text should be on
+        $exe.atools.setUppercase($exe.atools.storage.getUppercaseStatus()==="on", false);
         // Check if the translator should be on
         if ($exe.atools.storage.getTranslatorStatus()==="on") {
             localStorage.setItem('exeAtoolsTranslator',false);
@@ -161,10 +177,24 @@ $exe.atools = {
     },
     checkResetBtnStatus : function(){
         var btn = $("#eXeAtoolsResetBtn");
-        if ($exe.atools.storage.getTranslatorStatus()=="on" || $exe.atools.storage.getFontSize()!="" || $exe.atools.storage.getFontFamily()!="") {
+        if ($exe.atools.storage.getTranslatorStatus()=="on" || $exe.atools.storage.getFontSize()!="" || $exe.atools.storage.getFontFamily()!="" || $exe.atools.storage.getUppercaseStatus()=="on") {
             btn.removeClass("reset-disabled");
         } else {
             btn.addClass("reset-disabled");
+        }
+    },
+    setUppercase : function(enabled, save) {
+        var body = $("body");
+        var btn = $("#eXeAtoolsUppercaseBtn");
+        if (enabled===true) {
+            body.addClass("exe-atools-uc");
+            btn.addClass("eXeAtoolsActive").attr("aria-pressed","true");
+        } else {
+            body.removeClass("exe-atools-uc");
+            btn.removeClass("eXeAtoolsActive").attr("aria-pressed","false");
+        }
+        if (save!==false) {
+            localStorage.setItem('exeAtoolsUppercase', enabled===true ? "on" : "off");
         }
     },
     setEvents : function(){
@@ -208,6 +238,11 @@ $exe.atools = {
             // Check the reset button status
             $exe.atools.checkResetBtnStatus();
         });
+        $("#eXeAtoolsUppercaseBtn").click(function(){
+            $exe.atools.setUppercase(!$("body").hasClass("exe-atools-uc"));
+            // Check the reset button status
+            $exe.atools.checkResetBtnStatus();
+        });
         $("#eXeAtoolsTranslateBtn").click(function(){
             $exe.atools.toggleGoogleTranslateWidget();
             // Check the reset button status
@@ -222,6 +257,7 @@ $exe.atools = {
             localStorage.setItem('exeAtoolsFontSize', '');
             $("#eXeAtoolsFont").val("").trigger("change");
             localStorage.setItem('exeAtoolsFontFamily', '');
+            $exe.atools.setUppercase(false);
             if($exe.atools.storage.getTranslatorStatus()=="on") $exe.atools.toggleGoogleTranslateWidget();
             // Back to left bottom position:
             // $("#eXeAtoolsSet").attr("style","");
@@ -474,11 +510,13 @@ $(function(){
         if(e.type === touchmove)
             elmnt = this[father];
 
-        // Calculate the new cursor position:
-        try{
+        // Calculate the new cursor position
+        try {
             elmnt[Xf] = e.clientX || e.targetTouches[0].clientX;
             elmnt[Yf] = e.clientY || e.targetTouches[0].clientY;
-        }catch(e){}
+        } catch(e){
+            
+        }
 
         elmnt[Xt] -= elmnt[Xi] - elmnt[Xf];
         elmnt[Yt] -= elmnt[Yi] - elmnt[Yf];
@@ -516,3 +554,8 @@ $(function(){
     }
 
 })(window, document);
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = $exe.atools;
+}

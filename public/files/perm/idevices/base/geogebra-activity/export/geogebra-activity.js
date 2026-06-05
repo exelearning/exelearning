@@ -114,10 +114,11 @@ var $geogebraactivity = {
                     );
                 }
                 let ath = '';
+                let tth = '';
                 let author = $('.auto-geogebra-author', this);
                 if (author.length == 1 && author.text() != '') {
                     let math = author.text().split(',');
-                    if (math.length == 5 && math[3] == '1') {
+                    if ((math.length == 5 || math.length == 7) && math[3] == '1') {
                         ath =
                             '<div class="auto-geogebra-author">' +
                             unescape(math[4]) +
@@ -125,6 +126,19 @@ var $geogebraactivity = {
                             unescape(math[1]) +
                             '" target="_blank">' +
                             unescape(math[0]) +
+                            '</a></div>';
+                    }
+                    const showTitle = math.length == 7 ? math[5] == '1' : true;
+                    if (showTitle && unescape(math[2]) !== '') {
+                        const titleLabel =
+                            math.length == 7 ? unescape(math[6]) : unescape(math[4]);
+                        tth =
+                            '<div class="auto-geogebra-title">' +
+                            titleLabel +
+                            ': <a href="' +
+                            unescape(math[1]) +
+                            '" target="_blank">' +
+                            unescape(math[2]) +
                             '</a></div>';
                     }
                 }
@@ -161,6 +175,7 @@ var $geogebraactivity = {
                     .before(intro)
                     .after(aft)
                     .after(ath)
+                    .after(tth)
                     .wrap('<div class="auto-geogebra-wrapper"></div>')
                     .addClass('auto-geogebra-loading')
                     .css({
@@ -382,11 +397,29 @@ var $geogebraactivity = {
         }
 
         setTimeout(function () {
-            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
-                options,
-                this.isInExe
-            );
+            if (options.evaluation) {
+                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                    options,
+                    this.isInExe
+                );
+            } else {
+                $geogebraactivity.removeEvaluationIcon(options);
+            }
         }, 500);
+    },
+    removeEvaluationIcon: function (options) {
+        if (!options || !options.main || !options.idevice) return;
+
+        const $main = $('#' + options.main);
+        let $idevice = $main.closest(`.${options.idevice}`);
+        if (!$idevice.length) {
+            $idevice = $main.closest('.idevice_node');
+        }
+
+        $idevice.find('.Games-ReportIconDiv').remove();
+        if (options.id) {
+            $('#ac-' + options.id).remove();
+        }
     },
     getIdeviceID: function (sfx) {
         const ideviceid =
@@ -398,6 +431,7 @@ var $geogebraactivity = {
     },
 
     getOptions: function (sfx, weighted, messagesScorm, evaluationID) {
+        evaluationID = evaluationID && evaluationID !== '0' ? evaluationID : '';
         let messages = $geogebraactivity.messages;
         let messagesEval = [];
         for (let z = 0; z < messages.length; z++) {
@@ -413,7 +447,7 @@ var $geogebraactivity = {
             evaluationID: evaluationID,
             isInExe: this.isInExe,
             main: 'auto-geogebra-' + sfx,
-            idevice: 'geogebra-activity',
+            idevice: 'geogebra-activityIdevice',
             scorerp: 0,
             idevicePath: this.idevicePath,
             textButtonScorm: $geogebraactivity.messages[3],

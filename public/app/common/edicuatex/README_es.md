@@ -2,6 +2,9 @@
 
 # Editor de ecuaciones $\LaTeX$ online
 
+[![AGPL v3](https://img.shields.io/badge/Licencia-AGPL_v3-blue.svg)](LICENSE.txt)
+[![CC BY-SA 4.0](https://img.shields.io/badge/Contenido-CC_BY--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/deed.es)
+
 ## Descripción
 
 Este proyecto es una herramienta gratuita pensada para que docentes y estudiantes puedan crear y editar fórmulas matemáticas fácilmente, sin necesidad de conocer a fondo el lenguaje LaTeX. Permite generar materiales educativos con notación matemática clara y profesional. Se puede usar con programas que admiten LaTeX, como eXeLearning, Moodle, Overleaf, etc.
@@ -9,6 +12,46 @@ Este proyecto es una herramienta gratuita pensada para que docentes y estudiante
 El programa funciona tanto de forma **independiente** como **integrado en eXeLearning**. Cuando se detecta que se abre desde eXe (desde un plugin para TinyMCE), se muestra un botón que permite insertar la fórmula directamente. Si se abre de forma autónoma (por ejemplo, en un navegador), este botón no aparece.
 
 ---
+
+## Integración con otras aplicaciones web (postMessage)
+
+Además de la integración con eXeLearning/TinyMCE, puedes integrar EdiCuaTeX en cualquier web mediante `postMessage` sin tocar el código de tu app:
+
+- Abrir el editor con parámetros: añade `?pm=1&origin=<TU_ORIGIN>` a la URL del editor.
+  - Ejemplo local (popup): `http://localhost:8000/index.html?pm=1&origin=http%3A%2F%2Flocalhost%3A8001`
+  - Ejemplo público (GitHub Pages): `https://jjdeharo.github.io/edicuatex/index.html?pm=1&origin=https%3A%2F%2Fjjdeharo.github.io`
+  - `origin` debe ser el origen exacto (protocolo + host + puerto) de tu app receptora.
+- Botón contextual: con `pm=1` aparece el botón “Enviar a la app”.
+- Payload enviado al pulsar “Enviar”:
+  - `type: 'edicuatex:result'`
+  - `latex`: código LaTeX sin delimitadores
+  - `delimiter`: valor del selector de delimitadores (`none`, `parentheses`, `brackets`, `double_dollar`, `single_dollar`)
+  - `wrapped`: LaTeX con los delimitadores elegidos
+
+Ejemplo mínimo en tu app (popup o iframe):
+
+```html
+<button id="open">Abrir editor</button>
+<textarea id="out" rows="6" cols="60"></textarea>
+<script>
+let editorOrigin = '';
+document.getElementById('open').onclick = () => {
+  const url = 'http://localhost:8000/index.html?pm=1&origin=' + encodeURIComponent(location.origin);
+  editorOrigin = new URL(url).origin; // p.ej., http://localhost:8000
+  window.open(url, 'edicuatex', 'width=1100,height=800');
+};
+window.addEventListener('message', (e) => {
+  if (!editorOrigin || e.origin !== editorOrigin) return; // seguridad: solo aceptar del editor
+  if (e.data && e.data.type === 'edicuatex:result') {
+    document.getElementById('out').value = e.data.wrapped || e.data.latex || '';
+  }
+});
+</script>
+```
+
+Notas
+- Funciona tanto en `window.open` (popup) como en `<iframe>`.
+- La integración con eXe/TinyMCE permanece intacta y separada; el botón “Insertar” solo aparece dentro de eXe.
 
 ## 1. `index.html` → Editor visual de fórmulas LaTeX
 
@@ -106,7 +149,11 @@ Ejemplo:
 
 ## Licencia
 
-Este proyecto tiene licencia Creative Commons BY-SA. Puedes usarlo, modificarlo y compartirlo libremente, citando al autor y manteniendo la misma licencia.
+- Código: GNU AGPL v3. Ver `LICENSE.txt`.
+- Contenidos (textos, capturas, datos de menús): CC BY-SA 4.0.
+  - https://creativecommons.org/licenses/by-sa/4.0/deed.es
+
+Las librerías de terceros mantienen sus propias licencias.
 
 ---
 

@@ -191,4 +191,129 @@ describe('challenge iDevice export', () => {
       expect($eXeDesafio.options).toBeDefined();
     });
   });
+
+  describe('SVG icon file naming', () => {
+    /**
+     * Tests for the SVG icon naming convention used in showDesafio.
+     * The colorMap maps state numbers to color names:
+     * - 0: grey (inactive/default)
+     * - 1: blue (selectable)
+     * - 2: green (solved correctly)
+     * - 3: red (active/current)
+     */
+    const colorMap = ['grey', 'blue', 'green', 'red'];
+
+    describe('colorMap state mapping', () => {
+      it('maps state 0 to grey', () => {
+        expect(colorMap[0]).toBe('grey');
+      });
+
+      it('maps state 1 to blue', () => {
+        expect(colorMap[1]).toBe('blue');
+      });
+
+      it('maps state 2 to green', () => {
+        expect(colorMap[2]).toBe('green');
+      });
+
+      it('maps state 3 to red', () => {
+        expect(colorMap[3]).toBe('red');
+      });
+
+      it('returns undefined for invalid states', () => {
+        expect(colorMap[4]).toBeUndefined();
+        expect(colorMap[-1]).toBeUndefined();
+      });
+    });
+
+    describe('SVG filename generation', () => {
+      const generateSvgFilename = (number, state) => {
+        const color = colorMap[state] || 'grey';
+        return `number${number}_${color}.svg`;
+      };
+
+      it('generates correct filename for challenge 1 with grey state', () => {
+        expect(generateSvgFilename(1, 0)).toBe('number1_grey.svg');
+      });
+
+      it('generates correct filename for challenge 5 with blue state', () => {
+        expect(generateSvgFilename(5, 1)).toBe('number5_blue.svg');
+      });
+
+      it('generates correct filename for challenge 10 with green state', () => {
+        expect(generateSvgFilename(10, 2)).toBe('number10_green.svg');
+      });
+
+      it('generates correct filename for challenge 3 with red state', () => {
+        expect(generateSvgFilename(3, 3)).toBe('number3_red.svg');
+      });
+
+      it('falls back to grey for invalid state', () => {
+        expect(generateSvgFilename(1, 99)).toBe('number1_grey.svg');
+        expect(generateSvgFilename(1, -1)).toBe('number1_grey.svg');
+      });
+
+      it('generates all valid combinations for numbers 1-10', () => {
+        const validColors = ['grey', 'blue', 'green', 'red'];
+        for (let num = 1; num <= 10; num++) {
+          for (let state = 0; state < 4; state++) {
+            const filename = generateSvgFilename(num, state);
+            expect(filename).toBe(`number${num}_${validColors[state]}.svg`);
+          }
+        }
+      });
+    });
+
+    describe('CSS background generation', () => {
+      const generateCssBackground = (idevicePath, number, state) => {
+        const color = colorMap[state] || 'grey';
+        const svgFile = `number${number}_${color}.svg`;
+        return `url(${idevicePath}${svgFile}) no-repeat center center`;
+      };
+
+      it('generates correct CSS with idevice path', () => {
+        const result = generateCssBackground('/files/idevices/', 1, 0);
+        expect(result).toBe('url(/files/idevices/number1_grey.svg) no-repeat center center');
+      });
+
+      it('generates correct CSS for different states', () => {
+        const basePath = 'assets/';
+        expect(generateCssBackground(basePath, 2, 1)).toBe('url(assets/number2_blue.svg) no-repeat center center');
+        expect(generateCssBackground(basePath, 3, 2)).toBe('url(assets/number3_green.svg) no-repeat center center');
+        expect(generateCssBackground(basePath, 4, 3)).toBe('url(assets/number4_red.svg) no-repeat center center');
+      });
+
+      it('handles empty idevice path', () => {
+        const result = generateCssBackground('', 5, 0);
+        expect(result).toBe('url(number5_grey.svg) no-repeat center center');
+      });
+    });
+  });
+
+  describe('challenge state values', () => {
+    /**
+     * Challenge states correspond to icon colors:
+     * - 0: Inactive (grey) - challenge locked
+     * - 1: Selectable (blue) - challenge available
+     * - 2: Solved (green) - challenge completed correctly
+     * - 3: Active (red) - currently selected challenge
+     */
+    it('state 0 represents inactive/locked challenge', () => {
+      const result = $eXeDesafio.createArrayStateChallenges(0, 3);
+      // When type is 0, subsequent challenges should be inactive (grey)
+      expect(result[1].state).toBe(0);
+    });
+
+    it('state 1 represents selectable/available challenge', () => {
+      const result = $eXeDesafio.createArrayStateChallenges(1, 3);
+      // When type is 1, subsequent challenges should be selectable (blue)
+      expect(result[1].state).toBe(1);
+    });
+
+    it('state 3 represents active/current challenge', () => {
+      const result = $eXeDesafio.createArrayStateChallenges(0, 3);
+      // First challenge is always active (red)
+      expect(result[0].state).toBe(3);
+    });
+  });
 });

@@ -32,6 +32,9 @@ var $exeDevice = {
         this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('hiQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     enableForm: function () {
@@ -133,9 +136,6 @@ var $exeDevice = {
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -316,9 +316,9 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        if (p.audio.trim().length > 4) $exeDevice.playSound(p.audio.trim());
+        if (p.audio.trim().length > 4) $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
 
         $('#hiEURLAudio').val(p.audio);
         $('#hiENumberQuestion').val(i + 1);
@@ -393,10 +393,10 @@ var $exeDevice = {
         let path = $exeDevice.idevicePath,
             html = `
             <div id="hiQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.')} <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/imagen-oculta.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Reveal the hidden image and choose the right answer.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -438,18 +438,8 @@ var $exeDevice = {
                                 <span id="hiENumeroPercentaje">1/1</span>
                             </div>
                             <div class="mb-3 d-flex flex-nowrap align-items-center gap-2 Games-Reportdiv">
-                                <div class="toggle-item m-0" data-target="hiEEvaluation">
-                                    <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEEvaluation" /><span class="toggle-visual"></span></span>
-                                    <label class="toggle-label" for="hiEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <label class="m-0" for="hiEEvaluationID">${_('Identifier')}:</label>
-                                <input type="text" id="hiEEvaluationID" disabled class="form-control" style="max-width:200px" value="${eXeLearning.app.project.odeId || ''}" />
-                                <a href="#hiEEvaluationHelp" id="hiEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="hiEEvaluationHelp" class="HIE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -515,7 +505,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="hiETitleAudio">${_('Audio')}</span>
-                                    <div class="justify-content-start  d-flex flex-nowrap align-items-center gap-1 mb-3" id="hiEInputAudio">
+                                    <div class="justify-content-start  d-flex flex-nowrap align-items-center gap-1 mb-3" id="hiEInputAudio" data-voice-recorder data-voice-input="#hiEURLAudio">
                                         <label class="sr-av" for="hiEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker HIE-URLAudio form-control me-0" id="hiEURLAudio" />
                                         <a href="#" id="hiEPlayAudio" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="HIE-ButtonImage " /></a>
@@ -743,9 +733,10 @@ var $exeDevice = {
         ).prop('checked', true);
         $('#hiECustomMessages').prop('checked', game.customMessages);
         $('#hiEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#hiEEvaluation').prop('checked', game.evaluation);
-        $('#hiEEvaluationID').val(game.evaluationID);
-        $('#hiEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#hiERevealTime').val(game.revealTime);
 
         $exeDevice.showSelectOrder(game.customMessages);
@@ -884,7 +875,7 @@ var $exeDevice = {
         p.customScore = parseFloat($('#hiEScoreQuestion').val());
         p.url = $('#hiEURLImage').val().trim();
         p.audio = $('#hiEURLAudio').val();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.question = $('#hiEQuestion').val().trim();
         p.options = [];
         p.solution = parseInt($('input[name=hisoluiton]:checked').val());
@@ -979,21 +970,18 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#hiEPercentajeQuestions').val())
             ),
-            evaluation = $('#hiEEvaluation').is(':checked'),
-            evaluationID = $('#hiEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
             revealTime = $('#hiERevealTime').val(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.toString().length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         for (let i = 0; i < questionsGame.length; i++) {
@@ -1050,8 +1038,8 @@ var $exeDevice = {
             version: 1,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
         return data;
@@ -1196,8 +1184,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#hiEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1208,8 +1195,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                  $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1257,15 +1243,7 @@ var $exeDevice = {
             }
         });
 
-        $('#hiEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#hiEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#hiEEvaluationHelpLnk').on('click', function () {
-            $('#hiEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 

@@ -880,7 +880,7 @@ a.trivial-LinkMaximize {
 }
 
 .trivial-AcceptButton {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     cursor: pointer;
     height: 1.7rem;
@@ -1082,28 +1082,29 @@ div:-moz-full-screen .trivial-CasillaDestino {
 .trivial-EdReply {
     max-width: 400px;
     width: 60%;
+    margin: auto 0.6em;
     text-align: center;
 }
 
 .trivial-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .trivial-MainContainer .exeQuextIcons-Submit,
 .trivial-GameQuestion .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
-    height: 1.7em;
-    margin-left: 0.2em;
-    width: 1.7em;
+    height: 2em;
+    margin-left: 0.6em;
+    width: 2em;
 }
 
 .trivial-GameQuestion .exeQuextIcons-MoveOne,
 .trivial-GameQuestion .exeQuextIcons-Submit,
 .exeQuextIcons-Error {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 /* Respuestas */
@@ -1198,7 +1199,7 @@ div:-moz-full-screen .trivial-CasillaDestino {
 
 /* Link */
 .trivial-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     margin-left: 0.1em;
@@ -1214,7 +1215,7 @@ div:-moz-full-screen .trivial-CasillaDestino {
 }
 
 .trivial-MainContainer .exeQuextIcons-Reboot {
-    background: url(exequextreload.png) no-repeat;
+    background: url(exequextreload.svg) no-repeat;
     background-size: 100% 100%;
     height: 100%;
     margin-left: 0.1em;

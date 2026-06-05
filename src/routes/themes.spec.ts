@@ -2,17 +2,39 @@
  * Tests for Themes Routes
  *
  * These tests work with the actual theme files in the project.
- * The routes use hardcoded paths so we test against real themes.
+ * Only base and site themes are served from the server.
+ * User themes from .elpx files are stored client-side in Yjs.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { themesRoutes, configure, resetDependencies } from './themes';
 import * as fs from 'fs';
+import * as path from 'path';
+import { getDb, resetClientCacheForTesting } from '../db/client';
+import { migrateToLatest } from '../db/migrations';
 
 describe('Themes Routes', () => {
     let app: Elysia;
+    let originalBasePath: string | undefined;
+
+    beforeAll(() => {
+        // Tests must be deterministic regardless of the developer's local .env.
+        // Snapshot BASE_PATH so we can restore it on suite teardown.
+        originalBasePath = process.env.BASE_PATH;
+    });
+
+    afterAll(() => {
+        if (originalBasePath !== undefined) {
+            process.env.BASE_PATH = originalBasePath;
+        } else {
+            delete process.env.BASE_PATH;
+        }
+    });
 
     beforeEach(() => {
+        // Default each test to a root deployment (BASE_PATH cleared). Tests that
+        // exercise BASE_PATH set it explicitly inside their own describe block.
+        delete process.env.BASE_PATH;
         resetDependencies();
         app = new Elysia().use(themesRoutes);
     });
@@ -83,12 +105,44 @@ describe('Themes Routes', () => {
             expect(typeof theme.icons).toBe('object');
         });
 
-        it('should have type as base or user', async () => {
+        it('should return icons with proper ThemeIcon structure (id is baseName without extension)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+
+            const body = await res.json();
+
+            // Find a theme with icons
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+
+            if (themeWithIcons) {
+                const firstIconKey = Object.keys(themeWithIcons.icons)[0];
+                const icon = themeWithIcons.icons[firstIconKey];
+
+                // Verify ThemeIcon structure
+                expect(icon).toHaveProperty('id');
+                expect(icon).toHaveProperty('title');
+                expect(icon).toHaveProperty('type');
+                expect(icon).toHaveProperty('value');
+                expect(typeof icon.id).toBe('string');
+                expect(typeof icon.title).toBe('string');
+                expect(typeof icon.type).toBe('string');
+                expect(typeof icon.value).toBe('string');
+                expect(icon.value).toMatch(/\/icons\//);
+                expect(icon.type).toBe('img');
+                // id is baseName without extension (e.g., "share") for cross-theme compatibility
+                // Key and id should match and not include extension
+                expect(icon.id).toBe(firstIconKey);
+                expect(icon.id).not.toMatch(/\.(svg|png|gif|jpe?g|webp)$/i);
+            }
+        });
+
+        it('should have type as base or site only', async () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             for (const theme of body.themes) {
-                expect(['base', 'user']).toContain(theme.type);
+                expect(['base', 'site']).toContain(theme.type);
             }
         });
 
@@ -98,452 +152,24 @@ describe('Themes Routes', () => {
             const body = await res.json();
             const theme = body.themes[0];
 
-            // URLs should start with /v followed by version
+            // URL should start with /v followed by version number
             expect(theme.url).toMatch(/^\/v[\d.]+/);
-            expect(theme.preview).toMatch(/^\/v[\d.]+/);
         });
 
-        it('should sort themes by displayName', async () => {
+        it('should return defaultTheme info', async () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
-            const displayNames = body.themes.map((t: any) => t.displayName);
-            const sorted = [...displayNames].sort((a, b) => a.localeCompare(b));
-
-            expect(displayNames).toEqual(sorted);
+            expect(body.defaultTheme).toBeDefined();
+            expect(body.defaultTheme.type).toBeDefined();
+            expect(body.defaultTheme.dirName).toBeDefined();
         });
 
-        it('should include base theme', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-
-            const body = await res.json();
-            // The default 'base' theme should exist
-            const baseTheme = body.themes.find((t: any) => t.dirName === 'base');
-
-            expect(baseTheme).toBeDefined();
-            expect(baseTheme.type).toBe('base');
-        });
-    });
-
-    describe('GET /api/themes/installed/:themeId', () => {
-        it('should return specific theme by ID', async () => {
-            // First get list to find a valid theme ID
-            const listRes = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const listBody = await listRes.json();
-            const themeId = listBody.themes[0]?.dirName;
-
-            if (!themeId) {
-                // Skip test if no themes exist
-                return;
-            }
-
-            const res = await app.handle(new Request(`http://localhost/api/themes/installed/${themeId}`));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.dirName).toBe(themeId);
-        });
-
-        it('should return 404 for non-existent theme', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed/non-existent-theme-xyz-123'),
-            );
-
-            expect(res.status).toBe(404);
-            const body = await res.json();
-            expect(body.error).toBe('Not Found');
-            expect(body.message).toContain('not found');
-        });
-
-        it('should return full theme config for base theme', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-
-            expect(body.dirName).toBe('base');
-            expect(body.name).toBeDefined();
-            expect(body.displayName).toBeDefined();
-            expect(body.url).toBeDefined();
-            expect(body.cssFiles).toBeDefined();
-            expect(body.valid).toBe(true);
-        });
-
-        it('should include metadata fields', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
-
-            const body = await res.json();
-
-            expect(body.version).toBeDefined();
-            expect(body.author).toBeDefined();
-            expect(body.license).toBeDefined();
-            expect(body.description).toBeDefined();
-        });
-
-        it('should return icon definitions', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
-
-            const body = await res.json();
-
-            expect(body.icons).toBeDefined();
-            expect(typeof body.icons).toBe('object');
-
-            // Check icon structure if icons exist
-            const iconKeys = Object.keys(body.icons);
-            if (iconKeys.length > 0) {
-                const firstIcon = body.icons[iconKeys[0]];
-                expect(firstIcon.id).toBeDefined();
-                expect(firstIcon.type).toBe('img');
-                expect(firstIcon.value).toBeDefined();
-            }
-        });
-
-        it('should handle theme ID with special characters safely', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/../../../etc/passwd'));
-
-            // Should return 404, not expose filesystem
-            expect(res.status).toBe(404);
-        });
-    });
-
-    describe('theme icon format', () => {
-        it('should have correct icon structure', async () => {
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-
-            const body = await res.json();
-            // Find a theme with icons
-            const themeWithIcons = body.themes.find((t: any) => Object.keys(t.icons || {}).length > 0);
-
-            if (themeWithIcons) {
-                const firstIconKey = Object.keys(themeWithIcons.icons)[0];
-                const icon = themeWithIcons.icons[firstIconKey];
-
-                expect(icon.id).toBe(firstIconKey);
-                expect(icon.title).toBeDefined();
-                expect(icon.type).toBe('img');
-                expect(icon.value).toContain('/icons/');
-            }
-        });
-    });
-
-    describe('APP_VERSION environment variable', () => {
-        it('should use APP_VERSION when set', async () => {
-            configure({
-                getEnv: (key: string) => (key === 'APP_VERSION' ? 'v99.99.99' : undefined),
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            // Theme URLs should include the custom version
-            const theme = body.themes[0];
-            expect(theme.url).toContain('/v99.99.99/');
-            expect(theme.preview).toContain('/v99.99.99/');
-        });
-    });
-
-    describe('getAppVersion fallback', () => {
-        it('should return v0.0.0 when package.json cannot be read', async () => {
-            configure({
-                fs: {
-                    existsSync: fs.existsSync,
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'package.json') {
-                            throw new Error('File not found');
-                        }
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-                getEnv: () => undefined,
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            // Theme URLs should include fallback version
-            const theme = body.themes[0];
-            expect(theme.url).toContain('/v0.0.0/');
-        });
-    });
-
-    describe('scanThemeFiles error handling', () => {
-        it('should return empty array when readdirSync throws', async () => {
-            let callCount = 0;
-            configure({
-                fs: {
-                    existsSync: fs.existsSync,
-                    readFileSync: fs.readFileSync,
-                    readdirSync: (dirPath: any, options?: any) => {
-                        // Throw on theme directory reads for CSS/JS scanning
-                        if (
-                            typeof dirPath === 'string' &&
-                            dirPath.includes('themes/base/base') &&
-                            !dirPath.includes('icons')
-                        ) {
-                            callCount++;
-                            if (callCount <= 2) {
-                                // Throw for first two calls (CSS and JS scanning)
-                                throw new Error('Permission denied');
-                            }
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            // Should still return themes (with default CSS file)
-            expect(body.themes.length).toBeGreaterThan(0);
-        });
-    });
-
-    describe('scanThemeIcons error handling', () => {
-        it('should return empty object when icons readdirSync throws', async () => {
-            configure({
-                fs: {
-                    existsSync: fs.existsSync,
-                    readFileSync: fs.readFileSync,
-                    readdirSync: (dirPath: any, options?: any) => {
-                        // Throw on icons directory read
-                        if (typeof dirPath === 'string' && dirPath.includes('/icons')) {
-                            throw new Error('Permission denied');
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            // Should still return themes with empty icons
-            expect(body.themes.length).toBeGreaterThan(0);
-        });
-    });
-
-    describe('default CSS file fallback', () => {
-        it('should add style.css when no CSS files found', async () => {
+        it('should return empty array when themes path does not exist', async () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        // Theme exists but no CSS files in directory
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: (dirPath: any, options?: any) => {
-                        const entries = fs.readdirSync(dirPath, options);
-                        // Filter out CSS files for theme directory
-                        if (
-                            typeof dirPath === 'string' &&
-                            dirPath.includes('themes/base/base') &&
-                            !dirPath.includes('icons')
-                        ) {
-                            return entries.filter((e: any) => !e.name?.endsWith('.css'));
-                        }
-                        return entries;
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            const baseTheme = body.themes.find((t: any) => t.dirName === 'base');
-            expect(baseTheme?.cssFiles).toContain('style.css');
-        });
-    });
-
-    describe('theme config with optional fields', () => {
-        it('should parse theme with logo-img', async () => {
-            const customConfig = `<?xml version="1.0"?>
-<theme>
-    <name>test-theme</name>
-    <title>Test Theme</title>
-    <version>1.0</version>
-    <logo-img>logo.png</logo-img>
-</theme>`;
-
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-logo/config.xml') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-logo/config.xml') return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-logo/config.xml') return customConfig;
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/test-logo'));
-            const body = await res.json();
-
-            expect(body.logoImg).toBe('logo.png');
-            expect(body.logoImgUrl).toContain('/img/logo.png');
-        });
-
-        it('should parse theme with header-img', async () => {
-            const customConfig = `<?xml version="1.0"?>
-<theme>
-    <name>test-theme</name>
-    <title>Test Theme</title>
-    <version>1.0</version>
-    <header-img>header.jpg</header-img>
-</theme>`;
-
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-header/config.xml') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-header/config.xml') return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-header/config.xml') return customConfig;
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/test-header'));
-            const body = await res.json();
-
-            expect(body.headerImg).toBe('header.jpg');
-            expect(body.headerImgUrl).toContain('/img/header.jpg');
-        });
-
-        it('should parse theme with text-color', async () => {
-            const customConfig = `<?xml version="1.0"?>
-<theme>
-    <name>test-theme</name>
-    <title>Test Theme</title>
-    <version>1.0</version>
-    <text-color>#333333</text-color>
-</theme>`;
-
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-textcolor/config.xml') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-textcolor/config.xml') return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-textcolor/config.xml') return customConfig;
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/test-textcolor'));
-            const body = await res.json();
-
-            expect(body.textColor).toBe('#333333');
-        });
-
-        it('should parse theme with link-color', async () => {
-            const customConfig = `<?xml version="1.0"?>
-<theme>
-    <name>test-theme</name>
-    <title>Test Theme</title>
-    <version>1.0</version>
-    <link-color>#0066cc</link-color>
-</theme>`;
-
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-linkcolor/config.xml') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-linkcolor/config.xml') return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-linkcolor/config.xml') return customConfig;
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/test-linkcolor'));
-            const body = await res.json();
-
-            expect(body.linkColor).toBe('#0066cc');
-        });
-    });
-
-    describe('parseThemeConfig error handling', () => {
-        it('should return 500 when config parsing throws exception', async () => {
-            // To trigger parseThemeConfig's catch block, we need to make something
-            // inside the try block throw. We can do this by making readFileSync
-            // inside parseThemeConfig throw (for scanning).
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/broken-theme/config.xml') return true;
-                        if (filePath === 'public/files/perm/themes/users/broken-theme/config.xml') return false;
-                        if (filePath.includes('broken-theme')) return true;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/broken-theme/config.xml') {
-                            // Return valid config - the error will happen elsewhere
-                            return `<?xml version="1.0"?><theme><name>broken</name></theme>`;
-                        }
-                        // Throw when trying to read package.json to get version
-                        // This will propagate up since getAppVersion is called inside parseThemeConfig
-                        if (filePath === 'package.json') {
-                            // Create an object that throws when JSON.parse accesses it
-                            return '{ invalid json that will throw }}}';
-                        }
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('broken-theme')) {
-                            return [];
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                },
-                getEnv: () => undefined,
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/broken-theme'));
-            const body = await res.json();
-
-            // With invalid JSON, getAppVersion falls back to v0.0.0
-            // The theme should still parse successfully
-            expect(res.status).toBe(200);
-            expect(body.name).toBe('broken');
-        });
-    });
-
-    describe('scanThemes with non-existent path', () => {
-        it('should return empty array when themes base path does not exist', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        // Both theme paths don't exist
                         if (filePath === 'public/files/perm/themes/base') return false;
-                        if (filePath === 'public/files/perm/themes/users') return false;
                         return fs.existsSync(filePath);
                     },
                     readFileSync: fs.readFileSync,
@@ -557,1120 +183,476 @@ describe('Themes Routes', () => {
 
             expect(body.themes).toEqual([]);
         });
-    });
 
-    describe('POST /api/themes/import', () => {
-        it('should return 422 when no file uploaded (Elysia validation)', async () => {
-            const formData = new FormData();
-            formData.append('themeDirname', 'test-theme');
+        it('should include site themes and mark site default', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+            const dbPath = ':memory:';
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = dbPath;
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
 
-            // Elysia returns 422 for schema validation errors
-            expect(res.status).toBe(422);
-        });
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
 
-        it('should return 422 when no dirname provided (Elysia validation)', async () => {
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['test']), 'test.zip');
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'site-test-theme',
+                        display_name: 'Site Test Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
+                await dbInstance.deleteFrom('app_settings').where('key', '=', 'default_theme').execute();
 
-            // Elysia returns 422 for schema validation errors
-            expect(res.status).toBe(422);
-        });
+                await dbInstance
+                    .insertInto('app_settings')
+                    .values({
+                        key: 'default_theme',
+                        value: JSON.stringify({ type: 'site', dirName: 'site-test-theme' }),
+                        type: 'json',
+                        updated_at: Date.now(),
+                    })
+                    .execute();
 
-        it('should return error for invalid ZIP file', async () => {
-            configure({
-                validateThemeZip: async () => ({ valid: false, error: 'Invalid ZIP format' }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['not a zip']), 'invalid.zip');
-            formData.append('themeDirname', 'test-theme');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Invalid ZIP format');
-        });
-
-        it('should return error when theme name conflicts with base theme', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Test Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'base'); // 'base' is a protected name
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toContain('already exists on the server (base theme)');
-        });
-
-        it('should return error when theme exists in base directory', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('themes/base/new-theme')) return true;
-                        return fs.existsSync(p);
+                configure({
+                    getEnv: (key: string) => (key === 'APP_VERSION' ? 'v9.9.9' : undefined),
+                    fs: {
+                        existsSync: () => false,
+                        readFileSync: fs.readFileSync,
+                        readdirSync: fs.readdirSync,
                     },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'New Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
+                });
+                app = new Elysia().use(themesRoutes);
 
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'new-theme');
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists on the server (base theme)');
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'site-test-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.type).toBe('site');
+                expect(siteTheme.isDefault).toBe(true);
+                // URL embeds the theme's updated_at as a cache-buster suffix
+                // so re-uploaded themes invalidate the browser cache automatically.
+                expect(siteTheme.url).toMatch(/^\/v9\.9\.9-\d+\/site-files\/themes\/site-test-theme$/);
+                // Also exposed explicitly so the client can key its IndexedDB
+                // and bundle URL caches per re-upload (PR #1775).
+                expect(typeof siteTheme.updatedAt).toBe('number');
+                expect(siteTheme.updatedAt).toBeGreaterThan(0);
+                const urlMatch = siteTheme.url.match(/-(\d+)\/site-files\//);
+                expect(urlMatch?.[1]).toBe(String(siteTheme.updatedAt));
+                expect(body.defaultTheme).toEqual({ type: 'site', dirName: 'site-test-theme' });
+            } finally {
+                await resetClientCacheForTesting();
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
         });
 
-        it('should return error when theme exists in site directory', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Site Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        if (p.includes('themes/site/site-theme')) return true;
-                        return false;
+        it('should respect downloadable=0 in config.xml for site themes', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
+
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'non-downloadable-theme',
+                        display_name: 'Non Downloadable Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (typeof p === 'string' && p.includes('non-downloadable-theme')) return true;
+                            return false;
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (
+                                typeof p === 'string' &&
+                                p.includes('non-downloadable-theme') &&
+                                p.includes('config.xml')
+                            ) {
+                                return '<theme><name>Non Downloadable Theme</name><downloadable>0</downloadable></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('non-downloadable-theme')) {
+                                return [] as fs.Dirent[];
+                            }
+                            return [] as fs.Dirent[];
+                        },
                     },
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
+                });
+                app = new Elysia().use(themesRoutes);
 
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'site-theme');
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists on the server (site theme)');
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'non-downloadable-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.downloadable).toBe('0');
+            } finally {
+                await resetClientCacheForTesting();
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
         });
 
-        it('should return success when theme already exists in user folder', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'User Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        // Theme exists in user folder
-                        if (p.includes('themes/users/user-theme')) return true;
-                        return false;
+        it('should default downloadable to 1 when not specified in config.xml for site themes', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
+
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'no-flag-theme',
+                        display_name: 'No Flag Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (typeof p === 'string' && p.includes('no-flag-theme')) return true;
+                            return false;
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (typeof p === 'string' && p.includes('no-flag-theme') && p.includes('config.xml')) {
+                                return '<theme><name>No Flag Theme</name></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('no-flag-theme')) {
+                                return [] as fs.Dirent[];
+                            }
+                            return [] as fs.Dirent[];
+                        },
                     },
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
+                });
+                app = new Elysia().use(themesRoutes);
 
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'user-theme');
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.themes).toBeDefined();
-        });
-
-        it('should successfully import new theme', async () => {
-            let extractCalled = false;
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Brand New Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {
-                    extractCalled = true;
-                },
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'brand-new-theme');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(extractCalled).toBe(true);
-        });
-
-        it('should handle extraction errors', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Error Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {
-                    throw new Error('Extraction failed');
-                },
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'error-theme');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Extraction failed');
-        });
-
-        it('should return error when dirname produces empty dirName after slugify', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: '   ', version: '1.0', author: 'Test' }, // Whitespace name
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', '!!!'); // Produces empty after slugify
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('Could not generate valid directory name');
-        });
-
-        it('should scan user themes directory when it exists during re-import', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        // User themes dir exists
-                        if (p.includes('themes/users')) return true;
-                        return fs.existsSync(p);
-                    },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: (p: any, opts?: any) => {
-                        // Return empty dir for user themes
-                        if (typeof p === 'string' && p.includes('themes/users')) return [];
-                        return fs.readdirSync(p, opts);
-                    },
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Existing Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        // Theme already exists in user folder
-                        if (p.includes('themes/users/existing-theme')) return true;
-                        // User themes dir exists
-                        if (p.includes('themes/users')) return true;
-                        return false;
-                    },
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const formData = new FormData();
-            formData.append('themeZip', new Blob(['valid zip']), 'theme.zip');
-            formData.append('themeDirname', 'existing-theme');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/import', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'no-flag-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.downloadable).toBe('1');
+            } finally {
+                await resetClientCacheForTesting();
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
         });
     });
 
-    describe('POST /api/themes/upload', () => {
-        it('should return 422 when file is missing (Elysia validation)', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: 'test.zip' }),
-                }),
-            );
-
-            // Elysia returns 422 for schema validation errors
-            expect(res.status).toBe(422);
-        });
-
-        it('should return 422 when filename is missing (Elysia validation)', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file: 'base64data' }),
-                }),
-            );
-
-            // Elysia returns 422 for schema validation errors
-            expect(res.status).toBe(422);
-        });
-
-        it('should return error for invalid ZIP content', async () => {
-            configure({
-                validateThemeZip: async () => ({ valid: false, error: 'Invalid theme ZIP format' }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const invalidZip = Buffer.from('not a zip file').toString('base64');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'test.zip',
-                        file: invalidZip,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Invalid theme ZIP format');
-        });
-
-        it('should return error for invalid data URL ZIP', async () => {
-            configure({
-                validateThemeZip: async () => ({ valid: false, error: 'Invalid ZIP' }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const invalidZip = Buffer.from('not a zip').toString('base64');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'test.zip',
-                        file: `data:application/zip;base64,${invalidZip}`,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-        });
-
-        it('should return error when theme conflicts with base theme name', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Base', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'base.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists on the server (base theme)');
-        });
-
-        it('should return error when theme exists in base directory', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('themes/base/existing-theme')) return true;
-                        return fs.existsSync(p);
-                    },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Existing Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'existing-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists on the server (base theme)');
-        });
-
-        it('should return error when theme exists in site directory', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Site Existing', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        if (p.includes('themes/site/site-existing')) return true;
-                        return false;
-                    },
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'site-existing.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists on the server (site theme)');
-        });
-
-        it('should return error when theme exists in legacy user directory', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('themes/users/legacy-theme')) return true;
-                        return fs.existsSync(p);
-                    },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Legacy Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'legacy-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists');
-        });
-
-        it('should return error when theme exists in FILES_DIR user directory', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'User Dir Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        if (p.includes('themes/users/user-dir-theme')) return true;
-                        return false;
-                    },
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'user-dir-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('already exists');
-        });
-
-        it('should successfully upload and extract new theme with config.xml', async () => {
-            let extractCalled = false;
-            const configXml = `<?xml version="1.0"?>
-<theme><name>uploaded-theme</name><title>Uploaded Theme</title></theme>`;
-
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('uploaded-theme/config.xml')) return true;
-                        return fs.existsSync(p);
-                    },
-                    readFileSync: (p: string, encoding?: string) => {
-                        if (p.includes('uploaded-theme/config.xml')) return configXml;
-                        return fs.readFileSync(p, encoding as BufferEncoding);
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Uploaded Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {
-                    extractCalled = true;
-                },
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'uploaded-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
+    describe('GET /api/themes/installed/:themeId', () => {
+        it('should return specific theme by ID', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.theme).toBeDefined();
-            expect(extractCalled).toBe(true);
+            expect(body.dirName).toBe('base');
+            expect(body.type).toBe('base');
         });
 
-        it('should successfully upload theme without config.xml', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('no-config-theme/config.xml')) return false;
-                        return fs.existsSync(p);
+        it('should return site theme config with custom URL prefix', async () => {
+            const themeId = 'site-theme';
+            const baseConfigPath = path.join('public/files/perm/themes/base', themeId, 'config.xml');
+            const siteThemesPath = path.join('/tmp/test-files', 'themes', 'site');
+            const siteConfigPath = path.join(siteThemesPath, themeId, 'config.xml');
+            const siteThemePath = path.join(siteThemesPath, themeId);
+            const savedEnv = {
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+                configure({
+                    getEnv: (key: string) => (key === 'APP_VERSION' ? 'v1.0.0' : undefined),
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (p === baseConfigPath) return false;
+                            if (p === siteConfigPath) return true;
+                            if (p === siteThemePath) return false;
+                            if (p.includes(`${path.sep}icons`)) return false;
+                            return fs.existsSync(p);
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (p === siteConfigPath) {
+                                return '<theme><name>Site Theme</name><version>1.0</version></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: fs.readdirSync,
                     },
-                    readFileSync: fs.readFileSync,
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'No Config Theme', version: '2.0', author: 'Author' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
+                });
+                app = new Elysia().use(themesRoutes);
 
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'no-config-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
+                const res = await app.handle(new Request(`http://localhost/api/themes/installed/${themeId}`));
 
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.theme.displayName).toBe('No Config Theme');
-            expect(body.theme.version).toBe('2.0');
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.type).toBe('site');
+                expect(body.url).toBe(`/v1.0.0/site-files/themes/${themeId}`);
+            } finally {
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
         });
 
-        it('should fallback when config.xml parsing fails', async () => {
-            configure({
-                fs: {
-                    existsSync: (p: string) => {
-                        if (p.includes('parse-fail-theme/config.xml')) return true;
-                        return fs.existsSync(p);
-                    },
-                    readFileSync: (p: string, encoding?: string) => {
-                        if (p.includes('parse-fail-theme/config.xml')) return null as any; // Will cause parsing to fail
-                        return fs.readFileSync(p, encoding as BufferEncoding);
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Parse Fail Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'parse-fail-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.theme.displayName).toBe('Parse Fail Theme');
-        });
-
-        it('should handle extraction errors', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: 'Error Theme', version: '1.0', author: 'Test' },
-                }),
-                extractTheme: async () => {
-                    throw new Error('Upload extraction failed');
-                },
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'error-theme.zip',
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Upload extraction failed');
-        });
-
-        it('should return error when data URL has empty base64 part', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: 'test.zip',
-                        file: 'data:application/zip;base64,', // Empty base64 after comma
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toBe('Invalid base64 data');
-        });
-
-        it('should return error when filename produces empty dirName after slugify', async () => {
-            configure({
-                validateThemeZip: async () => ({
-                    valid: true,
-                    metadata: { name: '   ', version: '1.0', author: 'Test' }, // Whitespace-only name
-                }),
-                extractTheme: async () => {},
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const zipData = Buffer.from('valid zip data').toString('base64');
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: '!!!.zip', // Will produce empty after slugify
-                        file: zipData,
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toContain('Could not generate valid directory name');
-        });
-    });
-
-    describe('DELETE /api/themes/:themeId/delete', () => {
-        it('should return error when no theme ID provided', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/{themeId}/delete', {
-                    method: 'DELETE',
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('No theme ID provided');
-        });
-
-        it('should return 403 when trying to delete base theme', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/base/delete', {
-                    method: 'DELETE',
-                }),
-            );
-
-            expect(res.status).toBe(403);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Cannot delete built-in themes');
-        });
-
-        it('should return 404 when theme does not exist', async () => {
-            configure({
-                fsExtra: {
-                    pathExists: async () => false,
-                    remove: async () => {},
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/non-existent-user-theme/delete', {
-                    method: 'DELETE',
-                }),
-            );
+        it('should return 404 for non-existent theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/non-existent-theme'));
 
             expect(res.status).toBe(404);
             const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toContain('not found');
+            expect(body.error).toBe('Not Found');
         });
 
-        it('should handle theme ID from body when path param is placeholder', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/{themeId}/delete', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: 'base' }),
-                }),
-            );
+        it('should include all theme properties', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
 
-            // Should recognize 'base' as a protected theme
-            expect(res.status).toBe(403);
             const body = await res.json();
-            expect(body.error).toBe('Cannot delete built-in themes');
+            expect(body.name).toBeDefined();
+            expect(body.dirName).toBe('base');
+            expect(body.displayName).toBeDefined();
+            expect(body.url).toBeDefined();
+            expect(body.cssFiles).toBeDefined();
+            expect(body.js).toBeDefined();
+            expect(body.icons).toBeDefined();
+        });
+    });
+
+    describe('GET /api/resources/theme/:themeName/bundle', () => {
+        it('should return theme bundle with files', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/base/bundle'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.themeName).toBe('base');
+            expect(body.files).toBeDefined();
+            expect(typeof body.files).toBe('object');
         });
 
-        it('should delete theme from legacy location', async () => {
-            let removeCalled = false;
+        it('should include CSS file in bundle', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/base/bundle'));
+
+            const body = await res.json();
+            // Should have at least style.css
+            const hasStyleCss = Object.keys(body.files).some(f => f.endsWith('.css'));
+            expect(hasStyleCss).toBe(true);
+        });
+
+        it('should return 404 for non-existent theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/non-existent/bundle'));
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should encode files as base64', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/base/bundle'));
+
+            const body = await res.json();
+            const firstFile = Object.values(body.files)[0] as string;
+            // Base64 strings should not contain special characters except +, /, =
+            expect(firstFile).toMatch(/^[A-Za-z0-9+/=]+$/);
+        });
+    });
+
+    describe('version handling', () => {
+        it('should use APP_VERSION env var when set', async () => {
             configure({
+                getEnv: (key: string) => (key === 'APP_VERSION' ? 'v1.2.3' : undefined),
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            if (body.themes.length > 0) {
+                expect(body.themes[0].url).toContain('/v1.2.3/');
+            }
+        });
+
+        it('should fall back to package.json version', async () => {
+            configure({
+                getEnv: () => undefined,
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            if (body.themes.length > 0) {
+                // Should have some version in URL
+                expect(body.themes[0].url).toMatch(/^\/v[\d.]+/);
+            }
+        });
+
+        it('should fall back to v0.0.0 when package.json is invalid', async () => {
+            configure({
+                getEnv: () => undefined,
                 fs: {
                     existsSync: (p: string) => {
-                        if (p.includes('themes/users/legacy-deletable')) return true;
+                        if (p.includes('package.json')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('package.json')) {
+                            return 'invalid json {{{';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: fs.readdirSync,
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            if (body.themes.length > 0) {
+                expect(body.themes[0].url).toContain('/v0.0.0/');
+            }
+        });
+
+        it('should fall back to v0.0.0 when package.json does not exist', async () => {
+            configure({
+                getEnv: () => undefined,
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('package.json')) return false;
                         return fs.existsSync(p);
                     },
                     readFileSync: fs.readFileSync,
                     readdirSync: fs.readdirSync,
                 },
-                fsExtra: {
-                    pathExists: async () => false, // Not in user themes dir
-                    remove: async () => {
-                        removeCalled = true;
-                    },
-                },
             });
             app = new Elysia().use(themesRoutes);
 
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/legacy-deletable/delete', {
-                    method: 'DELETE',
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.deleted.name).toBe('legacy-deletable');
-            expect(removeCalled).toBe(true);
-        });
-
-        it('should delete theme from user themes directory', async () => {
-            let removeCalled = false;
-            configure({
-                fsExtra: {
-                    pathExists: async (p: string) => {
-                        if (p.includes('themes/users/user-deletable')) return true;
-                        return false;
-                    },
-                    remove: async () => {
-                        removeCalled = true;
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/user-deletable/delete', {
-                    method: 'DELETE',
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.deleted.name).toBe('user-deletable');
-            expect(removeCalled).toBe(true);
-        });
-
-        it('should handle deletion errors', async () => {
-            configure({
-                fsExtra: {
-                    pathExists: async () => true,
-                    remove: async () => {
-                        throw new Error('Permission denied');
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/error-delete-theme/delete', {
-                    method: 'DELETE',
-                }),
-            );
-
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('ERROR');
-            expect(body.error).toBe('Permission denied');
-        });
-    });
-
-    describe('parseThemeConfig catch block', () => {
-        it('should return null when config parsing throws', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath.includes('parse-error-theme')) return true;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath.includes('parse-error-theme/config.xml')) {
-                            // Return XML that will cause parsing to throw
-                            // Actually need to trigger an error in the try block
-                            // The getValue function uses regex, so we need something else to throw
-                            return null as any; // This will cause .match() to throw
-                        }
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: fs.readdirSync,
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/parse-error-theme'));
-
-            // Should return 500 since parseThemeConfig returns null
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.error).toBe('Parse Error');
-        });
-    });
-
-    describe('customUrlPrefix in parseThemeConfig', () => {
-        it('should use custom URL prefix for site themes', async () => {
-            // This tests line 190 - customUrlPrefix branch
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath.includes('site-theme-test')) return true;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath.includes('site-theme-test/config.xml')) {
-                            return `<?xml version="1.0"?>
-<theme>
-    <name>site-theme-test</name>
-    <title>Site Theme Test</title>
-</theme>`;
-                        }
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('site-theme-test')) {
-                            return [];
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            // The /api/themes/installed endpoint uses custom prefix for user themes from FILES_DIR
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
             const body = await res.json();
 
-            // Verify theme list is returned
-            expect(body.themes).toBeDefined();
+            if (body.themes.length > 0) {
+                expect(body.themes[0].url).toContain('/v0.0.0/');
+            }
         });
     });
 
-    describe('icon file type detection', () => {
-        it('should detect various icon file types', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath.includes('icon-test-theme')) return true;
-                        return fs.existsSync(filePath);
-                    },
-                    readFileSync: (filePath: string) => {
-                        if (filePath.includes('icon-test-theme/config.xml')) {
-                            return `<?xml version="1.0"?><theme><name>icon-test</name></theme>`;
-                        }
-                        return fs.readFileSync(filePath, 'utf-8');
-                    },
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('icon-test-theme/icons')) {
-                            return [
-                                { name: 'icon1.png', isFile: () => true, isDirectory: () => false },
-                                { name: 'icon2.svg', isFile: () => true, isDirectory: () => false },
-                                { name: 'icon3.gif', isFile: () => true, isDirectory: () => false },
-                                { name: 'icon4.jpg', isFile: () => true, isDirectory: () => false },
-                                { name: 'icon5.jpeg', isFile: () => true, isDirectory: () => false },
-                                { name: 'noticon.txt', isFile: () => true, isDirectory: () => false },
-                            ];
-                        }
-                        if (typeof dirPath === 'string' && dirPath.includes('icon-test-theme')) {
-                            return [];
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                },
-            });
-            app = new Elysia().use(themesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/themes/installed/icon-test-theme'));
-            const body = await res.json();
-
-            expect(body.icons).toBeDefined();
-            expect(body.icons['icon1']).toBeDefined();
-            expect(body.icons['icon2']).toBeDefined();
-            expect(body.icons['icon3']).toBeDefined();
-            expect(body.icons['icon4']).toBeDefined();
-            expect(body.icons['icon5']).toBeDefined();
-            expect(body.icons['noticon']).toBeUndefined();
-        });
-    });
-
-    describe('theme type handling', () => {
-        it('should mark site theme as default when matching', async () => {
-            // This is hard to test without mocking the database
-            // The test verifies the themes endpoint works correctly
-            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
-            const body = await res.json();
-
-            // At least one theme should be returned
-            expect(body.themes.length).toBeGreaterThan(0);
-            expect(body.defaultTheme).toBeDefined();
-        });
-    });
-
-    describe('directory entry handling', () => {
-        it('should skip hidden directories and non-directories', async () => {
+    describe('edge cases', () => {
+        it('should handle theme with no CSS files (falls back to style.css)', async () => {
             configure({
                 fs: {
                     existsSync: fs.existsSync,
                     readFileSync: fs.readFileSync,
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (dirPath === 'public/files/perm/themes/base') {
-                            return [
-                                { name: '.hidden', isDirectory: () => true },
-                                { name: 'regular-file.txt', isDirectory: () => false },
-                                { name: 'base', isDirectory: () => true },
-                            ];
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        // Return empty list for CSS scan
+                        if (
+                            typeof dirPath === 'string' &&
+                            dirPath.includes('themes/base/') &&
+                            !dirPath.includes('icons')
+                        ) {
+                            const entries = fs.readdirSync(dirPath, options);
+                            // Filter out CSS files to simulate no CSS
+                            if (Array.isArray(entries) && entries.length > 0 && typeof entries[0] === 'object') {
+                                return (entries as fs.Dirent[]).filter(e => !e.name.endsWith('.css'));
+                            }
                         }
                         return fs.readdirSync(dirPath, options);
                     },
@@ -1681,10 +663,586 @@ describe('Themes Routes', () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
             const body = await res.json();
 
-            // Should only include 'base' theme, not hidden or files
-            const dirNames = body.themes.map((t: any) => t.dirName);
-            expect(dirNames).not.toContain('.hidden');
-            expect(dirNames).not.toContain('regular-file.txt');
+            // At least one theme should have style.css as fallback
+            const theme = body.themes.find((t: { cssFiles: string[] }) => t.cssFiles.includes('style.css'));
+            expect(theme).toBeDefined();
+        });
+
+        it('should handle theme with no icons directory', async () => {
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('/icons')) return false;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: fs.readFileSync,
+                    readdirSync: fs.readdirSync,
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            expect(body.themes.length).toBeGreaterThan(0);
+            // Themes should have empty icons object
+            expect(typeof body.themes[0].icons).toBe('object');
+        });
+
+        it('should support multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
+            // Mock theme with icons in various formats
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('multi-format-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('multi-format-theme/config.xml')) {
+                            return '<theme><name>Multi Format Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'multi-format-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('multi-format-theme/icons')) {
+                            return [
+                                { name: 'icon-svg.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-png.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-gif.gif', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-jpg.jpg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-jpeg.jpeg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-webp.webp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('multi-format-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'multi-format-theme');
+            expect(theme).toBeDefined();
+            expect(theme.icons).toBeDefined();
+
+            // All formats should be recognized - keyed by baseName (without extension)
+            expect(theme.icons['icon-svg']).toBeDefined();
+            expect(theme.icons['icon-svg'].id).toBe('icon-svg');
+            expect(theme.icons['icon-svg'].value).toContain('icon-svg.svg');
+
+            expect(theme.icons['icon-png']).toBeDefined();
+            expect(theme.icons['icon-png'].id).toBe('icon-png');
+            expect(theme.icons['icon-png'].value).toContain('icon-png.png');
+
+            expect(theme.icons['icon-gif']).toBeDefined();
+            expect(theme.icons['icon-gif'].id).toBe('icon-gif');
+            expect(theme.icons['icon-gif'].value).toContain('icon-gif.gif');
+
+            expect(theme.icons['icon-jpg']).toBeDefined();
+            expect(theme.icons['icon-jpg'].id).toBe('icon-jpg');
+            expect(theme.icons['icon-jpg'].value).toContain('icon-jpg.jpg');
+
+            expect(theme.icons['icon-jpeg']).toBeDefined();
+            expect(theme.icons['icon-jpeg'].id).toBe('icon-jpeg');
+            expect(theme.icons['icon-jpeg'].value).toContain('icon-jpeg.jpeg');
+
+            expect(theme.icons['icon-webp']).toBeDefined();
+            expect(theme.icons['icon-webp'].id).toBe('icon-webp');
+            expect(theme.icons['icon-webp'].value).toContain('icon-webp.webp');
+        });
+
+        it('should prioritize SVG over PNG when same icon exists in multiple formats', async () => {
+            // Mock theme with same icon in svg and png formats
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('priority-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('priority-theme/config.xml')) {
+                            return '<theme><name>Priority Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'priority-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('priority-theme/icons')) {
+                            // Same icon exists in multiple formats
+                            return [
+                                { name: 'share.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'share.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'share.gif', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('priority-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'priority-theme');
+            expect(theme).toBeDefined();
+            expect(theme.icons).toBeDefined();
+
+            // Should only have one 'share' icon entry (the SVG version, keyed by baseName)
+            expect(theme.icons['share']).toBeDefined();
+            expect(theme.icons['share'].id).toBe('share');
+            expect(theme.icons['share'].value).toContain('share.svg');
+            // The key is baseName, so there's only one entry for 'share' (SVG prioritized)
+        });
+
+        it('should prioritize PNG over GIF when SVG is not available', async () => {
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('png-gif-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('png-gif-theme/config.xml')) {
+                            return '<theme><name>PNG GIF Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'png-gif-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('png-gif-theme/icons')) {
+                            return [
+                                { name: 'download.gif', isDirectory: () => false, isFile: () => true },
+                                { name: 'download.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'download.webp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('png-gif-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'png-gif-theme');
+            expect(theme).toBeDefined();
+
+            // PNG should be chosen over GIF and WEBP (keyed by baseName)
+            expect(theme.icons['download']).toBeDefined();
+            expect(theme.icons['download'].id).toBe('download');
+            expect(theme.icons['download'].value).toContain('download.png');
+            // The key is baseName, so there's only one entry for 'download' (PNG prioritized)
+        });
+
+        it('should ignore unsupported file formats in icons directory', async () => {
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('mixed-files-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('mixed-files-theme/config.xml')) {
+                            return '<theme><name>Mixed Files Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'mixed-files-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('mixed-files-theme/icons')) {
+                            return [
+                                { name: 'valid-icon.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'readme.txt', isDirectory: () => false, isFile: () => true },
+                                { name: 'config.json', isDirectory: () => false, isFile: () => true },
+                                { name: '.DS_Store', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon.bmp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('mixed-files-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'mixed-files-theme');
+            expect(theme).toBeDefined();
+
+            // Only valid icon should be included (keyed by baseName)
+            const iconKeys = Object.keys(theme.icons);
+            expect(iconKeys).toHaveLength(1);
+            expect(iconKeys[0]).toBe('valid-icon');
+            expect(theme.icons['valid-icon'].value).toContain('valid-icon.svg');
+        });
+
+        it('should handle non-directory entries in themes folder', async () => {
+            configure({
+                fs: {
+                    existsSync: fs.existsSync,
+                    readFileSync: fs.readFileSync,
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        const entries = fs.readdirSync(dirPath, options);
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            // Add a fake file entry
+                            if (Array.isArray(entries) && options?.withFileTypes) {
+                                const fakeFile = {
+                                    name: 'not-a-directory.txt',
+                                    isDirectory: () => false,
+                                    isFile: () => true,
+                                };
+                                return [...(entries as fs.Dirent[]), fakeFile as fs.Dirent];
+                            }
+                        }
+                        return entries;
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            // Should not crash and should return valid themes
+            expect(body.themes.length).toBeGreaterThan(0);
+        });
+
+        it('should handle hidden directories (starting with dot)', async () => {
+            configure({
+                fs: {
+                    existsSync: fs.existsSync,
+                    readFileSync: fs.readFileSync,
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        const entries = fs.readdirSync(dirPath, options);
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            if (Array.isArray(entries) && options?.withFileTypes) {
+                                const hiddenDir = {
+                                    name: '.hidden-theme',
+                                    isDirectory: () => true,
+                                    isFile: () => false,
+                                };
+                                return [...(entries as fs.Dirent[]), hiddenDir as fs.Dirent];
+                            }
+                        }
+                        return entries;
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            // Should not include hidden directory
+            const hiddenTheme = body.themes.find((t: { dirName: string }) => t.dirName === '.hidden-theme');
+            expect(hiddenTheme).toBeUndefined();
+        });
+
+        it('should return 500 when theme config parsing fails', async () => {
+            // Create a mock that makes parseThemeConfig throw and return null
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('malformed-theme')) {
+                            return true;
+                        }
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('malformed-theme/config.xml')) {
+                            return '<theme><name>Test</name></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        // Make readdirSync throw for the theme directory (inside parseThemeConfig try block)
+                        if (typeof dirPath === 'string' && dirPath.includes('malformed-theme')) {
+                            throw new Error('Cannot read directory');
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            // Try to get the specific malformed theme
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/malformed-theme'));
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toBe('Parse Error');
+        });
+
+        it('should handle scanThemeFiles when path does not exist', async () => {
+            // Test the scanThemeFiles early return when path doesn't exist
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        // config.xml exists
+                        if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
+                            return true;
+                        }
+                        // Theme directory for scanning CSS/JS doesn't exist
+                        if (typeof p === 'string' && p.includes('empty-theme') && !p.includes('config.xml')) {
+                            return false;
+                        }
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
+                            return '<theme><name>Empty Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                {
+                                    name: 'empty-theme',
+                                    isDirectory: () => true,
+                                    isFile: () => false,
+                                },
+                            ] as fs.Dirent[];
+                        }
+                        // For theme directory scanning, return empty
+                        if (typeof dirPath === 'string' && dirPath.includes('empty-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const emptyTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'empty-theme');
+            expect(emptyTheme).toBeDefined();
+            // Should fall back to style.css when no CSS files found
+            expect(emptyTheme?.cssFiles).toContain('style.css');
+        });
+    });
+
+    describe('GET /api/themes/:themeId/download', () => {
+        it('should return ZIP file data for base theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.zipFileName).toBeDefined();
+            expect(body.zipFileName).toContain('.zip');
+            expect(body.zipBase64).toBeDefined();
+            // Base64 should be valid
+            expect(body.zipBase64).toMatch(/^[A-Za-z0-9+/=]+$/);
+        });
+
+        it('should include theme name in filename', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            const body = await res.json();
+            // The base theme should have its name from config.xml (lowercase "base")
+            expect(body.zipFileName).toBe('base.zip');
+        });
+
+        it('should return 404 for non-existent theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/non-existent-theme/download'));
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toBe('Not Found');
+        });
+
+        it('should check site themes if base theme not found', async () => {
+            // This test verifies that when a theme is not found in base themes,
+            // the endpoint checks site themes directory. We use a theme that
+            // doesn't exist anywhere to verify the 404 logic covers both paths.
+            const siteThemesPath = '/tmp/test-nonexistent/themes/site';
+            const savedEnv = {
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-nonexistent';
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            // Base theme doesn't exist
+                            if (p === path.join('public/files/perm/themes/base', 'check-site-theme')) {
+                                return false;
+                            }
+                            // Site theme doesn't exist either
+                            if (p === path.join(siteThemesPath, 'check-site-theme')) {
+                                return false;
+                            }
+                            return fs.existsSync(p);
+                        },
+                        readFileSync: fs.readFileSync,
+                        readdirSync: fs.readdirSync,
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/themes/check-site-theme/download'));
+
+                // Should return 404 since theme not found in either location
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            } finally {
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
+        });
+
+        it('should use themeId as fallback filename when config.xml has no name tag', async () => {
+            // Test with a real theme but config.xml without <name> tag
+            // We use the "base" theme which exists and has files for createZipBuffer
+            // but mock the readFileSync to return config without name
+            configure({
+                fs: {
+                    existsSync: fs.existsSync,
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        // When reading config.xml for name extraction, return config without name
+                        if (typeof p === 'string' && p.includes('base/config.xml') && encoding === 'utf-8') {
+                            return '<theme><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: fs.readdirSync,
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Falls back to themeId when name cannot be extracted from config.xml
+            expect(body.zipFileName).toBe('base.zip');
+        });
+    });
+
+    describe('BASE_PATH handling (regression for issue #1802)', () => {
+        // When eXeLearning is deployed in a subdirectory, every URL the server
+        // emits must include BASE_PATH; otherwise the reverse proxy in front of
+        // Bun (which only mounts the BASE_PATH namespace) returns 404 for the
+        // bare-rooted URLs and the icon picker / TinyMCE plugins break.
+        let savedBasePath: string | undefined;
+
+        beforeEach(() => {
+            savedBasePath = process.env.BASE_PATH;
+            resetDependencies();
+            app = new Elysia().use(themesRoutes);
+        });
+
+        afterEach(() => {
+            if (savedBasePath !== undefined) {
+                process.env.BASE_PATH = savedBasePath;
+            } else {
+                delete process.env.BASE_PATH;
+            }
+            resetDependencies();
+        });
+
+        it('emits unprefixed URLs when BASE_PATH is empty', async () => {
+            delete process.env.BASE_PATH;
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            expect(themeWithIcons).toBeDefined();
+
+            // Every URL stays at root (no /aplicaciones/... prefix)
+            expect(themeWithIcons.url.startsWith('/aplicaciones/')).toBe(false);
+            expect(themeWithIcons.preview.startsWith('/aplicaciones/')).toBe(false);
+            for (const icon of Object.values(themeWithIcons.icons) as Array<{ value: string }>) {
+                expect(icon.value.startsWith('/aplicaciones/')).toBe(false);
+                expect(icon.value).toMatch(/\/files\/perm\/themes\/.+\/icons\//);
+            }
+        });
+
+        it('prefixes every emitted URL with BASE_PATH when configured', async () => {
+            process.env.BASE_PATH = '/aplicaciones/medusa/exelearning';
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            expect(themeWithIcons).toBeDefined();
+
+            // Theme's own URLs prefixed
+            expect(themeWithIcons.url.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+            expect(themeWithIcons.preview.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+
+            // Every icon URL prefixed - this is the regression test for the icon picker bug.
+            const iconValues = Object.values(themeWithIcons.icons) as Array<{ value: string }>;
+            expect(iconValues.length).toBeGreaterThan(0);
+            for (const icon of iconValues) {
+                expect(icon.value.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+            }
+        });
+
+        it('normalizes trailing slash on BASE_PATH (no double-slash in URLs)', async () => {
+            process.env.BASE_PATH = '/exe/';
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            for (const icon of Object.values(themeWithIcons.icons) as Array<{ value: string }>) {
+                expect(icon.value.startsWith('/exe/')).toBe(true);
+                expect(icon.value).not.toContain('/exe//');
+            }
+            expect(themeWithIcons.url.startsWith('/exe/')).toBe(true);
+            expect(themeWithIcons.url).not.toContain('/exe//');
         });
     });
 });

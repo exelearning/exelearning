@@ -16,7 +16,33 @@ export default class ConnecionTime {
      *
      */
     async init() {
+        // Skip in static mode - no server to check last updated from
+        const app = eXeLearning?.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            // In static mode, show a default state
+            this.setStaticModeState();
+            return;
+        }
         await this.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Set UI state for static mode (no server connection)
+     */
+    setStaticModeState() {
+        $(this.connTimeElementWrapper).attr(
+            'data-bs-original-title',
+            _('Offline mode')
+        );
+        this.connTimeElement.innerHTML =
+            '<span class="auto-icon" aria-hidden="true">cloud_off</span><span class="visually-hidden">' +
+            _('Offline mode') +
+            '</span>';
+        this.connTimeElementWrapper.className = 'offline-mode';
+        $('#head-top-save-button')
+            .attr('data-bs-original-title', _('Offline mode'));
+        $('#exe-last-edition').tooltip();
     }
 
     /**
@@ -24,6 +50,14 @@ export default class ConnecionTime {
      *
      */
     async loadLasUpdatedInInterface() {
+        // Skip in static mode - no server to check last updated from
+        const app = eXeLearning?.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            // In static mode, show offline state
+            this.setStaticModeState();
+            return;
+        }
         // Set tooltip
         this.loadLastUpdated().then((response) => {
             this.setLastUpdatedToElement();
@@ -35,6 +69,14 @@ export default class ConnecionTime {
      *
      */
     async loadLastUpdated() {
+        // Skip in static mode - no API available
+        const app = eXeLearning?.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            this.lastUpdatedJson = null;
+            this.lastUpdatedDate = null;
+            return;
+        }
         let odeId = eXeLearning.app.project.odeId;
         this.lastUpdatedJson =
             await eXeLearning.app.api.getOdeLastUpdated(odeId);

@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -54,7 +55,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -63,6 +64,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -87,7 +89,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
         if (isCollapsed) {
             const label = infoCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -102,7 +104,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
     await page.locator('#node-content article .idevice_node.download-source-file').first().waitFor({ timeout: 15000 });
 
     // Wait for the form to be created
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for the TinyMCE editor to be visible
     await page
@@ -111,6 +113,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
                 const editor = document.querySelector('.tox-editor-header');
                 return editor !== null;
             },
+            undefined,
             { timeout: 15000 },
         )
         .catch(() => {});
@@ -220,7 +223,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for edition mode to end
     await page
@@ -229,6 +232,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
                 const idevice = document.querySelector('#node-content article .idevice_node.download-source-file');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -269,18 +273,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a Download Source File iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -307,18 +300,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Save Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -336,18 +318,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice and set custom button text
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -356,21 +327,10 @@ test.describe('Download Source File iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -379,7 +339,7 @@ test.describe('Download Source File iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Wait for the iDevice to be rendered
@@ -389,6 +349,7 @@ test.describe('Download Source File iDevice', () => {
                         const idevice = document.querySelector('#node-content .download-source-file');
                         return idevice !== null;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .catch(() => {});
@@ -407,18 +368,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Text Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -439,18 +389,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Color Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -471,18 +410,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Font Size Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -506,18 +434,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice and set custom values
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -527,7 +444,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -536,7 +453,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the download link in preview
             await verifyDownloadLinkInPreview(iframe, TEST_DATA.customButtonText, TEST_DATA.customBgColor);
@@ -550,18 +467,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Manifest Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -569,7 +475,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -578,22 +484,25 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Check that preview uses postMessage-based downloadElpx function
-            // In preview mode, we use postMessage to parent app instead of embedding manifest
+            // Check that preview has downloadElpx function available
+            // With SW-based preview, we use manifest-based download approach
             const downloadInfo = await iframe.locator('html').evaluate(() => {
                 const win = window as any;
+                const fnSource = win.downloadElpx?.toString() || '';
                 return {
                     hasDownloadElpx: typeof win.downloadElpx === 'function',
-                    hasPostMessageLogic:
-                        win.downloadElpx?.toString().includes('postMessage') &&
-                        win.downloadElpx?.toString().includes('exe-download-elpx'),
+                    // SW preview uses manifest-based approach (checks for __ELPX_MANIFEST__)
+                    hasManifestLogic: fnSource.includes('__ELPX_MANIFEST__'),
+                    // Legacy blob preview uses postMessage approach
+                    hasPostMessageLogic: fnSource.includes('postMessage') && fnSource.includes('exe-download-elpx'),
                 };
             });
 
             expect(downloadInfo.hasDownloadElpx).toBe(true);
-            expect(downloadInfo.hasPostMessageLogic).toBe(true);
+            // Either manifest-based (SW preview) or postMessage-based (legacy) is valid
+            expect(downloadInfo.hasManifestLogic || downloadInfo.hasPostMessageLogic).toBe(true);
 
             // Verify onclick handler is present (indicates proper export with ELPX download support)
             const downloadLink = iframe.locator('.exe-download-package-link a').first();
@@ -608,18 +517,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Info Table Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -627,7 +525,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -636,7 +534,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the project info table is present
             const infoTable = iframe.locator('.exe-download-package-instructions .exe-package-info').first();
@@ -655,18 +553,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add iDevice with custom values
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -677,12 +564,12 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click edit button to enter edit mode
             const editBtn = page.locator('#node-content .download-source-file button:has-text("Edit")').first();
             await editBtn.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Wait for the form to load
             await page.locator('#dpiButtonText').waitFor({ state: 'visible', timeout: 10000 });
@@ -696,6 +583,70 @@ test.describe('Download Source File iDevice', () => {
             const fontSizeSelect = page.locator('#dpiButtonFontSize');
             const selectedOption = await fontSizeSelect.inputValue();
             expect(selectedOption).toBe('1.2');
+        });
+    });
+
+    test.describe('Properties Sync', () => {
+        test('should sync project properties to iDevice read-only cells', async ({
+            authenticatedPage,
+            createProject,
+        }, testInfo) => {
+            if (testInfo.project.name === 'static') {
+                test.skip(); // Skip in static mode
+            }
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Sync Test Init');
+            await gotoWorkarea(page, projectUuid);
+
+            // Open properties and change title
+            const propertiesButton = page.locator('#head-top-settings-button');
+            await propertiesButton.click();
+            await page.waitForTimeout(500);
+
+            const titleInput = page.locator('input[property="pp_title"]');
+            await titleInput.waitFor({ state: 'visible', timeout: 5000 });
+            await titleInput.fill('Dynamic Sync Title');
+
+            const authorInput = page.locator('input[property="pp_author"]');
+            await authorInput.fill('Dynamic Sync Author');
+
+            await selectPageNode(page);
+            await addDownloadSourceFileIdeviceFromPanel(page);
+            await saveDownloadSourceFileIdevice(page);
+
+            const titleCell = page.locator('.exe-prop-title');
+            await expect(titleCell).toHaveText('Dynamic Sync Title', { timeout: 10000 });
+            const authorCell = page.locator('.exe-prop-author');
+            await expect(authorCell).toHaveText('Dynamic Sync Author', { timeout: 10000 });
+
+            await propertiesButton.click();
+            await page.waitForTimeout(500);
+            await titleInput.fill('Updated Title Again');
+
+            // Wait for the Yjs observer debounce/timeout to process the property change
+            await page.waitForTimeout(1500);
+
+            // Navigate back to the Authoring tab (closes the properties modal)
+            await selectPageNode(page);
+
+            // Important: we do not click "Edit" and save. The DOM should dynamically update
+            // because of our frontend syncProperties logic in the export js file.
+            await expect(titleCell).toHaveText('Updated Title Again', { timeout: 10000 });
+
+            // Now enter edit mode to verify it also loads the fresh data correctly into the editor
+            const editBtn = page.locator('#node-content .download-source-file button:has-text("Edit")').first();
+            await editBtn.click();
+            await page.waitForTimeout(1000);
+
+            // Inside the TinyMCE editor it should also use the updated title
+            // First we need to wait for tinymce to load and run its update loop
+            await page.waitForTimeout(1500);
+
+            await saveDownloadSourceFileIdevice(page);
+
+            // And it should STILL have the updated text after saving
+            await expect(titleCell).toHaveText('Updated Title Again', { timeout: 10000 });
         });
     });
 });

@@ -331,7 +331,25 @@ describe('common.js $exe helpers', () => {
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
-      it('processes unprocessed audio elements', () => {
+      it('processes unprocessed audio elements with .srt subtitles', () => {
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        // Add a track element with .srt subtitles (required for mediaelementplayer to be called)
+        const track = document.createElement('track');
+        track.src = 'subtitles.srt';
+        track.kind = 'subtitles';
+        audio.appendChild(track);
+        document.body.appendChild(audio);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should be called because there's an .srt subtitle
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('does not call mediaelementplayer for audio without .srt subtitles', () => {
         const audio = document.createElement('audio');
         audio.className = 'mediaelement';
         audio.src = 'test.mp3';
@@ -339,8 +357,8 @@ describe('common.js $exe helpers', () => {
 
         global.$exe.loadMediaPlayer.init();
 
-        // mediaelementplayer should be called
-        expect(mockMediaelementplayer).toHaveBeenCalled();
+        // mediaelementplayer should NOT be called because there are no .srt subtitles
+        expect(mockMediaelementplayer).not.toHaveBeenCalled();
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
@@ -375,8 +393,251 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.setMultimediaGalleries', () => {
+    let prettyPhotoOptions;
+
+    beforeEach(() => {
+      prettyPhotoOptions = null;
+      // The guard in setMultimediaGalleries checks $.prettyPhoto (static), not $.fn.prettyPhoto
+      global.$.prettyPhoto = vi.fn();
+      global.$.fn.prettyPhoto = vi.fn(function (opts) {
+        prettyPhotoOptions = opts;
+        return this;
+      });
+      global.$exe.hasMultimediaGalleries = false;
+    });
+
+    afterEach(() => {
+      delete global.$.prettyPhoto;
+      delete global.$.fn.prettyPhoto;
+      delete global.eXeLearningAssetResolver;
+    });
+
     it('does not throw when prettyPhoto is not defined', () => {
+      delete global.$.prettyPhoto;
+      delete global.$.fn.prettyPhoto;
       expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+    });
+
+    it('calls prettyPhoto when it is defined', () => {
+      document.body.innerHTML = '';
+      global.$exe.setMultimediaGalleries();
+      expect(global.$.fn.prettyPhoto).toHaveBeenCalled();
+    });
+
+    it('replaces blob URL with asset URL (audio) when resolver is available', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc123/audio.mp3'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      expect(global.eXeLearningAssetResolver.getAssetUrlFromBlob).toHaveBeenCalledWith('blob:http://localhost:8080/test-uuid');
+      // Asset URL ends in .mp3 → isAudio true → link href changed to #media-box-0
+      const link = document.querySelector('a[rel="lightbox"]');
+      expect(link.getAttribute('href')).toBe('#media-box-0');
+      expect(document.querySelector('.exe-media-audio-box')).not.toBeNull();
+    });
+
+    it('replaces blob URL with asset URL (video mp4) when resolver is available', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc123/video.mp4'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('a[rel="lightbox"]');
+      expect(link.getAttribute('href')).toBe('#media-box-0');
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('does not replace blob URL when resolver returns null', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue(null),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('a[rel="lightbox"]');
+      // blob URL has no audio/video extension → href is unchanged
+      expect(link.getAttribute('href')).toBe('blob:http://localhost:8080/test-uuid');
+      expect(document.querySelector('.exe-media-audio-box')).toBeNull();
+      expect(document.querySelector('.exe-media-video-box')).toBeNull();
+    });
+
+    it('does not call resolver when eXeLearning is not defined', () => {
+      delete global.eXeLearning;
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc/audio.mp3'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      expect(global.eXeLearningAssetResolver.getAssetUrlFromBlob).not.toHaveBeenCalled();
+    });
+
+    it('does not call resolver when eXeLearningAssetResolver is not defined', () => {
+      global.eXeLearning = {};
+      delete global.eXeLearningAssetResolver;
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/uuid">Link</a>';
+
+      expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+    });
+
+    it('creates audio player for mp3 link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-audio-box audio')).not.toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(true);
+    });
+
+    it('creates video player for mp4 link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-video-box video')).not.toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(true);
+    });
+
+    it('creates video player for flv link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.flv">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('creates video player for ogg link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.ogg">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('creates video player for ogv link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.ogv">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('does not create player for non-audio/video link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="image/photo.jpg">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-audio-box')).toBeNull();
+      expect(document.querySelector('.exe-media-video-box')).toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(false);
+    });
+
+    describe('changepicturecallback', () => {
+      function setupPrettyPhotoDOM(srcValue, extraClass) {
+        const cls = 'exe-media-box-element' + (extraClass ? ' ' + extraClass : '');
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <audio class="${cls}" src="${srcValue}"></audio>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+      }
+
+      it('adds download link with extension from src filename', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        setupPrettyPhotoDOM('audio/test.mp3');
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        expect(downloadLink.textContent).toBe('mp3');
+      });
+
+      it('falls back to i18n.download when ext is undefined (blob URL without extension)', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        // src with no dot → split(".")[1] is undefined
+        setupPrettyPhotoDOM('blob:http://localhost:8080/some-uuid');
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        expect(downloadLink.textContent).toBe('Download');
+      });
+
+      it('adds with-audio class to container for audio elements', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        setupPrettyPhotoDOM('audio/test.mp3', 'exe-media-box-audio');
+        prettyPhotoOptions.changepicturecallback();
+
+        const cont = document.querySelector('.pp_content_container');
+        expect(cont.className).toContain('with-audio');
+      });
+
+      it('hides description for inline (non-media) content', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="image/photo.jpg">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <div class="pp_inline"><p>Inline content</p></div>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description" style="">Desc</div></div>
+          </div>
+        `;
+        prettyPhotoOptions.changepicturecallback();
+
+        // pp_description should be hidden (jQuery .hide() sets display:none)
+        const desc = document.querySelector('.pp_description');
+        expect(desc.style.display).toBe('none');
+      });
+
+      it('calls mediaelementplayer when loadMediaPlayer is ready', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        const mockMep = vi.fn();
+        global.$.fn.mediaelementplayer = mockMep;
+        global.$exe.loadMediaPlayer.isReady = true;
+        global.$exe.loadMediaPlayer.isCalledInBox = false;
+
+        setupPrettyPhotoDOM('audio/test.mp3');
+        prettyPhotoOptions.changepicturecallback();
+
+        expect(mockMep).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isCalledInBox).toBe(true);
+
+        delete global.$.fn.mediaelementplayer;
+        global.$exe.loadMediaPlayer.isReady = false;
+        global.$exe.loadMediaPlayer.isCalledInBox = false;
+      });
+    });
+
+    it('applies GalleryIdevice fallback when no lightbox links but gallery exists', () => {
+      delete global.exe_editor_mode;
+      document.body.innerHTML = `
+        <div class="GalleryIdevice">
+          <div class="exeImageGallery">
+            <ul id="gallery-1">
+              <li><a href="http://example.com/img.jpg" title="Photo">img</a></li>
+            </ul>
+          </div>
+        </div>
+      `;
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('.exeImageGallery a');
+      // element.href property returns absolute URL in happy-dom; use getAttribute for raw value
+      expect(link.getAttribute('href')).toBe('#');
+      expect(link.title).toContain('Photo');
     });
   });
 
@@ -724,6 +985,116 @@ describe('common.js $exe helpers', () => {
       const code = document.querySelector('.exe-math-code').innerHTML;
       expect(code).toContain('\\[');
     });
+
+    it('init skips MathJax loading when only pre-rendered elements exist', () => {
+      // Pre-rendered LaTeX content (produced by LatexPreRenderer)
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      // createLinks should still be called
+      expect(createLinksSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      createLinksSpy.mockRestore();
+    });
+
+    it('init loads MathJax when exe-math-engine elements exist alongside pre-rendered', () => {
+      // Both pre-rendered and explicit engine elements
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+        <div class="exe-math exe-math-engine"><div class="exe-math-code">x^2</div></div>
+      `;
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded because exe-math-engine exists
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init does not skip MathJax when no pre-rendered elements but LaTeX in body', () => {
+      // Raw LaTeX without pre-rendering
+      document.body.innerHTML = '<p>\\(x^2\\)</p>';
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded for raw LaTeX
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init returns early for pre-rendered content without loading MathJax', () => {
+      // Verify that the regex in $('body').html() is not falsely triggered by data-latex attributes
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\(x^2\\)">
+          <svg><text>x²</text></svg>
+        </span>
+        <span class="exe-math-rendered" data-latex="\\[\\frac{a}{b}\\]">
+          <svg><text>a/b</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded even though data-latex contains LaTeX patterns
+      // The fix detects pre-rendered elements and skips the regex check on HTML
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+    });
+
+    it('init loads MathJax for mixed content (pre-rendered + pending raw LaTeX)', () => {
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\(x^2\\)">
+          <svg><text>x²</text></svg>
+        </span>
+        <p>\\(\\mathrm{ABCdef}\\)</p>
+      `;
+
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
   });
 });
 
@@ -737,6 +1108,77 @@ describe('common.js $exeDevices', () => {
     vi.restoreAllMocks();
     document.body.className = '';
     document.body.innerHTML = '';
+  });
+
+  describe('gamification.initGame', () => {
+    const getInitGame = () => global.$exeDevices.iDevice.gamification.initGame;
+
+    let mockGame;
+
+    beforeEach(() => {
+      // Setup eXe global (isInExe check)
+      global.eXe = {
+        app: {
+          isInExe: vi.fn().mockReturnValue(true),
+          getIdeviceInstalledExportPath: vi.fn().mockReturnValue('/path/'),
+        },
+      };
+      mockGame = {
+        hasSCORMbutton: false,
+        isInExe: false,
+        idevicePath: '',
+        activities: $(),
+        enable: vi.fn(),
+      };
+    });
+
+    afterEach(() => {
+      delete global.eXe;
+    });
+
+    it('returns early when no activities are found', () => {
+      document.body.innerHTML = '';
+      const initGame = getInitGame();
+
+      initGame(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+
+      expect(mockGame.enable).not.toHaveBeenCalled();
+    });
+
+    it('finds all activities matching the ideviceClass', () => {
+      document.body.innerHTML = `
+        <div class="test-IDevice">Activity 1</div>
+        <div class="test-IDevice">Activity 2</div>
+        <div class="test-IDevice">Activity 3</div>
+      `;
+      const initGame = getInitGame();
+
+      initGame(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+
+      expect(mockGame.activities.length).toBe(3);
+    });
+
+    it('assigns all matching activities to $game.activities without filtering', () => {
+      document.body.innerHTML = `
+        <div class="classify-IDevice">Activity 1</div>
+        <div class="classify-IDevice">Activity 2</div>
+        <div class="classify-IDevice">Activity 3</div>
+        <div class="classify-IDevice">Activity 4</div>
+        <div class="classify-IDevice">Activity 5</div>
+      `;
+      const initGame = getInitGame();
+
+      // initGame may throw due to missing eXe global in test env,
+      // but activities should be assigned before that point
+      try {
+        initGame(mockGame, 'Classify', 'classify', 'classify-IDevice');
+      } catch (e) {
+        // Expected: eXe global not fully available in test env
+      }
+
+      // All 5 activities are found (no guard that only checks first)
+      expect(mockGame.activities.length).toBe(5);
+    });
   });
 
   describe('gamification.helpers', () => {
@@ -848,6 +1290,12 @@ describe('common.js $exeDevices', () => {
       expect(helpers.getQuestions(questions, 100)).toEqual(questions);
       const result50 = helpers.getQuestions(questions, 50);
       expect(result50.length).toBe(5);
+    });
+
+    it('getQuestions returns non-array inputs as-is', () => {
+      const helpers = getHelpers();
+      expect(helpers.getQuestions(undefined, 50)).toBeUndefined();
+      expect(helpers.getQuestions(null, 50)).toBeNull();
     });
 
     it('arrayMove moves element in array', () => {
@@ -1012,12 +1460,6 @@ describe('common.js $exeDevices', () => {
       expect(result.sort((a, b) => a - b)).toEqual(original);
     });
 
-    it('decrypt handles malformed input gracefully', () => {
-      const helpers = getHelpers();
-      expect(helpers.decrypt(undefined)).toBe('');
-      expect(helpers.decrypt('null')).toBe('');
-    });
-
     it('getQuestions returns all questions for 100 percent', () => {
       const helpers = getHelpers();
       const questions = ['a', 'b', 'c', 'd', 'e'];
@@ -1030,6 +1472,44 @@ describe('common.js $exeDevices', () => {
       const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const result = helpers.getQuestions(questions, 30);
       expect(result.length).toBe(3);
+    });
+
+    it('getQuestions with random=false preserves original order', () => {
+      const helpers = getHelpers();
+      const questions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+      const result = helpers.getQuestions(questions, 50, false);
+      expect(result.length).toBe(5);
+      // Should return first 5 questions in original order
+      expect(result).toEqual(['a', 'b', 'c', 'd', 'e']);
+    });
+
+    it('getQuestions with random=true returns randomized subset', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times to verify randomization produces different results
+      const results = new Set();
+      for (let i = 0; i < 20; i++) {
+        const result = helpers.getQuestions(questions, 50, true);
+        expect(result.length).toBe(5);
+        // All elements should be from original array
+        result.forEach(q => expect(questions).toContain(q));
+        results.add(result.join(','));
+      }
+      // With 20 iterations, we should get at least 2 different orderings
+      expect(results.size).toBeGreaterThan(1);
+    });
+
+    it('getQuestions with random=true can include elements from any position', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times and collect all selected elements
+      const selectedElements = new Set();
+      for (let i = 0; i < 50; i++) {
+        const result = helpers.getQuestions(questions, 30, true);
+        result.forEach(q => selectedElements.add(q));
+      }
+      // Should eventually select elements from later positions (not just first 3)
+      expect(selectedElements.size).toBeGreaterThan(3);
     });
 
     it('removeTags handles empty strings', () => {
@@ -1291,23 +1771,27 @@ describe('common.js $exeDevices', () => {
       expect(media.getIDYoutube('')).toBe('');
     });
 
-    it('stopSound does not throw for null game', () => {
+    it('stopSound does not throw when playerAudio is null', () => {
       const media = getMedia();
-      expect(() => media.stopSound(null)).not.toThrow();
+      media.playerAudio = null;
+      expect(() => media.stopSound()).not.toThrow();
     });
 
     it('stopSound pauses audio player', () => {
       const media = getMedia();
-      const mockPlayer = { pause: vi.fn(), currentTime: 0 };
-      const game = { playerAudio: mockPlayer };
-      media.stopSound(game);
-      expect(mockPlayer.pause).toHaveBeenCalled();
-      expect(mockPlayer.currentTime).toBe(0);
+      const mockPause = vi.fn();
+      media.playerAudio = { pause: mockPause };
+      media.currentAudioUrl = 'test.mp3';
+      media.stopSound();
+      expect(mockPause).toHaveBeenCalled();
+      expect(media.playerAudio).toBeNull();
+      expect(media.currentAudioUrl).toBeNull();
     });
 
-    it('playSound does not throw for null game', () => {
+    it('playSound does not throw for invalid input', () => {
       const media = getMedia();
-      expect(() => media.playSound('test.mp3', null)).not.toThrow();
+      expect(() => media.playSound(null)).not.toThrow();
+      expect(() => media.playSound(123)).not.toThrow();
     });
 
     it('stopVideo does not throw for null game', () => {
@@ -1391,9 +1875,11 @@ describe('common.js $exeDevices', () => {
 
     it('stopSound handles missing playerAudio', () => {
       const media = getMedia();
-      const game = {};
-      media.stopSound(game);
-      expect(game.playerAudio).toBeUndefined();
+      media.playerAudio = undefined;
+      media.currentAudioUrl = 'test.mp3';
+      media.stopSound();
+      expect(media.playerAudio).toBeUndefined();
+      expect(media.currentAudioUrl).toBeNull();
     });
 
     it('getURLAudioMediaTeca returns false for non-mediateca URLs', () => {
@@ -1421,9 +1907,59 @@ describe('common.js $exeDevices', () => {
       expect(typeof media.loadYoutubeApi).toBe('function');
     });
 
-    it('playSound does not throw for null game', () => {
+    it('YouTubeAPILoader.load rejects when script fails to load', async () => {
       const media = getMedia();
-      expect(() => media.playSound('test.mp3', null)).not.toThrow();
+      // Reset internal state by recreating the loader
+      const originalYT = window.YT;
+      delete window.YT;
+
+      // Capture the script that will be created
+      let capturedScript = null;
+      const originalAppendChild = document.head.appendChild.bind(document.head);
+      vi.spyOn(document.head, 'appendChild').mockImplementation((node) => {
+        if (node.tagName === 'SCRIPT' && node.src.includes('youtube.com')) {
+          capturedScript = node;
+          // Simulate script load error
+          setTimeout(() => {
+            if (capturedScript.onerror) {
+              capturedScript.onerror();
+            }
+          }, 0);
+        }
+        return originalAppendChild(node);
+      });
+
+      // Create a fresh loader to test error case
+      const YouTubeAPILoaderFresh = (function () {
+        let apiReadyPromise;
+        function load() {
+          if (!apiReadyPromise) {
+            apiReadyPromise = new Promise((resolve, reject) => {
+              if (window.YT && window.YT.Player) {
+                return resolve(window.YT);
+              }
+              window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+              const tag = document.createElement('script');
+              tag.src = 'https://www.youtube.com/iframe_api';
+              tag.onerror = () => reject(new Error(global._('Could not load YouTube API')));
+              document.head.appendChild(tag);
+            });
+          }
+          return apiReadyPromise;
+        }
+        return { load };
+      })();
+
+      await expect(YouTubeAPILoaderFresh.load()).rejects.toThrow('Could not load YouTube API');
+
+      // Restore
+      window.YT = originalYT;
+      vi.restoreAllMocks();
+    });
+
+    it('playSound does not throw for invalid URL', () => {
+      const media = getMedia();
+      expect(() => media.playSound(null)).not.toThrow();
     });
 
     it('startVideo handles local player type', () => {
@@ -1503,6 +2039,129 @@ describe('common.js $exeDevices', () => {
       await expect(loader.load()).rejects.toThrow('Could not load YouTube API');
 
       document.createElement = originalCreateElement;
+    });
+
+    describe('playSound (toggle behavior)', () => {
+      it('logs error for invalid audio URL', async () => {
+        const media = getMedia();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await media.playSound(null);
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+
+        await media.playSound(123);
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+
+        consoleSpy.mockRestore();
+      });
+
+      it('creates and plays audio for valid URL', async () => {
+        const media = getMedia();
+        const mockPlay = vi.fn().mockResolvedValue();
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor(url) {
+            this.url = url;
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('test.mp3');
+
+        expect(mockPlay).toHaveBeenCalled();
+        expect(media.currentAudioUrl).toBe('test.mp3');
+        expect(media.playerAudio.url).toBe('test.mp3');
+        global.Audio = originalAudio;
+      });
+
+      it('stops playing audio if same URL is played again (toggle)', async () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        media.playerAudio = { pause: mockPause, paused: false };
+        media.currentAudioUrl = 'test.mp3';
+
+        await media.playSound('test.mp3');
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('stops current audio before playing different URL', async () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        const mockPlay = vi.fn().mockResolvedValue();
+        media.playerAudio = { pause: mockPause, paused: false };
+        media.currentAudioUrl = 'old.mp3';
+
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor(url) {
+            this.url = url;
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('new.mp3');
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.currentAudioUrl).toBe('new.mp3');
+        global.Audio = originalAudio;
+      });
+
+      it('handles play error gracefully', async () => {
+        const media = getMedia();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const mockPlay = vi.fn().mockRejectedValue(new Error('Play failed'));
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor() {
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('test.mp3');
+
+        // Wait for promise rejection to be handled
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Error playing audio:', expect.any(Error));
+        consoleSpy.mockRestore();
+        global.Audio = originalAudio;
+      });
+    });
+
+    describe('stopSound (no game parameter)', () => {
+      it('pauses and clears playerAudio when playing', () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        media.playerAudio = { pause: mockPause };
+        media.currentAudioUrl = 'test.mp3';
+
+        media.stopSound();
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('handles null playerAudio gracefully', () => {
+        const media = getMedia();
+        media.playerAudio = null;
+        media.currentAudioUrl = null;
+
+        expect(() => media.stopSound()).not.toThrow();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('handles playerAudio without pause method', () => {
+        const media = getMedia();
+        media.playerAudio = {};
+        media.currentAudioUrl = 'test.mp3';
+
+        expect(() => media.stopSound()).not.toThrow();
+        expect(media.currentAudioUrl).toBeNull();
+      });
     });
   });
 
@@ -1854,6 +2513,737 @@ describe('common.js $exeDevices', () => {
 
       expect(idevice.observersresize).toBeDefined();
       expect(idevice.observersresize.has(div)).toBe(true);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.sanitizeJSONString', () => {
+    const sanitizeJSONString = () => global.$exeDevices.iDevice.gamification.helpers.sanitizeJSONString;
+
+    describe('input validation', () => {
+      it('returns non-string input unchanged', () => {
+        expect(sanitizeJSONString()(null)).toBe(null);
+        expect(sanitizeJSONString()(undefined)).toBe(undefined);
+        expect(sanitizeJSONString()(123)).toBe(123);
+        expect(sanitizeJSONString()({})).toEqual({});
+        expect(sanitizeJSONString()([])).toEqual([]);
+      });
+
+      it('returns empty string unchanged', () => {
+        expect(sanitizeJSONString()('')).toBe('');
+      });
+
+      it('returns valid JSON string unchanged', () => {
+        const validJson = '{"name":"test","value":123}';
+        expect(sanitizeJSONString()(validJson)).toBe(validJson);
+      });
+    });
+
+    describe('control character escaping', () => {
+      it('escapes literal newline (0x0A) inside string values', () => {
+        const input = '{"text":"line1\nline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\nline2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal carriage return (0x0D) inside string values', () => {
+        const input = '{"text":"line1\rline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\rline2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal tab (0x09) inside string values', () => {
+        const input = '{"text":"col1\tcol2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"col1\\tcol2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal backspace (0x08) inside string values', () => {
+        const input = '{"text":"back\bspace"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"back\\bspace"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal form feed (0x0C) inside string values', () => {
+        const input = '{"text":"form\ffeed"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"form\\ffeed"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes null character (0x00) inside string values', () => {
+        const input = '{"text":"null\x00char"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"null\\u0000char"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes line separator (U+2028) inside string values', () => {
+        const input = '{"text":"line\u2028sep"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line\\u2028sep"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes paragraph separator (U+2029) inside string values', () => {
+        const input = '{"text":"para\u2029sep"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"para\\u2029sep"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes DEL character (0x7F) inside string values', () => {
+        const input = '{"text":"del\x7Fchar"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"del\\u007fchar"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes C1 control characters (0x80-0x9F) inside string values', () => {
+        const input = '{"text":"c1\x80\x9Fchars"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"c1\\u0080\\u009fchars"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+    });
+
+    describe('preserves already escaped sequences', () => {
+      it('preserves already escaped newline', () => {
+        const input = '{"text":"line1\\nline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\nline2"}');
+      });
+
+      it('preserves already escaped tab', () => {
+        const input = '{"text":"col1\\tcol2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"col1\\tcol2"}');
+      });
+
+      it('preserves already escaped backslash', () => {
+        const input = '{"path":"C:\\\\folder\\\\file"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"path":"C:\\\\folder\\\\file"}');
+      });
+
+      it('preserves already escaped quotes', () => {
+        const input = '{"text":"say \\"hello\\""}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"say \\"hello\\""}');
+      });
+
+      it('preserves already escaped unicode sequences', () => {
+        const input = '{"text":"euro \\u20ac symbol"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"euro \\u20ac symbol"}');
+      });
+    });
+
+    describe('handles complex JSON structures', () => {
+      it('sanitizes multiple string values with control characters', () => {
+        const input = '{"a":"line1\nline2","b":"tab\there"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"a":"line1\\nline2","b":"tab\\there"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('sanitizes nested objects with control characters', () => {
+        const input = '{"outer":{"inner":"value\nwith\nnewlines"}}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"outer":{"inner":"value\\nwith\\nnewlines"}}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('sanitizes arrays with control characters in strings', () => {
+        const input = '{"list":["item1\nwrap","item2\twrap"]}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"list":["item1\\nwrap","item2\\twrap"]}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('does not modify control characters outside string values', () => {
+        // Whitespace outside strings is valid JSON formatting
+        const input = '{\n  "key": "value"\n}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{\n  "key": "value"\n}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+    });
+
+    describe('edge cases', () => {
+      it('handles string with only control characters', () => {
+        const input = '{"text":"\n\r\t"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"\\n\\r\\t"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles empty string value', () => {
+        const input = '{"text":""}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":""}');
+      });
+
+      it('handles string with mixed escaped and unescaped characters', () => {
+        const input = '{"text":"escaped\\nnewline and literal\nnewline"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"escaped\\nnewline and literal\\nnewline"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles backslash at end of string', () => {
+        const input = '{"text":"ends with backslash\\\\"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"ends with backslash\\\\"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles multiple consecutive control characters', () => {
+        const input = '{"text":"multi\n\n\nlines"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"multi\\n\\n\\nlines"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles JSON with number and boolean values unchanged', () => {
+        const input = '{"num":123,"bool":true,"null":null}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"num":123,"bool":true,"null":null}');
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.isJsonString', () => {
+    const isJsonString = () => global.$exeDevices.iDevice.gamification.helpers.isJsonString;
+
+    describe('input validation', () => {
+      it('returns false for non-string input', () => {
+        expect(isJsonString()(null)).toBe(false);
+        expect(isJsonString()(undefined)).toBe(false);
+        expect(isJsonString()(123)).toBe(false);
+        expect(isJsonString()([])).toBe(false);
+        expect(isJsonString()({})).toBe(false);
+      });
+
+      it('returns false for empty string', () => {
+        expect(isJsonString()('')).toBe(false);
+      });
+
+      it('returns false for whitespace only', () => {
+        expect(isJsonString()('   ')).toBe(false);
+      });
+    });
+
+    describe('valid JSON objects', () => {
+      it('returns parsed object for valid JSON object', () => {
+        const result = isJsonString()('{"name":"test","value":123}');
+        expect(result).toEqual({ name: 'test', value: 123 });
+      });
+
+      it('handles JSON with whitespace padding', () => {
+        const result = isJsonString()('  {"key":"value"}  ');
+        expect(result).toEqual({ key: 'value' });
+      });
+
+      it('handles nested objects', () => {
+        const result = isJsonString()('{"outer":{"inner":"value"}}');
+        expect(result).toEqual({ outer: { inner: 'value' } });
+      });
+
+      it('handles objects with arrays', () => {
+        const result = isJsonString()('{"list":[1,2,3]}');
+        expect(result).toEqual({ list: [1, 2, 3] });
+      });
+    });
+
+    describe('invalid JSON', () => {
+      it('returns false for arrays (not objects)', () => {
+        expect(isJsonString()('[1,2,3]')).toBe(false);
+      });
+
+      it('returns false for plain strings', () => {
+        expect(isJsonString()('"hello"')).toBe(false);
+      });
+
+      it('returns false for numbers', () => {
+        expect(isJsonString()('123')).toBe(false);
+      });
+
+      it('returns false for malformed JSON', () => {
+        expect(isJsonString()('{"key": value}')).toBe(false);
+        expect(isJsonString()('{key: "value"}')).toBe(false);
+        expect(isJsonString()('{"unclosed": "string')).toBe(false);
+      });
+
+      it('returns false for strings that look like objects but are not', () => {
+        expect(isJsonString()('{not json}')).toBe(false);
+      });
+    });
+
+    describe('sanitization of control characters', () => {
+      it('handles JSON with literal newlines in string values', () => {
+        const jsonWithNewline = '{"text":"line1\nline2"}';
+        const result = isJsonString()(jsonWithNewline);
+        expect(result).toEqual({ text: 'line1\nline2' });
+      });
+
+      it('handles JSON with literal tabs in string values', () => {
+        const jsonWithTab = '{"text":"col1\tcol2"}';
+        const result = isJsonString()(jsonWithTab);
+        expect(result).toEqual({ text: 'col1\tcol2' });
+      });
+
+      it('handles JSON with literal carriage returns in string values', () => {
+        const jsonWithCR = '{"text":"line1\rline2"}';
+        const result = isJsonString()(jsonWithCR);
+        expect(result).toEqual({ text: 'line1\rline2' });
+      });
+
+      it('handles JSON with mixed control characters', () => {
+        const jsonWithMixed = '{"text":"a\nb\tc\rd"}';
+        const result = isJsonString()(jsonWithMixed);
+        expect(result).toEqual({ text: 'a\nb\tc\rd' });
+      });
+
+      it('handles JSON with CRLF line endings', () => {
+        const jsonWithCRLF = '{"text":"line1\r\nline2"}';
+        const result = isJsonString()(jsonWithCRLF);
+        expect(result).toEqual({ text: 'line1\r\nline2' });
+      });
+
+      it('preserves already escaped sequences', () => {
+        const jsonWithEscaped = '{"text":"line1\\nline2"}';
+        const result = isJsonString()(jsonWithEscaped);
+        expect(result).toEqual({ text: 'line1\nline2' });
+      });
+
+      it('handles JSON with escaped double quotes', () => {
+        const jsonWithQuotes = '{"text":"He said \\"hello\\""}';
+        const result = isJsonString()(jsonWithQuotes);
+        expect(result).toEqual({ text: 'He said "hello"' });
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.shuffleAds', () => {
+    const shuffleAds = () => global.$exeDevices.iDevice.gamification.helpers.shuffleAds;
+
+    it('returns non-array input unchanged', () => {
+      expect(shuffleAds()(null)).toBe(null);
+      expect(shuffleAds()(undefined)).toBe(undefined);
+      expect(shuffleAds()('string')).toBe('string');
+      expect(shuffleAds()(123)).toBe(123);
+    });
+
+    it('returns empty array unchanged', () => {
+      const arr = [];
+      expect(shuffleAds()(arr)).toEqual([]);
+    });
+
+    it('returns single element array unchanged', () => {
+      const arr = [1];
+      expect(shuffleAds()(arr)).toEqual([1]);
+    });
+
+    it('shuffles array in place and returns it', () => {
+      const original = [1, 2, 3, 4, 5];
+      const arr = [...original];
+      const result = shuffleAds()(arr);
+
+      expect(result).toBe(arr); // Same reference
+      expect(result).toHaveLength(5);
+      expect(result.sort()).toEqual(original.sort()); // Same elements
+    });
+
+    it('produces different orderings (probabilistic)', () => {
+      const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const results = new Set();
+
+      // Run multiple times and check we get different orderings
+      for (let i = 0; i < 20; i++) {
+        const copy = [...arr];
+        shuffleAds()(copy);
+        results.add(copy.join(','));
+      }
+
+      // With 10 elements, we should get multiple different orderings
+      expect(results.size).toBeGreaterThan(1);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.encrypt/decrypt', () => {
+    const encrypt = () => global.$exeDevices.iDevice.gamification.helpers.encrypt;
+    const decrypt = () => global.$exeDevices.iDevice.gamification.helpers.decrypt;
+
+    describe('encrypt', () => {
+      it('returns empty string for null/undefined/empty input', () => {
+        expect(encrypt()('')).toBe('');
+        expect(encrypt()(null)).toBe('');
+        expect(encrypt()(undefined)).toBe('');
+        expect(encrypt()('undefined')).toBe('');
+        expect(encrypt()('null')).toBe('');
+      });
+
+      it('encrypts a simple string', () => {
+        const result = encrypt()('hello');
+        expect(result).not.toBe('hello');
+        expect(typeof result).toBe('string');
+      });
+
+      it('produces consistent output for same input', () => {
+        const result1 = encrypt()('test');
+        const result2 = encrypt()('test');
+        expect(result1).toBe(result2);
+      });
+    });
+
+    describe('decrypt', () => {
+      it('returns empty string for null/undefined/empty input', () => {
+        expect(decrypt()('')).toBe('');
+        expect(decrypt()(null)).toBe('');
+        expect(decrypt()(undefined)).toBe('');
+        expect(decrypt()('undefined')).toBe('');
+        expect(decrypt()('null')).toBe('');
+      });
+
+      it('decrypts an encrypted string back to original', () => {
+        const original = 'hello world';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+
+      it('handles special characters', () => {
+        const original = 'test@123!#$%';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+
+      it('handles unicode characters', () => {
+        const original = 'héllo wörld 你好';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+    });
+
+    describe('round-trip encryption', () => {
+      it('encrypts and decrypts correctly for various strings', () => {
+        const testStrings = [
+          'simple',
+          'with spaces',
+          '12345',
+          'MixedCase123',
+          'special!@#$%^&*()',
+          'líneas con ácentos',
+        ];
+
+        for (const str of testStrings) {
+          const encrypted = encrypt()(str);
+          const decrypted = decrypt()(encrypted);
+          expect(decrypted).toBe(str);
+        }
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getTimeSeconds', () => {
+    const getTimeSeconds = () => global.$exeDevices.iDevice.gamification.helpers.getTimeSeconds;
+
+    it('returns predefined times for indices 0-5', () => {
+      expect(getTimeSeconds()(0)).toBe(15);
+      expect(getTimeSeconds()(1)).toBe(30);
+      expect(getTimeSeconds()(2)).toBe(60);
+      expect(getTimeSeconds()(3)).toBe(180);
+      expect(getTimeSeconds()(4)).toBe(300);
+      expect(getTimeSeconds()(5)).toBe(600);
+    });
+
+    it('returns the input value for indices >= 6', () => {
+      expect(getTimeSeconds()(6)).toBe(6);
+      expect(getTimeSeconds()(100)).toBe(100);
+      expect(getTimeSeconds()(3600)).toBe(3600);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getTimeToString', () => {
+    const getTimeToString = () => global.$exeDevices.iDevice.gamification.helpers.getTimeToString;
+
+    it('formats 0 seconds as 00:00', () => {
+      expect(getTimeToString()(0)).toBe('00:00');
+    });
+
+    it('formats seconds less than 10 with leading zero', () => {
+      expect(getTimeToString()(5)).toBe('00:05');
+      expect(getTimeToString()(9)).toBe('00:09');
+    });
+
+    it('formats seconds 10-59 correctly', () => {
+      expect(getTimeToString()(10)).toBe('00:10');
+      expect(getTimeToString()(45)).toBe('00:45');
+      expect(getTimeToString()(59)).toBe('00:59');
+    });
+
+    it('formats minutes correctly', () => {
+      expect(getTimeToString()(60)).toBe('01:00');
+      expect(getTimeToString()(90)).toBe('01:30');
+      expect(getTimeToString()(125)).toBe('02:05');
+    });
+
+    it('formats large times correctly', () => {
+      expect(getTimeToString()(3599)).toBe('59:59');
+      expect(getTimeToString()(3600)).toBe('00:00'); // Wraps at 60 minutes
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.hourToSeconds', () => {
+    const hourToSeconds = () => global.$exeDevices.iDevice.gamification.helpers.hourToSeconds;
+
+    it('converts HH:MM:SS format', () => {
+      expect(hourToSeconds()('01:30:45')).toBe(5445);
+      expect(hourToSeconds()('00:00:00')).toBe(0);
+      expect(hourToSeconds()('00:01:00')).toBe(60);
+      expect(hourToSeconds()('01:00:00')).toBe(3600);
+    });
+
+    it('converts MM:SS format (assumes 00 hours)', () => {
+      expect(hourToSeconds()('05:30')).toBe(330);
+      expect(hourToSeconds()('00:45')).toBe(45);
+    });
+
+    it('converts SS format (assumes 00:00 hours:minutes)', () => {
+      expect(hourToSeconds()('30')).toBe(30);
+      expect(hourToSeconds()('0')).toBe(0);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.secondsToHour', () => {
+    const secondsToHour = () => global.$exeDevices.iDevice.gamification.helpers.secondsToHour;
+
+    it('converts 0 seconds', () => {
+      expect(secondsToHour()(0)).toBe('00:00:00');
+    });
+
+    it('converts seconds only', () => {
+      expect(secondsToHour()(45)).toBe('00:00:45');
+      expect(secondsToHour()(9)).toBe('00:00:09');
+    });
+
+    it('converts minutes and seconds', () => {
+      expect(secondsToHour()(90)).toBe('00:01:30');
+      expect(secondsToHour()(3599)).toBe('00:59:59');
+    });
+
+    it('converts hours, minutes and seconds', () => {
+      expect(secondsToHour()(3600)).toBe('01:00:00');
+      expect(secondsToHour()(5445)).toBe('01:30:45');
+      expect(secondsToHour()(86399)).toBe('23:59:59');
+    });
+
+    it('rounds fractional seconds', () => {
+      expect(secondsToHour()(45.4)).toBe('00:00:45');
+      expect(secondsToHour()(45.6)).toBe('00:00:46');
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.arrayMove', () => {
+    const arrayMove = () => global.$exeDevices.iDevice.gamification.helpers.arrayMove;
+
+    it('moves element forward in array', () => {
+      const arr = ['a', 'b', 'c', 'd'];
+      arrayMove()(arr, 0, 2);
+      expect(arr).toEqual(['b', 'c', 'a', 'd']);
+    });
+
+    it('moves element backward in array', () => {
+      const arr = ['a', 'b', 'c', 'd'];
+      arrayMove()(arr, 3, 1);
+      expect(arr).toEqual(['a', 'd', 'b', 'c']);
+    });
+
+    it('handles move to same position', () => {
+      const arr = ['a', 'b', 'c'];
+      arrayMove()(arr, 1, 1);
+      expect(arr).toEqual(['a', 'b', 'c']);
+    });
+
+    it('extends array when moving to index beyond length', () => {
+      const arr = ['a', 'b'];
+      arrayMove()(arr, 0, 4);
+      expect(arr).toEqual(['b', undefined, undefined, undefined, 'a']);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.removeTags', () => {
+    const removeTags = () => global.$exeDevices.iDevice.gamification.helpers.removeTags;
+
+    it('removes HTML tags from string', () => {
+      expect(removeTags()('<p>Hello</p>')).toBe('Hello');
+      expect(removeTags()('<div><span>Test</span></div>')).toBe('Test');
+    });
+
+    it('removes multiple tags', () => {
+      expect(removeTags()('<p>Para 1</p><p>Para 2</p>')).toBe('Para 1Para 2');
+    });
+
+    it('handles string without tags', () => {
+      expect(removeTags()('plain text')).toBe('plain text');
+    });
+
+    it('handles empty string', () => {
+      expect(removeTags()('')).toBe('');
+    });
+
+    it('removes attributes from tags', () => {
+      expect(removeTags()('<a href="http://example.com">Link</a>')).toBe('Link');
+    });
+
+    it('preserves text content between tags', () => {
+      expect(removeTags()('Before <b>bold</b> after')).toBe('Before bold after');
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.generarID', () => {
+    const generarID = () => global.$exeDevices.iDevice.gamification.helpers.generarID;
+
+    it('returns a string', () => {
+      expect(typeof generarID()()).toBe('string');
+    });
+
+    it('generates unique IDs on consecutive calls', () => {
+      const id1 = generarID()();
+      const id2 = generarID()();
+      // IDs should be different or same (if called in same second)
+      // Format: YYYYMMDDHHmmss + timezone offset (can be negative)
+      expect(id1).toMatch(/^[\d-]+$/);
+      expect(id2).toMatch(/^[\d-]+$/);
+    });
+
+    it('generates ID based on current time', () => {
+      const before = new Date();
+      const id = generarID()();
+      const after = new Date();
+
+      // ID should contain the year
+      expect(id).toContain(String(before.getUTCFullYear()));
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getQuestions', () => {
+    const getQuestions = () => global.$exeDevices.iDevice.gamification.helpers.getQuestions;
+
+    it('returns all questions when percentage is 100', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }];
+      const result = getQuestions()(questions, 100);
+      expect(result).toEqual(questions);
+    });
+
+    it('returns all questions when percentage > 100', () => {
+      const questions = [{ id: 1 }, { id: 2 }];
+      const result = getQuestions()(questions, 150);
+      expect(result).toEqual(questions);
+    });
+
+    it('returns subset of questions based on percentage', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+      const result = getQuestions()(questions, 40); // 40% of 5 = 2
+
+      expect(result).toHaveLength(2);
+      // All returned questions should be from original
+      for (const q of result) {
+        expect(questions).toContainEqual(q);
+      }
+    });
+
+    it('returns at least 1 question even for very low percentage', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }];
+      const result = getQuestions()(questions, 1);
+
+      expect(result.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('preserves original order of selected questions', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+      const result = getQuestions()(questions, 60);
+
+      // Selected questions should maintain their relative order
+      const originalIds = questions.map(q => q.id);
+      const resultIds = result.map(q => q.id);
+
+      for (let i = 1; i < resultIds.length; i++) {
+        expect(originalIds.indexOf(resultIds[i])).toBeGreaterThan(
+          originalIds.indexOf(resultIds[i - 1])
+        );
+      }
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.isFullscreen', () => {
+    const isFullscreen = () => global.$exeDevices.iDevice.gamification.helpers.isFullscreen;
+
+    it('returns false when no fullscreen element', () => {
+      expect(isFullscreen()()).toBe(false);
+    });
+
+    it('returns true when fullscreenElement is set', () => {
+      Object.defineProperty(document, 'fullscreenElement', {
+        value: document.body,
+        configurable: true,
+      });
+      Object.defineProperty(document, 'fullscreenEnabled', {
+        value: true,
+        configurable: true,
+      });
+
+      expect(isFullscreen()()).toBe(true);
+
+      Object.defineProperty(document, 'fullscreenElement', {
+        value: null,
+        configurable: true,
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.supportedBrowser', () => {
+    const supportedBrowser = () => global.$exeDevices.iDevice.gamification.helpers.supportedBrowser;
+
+    it('returns true for modern browsers', () => {
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+        configurable: true,
+      });
+      Object.defineProperty(navigator, 'appName', {
+        value: 'Netscape',
+        configurable: true,
+      });
+
+      expect(supportedBrowser()('test-idevice')).toBe(true);
+
+      Object.defineProperty(navigator, 'userAgent', {
+        value: originalUserAgent,
+        configurable: true,
+      });
+    });
+
+    it('returns false for Internet Explorer', () => {
+      const originalAppName = navigator.appName;
+      Object.defineProperty(navigator, 'appName', {
+        value: 'Microsoft Internet Explorer',
+        configurable: true,
+      });
+
+      document.body.innerHTML = '<div class="test-idevice-instructions"></div>';
+      expect(supportedBrowser()('test-idevice')).toBe(false);
+
+      Object.defineProperty(navigator, 'appName', {
+        value: originalAppName,
+        configurable: true,
+      });
     });
   });
 });

@@ -200,7 +200,7 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(14);
+            expect(Object.keys(config).length).toBe(15);
         });
 
         it('should have groups attribute on all properties for collapsible sections', async () => {

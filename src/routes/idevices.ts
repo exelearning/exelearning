@@ -10,6 +10,8 @@ import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
+import { withJwtAuth } from '../utils/route-auth';
+import { requireAuth } from '../utils/guards';
 
 /**
  * Response data for file upload
@@ -251,6 +253,7 @@ function scanIdevices(basePath: string): IdeviceConfig[] {
  * iDevices routes
  */
 export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
+    .use(withJwtAuth())
     // GET /api/idevices/installed - Get list of installed iDevices
     .get('/api/idevices/installed', () => {
         const baseIdevices = scanIdevices(IDEVICES_BASE_PATH);
@@ -328,19 +331,10 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Security: prevent path traversal
         const cleanResource = resource.replace(/\.\./g, '').replace(/^\/+/, '');
-        let filePath = path.join('public/files', cleanResource);
-        let resolvedPath = path.resolve(filePath);
-        let basePath = path.resolve('public/files');
-
-        // Check if file exists in public/files, if not check FILES_DIR for user themes
-        if (!fs.existsSync(filePath) && cleanResource.startsWith('perm/themes/users/')) {
-            // User themes may be in FILES_DIR/themes/users/ instead of public/files/perm/themes/users/
-            const filesDir = process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
-            const themeRelativePath = cleanResource.replace('perm/themes/users/', '');
-            filePath = path.join(filesDir, 'themes', 'users', themeRelativePath);
-            resolvedPath = path.resolve(filePath);
-            basePath = path.resolve(path.join(filesDir, 'themes', 'users'));
-        }
+        // Note: User themes are stored client-side in IndexedDB, not on server
+        const filePath = path.join('public/files', cleanResource);
+        const resolvedPath = path.resolve(filePath);
+        const basePath = path.resolve('public/files');
 
         // Additional security check
         if (!resolvedPath.startsWith(basePath)) {
@@ -387,7 +381,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request }) => {
+    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request, jwtPayload }) => {
+        const authErr = requireAuth(jwtPayload);
+        if (authErr) {
+            set.status = authErr.status;
+            return { error: authErr.error, message: authErr.message };
+        }
         // Debug: log what we're receiving
         console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
         console.log('[idevices/upload] Body type:', typeof body);
@@ -513,7 +512,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
-    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set }) => {
+    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set, jwtPayload }) => {
+        const authErr = requireAuth(jwtPayload);
+        if (authErr) {
+            set.status = authErr.status;
+            return { error: authErr.error, message: authErr.message };
+        }
         const data = body as IdeviceFileUploadRequest;
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;

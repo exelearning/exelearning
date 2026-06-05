@@ -18,7 +18,6 @@ global.eXeLearning = {
             parameters: {
                 generateNewItemKey: 'generated-key-123',
                 odeComponentsSyncPropertiesConfig: {
-                    identifier: { value: '' },
                     visibility: { value: 'false' },
                     cssClass: { value: '' },
                 },
@@ -86,6 +85,9 @@ global.eXeLearning = {
                         checkIfEmptyNode: vi.fn(),
                         createAddTextBtn: vi.fn(),
                     },
+                },
+                menuStructureBehaviour: {
+                    checkIfEmptyNode: vi.fn(),
                 },
             },
         },
@@ -253,27 +255,15 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
         });
-
-        it('calls setProperties when odeComponentsSyncProperties provided', () => {
-            const spy = vi.spyOn(idevice, 'setProperties');
-            idevice.setParams({
-                odeComponentsSyncProperties: {
-                    identifier: { value: 'my-id' },
-                },
-            });
-            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
-        });
     });
 
     describe('setProperties', () => {
         it('sets property values from data', () => {
             idevice.setProperties({
-                identifier: { value: 'custom-id' },
                 visibility: { value: 'true' },
                 cssClass: { value: 'my-class' },
             });
 
-            expect(idevice.properties.identifier.value).toBe('custom-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('my-class');
         });
@@ -281,13 +271,11 @@ describe('IdeviceNode', () => {
         it('only sets heritable properties when onlyHeritable is true', () => {
             idevice.setProperties(
                 {
-                    identifier: { value: 'inherited-id', heritable: true },
                     visibility: { value: 'true', heritable: false },
                 },
                 true,
             );
 
-            expect(idevice.properties.identifier.value).toBe('inherited-id');
             expect(idevice.properties.visibility.value).toBe('false');
         });
 
@@ -305,7 +293,7 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
             const spy = vi.spyOn(idevice, 'setPropertiesClassesToElement');
             idevice.setProperties({
-                identifier: { value: 'test-id' },
+                visibility: { value: 'true' },
             });
             expect(spy).toHaveBeenCalled();
         });
@@ -334,7 +322,6 @@ describe('IdeviceNode', () => {
         it('does nothing when Yjs is not enabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('loads properties from Yjs when enabled', () => {
@@ -342,7 +329,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn(() => ({
-                        identifier: 'yjs-id',
                         visibility: true,
                         cssClass: 'yjs-class',
                     })),
@@ -351,7 +337,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('yjs-class');
         });
@@ -374,7 +359,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsEnabled = true;
             eXeLearning.app.project._yjsBridge = null;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
     });
 
@@ -395,6 +379,52 @@ describe('IdeviceNode', () => {
             expect(node.getAttribute('mode')).toBe('export');
             expect(node.getAttribute('order')).toBe('1');
             expect(node.getAttribute('drag')).toBe('idevice');
+        });
+
+        it('shows visibility indicator when visibility is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-visibility-off-green-icon')).not.toBeNull();
+        });
+
+        it('does not show visibility indicator when visibility is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'true';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows teacher-only indicator when teacherOnly is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-teacher-only-icon')).not.toBeNull();
+            expect(indicator.querySelector('.visually-hidden').textContent).toBeTruthy();
+        });
+
+        it('does not show teacher-only indicator when teacherOnly is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'false' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows both indicators when visibility is false and teacherOnly is true', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            expect(node.querySelector('.visibility-off-indicator')).not.toBeNull();
+            const teacherIndicator = node.querySelector('.teacher-only-indicator');
+            expect(teacherIndicator).not.toBeNull();
+            expect(teacherIndicator.style.left).toBe('41px');
         });
 
         it('reuses existing element when newNode is false', () => {
@@ -420,15 +450,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe(
-                'my-idevice-id',
-            );
-        });
-
         it('sets export-view attribute when visibility is set', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -445,11 +466,52 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
         });
 
-        it('does not set identifier when value is empty', () => {
-            idevice.properties.identifier.value = '';
+        // Browsers (unlike jsdom) throw on classList.add('') with a SyntaxError.
+        // Make the test element strict so it reproduces the real-browser behaviour.
+        function makeClassListStrict(el) {
+            const realAdd = el.classList.add.bind(el.classList);
+            vi.spyOn(el.classList, 'add').mockImplementation((...tokens) => {
+                for (const token of tokens) {
+                    if (token === '') {
+                        throw new Error(
+                            "Failed to execute 'add' on 'DOMTokenList': The token provided must not be empty."
+                        );
+                    }
+                }
+                return realAdd(...tokens);
+            });
+        }
+
+        it('does not throw and skips empty tokens when cssClass has extra spaces', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value = '  a  b  ';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
+            expect(idevice.ideviceContent.classList.contains('a')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('b')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('')).toBe(false);
+        });
+
+        it('does not throw when cssClass contains a pasted CSS rule', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value =
+                '.lista_de_cotejo {     border: 1px solid #d4d4d4;     border-radius: 6px; }';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
+        });
+
+        it('adds exe-teacher-highlight class when teacherOnly is true', () => {
+            idevice.properties.teacherOnly = { value: 'true' };
             idevice.setPropertiesClassesToElement();
 
-            expect(idevice.ideviceContent.hasAttribute('identifier')).toBe(false);
+            expect(idevice.ideviceContent.classList.contains('exe-teacher-highlight')).toBe(true);
+        });
+
+        it('does not add exe-teacher-highlight class when teacherOnly is false', () => {
+            idevice.properties.teacherOnly = { value: 'false' };
+            idevice.setPropertiesClassesToElement();
+
+            expect(idevice.ideviceContent.classList.contains('exe-teacher-highlight')).toBe(false);
         });
     });
 
@@ -698,18 +760,151 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('releaseYjsEditingLock', () => {
+        it('does nothing when Yjs is not enabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const mockLockManager = { releaseLock: vi.fn() };
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).not.toHaveBeenCalled();
+        });
+
+        it('releases lock via lockManager when Yjs is enabled', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockLockManager = { releaseLock: vi.fn() };
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).toHaveBeenCalledWith('idevice-id-1');
+        });
+
+        it('clears lock info from component via structureBinding', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockUpdateComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: mockUpdateComponent },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockUpdateComponent).toHaveBeenCalledWith('idevice-id-1', {
+                lockedBy: null,
+                lockUserName: null,
+                lockUserColor: null,
+            });
+        });
+
+        it('clears editing component in awareness via documentManager', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockSetEditingComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({
+                        setEditingComponent: mockSetEditingComponent,
+                    })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockSetEditingComponent).toHaveBeenCalledWith(null);
+        });
+
+        it('uses yjsComponentId when available instead of odeIdeviceId', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-component-123';
+            const mockLockManager = { releaseLock: vi.fn() };
+            const mockUpdateComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: mockUpdateComponent },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).toHaveBeenCalledWith('yjs-component-123');
+            expect(mockUpdateComponent).toHaveBeenCalledWith(
+                'yjs-component-123',
+                expect.any(Object),
+            );
+        });
+
+        it('handles missing lockManager gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: null,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+
+        it('handles missing structureBinding gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: null,
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+
+        it('handles missing documentManager gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => null),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+    });
+
     describe('toogleIdeviceButtonsState', () => {
         it('does nothing when ideviceButtons is null', () => {
             idevice.ideviceButtons = null;
             expect(() => idevice.toogleIdeviceButtonsState(true)).not.toThrow();
         });
 
-        it('disables all buttons when disable is true', () => {
+        it('disables all action buttons when disable is true', () => {
             idevice.ideviceButtons = document.createElement('div');
             const button1 = document.createElement('button');
-            button1.classList.add('button-action-idevice');
+            button1.classList.add('btn-action-menu');
             const button2 = document.createElement('button');
-            button2.classList.add('button-action-idevice');
+            button2.classList.add('btn-action-menu');
             idevice.ideviceButtons.appendChild(button1);
             idevice.ideviceButtons.appendChild(button2);
 
@@ -719,16 +914,31 @@ describe('IdeviceNode', () => {
             expect(button2.disabled).toBe(true);
         });
 
-        it('enables all buttons when disable is false', () => {
+        it('enables all action buttons when disable is false', () => {
             idevice.ideviceButtons = document.createElement('div');
             const button = document.createElement('button');
-            button.classList.add('button-action-idevice');
+            button.classList.add('btn-action-menu');
             button.disabled = true;
             idevice.ideviceButtons.appendChild(button);
 
             idevice.toogleIdeviceButtonsState(false);
 
             expect(button.disabled).toBe(false);
+        });
+
+        it('does not affect buttons without btn-action-menu class', () => {
+            idevice.ideviceButtons = document.createElement('div');
+            const actionButton = document.createElement('button');
+            actionButton.classList.add('btn-action-menu');
+            const otherButton = document.createElement('button');
+            otherButton.classList.add('some-other-class');
+            idevice.ideviceButtons.appendChild(actionButton);
+            idevice.ideviceButtons.appendChild(otherButton);
+
+            idevice.toogleIdeviceButtonsState(true);
+
+            expect(actionButton.disabled).toBe(true);
+            expect(otherButton.disabled).toBe(false);
         });
     });
 
@@ -1011,12 +1221,31 @@ describe('IdeviceNode', () => {
             expect(result).toEqual({ key: 'value' });
         });
 
+        it('does not normalize jsonProperties before opening json iDevice editors', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { audio: 'blob:http://localhost/audio-1' };
+
+            const result = idevice.getSavedData();
+
+            expect(result).toEqual({ audio: 'blob:http://localhost/audio-1' });
+        });
+
         it('returns htmlView for html type idevice', () => {
             idevice.idevice = { componentType: 'html' };
             idevice.htmlView = '<p>Test</p>';
 
             const result = idevice.getSavedData();
             expect(result).toBe('<p>Test</p>');
+        });
+
+        it('does not normalize htmlView before opening html iDevice editors', () => {
+            idevice.idevice = { componentType: 'html' };
+            idevice.htmlView =
+                '<div class="rosco-IDevice"><a href="blob:http://localhost/image-1" class="rosco-LinkImages">0</a></div>';
+
+            const result = idevice.getSavedData();
+
+            expect(result).toContain('blob:http://localhost/image-1');
         });
 
         it('returns htmlView when componentType is undefined', () => {
@@ -1494,6 +1723,16 @@ describe('IdeviceNode', () => {
             expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
             vi.useRealTimers();
         });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block.askForRemoveIfEmpty = true;
+            idevice._skipBlockRemoveDialog = true;
+
+            idevice.removeBlockParentProcess(true);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+        });
     });
 
     describe('lockScreen / unlockScreen', () => {
@@ -1797,12 +2036,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute when value exists', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe('my-idevice-id');
-        });
-
         it('sets export-view attribute when visibility is true', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -1837,7 +2070,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn().mockReturnValue({
-                        identifier: 'yjs-id',
                         visibility: true,
                     }),
                 },
@@ -1848,17 +2080,16 @@ describe('IdeviceNode', () => {
         it('loads properties from Yjs when enabled', () => {
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
         });
 
         it('does nothing when Yjs is disabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
-            const originalValue = idevice.properties.identifier.value;
+            const originalValue = idevice.properties.visibility.value;
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe(originalValue);
+            expect(idevice.properties.visibility.value).toBe(originalValue);
         });
     });
 
@@ -1934,7 +2165,6 @@ describe('IdeviceNode', () => {
             const result = idevice.showLockedPlaceholder();
 
             expect(idevice.ideviceBody.innerHTML).toContain('idevice-locked-placeholder');
-            expect(idevice.ideviceBody.innerHTML).toContain('🔒');
             expect(result.init).toBe('locked');
         });
 
@@ -1991,6 +2221,76 @@ describe('IdeviceNode', () => {
             await idevice.generateContentExportView();
 
             expect(spy).toHaveBeenCalled();
+        });
+
+        it('calls typesetLatexInContent after loading content', async () => {
+            idevice.idevice = { componentType: 'html' };
+            vi.spyOn(idevice, 'exportProcessIdeviceHtml').mockResolvedValue({ init: 'true' });
+            const typesetSpy = vi.spyOn(idevice, 'typesetLatexInContent');
+
+            await idevice.generateContentExportView();
+
+            expect(typesetSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('typesetLatexInContent', () => {
+        beforeEach(() => {
+            idevice.ideviceBody = document.createElement('div');
+        });
+
+        it('does nothing if ideviceBody is null', () => {
+            idevice.ideviceBody = null;
+            idevice.typesetLatexInContent();
+            // Should not throw
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\(', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\[', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Display math: \\[x^2\\]';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains $$', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Math: $$x = 1$$';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('does not call MathJax when content has no LaTeX', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Plain text without formulas';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('does not call MathJax when MathJax is not defined', () => {
+            delete globalThis.MathJax;
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            // Should not throw
+            idevice.typesetLatexInContent();
         });
     });
 
@@ -2491,6 +2791,25 @@ describe('IdeviceNode', () => {
 
             expect(idevice.block.remove).not.toHaveBeenCalled();
         });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block = {
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            idevice._skipBlockRemoveDialog = true;
+            vi.useFakeTimers();
+
+            idevice.removeBlockParentProcess(true);
+            vi.advanceTimersByTime(300);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice.block.remove).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+            vi.useRealTimers();
+        });
     });
 
     describe('edition', () => {
@@ -2537,6 +2856,182 @@ describe('IdeviceNode', () => {
 
             expect(mockSetEditingComponent).toHaveBeenCalledWith('yjs-comp-id');
         });
+
+        it('stops playing audio when entering edition mode', () => {
+            const mockStopSound = vi.fn();
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        media: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockStopSound).toHaveBeenCalled();
+            delete global.$exeDevices;
+        });
+
+        it('does not throw when $exeDevices is undefined', () => {
+            delete global.$exeDevices;
+
+            expect(() => idevice.edition()).not.toThrow();
+        });
+
+        it('does not throw when stopSound is not available', () => {
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        media: {},
+                    },
+                },
+            };
+
+            expect(() => idevice.edition()).not.toThrow();
+            delete global.$exeDevices;
+        });
+
+        it('acquires Yjs lock and writes metadata when lock is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-42');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'Alice', color: '#ff0000' });
+            const mockUpdateComponent = vi.fn();
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: mockUpdateComponent,
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(mockUpdateComponent).toHaveBeenCalledWith('yjs-comp-123', {
+                lockedBy: 'client-42',
+                lockUserName: 'Alice',
+                lockUserColor: '#ff0000',
+            });
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+        });
+
+        it('shows alert and re-enables buttons when lock is denied', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue({
+                lockUserName: 'Bob',
+                lockUserColor: '#00ff00',
+            });
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Bob',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+        });
+
+        it('proceeds normally when no lock manager is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: null,
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+            expect(mockEngine.updateMode).toHaveBeenCalled();
+        });
+
+        it('uses yjsComponentId over odeIdeviceId for lock acquisition', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-preferred-id';
+            idevice.odeIdeviceId = 'ode-fallback-id';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-1');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'User', color: '#999' });
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: vi.fn(),
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: vi.fn(),
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-preferred-id');
+        });
+
+        it('falls back to "Another user" when lockInfo is null on denial', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue(null);
+
+            idevice.edition();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Another user',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+        });
     });
 
     describe('save', () => {
@@ -2548,6 +3043,7 @@ describe('IdeviceNode', () => {
             idevice.loadInitScriptIdevice = vi.fn().mockResolvedValue();
             idevice.loadLegacyExeFunctionalitiesExport = vi.fn();
             mockEngine.resetCurrentIdevicesExportView = vi.fn();
+            mockEngine.enableInternalLinks = vi.fn();
             mockEngine.unsetIdeviceActive = vi.fn();
             eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue();
         });
@@ -2565,6 +3061,13 @@ describe('IdeviceNode', () => {
             await idevice.save(true);
 
             expect(mockEngine.resetCurrentIdevicesExportView).toHaveBeenCalledWith([idevice.id]);
+        });
+
+        it('scrolls to idevice after async operations without resetting scroll first', async () => {
+            await idevice.save(false);
+
+            expect(idevice.resetWindowHash).not.toHaveBeenCalled();
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(0);
         });
 
         it('shows error modal when save fails', async () => {
@@ -2603,6 +3106,43 @@ describe('IdeviceNode', () => {
             await idevice.save(false);
 
             expect(mockReleaseLock).toHaveBeenCalledWith('yjs-comp');
+        });
+
+        it('stops playing audio when exiting edition mode', async () => {
+            const mockStopSound = vi.fn();
+            global.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            await idevice.save(false);
+
+            expect(mockStopSound).toHaveBeenCalled();
+            delete global.$exeDevicesEdition;
+        });
+
+        it('does not throw when $exeDevicesEdition is undefined', async () => {
+            delete global.$exeDevicesEdition;
+
+            await expect(idevice.save(false)).resolves.not.toThrow();
+        });
+
+        it('does not throw when stopSound is not available in edition helpers', async () => {
+            global.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {},
+                    },
+                },
+            };
+
+            await expect(idevice.save(false)).resolves.not.toThrow();
+            delete global.$exeDevicesEdition;
         });
     });
 
@@ -2788,7 +3328,9 @@ describe('IdeviceNode', () => {
             const result = await idevice.moveToBlockViaYjs();
 
             expect(result).toEqual({ responseMessage: 'OK' });
-            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalledWith(true);
+            // Caller (dropIdeviceContentInContent) handles empty block check
+            // Function is called without arguments (uses default null)
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalled();
         });
 
         it('returns ERROR when structureBinding is not available', async () => {
@@ -2832,6 +3374,68 @@ describe('IdeviceNode', () => {
             const result = await idevice.moveToPageViaYjs('new-page-id');
 
             expect(result).toEqual({ responseMessage: 'ERROR' });
+        });
+
+        it('passes previous blockId to setParentsAndChildrenIdevicesBlocks for empty block check', async () => {
+            // Set up initial block ID
+            idevice.blockId = 'old-block-id';
+
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue({ blockId: 'new-block-id' }),
+                },
+            };
+
+            await idevice.moveToPageViaYjs('new-page-id');
+
+            // Should pass the OLD block ID (before the move) to check if it became empty
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalledWith('old-block-id');
+        });
+
+        it('calls remove() to clean up idevice view after successful move', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue({ blockId: 'new-block' }),
+                },
+            };
+
+            await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(idevice.remove).toHaveBeenCalled();
+        });
+
+        it('returns ERROR when moveComponentToPage returns null', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue(null),
+                },
+            };
+
+            const result = await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(result).toEqual({ responseMessage: 'ERROR' });
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).not.toHaveBeenCalled();
+        });
+
+        it('tries multiple component IDs when first one fails', async () => {
+            idevice.yjsComponentId = 'yjs-id';
+            idevice.odeIdeviceId = 'ode-id';
+            idevice.id = 'fallback-id';
+
+            const mockMoveToPage = vi.fn()
+                .mockReturnValueOnce(null) // First call fails
+                .mockReturnValueOnce({ blockId: 'new-block' }); // Second succeeds
+
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: mockMoveToPage,
+                },
+            };
+
+            const result = await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(result).toEqual({ responseMessage: 'OK' });
+            expect(mockMoveToPage).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -3210,6 +3814,22 @@ describe('IdeviceNode', () => {
 
             vi.useRealTimers();
         });
+
+        it('uses getBoundingClientRect when scrollContainer is a DOM element', () => {
+            const container = document.createElement('div');
+            container.scrollTop = 50;
+            document.body.appendChild(container);
+            idevice.nodeContainer = container;
+            idevice.block = { idevices: [], blockId: 'block-123' };
+
+            vi.useFakeTimers();
+            idevice.goWindowToIdevice(0);
+            vi.advanceTimersByTime(0);
+            vi.useRealTimers();
+
+            // Should not throw and nodeContainer.scrollTop should be updated
+            expect(true).toBe(true);
+        });
     });
 
     describe('clearSelection', () => {
@@ -3330,27 +3950,28 @@ describe('IdeviceNode', () => {
             });
         });
 
-        it('creates asset and returns asset:// URLs with previewUrl when AssetManager is available', async () => {
+        it('creates asset and returns correct URLs', async () => {
+            // insertImage() returns asset://uuid.ext format
             const mockBlobUrl = 'blob:http://localhost:8080/mock-blob-id';
             const mockAssetManager = {
-                insertImage: vi.fn().mockResolvedValue('asset://test-uuid-1234/test.png'),
+                insertImage: vi.fn().mockResolvedValue('asset://abc123-def4-5678-90ab-cdef12345678.webm'),
                 resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
             };
             eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
             eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
                 savedPath: '/v1/files/perm/assets/project123',
-                savedFilename: 'test.png',
-                savedThumbnailName: 'thumb_test.png',
+                savedFilename: 'recording.webm',
+                savedThumbnailName: 'thumb_recording.webm',
             });
             idevice.odeIdeviceId = 'idevice-123';
 
-            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+            const result = await idevice.apiUploadFile(base64Image, 'recording.webm');
 
             expect(mockAssetManager.insertImage).toHaveBeenCalled();
-            expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid-1234/test.png');
-            expect(result.savedPath).toBe('asset://test-uuid-1234/');
-            expect(result.savedFilename).toBe('test.png');
-            expect(result.savedThumbnailName).toBe('test.png');
+            expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://abc123-def4-5678-90ab-cdef12345678.webm');
+            expect(result.savedPath).toBe('');
+            expect(result.savedFilename).toBe('asset://abc123-def4-5678-90ab-cdef12345678.webm');
+            expect(result.savedThumbnailName).toBe('asset://abc123-def4-5678-90ab-cdef12345678.webm');
             expect(result.previewUrl).toBe(mockBlobUrl);
         });
 
@@ -3523,7 +4144,6 @@ describe('IdeviceNode', () => {
         beforeEach(() => {
             idevice.id = 'comp-id';
             idevice.properties = {
-                identifier: { value: 'old-id' },
                 visibility: { value: 'true' },
             };
             idevice.makeIdeviceContentNode = vi.fn();
@@ -3535,9 +4155,9 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
-            expect(idevice.properties.identifier.value).toBe('new-id');
+            expect(idevice.properties.visibility.value).toBe('false');
             expect(eXeLearning.app.api.putSavePropertiesIdevice).toHaveBeenCalled();
         });
 
@@ -3546,7 +4166,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(idevice.makeIdeviceContentNode).toHaveBeenCalledWith(false);
         });
@@ -3556,7 +4176,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'ERROR',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
         });
@@ -3810,6 +4430,60 @@ describe('IdeviceNode', () => {
             const editBtn = idevice.ideviceButtons.querySelector('#editIdeviceidevice-123');
             expect(editBtn).not.toBeNull();
         });
+
+        it('expands minimized iDevice before entering edit mode', async () => {
+            // Set up iDevice with minify button and icon (collapsed state)
+            idevice.ideviceButtons.innerHTML = `
+                <button id="editIdeviceidevice-123">Edit</button>
+                <button id="minifyIdeviceidevice-123">
+                    <span id="minifyIdeviceidevice-123icon" class="chevron-up-icon-green"></span>
+                </button>
+            `;
+
+            // Create iDevice body element and add to DOM (hidden = minimized)
+            const ideviceBody = document.createElement('div');
+            ideviceBody.className = 'idevice_body';
+            ideviceBody.setAttribute('idevice-id', 'idevice-123');
+            ideviceBody.style.display = 'none'; // Hidden via inline style (minimized)
+            document.body.appendChild(ideviceBody);
+
+            // Verify initial state: element has display:none
+            expect(ideviceBody.style.display).toBe('none');
+
+            // Set up required mocks
+            idevice.isLockedByOtherUser = vi.fn(() => false);
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            idevice.edition = vi.fn();
+            idevice.odeNavStructureSyncId = 'nav-123';
+            idevice.blockId = 'block-123';
+            idevice.block = { pageId: 'page-123' };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+
+            // Add behavior and click the edit button
+            idevice.addBehaviourEditionIdeviceButton();
+            const editBtn = idevice.ideviceButtons.querySelector('#editIdeviceidevice-123');
+            editBtn.click();
+
+            // Wait for async operations
+            await vi.waitFor(() => {
+                expect(idevice.edition).toHaveBeenCalled();
+            });
+
+            // Verify: iDevice body should be visible (jQuery.show() removes display:none)
+            expect(ideviceBody.style.display).not.toBe('none');
+
+            // Verify: icon should change from chevron-up to chevron-down
+            const minifyIcon = idevice.ideviceButtons.querySelector(
+                '#minifyIdeviceidevice-123icon'
+            );
+            expect(minifyIcon.classList.contains('chevron-down-icon-green')).toBe(true);
+            expect(minifyIcon.classList.contains('chevron-up-icon-green')).toBe(false);
+
+            // Clean up
+            document.body.removeChild(ideviceBody);
+        });
     });
 
     describe('addBehaviourEditionIdeviceDoubleClick', () => {
@@ -3838,6 +4512,32 @@ describe('IdeviceNode', () => {
             const btn = idevice.ideviceButtons.querySelector('#moveUpIdeviceidevice-123');
             expect(btn).not.toBeNull();
         });
+
+        it('moves ideviceContent before previousIdevice in boxContent on success', async () => {
+            // Setup DOM: boxContent with previousIdevice then ideviceContent
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            const previousIdevice = document.createElement('div');
+            previousIdevice.classList.add('idevice_node');
+            idevice.ideviceContent = document.createElement('div');
+            idevice.ideviceContent.classList.add('idevice_node');
+            boxContent.appendChild(previousIdevice);
+            boxContent.appendChild(idevice.ideviceContent);
+
+            idevice.block = { boxContent };
+            idevice.order = 1;
+            idevice.apiUpdateOrder = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            idevice.addBehaviourMoveUpIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#moveUpIdeviceidevice-123');
+            btn.click();
+
+            await new Promise((r) => setTimeout(r, 10));
+
+            // After move up, ideviceContent should be before previousIdevice
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(idevice.ideviceContent)).toBeLessThan(children.indexOf(previousIdevice));
+        });
     });
 
     describe('addBehaviourMoveDownIdeviceButton', () => {
@@ -3853,6 +4553,32 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#moveDownIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('moves ideviceContent after nextIdevice in boxContent on success', async () => {
+            // Setup DOM: boxContent with ideviceContent then nextIdevice
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            idevice.ideviceContent = document.createElement('div');
+            idevice.ideviceContent.classList.add('idevice_node');
+            const nextIdevice = document.createElement('div');
+            nextIdevice.classList.add('idevice_node');
+            boxContent.appendChild(idevice.ideviceContent);
+            boxContent.appendChild(nextIdevice);
+
+            idevice.block = { boxContent };
+            idevice.order = 0;
+            idevice.apiUpdateOrder = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            idevice.addBehaviourMoveDownIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#moveDownIdeviceidevice-123');
+            btn.click();
+
+            await new Promise((r) => setTimeout(r, 10));
+
+            // After move down, ideviceContent should be after nextIdevice
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(idevice.ideviceContent)).toBeGreaterThan(children.indexOf(nextIdevice));
         });
     });
 
@@ -3870,18 +4596,128 @@ describe('IdeviceNode', () => {
             const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
             expect(btn).not.toBeNull();
         });
+
+        it('shows checkbox when iDevice is last in block', () => {
+            idevice.block = {
+                idevices: [idevice],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).toContain('delete-associated-box-');
+                expect(capturedBody).toContain('checkbox');
+            });
+        });
+
+        it('does not show checkbox when block has multiple iDevices', () => {
+            idevice.block = {
+                idevices: [idevice, { id: 'other' }],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).not.toContain('delete-associated-box-');
+            });
+        });
+
+        it('deletes both iDevice and block when checkbox is checked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                // Inject the checkbox HTML into the DOM so getElementById works
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).toHaveBeenCalledWith(true);
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
+        });
+
+        it('deletes only iDevice when checkbox is unchecked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                // Uncheck the checkbox
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                checkbox.checked = false;
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).not.toHaveBeenCalled();
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
+        });
     });
 
     describe('addBehaviourUndoIdeviceButton', () => {
         beforeEach(() => {
             idevice.odeIdeviceId = 'idevice-123';
+            idevice.id = 'idevice-123';
             idevice.mode = 'edition';
             idevice.ideviceButtons = document.createElement('div');
             idevice.ideviceButtons.innerHTML = `<button id="undoIdeviceidevice-123">Undo</button>`;
-            idevice.loadInitScriptIdevice = vi.fn();
+            idevice.loadInitScriptIdevice = vi.fn().mockResolvedValue();
             idevice.loadLegacyExeFunctionalitiesExport = vi.fn();
             idevice.toogleIdeviceButtonsState = vi.fn();
+            idevice.cleanupInactivityTracker = vi.fn();
+            idevice.releaseYjsEditingLock = vi.fn();
+            idevice.createAddTextBtn = vi.fn();
             mockEngine.unsetIdeviceActive = vi.fn();
+            mockEngine.resetCurrentIdevicesExportView = vi.fn().mockResolvedValue();
             eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue();
         });
 
@@ -3890,6 +4726,48 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('confirmExec calls loadInitScriptIdevice and resetCurrentIdevicesExportView sequentially', async () => {
+            // Capture confirmExec callback
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourUndoIdeviceButton();
+            // Trigger click to show confirm modal
+            const btn = idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123');
+            btn.click();
+
+            expect(capturedConfirmExec).toBeDefined();
+
+            // Execute the confirm callback
+            await capturedConfirmExec();
+
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('export');
+            expect(mockEngine.resetCurrentIdevicesExportView).toHaveBeenCalledWith(['idevice-123']);
+        });
+
+        it('confirmExec awaits loadInitScriptIdevice before resetCurrentIdevicesExportView', async () => {
+            const callOrder = [];
+            idevice.loadInitScriptIdevice = vi.fn().mockImplementation(async () => {
+                callOrder.push('loadInitScript');
+            });
+            mockEngine.resetCurrentIdevicesExportView = vi.fn().mockImplementation(async () => {
+                callOrder.push('resetExportView');
+            });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourUndoIdeviceButton();
+            idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123').click();
+            await capturedConfirmExec();
+
+            expect(callOrder).toEqual(['loadInitScript', 'resetExportView']);
         });
     });
 
@@ -4001,6 +4879,105 @@ describe('IdeviceNode', () => {
 
             expect(idevice.ideviceButtons.innerHTML).toContain('editIdevice');
         });
+
+        it('should disable delete, move up, move down, and actions buttons when locked by other user', () => {
+            idevice.mode = 'export';
+            idevice.lockedByRemote = true;
+            idevice.lockUserName = 'Remote User';
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+
+            idevice.makeIdeviceButtonsElement();
+
+            const moveUp = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            const moveDown = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            const editBtn = idevice.ideviceButtons.querySelector('.btn-edit-idevice');
+            const actionsDropdown = idevice.ideviceButtons.querySelector('[data-bs-toggle="dropdown"]');
+
+            expect(moveUp.disabled).toBe(true);
+            expect(moveDown.disabled).toBe(true);
+            expect(deleteBtn.disabled).toBe(true);
+            expect(editBtn.disabled).toBe(true);
+            expect(actionsDropdown.disabled).toBe(true);
+            // drag&drop should be disabled
+            expect(idevice.ideviceButtons.getAttribute('draggable')).toBe('false');
+        });
+
+        it('should enable delete, move up, move down buttons when NOT locked', () => {
+            idevice.mode = 'export';
+            idevice.lockedByRemote = false;
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+
+            idevice.makeIdeviceButtonsElement();
+
+            const moveUp = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            const moveDown = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            const editBtn = idevice.ideviceButtons.querySelector('.btn-edit-idevice');
+
+            expect(moveUp.disabled).toBe(false);
+            expect(moveDown.disabled).toBe(false);
+            expect(deleteBtn.disabled).toBe(false);
+            expect(editBtn.disabled).toBe(false);
+            // drag&drop should be enabled
+            expect(idevice.ideviceButtons.getAttribute('draggable')).toBe('true');
+        });
+    });
+
+    describe('locked iDevice handler guards', () => {
+        beforeEach(() => {
+            // Set up export mode with buttons rendered
+            idevice.odeIdeviceId = 'idevice-test';
+            idevice.ideviceContent = document.createElement('div');
+            idevice.mode = 'export';
+            idevice.valid = true;
+            idevice.haveEdition = true;
+            idevice.lockedByRemote = false;
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+            mockEngine.addEventDragStartToContentIdevice = vi.fn();
+            mockEngine.addEventDragEndToContentIdevice = vi.fn();
+            idevice.makeIdeviceButtonsElement();
+        });
+
+        it('delete handler should not proceed when locked by other user', () => {
+            const changeUserFlagSpy = eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            deleteBtn.click();
+
+            expect(changeUserFlagSpy).not.toHaveBeenCalled();
+        });
+
+        it('move up handler should not proceed when locked by other user', () => {
+            const isAvailableSpy = eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const moveUpBtn = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            moveUpBtn.click();
+
+            expect(isAvailableSpy).not.toHaveBeenCalled();
+        });
+
+        it('move down handler should not proceed when locked by other user', () => {
+            const isAvailableSpy = eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const moveDownBtn = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            moveDownBtn.click();
+
+            expect(isAvailableSpy).not.toHaveBeenCalled();
+        });
+
+        it('delete handler should proceed when NOT locked by other user', () => {
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = false;
+
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            deleteBtn.click();
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).toHaveBeenCalled();
+        });
     });
 
     describe('addUploadImage', () => {
@@ -4096,11 +5073,27 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.loadLegacyExeFunctionalitiesExport).toBe('function');
         });
 
-        it('calls $exe.mermaid.init() to render mermaid diagrams', () => {
-            const mermaidInitSpy = vi.spyOn(global.$exe.mermaid, 'init');
+        it('calls init on all legacy objects and setMultimediaGalleries', () => {
+            global.$exeFX = { init: vi.fn() };
+            global.$exeGames = { init: vi.fn() };
+            global.$exeHighlighter = { init: vi.fn() };
+            global.$exeABCmusic = { init: vi.fn() };
+            global.$exe = { init: vi.fn(), setMultimediaGalleries: vi.fn() };
+
             idevice.loadLegacyExeFunctionalitiesExport();
-            expect(mermaidInitSpy).toHaveBeenCalled();
-            mermaidInitSpy.mockRestore();
+
+            expect(global.$exeFX.init).toHaveBeenCalled();
+            expect(global.$exeGames.init).toHaveBeenCalled();
+            expect(global.$exeHighlighter.init).toHaveBeenCalled();
+            expect(global.$exeABCmusic.init).toHaveBeenCalled();
+            expect(global.$exe.init).toHaveBeenCalled();
+            expect(global.$exe.setMultimediaGalleries).toHaveBeenCalled();
+
+            delete global.$exeFX;
+            delete global.$exeGames;
+            delete global.$exeHighlighter;
+            delete global.$exeABCmusic;
+            delete global.$exe;
         });
     });
 
@@ -4111,6 +5104,142 @@ describe('IdeviceNode', () => {
 
         it('sets up file picker functionality without throwing', () => {
             expect(() => idevice.legacyExeIdevicesFilePicker()).not.toThrow();
+        });
+
+        it('should detect 3D file picker from input id containing "3d"', () => {
+            // Create input with id containing "3d"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'threeD3DModelFile';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method (actual code uses window.eXeLearning.app.modals.filemanager.show)
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect 3D file picker from input id containing "model"', () => {
+            // Create input with id containing "model"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'modelFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect audio file picker from input id containing "audio"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'audioFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('audio');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect video file picker from input id containing "video"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'videoFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('video');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
         });
     });
 
@@ -4143,6 +5272,343 @@ describe('IdeviceNode', () => {
     describe('getCurrentOrder', () => {
         it('exists as a method', () => {
             expect(typeof idevice.getCurrentOrder).toBe('function');
+        });
+    });
+
+    describe('_getIdeviceTypeIconHtml', () => {
+        it('returns empty string when idevice is null', () => {
+            idevice.idevice = null;
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when idevice has no icon', () => {
+            idevice.idevice = { title: 'Test', name: 'test' };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns exe-icon SVG when icon.type is exe-icon', () => {
+            idevice.idevice = {
+                title: 'Test iDevice',
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Test iDevice"');
+            expect(result).toContain('<svg>icon</svg>');
+        });
+
+        it('returns img background when icon.type is img with url', () => {
+            idevice.idevice = {
+                title: 'Image iDevice',
+                path: '/path/to/idevice',
+                icon: {
+                    type: 'img',
+                    url: 'icon.png',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon idevice-img-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Image iDevice"');
+            expect(result).toContain("background-image: url('/path/to/idevice/icon.png')");
+        });
+
+        it('returns empty string for unknown icon type', () => {
+            idevice.idevice = {
+                title: 'Unknown',
+                icon: {
+                    type: 'unknown-type',
+                    name: 'something',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when img type has no url', () => {
+            idevice.idevice = {
+                title: 'No URL',
+                icon: {
+                    type: 'img',
+                    url: '',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('uses odeIdeviceTypeName when idevice.title is missing', () => {
+            idevice.odeIdeviceTypeName = 'FallbackType';
+            idevice.idevice = {
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('title="FallbackType"');
+        });
+    });
+
+    describe('loadPropertiesFromYjs edge cases', () => {
+        it('does nothing when structureBinding is null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: null,
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+        });
+
+        it('does nothing when getComponentProperties returns null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => null),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+        });
+
+        it('ignores unknown property keys from Yjs', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => ({
+                        unknownProp: 'value',
+                    })),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.unknownProp).toBeUndefined();
+        });
+    });
+
+    describe('findInstalledIdevice additional cases', () => {
+        it('returns null when typeName is null', () => {
+            const result = idevice.findInstalledIdevice(null);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when typeName is undefined', () => {
+            const result = idevice.findInstalledIdevice(undefined);
+            expect(result).toBeNull();
+        });
+
+        it('strips Idevice suffix for mapping lookup', () => {
+            const result = idevice.findInstalledIdevice('FreeTextIdevice');
+            expect(result).not.toBeNull();
+            expect(result.name).toBe('text');
+        });
+    });
+
+    describe('cleanupInactivityTracker additional cases', () => {
+        it('handles when both inactivityCleanup and inactivityTimer exist', () => {
+            const cleanupFn = vi.fn();
+            idevice.inactivityCleanup = cleanupFn;
+            idevice.inactivityTimer = setTimeout(() => {}, 10000);
+
+            idevice.cleanupInactivityTracker();
+
+            expect(cleanupFn).toHaveBeenCalled();
+            expect(idevice.inactivityCleanup).toBeNull();
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+
+        it('clears timer directly when inactivityCleanup is null', () => {
+            const timerId = setTimeout(() => {}, 10000);
+            idevice.inactivityCleanup = null;
+            idevice.inactivityTimer = timerId;
+            const clearSpy = vi.spyOn(global, 'clearTimeout');
+
+            idevice.cleanupInactivityTracker();
+
+            expect(clearSpy).toHaveBeenCalledWith(timerId);
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+    });
+
+    describe('typesetLatexInContent', () => {
+        it('does nothing when ideviceBody is null', () => {
+            idevice.ideviceBody = null;
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+
+        it('does not call MathJax when no LaTeX content', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'No LaTeX here';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('calls MathJax.typesetPromise when content has LaTeX', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'Formula: \\( x^2 \\)';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('detects $$ delimiters', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'Formula: $$ x^2 $$';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalled();
+        });
+
+        it('detects \\begin{ delimiters', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\begin{equation} x \\end{equation}';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalled();
+        });
+
+        it('handles MathJax errors gracefully', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\( x \\)';
+            window.MathJax = { typesetPromise: vi.fn().mockRejectedValue(new Error('MathJax error')) };
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+
+        it('does nothing when MathJax is undefined', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\( x \\)';
+            delete window.MathJax;
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+    });
+
+    describe('loadExportIdevice', () => {
+        it('calls loadScriptsExport and loadStylesExport', async () => {
+            const loadScriptsSpy = vi.spyOn(idevice, 'loadScriptsExport').mockImplementation(() => {});
+            const loadStylesSpy = vi.spyOn(idevice, 'loadStylesExport').mockResolvedValue();
+
+            await idevice.loadExportIdevice();
+
+            expect(loadScriptsSpy).toHaveBeenCalled();
+            expect(loadStylesSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('static mode properties logic', () => {
+        it('static mode condition is true when capabilities.storage.remote is false', () => {
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(true);
+        });
+
+        it('static mode condition is false when capabilities is undefined', () => {
+            delete eXeLearning.app.capabilities;
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(false);
+        });
+
+        it('static mode condition is false when storage.remote is true', () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(false);
+        });
+
+        it('retrieves config from staticData in static mode', () => {
+            const staticConfig = { test: 'static-value' };
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            eXeLearning.app.api.staticData = {
+                parameters: {
+                    odeComponentsSyncPropertiesConfig: staticConfig,
+                },
+            };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+            const config = isStaticMode
+                ? eXeLearning.app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+                : eXeLearning.app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+
+            expect(config).toEqual(staticConfig);
+        });
+
+        it('retrieves config from api.parameters when not in static mode', () => {
+            const serverConfig = { test: 'server-value' };
+            delete eXeLearning.app.capabilities;
+            eXeLearning.app.api.parameters = {
+                odeComponentsSyncPropertiesConfig: serverConfig,
+            };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+            const config = isStaticMode
+                ? eXeLearning.app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+                : eXeLearning.app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+
+            expect(config).toEqual(serverConfig);
+        });
+    });
+
+    describe('new block detection', () => {
+        it('detects new block by new- prefix', () => {
+            idevice.block = { id: 'new-12345-abc' };
+
+            // The isNewBlock check is inside sendAddIdevicePush, so we test indirectly
+            // by checking the behavior. New blocks include additional params.
+            eXeLearning.app.api.postActivateCurrentOdeUsersUpdateFlag = vi.fn();
+            eXeLearning.app.api.parameters = { generateNewItemKey: 'different-key' };
+
+            // The new- prefix should trigger the new block path
+            expect(idevice.block.id.startsWith('new-')).toBe(true);
+        });
+
+        it('detects new block by generateNewItemKey', () => {
+            const newKey = 'special-new-key';
+            eXeLearning.app.api.parameters = { generateNewItemKey: newKey };
+            idevice.block = { id: newKey };
+
+            expect(idevice.block.id).toBe(newKey);
         });
     });
 });

@@ -711,6 +711,46 @@ describe('Folder Manager Service', () => {
             expect(cssAsset!.mime_type).toBe('text/css');
         });
 
+        it('should assign correct mime types to molecular format files', async () => {
+            const zipContent: Record<string, Uint8Array> = {
+                'protein.pdb': new TextEncoder().encode('ATOM      1  N   ALA A   1'),
+                'ligand.sdf': new TextEncoder().encode('\n\n\n  0  0  0  0  0  0  0  0  0  0999 V2000'),
+                'density.cif': new TextEncoder().encode('data_structure'),
+                'binary.mmtf': new Uint8Array([0x83, 0xa8]),
+            };
+            const zipped = fflate.zipSync(zipContent);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'molecules.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'molecules.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'mol-zip-id',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'mols');
+
+            expect(result.success).toBe(true);
+            expect(result.extractedCount).toBe(4);
+
+            const pdbAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mols', 'protein.pdb');
+            expect(pdbAsset?.mime_type).toBe('chemical/x-pdb');
+
+            const sdfAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mols', 'ligand.sdf');
+            expect(sdfAsset?.mime_type).toBe('chemical/x-mdl-sdfile');
+
+            const cifAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mols', 'density.cif');
+            expect(cifAsset?.mime_type).toBe('chemical/x-cif');
+
+            const mmtfAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mols', 'binary.mmtf');
+            expect(mmtfAsset?.mime_type).toBe('application/vnd.mmtf');
+        });
+
         it('should skip __MACOSX and hidden files', async () => {
             const zipContent: Record<string, Uint8Array> = {
                 'index.html': new TextEncoder().encode('<html></html>'),
@@ -765,6 +805,32 @@ describe('Folder Manager Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('not found');
+        });
+
+        it('should reject zip slip (path traversal) in zip contents', async () => {
+            const evilZipContent: Record<string, Uint8Array> = {
+                '../../evil.html': new TextEncoder().encode('<html>evil</html>'),
+                '../other_evil.css': new TextEncoder().encode('body { background: red; }'),
+            };
+            const zipped = fflate.zipSync(evilZipContent);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'evil.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'evil.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'evil-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Security error: invalid file paths detected');
         });
     });
 });

@@ -178,10 +178,21 @@ describe('ModalPrintPreview', () => {
     });
 
     describe('generatePreview', () => {
+        beforeEach(() => {
+            // Mock iframe src setter to avoid happy-dom Blob URL error
+            if (modal.iframe) {
+                Object.defineProperty(modal.iframe, 'src', {
+                    set: vi.fn(),
+                    get: () => '',
+                    configurable: true
+                });
+            }
+        });
+
         it('should throw error when Yjs is not enabled', async () => {
             eXeLearning.app.project._yjsEnabled = false;
 
-            await expect(modal.generatePreview()).rejects.toThrow('Print preview requires Yjs mode');
+            await expect(modal.generatePreview()).rejects.toThrow('Print preview requires server mode');
         });
 
         it('should throw error when document manager not available', async () => {
@@ -220,11 +231,14 @@ describe('ModalPrintPreview', () => {
         });
 
         it('should resolve asset URLs when assetManager is available', async () => {
-            const resolveAssetSpy = eXeLearning.app.project._yjsBridge.assetManager.resolveAssetUrlsAsync;
+            const assetManager = eXeLearning.app.project._yjsBridge.assetManager;
 
             await modal.generatePreview();
 
-            expect(resolveAssetSpy).toHaveBeenCalled();
+            // Verify that assetManager was passed as the 4th argument
+            const calls = window.generatePrintPreview.mock.calls;
+            expect(calls.length).toBeGreaterThan(0);
+            expect(calls[0][3]).toBe(assetManager);
         });
     });
 

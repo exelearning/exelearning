@@ -56,8 +56,9 @@ var $eXeHiddenImage = {
     loadGame: function () {
         $eXeHiddenImage.options = [];
         $eXeHiddenImage.activities.each(function (i) {
+            const dl = $('.hiddenimage-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.hiddenimage-version', this).eq(0).text(),
-                dl = $('.hiddenimage-DataGame', this),
                 imagesLink = $('.hiddenimage-LinkImages', this),
                 audioLink = $('.hiddenimage-LinkAudios', this),
                 mOption = $eXeHiddenImage.loadDataGame(
@@ -153,6 +154,57 @@ var $eXeHiddenImage = {
         }
     },
 
+    getRevealDelayMs: function (revealTimeInSeconds) {
+        const parsed = Number(revealTimeInSeconds);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            return 1000;
+        }
+        if (parsed === 0) {
+            return Number.POSITIVE_INFINITY;
+        }
+        return Math.round(parsed * 1000);
+    },
+
+    hideSquareAfterElapsedTime: function ($square, delayMs) {
+        if (!$square || !$square.length) {
+            return;
+        }
+
+        const prevTimerId = $square.data('hiRevealTimerId');
+        if (prevTimerId) {
+            clearTimeout(prevTimerId);
+        }
+
+        if (!Number.isFinite(delayMs) || delayMs <= 0) {
+            return;
+        }
+
+        const now =
+            typeof performance !== 'undefined' &&
+            typeof performance.now === 'function'
+                ? () => performance.now()
+                : () => Date.now();
+
+        const startedAt = now();
+
+        const checkElapsed = function () {
+            const elapsedMs = now() - startedAt;
+            if (elapsedMs >= delayMs) {
+                $square.removeData('hiRevealTimerId');
+                $square.stop(true, true).fadeIn(200);
+                return;
+            }
+
+            const remainingMs = delayMs - elapsedMs;
+            const nextDelayMs = Math.max(16, Math.min(remainingMs, 100));
+            const timerId = setTimeout(checkElapsed, nextDelayMs);
+            $square.data('hiRevealTimerId', timerId);
+        };
+
+        const timerId = setTimeout(checkElapsed, Math.min(delayMs, 100));
+        $square.data('hiRevealTimerId', timerId);
+    },
+
     createInterfacehiP: function (instance) {
         const path = $eXeHiddenImage.idevicePath,
             msgs = $eXeHiddenImage.options[instance].msgs,
@@ -235,7 +287,7 @@ var $eXeHiddenImage = {
                     <img id="hiPImage-${instance}" class="HIP-GameImage" src=""
                         alt="Imagen a descubrir">
                     <a href="#" class="HIP-LinkAudio" id="hiPLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="HIP-Activo" alt="${msgs.msgAudio}">
+                        <img src="${path}exequextaudio.svg" class="HIP-Activo" alt="${msgs.msgAudio}">
                     </a>
                     <div id="hipOverlay-${instance}" class="HIP-Overlay"></div>
                 </div>
@@ -333,8 +385,9 @@ var $eXeHiddenImage = {
                 : '';
         mOptions.id = typeof mOptions.id !== 'undefined' ? mOptions.id : false;
 
-        mOptions.revealTime =
-            mOptions.revealTime == 0 ? 10000000000 : mOptions.revealTime * 1000;
+        mOptions.revealTime = $eXeHiddenImage.getRevealDelayMs(
+            mOptions.revealTime
+        );
 
         imgsLink.each(function () {
             const iq = parseInt($(this).text(), 10);
@@ -358,19 +411,11 @@ var $eXeHiddenImage = {
             }
         });
         mOptions.questionsGame =
-            mOptions.percentajeQuestions < 100
-                ? $exeDevices.iDevice.gamification.helpers.getQuestions(
-                      mOptions.questionsGame,
-                      mOptions.percentajeQuestions
-                  )
-                : mOptions.questionsGame;
-
-        if (mOptions.optionsRamdon) {
-            mOptions.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.questionsGame
-                );
-        }
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                mOptions.questionsGame,
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
+            );
 
         mOptions.numberQuestions = mOptions.questionsGame.length;
 
@@ -483,11 +528,10 @@ var $eXeHiddenImage = {
         $('#hiPLinkAudio-' + instance).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
             if (audio && audio.length > 3) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
+                    audio
                 );
             }
         });
@@ -521,10 +565,11 @@ var $eXeHiddenImage = {
                 return;
             }
             var $this = $(this);
-            $this.fadeOut(200, function () {
-                setTimeout(function () {
-                    $this.fadeIn(200);
-                }, mOptions.revealTime);
+            $this.stop(true, true).fadeOut(200, function () {
+                $eXeHiddenImage.hideSquareAfterElapsedTime(
+                    $this,
+                    mOptions.revealTime
+                );
             });
             mOptions.attempts = mOptions.attempts - 1;
 
@@ -695,7 +740,7 @@ var $eXeHiddenImage = {
         clearInterval(mOptions.counterClock);
         $('#hiPHome-' + instance).css('display', 'flex');
         $('#hiPContainer-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         const typem = parseInt(score) >= 5 ? 2 : 1;
         const message = msgs.msgGameOver.replace('%s', score);
@@ -745,7 +790,7 @@ var $eXeHiddenImage = {
         if (mQuestion.audio.length > 4) {
             $('#hiPLinkAudio-' + instance).show();
         }
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeHiddenImage.drawQuestions(instance);
 
         const html = $('#hiPQuestionDiv-' + instance).html(),
@@ -758,7 +803,7 @@ var $eXeHiddenImage = {
         }
         const audio = mOptions.questionsGame[i].audio;
         if (audio && audio.length > 4) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 

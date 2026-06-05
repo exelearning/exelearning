@@ -29,6 +29,7 @@ export default class ModalShare extends Modal {
 
         this.generalAccessSection = this.modalElement.querySelector('#share-general-access-section');
         this.visibilitySelect = this.modalElement.querySelector('#share-visibility-select');
+        this.visibilityIcon = this.modalElement.querySelector('#share-visibility-icon');
         this.visibilityHelp = this.modalElement.querySelector('#share-visibility-help');
 
         this.linkInput = this.modalElement.querySelector('#share-link-input');
@@ -323,10 +324,11 @@ export default class ModalShare extends Modal {
     renderVisibilitySection() {
         if (!this.projectData || !this.visibilitySelect) return;
 
-        this.updateVisibilityOptionLabels();
-
         // Set current visibility
         this.visibilitySelect.value = this.projectData.visibility || 'public';
+
+        // Update the icon to match current visibility
+        this.updateVisibilityIcon(this.projectData.visibility || 'public');
 
         // Only owner can change visibility
         this.visibilitySelect.disabled = !this.currentUserIsOwner;
@@ -336,20 +338,19 @@ export default class ModalShare extends Modal {
     }
 
     /**
-     * Ensure visibility option labels include icons and no public/private suffix.
+     * Update the visibility icon based on current selection
+     * @param {string} visibility - 'public' or 'private'
      */
-    updateVisibilityOptionLabels() {
-        if (!this.visibilitySelect) return;
+    updateVisibilityIcon(visibility) {
+        if (!this.visibilityIcon || !this.visibilitySelect) return;
 
-        const privateOption = this.visibilitySelect.querySelector(
-            'option[value="private"]'
-        );
-        const publicOption = this.visibilitySelect.querySelector(
-            'option[value="public"]'
-        );
+        const iconSrc = visibility === 'public'
+            ? this.visibilitySelect.dataset.iconPublic
+            : this.visibilitySelect.dataset.iconPrivate;
 
-        if (privateOption) privateOption.textContent = '🔒 Restricted (Private)';
-        if (publicOption) publicOption.textContent = '🌐 Anyone with the link (Public)';
+        if (iconSrc) {
+            this.visibilityIcon.src = iconSrc;
+        }
     }
 
     /**
@@ -428,6 +429,7 @@ export default class ModalShare extends Modal {
             this.inviteButton.textContent = _('Inviting...');
 
             const projectId = eXeLearning.app.project?.odeId;
+            await this.saveProjectBeforeSharing('invite-collaborator');
             const response = await eXeLearning.app.api.addProjectCollaborator(
                 projectId,
                 email,
@@ -443,7 +445,7 @@ export default class ModalShare extends Modal {
                 if (response.responseMessage === 'ALREADY_COLLABORATOR') {
                     this.showInviteError(_('This user is already a collaborator'));
                 } else if (response.responseMessage === 'USER_NOT_FOUND') {
-                    this.showInviteError(_('User not found'));
+                    this.showInviteError(_('User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.'));
                 } else {
                     this.showInviteError(response.detail || _('Failed to invite user'));
                 }
@@ -458,33 +460,51 @@ export default class ModalShare extends Modal {
     }
 
     /**
+     * Best-effort save before sharing actions.
+     * If save fails, continue with the sharing action.
+     * @param {string} reason
+     */
+    async saveProjectBeforeSharing(reason) {
+        const bridge = eXeLearning.app.project?._yjsBridge;
+        if (!bridge?.saveToServer) {
+            return;
+        }
+
+        try {
+            Logger.log('[Share] Saving project before sharing action:', reason);
+            await bridge.saveToServer();
+            Logger.log('[Share] Project saved successfully');
+        } catch (saveError) {
+            console.warn('[Share] Failed to save before sharing action:', reason, saveError);
+        }
+    }
+
+    /**
      * Handle remove access action
      */
     async handleRemove(userId, email) {
         const confirmMessage = _("Remove {email}'s access to this project?").replace('{email}', email);
 
-        if (!confirm(confirmMessage)) {
-            return;
-        }
+        eXe.app.confirm(_('Attention'), confirmMessage, async () => {
+            try {
+                const projectId = eXeLearning.app.project?.odeId;
+                const response = await eXeLearning.app.api.removeProjectCollaborator(
+                    projectId,
+                    userId
+                );
 
-        try {
-            const projectId = eXeLearning.app.project?.odeId;
-            const response = await eXeLearning.app.api.removeProjectCollaborator(
-                projectId,
-                userId
-            );
-
-            if (response.responseMessage === 'OK') {
-                await this.loadProjectData(projectId);
-                this.renderPeopleList();
-                this.announce(_('Removed {email}').replace('{email}', email));
-            } else {
-                this.showError(response.detail || _('Failed to remove collaborator'));
+                if (response.responseMessage === 'OK') {
+                    await this.loadProjectData(projectId);
+                    this.renderPeopleList();
+                    this.announce(_('Removed {email}').replace('{email}', email));
+                } else {
+                    this.showError(response.detail || _('Failed to remove collaborator'));
+                }
+            } catch (error) {
+                console.error('Failed to remove collaborator:', error);
+                this.showError(_('Failed to remove collaborator'));
             }
-        } catch (error) {
-            console.error('Failed to remove collaborator:', error);
-            this.showError(_('Failed to remove collaborator'));
-        }
+        });
     }
 
     /**
@@ -493,43 +513,41 @@ export default class ModalShare extends Modal {
     async handleMakeOwner(userId, email) {
         const confirmMessage = _('Transfer ownership to {email}? You will become an editor.').replace('{email}', email);
 
-        if (!confirm(confirmMessage)) {
-            return;
-        }
+        eXe.app.confirm(_('Attention'), confirmMessage, async () => {
+            try {
+                const projectId = eXeLearning.app.project?.odeId;
+                const response = await eXeLearning.app.api.transferProjectOwnership(
+                    projectId,
+                    userId
+                );
 
-        try {
-            const projectId = eXeLearning.app.project?.odeId;
-            const response = await eXeLearning.app.api.transferProjectOwnership(
-                projectId,
-                userId
-            );
+                if (response.responseMessage === 'OK') {
+                    await this.loadProjectData(projectId);
 
-            if (response.responseMessage === 'OK') {
-                await this.loadProjectData(projectId);
+                    // Update isOwner flag
+                    this.currentUserIsOwner = this.projectData?.isOwner === true;
 
-                // Update isOwner flag
-                this.currentUserIsOwner = this.projectData?.isOwner === true;
+                    // Re-render all sections
+                    this.renderInviteSection();
+                    this.renderPeopleList();
+                    this.renderVisibilitySection();
 
-                // Re-render all sections
-                this.renderInviteSection();
-                this.renderPeopleList();
-                this.renderVisibilitySection();
+                    this.announce(_('Ownership transferred to {email}').replace('{email}', email));
 
-                this.announce(_('Ownership transferred to {email}').replace('{email}', email));
-
-                // Update share button pill
-                if (eXeLearning.app.interface?.shareButton) {
-                    eXeLearning.app.interface.shareButton.updateVisibilityPill(
-                        this.projectData.visibility
-                    );
+                    // Update share button pill
+                    if (eXeLearning.app.interface?.shareButton) {
+                        eXeLearning.app.interface.shareButton.updateVisibilityPill(
+                            this.projectData.visibility
+                        );
+                    }
+                } else {
+                    this.showError(response.detail || _('Failed to transfer ownership'));
                 }
-            } else {
-                this.showError(response.detail || _('Failed to transfer ownership'));
+            } catch (error) {
+                console.error('Failed to transfer ownership:', error);
+                this.showError(_('Failed to transfer ownership'));
             }
-        } catch (error) {
-            console.error('Failed to transfer ownership:', error);
-            this.showError(_('Failed to transfer ownership'));
-        }
+        });
     }
 
     /**
@@ -569,17 +587,7 @@ export default class ModalShare extends Modal {
             // This ensures the Yjs document is on the server so other clients can load it
             // and don't create duplicate blank pages when joining
             if (newVisibility !== 'private') {
-                const bridge = eXeLearning.app.project?._yjsBridge;
-                if (bridge?.saveToServer) {
-                    Logger.log('[Share] Saving project before visibility change to:', newVisibility);
-                    try {
-                        await bridge.saveToServer();
-                        Logger.log('[Share] Project saved successfully');
-                    } catch (saveError) {
-                        // Log but continue - visibility change can still work
-                        console.warn('[Share] Failed to save before visibility change:', saveError);
-                    }
-                }
+                await this.saveProjectBeforeSharing(`visibility-${newVisibility}`);
             }
 
             const response = await eXeLearning.app.api.updateProjectVisibility(
@@ -591,6 +599,7 @@ export default class ModalShare extends Modal {
             if (response.responseMessage === 'OK') {
                 this.projectData.visibility = newVisibility;
                 this.updateVisibilityHelp(newVisibility);
+                this.updateVisibilityIcon(newVisibility);
 
                 const message =
                     newVisibility === 'public'
@@ -605,11 +614,13 @@ export default class ModalShare extends Modal {
             } else {
                 this.showError(response.detail || _('Failed to update visibility'));
                 this.visibilitySelect.value = this.projectData.visibility;
+                this.updateVisibilityIcon(this.projectData.visibility);
             }
         } catch (error) {
             console.error('Failed to update visibility:', error);
             this.showError(_('Failed to update visibility'));
             this.visibilitySelect.value = this.projectData.visibility;
+            this.updateVisibilityIcon(this.projectData.visibility);
         }
     }
 

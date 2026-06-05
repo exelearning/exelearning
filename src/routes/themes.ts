@@ -1,21 +1,22 @@
 /**
  * Themes Routes for Elysia
- * Handles installed themes listing and management
+ * Handles installed themes listing (base and site themes only)
  *
- * Ported from NestJS ThemeService to match frontend expectations
+ * User themes imported from .elpx files are stored client-side in Yjs,
+ * not on the server. This simplifies the architecture and allows
+ * themes to sync automatically between collaborators.
  */
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import * as fs from 'fs';
-import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
-import { validateThemeZip, extractTheme, slugify, BASE_THEME_NAMES } from '../services/admin-upload-validator';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { prefixPath } from '../utils/basepath.util';
 
-// Base path for themes
+// Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
-const THEMES_USERS_PATH = 'public/files/perm/themes/users';
 
 // Get site themes directory (admin-uploaded themes)
 const getSiteThemesPath = () => {
@@ -32,13 +33,7 @@ export interface ThemesRouteDependencies {
         readFileSync: typeof fs.readFileSync;
         readdirSync: typeof fs.readdirSync;
     };
-    fsExtra: {
-        pathExists: typeof fsExtra.pathExists;
-        remove: typeof fsExtra.remove;
-    };
     getEnv: (key: string) => string | undefined;
-    validateThemeZip: typeof validateThemeZip;
-    extractTheme: typeof extractTheme;
 }
 
 const defaultDeps: ThemesRouteDependencies = {
@@ -47,13 +42,7 @@ const defaultDeps: ThemesRouteDependencies = {
         readFileSync: fs.readFileSync,
         readdirSync: fs.readdirSync,
     },
-    fsExtra: {
-        pathExists: fsExtra.pathExists,
-        remove: fsExtra.remove,
-    },
     getEnv: (key: string) => process.env[key],
-    validateThemeZip,
-    extractTheme,
 };
 
 let deps = defaultDeps;
@@ -73,13 +62,30 @@ const getAppVersion = (): string => {
         return envVersion;
     }
     try {
-        const packageJson = JSON.parse(deps.fs.readFileSync('package.json', 'utf-8'));
-        return `v${packageJson.version}`;
+        const packageJsonPath = path.join(process.cwd(), 'package.json');
+        if (deps.fs.existsSync(packageJsonPath)) {
+            const content = deps.fs.readFileSync(packageJsonPath, 'utf-8');
+            const pkg = JSON.parse(content);
+            return `v${pkg.version || '0.0.0'}`;
+        }
     } catch {
-        return 'v0.0.0';
+        // Ignore parse errors
     }
+    return 'v0.0.0';
 };
 
+/**
+ * Supported icon extensions in priority order (highest priority first)
+ * When multiple formats exist for the same icon, the highest priority format wins
+ */
+const ICON_EXTENSIONS = ['svg', 'png', 'gif', 'jpg', 'jpeg', 'webp'];
+const ICON_EXTENSION_REGEX = /\.(svg|png|gif|jpe?g|webp)$/i;
+
+/**
+ * Theme icon structure expected by the frontend
+ * The `id` field is the baseName WITHOUT extension (e.g., "share")
+ * The `value` field contains the full URL with extension (e.g., "/v3.1/.../share.svg")
+ */
 interface ThemeIcon {
     id: string;
     title: string;
@@ -87,14 +93,18 @@ interface ThemeIcon {
     value: string;
 }
 
+/**
+ * Theme configuration interface
+ */
 interface ThemeConfig {
+    id?: string;
     name: string;
     dirName: string;
     displayName: string;
     title: string;
     url: string;
     preview: string;
-    type: 'base' | 'user' | 'site';
+    type: 'base' | 'site';
     version: string;
     compatibility: string;
     author: string;
@@ -105,84 +115,90 @@ interface ThemeConfig {
     cssFiles: string[];
     js: string[];
     icons: Record<string, ThemeIcon>;
-    logoImg?: string;
-    logoImgUrl?: string;
-    headerImg?: string;
-    headerImgUrl?: string;
-    textColor?: string;
-    linkColor?: string;
     valid: boolean;
     isDefault?: boolean;
+    // Cache-buster timestamp (ms). Set for site themes from themes.updated_at so
+    // the client can key its persistent (IndexedDB) and bundle caches per
+    // re-upload. null/undefined for base themes (which version with the app).
+    updatedAt?: number | null;
 }
 
 /**
- * Scan theme directory for files with specific extension
+ * Scan theme directory for CSS files
  */
 function scanThemeFiles(themePath: string, extension: string): string[] {
-    try {
-        const files: string[] = [];
-        if (!deps.fs.existsSync(themePath)) return files;
-
-        const entries = deps.fs.readdirSync(themePath, { withFileTypes: true });
-        for (const entry of entries) {
-            if (entry.isFile() && entry.name.endsWith(extension)) {
-                files.push(entry.name);
-            }
-        }
+    const files: string[] = [];
+    if (!deps.fs.existsSync(themePath)) {
         return files;
-    } catch {
-        return [];
     }
+
+    const entries = deps.fs.readdirSync(themePath, { withFileTypes: true });
+    for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith(extension)) {
+            files.push(entry.name);
+        }
+    }
+    return files;
 }
 
 /**
  * Scan theme directory for icon files
+ * Supports multiple formats with priority: svg > png > gif > jpg > jpeg > webp
+ * When multiple formats exist for the same icon base name, the highest priority format wins
+ *
+ * Icons are keyed by baseName (e.g., "share") to allow cross-theme compatibility.
+ * The iconName stored in blocks is the baseName without extension.
  */
 function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
-    try {
-        const iconsPath = path.join(themePath, 'icons');
-        if (!deps.fs.existsSync(iconsPath)) return {};
+    const icons: Record<string, ThemeIcon> = {};
+    const iconsPath = path.join(themePath, 'icons');
 
-        const entries = deps.fs.readdirSync(iconsPath, { withFileTypes: true });
-        const icons: Record<string, ThemeIcon> = {};
-
-        for (const entry of entries) {
-            if (
-                entry.isFile() &&
-                (entry.name.endsWith('.png') ||
-                    entry.name.endsWith('.svg') ||
-                    entry.name.endsWith('.gif') ||
-                    entry.name.endsWith('.jpg') ||
-                    entry.name.endsWith('.jpeg'))
-            ) {
-                const iconId = path.basename(entry.name, path.extname(entry.name));
-                icons[iconId] = {
-                    id: iconId,
-                    title: iconId,
-                    type: 'img',
-                    value: `${themeUrl}/icons/${entry.name}`,
-                };
-            }
-        }
+    if (!deps.fs.existsSync(iconsPath)) {
         return icons;
-    } catch {
-        return {};
     }
+
+    // Track best icon per base name (highest priority = lowest index)
+    const bestByBaseName: Map<string, { filename: string; priority: number }> = new Map();
+
+    const entries = deps.fs.readdirSync(iconsPath, { withFileTypes: true });
+    for (const entry of entries) {
+        if (!entry.isFile()) continue;
+
+        const ext = entry.name.split('.').pop()?.toLowerCase();
+        if (!ext || !ICON_EXTENSIONS.includes(ext)) continue;
+
+        const baseName = entry.name.replace(ICON_EXTENSION_REGEX, '');
+        const priority = ICON_EXTENSIONS.indexOf(ext);
+
+        const existing = bestByBaseName.get(baseName);
+        if (!existing || priority < existing.priority) {
+            bestByBaseName.set(baseName, { filename: entry.name, priority });
+        }
+    }
+
+    // Build icons record - keyed by baseName (e.g., "share")
+    // This allows icon selection to persist when switching themes
+    // (Theme A may have share.svg, Theme B may have share.png)
+    for (const [baseName, { filename }] of bestByBaseName) {
+        icons[baseName] = {
+            id: baseName, // baseName without extension
+            title: baseName,
+            type: 'img',
+            value: `${themeUrl}/icons/${filename}`, // Full URL with extension
+        };
+    }
+
+    return icons;
 }
 
 /**
  * Parse theme config.xml
- * @param xmlContent - XML content to parse
- * @param themeId - Theme directory name
- * @param themePath - Full path to theme directory
- * @param type - Theme type (base/user)
- * @param customUrlPrefix - Optional custom URL prefix for themes stored in FILES_DIR
  */
 function parseThemeConfig(
     xmlContent: string,
     themeId: string,
     themePath: string,
-    type: 'base' | 'user',
+    type: 'base' | 'site',
     customUrlPrefix?: string,
 ): ThemeConfig | null {
     try {
@@ -194,21 +210,19 @@ function parseThemeConfig(
 
         const version = getAppVersion();
 
-        // Build URL paths with version for cache busting
-        // NOTE: basePath is NOT included here because frontend adds it via symfonyURL in theme.js
+        // Build URL paths with version for cache busting.
+        // prefixPath() ensures BASE_PATH is prepended when configured, so URLs
+        // are correct behind a reverse proxy that only mounts the BASE_PATH
+        // namespace (see issue #1802).
         let themeBasePath: string;
         if (customUrlPrefix) {
-            // Use custom prefix for themes from FILES_DIR
-            themeBasePath = `/${version}${customUrlPrefix}/${themeId}`;
+            themeBasePath = prefixPath(`/${version}${customUrlPrefix}/${themeId}`);
         } else {
-            themeBasePath =
-                type === 'base'
-                    ? `/${version}/files/perm/themes/base/${themeId}`
-                    : `/${version}/files/perm/themes/users/${themeId}`;
+            themeBasePath = prefixPath(`/${version}/files/perm/themes/base/${themeId}`);
         }
 
         const previewPath =
-            type === 'base' ? `/${version}/style/${themeId}/preview.png` : `${themeBasePath}/preview.png`;
+            type === 'base' ? prefixPath(`/${version}/style/${themeId}/preview.png`) : `${themeBasePath}/preview.png`;
 
         // Scan for CSS files
         const cssFiles = scanThemeFiles(themePath, '.css');
@@ -222,53 +236,26 @@ function parseThemeConfig(
         // Scan for icons
         const icons = scanThemeIcons(themePath, themeBasePath);
 
-        // Build theme config matching NestJS format
-        const config: ThemeConfig = {
+        return {
             name: getValue('name') || themeId,
             dirName: themeId,
-            displayName: getValue('title') || getValue('name') || themeId,
-            title: getValue('title') || getValue('name') || themeId,
+            displayName: getValue('name') || themeId,
+            title: getValue('title') || themeId,
             url: themeBasePath,
             preview: previewPath,
-            type: type,
+            type,
             version: getValue('version') || '1.0',
-            compatibility: getValue('compatibility') || '3.0',
+            compatibility: getValue('exe-version') || '3.0',
             author: getValue('author') || '',
             license: getValue('license') || '',
             licenseUrl: getValue('license-url') || '',
             description: getValue('description') || '',
-            downloadable: getValue('downloadable') || '0',
+            downloadable: getValue('downloadable') || '1',
             cssFiles,
             js,
             icons,
             valid: true,
         };
-
-        // Parse logo and header images
-        const logoImg = getValue('logo-img');
-        if (logoImg) {
-            config.logoImg = logoImg;
-            config.logoImgUrl = `${themeBasePath}/img/${logoImg}`;
-        }
-
-        const headerImg = getValue('header-img');
-        if (headerImg) {
-            config.headerImg = headerImg;
-            config.headerImgUrl = `${themeBasePath}/img/${headerImg}`;
-        }
-
-        // Parse color configuration
-        const textColor = getValue('text-color');
-        if (textColor) {
-            config.textColor = textColor;
-        }
-
-        const linkColor = getValue('link-color');
-        if (linkColor) {
-            config.linkColor = linkColor;
-        }
-
-        return config;
     } catch {
         return null;
     }
@@ -276,11 +263,8 @@ function parseThemeConfig(
 
 /**
  * Scan themes directory and return list
- * @param basePath - Directory path to scan for themes
- * @param type - Theme type (base/user)
- * @param customUrlPrefix - Optional custom URL prefix for themes served from non-standard location
  */
-function scanThemes(basePath: string, type: 'base' | 'user', customUrlPrefix?: string): ThemeConfig[] {
+function scanThemes(basePath: string, type: 'base' | 'site', customUrlPrefix?: string): ThemeConfig[] {
     const themes: ThemeConfig[] = [];
 
     if (!deps.fs.existsSync(basePath)) {
@@ -321,13 +305,27 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const siteThemesPath = getSiteThemesPath();
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
-    // Build URL paths - site themes are served from FILES_DIR
-    const themeUrl = `/${version}/site-files/themes/${siteTheme.dir_name}`;
+    // Build URL paths - site themes are served from FILES_DIR.
+    // Embed the theme's updated_at as a cache-buster so a re-uploaded theme
+    // forces clients to drop the cached CSS/icons on the next page load, and
+    // prefix BASE_PATH so URLs remain valid behind a subdirectory proxy.
+    const themeUrl = prefixPath(buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at));
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];
     const js = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.js') : [];
     const icons = deps.fs.existsSync(themePath) ? scanThemeIcons(themePath, themeUrl) : {};
+
+    // Read downloadable flag from config.xml (defaults to '1' if not specified)
+    let downloadable = '1';
+    const configPath = path.join(themePath, 'config.xml');
+    if (deps.fs.existsSync(configPath)) {
+        const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
+        const match = xmlContent.match(/<downloadable>([\s\S]*?)<\/downloadable>/);
+        if (match) {
+            downloadable = match[1].trim() || '1';
+        }
+    }
 
     return {
         name: siteTheme.dir_name,
@@ -343,25 +341,24 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         license: siteTheme.license || '',
         licenseUrl: '',
         description: siteTheme.description || '',
-        downloadable: '1',
+        downloadable,
         cssFiles,
         js,
         icons,
         valid: true,
+        updatedAt: siteTheme.updated_at ?? null,
     };
 }
 
-// Get files directory
-const getFilesDir = () => process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
-
 /**
  * Themes routes
+ * Only serves base themes (bundled) and site themes (admin-uploaded).
+ * User themes from .elpx files are stored client-side in Yjs.
  */
 export const themesRoutes = new Elysia({ name: 'themes-routes' })
-    // GET /api/themes/installed - Get list of installed themes
+    // GET /api/themes/installed - Get list of installed themes (base + site)
     .get('/api/themes/installed', async () => {
         const baseThemes = scanThemes(THEMES_BASE_PATH, 'base');
-        const userThemes = scanThemes(THEMES_USERS_PATH, 'user');
 
         // Get enabled site themes from database
         let siteThemes: ThemeConfig[] = [];
@@ -390,17 +387,8 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         // Filter out disabled base themes
         const enabledBaseThemes = baseThemes.filter(t => !disabledBaseThemes.has(t.dirName));
 
-        // Also scan user themes from FILES_DIR (imported from ELP files)
-        // These themes are served via /user-files/themes/ route
-        const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
-        let additionalUserThemes: ThemeConfig[] = [];
-        if (deps.fs.existsSync(userThemesDir)) {
-            // Pass custom URL prefix so preview images and assets use /user-files/themes/ route
-            additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
-        }
-
-        // Combine all themes (base + user from public + user from FILES_DIR + site)
-        const allThemes = [...enabledBaseThemes, ...userThemes, ...additionalUserThemes, ...siteThemes];
+        // Combine base + site themes
+        const allThemes = [...enabledBaseThemes, ...siteThemes];
 
         // Mark the default theme
         for (const theme of allThemes) {
@@ -429,16 +417,17 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
     .get('/api/themes/installed/:themeId', ({ params, set }) => {
         const { themeId } = params;
 
-        // Check user themes first
-        let configPath = path.join(THEMES_USERS_PATH, themeId, 'config.xml');
-        let themePath = path.join(THEMES_USERS_PATH, themeId);
-        let type: 'base' | 'user' = 'user';
+        // Check base themes first
+        let configPath = path.join(THEMES_BASE_PATH, themeId, 'config.xml');
+        let themePath = path.join(THEMES_BASE_PATH, themeId);
+        let type: 'base' | 'site' = 'base';
 
         if (!deps.fs.existsSync(configPath)) {
-            // Fall back to base themes
-            configPath = path.join(THEMES_BASE_PATH, themeId, 'config.xml');
-            themePath = path.join(THEMES_BASE_PATH, themeId);
-            type = 'base';
+            // Check site themes
+            const siteThemesPath = getSiteThemesPath();
+            configPath = path.join(siteThemesPath, themeId, 'config.xml');
+            themePath = path.join(siteThemesPath, themeId);
+            type = 'site';
         }
 
         if (!deps.fs.existsSync(configPath)) {
@@ -447,7 +436,8 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         }
 
         const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
-        const config = parseThemeConfig(xmlContent, themeId, themePath, type);
+        const customUrlPrefix = type === 'site' ? '/site-files/themes' : undefined;
+        const config = parseThemeConfig(xmlContent, themeId, themePath, type, customUrlPrefix);
 
         if (!config) {
             set.status = 500;
@@ -457,394 +447,94 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         return config;
     })
 
-    /**
-     * POST /api/themes/import - Import theme from ELP file
-     * Allows users to install a theme from their .elpx file.
-     *
-     * SECURITY NOTE: Custom themes can contain JavaScript code that will be
-     * executed in the exported content context. This feature is controlled
-     * by the ONLINE_THEMES_INSTALL setting. The client-side code checks
-     * this setting before offering to import themes. Administrators should
-     * be aware that enabling ONLINE_THEMES_INSTALL allows users to run
-     * custom JavaScript in exported content.
-     */
-    .post(
-        '/api/themes/import',
-        async ({ body, set, jwt, cookie }) => {
-            try {
-                const { themeZip, themeDirname } = body;
+    // GET /api/resources/theme/:themeName/bundle - Get theme files as a bundle for export
+    // This endpoint serves base and site themes for the exporter
+    .get('/api/resources/theme/:themeName/bundle', async ({ params, set }) => {
+        const { themeName } = params;
 
-                if (!themeZip) {
-                    set.status = 400;
-                    return { responseMessage: 'ERROR', error: 'No theme file uploaded' };
-                }
+        // Check base themes first
+        let themePath = path.join(THEMES_BASE_PATH, themeName);
+        let found = deps.fs.existsSync(themePath);
 
-                if (!themeDirname) {
-                    set.status = 400;
-                    return { responseMessage: 'ERROR', error: 'No theme directory name provided' };
-                }
-
-                // Get file buffer
-                const fileBuffer = Buffer.from(await themeZip.arrayBuffer());
-
-                // Validate ZIP file
-                const validation = await deps.validateThemeZip(fileBuffer);
-                if (!validation.valid) {
-                    set.status = 400;
-                    return { responseMessage: 'ERROR', error: validation.error };
-                }
-
-                // Use provided dirname or generate from metadata
-                const dirName = slugify(themeDirname) || slugify(validation.metadata!.name);
-                if (!dirName) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: 'Could not generate valid directory name for theme',
-                    };
-                }
-
-                // Check if theme already exists in base or admin (conflicts not allowed)
-                // 1. Check base themes list
-                if (BASE_THEME_NAMES.includes(dirName.toLowerCase())) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (base theme)`,
-                    };
-                }
-
-                // 2. Check base themes directory
-                const baseThemePath = path.join(THEMES_BASE_PATH, dirName);
-                if (deps.fs.existsSync(baseThemePath)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (base theme)`,
-                    };
-                }
-
-                // 3. Check site themes directory
-                const siteThemePath = path.join(getSiteThemesPath(), dirName);
-                if (await deps.fsExtra.pathExists(siteThemePath)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (site theme)`,
-                    };
-                }
-
-                // Themes imported from ELP files ALWAYS go to user themes folder
-                // Admin themes are only installed via the admin panel, not via ELP import
-                // This applies to all users, including admins
-                const targetDir = path.join(getFilesDir(), 'themes', 'users', dirName);
-
-                // Check if theme already exists in user folder - if so, just return success
-                // (user can re-import a theme they already have)
-                if (await deps.fsExtra.pathExists(targetDir)) {
-                    // Theme already exists, no need to import again
-                    // Just return success with current theme list
-                    const baseThemes = scanThemes(THEMES_BASE_PATH, 'base');
-                    const userThemes = scanThemes(THEMES_USERS_PATH, 'user');
-
-                    let siteThemes: ThemeConfig[] = [];
-                    try {
-                        const siteThemesDb = await getEnabledSiteThemes(db);
-                        siteThemes = siteThemesDb.map(siteThemeToConfig);
-                    } catch {
-                        // Ignore if table doesn't exist
-                    }
-
-                    const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
-                    let additionalUserThemes: ThemeConfig[] = [];
-                    if (await deps.fsExtra.pathExists(userThemesDir)) {
-                        additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
-                    }
-
-                    const allThemes = [...baseThemes, ...userThemes, ...additionalUserThemes, ...siteThemes];
-                    allThemes.sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-                    return {
-                        responseMessage: 'OK',
-                        themes: { themes: allThemes },
-                    };
-                }
-
-                // Extract theme to user themes folder
-                await deps.extractTheme(fileBuffer, targetDir);
-
-                // Return updated theme list
-                const baseThemes = scanThemes(THEMES_BASE_PATH, 'base');
-                const userThemes = scanThemes(THEMES_USERS_PATH, 'user');
-
-                // Get enabled site themes from database
-                let siteThemes: ThemeConfig[] = [];
-                try {
-                    const siteThemesDb = await getEnabledSiteThemes(db);
-                    siteThemes = siteThemesDb.map(siteThemeToConfig);
-                } catch {
-                    // Ignore if table doesn't exist
-                }
-
-                // Also scan user themes from FILES_DIR (served via /user-files/themes/ route)
-                const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
-                let additionalUserThemes: ThemeConfig[] = [];
-                if (await deps.fsExtra.pathExists(userThemesDir)) {
-                    additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
-                }
-
-                const allThemes = [...baseThemes, ...userThemes, ...additionalUserThemes, ...siteThemes];
-                allThemes.sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-                return {
-                    responseMessage: 'OK',
-                    themes: {
-                        themes: allThemes,
-                    },
-                };
-            } catch (error) {
-                console.error('[themes] Theme import error:', error);
-                set.status = 500;
-                const message = error instanceof Error ? error.message : 'Unknown error';
-                return { responseMessage: 'ERROR', error: message };
-            }
-        },
-        {
-            body: t.Object({
-                themeZip: t.File(),
-                themeDirname: t.String(),
-            }),
-        },
-    )
-
-    /**
-     * POST /api/themes/upload - Upload theme ZIP file (base64 encoded)
-     * Used by the workarea styles panel "Import style" button.
-     *
-     * SECURITY NOTE: Custom themes can contain JavaScript code that will be
-     * executed in the exported content context. This feature is controlled
-     * by the ONLINE_THEMES_INSTALL setting. Administrators should be aware
-     * that enabling ONLINE_THEMES_INSTALL allows users to run custom
-     * JavaScript in exported content.
-     */
-    .post(
-        '/api/themes/upload',
-        async ({ body, set }) => {
-            try {
-                const { filename, file } = body;
-
-                if (!file || !filename) {
-                    set.status = 400;
-                    return { responseMessage: 'ERROR', error: 'Missing file or filename' };
-                }
-
-                // Parse base64 data URL
-                let fileBuffer: Buffer;
-                if (file.startsWith('data:')) {
-                    // Extract base64 part from data URL
-                    const base64Data = file.split(',')[1];
-                    if (!base64Data) {
-                        set.status = 400;
-                        return { responseMessage: 'ERROR', error: 'Invalid base64 data' };
-                    }
-                    fileBuffer = Buffer.from(base64Data, 'base64');
-                } else {
-                    // Assume raw base64
-                    fileBuffer = Buffer.from(file, 'base64');
-                }
-
-                // Validate ZIP file
-                const validation = await deps.validateThemeZip(fileBuffer);
-                if (!validation.valid) {
-                    set.status = 400;
-                    return { responseMessage: 'ERROR', error: validation.error };
-                }
-
-                // Generate directory name from filename or config
-                const baseName = filename.replace(/\.zip$/i, '');
-                const dirName = slugify(baseName) || slugify(validation.metadata!.name);
-                if (!dirName) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: 'Could not generate valid directory name for theme',
-                    };
-                }
-
-                // Check if theme already exists in any location (base, admin, user)
-                // 1. Check base themes
-                if (BASE_THEME_NAMES.includes(dirName.toLowerCase())) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (base theme)`,
-                    };
-                }
-
-                // 2. Check base themes directory
-                const baseThemePath = path.join(THEMES_BASE_PATH, dirName);
-                if (deps.fs.existsSync(baseThemePath)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (base theme)`,
-                    };
-                }
-
-                // 3. Check site themes directory
-                const siteThemePath = path.join(getSiteThemesPath(), dirName);
-                if (await deps.fsExtra.pathExists(siteThemePath)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists on the server (site theme)`,
-                    };
-                }
-
-                // 4. Check legacy user themes directory
-                const legacyUserThemePath = path.join(THEMES_USERS_PATH, dirName);
-                if (deps.fs.existsSync(legacyUserThemePath)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists`,
-                    };
-                }
-
-                // 5. Check user themes in FILES_DIR
-                const targetDir = path.join(getFilesDir(), 'themes', 'users', dirName);
-                if (await deps.fsExtra.pathExists(targetDir)) {
-                    set.status = 400;
-                    return {
-                        responseMessage: 'ERROR',
-                        error: `A theme with the name "${dirName}" already exists`,
-                    };
-                }
-
-                // Extract theme to target directory
-                await deps.extractTheme(fileBuffer, targetDir);
-
-                // Read config.xml to get theme metadata
-                const configPath = path.join(targetDir, 'config.xml');
-                let themeConfig: ThemeConfig;
-
-                if (deps.fs.existsSync(configPath)) {
-                    const xmlContent = deps.fs.readFileSync(configPath, 'utf8');
-                    // Use /user-files/themes/ prefix for user themes from FILES_DIR
-                    const parsed = parseThemeConfig(xmlContent, dirName, targetDir, 'user', '/user-files/themes');
-                    if (parsed) {
-                        themeConfig = parsed;
-                    } else {
-                        // Fallback if config parse fails
-                        const version = getAppVersion();
-                        themeConfig = {
-                            id: dirName,
-                            dirName: dirName,
-                            displayName: validation.metadata!.name,
-                            version: validation.metadata!.version || '1.0',
-                            author: validation.metadata!.author || '',
-                            type: 'user',
-                            url: `/${version}/user-files/themes/${dirName}`,
-                            preview: `/${version}/user-files/themes/${dirName}/preview.png`,
-                        } as ThemeConfig;
-                    }
-                } else {
-                    // No config.xml, use validation metadata
-                    const version = getAppVersion();
-                    themeConfig = {
-                        id: dirName,
-                        dirName: dirName,
-                        displayName: validation.metadata!.name,
-                        version: validation.metadata!.version || '1.0',
-                        author: validation.metadata!.author || '',
-                        type: 'user',
-                        url: `/${version}/user-files/themes/${dirName}`,
-                        preview: `/${version}/user-files/themes/${dirName}/preview.png`,
-                    } as ThemeConfig;
-                }
-
-                return {
-                    responseMessage: 'OK',
-                    theme: themeConfig,
-                };
-            } catch (error) {
-                console.error('[Themes] Upload error:', error);
-                set.status = 500;
-                return {
-                    responseMessage: 'ERROR',
-                    error: error instanceof Error ? error.message : 'Unknown error',
-                };
-            }
-        },
-        {
-            body: t.Object({
-                filename: t.String(),
-                file: t.String(), // base64 encoded file
-            }),
-        },
-    )
-
-    /**
-     * DELETE /api/themes/:themeId/delete - Delete a user theme
-     * Only user-installed themes can be deleted, not base themes.
-     */
-    .delete('/api/themes/:themeId/delete', async ({ params, body, set }) => {
-        try {
-            // Get theme ID from path param or body
-            // The client may send {themeId} literally if URL wasn't properly templated
-            let themeId = params.themeId;
-            if (themeId === '{themeId}' && body && typeof body === 'object' && 'id' in body) {
-                themeId = (body as { id: string }).id;
-            }
-
-            if (!themeId || themeId === '{themeId}') {
-                set.status = 400;
-                return { responseMessage: 'ERROR', error: 'No theme ID provided' };
-            }
-
-            // Security: only allow deleting user themes, not base themes
-            if (BASE_THEME_NAMES.includes(themeId.toLowerCase())) {
-                set.status = 403;
-                return {
-                    responseMessage: 'ERROR',
-                    error: 'Cannot delete built-in themes',
-                };
-            }
-
-            // Check in user themes directory
-            const userThemePath = path.join(getFilesDir(), 'themes', 'users', themeId);
-
-            if (!(await deps.fsExtra.pathExists(userThemePath))) {
-                // Also check in public/files/perm/themes/users (legacy location)
-                const legacyPath = path.join('public/files/perm/themes/users', themeId);
-                if (deps.fs.existsSync(legacyPath)) {
-                    await deps.fsExtra.remove(legacyPath);
-                    return {
-                        responseMessage: 'OK',
-                        deleted: { name: themeId },
-                    };
-                }
-
-                set.status = 404;
-                return {
-                    responseMessage: 'ERROR',
-                    error: `Theme "${themeId}" not found`,
-                };
-            }
-
-            // Delete the theme directory
-            await deps.fsExtra.remove(userThemePath);
-
-            return {
-                responseMessage: 'OK',
-                deleted: { name: themeId },
-            };
-        } catch (error) {
-            console.error('[Themes] Delete error:', error);
-            set.status = 500;
-            return {
-                responseMessage: 'ERROR',
-                error: error instanceof Error ? error.message : 'Unknown error',
-            };
+        if (!found) {
+            // Check site themes
+            const siteThemesPath = getSiteThemesPath();
+            themePath = path.join(siteThemesPath, themeName);
+            found = deps.fs.existsSync(themePath);
         }
+
+        if (!found) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeName} not found` };
+        }
+
+        // Collect all files in the theme directory
+        const files: Record<string, string> = {};
+
+        function scanDir(dirPath: string, prefix = ''): void {
+            if (!deps.fs.existsSync(dirPath)) return;
+
+            const entries = deps.fs.readdirSync(dirPath, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name);
+                const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+                if (entry.isDirectory()) {
+                    scanDir(fullPath, relativePath);
+                } else if (entry.isFile()) {
+                    // Read file and encode as base64
+                    const content = deps.fs.readFileSync(fullPath);
+                    files[relativePath] = content.toString('base64');
+                }
+            }
+        }
+
+        scanDir(themePath);
+
+        return {
+            themeName,
+            files,
+        };
+    })
+
+    // GET /api/themes/:themeId/download - Download theme as ZIP
+    .get('/api/themes/:themeId/download', async ({ params, set }) => {
+        const { themeId } = params;
+
+        // Check base themes first
+        let themePath = path.join(THEMES_BASE_PATH, themeId);
+        let found = deps.fs.existsSync(themePath);
+        let themeName = themeId;
+
+        if (!found) {
+            // Check site themes
+            const siteThemesPath = getSiteThemesPath();
+            themePath = path.join(siteThemesPath, themeId);
+            found = deps.fs.existsSync(themePath);
+        }
+
+        if (!found) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
+        // Parse config.xml to get display name for the filename
+        const configPath = path.join(themePath, 'config.xml');
+        if (deps.fs.existsSync(configPath)) {
+            const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
+            const nameMatch = xmlContent.match(/<name>([\s\S]*?)<\/name>/);
+            if (nameMatch) {
+                themeName = nameMatch[1].trim();
+            }
+        }
+
+        // Create ZIP buffer using Archiver
+        const { createZipBuffer } = await import('../services/zip');
+        const zipBuffer = await createZipBuffer(themePath);
+        const zipBase64 = zipBuffer.toString('base64');
+
+        return {
+            zipFileName: `${themeName}.zip`,
+            zipBase64,
+        };
     });

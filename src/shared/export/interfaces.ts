@@ -8,6 +8,23 @@
  */
 
 // =============================================================================
+// Export Format Types (for API/test usage)
+// =============================================================================
+
+/**
+ * Export format type enum for API responses and tests
+ */
+export enum ExportFormatType {
+    HTML5 = 'html5',
+    PAGE = 'page',
+    SCORM12 = 'scorm12',
+    SCORM2004 = 'scorm2004',
+    IMS = 'ims',
+    EPUB3 = 'epub3',
+    ELPX = 'elpx',
+}
+
+// =============================================================================
 // Document Structure Interfaces
 // =============================================================================
 
@@ -25,6 +42,7 @@ export interface ExportDocument {
  */
 export interface ExportMetadata {
     title: string;
+    subtitle?: string;
     author: string;
     language: string;
     theme: string;
@@ -38,20 +56,25 @@ export interface ExportMetadata {
     // eXeLearning-specific metadata
     exelearningVersion?: string;
     odeIdentifier?: string;
+    odeVersionId?: string;
     createdAt?: string;
     modifiedAt?: string;
 
     // Export options (from project properties)
     addExeLink?: boolean; // "Made with eXeLearning" link
-    addPagination?: boolean; // Page counter (Página X/Y)
+    addPagination?: boolean; // Page counter (Page X/Y)
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
+    globalFont?: string; // Global font for accessibility
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
     footer?: string; // Custom footer content
+
+    // Project screenshot/thumbnail (base64 PNG data URL)
+    screenshot?: string;
 
     // SCORM metadata
     scormIdentifier?: string;
@@ -92,13 +115,12 @@ export interface ExportBlock {
  * Block properties
  */
 export interface ExportBlockProperties {
-    visibility?: string;
-    minimized?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    minimized?: string | boolean;
+    teacherOnly?: string | boolean;
     visibilityType?: string;
     cssClass?: string;
-    identifier?: string;
-    allowToggle?: string;
+    allowToggle?: string | boolean;
 }
 
 /**
@@ -111,7 +133,7 @@ export interface ExportComponent {
     content: string; // HTML content
     properties: Record<string, unknown>;
 
-    // Component-level structure properties (visibility, teacherOnly, identifier, cssClass)
+    // Component-level structure properties (visibility, teacherOnly, cssClass)
     structureProperties?: ExportComponentProperties;
 }
 
@@ -119,9 +141,8 @@ export interface ExportComponent {
  * Component structure properties
  */
 export interface ExportComponentProperties {
-    visibility?: string;
-    teacherOnly?: string;
-    identifier?: string;
+    visibility?: string | boolean;
+    teacherOnly?: string | boolean;
     cssClass?: string;
 }
 
@@ -189,11 +210,29 @@ export interface ResourceProvider {
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 
     /**
-     * Fetch SCORM schema XSD files for validation
-     * @param version - SCORM version: '1.2' or '2004'
+     * Fetch global font files
+     * @param fontName - Name of the font (e.g., 'opendyslexic')
      * @returns Map of relative path -> content buffer
      */
-    fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
+    fetchGlobalFontFiles(fontName: string): Promise<Map<string, Uint8Array> | null>;
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Returns the content of `common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Resolved JS content (no c_() calls), ready to add to the export ZIP
+     */
+    fetchI18nFile(language: string): Promise<string>;
+
+    /**
+     * Fetch i18n translations for a specific language as a source→target Map.
+     * Falls back to an empty Map (which causes English source strings to be used).
+     * Used for resolving nav button labels (previous/next) at export time.
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Map<englishSource, translatedTarget>
+     */
+    fetchI18nTranslations(language: string): Promise<Map<string, string>>;
 }
 
 /**
@@ -219,6 +258,25 @@ export interface AssetProvider {
      * @returns Asset info or null if not found
      */
     getAsset(assetId: string): Promise<ExportAsset | null>;
+
+    /**
+     * Process assets one at a time via callback.
+     * Avoids loading all assets into memory simultaneously.
+     * Falls back to getAllAssets() when not implemented.
+     */
+    forEachAsset?(callback: (asset: ExportAsset) => Promise<void>): Promise<number>;
+
+    /**
+     * List asset metadata without loading binary data.
+     * Returns lightweight objects suitable for building export path maps.
+     * Falls back to getAllAssets() when not implemented.
+     */
+    listAssetMetadata?(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>>;
+
+    // Optional methods present in some implementations
+    exists?(assetPath: string): Promise<boolean>;
+    getMimeType?(assetPath: string): string;
+    clearCache?(): void;
 }
 
 /**
@@ -234,6 +292,29 @@ export interface ExportAsset {
     data: Uint8Array | Blob;
 }
 
+/**
+ * Favicon information for export
+ */
+export interface FaviconInfo {
+    /** Path relative to export root (e.g., 'theme/img/favicon.ico' or 'libs/favicon.ico') */
+    path: string;
+    /** MIME type (e.g., 'image/x-icon', 'image/png') */
+    type: string;
+}
+
+/**
+ * Theme data prepared for export
+ * Contains theme files, root-level CSS/JS files, and detected favicon
+ */
+export interface ThemeData {
+    /** Map of all theme files (path -> content) */
+    themeFilesMap: Map<string, Uint8Array> | null;
+    /** List of root-level CSS/JS filenames */
+    themeRootFiles: string[];
+    /** Detected favicon info, or null if not found in theme */
+    faviconInfo: FaviconInfo | null;
+}
+
 // =============================================================================
 // ZIP Provider Interface
 // =============================================================================
@@ -247,6 +328,38 @@ export interface ZipProvider {
      * Create a new ZIP archive
      */
     createZip(): ZipArchive;
+
+    // Methods for direct usage if the provider acts as the archive (BaseExporter usage compatibility)
+    addFile(path: string, content: string | Uint8Array | Blob): void;
+    hasFile(path: string): boolean;
+    getFilePaths(): string[];
+    generateAsync(options?: ZipGenerateOptions): Promise<Uint8Array | Blob>;
+}
+
+/**
+ * Options for generating ZIP
+ */
+export interface ZipGenerateOptions {
+    type?:
+        | 'base64'
+        | 'string'
+        | 'text'
+        | 'binarystring'
+        | 'array'
+        | 'uint8array'
+        | 'arraybuffer'
+        | 'blob'
+        | 'nodebuffer';
+    compression?: 'STORE' | 'DEFLATE';
+    compressionOptions?: {
+        level: number;
+    };
+    comment?: string;
+    mimeType?: string;
+    platform?: 'DOS' | 'UNIX';
+    encodeFileName?: (filename: string) => string;
+    streamFiles?: boolean;
+    onUpdate?: (metadata: unknown) => void;
 }
 
 /**
@@ -272,6 +385,13 @@ export interface ZipArchive {
      * @returns True if file exists
      */
     hasFile(path: string): boolean;
+
+    /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings
+     * @returns Array of file paths
+     */
+    getFilePaths(): string[];
 
     /**
      * Generate the ZIP archive
@@ -303,6 +423,12 @@ export interface ExportOptions {
     /** Theme name to use for export */
     theme?: string;
 
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
+
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
@@ -324,6 +450,15 @@ export interface ExportOptions {
      * This significantly reduces export size and provides instant diagram rendering.
      */
     preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
+
+    /**
+     * Optional hook to generate a screenshot from the first page HTML.
+     * Called during ELPX export when no custom screenshot is set in metadata.
+     * Receives the complete HTML of the first page (index.html) and should return
+     * a PNG data URL (data:image/png;base64,...).
+     * Browser-only: renders HTML in a hidden iframe and captures with html2canvas.
+     */
+    generateScreenshot?: (firstPageHtml: string) => Promise<string>;
 }
 
 /**
@@ -379,6 +514,8 @@ export interface Epub3ExportOptions extends ExportOptions {
 export interface ElpxExportOptions extends ExportOptions {
     /** Include HTML preview pages */
     includeHtmlContent?: boolean;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 // =============================================================================
@@ -456,6 +593,7 @@ export interface AssetResolverOptions {
  */
 export interface PageRenderOptions {
     projectTitle: string;
+    projectSubtitle?: string;
     language: string;
     theme: string;
     customStyles?: string;
@@ -467,6 +605,9 @@ export interface PageRenderOptions {
     license: string;
     description?: string;
     licenseUrl?: string;
+
+    /** Application version string (e.g., "v3.0.0") for generator meta tag */
+    version?: string;
 
     // Page counter options
     totalPages?: number;
@@ -493,8 +634,48 @@ export interface PageRenderOptions {
     onLoadScript?: string;
     onUnloadScript?: string;
 
-    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
-    detectedLibraries?: LibraryDetectionResult;
+    // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+    /** Hide the navigation menu (default: false) */
+    hideNavigation?: boolean;
+    /** Hide the prev/next navigation buttons (default: false) */
+    hideNavButtons?: boolean;
+
+    /** EPUB export indicator - loads guard script for duplicate execution protection */
+    isEpub?: boolean;
+
+    /** Translated labels for navigation buttons (resolved at export time from XLF) */
+    navLabels?: { previous: string; next: string; page: string; license?: string };
+
+    // Detected library names from content scanning (MathJax, Mermaid, etc.)
+    detectedLibraries?: string[];
+
+    /**
+     * Theme files to include in the HTML head.
+     * Array of filenames (e.g., ['style.css', 'style.js']) from the theme root directory.
+     * Files are included in alphabetical order: JS files first, then CSS files.
+     * If not provided, falls back to legacy 'default.js' and 'content.css'.
+     */
+    themeFiles?: string[];
+
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
+
+    /**
+     * Map of page IDs to unique filenames (for handling title collisions).
+     * When multiple pages have the same title, this map ensures each page
+     * gets a unique filename (e.g., "page.html", "page1.html", "page2.html").
+     * If not provided, filenames are generated directly from titles.
+     */
+    pageFilenameMap?: Map<string, string>;
+
+    /**
+     * Map of asset UUID to export path for URL transformation (new format asset://uuid.ext).
+     * Used to convert asset:// URLs to content/resources/ paths in export output.
+     */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -503,6 +684,8 @@ export interface PageRenderOptions {
 export interface ComponentRenderOptions {
     basePath: string;
     includeDataAttributes: boolean;
+    /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -535,7 +718,7 @@ export interface IdeviceConfig {
  */
 export interface LibraryPattern {
     name: string;
-    type: 'class' | 'rel' | 'regex';
+    type: 'class' | 'rel' | 'regex' | 'data';
     pattern: string | RegExp;
     files: string[];
     requiresLatexCheck?: boolean;
@@ -564,8 +747,6 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
-    /** Skip Mermaid library if diagrams were pre-rendered to SVG */
-    skipMermaid?: boolean;
 }
 
 /**
@@ -611,6 +792,9 @@ export interface ScormManifestOptions {
     masteryScore?: number;
     organization?: string;
     version: '1.2' | '2004';
+    author?: string;
+    description?: string;
+    license?: string;
 }
 
 /**
@@ -621,6 +805,9 @@ export interface ImsManifestOptions {
     title: string;
     language: string;
     pages: ExportPage[];
+    description?: string;
+    author?: string;
+    license?: string;
 }
 
 /**
@@ -675,7 +862,7 @@ export interface Exporter {
     getFileExtension(): string;
 
     /**
-     * Get the file suffix for this format (e.g., '_web', '_scorm12')
+     * Get the file suffix for this format (e.g., '_web', '_scorm')
      */
     getFileSuffix(): string;
 }

@@ -371,11 +371,6 @@ label[for=desafioActivitySCORM] {
 }
 
 
-.desafioTypeGameHelp {
-    display: none;
-    font-size: .95em
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

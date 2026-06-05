@@ -20,6 +20,13 @@
  *   // Handler will auto-announce availability on connect
  *   // And respond to asset requests from server/peers
  */
+
+function safeDecodeURIComponent(value) {
+  if (value === null || value === undefined) return undefined;
+  try { return decodeURIComponent(value); }
+  catch { return value; }
+}
+
 class AssetWebSocketHandler {
   /**
    * @param {AssetManager} assetManager - Asset manager instance
@@ -61,6 +68,10 @@ class AssetWebSocketHandler {
       priorityAck: [],
       preemptUpload: [],
       slotAvailable: [],
+      // Upload session events
+      uploadSessionReady: [],
+      uploadFileProgress: [],
+      uploadBatchComplete: [],
     };
 
     // Bound handlers for cleanup
@@ -124,6 +135,31 @@ class AssetWebSocketHandler {
   }
 
   /**
+   * Decode binary payload with 0xFF asset message prefix
+   * Returns the parsed message if valid asset message, null otherwise
+   * @param {Uint8Array} bytes - Binary data to decode
+   * @returns {{parsed: Object}|null} - Parsed message or null
+   */
+  _decodeBinaryAssetPayload(bytes) {
+    const ASSET_MESSAGE_PREFIX = 0xff;
+
+    if (bytes.length === 0 || bytes[0] !== ASSET_MESSAGE_PREFIX) {
+      return null;
+    }
+
+    try {
+      const jsonStr = new TextDecoder().decode(bytes.slice(1));
+      const parsed = JSON.parse(jsonStr);
+      if (this._isAssetMessage(parsed.type)) {
+        return { parsed };
+      }
+    } catch (err) {
+      console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
+    }
+    return null;
+  }
+
+  /**
    * Setup message handler on WebSocket
    * Intercepts JSON messages for asset protocol
    */
@@ -135,9 +171,6 @@ class AssetWebSocketHandler {
     // Store original onmessage
     const originalOnMessage = ws.onmessage;
 
-    // Asset message prefix byte - must match server's ASSET_MESSAGE_PREFIX
-    const ASSET_MESSAGE_PREFIX = 0xff;
-
     // Wrap onmessage to intercept asset protocol messages
     // Asset messages from server are binary with 0xFF prefix byte
     // Format: [0xFF][JSON bytes]
@@ -147,20 +180,14 @@ class AssetWebSocketHandler {
       // Handle ArrayBuffer (binary messages)
       if (data instanceof ArrayBuffer) {
         const bytes = new Uint8Array(data);
-        // Check for asset message prefix (0xFF)
-        if (bytes.length > 0 && bytes[0] === ASSET_MESSAGE_PREFIX) {
-          // Asset message - decode JSON after prefix
-          try {
-            const jsonStr = new TextDecoder().decode(bytes.slice(1));
-            const parsed = JSON.parse(jsonStr);
-            if (this._isAssetMessage(parsed.type)) {
-              this._handleAssetMessage(parsed);
-              return;
-            }
-          } catch (err) {
-            console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-          }
-          return; // Don't pass asset messages to y-websocket
+        const decoded = this._decodeBinaryAssetPayload(bytes);
+        if (decoded) {
+          this._handleAssetMessage(decoded.parsed);
+          return;
+        }
+        // If has 0xFF prefix but decode failed, don't pass to y-websocket
+        if (bytes.length > 0 && bytes[0] === 0xff) {
+          return;
         }
         // Regular Yjs binary message - pass to y-websocket
         if (originalOnMessage) {
@@ -171,17 +198,12 @@ class AssetWebSocketHandler {
 
       // Handle Uint8Array (less common, but possible)
       if (data instanceof Uint8Array) {
-        if (data.length > 0 && data[0] === ASSET_MESSAGE_PREFIX) {
-          try {
-            const jsonStr = new TextDecoder().decode(data.slice(1));
-            const parsed = JSON.parse(jsonStr);
-            if (this._isAssetMessage(parsed.type)) {
-              this._handleAssetMessage(parsed);
-              return;
-            }
-          } catch (err) {
-            console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-          }
+        const decoded = this._decodeBinaryAssetPayload(data);
+        if (decoded) {
+          this._handleAssetMessage(decoded.parsed);
+          return;
+        }
+        if (data.length > 0 && data[0] === 0xff) {
           return;
         }
         if (originalOnMessage) {
@@ -194,18 +216,15 @@ class AssetWebSocketHandler {
       if (data instanceof Blob) {
         data.arrayBuffer().then((buffer) => {
           const bytes = new Uint8Array(buffer);
-          if (bytes.length > 0 && bytes[0] === ASSET_MESSAGE_PREFIX) {
-            try {
-              const jsonStr = new TextDecoder().decode(bytes.slice(1));
-              const parsed = JSON.parse(jsonStr);
-              if (this._isAssetMessage(parsed.type)) {
-                this._handleAssetMessage(parsed);
-                return;
-              }
-            } catch (err) {
-              console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-            }
-          } else if (originalOnMessage) {
+          const decoded = this._decodeBinaryAssetPayload(bytes);
+          if (decoded) {
+            this._handleAssetMessage(decoded.parsed);
+            return;
+          }
+          if (bytes.length > 0 && bytes[0] === 0xff) {
+            return;
+          }
+          if (originalOnMessage) {
             // Create a new MessageEvent with ArrayBuffer for y-websocket
             const newEvent = new MessageEvent('message', { data: buffer });
             originalOnMessage.call(ws, newEvent);
@@ -221,6 +240,16 @@ class AssetWebSocketHandler {
           const parsed = JSON.parse(data);
           if (this._isAssetMessage(parsed.type)) {
             this._handleAssetMessage(parsed);
+            return;
+          }
+          // Handle server request to sync state (triggered when collaboration starts on unsaved project)
+          if (parsed.type === 'request-sync-state') {
+            this._handleRequestSyncState(parsed);
+            return;
+          }
+          // Handle trigger-resync from server (new client joined, refresh presence)
+          if (parsed.type === 'trigger-resync') {
+            this._handleTriggerResync(parsed);
             return;
           }
           Logger.log('[AssetWebSocketHandler] Ignoring unknown JSON message:', parsed.type || 'no type');
@@ -262,6 +291,10 @@ class AssetWebSocketHandler {
       'resume-upload',
       'slot-available',
       'navigation-hint',
+      // Upload session message types
+      'upload-session-ready',
+      'upload-file-progress',
+      'upload-batch-complete',
     ];
     return assetTypes.includes(type);
   }
@@ -344,7 +377,7 @@ class AssetWebSocketHandler {
           // Asset exists locally - update metadata if missing (e.g., folderPath)
           let needsUpdate = false;
 
-          if (!localAsset.filename && serverAsset.filename) {
+          if ((!localAsset.filename || localAsset.filename === 'unknown') && serverAsset.filename && serverAsset.filename !== 'unknown') {
             localAsset.filename = serverAsset.filename;
             needsUpdate = true;
           }
@@ -368,10 +401,11 @@ class AssetWebSocketHandler {
         } else {
           // Asset doesn't exist locally - create metadata entry (without blob)
           // The blob will be fetched on-demand when needed
+          // Don't store 'unknown' as filename - use undefined so callers derive a proper name
           const metadataEntry = {
             id: assetId,
             projectId: this.assetManager.projectId,
-            filename: serverAsset.filename,
+            filename: (serverAsset.filename && serverAsset.filename !== 'unknown') ? serverAsset.filename : undefined,
             mime: serverAsset.mimeType,
             size: serverAsset.size,
             folderPath: serverAsset.folderPath || '',
@@ -456,8 +490,77 @@ class AssetWebSocketHandler {
         this._handleAccessRevoked(data);
         break;
 
+      // Upload session messages
+      case 'upload-session-ready':
+        this._handleUploadSessionReady(data);
+        break;
+
+      case 'upload-file-progress':
+        this._handleUploadFileProgress(data);
+        break;
+
+      case 'upload-batch-complete':
+        this._handleUploadBatchComplete(data);
+        break;
+
       default:
         console.warn(`[AssetWebSocketHandler] Unknown message type: ${type}`);
+    }
+  }
+
+  /**
+   * Handle server request to sync state (triggered when collaboration starts on unsaved project)
+   * This ensures the project is persisted before multiple users start editing
+   * @param {Object} message - The request message
+   * @param {string} message.reason - Why sync is requested (e.g., 'collaboration-started')
+   * @param {string} message.projectUuid - Project UUID to sync
+   */
+  async _handleRequestSyncState(message) {
+    const { reason, projectUuid } = message;
+    Logger.log(`[AssetWebSocketHandler] Server requested sync-state, reason: ${reason}`);
+
+    // Get the save manager from the bridge
+    const saveManager = eXeLearning?.app?.project?._yjsBridge?.saveManager;
+    if (!saveManager) {
+      console.warn('[AssetWebSocketHandler] Cannot sync state: SaveManager not available');
+      return;
+    }
+
+    // Get the document manager from the bridge
+    const documentManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+    if (!documentManager) {
+      console.warn('[AssetWebSocketHandler] Cannot sync state: DocumentManager not available');
+      return;
+    }
+
+    try {
+      // Save the Yjs state to the server
+      // This will also mark the project as saved_once=1
+      await saveManager.saveYjsState(projectUuid, documentManager);
+      Logger.log('[AssetWebSocketHandler] Project state synced due to collaboration');
+    } catch (error) {
+      console.error('[AssetWebSocketHandler] Failed to sync project state:', error);
+    }
+  }
+
+  /**
+   * Handle trigger-resync message from server (new client joined).
+   * Re-broadcasts local awareness without reconnecting WebSocket.
+   * @param {Object} data - The trigger-resync message
+   * @param {string} [data.reason] - Why resync was triggered
+   */
+  _handleTriggerResync(data) {
+    Logger.log('[AssetWebSocketHandler] Trigger resync received, reason:', data?.reason);
+    const dm = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+    if (dm?.rebroadcastAwareness) {
+      const sent = dm.rebroadcastAwareness('server-trigger-resync');
+      // In rare races the message may arrive before wsconnected flips to true.
+      // Retry once shortly after connection settles.
+      if (!sent) {
+        setTimeout(() => {
+          dm?.rebroadcastAwareness?.('server-trigger-resync-retry');
+        }, 300);
+      }
     }
   }
 
@@ -815,7 +918,7 @@ class AssetWebSocketHandler {
       // Use server-provided URL or construct fallback
       const downloadUrl = url
         ? `${this.config.apiUrl}${url}`
-        : `${this.config.apiUrl}/api/projects/${this.config.projectId}/assets/by-client-id/${assetId}`;
+        : `${this.config.apiUrl}/projects/${this.config.projectId}/assets/by-client-id/${assetId}`;
 
       // Download from server
       const response = await fetch(downloadUrl, {
@@ -831,8 +934,8 @@ class AssetWebSocketHandler {
       // Get metadata from headers
       const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
       const hash = response.headers.get('X-Asset-Hash') || '';
-      const filename = response.headers.get('X-Filename') || undefined;
-      const folderPath = response.headers.get('X-Folder-Path') || '';
+      const filename = safeDecodeURIComponent(response.headers.get('X-Filename'));
+      const folderPath = safeDecodeURIComponent(response.headers.get('X-Folder-Path')) || '';
       const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
 
       // Get blob
@@ -960,8 +1063,8 @@ class AssetWebSocketHandler {
 
         const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
         const hash = response.headers.get('X-Asset-Hash') || '';
-        const filename = response.headers.get('X-Filename') || undefined;
-        const folderPath = response.headers.get('X-Folder-Path') || '';
+        const filename = safeDecodeURIComponent(response.headers.get('X-Filename'));
+        const folderPath = safeDecodeURIComponent(response.headers.get('X-Folder-Path')) || '';
         const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
         const blob = await response.blob();
 
@@ -1224,6 +1327,127 @@ class AssetWebSocketHandler {
     setTimeout(() => {
       window.location.href = accessDeniedUrl;
     }, 100);
+  }
+
+  // ===== Upload Session Methods =====
+
+  /**
+   * Create an upload session for optimized batch uploads
+   * Returns a session token and config for mega-batch uploads
+   *
+   * @param {Array<{clientId: string, filename: string, size: number, mimeType: string}>} manifest - Asset manifest
+   * @param {number} timeout - Timeout in ms (default 10000)
+   * @returns {Promise<{sessionToken: string, expiresAt: number, config: Object}>}
+   */
+  async createUploadSession(manifest, timeout = 10000) {
+    if (!this.connected) {
+      throw new Error('WebSocket not connected');
+    }
+
+    const totalFiles = manifest.length;
+    const totalBytes = manifest.reduce((sum, asset) => sum + (asset.size || 0), 0);
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.off('uploadSessionReady', handler);
+        reject(new Error('Upload session creation timed out'));
+      }, timeout);
+
+      const handler = (data) => {
+        clearTimeout(timeoutId);
+        this.off('uploadSessionReady', handler);
+
+        if (data.error) {
+          reject(new Error(data.error));
+        } else {
+          resolve({
+            sessionToken: data.sessionToken,
+            expiresAt: data.expiresAt,
+            config: data.config,
+          });
+        }
+      };
+
+      this.on('uploadSessionReady', handler);
+
+      this._sendMessage({
+        type: 'upload-session-create',
+        data: {
+          projectId: this.config.projectId,
+          totalFiles,
+          totalBytes,
+          manifest,
+        },
+      });
+
+      Logger.log(
+        `[AssetWebSocketHandler] Creating upload session: ${totalFiles} files, ` +
+          `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
+      );
+    });
+  }
+
+  /**
+   * Handle upload-session-ready message from server
+   * @param {Object} data - { sessionToken, expiresAt, config, error? }
+   */
+  _handleUploadSessionReady(data) {
+    const { sessionToken, expiresAt, config, error } = data;
+
+    if (error) {
+      console.error(`[AssetWebSocketHandler] Upload session error: ${error}`);
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Upload session ready, expires at ${new Date(expiresAt).toISOString()}`
+      );
+    }
+
+    // Emit event (handled by createUploadSession promise)
+    this._emit('uploadSessionReady', data);
+  }
+
+  /**
+   * Handle upload-file-progress message from server
+   * Provides real-time progress as files are written to disk
+   * @param {Object} data - { clientId, bytesWritten, totalBytes, status, error? }
+   */
+  _handleUploadFileProgress(data) {
+    const { clientId, bytesWritten, totalBytes, status, error } = data;
+
+    if (status === 'error') {
+      console.warn(
+        `[AssetWebSocketHandler] Upload progress error for ${clientId.substring(0, 8)}...: ${error}`
+      );
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Upload progress: ${clientId.substring(0, 8)}... ` +
+          `${status} (${bytesWritten}/${totalBytes})`
+      );
+    }
+
+    // Emit event for UI updates
+    this._emit('uploadFileProgress', data);
+  }
+
+  /**
+   * Handle upload-batch-complete message from server
+   * @param {Object} data - { uploaded, failed, results }
+   */
+  _handleUploadBatchComplete(data) {
+    const { uploaded, failed, results } = data;
+
+    if (failed > 0) {
+      console.warn(
+        `[AssetWebSocketHandler] Batch complete with errors: ${uploaded} uploaded, ${failed} failed`
+      );
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Batch complete: ${uploaded} files uploaded successfully`
+      );
+    }
+
+    // Emit event for SaveManager
+    this._emit('uploadBatchComplete', data);
   }
 
   /**

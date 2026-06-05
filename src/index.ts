@@ -24,31 +24,175 @@ import { adminThemesRoutes } from './routes/admin-themes';
 import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
-import {
-    createWebSocketRoutes,
-    initialize as initWebSocket,
-    getServerInfo,
-    getActiveRooms,
-    stop as stopWebSocket,
-} from './websocket/yjs-websocket';
+import { apiV1Routes } from './routes/api/v1';
+import { uploadSessionRoutes } from './routes/upload-session';
+import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSocket } from './websocket/yjs-websocket';
+import { webSocketInfoRoutes } from './routes/websocket-info';
+import { yjsDebugRoutes } from './routes/yjs-debug';
+import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
-import { db } from './db/client';
+import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
-import { findUserByEmail, createUser } from './db/queries/users';
+import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
+import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
+import { serveSiteThemeFile } from './utils/site-theme-file';
+import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
+import {
+    startScheduler as startCleanupScheduler,
+    stopScheduler as stopCleanupScheduler,
+    getConfigFromEnv as getCleanupConfigFromEnv,
+} from './services/cleanup-scheduler';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Get port from environment (default: 8080)
 // APP_PORT is used by Electron, PORT is standard convention
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || '8080', 10);
+
+// Reusable handler for exemindmap editor (to register at both root and BASE_PATH)
+const exemindmapEditorHandler = ({
+    params,
+    set,
+}: {
+    params: { '*': string };
+    set: { status: number; headers: Record<string, string> };
+}) => {
+    const relativePath = params['*'] || 'index.html';
+    const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor';
+    const filePath = path.join(process.cwd(), editorBase, relativePath);
+
+    // Security: ensure path is within the editor directory
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
+    if (!resolvedPath.startsWith(resolvedBase)) {
+        set.status = 403;
+        return 'Forbidden';
+    }
+
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        let content = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+        // For HTML files, rewrite relative paths to absolute paths
+        if (ext === '.html' || ext === '.htm') {
+            let html = content.toString('utf-8');
+            // Fix relative paths like ../../../../../../../app/ -> /app/
+            html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
+            html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
+            // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
+            html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
+            html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
+            content = Buffer.from(html, 'utf-8');
+        }
+
+        set.headers['Content-Type'] = contentType;
+        set.headers['Content-Length'] = content.length.toString();
+        return content;
+    }
+
+    set.status = 404;
+    return 'Not Found';
+};
+
+// Base route handler for exemindmap editor (when no path is provided)
+const exemindmapEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
+    return exemindmapEditorHandler({ params: { '*': '' }, set });
+};
+
+// Reusable handler for codemagic editor (to register at both root and BASE_PATH)
+const codemagicEditorHandler = ({
+    params,
+    set,
+}: {
+    params: { '*': string };
+    set: { status: number; headers: Record<string, string> };
+}) => {
+    const relativePath = params['*'] || 'codemagic.html';
+    const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/codemagic';
+    const filePath = path.join(process.cwd(), editorBase, relativePath);
+
+    // Security: ensure path is within the editor directory
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
+    if (!resolvedPath.startsWith(resolvedBase)) {
+        set.status = 403;
+        return 'Forbidden';
+    }
+
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        let content = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+        // For HTML files, rewrite document-relative asset paths to BASE_PATH-aware
+        // absolute paths so they resolve behind a subdirectory reverse proxy (#1806).
+        if (ext === '.html' || ext === '.htm') {
+            const html = rewriteCodemagicAssetPaths(content.toString('utf-8'));
+            content = Buffer.from(html, 'utf-8');
+        }
+
+        set.headers['Content-Type'] = contentType;
+        set.headers['Content-Length'] = content.length.toString();
+        return content;
+    }
+
+    set.status = 404;
+    return 'Not Found';
+};
+
+// Base route handler for codemagic editor (when no path is provided)
+const codemagicEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
+    return codemagicEditorHandler({ params: { '*': '' }, set });
+};
+
+// Reusable handler for mermaid library (alias /libs/mermaid/* to /app/common/mermaid/*)
+const mermaidLibHandler = ({
+    params,
+    set,
+}: {
+    params: { '*': string };
+    set: { status: number; headers: Record<string, string> };
+}) => {
+    const relativePath = params['*'] || 'mermaid.min.js';
+    const mermaidBase = 'public/app/common/mermaid';
+    const filePath = path.join(process.cwd(), mermaidBase, relativePath);
+
+    // Security: ensure path is within the mermaid directory
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBase = path.resolve(path.join(process.cwd(), mermaidBase));
+    if (!resolvedPath.startsWith(resolvedBase)) {
+        set.status = 403;
+        return 'Forbidden';
+    }
+
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const content = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+        set.headers['Content-Type'] = contentType;
+        set.headers['Content-Length'] = content.length.toString();
+        set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
+        return content;
+    }
+
+    set.status = 404;
+    return 'Not Found';
+};
+
+// Base route handler for mermaid (when no path is provided)
+const mermaidLibBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
+    return mermaidLibHandler({ params: { '*': '' }, set });
+};
 
 const app = new Elysia()
     // === GLOBAL ERROR HANDLER ===
@@ -154,13 +298,24 @@ const app = new Elysia()
                         const content = fs.readFileSync(publicPath);
                         const ext = path.extname(publicPath).toLowerCase();
                         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600',
-                            },
-                        });
+
+                        // Build response headers
+                        const headers: Record<string, string> = {
+                            'Content-Type': contentType,
+                            'Content-Length': stats.size.toString(),
+                            'Cache-Control': 'public, max-age=3600',
+                        };
+
+                        // Special handling for preview-sw.js - complete headers for SW registration
+                        if (pathname === '/preview-sw.js') {
+                            headers['Content-Type'] = 'application/javascript; charset=utf-8';
+                            headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+                            headers['Service-Worker-Allowed'] = '/';
+                            headers['Vary'] = 'Accept-Encoding';
+                            headers['Access-Control-Allow-Origin'] = '*';
+                        }
+
+                        return new Response(content, { headers });
                     }
                 } catch {
                     // Fall through to let other handlers process
@@ -214,7 +369,7 @@ const app = new Elysia()
         if (versionedLibsMatch) {
             // Serve the file directly from public/libs with long cache (immutable due to versioned URL)
             const filePath = path.join(process.cwd(), 'public', 'libs', versionedLibsMatch[1]);
-            if (fs.existsSync(filePath)) {
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
                 const content = fs.readFileSync(filePath);
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
@@ -228,73 +383,52 @@ const app = new Elysia()
             }
         }
 
-        // Match /v{version}/site-files/themes/* and serve from FILES_DIR
-        const versionedSiteFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/site-files\/themes\/(.+)$/);
-        if (versionedSiteFilesMatch) {
-            const relativePath = versionedSiteFilesMatch[1];
-            const filesDir = getFilesDir();
-            const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-            // Security check
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                return new Response(content, {
-                    headers: {
-                        'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
-                    },
-                });
-            }
+        // Serve site theme files from FILES_DIR/themes/site for both URL shapes:
+        //   - versioned, cache-busted:  /v{version}-{ts}/site-files/themes/*
+        //   - plain (admin screenshots): /site-files/themes/*
+        // BASE_PATH has already been stripped above, so this also covers requests
+        // behind a subdirectory proxy (issue: admin screenshots 404 with BASE_PATH set).
+        const siteThemeResponse = serveSiteThemeFile(pathname, getFilesDir());
+        if (siteThemeResponse) {
+            return siteThemeResponse;
         }
 
-        // Match /v{version}/user-files/themes/* and serve from FILES_DIR
-        const versionedUserFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/user-files\/themes\/(.+)$/);
-        if (versionedUserFilesMatch) {
-            const relativePath = versionedUserFilesMatch[1];
-            const filesDir = getFilesDir();
-            const filePath = path.join(filesDir, 'themes', 'users', relativePath);
-
-            // Security check
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
-            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                return new Response(content, {
-                    headers: {
-                        'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
-                    },
-                });
-            }
-        }
-
-        // Match /v{version}/* and rewrite to /* (except /libs, /admin-files, /user-files which are handled above)
+        // Match /v{version}/* and rewrite to /* (except /libs, /admin-files which are handled above)
         // This handles /app/*, /style/*, and other versioned static assets
         const versionedMatch = pathname.match(/^\/v[\d.]+[^/]*\/(.+)$/);
-        if (
-            versionedMatch &&
-            !versionedMatch[1].startsWith('libs/') &&
-            !versionedMatch[1].startsWith('admin-files/') &&
-            !versionedMatch[1].startsWith('user-files/')
-        ) {
-            const filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
+        if (versionedMatch && !versionedMatch[1].startsWith('libs/') && !versionedMatch[1].startsWith('admin-files/')) {
+            let filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
+
+            // Check if path exists
             if (fs.existsSync(filePath)) {
+                const stats = fs.statSync(filePath);
+
+                // If it's a directory, try to serve index.html from it
+                if (stats.isDirectory()) {
+                    const indexPath = path.join(filePath, 'index.html');
+                    if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
+                        filePath = indexPath;
+                    } else {
+                        // Directory exists but no index.html - let it 404
+                        return undefined;
+                    }
+                }
+
+                // Now we have a file path, read and serve it
                 const content = fs.readFileSync(filePath);
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+                // Special handling for preview-sw.js - needs no-cache for SW updates
+                const cacheControl =
+                    versionedMatch[1] === 'preview-sw.js'
+                        ? 'no-cache, no-store, must-revalidate'
+                        : 'public, max-age=31536000, immutable';
+
                 return new Response(content, {
                     headers: {
                         'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000, immutable',
+                        'Cache-Control': cacheControl,
                     },
                 });
             }
@@ -302,140 +436,98 @@ const app = new Elysia()
     })
     // Serve exemindmap editor via API endpoint to bypass Bun's HTML bundler
     // This uses /api/exemindmap-editor/* which Bun won't intercept
-    .get('/api/exemindmap-editor/*', ({ params, set }) => {
-        const relativePath = params['*'] || 'index.html';
-        const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor';
-        const filePath = path.join(process.cwd(), editorBase, relativePath);
-
-        // Security: ensure path is within the editor directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            let content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            // For HTML files, rewrite relative paths to absolute paths
-            if (ext === '.html' || ext === '.htm') {
-                let html = content.toString('utf-8');
-                // Fix relative paths like ../../../../../../../app/ -> /app/
-                html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
-                html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
-                // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
-                html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
-                html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
-                content = Buffer.from(html, 'utf-8');
-            }
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            return content;
-        }
-
-        set.status = 404;
-        return 'Not Found';
-    })
+    .get('/api/exemindmap-editor', exemindmapEditorBaseHandler) // Base route (no path)
+    .get('/api/exemindmap-editor/*', exemindmapEditorHandler) // Wildcard (with subpath)
     // Serve codemagic editor via API endpoint to bypass Bun's HTML bundler
     // This uses /api/codemagic-editor/* which Bun won't intercept
-    .get('/api/codemagic-editor/*', ({ params, set }) => {
-        const relativePath = params['*'] || 'codemagic.html';
-        const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/codemagic';
-        const filePath = path.join(process.cwd(), editorBase, relativePath);
-
-        // Security: ensure path is within the editor directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            let content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            // For HTML files, rewrite relative paths to absolute paths
-            if (ext === '.html' || ext === '.htm') {
-                let html = content.toString('utf-8');
-                // Fix includes/ paths -> /api/codemagic-editor/includes/
-                html = html.replace(/src="includes\//g, 'src="/api/codemagic-editor/includes/');
-                html = html.replace(/href="includes\//g, 'href="/api/codemagic-editor/includes/');
-                // Fix images/icons/ paths -> /api/codemagic-editor/images/
-                html = html.replace(/src="images\//g, 'src="/api/codemagic-editor/images/');
-                content = Buffer.from(html, 'utf-8');
-            }
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            return content;
-        }
-
-        set.status = 404;
-        return 'Not Found';
-    })
+    .get('/api/codemagic-editor', codemagicEditorBaseHandler) // Base route (no path)
+    .get('/api/codemagic-editor/*', codemagicEditorHandler) // Wildcard (with subpath)
+    // Serve mermaid library from /libs/mermaid/* (aliased to /app/common/mermaid/*)
+    // MermaidPreRenderer.js expects mermaid at /libs/mermaid/mermaid.min.js
+    .get('/libs/mermaid', mermaidLibBaseHandler) // Base route (no path)
+    .get('/libs/mermaid/*', mermaidLibHandler) // Wildcard (with subpath)
     // Serve site theme files from FILES_DIR/themes/site/
     // URL pattern: /site-files/themes/{dirName}/* or /{version}/site-files/themes/{dirName}/*
     .get('/site-files/themes/*', ({ params, set }) => {
+        // Most requests are already handled by the onRequest hook above (which also
+        // covers BASE_PATH-prefixed and versioned URLs). This route is the fallback
+        // for the plain root-mounted path; reuse the same shared server helper.
         const relativePath = params['*'] || '';
-        const filesDir = getFilesDir();
-        const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-        // Security: ensure path is within the themes/site directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-            return content;
+        const response = serveSiteThemeFile(`/site-files/themes/${relativePath}`, getFilesDir());
+        if (response) {
+            return response;
         }
 
         set.status = 404;
         return 'Not Found';
     })
-    // Serve user theme files from FILES_DIR/themes/users/
-    // URL pattern: /user-files/themes/{dirName}/* or /{version}/user-files/themes/{dirName}/*
-    .get('/user-files/themes/*', ({ params, set }) => {
-        const relativePath = params['*'] || '';
-        const filesDir = getFilesDir();
-        const filePath = path.join(filesDir, 'themes', 'users', relativePath);
+    // Serve preview-sw.js with correct headers for Service Worker registration
+    // Firefox rejects Vary: * so we use Vary: Accept-Encoding
+    // Service-Worker-Allowed: / allows registering SW with root scope
+    .get('/preview-sw.js', () => {
+        const swPath = path.join(process.cwd(), 'public', 'preview-sw.js');
+        if (!fs.existsSync(swPath)) {
+            return new Response('Not Found', { status: 404 });
+        }
+        return new Response(fs.readFileSync(swPath), {
+            headers: {
+                'Content-Type': 'application/javascript; charset=utf-8',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Vary': 'Accept-Encoding',
+                'Access-Control-Allow-Origin': '*',
+                'Service-Worker-Allowed': '/',
+            },
+        });
+    })
+    // Maintenance mode check — runs after static file serving
+    .onRequest(async ({ request }) => {
+        if (!(await isMaintenanceMode(db))) return;
 
-        // Security: ensure path is within the themes/users directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
+        const url = new URL(request.url);
+        let pathname = url.pathname;
+
+        // Strip BASE_PATH prefix if present
+        const basePath = getBasePath();
+        if (basePath && pathname.startsWith(basePath)) {
+            pathname = pathname.slice(basePath.length) || '/';
         }
 
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        // Whitelist: static assets, health, login, admin
+        if (shouldBypassMaintenance(pathname)) return;
 
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-            return content;
+        // Admin bypass: verify JWT from cookie
+        if (await isAdminRequest(request)) return;
+
+        // Block: return maintenance response
+        const isApi = pathname.startsWith('/api/') || request.headers.get('accept')?.includes('application/json');
+        if (isApi) {
+            return new Response(
+                JSON.stringify({
+                    statusCode: 503,
+                    error: 'Service Unavailable',
+                    message: 'Maintenance mode',
+                }),
+                {
+                    status: 503,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Retry-After': '300',
+                    },
+                },
+            );
         }
 
-        set.status = 404;
-        return 'Not Found';
+        // HTML: render maintenance template
+        const locale = (request.headers.get('accept-language') || 'en').split(',')[0].split('-')[0];
+        setRenderLocale(locale);
+        const html = renderTemplate('security/maintenance', { basePath, locale });
+        return new Response(html, {
+            status: 503,
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Retry-After': '300',
+            },
+        });
     })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(
@@ -446,42 +538,54 @@ const app = new Elysia()
         }),
     );
 
-// Get BASE_PATH for route registration and add routes
-// Routes are always added at root, PLUS at BASE_PATH if configured
-// This allows frontend code that doesn't use BASE_PATH to still work
+// Get BASE_PATH for route registration and add routes.
+//
+// Default behaviour: routes are added at root AND at BASE_PATH (if configured).
+// This dual-mount lets frontend code that emits unprefixed URLs still work in a
+// flat `bun run dev`, but it ALSO masks BASE_PATH client bugs (issue #1802):
+// every URL emitted without BASE_PATH would 404 behind a real reverse proxy
+// that only mounts the BASE_PATH namespace.
+//
+// Set STRICT_BASE_PATH_ROUTES=true to disable the root mount when BASE_PATH
+// is configured, so dev/CI behaves like a production proxy and surfaces those
+// bugs immediately. Default is false (compat preserved).
 const routePrefix = getBasePath();
+const strictBasePathRoutes = process.env.STRICT_BASE_PATH_ROUTES === 'true';
+const registerRootRoutes = !routePrefix || !strictBasePathRoutes;
 
-// Always register routes at root
-app.use(healthRoutes)
-    .use(healthCheckAlias)
-    .use(authRoutes)
-    .use(platformIntegrationRoutes)
-    .use(pagesRoutes)
-    .use(projectRoutes)
-    .use(symfonyCompatProjectRoutes)
-    .use(assetsRoutes)
-    .use(fileManagerRoutes)
-    .use(exportRoutes)
-    .use(convertRoutes)
-    .use(configRoutes)
-    .use(idevicesRoutes)
-    .use(gamesRoutes)
-    .use(themesRoutes)
-    .use(resourcesRoutes)
-    .use(userRoutes)
-    .use(adminRoutes)
-    .use(adminThemesRoutes)
-    .use(adminTemplatesRoutes)
-    .use(yjsRoutes)
-    .use(createWebSocketRoutes())
-    .get('/api', () => ({
-        name: 'eXeLearning API',
-        version: '4.0.0-elysia',
-        framework: 'Elysia',
-        runtime: 'Bun',
-    }))
-    .get('/api/websocket/info', () => getServerInfo())
-    .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+// Register routes at root (skipped when STRICT_BASE_PATH_ROUTES=true AND BASE_PATH is set)
+if (registerRootRoutes) {
+    app.use(healthRoutes)
+        .use(healthCheckAlias)
+        .use(authRoutes)
+        .use(platformIntegrationRoutes)
+        .use(pagesRoutes)
+        .use(projectRoutes)
+        .use(symfonyCompatProjectRoutes)
+        .use(assetsRoutes)
+        .use(fileManagerRoutes)
+        .use(exportRoutes)
+        .use(convertRoutes)
+        .use(configRoutes)
+        .use(idevicesRoutes)
+        .use(gamesRoutes)
+        .use(themesRoutes)
+        .use(resourcesRoutes)
+        .use(userRoutes)
+        .use(adminRoutes)
+        .use(adminThemesRoutes)
+        .use(adminTemplatesRoutes)
+        .use(yjsRoutes)
+        .use(apiV1Routes)
+        .use(uploadSessionRoutes)
+        .use(createWebSocketRoutes())
+        .use(webSocketInfoRoutes)
+        .use(yjsDebugRoutes)
+        .get('/api', () => ({
+            name: 'eXeLearning API',
+            version: getAppVersion(),
+        }));
+}
 
 // Also register routes at BASE_PATH if configured
 if (routePrefix) {
@@ -500,19 +604,31 @@ if (routePrefix) {
             .use(convertRoutes)
             .use(configRoutes)
             .use(idevicesRoutes)
+            .use(gamesRoutes)
             .use(themesRoutes)
+            .use(resourcesRoutes)
             .use(userRoutes)
             .use(adminRoutes)
+            .use(adminThemesRoutes)
+            .use(adminTemplatesRoutes)
             .use(yjsRoutes)
+            .use(apiV1Routes)
+            .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
+            .use(webSocketInfoRoutes)
+            .use(yjsDebugRoutes)
             .get('/api', () => ({
                 name: 'eXeLearning API',
-                version: '4.0.0-elysia',
-                framework: 'Elysia',
-                runtime: 'Bun',
+                version: getAppVersion(),
             }))
-            .get('/api/websocket/info', () => getServerInfo())
-            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() })),
+            // Editor handlers must be registered at BASE_PATH too
+            .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
+            .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
+            .get('/api/codemagic-editor', codemagicEditorBaseHandler)
+            .get('/api/codemagic-editor/*', codemagicEditorHandler)
+            // Mermaid library alias for BASE_PATH
+            .get('/libs/mermaid', mermaidLibBaseHandler)
+            .get('/libs/mermaid/*', mermaidLibHandler),
     );
 }
 
@@ -579,8 +695,30 @@ async function syncBuiltinThemes() {
     console.log(`[Themes] Base themes synced`);
 }
 
+/**
+ * Refuse to boot in production if the JWT signing secret is still the
+ * insecure default. Catches the case where a deployment forgets to set
+ * `API_JWT_SECRET` / `JWT_SECRET` — without this check, tokens would be
+ * forgeable by anyone who reads the open-source codebase.
+ */
+function assertProductionJwtSecret(): void {
+    if (process.env.NODE_ENV !== 'production') return;
+    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || '';
+    if (!secret || secret === 'dev_secret_change_me' || secret === 'elysia-dev-secret-change-me') {
+        console.error(
+            '[SECURITY] Refusing to start: NODE_ENV=production but no API_JWT_SECRET/JWT_SECRET is set ' +
+                '(or it is still the in-repo default). Generate a long random string and export it as ' +
+                'API_JWT_SECRET before starting the server.',
+        );
+        process.exit(1);
+    }
+}
+
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
+    // 0. Production safety: do not start with the default JWT secret.
+    assertProductionJwtSecret();
+
     // 1. Run migrations
     console.log('[DB] Running migrations...');
     const migrationResult = await migrateToLatest(db);
@@ -603,34 +741,76 @@ async function bootstrap() {
     // 3. Sync builtin themes from filesystem to database
     await syncBuiltinThemes();
 
-    // 5. Seed test user if not exists
-    const testEmail = process.env.TEST_USER_EMAIL || 'user@exelearning.net';
-    const testPassword = process.env.TEST_USER_PASSWORD || '1234';
+    // 5. Seed test user if explicitly configured (dev environment only)
+    const testEmail = process.env.TEST_USER_EMAIL?.trim();
+    const testPassword = process.env.TEST_USER_PASSWORD?.trim();
+    const appEnv = process.env.APP_ENV || 'prod';
 
-    const existingUser = await findUserByEmail(db, testEmail);
-    if (!existingUser) {
-        console.log('[DB] Creating test user...');
-        const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
-        const defaultQuota = await getSettingNumber(
-            db,
-            'DEFAULT_QUOTA',
-            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-        );
-        await createUser(db, {
-            email: testEmail,
-            user_id: 'test-user',
-            password: hashedPassword,
-            roles: '["ROLE_USER"]',
-            is_lopd_accepted: 1,
-            quota_mb: defaultQuota,
-            is_active: 1,
-        });
-        console.log(`[DB] Test user created: ${testEmail}`);
+    if (appEnv === 'dev' && testEmail && testPassword) {
+        const existingUser = await findUserByEmail(db, testEmail);
+        if (!existingUser) {
+            console.log('[DB] Creating test user...');
+            const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
+            const defaultQuota = await getSettingNumber(
+                db,
+                'DEFAULT_QUOTA',
+                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+            );
+            await createUser(db, {
+                email: testEmail,
+                // user_id: not set for local users (null)
+                password: hashedPassword,
+                roles: '["ROLE_USER"]',
+                is_lopd_accepted: 1,
+                quota_mb: defaultQuota,
+                is_active: 1,
+            });
+            console.log(`[DB] Test user created: ${testEmail}`);
+        }
+    }
+
+    // 6. Create/update admin user if ADMIN_EMAIL and ADMIN_PASSWORD are set
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (adminEmail && adminPassword) {
+        const existingAdmin = await findUserByEmail(db, adminEmail);
+        const hashedPassword = await Bun.password.hash(adminPassword, { algorithm: 'bcrypt' });
+        const adminRoles = '["ROLE_USER","ROLE_ADMIN"]';
+
+        if (!existingAdmin) {
+            console.log('[DB] Creating admin user...');
+            const defaultQuota = await getSettingNumber(
+                db,
+                'DEFAULT_QUOTA',
+                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+            );
+            await createUser(db, {
+                email: adminEmail,
+                // user_id: not set for local users (null)
+                password: hashedPassword,
+                roles: adminRoles,
+                is_lopd_accepted: 1,
+                quota_mb: defaultQuota,
+                is_active: 1,
+            });
+            console.log(`[DB] Admin user created: ${adminEmail}`);
+        } else {
+            // Update existing user: password and roles (allows recovery)
+            await updateUser(db, existingAdmin.id, {
+                password: hashedPassword,
+                roles: adminRoles,
+            });
+            console.log(`[DB] Admin user updated: ${adminEmail}`);
+        }
     }
 
     // 6. Start server
     app.listen(PORT);
     initWebSocket();
+
+    // 7. Start cleanup scheduler (for unsaved and guest projects)
+    startCleanupScheduler(getCleanupConfigFromEnv());
 
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);
@@ -650,7 +830,9 @@ bootstrap().catch(err => {
 async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
+    stopCleanupScheduler();
     await disconnectRedis();
+    await closeDb();
     process.exit(0);
 }
 

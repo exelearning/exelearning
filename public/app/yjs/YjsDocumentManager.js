@@ -24,7 +24,9 @@ class YjsDocumentManager {
    * @param {string} [config.wsUrl] - y-websocket server URL (defaults to same origin with /yjs path)
    * @param {string} [config.apiUrl='/api'] - REST API URL
    * @param {string} [config.token=null] - JWT token for authentication
-   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection
+   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection.
+   *   Caller should derive this from app.capabilities.collaboration.enabled
+   *   (via RuntimeConfig) rather than checking window.__EXE_STATIC_MODE__ directly.
    */
   constructor(projectId, config = {}) {
     this.projectId = projectId;
@@ -73,10 +75,25 @@ class YjsDocumentManager {
     this.lastSavedAt = null;
     this.saveInProgress = false;
 
+    // Improved dirty tracking: _initialized flag prevents marking dirty during initial load
+    // This is set to true after captureBaselineState() is called
+    this._initialized = false;
+    // Flag to suppress dirty tracking during specific operations (e.g., import)
+    this._suppressDirtyTracking = false;
+    // LocalStorage key for persisting dirty state
+    this._dirtyStateKey = `exelearning_dirty_state_${projectId}`;
+
     // Bind beforeunload handler
     this._beforeUnloadHandler = this._handleBeforeUnload.bind(this);
     // Bind unload handler (always fires, even if beforeunload is cancelled)
     this._unloadHandler = () => this._clearAwarenessOnUnload();
+    // Bind visibility change handler for tab switch recovery
+    this._visibilityChangeHandler = this._handleVisibilityChange.bind(this);
+
+    // Tab tracker for cleanup when all tabs close (initialized in initialize())
+    this._tabTracker = null;
+    // External callback for additional cleanup (e.g., Cache API via YjsProjectBridge)
+    this._onLastTabClosedCallback = null;
   }
 
   /**
@@ -133,37 +150,179 @@ class YjsDocumentManager {
 
     // Setup IndexedDB persistence (offline-first)
     const dbName = `exelearning-project-${this.projectId}`;
-    this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
 
-    // Wait for IndexedDB to sync (with timeout to prevent hanging)
-    // y-indexeddb may not fire 'synced' event in certain conditions (e.g., rapid reinit)
-    await new Promise((resolve) => {
-      let resolved = false;
+    // sessionStorage survives reloads within the same tab, but disappears when that tab closes.
+    // That makes it a reliable same-tab marker for deciding whether deferred cleanup should run.
+    const tabSessionKey = `exe-tab-session-${this.projectId}`;
+    const hasTabSession = (() => {
+      try { return sessionStorage.getItem(tabSessionKey) === 'true'; } catch (_) { return false; }
+    })();
 
-      const onSynced = () => {
-        if (resolved) return;
-        resolved = true;
-        Logger.log(`[YjsDocumentManager] Synced from IndexedDB for project ${this.projectId}`);
-        resolve();
-      };
+    // If a previous session set the needs-cleanup flag (last tab was closed), only clean up when
+    // this is a brand new tab session. Reloads/back-forward in the same tab keep sessionStorage,
+    // so they must preserve IndexedDB, dirty state, and Cache API data.
+    const needsCleanup = (() => {
+      try { return localStorage.getItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) { return null; }
+    })();
+    if (needsCleanup) {
+      Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
 
-      // Check if already synced (may happen for empty/new databases)
-      if (this.indexedDBProvider.synced) {
-        onSynced();
-        return;
+      if (!hasTabSession) {
+        // New tab session after the previous last-tab close — perform full cleanup now.
+        Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
+        await new Promise((resolve) => {
+          const req = indexedDB.deleteDatabase(dbName);
+          req.onsuccess = () => resolve();
+          req.onerror = () => resolve();
+          req.onblocked = () => resolve();
+        });
+        try { localStorage.removeItem(`exelearning_dirty_state_${this.projectId}`); } catch (_) {}
+        // Invoke external callback (e.g., Cache API cleanup via YjsProjectBridge).
+        // If the bridge has not wired it yet, preserve a pending flag to flush later.
+        const externalCleanupHandled = await this._runLastTabClosedCallback();
+        if (!externalCleanupHandled) {
+          try { localStorage.setItem(`exe-needs-external-cleanup-${this.projectId}`, 'true'); } catch (_) {}
+        }
+        Logger.log(`[YjsDocumentManager] Deferred cleanup completed for project ${this.projectId}`);
+      } else {
+        // Reload/back-forward within the same tab — preserve current session state.
+        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (same tab session)`);
       }
+      // Always consume the flag so we don't retry on subsequent loads
+      try { localStorage.removeItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) {}
+    }
 
-      // Listen for synced event
-      this.indexedDBProvider.on('synced', onSynced);
+    try { sessionStorage.setItem(tabSessionKey, 'true'); } catch (_) {}
 
-      // Timeout after 3 seconds - IndexedDB sync should be fast
-      setTimeout(() => {
-        if (resolved) return;
-        resolved = true;
-        Logger.log(`[YjsDocumentManager] IndexedDB sync timeout for project ${this.projectId}, proceeding anyway`);
-        resolve();
-      }, 3000);
-    });
+    // Pre-validate IndexedDB schema to avoid runtime errors
+    // y-indexeddb expects specific object stores, and corrupted/old databases can cause errors
+    const isDbValid = await this._validateIndexedDb(dbName);
+    if (!isDbValid) {
+      Logger.warn(`[YjsDocumentManager] IndexedDB ${dbName} has invalid schema, deleting...`);
+      try {
+        await new Promise((resolve, reject) => {
+          const deleteReq = indexedDB.deleteDatabase(dbName);
+          deleteReq.onsuccess = () => resolve();
+          deleteReq.onerror = () => reject(deleteReq.error);
+          deleteReq.onblocked = () => resolve(); // Proceed anyway
+        });
+        Logger.log(`[YjsDocumentManager] Deleted invalid database ${dbName}`);
+      } catch (e) {
+        Logger.warn(`[YjsDocumentManager] Failed to delete invalid database:`, e);
+      }
+    }
+
+    // Try to create IndexedDB provider with error recovery
+    try {
+      this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
+
+      // Add persistent error handler for runtime errors (e.g., corrupted schema)
+      // This catches errors that occur during writes, not just initialization
+      this.indexedDBProvider.on('error', async (error) => {
+        Logger.warn(`[YjsDocumentManager] IndexedDB runtime error for project ${this.projectId}:`, error);
+        // If error is about missing object stores, the database schema is corrupted
+        if (error?.name === 'NotFoundError' || error?.message?.includes('object stores')) {
+          Logger.warn('[YjsDocumentManager] Database schema appears corrupted, disabling persistence');
+          // Destroy the provider to prevent further errors
+          if (this.indexedDBProvider) {
+            try {
+              await this.indexedDBProvider.destroy();
+            } catch (e) {
+              // Ignore destroy errors
+            }
+            this.indexedDBProvider = null;
+          }
+        }
+      });
+
+      // Wait for IndexedDB to sync (with timeout to prevent hanging)
+      // y-indexeddb may not fire 'synced' event in certain conditions (e.g., rapid reinit)
+      await new Promise((resolve, reject) => {
+        let resolved = false;
+
+        const onSynced = () => {
+          if (resolved) return;
+          resolved = true;
+          Logger.log(`[YjsDocumentManager] Synced from IndexedDB for project ${this.projectId}`);
+          resolve();
+        };
+
+        // Handle errors during sync
+        this.indexedDBProvider.on('error', (error) => {
+          if (resolved) return;
+          resolved = true;
+          Logger.warn(`[YjsDocumentManager] IndexedDB error for project ${this.projectId}:`, error);
+          reject(error);
+        });
+
+        // Check if already synced (may happen for empty/new databases)
+        if (this.indexedDBProvider.synced) {
+          onSynced();
+          return;
+        }
+
+        // Listen for synced event
+        this.indexedDBProvider.on('synced', onSynced);
+
+        // Timeout after 3 seconds - IndexedDB sync should be fast
+        setTimeout(() => {
+          if (resolved) return;
+          resolved = true;
+          Logger.log(`[YjsDocumentManager] IndexedDB sync timeout for project ${this.projectId}, proceeding anyway`);
+          resolve();
+        }, 3000);
+      });
+    } catch (indexedDbError) {
+      Logger.warn(`[YjsDocumentManager] IndexedDB initialization failed for project ${this.projectId}:`, indexedDbError);
+      Logger.warn('[YjsDocumentManager] Attempting to clear corrupted database and retry...');
+
+      // Try to delete the corrupted database
+      try {
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+        await new Promise((resolve, reject) => {
+          deleteRequest.onsuccess = () => {
+            Logger.log(`[YjsDocumentManager] Deleted corrupted database ${dbName}`);
+            resolve();
+          };
+          deleteRequest.onerror = () => reject(deleteRequest.error);
+          deleteRequest.onblocked = () => {
+            Logger.warn(`[YjsDocumentManager] Database deletion blocked for ${dbName}`);
+            resolve(); // Proceed anyway
+          };
+        });
+
+        // Retry with fresh database
+        this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
+
+        // Wait for sync with shorter timeout
+        await new Promise((resolve) => {
+          const timeout = setTimeout(() => resolve(), 2000);
+          this.indexedDBProvider.on('synced', () => {
+            clearTimeout(timeout);
+            Logger.log(`[YjsDocumentManager] Synced from fresh IndexedDB for project ${this.projectId}`);
+            resolve();
+          });
+          if (this.indexedDBProvider.synced) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      } catch (deleteError) {
+        Logger.error(`[YjsDocumentManager] Failed to recover IndexedDB for project ${this.projectId}:`, deleteError);
+        // Proceed without IndexedDB persistence - data will only be in memory
+        this.indexedDBProvider = null;
+      }
+    }
+
+    // Setup tab tracker for cleanup when all browser tabs close
+    // This cleans up IndexedDB when user closes all tabs for this project
+    if (window.ProjectTabTracker) {
+      this._tabTracker = new window.ProjectTabTracker(this.projectId, () => {
+        this._cleanupOnLastTabClose();
+      });
+      this._tabTracker.start();
+      Logger.log(`[YjsDocumentManager] Tab tracker started for project ${this.projectId}`);
+    }
 
     // Setup WebSocket provider (but don't connect yet)
     // Connection happens later via startWebSocketConnection() after message handlers are installed
@@ -190,7 +349,22 @@ class YjsDocumentManager {
       // This prevents duplicate pages when multiple clients join simultaneously
       if (this.config.offline && navigation.length === 0) {
         Logger.log('[YjsDocumentManager] Creating blank project structure (offline mode)');
-        this.createBlankProjectStructure();
+        try {
+          this.createBlankProjectStructure();
+        } catch (createError) {
+          // IndexedDB may throw if database schema is corrupted
+          Logger.warn('[YjsDocumentManager] Error creating blank structure, disabling IndexedDB:', createError);
+          if (this.indexedDBProvider) {
+            try {
+              await this.indexedDBProvider.destroy();
+            } catch (e) {
+              // Ignore
+            }
+            this.indexedDBProvider = null;
+          }
+          // Retry without persistence
+          this.createBlankProjectStructure();
+        }
       }
       // For online mode, YjsProjectBridge will call ensureBlankStructureIfEmpty() after sync
     }
@@ -212,17 +386,19 @@ class YjsDocumentManager {
 
     // Setup dirty tracking - mark dirty on any document change (local or remote)
     this.ydoc.on('update', (update, origin) => {
-      // Don't mark dirty for system updates (initialization)
-      // Mark dirty for both local changes AND remote changes from collaborators
-      if (origin !== 'system') {
-        this.markDirty();
-      }
+      // Skip system origins (initial load, blank structure creation, imports)
+      // 'initial' - initial sync from server
+      // 'system' - blank project structure, programmatic changes
+      if (origin === 'initial' || origin === 'system') return;
+      this.markDirty();
     });
 
     // Setup beforeunload handler for auto-save on close
     window.addEventListener('beforeunload', this._beforeUnloadHandler);
     // Setup unload handler to clear awareness (always fires, even if beforeunload cancelled)
     window.addEventListener('unload', this._unloadHandler);
+    // Setup visibility change handler for tab switch recovery
+    document.addEventListener('visibilitychange', this._visibilityChangeHandler);
 
     this.initialized = true;
     this.emit('sync', { synced: true });
@@ -360,6 +536,28 @@ class YjsDocumentManager {
   }
 
   /**
+   * Re-broadcast local awareness state without reconnecting the WebSocket.
+   * Useful when a new collaborator joins and we want immediate presence refresh.
+   * @param {string} reason
+   * @returns {boolean} true if rebroadcast was sent
+   */
+  rebroadcastAwareness(reason = 'manual') {
+    if (!this.awareness || !this.wsProvider?.wsconnected) return false;
+
+    const localState = this.awareness.getLocalState();
+    if (!localState) return false;
+
+    const clonedState = {
+      ...localState,
+      user: localState.user ? { ...localState.user } : localState.user,
+    };
+
+    this.awareness.setLocalState(clonedState);
+    Logger.log('[YjsDocumentManager] Awareness re-broadcast sent:', reason);
+    return true;
+  }
+
+  /**
    * Load document state from server
    */
   async loadFromServer() {
@@ -439,8 +637,10 @@ class YjsDocumentManager {
       }
 
       // Create initial metadata
-      // Get user's language: app locale > document lang > navigator language > fallback to 'en'
-      const userLanguage = window.eXeLearning?.app?.locale?.lang
+      // Get user's language from preferences first, then fall back to UI/browser locale
+      // Priority: user preference > app locale > document lang > navigator language > 'en'
+      const userLanguage = window.eXeLearning?.app?.user?.preferences?.preferences?.locale?.value
+        || window.eXeLearning?.app?.locale?.lang
         || document.documentElement.lang
         || navigator.language?.split('-')[0]
         || 'en';
@@ -450,11 +650,23 @@ class YjsDocumentManager {
       metadata.set('description', '');
       metadata.set('language', userLanguage);
       metadata.set('license', 'creative commons: attribution - share alike 4.0');
-      // Use configured default theme from admin panel, fallback to 'base'
-      const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
+      // Theme precedence for new projects: user defaultTheme preference >
+      // legacy hidden "theme" preference > admin/site default > 'base'.
+      // Empty values fall through so the site default is applied.
+      const userPrefs = window.eXeLearning?.app?.user?.preferences?.preferences;
+      const userDefaultTheme = userPrefs?.defaultTheme?.value;
+      const legacyThemePref = userPrefs?.theme?.value;
+      const siteDefaultTheme = window.eXeLearning?.config?.defaultTheme;
+      const defaultTheme = userDefaultTheme || legacyThemePref || siteDefaultTheme || 'base';
       metadata.set('theme', defaultTheme);
       metadata.set('createdAt', Date.now());
       metadata.set('modifiedAt', Date.now());
+
+      // Stable identifiers (odeIdentifier / odeVersionId) are NOT minted on
+      // create -- the first import (v4 <odeResources> or legacy mint at
+      // import time) writes them. Minting here would create CRDT history
+      // that gets superseded by the import and inflate the persisted state.
+      // See #1786.
 
       // Create root page
       const rootPageId = this.generateId();
@@ -483,6 +695,62 @@ class YjsDocumentManager {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
+    });
+  }
+
+  /**
+   * Validate IndexedDB schema before using it
+   * y-indexeddb expects 'updates' and 'custom' object stores
+   * @param {string} dbName - Database name to validate
+   * @returns {Promise<boolean>} true if valid or doesn't exist, false if invalid schema
+   * @private
+   */
+  async _validateIndexedDb(dbName) {
+    return new Promise((resolve) => {
+      // Check if IndexedDB is available
+      if (!window.indexedDB) {
+        resolve(true); // No IndexedDB, let the provider handle it
+        return;
+      }
+
+      // Try to open the database without specifying version (use existing version)
+      const openReq = indexedDB.open(dbName);
+
+      openReq.onerror = () => {
+        // If we can't open, let the provider try to create it fresh
+        resolve(true);
+      };
+
+      openReq.onsuccess = () => {
+        const db = openReq.result;
+        try {
+          // y-indexeddb requires 'updates' object store (and optionally 'custom')
+          const hasUpdates = db.objectStoreNames.contains('updates');
+          db.close();
+
+          if (!hasUpdates) {
+            // Database exists but doesn't have required object stores
+            Logger.warn(`[YjsDocumentManager] Database ${dbName} missing 'updates' object store`);
+            resolve(false);
+            return;
+          }
+
+          resolve(true);
+        } catch (e) {
+          db.close();
+          resolve(false);
+        }
+      };
+
+      openReq.onupgradeneeded = () => {
+        // Database doesn't exist yet or needs upgrade - this is fine
+        // Cancel the upgrade and let y-indexeddb handle creation
+        openReq.transaction?.abort();
+        resolve(true);
+      };
+
+      // Timeout in case something hangs
+      setTimeout(() => resolve(true), 2000);
     });
   }
 
@@ -542,6 +810,8 @@ class YjsDocumentManager {
       Logger.log(`[YjsDocumentManager] Connection status: ${status}`);
       if (status === 'connected') {
         this.emit('connectionChange', { connected: true });
+        // Refresh presence immediately after connect/reconnect.
+        this.rebroadcastAwareness('status-connected');
       } else if (status === 'disconnected') {
         this.emit('connectionChange', { connected: false });
       }
@@ -925,6 +1195,13 @@ class YjsDocumentManager {
    */
   async _updateVersionMetadata() {
     try {
+      const runtimeVersion = window.eXeLearning?.version;
+      if (runtimeVersion) {
+        const metadata = this.getMetadata();
+        metadata.set('exelearning_version', runtimeVersion);
+        return;
+      }
+
       const response = await fetch(`${this.config.apiUrl}/version`);
       if (response.ok) {
         const { version } = await response.json();
@@ -954,6 +1231,21 @@ class YjsDocumentManager {
   getAssets() {
     this._ensureInitialized();
     return this.ydoc.getMap('assets');
+  }
+
+  /**
+   * Get theme files map - stores user theme files imported from .elpx
+   * Structure: Map<themeName, Map<relativePath, base64FileContent>>
+   * Example: themeFiles.get('universal') -> Map { 'style.css' -> '...base64...', 'config.xml' -> '...' }
+   *
+   * User themes imported from .elpx files are stored client-side in Yjs,
+   * not on the server. This simplifies the architecture and allows
+   * themes to sync automatically between collaborators.
+   * @returns {Y.Map}
+   */
+  getThemeFiles() {
+    this._ensureInitialized();
+    return this.ydoc.getMap('themeFiles');
   }
 
   /**
@@ -1093,23 +1385,135 @@ class YjsDocumentManager {
   // ===== Persistence (Stateless Relay) =====
 
   /**
-   * Mark document as dirty (has unsaved changes)
+   * Mark document as dirty (has unsaved changes).
+   * Only marks dirty if:
+   * - _initialized is true (initial load complete)
+   * - _suppressDirtyTracking is false
+   * This prevents false positives during initial load and import operations.
    */
   markDirty() {
+    // Don't mark dirty during initial load or when suppressed
+    if (!this._initialized || this._suppressDirtyTracking) {
+      return;
+    }
+
     if (!this.isDirty) {
       this.isDirty = true;
+      this._persistDirtyState(true);
       this.emit('saveStatus', { status: 'dirty', isDirty: true });
       Logger.log('[YjsDocumentManager] Document marked dirty');
     }
   }
 
   /**
-   * Mark document as clean (no unsaved changes)
+   * Mark document as clean (no unsaved changes).
+   * Also persists the clean state to localStorage.
    */
   markClean() {
     this.isDirty = false;
     this.lastSavedAt = new Date();
+    this._persistDirtyState(false);
     this.emit('saveStatus', { status: 'saved', isDirty: false, savedAt: this.lastSavedAt });
+  }
+
+  /**
+   * Capture the baseline state after initial load.
+   * Call this after all initial syncing is complete to enable dirty tracking.
+   * The current document state becomes the "clean" baseline.
+   */
+  captureBaselineState() {
+    // Check if there was persisted dirty state from a previous session
+    const hadUnsavedChanges = this._getPersistedDirtyState();
+
+    // Now enable dirty tracking
+    this._initialized = true;
+
+    if (hadUnsavedChanges) {
+      // Restore dirty state from previous session
+      this.isDirty = true;
+      Logger.log('[YjsDocumentManager] Restored dirty state from previous session');
+      this.emit('saveStatus', { status: 'dirty', isDirty: true });
+    } else {
+      // Document is clean - this is the baseline
+      this.isDirty = false;
+      Logger.log('[YjsDocumentManager] Baseline state captured, dirty tracking enabled');
+      // Emit saved status to ensure UI shows green dot (clean state)
+      this.emit('saveStatus', { status: 'saved', isDirty: false });
+    }
+  }
+
+  /**
+   * Execute a function with dirty tracking suppressed.
+   * Useful for import operations where we don't want to mark dirty until complete.
+   *
+   * @param {Function} fn - Function to execute
+   * @returns {Promise<any>} Result of the function
+   */
+  async withSuppressedDirtyTracking(fn) {
+    const wasSupressed = this._suppressDirtyTracking;
+    this._suppressDirtyTracking = true;
+    try {
+      return await fn();
+    } finally {
+      this._suppressDirtyTracking = wasSupressed;
+    }
+  }
+
+  /**
+   * Persist dirty state to localStorage.
+   * This allows detecting unsaved changes across page reloads.
+   *
+   * @param {boolean} isDirty - Whether the document is dirty
+   * @private
+   */
+  _persistDirtyState(isDirty) {
+    if (this._isStaticMode()) {
+      return;
+    }
+    try {
+      if (isDirty) {
+        localStorage.setItem(this._dirtyStateKey, 'true');
+      } else {
+        localStorage.removeItem(this._dirtyStateKey);
+      }
+    } catch (e) {
+      // localStorage not available or full
+    }
+  }
+
+  /**
+   * Get persisted dirty state from localStorage.
+   *
+   * @returns {boolean} The persisted dirty state
+   * @private
+   */
+  _getPersistedDirtyState() {
+    if (this._isStaticMode()) {
+      return false;
+    }
+    try {
+      return localStorage.getItem(this._dirtyStateKey) === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Detect static mode (no remote storage, no Electron)
+   * @returns {boolean}
+   * @private
+   */
+  _isStaticMode() {
+    try {
+      if (window.electronAPI) return false;
+      const capabilities = window.eXeLearning?.app?.capabilities;
+      if (capabilities) {
+        return capabilities.storage?.remote === false;
+      }
+      return window.__EXE_STATIC_MODE__ === true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /**
@@ -1122,13 +1526,14 @@ class YjsDocumentManager {
 
   /**
    * Get save status info
-   * @returns {{ isDirty: boolean, lastSavedAt: Date|null, saveInProgress: boolean }}
+   * @returns {{ isDirty: boolean, lastSavedAt: Date|null, saveInProgress: boolean, isInitialized: boolean }}
    */
   getSaveStatus() {
     return {
       isDirty: this.isDirty,
       lastSavedAt: this.lastSavedAt,
       saveInProgress: this.saveInProgress,
+      isInitialized: this._initialized,
     };
   }
 
@@ -1143,6 +1548,24 @@ class YjsDocumentManager {
     if (this.isDirty && !this.config.offline) {
       // Try to save synchronously (best effort) - no confirmation dialog
       this._saveSync();
+    }
+  }
+
+  /**
+   * Handle visibility change event - reconnect WebSocket when tab becomes visible
+   * When a browser tab is hidden for an extended period (~50+ seconds),
+   * the browser may terminate the WebSocket connection to save resources.
+   * This handler forces immediate reconnection when the tab becomes visible again.
+   */
+  _handleVisibilityChange() {
+    if (document.visibilityState !== 'visible') return;
+    if (!this.wsProvider) return;
+
+    // Only take action and log when reconnection is needed
+    if (!this.wsProvider.wsconnected) {
+      Logger.log('[YjsDocumentManager] Tab visible, reconnecting WebSocket...');
+      this.wsProvider.connect();
+      this.emit('connectionChange', { connected: false, reconnecting: true });
     }
   }
 
@@ -1285,9 +1708,16 @@ class YjsDocumentManager {
   async destroy(options = {}) {
     const { saveBeforeDestroy = false } = options;
 
-    // Remove beforeunload and unload handlers
+    // Remove beforeunload, unload, and visibility change handlers
     window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     window.removeEventListener('unload', this._unloadHandler);
+    document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
+
+    // Stop tab tracker
+    if (this._tabTracker) {
+      this._tabTracker.stop();
+      this._tabTracker = null;
+    }
 
     // Save if requested and dirty
     if (saveBeforeDestroy && this.isDirty && !this.config.offline) {
@@ -1323,10 +1753,69 @@ class YjsDocumentManager {
     this.awareness = null;
     this.listeners = { sync: [], update: [], awareness: [], connectionChange: [], saveStatus: [], usersChange: [] };
     this.initialized = false;
+    this._initialized = false;
     this.isDirty = false;
     this.saveInProgress = false;
+    this._suppressDirtyTracking = false;
 
     Logger.log(`[YjsDocumentManager] Destroyed for project ${this.projectId}`);
+  }
+
+  /**
+   * Set callback for when the last browser tab closes
+   * Used by YjsProjectBridge to add Cache API cleanup alongside IndexedDB cleanup
+   * @param {Function} callback - Callback to invoke when last tab closes
+   */
+  setOnLastTabClosedCallback(callback) {
+    this._onLastTabClosedCallback = callback;
+  }
+
+  /**
+   * Run the external last-tab cleanup callback if available.
+   * @returns {Promise<boolean>} true when a callback was invoked
+   * @private
+   */
+  async _runLastTabClosedCallback() {
+    if (!this._onLastTabClosedCallback) return false;
+    try {
+      await Promise.resolve(this._onLastTabClosedCallback());
+    } catch (_) {}
+    return true;
+  }
+
+  /**
+   * Flush deferred external cleanup once the callback dependency is available.
+   * @returns {Promise<void>}
+   */
+  async flushPendingExternalCleanup() {
+    const pendingKey = `exe-needs-external-cleanup-${this.projectId}`;
+    const pending = (() => {
+      try { return localStorage.getItem(pendingKey); } catch (_) { return null; }
+    })();
+    if (!pending) return;
+
+    const invoked = await this._runLastTabClosedCallback();
+    if (invoked) {
+      try { localStorage.removeItem(pendingKey); } catch (_) {}
+    }
+  }
+
+  /**
+   * Cleanup when the last browser tab for this project closes
+   * Schedules deferred cleanup for the next fresh tab session
+   * @private
+   */
+  _cleanupOnLastTabClose() {
+    Logger.log(`[YjsDocumentManager] Last tab closed for project ${this.projectId}, scheduling deferred cleanup`);
+
+    // Set a flag so initialize() handles cleanup on next open.
+    // The actual IDB deletion, dirty-state removal, AND external callback (Cache API cleanup)
+    // are ALL deferred to initialize() where we can inspect the navigation type to distinguish
+    // F5 (reload) from real close (navigate). This prevents Cache API deletion on F5 in Firefox
+    // where _isRefresh() may return false during beforeunload.
+    try {
+      localStorage.setItem(`exe-needs-cleanup-${this.projectId}`, 'true');
+    } catch (_) {}
   }
 
   /**

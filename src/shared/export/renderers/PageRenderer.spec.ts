@@ -49,9 +49,47 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('<html lang="en"');
-            expect(html).toContain('<title>Test Page</title>');
+            expect(html).toContain('<title>Test Page | Test Project</title>');
             expect(html).toContain('class="page"'); // main element with page class
             expect(html).toContain('id="siteNav"'); // navigation present
+        });
+
+        it('should render index page <title> as project title only', () => {
+            const page = createTestPage({ title: 'Home' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: true });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+            expect(html).not.toContain('<title>Home | Test Project</title>');
+        });
+
+        it('should render non-index page <title> as "Page title | Project title"', () => {
+            const page = createTestPage({ title: 'Chapter 1' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Chapter 1 | Test Project</title>');
+        });
+
+        it('should fall back to project title when page title is empty', () => {
+            const page = createTestPage({ title: '' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+        });
+
+        it('should avoid duplicating title when page and project match', () => {
+            const page = createTestPage({ title: 'Test Project' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+            expect(html).not.toContain('Test Project | Test Project');
         });
 
         it('should set correct html id for index page', () => {
@@ -195,6 +233,100 @@ describe('PageRenderer', () => {
             expect(html).toContain('onload="initScorm()"');
             expect(html).toContain('onunload="terminateScorm()"');
         });
+
+        it('should hide navigation when hideNavigation is true', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavigation: true,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation should NOT be present
+            expect(html).not.toContain('<nav id="siteNav">');
+            expect(html).not.toContain('</nav>');
+        });
+
+        it('should show navigation when hideNavigation is false (default)', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavigation: false,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation should be present
+            expect(html).toContain('<nav id="siteNav">');
+        });
+
+        it('should hide nav buttons when hideNavButtons is true', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavButtons: true,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Nav buttons should NOT be present
+            expect(html).not.toContain('<div class="nav-buttons">');
+            expect(html).not.toContain('nav-button-left');
+            expect(html).not.toContain('nav-button-right');
+        });
+
+        it('should show nav buttons when hideNavButtons is false (default)', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavButtons: false,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Nav buttons should be present
+            expect(html).toContain('<div class="nav-buttons">');
+        });
+
+        it('should hide both navigation and nav buttons for SCORM-like exports', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                isScorm: true,
+                hideNavigation: true,
+                hideNavButtons: true,
+                addPagination: true,
+                bodyClass: 'exe-export exe-scorm exe-scorm12',
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation and nav buttons should NOT be present
+            expect(html).not.toContain('<nav id="siteNav">');
+            expect(html).not.toContain('<div class="nav-buttons">');
+
+            // Page counter should be present
+            expect(html).toContain('page-counter');
+
+            // Body class should include exe-export
+            expect(html).toContain('exe-export exe-scorm exe-scorm12');
+        });
     });
 
     describe('renderNavigation', () => {
@@ -219,7 +351,8 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavigation(pages, 'page-2', '');
 
-            expect(html).toContain('id="active"');
+            // No id="active", only class="active" (matches legacy PHP)
+            expect(html).not.toContain('id="active"');
             expect(html).toContain('class="active"');
         });
 
@@ -249,7 +382,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons', () => {
+        it('should render prev/next nav buttons with English fallback labels', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -263,6 +396,23 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
+            expect(html).not.toContain('data-i18n');
+        });
+
+        it('should use translated labels when navLabels is provided', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
+
+            const html = renderer.renderNavButtons(pages[1], pages, '', navLabels);
+
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -273,11 +423,12 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            // First page: disabled prev (span), enabled next (anchor)
+            // First page: disabled prev (span with aria-hidden), enabled next (anchor)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-left"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
             expect(html).toContain('<a href=');
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should render disabled next button for last page', () => {
@@ -288,11 +439,12 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[1], pages, '');
 
-            // Last page: enabled prev (anchor), disabled next (span)
+            // Last page: enabled prev (anchor), disabled next (span with aria-hidden)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).toContain('<a href=');
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should render both buttons disabled for single page', () => {
@@ -300,11 +452,23 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            // Single page: both buttons disabled (spans)
+            // Single page: both buttons disabled (spans with aria-hidden)
             expect(html).toContain('nav-buttons');
-            expect(html).toContain('<span class="nav-button nav-button-left"');
-            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).not.toContain('<a href=');
+        });
+
+        it('should use translated labels for disabled buttons too', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
+
+            const html = renderer.renderNavButtons(pages[0], pages, '', navLabels);
+
+            expect(html).toContain('<span>Anterior</span>');
+            expect(html).toContain('<span>Siguiente</span>');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
     });
 
@@ -333,14 +497,15 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            // Use separate <header> elements for exe_export.js teacherMode selectors
-            expect(html).toContain('<header class="package-header');
-            expect(html).toContain('<header class="page-header"');
+            // Headers wrapped in main-header so theme JS can find and move title
+            expect(html).toContain('<header class="main-header">');
+            expect(html).toContain('<div class="package-header');
+            expect(html).toContain('<div class="page-header"');
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');
-            expect(html).toContain('class="package-title">My Project</h1>');
-            expect(html).toContain('class="page-title">My Page</h2>');
+            expect(html).toContain('class="package-title">My Project</p>');
+            expect(html).toContain('class="page-title">My Page</h1>');
         });
 
         it('should NOT render page counter when addPagination is false (default)', () => {
@@ -356,7 +521,7 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('class="page-counter"');
         });
 
-        it('should show Página label in Spanish when addPagination is true', () => {
+        it('should use "Page" as default label when no pageLabel is provided', () => {
             const page = createTestPage();
 
             const html = renderer.renderPageHeader(page, {
@@ -366,23 +531,124 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            expect(html).toContain('Página');
+            expect(html).toContain('class="page-counter-label">Page ');
+        });
+
+        it('should use the provided pageLabel in the page counter', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+                addPagination: true,
+                pageLabel: 'Página',
+            });
+
+            expect(html).toContain('class="page-counter-label">Página ');
+        });
+
+        it('should render package-subtitle when projectSubtitle is provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: 'My Subtitle',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).toContain('class="package-subtitle"');
+            expect(html).toContain('My Subtitle');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is empty', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: '',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is not provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
         });
     });
 
     describe('renderFooterSection', () => {
         it('should render footer with license', () => {
             const html = renderer.renderFooterSection({
-                license: 'Creative Commons',
-                licenseUrl: 'https://example.com/license',
+                license: 'creative commons: attribution - share alike 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
             });
 
             expect(html).toContain('<footer id="siteFooter">');
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            expect(html).toContain('class="license">Creative Commons</a>');
-            expect(html).toContain('href="https://example.com/license"');
+            // formatLicenseText returns the lowercase key for CC licenses (used as translation key)
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
+        });
+
+        it('should render correct license class for different licenses', () => {
+            // getLicenseClass looks up cssClass from LICENSE_REGISTRY by license name
+            const licenses = [
+                { name: 'creative commons: attribution 4.0', class: 'cc' },
+                { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
+                { name: 'creative commons: attribution - non derived work 4.0', class: 'cc cc-by-nd' },
+                { name: 'creative commons: attribution - non commercial 4.0', class: 'cc cc-by-nc' },
+                { name: 'creative commons: attribution - non commercial - share alike 4.0', class: 'cc cc-by-nc-sa' },
+                {
+                    name: 'creative commons: attribution - non derived work - non commercial 4.0',
+                    class: 'cc cc-by-nc-nd',
+                },
+                { name: 'creative commons: cc0 1.0', class: 'cc cc-0' },
+                { name: 'public domain', class: '' },
+            ];
+
+            for (const lic of licenses) {
+                const html = renderer.renderFooterSection({
+                    license: lic.name,
+                    licenseUrl: 'https://example.com',
+                });
+                expect(html).toContain(`class="${lic.class}"`);
+            }
+        });
+
+        it('should skip license section for propietary license (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'propietary license',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+        });
+
+        it('should skip license section for not appropriate (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'not appropriate',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
         });
 
         it('should include user footer content when provided', () => {
@@ -401,6 +667,34 @@ describe('PageRenderer', () => {
             });
 
             expect(html).not.toContain('id="siteUserFooter"');
+        });
+
+        it('should skip license section when license is empty (legacy content)', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+            });
+
+            // Footer should still render but without license content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteFooterContent"');
+            // License section should not be rendered
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+            expect(html).not.toContain('license-label');
+        });
+
+        it('should render user footer content even when license is empty', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+                userFooterContent: '<p>My custom footer</p>',
+            });
+
+            // Footer should render with user content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteUserFooter"');
+            expect(html).toContain('My custom footer');
+            // But no license section
+            expect(html).not.toContain('id="packageLicense"');
         });
     });
 
@@ -427,8 +721,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            expect(html).toContain('section-page-1');
-            expect(html).toContain('section-page-2');
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-page-1"');
+            expect(html).toContain('id="section-page-2"');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -456,8 +751,109 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // But sections should exist with proper IDs
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-parent"');
             expect(html).toContain('id="section-child"');
+            expect(html).toContain('class="page-title">Child</h1>');
+        });
+
+        it('should add id="section-{pageId}" to each section for anchor navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'abc-123', title: 'First' }),
+                createTestPage({ id: 'def-456', title: 'Second' }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {});
+
+            expect(html).toContain('<section id="section-abc-123">');
+            expect(html).toContain('<section id="section-def-456">');
+        });
+
+        it('should include favicon reference', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                faviconPath: 'theme/img/favicon.png',
+                faviconType: 'image/png',
+            });
+            expect(html).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
+
+        it('should use default favicon when none provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages);
+            expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should use provided detectedLibraries without rescanning all page content', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'component-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<div class="exe-fx">Effects</div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(html).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(html).not.toContain('libs/exe_effects/exe_effects.js');
+        });
+
+        it('should render license as a link when licenseUrl is provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                license: 'creative commons: attribution 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+            expect(html).toContain('class="license"');
+            expect(html).not.toContain('<span class="license">');
+        });
+
+        it('should render license as a span when licenseUrl is not provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                license: 'creative commons: attribution 4.0',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('<span class="license">');
+            expect(html).not.toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+        });
+    });
+
+    describe('renderFavicon', () => {
+        it('should render favicon link tag', () => {
+            const html = renderer.renderFavicon('', 'libs/favicon.ico', 'image/x-icon');
+            expect(html).toBe('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should apply basePath', () => {
+            const html = renderer.renderFavicon('../', 'libs/favicon.ico', 'image/x-icon');
+            expect(html).toBe('<link rel="icon" type="image/x-icon" href="../libs/favicon.ico">');
+        });
+
+        it('should use custom type', () => {
+            const html = renderer.renderFavicon('', 'theme/img/favicon.png', 'image/png');
+            expect(html).toBe('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
         });
     });
 
@@ -594,6 +990,50 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('CC-BY-SA');
             expect(html).toContain('creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderFooter({
+                author: 'Test Author',
+                license: '',
+            });
+
+            // Empty license should return empty string
+            expect(html).toBe('');
+        });
+    });
+
+    describe('renderLicense (deprecated)', () => {
+        it('should render license div when license is provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY',
+                licenseUrl: 'https://example.com/license',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('CC-BY');
+            expect(html).toContain('href="https://example.com/license"');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: '',
+            });
+
+            expect(html).toBe('');
+        });
+
+        it('should render span instead of link when licenseUrl not provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY-SA',
+            });
+
+            // No URL - should render span instead of anchor
+            expect(html).not.toContain('href=');
+            expect(html).toContain('<span>CC-BY-SA</span>');
         });
     });
 
@@ -754,6 +1194,93 @@ describe('PageRenderer', () => {
     });
 
     describe('renderPageContent', () => {
+        it('should sync project properties when content contains exe-prop- classes', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                // Note: we have an mceNonEditable td that should have its classes stripped in output
+                                content: `
+                                    <td class="mceNonEditable exe-prop-locked"><span class="exe-prop-title"></span></td>
+                                    <span class="exe-prop-author"></span>
+                                    <span class="exe-prop-description"></span>
+                                    <span class="exe-prop-license"></span>
+                                `,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'My Testing Project', undefined, {
+                author: 'Pablo',
+                description: 'Test Desc',
+                license: 'creative commons: attribution - share alike 4.0',
+            });
+
+            expect(html).toContain('<td><span class="exe-prop-title">My Testing Project</span></td>');
+            expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
+            expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
+            );
+        });
+
+        it('should output a link when license is CC0', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'Title', undefined, {
+                license: 'creative commons: cc0 1.0',
+            });
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a></span>',
+            );
+        });
+
+        it('should output safe simple text when license is not configured without crashing', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(
+                page,
+                '',
+                'Title',
+                undefined,
+                {}, // missing metadata including license
+            );
+
+            // Just a span with escaped '-'
+            expect(html).toContain('<span class="exe-prop-license">-</span>');
+        });
+
         it('should render blocks with components', () => {
             const page = createTestPage({
                 blocks: [
@@ -865,6 +1392,145 @@ describe('PageRenderer', () => {
         });
     });
 
+    describe('hidePageTitle property', () => {
+        it('should add sr-av class to .page-title when hidePageTitle is true', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: true },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // page-title should have sr-av class (CSS handles hiding)
+            expect(html).toContain('class="page-title sr-av"');
+            // Should NOT use inline styles
+            expect(html).not.toContain('style="display:none"');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is false', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: false },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is not set', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should handle string "true" for hidePageTitle', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'true' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have sr-av class for string "true" value
+            expect(html).toContain('class="page-title sr-av"');
+        });
+
+        it('should add sr-av class to .page-title in renderSinglePage when hidePageTitle is true', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Hidden Title Page',
+                    properties: { hidePageTitle: true },
+                }),
+                createTestPage({
+                    id: 'page-2',
+                    title: 'Visible Title Page',
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
+
+            // First page should have hidden title with sr-av class
+            expect(html).toContain('class="page-title sr-av">Hidden Title Page');
+            // Second page should NOT have sr-av class
+            expect(html).toContain('<h1 class="page-title">Visible Title Page</h1>');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is string "false"', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'false' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is null', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: null },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 1', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 1 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // isTruthyProperty only accepts boolean true or string "true"
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 0', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 0 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+    });
+
     describe('page highlight', () => {
         it('should detect highlighted page with boolean true', () => {
             const page = createTestPage({ properties: { highlight: true } });
@@ -930,6 +1596,12 @@ describe('PageRenderer', () => {
             expect(libs).toContain('exe_lightbox');
         });
 
+        it('should detect exe_lightbox by rel="lightbox[X]" attribute', () => {
+            const html = '<a rel="lightbox[gallery1]" href="img.jpg"><img src="thumb.jpg"></a>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_lightbox');
+        });
+
         it('should detect multiple libraries in same content', () => {
             const html = `
                 <pre class="highlighted-code">code</pre>
@@ -966,17 +1638,27 @@ describe('PageRenderer', () => {
             expect(head).toContain('libs/exe_highlighter/exe_highlighter.css');
         });
 
-        it('should not duplicate exe_lightbox when detected', () => {
-            const head = renderer.renderHead({
+        it('should include exe_lightbox only when detected', () => {
+            // When exe_lightbox is detected, it should be included
+            const headWithLightbox = renderer.renderHead({
                 pageTitle: 'Test',
                 basePath: '',
                 usedIdevices: [],
                 detectedLibraries: ['exe_lightbox'],
             });
 
-            // exe_lightbox is already hardcoded, so should only appear once
-            const matches = head.match(/exe_lightbox\/exe_lightbox\.js/g) || [];
-            expect(matches.length).toBe(1);
+            expect(headWithLightbox).toContain('libs/exe_lightbox/exe_lightbox.js');
+            expect(headWithLightbox).toContain('libs/exe_lightbox/exe_lightbox.css');
+
+            // When exe_lightbox is NOT detected, it should NOT be included
+            const headWithoutLightbox = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: [],
+            });
+
+            expect(headWithoutLightbox).not.toContain('exe_lightbox');
         });
 
         it('should include multiple detected libraries', () => {
@@ -1000,6 +1682,136 @@ describe('PageRenderer', () => {
             });
 
             expect(head).toContain('../libs/exe_highlighter/exe_highlighter.js');
+        });
+    });
+
+    describe('icon resolution via IdeviceRenderer.setThemeIconFiles', () => {
+        it('should resolve icon names when IdeviceRenderer is configured with theme files', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity', // baseName without extension
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = configuredRenderer.render(page, options);
+
+            // Should resolve icon name to filename with extension
+            expect(html).toContain('theme/icons/activity.svg');
+        });
+
+        it('should render icon without extension when IdeviceRenderer has no theme files configured', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'share', // baseName without extension
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = renderer.render(page, options);
+
+            // Should use iconName as-is since no theme files configured
+            expect(html).toContain('theme/icons/share');
+        });
+
+        it('should resolve icons in renderPageContent', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Test Block',
+                        order: 0,
+                        components: [],
+                        iconName: 'check',
+                    },
+                ],
+            });
+
+            // Use renderPageContent directly
+            const content = configuredRenderer.renderPageContent(page, '');
+
+            // Should resolve icon name
+            expect(content).toContain('theme/icons/check.png');
+        });
+
+        it('should resolve multiple icons in the same page', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/info.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/warning.png', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block 1',
+                        order: 0,
+                        components: [],
+                        iconName: 'info',
+                    },
+                    {
+                        id: 'block-2',
+                        name: 'Block 2',
+                        order: 1,
+                        components: [],
+                        iconName: 'warning',
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = configuredRenderer.render(page, options);
+
+            // Both icons should be resolved
+            expect(html).toContain('theme/icons/info.svg');
+            expect(html).toContain('theme/icons/warning.png');
         });
     });
 });

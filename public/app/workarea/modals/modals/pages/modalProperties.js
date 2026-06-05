@@ -14,6 +14,12 @@ export default class ModalProperties extends Modal {
             'button.close.btn.btn-secondary'
         );
         this.node = null;
+        this.propertiesLockId = null;
+        this.propertiesLockRefreshInterval = null;
+    }
+
+    isCheckedValue(value) {
+        return value === true || value === 'true';
     }
 
     /**
@@ -31,13 +37,44 @@ export default class ModalProperties extends Modal {
             let contentId = data.contentId ? data.contentId : null;
             let properties = data.properties ? data.properties : {};
             let fullScreen = data.fullScreen ? data.fullScreen : null;
+
+            const lockConfig = this.getPropertiesLockConfig(contentId);
+            if (lockConfig) {
+                const lockResult = this.acquirePropertiesLock(lockConfig);
+                if (!lockResult.ok) {
+                    eXeLearning.app.modals.alert.show({
+                        title: _(lockConfig.lockedTitle),
+                        body:
+                            _(lockConfig.lockedBody) +
+                            ' ' +
+                            lockResult.userName,
+                        contentId: 'warning',
+                    });
+                    return;
+                }
+                this.setConfirmExec(async () => {
+                    await this.saveAction();
+                    this.releasePropertiesLock();
+                });
+                this.setCancelExec(() => {
+                    this.releasePropertiesLock();
+                });
+                this.setCloseExec(() => {
+                    this.releasePropertiesLock();
+                });
+            } else {
+                this.releasePropertiesLock();
+                this.setConfirmExec(() => {
+                    this.saveAction();
+                });
+                this.setCancelExec(undefined);
+                this.setCloseExec(undefined);
+            }
+
             this.setTitle(title);
             this.setContentId(contentId);
             this.setBodyElement(this.makeBodyElement(properties));
             this.setFullScreen(fullScreen);
-            this.setConfirmExec(() => {
-                this.saveAction();
-            });
             this.modal.show();
             // Add modal default help behaviour
             this.addBehaviourExeHelp();
@@ -52,6 +89,121 @@ export default class ModalProperties extends Modal {
                 );
             }, this.timeMax);
         }, time);
+    }
+
+    /**
+     * Get lock config by modal content id
+     * @param {string} contentId
+     * @returns {Object|null}
+     */
+    getPropertiesLockConfig(contentId) {
+        if (!contentId || !this.node) {
+            return null;
+        }
+
+        if (contentId === 'page-properties') {
+            if (this.node.constructor?.name !== 'StructureNode' || !this.node.id) {
+                return null;
+            }
+            return {
+                lockId: `page-properties:${this.node.id}`,
+                lockedTitle: 'Page properties locked',
+                lockedBody: 'These page properties are being edited by',
+            };
+        }
+
+        if (contentId === 'block-properties') {
+            const blockId = this.node.blockId || this.node.id;
+            if (!blockId) {
+                return null;
+            }
+            return {
+                lockId: `block-properties:${blockId}`,
+                lockedTitle: 'Box properties locked',
+                lockedBody: 'These box properties are being edited by',
+            };
+        }
+
+        if (contentId === 'idevice-properties') {
+            const ideviceId =
+                this.node.yjsComponentId || this.node.odeIdeviceId || this.node.id;
+            if (!ideviceId) {
+                return null;
+            }
+            return {
+                lockId: `idevice-properties:${ideviceId}`,
+                lockedTitle: 'iDevice properties locked',
+                lockedBody: 'These iDevice properties are being edited by',
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * Acquire properties lock via Yjs lock manager
+     * @param {Object} lockConfig
+     * @returns {{ok: boolean, userName?: string}}
+     */
+    acquirePropertiesLock(lockConfig) {
+        const lockId = lockConfig?.lockId;
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+
+        if (!lockId || !lockManager) {
+            return { ok: true };
+        }
+
+        const lockAcquired = lockManager.requestLock(lockId);
+        if (!lockAcquired) {
+            const lockInfo = lockManager.getLockInfo(lockId);
+            return {
+                ok: false,
+                userName: lockInfo?.user?.name || _('Another user'),
+            };
+        }
+
+        this.propertiesLockId = lockId;
+        this.startPropertiesLockRefresh();
+        return { ok: true };
+    }
+
+    /**
+     * Release properties lock
+     */
+    releasePropertiesLock() {
+        if (!this.propertiesLockId) {
+            return null;
+        }
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+        if (lockManager) {
+            lockManager.releaseLock(this.propertiesLockId);
+        }
+        this.stopPropertiesLockRefresh();
+        this.propertiesLockId = null;
+    }
+
+    /**
+     * Keep lock alive while modal stays open
+     */
+    startPropertiesLockRefresh() {
+        this.stopPropertiesLockRefresh();
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+        if (!lockManager || !this.propertiesLockId) {
+            return;
+        }
+        this.propertiesLockRefreshInterval = setInterval(() => {
+            lockManager.refreshLock(this.propertiesLockId);
+        }, 30000);
+    }
+
+    /**
+     * Stop lock keepalive timer
+     */
+    stopPropertiesLockRefresh() {
+        if (this.propertiesLockRefreshInterval) {
+            clearInterval(this.propertiesLockRefreshInterval);
+            this.propertiesLockRefreshInterval = null;
+        }
     }
 
     /**
@@ -288,7 +440,7 @@ export default class ModalProperties extends Modal {
         categoryLink.setAttribute('href', '#');
         categoryLink.classList.add('exe-tab');
         categoryLink.classList.add('exe-advanced');
-        categoryLink.innerHTML = categoryTitle;
+        categoryLink.innerHTML = _(categoryTitle);
         // Add event to tab
         categoryLink.addEventListener('click', (event) => {
             event.preventDefault();
@@ -429,16 +581,31 @@ export default class ModalProperties extends Modal {
      * @returns
      */
     makeRowElementLabel(id, property) {
-        let propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
-        if (property.type != 'checkbox') {
-            propertyTitleText += ':';
-        }
-        if (property.required) {
-            propertyTitleText = '* ' + propertyTitleText;
-        }
-        propertyTitle.innerHTML = propertyTitleText;
+        const propertyTitle = document.createElement('label');
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+        const suffix = property.type != 'checkbox' ? ':' : '';
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText + suffix;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText + suffix;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+                // Store suffix in data attribute so DOMTranslator can append it
+                if (suffix) {
+                    propertyTitle.setAttribute('data-i18n-suffix', suffix);
+                }
+            }
+        }
 
         return propertyTitle;
     }
@@ -469,7 +636,7 @@ export default class ModalProperties extends Modal {
                 input.setAttribute('property', name);
                 input.setAttribute('data-type', 'checkbox');
                 input.classList.add('property-value', 'toggle-input');
-                input.checked = property.value == 'true' ? true : false;
+                input.checked = this.isCheckedValue(property.value);
 
                 const visual = document.createElement('span');
                 visual.classList.add('toggle-visual');
@@ -556,7 +723,7 @@ export default class ModalProperties extends Modal {
             let helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content');
             helpSpanText.classList.add('help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
             helpContainer.append(helpIcon);
             helpContainer.append(helpSpanText);
             return helpContainer;

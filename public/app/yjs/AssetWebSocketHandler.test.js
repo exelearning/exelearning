@@ -236,6 +236,66 @@ describe('AssetWebSocketHandler', () => {
     });
   });
 
+  describe('_decodeBinaryAssetPayload', () => {
+    it('returns null for empty bytes', () => {
+      const result = handler._decodeBinaryAssetPayload(new Uint8Array(0));
+      expect(result).toBeNull();
+    });
+
+    it('returns null for bytes without 0xFF prefix', () => {
+      const bytes = new Uint8Array([0x00, 0x01, 0x02]);
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns null for bytes with 0xFF but invalid JSON', () => {
+      const bytes = new Uint8Array([0xff, 0x00, 0x01, 0x02]);
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns null for valid JSON but non-asset message type', () => {
+      const json = JSON.stringify({ type: 'unknown-type', data: {} });
+      const jsonBytes = new TextEncoder().encode(json);
+      const bytes = new Uint8Array(1 + jsonBytes.length);
+      bytes[0] = 0xff;
+      bytes.set(jsonBytes, 1);
+
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns parsed message for valid asset message', () => {
+      const message = { type: 'awareness-update', data: { availableAssets: ['a1'] } };
+      const json = JSON.stringify(message);
+      const jsonBytes = new TextEncoder().encode(json);
+      const bytes = new Uint8Array(1 + jsonBytes.length);
+      bytes[0] = 0xff;
+      bytes.set(jsonBytes, 1);
+
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).not.toBeNull();
+      expect(result.parsed.type).toBe('awareness-update');
+      expect(result.parsed.data.availableAssets).toEqual(['a1']);
+    });
+
+    it('handles all asset message types', () => {
+      const types = ['asset-ready', 'upload-request', 'priority-ack', 'upload-session-ready'];
+
+      for (const type of types) {
+        const json = JSON.stringify({ type, data: {} });
+        const jsonBytes = new TextEncoder().encode(json);
+        const bytes = new Uint8Array(1 + jsonBytes.length);
+        bytes[0] = 0xff;
+        bytes.set(jsonBytes, 1);
+
+        const result = handler._decodeBinaryAssetPayload(bytes);
+        expect(result).not.toBeNull();
+        expect(result.parsed.type).toBe(type);
+      }
+    });
+  });
+
   describe('_handleStatus', () => {
     it('handles connected status', async () => {
       handler._setupMessageHandler = mock(() => undefined);
@@ -590,6 +650,52 @@ describe('AssetWebSocketHandler', () => {
 
       expect(eventHandler).toHaveBeenCalledWith({ assetId: 'asset-1' });
     });
+
+    it('constructs correct fallback URL without double /api prefix', async () => {
+      // This test verifies the fix for the /api/api/ bug
+      // When no URL is provided in the message, the fallback URL should be
+      // ${apiUrl}/projects/... NOT ${apiUrl}/api/projects/...
+      const capturedUrls = [];
+      global.fetch = mock((url) => {
+        capturedUrls.push(url);
+        return Promise.resolve({
+          ok: true,
+          headers: { get: mock(() => undefined) },
+          blob: mock(() => undefined).mockResolvedValue(new Blob(['data'])),
+        });
+      });
+
+      // Call with no URL - should use fallback
+      await handler._handleAssetReady({ assetId: 'test-asset-id' });
+
+      expect(capturedUrls.length).toBe(1);
+      // URL should be /api/projects/... NOT /api/api/projects/...
+      expect(capturedUrls[0]).toBe('http://localhost:3001/api/projects/project-123/assets/by-client-id/test-asset-id');
+      expect(capturedUrls[0]).not.toContain('/api/api/');
+    });
+
+    it('uses server-provided URL when available', async () => {
+      const capturedUrls = [];
+      global.fetch = mock((url) => {
+        capturedUrls.push(url);
+        return Promise.resolve({
+          ok: true,
+          headers: { get: mock(() => undefined) },
+          blob: mock(() => undefined).mockResolvedValue(new Blob(['data'])),
+        });
+      });
+
+      // Call with server-provided URL
+      await handler._handleAssetReady({
+        assetId: 'test-asset-id',
+        url: '/projects/proj-123/assets/by-client-id/test-asset-id'
+      });
+
+      expect(capturedUrls.length).toBe(1);
+      // Should use ${apiUrl}${url} = http://localhost:3001/api + /projects/...
+      expect(capturedUrls[0]).toBe('http://localhost:3001/api/projects/proj-123/assets/by-client-id/test-asset-id');
+      expect(capturedUrls[0]).not.toContain('/api/api/');
+    });
   });
 
   describe('_handleAssetNotFound', () => {
@@ -899,6 +1005,17 @@ describe('AssetWebSocketHandler', () => {
         revokedAt: '2025-01-01T00:00:00Z',
       });
     });
+
+    it('warns on trigger-resync since it is not an asset message type', async () => {
+      await handler._handleAssetMessage({
+        type: 'trigger-resync',
+        data: { reason: 'new-client-joined' },
+      });
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown message type'),
+      );
+    });
   });
 
   describe('access revocation', () => {
@@ -982,6 +1099,42 @@ describe('AssetWebSocketHandler', () => {
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Access revoked: visibility_changed')
       );
+    });
+  });
+
+  describe('_handleTriggerResync', () => {
+    it('calls rebroadcastAwareness on document manager', () => {
+      const mockDm = { rebroadcastAwareness: mock(() => true) };
+      global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
+
+      handler._handleTriggerResync({ reason: 'new-client-joined' });
+
+      expect(mockDm.rebroadcastAwareness).toHaveBeenCalledWith('server-trigger-resync');
+
+      delete global.eXeLearning;
+    });
+
+    it('does not throw if rebroadcastAwareness is missing', () => {
+      const mockDm = {};
+      global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
+
+      expect(() => handler._handleTriggerResync({ reason: 'new-client-joined' })).not.toThrow();
+
+      delete global.eXeLearning;
+    });
+
+    it('does not throw when document manager is unavailable', () => {
+      global.eXeLearning = undefined;
+
+      expect(() => handler._handleTriggerResync({ reason: 'new-client-joined' })).not.toThrow();
+    });
+
+    it('does not throw when eXeLearning path is partial', () => {
+      global.eXeLearning = { app: {} };
+
+      expect(() => handler._handleTriggerResync({})).not.toThrow();
+
+      delete global.eXeLearning;
     });
   });
 
@@ -1130,6 +1283,82 @@ describe('AssetWebSocketHandler', () => {
 
       await handler.syncAssetsMetadataFromServer();
 
+      expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
+    });
+
+    it('stores undefined filename when server has "unknown" for new asset', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'new-asset', filename: 'unknown', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue(null);
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'new-asset',
+          filename: undefined,
+        })
+      );
+    });
+
+    it('updates "unknown" filename when server has a real filename', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'existing-asset', filename: 'photo.jpg', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'existing-asset',
+        projectId: 'project-123',
+        filename: 'unknown',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'existing-asset',
+          filename: 'photo.jpg',
+        })
+      );
+    });
+
+    it('does not update when both local and server have "unknown" filename', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'existing-asset', filename: 'unknown', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'existing-asset',
+        projectId: 'project-123',
+        filename: 'unknown',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      // No update because server filename is also 'unknown'
       expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
     });
 

@@ -126,8 +126,8 @@
 }
 
 .candado-SolutionDiv a {
-    width: 1.5em;
-    height: 1.5em;
+    width: 2em;
+    height: 2em;
 }
 
 .candado-SolutionDiv input.feedbackbutton {
@@ -135,14 +135,14 @@
 }
 
 .candado-SolutionDiv .exeQuextIcons-Submit {
-    background-image: url(exequextreply.png);
+    background-image: url(exequextreply.svg);
     background-size: 100% 100%;
     width: 100%;
     height: 100%;
 }
 
 .candado-Solution {
-    margin: 0 .3em;
+    margin: 0 0.5em;
     max-width: 300px;
     width: 60%;
     text-align: center;

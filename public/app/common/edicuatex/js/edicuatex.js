@@ -4,22 +4,45 @@ let _ = str => str;
 // --- Language & UI Update Functions ---
 function setupLanguageSelector() {
     const languageSelector = document.getElementById('language-selector');
-    if (!languageSelector || isInExe) return;
+    const languageToggle = document.getElementById('language-toggle');
+    const languageDropdown = document.getElementById('language-dropdown');
+    const languageOptions = Array.from(document.querySelectorAll('.language-option'));
+    if (!languageSelector || !languageToggle || !languageDropdown || languageOptions.length === 0 || isInExe) return;
 
     languageSelector.style.display = 'flex';
-    const langButtons = document.querySelectorAll('.lang-btn');
-    const currentLang = document.documentElement.lang;
+    const updateLanguageUI = lang => {
+        languageOptions.forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+    };
+    updateLanguageUI(document.documentElement.lang);
 
-    langButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.lang === currentLang);
-        btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+    languageToggle.addEventListener('click', e => {
+        e.stopPropagation();
+        languageDropdown.classList.toggle('open');
+    });
+
+    languageOptions.forEach(btn => {
+        btn.addEventListener('click', () => {
+            changeLanguage(btn.dataset.lang);
+            updateLanguageUI(btn.dataset.lang);
+            languageDropdown.classList.remove('open');
+        });
+    });
+
+    document.addEventListener('click', e => {
+        if (!languageSelector.contains(e.target)) {
+            languageDropdown.classList.remove('open');
+        }
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') languageDropdown.classList.remove('open');
     });
 }
 
 function changeLanguage(newLang) {
     document.documentElement.lang = newLang;
     localStorage.setItem('userLanguage', newLang);
-    document.querySelectorAll('.lang-btn').forEach(btn => {
+    document.querySelectorAll('.language-option').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.lang === newLang);
     });
     updateAllDynamicTexts();
@@ -59,8 +82,9 @@ function updateAllDynamicTexts() {
 // This function must be available globally to be called from the DOMContentLoaded listener
 function addFooter() {
     const footer = document.getElementById('page-footer');
-    if (footer) {
-        footer.innerHTML = `<p style="margin-bottom: 10px;"><a href="https://labia.tiddlyhost.com" target="_blank" rel="noopener noreferrer">${_('Educational Applications Laboratory')}</a> | <a href="https://bilateria.org" target="_blank" rel="noopener noreferrer">${_('Application created by Juan José de Haro')}</a></p><p style="margin-bottom: 10px;"><a href="https://creativecommons.org/licenses/by-sa/4.0/deed.es" target="_blank" rel="noopener noreferrer">Licencia Creative Commons BY-SA</a></p><p style="margin-top: 20px; font-size: 0.8em; opacity: 0.7;">v1.1</p>`;
+    if (footer && !isInExe) {
+        footer.innerHTML = `<p style="margin-bottom: 10px;">© <a href="https://bilateria.org" target="_blank" rel="noopener noreferrer">Juan José de Haro</a></p>
+<p style="margin-bottom: 0;">${_('Code license:')} <a href="LICENSE.txt" target="_blank" rel="noopener noreferrer">AGPL v3</a> · ${_('Content:')} <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.es" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>`;
     }
 };
 
@@ -73,6 +97,8 @@ async function initializeLatexEditor() {
     const clearButton = document.getElementById('clear-button');
     const insertButton = document.getElementById('insert-button');
     const viewImageButton = document.getElementById('view-image-button');
+    // Optional contextual send-to-host button (created dynamically)
+    let sendButton = null;
     const delimiterSelector = document.getElementById('delimiter-selector');
     const copyCodeFeedback = document.getElementById('copy-code-feedback');
     const tabsContainer = document.getElementById('tabs-container');
@@ -124,9 +150,10 @@ async function initializeLatexEditor() {
         return trimmed;
     }
 
-    function autoPickDelimiter(latexFragment){
+    function autoPickDelimiter(latexFragment, options){
         const selectorEl = document.getElementById('delimiter-selector');
         if(!selectorEl || !latexFragment) return;
+        const opts = options || {};
         const frag = latexFragment.trim();
         
         if(/^\\\(.+?\\\)$/.test(frag)){ selectorEl.value = 'parentheses'; return; }
@@ -134,7 +161,12 @@ async function initializeLatexEditor() {
         if(/^\$\$([\s\S]+?)\$\$$/.test(frag)){ selectorEl.value = 'double_dollar'; return; }
         if(/^\$([\s\S]+?)\$$/.test(frag)){ selectorEl.value = 'single_dollar'; return; }
 
-        // If no delimiter is found, default based on context
+        // For prefilled selections with no delimiters, keep raw insertion (no wrapping).
+        // When opening empty in eXe, the default remains "parentheses" below.
+        if (opts.fromSelection) {
+            selectorEl.value = 'none';
+            return;
+        }
         selectorEl.value = isInExe ? 'parentheses' : 'none';
     }
     
@@ -172,7 +204,7 @@ async function initializeLatexEditor() {
     const urlSel = new URLSearchParams(window.location.search).get('sel');
     if (urlSel) {
         const originalSel = decodeURIComponent(urlSel);
-        autoPickDelimiter(originalSel);
+        autoPickDelimiter(originalSel, { fromSelection: true });
         latexInput.value = stripLatexDelimiters(originalSel);
     }
 
@@ -181,7 +213,7 @@ async function initializeLatexEditor() {
         if (window.opener && window.opener.PasteMathDialog && window.opener.PasteMathDialog.mathEditor && window.opener.PasteMathDialog.mathEditor.field) {
             const parentLatex = window.opener.PasteMathDialog.mathEditor.field.val().trim();
             if (parentLatex) {
-                autoPickDelimiter(parentLatex);
+                autoPickDelimiter(parentLatex, { fromSelection: true });
                 latexInput.value = stripLatexDelimiters(parentLatex);
             }
         }
@@ -195,6 +227,10 @@ async function initializeLatexEditor() {
     let loadedMenus = new Map();
     let menuCache = new Map();
     let recentSymbols = [];
+    // postMessage integration flags (only when explicitly requested)
+    const urlParams = new URLSearchParams(window.location.search);
+    const pmEnabled = !isInExe && (urlParams.get('pm') === '1' || urlParams.get('postmessage') === '1');
+    const pmOrigin = urlParams.get('origin') ? decodeURIComponent(urlParams.get('origin')) : '';
     
     // --- CORE FUNCTIONS (RESTORED AND INTERNATIONALIZED) ---
 
@@ -240,6 +276,22 @@ async function initializeLatexEditor() {
     };
 
     const loadAddedMenusFromStorage = () => JSON.parse(localStorage.getItem('latexAddedMenus')) || [];
+    const loadDisabledMenusFromStorage = () => JSON.parse(localStorage.getItem('latexDisabledMenus')) || [];
+    const saveDisabledMenusToStorage = (disabledIds) => {
+        localStorage.setItem('latexDisabledMenus', JSON.stringify(Array.from(disabledIds)));
+    };
+
+    const resolveMenuUrl = (rawUrl) => {
+        if (!rawUrl) return rawUrl;
+        const trimmed = rawUrl.trim();
+        const absolutePattern = /^(?:[a-z][a-z0-9+.-]*:)?\/\//i;
+        if (absolutePattern.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed;
+        if (trimmed.startsWith('./menus/') || trimmed.startsWith('menus/') || trimmed.startsWith('/')) return trimmed;
+        if (trimmed.startsWith('../')) return trimmed;
+        const normalized = trimmed.replace(/^\.\/+/, '');
+        return `./menus/${normalized}`;
+    };
 
     const fetchMenuData = async (url) => {
         if (menuCache.has(url)) return menuCache.get(url);
@@ -258,10 +310,12 @@ async function initializeLatexEditor() {
 
     const addMenu = async (menuInfo) => {
         if (loadedMenus.has(menuInfo.id)) return;
-        menuInfo.url = 'menus/' + menuInfo.url;
-        const data = await fetchMenuData(menuInfo.url);
+        const resolvedUrl = resolveMenuUrl(menuInfo.url);
+        const data = await fetchMenuData(resolvedUrl);
         if (data) {
-            loadedMenus.set(menuInfo.id, { ...menuInfo, data });
+            loadedMenus.set(menuInfo.id, { ...menuInfo, url: resolvedUrl, data });
+            const disabled = new Set(loadDisabledMenusFromStorage());
+            if (disabled.delete(menuInfo.id)) saveDisabledMenusToStorage(disabled);
             rebuildToolbarAndUI();
             saveAddedMenusToStorage();
         }
@@ -269,7 +323,14 @@ async function initializeLatexEditor() {
     
     const removeMenu = (menuId) => {
         if (loadedMenus.has(menuId)) {
+            const menu = loadedMenus.get(menuId);
             loadedMenus.delete(menuId);
+            // Persist explicit user disables for default/manifest/url menus.
+            if (menu && menu.source !== 'localfile') {
+                const disabled = new Set(loadDisabledMenusFromStorage());
+                disabled.add(menuId);
+                saveDisabledMenusToStorage(disabled);
+            }
             rebuildToolbarAndUI();
             saveAddedMenusToStorage();
         }
@@ -456,8 +517,16 @@ async function initializeLatexEditor() {
         latexInput.selectionStart = latexInput.selectionEnd = startPos + (cursorPos !== -1 ? cursorPos + 1 : textToInsert.length);
         latexInput.focus();
         updatePreview();
-        if (textToInsert.includes('\\begin{')) return;
-        trackSymbolUsage(textToInsert);
+    }
+
+    function computeWrappedLatex(raw) {
+        switch (delimiterSelector.value) {
+            case 'parentheses': return `\\(${raw}\\)`;
+            case 'brackets': return `\\[${raw}\\]`;
+            case 'double_dollar': return `$$\n${raw}\n$$`;
+            case 'single_dollar': return `$${raw}$`;
+            default: return raw;
+        }
     }
     
     function generateImage(callback) {
@@ -563,6 +632,8 @@ async function initializeLatexEditor() {
                 
                 // 2. Use the translated version for the data-latex attribute (what gets inserted).
                 button.dataset.latex = translatedLatex;
+                // Canonical key so Recents can resolve the original menu element.
+                button.dataset.recentKey = elemento.latex;
                 
                 // 3. Use the translated version for the button's visible content.
                 button.innerHTML = `\\(${translatedLatex}\\)`;
@@ -595,6 +666,62 @@ async function initializeLatexEditor() {
         document.getElementById(`tab-${tabId}`).classList.add('active');
         renderTabContent(tabId, getAllCategories());
     }
+
+    function setupSendToHostButtonIfNeeded() {
+        if (!pmEnabled) return; // Only when explicitly enabled via URL
+        // Safety: require a non-empty origin
+        if (!pmOrigin || typeof pmOrigin !== 'string') {
+            console.warn('postMessage mode requested but missing origin parameter');
+        }
+        // Create the button and place it next to existing actions (same panel as copy/insert)
+        const actionsContainers = document.querySelectorAll('.panel-actions');
+        if (!actionsContainers || actionsContainers.length === 0) return;
+        const actions = actionsContainers[0];
+        if (!actions) return;
+        sendButton = document.createElement('button');
+        sendButton.className = 'btn btn-success';
+        sendButton.id = 'send-button';
+        sendButton.setAttribute('data-i18n-key', 'Send to host');
+        sendButton.textContent = _('Send to host');
+        actions.insertBefore(sendButton, actions.firstChild);
+
+        sendButton.addEventListener('click', () => {
+            const rawLatex = latexInput.value.trim();
+            if (!rawLatex) return;
+            if (!pmOrigin) {
+                copyCodeFeedback.textContent = _('Missing or invalid origin.');
+                copyCodeFeedback.style.opacity = '1';
+                setTimeout(() => { copyCodeFeedback.style.opacity = '0'; }, 2000);
+                return;
+            }
+            const payload = {
+                type: 'edicuatex:result',
+                latex: rawLatex,
+                delimiter: delimiterSelector.value,
+                wrapped: computeWrappedLatex(rawLatex)
+            };
+            try {
+                let target = null;
+                if (window.opener && !window.opener.closed) target = window.opener;
+                else if (window.parent && window.parent !== window) target = window.parent;
+                if (!target) {
+                    copyCodeFeedback.textContent = _('No host window available.');
+                    copyCodeFeedback.style.opacity = '1';
+                    setTimeout(() => { copyCodeFeedback.style.opacity = '0'; }, 2000);
+                    return;
+                }
+                target.postMessage(payload, pmOrigin);
+                copyCodeFeedback.textContent = _('Sent!');
+                copyCodeFeedback.style.opacity = '1';
+                setTimeout(() => { copyCodeFeedback.style.opacity = '0'; }, 2000);
+            } catch (err) {
+                console.error('postMessage error:', err);
+                copyCodeFeedback.textContent = _('Error');
+                copyCodeFeedback.style.opacity = '1';
+                setTimeout(() => { copyCodeFeedback.style.opacity = '0'; }, 2000);
+            }
+        });
+    }
     
     // --- INITIALIZATION ---
     
@@ -602,6 +729,7 @@ async function initializeLatexEditor() {
         loadRecents();
         loadedMenus.clear();
         menuCache.clear();
+        const disabledMenus = new Set(loadDisabledMenusFromStorage());
         let manifestMenus = [];
         try {
             const manifestResponse = await fetch(MANIFEST_URL);
@@ -613,13 +741,15 @@ async function initializeLatexEditor() {
             showAlert('Error', `Could not load <code>menus.json</code>.`);
         }
         const BASE_NAME = 'base.json';
-        if (manifestMenus.find(m => m.file === BASE_NAME)) {
-            const data = await fetchMenuData(`./menus/${BASE_NAME}`);
-            if (data) loadedMenus.set(BASE_NAME, { id: BASE_NAME, url: `./${BASE_NAME}`, source: 'default', name: 'Base', data });
+        if (manifestMenus.find(m => m.file === BASE_NAME) && !disabledMenus.has(BASE_NAME)) {
+            const baseUrl = resolveMenuUrl(BASE_NAME);
+            const data = await fetchMenuData(baseUrl);
+            if (data) loadedMenus.set(BASE_NAME, { id: BASE_NAME, url: baseUrl, source: 'default', name: 'Base', data });
         }
         const previouslyAdded = loadAddedMenusFromStorage();
         for (const menuInfo of previouslyAdded) {
             if (menuInfo.id === BASE_NAME && loadedMenus.has(BASE_NAME)) continue;
+            if (disabledMenus.has(menuInfo.id)) continue;
             const data = await fetchMenuData(menuInfo.url);
             if (data) loadedMenus.set(menuInfo.id, { ...menuInfo, data });
         }
@@ -631,7 +761,12 @@ async function initializeLatexEditor() {
 
     // --- EVENT LISTENERS ---
     latexInput.addEventListener('input', updatePreview);
-    toolbar.addEventListener('click', (event) => { const btn = event.target.closest('.toolbar-btn'); if (btn && btn.dataset.latex) insertAtCursor(btn.dataset.latex); });
+    toolbar.addEventListener('click', (event) => {
+        const btn = event.target.closest('.toolbar-btn');
+        if (!btn || !btn.dataset.latex) return;
+        insertAtCursor(btn.dataset.latex);
+        trackSymbolUsage(btn.dataset.recentKey || btn.dataset.latex);
+    });
     tabsContainer.addEventListener('click', handleTabSwitch);
     clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; searchInput.dispatchEvent(new Event('input', { bubbles: true })); searchInput.focus(); });
     copyButton.addEventListener('click', () => {
@@ -661,24 +796,13 @@ async function initializeLatexEditor() {
             default: latexToInsert = rawLatex;
         }
         try {
-            // --- eXeLearning Integration (Legacy) ---
-            const tinymceRef = parent && parent.tinymce ? parent.tinymce : null;
+             const tinymceRef = parent && parent.tinymce ? parent.tinymce : null;
             if (isInExe && tinymceRef && tinymceRef.activeEditor) {
                 tinymceRef.activeEditor.execCommand('mceReplaceContent', false, latexToInsert);
                 tinymceRef.activeEditor.windowManager?.close();
-                return; // Success, exit
+                return;
             }
-        } catch (err) {
-            console.warn('Could not use TinyMCE integration:', err);
-        }
-
-        // --- Generic Integration using postMessage (for other apps) ---
-        if (window.opener) {
-            // The '*' means we don't restrict the target origin.
-            // For higher security, this could be replaced with the specific URL
-            // of the application that is allowed to open the editor.
-            window.opener.postMessage(latexToInsert, '*');
-        }
+        } catch(err){ console.error('Insert Error:', err);}
         window.close();
     });
     viewImageButton.addEventListener('click', handleViewImage);
@@ -747,15 +871,16 @@ async function initializeLatexEditor() {
     maximizeBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => console.log(err));
-            maximizeBtn.textContent = '🗗';
         } else {
             document.exitFullscreen();
-            maximizeBtn.textContent = '🗖';
         }
     });
 
     // Start the application
     initializeApp();
+
+    // Enable contextual send-to-host button if requested via URL
+    setupSendToHostButtonIfNeeded();
 }
 
 // Expose initializeLatexEditor to the global window object so MathJax can call it.

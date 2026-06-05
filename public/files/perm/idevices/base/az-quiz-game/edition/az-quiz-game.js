@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-undef */
+/* eslint-disable no-undef */
 /**
  * Rosco Activity iDevice (edition code)
  *
@@ -40,6 +40,9 @@ var $exeDevice = {
         this.setMessagesInfo();
         this.createForm();
         this.addEvents();
+
+        const root = document.getElementById('roscoIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -156,9 +159,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -176,11 +176,10 @@ var $exeDevice = {
         );
         const html = `
             <div id="roscoIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rosco.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -230,24 +229,7 @@ var $exeDevice = {
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
                                 </div>
-
-                                <div class="toggle-item" idevice-id="roscoEEvaluation">
-                                    <div class="toggle-control">
-                                        <input type="checkbox" id="roscoEEvaluation" class="toggle-input"">
-                                        <span class="toggle-visual"></span>
-                                    </div>
-                                    <label class="toggle-label" for="roscoEEvaluation">${_('Progress report')}.</label>
-                                    <div class="toggle-related">
-                                        <label for="roscoEEvaluationID">${_('Identifier')}:</label>
-                                        <input type="text" class="form-control form-control-sm" id="roscoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                        <a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                            <img src="${path}quextIEHelp.png"  width="18" height="18" alt="${_('Help')}"/>
-                                        </a>
-                                    </div>
-                                </div>
-                                <p id="roscoEEvaluationHelp" class="roscoTypeGameHelp exe-block-info">
-                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                                </p>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -333,9 +315,10 @@ var $exeDevice = {
         $('#roscoTimeShowSolution').val(dataGame.timeShowSolution);
         $('#roscoModeBoard').prop('checked', dataGame.modeBoard);
         $('#roscoTimeShowSolution').prop('disabled', !dataGame.showSolution);
-        $('#roscoEEvaluation').prop('checked', dataGame.evaluation);
-        $('#roscoEEvaluationID').val(dataGame.evaluationID);
-        $('#roscoEEvaluationID').prop('disabled', !dataGame.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: dataGame.evaluation,
+            evaluationID: dataGame.evaluationID,
+        });
 
         for (let i = 0; i < dataGame.wordsGame.length; i++) {
             dataGame.wordsGame[i].audio =
@@ -790,7 +773,7 @@ var $exeDevice = {
             return true;
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         words.every((word, index) => {
             if (word !== '' && urls[index] !== '' && alts[index] === '') {
@@ -927,7 +910,7 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="roscoAudioDiv row g-2 align-items-center">
-                            <div class="col-12 roscoAudioInputWrapper">
+                            <div class="col-12 roscoAudioInputWrapper" data-voice-recorder data-voice-input="#roscoEURLAudio${letter}">
                                 <label for="roscoEURLAudio${letter}" class="form-label mb-0">${_('Audio')}:</label>
                                 <input type="text" class="form-control exe-file-picker roscoURLAudioEdition me-0" id="roscoEURLAudio${letter}" placeholder="${_('Indicate a valid URL of an audio or select one from your device')}"/>
                                 <a href="#" class="roscoPlayAudio" title="${_('Play audio')}" id="roscoPlayAudio${letter}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="roscoIconoPlayAudio"/></a>
@@ -976,11 +959,12 @@ var $exeDevice = {
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
-            evaluation = $('#roscoEEvaluation').is(':checked'),
-            evaluationID = $('#roscoEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution === 0) {
             eXe.app.alert(msgs.msgProvideTimeSolution);
@@ -998,11 +982,6 @@ var $exeDevice = {
 
         if (zr) {
             eXe.app.alert(msgs.msgOneWord);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert(msgs.msgIDLenght);
             return false;
         }
 
@@ -1126,8 +1105,8 @@ var $exeDevice = {
             caseSensitive: caseSensitive,
             version: 2,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1365,7 +1344,7 @@ var $exeDevice = {
                 if (!selectedFile) {
                     eXe.app.alert(_('Supported formats') + ': mp3, ogg, wav');
                 } else if (selectedFile.length > 4) {
-                    $exeDevice.playSound(selectedFile);
+                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
 
                 // Sincroniza icono activo/inactivo
@@ -1396,7 +1375,7 @@ var $exeDevice = {
             if (!selectedFile) {
                 eXe.app.alert(_('Supported formats') + ": mp3', 'ogg', 'wav'");
             } else if (selectedFile.length > 4) {
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1428,7 +1407,7 @@ var $exeDevice = {
                         parseFloat($panel.find('.roscoXImageEdition').val()) ||
                         0;
 
-                    $exeDevice.stopSound();
+                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
                     $exeDevice.showImage(img, url, x, y, alt, 0);
 
                     // Sincroniza icono activo/inactivo también aquí
@@ -1458,7 +1437,7 @@ var $exeDevice = {
 
         $('#roscoDataWord a.roscoLinkClose').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.stopSound();
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
             const $container = $(this).closest('.roscoWordMutimediaEdition');
             const hasImage =
                 $.trim($container.find('.roscoURLImageEdition').val() || '')
@@ -1655,15 +1634,7 @@ var $exeDevice = {
             $('#eXeGameExportImport').hide();
         }
 
-        $('#roscoEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#roscoEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#roscoEEvaluationHelpLnk').click(function () {
-            $('#roscoEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $(document).on('click', '.toggle-item', function (e) {
             if ($(e.target).is('input, label, a, button')) return;
@@ -1697,21 +1668,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('A-Z quiz')}.txt`;
-
-        document.getElementById('roscoIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('roscoIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('A-Z quiz')}.txt`,
+            'roscoIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {
@@ -1913,7 +1874,7 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 
@@ -1941,21 +1902,9 @@ var $exeDevice = {
         const blob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(blob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(blob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-Rosco.json';
-        document.body.appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-            link.remove();
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            _('Activity') + '-Rosco.json'
+        );
     },
 };

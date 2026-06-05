@@ -95,7 +95,7 @@ var $exeDevice = {
             msgAudio: c_('Audio'),
             msgNumQuestions: c_('Number of cards'),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameM: c_('You finished the game. Your score is %s.'),
             msgUncompletedActivity: c_('Incomplete activity'),
@@ -123,9 +123,6 @@ var $exeDevice = {
         );
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgMaxCards = _('Maximum card number: %s.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -136,11 +133,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="relateQIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create matching games with images, sounds and enriched texts.')} 
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create matching games with images, sounds and enriched texts.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -195,24 +191,8 @@ var $exeDevice = {
                             <input id="rclEAuthory" type="text" class="form-control" />
                         </div>
                         <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="rclEEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="rclEEvaluation">${_('Progress report')}</label>
-                            </div>
-                            <div class="d-flex align-items-center flex-nowrap gap-2">
-                                <label for="rclEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" class="form-control" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </div>
-                            <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                            </a>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -266,7 +246,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap">
+                                    <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap" data-voice-recorder data-voice-input="#rclEURLAudio">
                                         <label class="sr-av" for="rclEURLAudio">URL</label>
                                         <input type="text" id="rclEURLAudio" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudio" class="RLC-ENavigationButton" title="${_('Audio')}">
@@ -320,7 +300,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb-2">
+                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb-2" data-voice-recorder data-voice-input="#rclEURLAudioBack">
                                         <label class="sr-av" for="rclEURLAudioBack">URL</label>
                                         <input type="text" id="rclEURLAudioBack" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudioBack" class="RLC-ENavigationButton" title="${_('Audio')}">
@@ -583,7 +563,7 @@ var $exeDevice = {
     showCard: function (i) {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#rclEURLImage').val(p.url);
         $('#rclEURLImageBack').val(p.urlBk);
@@ -670,7 +650,7 @@ var $exeDevice = {
             ),
         };
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let message = '';
         if (!p.eText && !p.url && !p.audio) {
@@ -691,6 +671,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initCards();
+
+        const root = document.getElementById('relacionaIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -849,9 +832,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $('<div></div>').html(originalHTML),
-                json = $('.relaciona-DataGame', wrapper).text(),
-                dataGame =
+            const wrapper = $('<div></div>').html(originalHTML);
+            let json = $('.relaciona-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.relaciona-LinkImages', wrapper),
@@ -1025,16 +1009,12 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
-            evaluation = $('#rclEEvaluation').is(':checked'),
-            evaluationID = $('#rclEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
 
         if (itinerary.showClue && itinerary.clueGame.length == '') {
             return false;
@@ -1067,8 +1047,8 @@ var $exeDevice = {
             showSolution,
             timeShowSolution,
             time,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
     },
@@ -1348,15 +1328,7 @@ var $exeDevice = {
                 .toggleClass('d-flex', type === 2);
         });
 
-        $('#rclEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#rclEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#rclEEvaluationHelpLnk').click(() => {
-            $('#rclEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
@@ -1378,21 +1350,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.cardsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Relate')}.txt`;
-
-        document.getElementById('').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('relateQIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Relate')}.txt`,
+            'relateQIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (cards) {
@@ -1481,8 +1443,7 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevice.stopSound();
-            $exeDevice.playSound(url);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 
@@ -1511,9 +1472,10 @@ var $exeDevice = {
             true
         );
         $('#rclETimeDiv').removeClass('d-flex').addClass('d-none');
-        $('#rclEEvaluation').prop('checked', game.evaluation);
-        $('#rclEEvaluationID').val(game.evaluationID);
-        $('#rclEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         if (game.type == 2) {
             $('#rclETimeDiv').removeClass('d-none').addClass('d-flex');
         }
@@ -1539,24 +1501,12 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: 'text/plain' });
-
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Activity')}-Relaciona.json`;
-        document.getElementById('relateQIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('relateQIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-Relaciona.json`,
+            'relateQIdeviceForm'
+        );
     },
 
     importMoodle: function (xmlString) {

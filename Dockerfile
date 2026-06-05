@@ -29,7 +29,10 @@ COPY public/ ./public/
 RUN bun run build:all && \
     ls -la public/style/workarea/main.css && \
     ls -la dist/ && \
-    ls -la public/bundles/manifest.json
+    ls -la public/app/app.bundle.js && \
+    ls -la public/app/yjs/importers.bundle.js && \
+    ls -la public/app/yjs/exporters.bundle.js && \
+    ls -la public/bundles/
 
 # Prune dev dependencies after build
 RUN rm -rf node_modules && \
@@ -72,7 +75,7 @@ RUN mkdir -p /app/data /mnt/data && \
 USER bun
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:8080/healthcheck || exit 1
+  CMD wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck || exit 1
 
 EXPOSE 8080
 

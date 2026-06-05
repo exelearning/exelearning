@@ -547,6 +547,148 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(200);
         });
     });
+
+    describe('POST /api/platform/integration/set_platform_new_ode_browser', () => {
+        const ENDPOINT = 'http://localhost/api/platform/integration/set_platform_new_ode_browser';
+        const ZIP_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xde, 0xad, 0xbe, 0xef]);
+
+        function buildBrowserUploadRequest(body: FormData): Request {
+            return new Request(ENDPOINT, { method: 'POST', body });
+        }
+
+        it('returns 401 when JWT cannot be validated', async () => {
+            const formData = new FormData();
+            formData.append('jwt_token', 'not-a-jwt');
+            formData.append('projectUuid', 'p-1');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.responseMessage).toContain('Invalid token');
+        });
+
+        it('returns 400 when no package file is provided', async () => {
+            const token = await createValidToken();
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'p-1');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.responseMessage).toBe('Missing package file');
+        });
+
+        it('forwards the uploaded package to the platform set_ode URL and returns OK', async () => {
+            const token = await createValidToken({
+                returnurl: 'https://moodle.example.com/mod/exeweb/view.php?id=4',
+                pkgtype: 'webzip',
+            });
+
+            let capturedUrl: string | null = null;
+            let capturedFormData: FormData | null = null;
+            globalThis.fetch = async (url, init) => {
+                capturedUrl = url as string;
+                capturedFormData = init?.body as FormData;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            // Capture the platform_id linkage. The endpoint should persist
+            // the cmid even though the project was newly created in this test.
+            let linkedCmid: string | null = null;
+            configureService({
+                updateProjectByUuid: async (_db, _uuid, updates) => {
+                    linkedCmid = (updates.platform_id as string) ?? null;
+                    return undefined;
+                },
+            });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'project-uuid-123');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'project_web.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.responseMessage).toBe('OK');
+            expect(data.returnUrl).toBe('https://moodle.example.com/mod/exeweb/view.php?id=4');
+
+            expect(capturedUrl).toBe('https://moodle.example.com/mod/exeweb/set_ode.php');
+            const odeData = JSON.parse((capturedFormData as FormData).get('ode_data') as string);
+            expect(odeData.ode_filename).toBe('project_web.zip');
+            expect(odeData.ode_id).toBe('456');
+            expect(odeData.ode_user).toBe('123');
+            expect(odeData.jwt_token).toBe(token);
+            expect(typeof odeData.ode_file).toBe('string');
+            expect(odeData.ode_file.length).toBeGreaterThan(0);
+
+            // Linkage runs only after a successful platform reply.
+            expect(linkedCmid).toBe('456');
+        });
+
+        it('propagates platform error descriptions back to the client as 500', async () => {
+            const token = await createValidToken();
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'p-1');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(500);
+            const data = await response.json();
+            expect(data.responseMessage).toBe('Quota exceeded');
+        });
+
+        it('returns 500 when the platform replies with a non-OK HTTP status', async () => {
+            const token = await createValidToken();
+            globalThis.fetch = async () => new Response(null, { status: 503 });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'p-1');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(500);
+            const data = await response.json();
+            expect(data.responseMessage).toContain('503');
+        });
+
+        it('rejects browser uploads when the JWT returnurl does not map to a known platform', async () => {
+            const token = await createValidToken({ returnurl: 'https://moodle.example.com/mod/exeweb/view.php?id=4' });
+            // Restrict allowed providers to a different host so getPlatformIntegrationParams() rejects the JWT.
+            process.env.PROVIDER_URLS = 'https://other.example.com';
+            process.env.PROVIDER_TOKENS = 'shared-secret';
+            process.env.PROVIDER_IDS = 'other';
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'p-1');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.responseMessage).toContain('Invalid token');
+        });
+    });
 });
 
 /**
