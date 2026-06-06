@@ -70,6 +70,11 @@ describe('collaborative-editing iDevice - Edition', () => {
 			}
 		};
 
+		// Mock ProseMirror editor mode controller (returns a chrome handle)
+		global.window.ProseMirrorEditorMode = {
+			mount: vi.fn(() => ({ mode: 'modern', setMode: vi.fn(), toggle: vi.fn(), destroy: vi.fn() })),
+		};
+
 		// Read and execute the iDevice file
 		const filePath = join(__dirname, 'collaborative-editing.js');
 		const code = readFileSync(filePath, 'utf-8');
@@ -82,6 +87,7 @@ describe('collaborative-editing iDevice - Edition', () => {
 		mockElement = null;
 		delete global.window.ProseMirrorEditor;
 		delete global.window.ProseMirrorToolbar;
+		delete global.window.ProseMirrorEditorMode;
 		delete global.window.YjsProseMirrorBinding;
 		delete global.window.Y;
 	});

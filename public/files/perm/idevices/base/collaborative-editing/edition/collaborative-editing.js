@@ -284,17 +284,16 @@ var $exeDevice = {
 			editable: true,
 		});
 
-		// Create the toolbar wired to the Media Library
-		if (toolbarHost && window.ProseMirrorToolbar) {
-			const toolbar = new window.ProseMirrorToolbar({
-				editor: editor,
-				container: toolbarHost,
+		// Mount the toolbar via the editor-mode controller (classic/modern toggle)
+		if (toolbarHost && window.ProseMirrorEditorMode) {
+			const chrome = window.ProseMirrorEditorMode.mount(editor, {
+				toolbarHost: toolbarHost,
 				onMediaLibrary: (mediaType) => this.handleMediaLibrary(which, mediaType),
 			});
 			if (which === 'main') {
-				this.mainToolbar = toolbar;
+				this.mainToolbar = chrome;
 			} else {
-				this.feedbackToolbar = toolbar;
+				this.feedbackToolbar = chrome;
 			}
 		}
 
