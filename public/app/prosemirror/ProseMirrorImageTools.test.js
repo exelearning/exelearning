@@ -532,6 +532,28 @@ describe('ProseMirrorImageTools', () => {
 			expect(nv.dom.querySelectorAll('.pm-image-handle').length).toBe(4);
 		});
 
+		it('selecting (mousedown) the image dispatches a NodeSelection', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png' } };
+			const tr = {
+				setSelection: vi.fn(function () {
+					return this;
+				}),
+			};
+			const dispatch = vi.fn();
+			const view = { state: { schema: { nodes: { image: IMAGE_TYPE } }, doc: { tag: 'doc' }, tr }, dispatch, focus: vi.fn() };
+			FakeNodeSelection.create = vi.fn(() => ({ isNodeSel: true }));
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 2);
+			document.body.appendChild(nv.dom);
+
+			nv.dom.querySelector('img').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+			expect(FakeNodeSelection.create).toHaveBeenCalledWith(view.state.doc, 2);
+			expect(tr.setSelection).toHaveBeenCalled();
+			expect(dispatch).toHaveBeenCalled();
+			expect(view.focus).toHaveBeenCalled();
+			nv.dom.remove();
+		});
+
 		it('toggles the selected class on select / deselect', () => {
 			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png' } };
 			const { view } = buildView(node);

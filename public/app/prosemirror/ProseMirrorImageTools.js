@@ -416,6 +416,19 @@
 			wrap.appendChild(handle);
 		});
 
+		// Clicking the image selects the node so the resize handles (and the
+		// contextual toolbar) appear — ProseMirror doesn't reliably make a
+		// NodeSelection for a NodeView-wrapped inline image on its own.
+		wrap.addEventListener('mousedown', (e) => {
+			if (e.target && e.target.classList && e.target.classList.contains('pm-image-handle')) return;
+			if (!NodeSelection) return;
+			const pos = resolvePos(getPos);
+			if (pos == null) return;
+			e.preventDefault();
+			view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+			view.focus();
+		});
+
 		return {
 			dom: wrap,
 			selectNode() {
