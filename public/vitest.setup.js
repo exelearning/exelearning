@@ -57,6 +57,26 @@ if (typeof window !== 'undefined') {
   globalThis.FileReader = window.FileReader;
   globalThis.NodeFilter = window.NodeFilter;
 
+  // Provide a working in-memory localStorage so bare `localStorage` works as a global.
+  // happy-dom's window.localStorage exists but the underlying storage layer is
+  // disabled in Node.js (requires --localstorage-file), so we replace it with a
+  // simple Map-backed implementation.
+  const _lsStore = new Map();
+  const _mockLocalStorage = {
+    getItem: (key) => (_lsStore.has(String(key)) ? _lsStore.get(String(key)) : null),
+    setItem: (key, value) => { _lsStore.set(String(key), String(value)); },
+    removeItem: (key) => { _lsStore.delete(String(key)); },
+    clear: () => { _lsStore.clear(); },
+    get length() { return _lsStore.size; },
+    key: (index) => (Array.from(_lsStore.keys())[index] ?? null),
+  };
+  try {
+    Object.defineProperty(window, 'localStorage', { value: _mockLocalStorage, writable: true, configurable: true });
+  } catch { /* ignore if not configurable */ }
+  if (!globalThis.localStorage) {
+    globalThis.localStorage = _mockLocalStorage;
+  }
+
   // Make navigator writable for tests (happy-dom has it as getter-only)
   // Tests need to be able to mock navigator.sendBeacon, etc.
   const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
