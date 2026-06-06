@@ -1009,6 +1009,26 @@ describe('ModalStyleManager', () => {
                 delete window.eXeLearning.app.resourceFetcher;
             });
 
+            it('should alert when the theme cannot be assembled in static mode', async () => {
+                window.eXeLearning.app.capabilities = { storage: { remote: false } };
+                window.eXeLearning.app.resourceFetcher = {
+                    fetchThemeZipBlob: vi.fn().mockResolvedValue(null),
+                };
+                global.fetch = vi.fn();
+                const alertSpy = vi.spyOn(modal, 'showElementAlert');
+
+                await modal.downloadThemeFromBundle({ dirName: 'test-theme', name: 'Test Theme' });
+
+                expect(alertSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('Failed to download'),
+                    expect.any(Object),
+                );
+                expect(fetch).not.toHaveBeenCalled();
+
+                delete window.eXeLearning.app.capabilities;
+                delete window.eXeLearning.app.resourceFetcher;
+            });
+
             it('should show error when bundle not found', async () => {
                 const mockResponse = {
                     ok: false,

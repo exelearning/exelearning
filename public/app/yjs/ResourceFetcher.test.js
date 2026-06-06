@@ -2807,6 +2807,32 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         expect(fetcher.bundleManifest).toBeNull();
       });
+
+      it('loadStaticManifest leaves manifest null on a non-ok response', async () => {
+        const fetcher = new ResourceFetcher();
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+        await fetcher.loadStaticManifest();
+
+        expect(fetcher.bundleManifest).toBeNull();
+      });
+
+      it('assembleBundleFromLoose skips files whose fetch rejects', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.basePath = '';
+        mockFetch
+          .mockResolvedValueOnce(looseResp())
+          .mockRejectedValueOnce(new TypeError('network'));
+
+        const result = await fetcher.assembleBundleFromLoose([
+          { s: 'x/a.css', t: 'a.css' },
+          { s: 'x/boom.js', t: 'boom.js' },
+        ]);
+
+        expect(result.size).toBe(1);
+        expect(result.has('a.css')).toBe(true);
+        expect(result.has('boom.js')).toBe(false);
+      });
     });
 
     describe('fetchThemeZipBlob', () => {
@@ -2841,6 +2867,25 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         const blob = await fetcher.fetchThemeZipBlob('missing');
 
         expect(blob).toBeNull();
+      });
+
+      it('returns null when fflate is unavailable', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: { base: [{ s: 'files/perm/themes/base/base/style.css', t: 'style.css' }] },
+          },
+        };
+        mockFetch.mockResolvedValue(looseResp());
+        const savedFflate = window.fflate;
+        delete window.fflate;
+
+        const blob = await fetcher.fetchThemeZipBlob('base');
+
+        expect(blob).toBeNull();
+        if (savedFflate) window.fflate = savedFflate;
       });
     });
 

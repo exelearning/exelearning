@@ -484,6 +484,26 @@ describe('NavbarStyles', () => {
         delete eXeLearning.app.resourceFetcher;
     });
 
+    it('shows an alert when the theme cannot be assembled in static mode', async () => {
+        eXeLearning.app.capabilities = { storage: { remote: false } };
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeZipBlob: vi.fn().mockResolvedValue(null),
+        };
+        global.fetch = vi.fn();
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+        await navbarStyles.downloadThemeFromBundle({ dirName: 'base-1', name: 'Base', type: 'base' });
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to download'),
+            expect.any(Object),
+        );
+        expect(fetch).not.toHaveBeenCalled();
+
+        delete eXeLearning.app.capabilities;
+        delete eXeLearning.app.resourceFetcher;
+    });
+
     it('downloads site theme zip from API endpoint', async () => {
         const mockBlob = new Blob(['test'], { type: 'application/zip' });
         const mockResponse = {
