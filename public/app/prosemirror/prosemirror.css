@@ -1196,6 +1196,40 @@
 }
 
 /* ============================================
+   Math node (MathJax) + equation dialog
+   ============================================ */
+
+.prosemirror-editor .ProseMirror .pm-math {
+	cursor: pointer;
+	padding: 0 1px;
+}
+
+.prosemirror-editor .ProseMirror .pm-math[data-display='block'] {
+	display: block;
+	text-align: center;
+	margin: 0.5em 0;
+}
+
+.prosemirror-editor .ProseMirror .pm-math.pm-math-selected,
+.prosemirror-editor .ProseMirror .pm-math.ProseMirror-selectednode {
+	outline: 2px solid #047857;
+	border-radius: 2px;
+}
+
+/* edicuatex iframe inside the eXe modal */
+.pm-math-dialog {
+	display: flex;
+	min-width: min(86vw, 900px);
+}
+
+.pm-math-frame {
+	width: 100%;
+	height: min(70vh, 560px);
+	min-height: 420px;
+	border: 0;
+}
+
+/* ============================================
    Contextual table toolbar (modern mode)
    ============================================ */
 

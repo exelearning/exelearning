@@ -413,6 +413,34 @@ describe('ProseMirrorToolbar', () => {
 		});
 	});
 
+	describe('_showMathDialog', () => {
+		it('delegates to ProseMirrorMathTools when a math node is available', () => {
+			const openDialog = vi.fn();
+			window.ProseMirrorMathTools = { openDialog };
+			mockEditor.schema.nodes.math = { name: 'math' };
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showMathDialog();
+
+			expect(openDialog).toHaveBeenCalledWith(mockEditor);
+			delete window.ProseMirrorMathTools;
+			delete mockEditor.schema.nodes.math;
+		});
+
+		it('falls back to a prompt when math tools are unavailable', () => {
+			delete window.ProseMirrorMathTools;
+			const prevPrompt = window.prompt;
+			window.prompt = vi.fn(() => 'x^2');
+			mockEditor.insertText = vi.fn();
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showMathDialog();
+
+			expect(mockEditor.insertText).toHaveBeenCalledWith('$x^2$');
+			window.prompt = prevPrompt;
+		});
+	});
+
 	describe('destroy', () => {
 		it('removes toolbar from DOM', () => {
 			const toolbar = new ProseMirrorToolbar({

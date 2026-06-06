@@ -245,6 +245,9 @@
 			if (this.schema.nodes.image && window.ProseMirrorImageTools?.createImageNodeView) {
 				nodeViews.image = (node, view, getPos) => window.ProseMirrorImageTools.createImageNodeView(node, view, getPos);
 			}
+			if (this.schema.nodes.math && window.ProseMirrorMathTools?.createMathNodeView) {
+				nodeViews.math = (node, view, getPos) => window.ProseMirrorMathTools.createMathNodeView(node, view, getPos);
+			}
 
 			// Create editor view
 			this.view = new EditorView(this.container, {

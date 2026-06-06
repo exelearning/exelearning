@@ -39,6 +39,7 @@ describe('ProseMirrorModernToolbar', () => {
 				horizontal_rule: {},
 				table: {},
 				code_block: {},
+				math: {},
 			},
 		};
 		const mockNode = { type: { name: 'paragraph' }, attrs: {} };
@@ -103,6 +104,18 @@ describe('ProseMirrorModernToolbar', () => {
 		expect(imageItem).toBeTruthy();
 		imageItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 		expect(onMediaLibrary).toHaveBeenCalledWith('image');
+	});
+
+	it('mousedown on [data-insert="math"] opens the equation dialog when math tools are present', () => {
+		const openDialog = vi.fn();
+		window.ProseMirrorMathTools = { openDialog };
+		new window.ProseMirrorModernToolbar({ editor, container });
+		container.querySelector('[data-action="insert-menu"]').click();
+		const mathItem = container.querySelector('.pm-modern-insert-item[data-insert="math"]');
+		expect(mathItem).toBeTruthy();
+		mathItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		expect(openDialog).toHaveBeenCalledWith(editor);
+		delete window.ProseMirrorMathTools;
 	});
 
 	it('clicking [data-action="insert-menu"] a second time closes the menu', () => {

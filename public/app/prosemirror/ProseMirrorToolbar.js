@@ -1539,6 +1539,12 @@
 		 * @private
 		 */
 		_showMathDialog() {
+			// Prefer the edicuatex-backed equation dialog (math node + MathJax);
+			// fall back to a prompt only if it is unavailable.
+			if (window.ProseMirrorMathTools && this.schema.nodes.math) {
+				window.ProseMirrorMathTools.openDialog(this.editor);
+				return;
+			}
 			const latex = prompt(_('Enter LaTeX formula:'), '\\frac{a}{b}');
 			if (latex) {
 				// Insert as text for now - would need MathJax integration

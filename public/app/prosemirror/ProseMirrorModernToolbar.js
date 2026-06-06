@@ -137,9 +137,11 @@
 				{ key: 'table', label: t('Table'), icon: 'table', node: 'table' },
 				{ key: 'hr', label: t('Horizontal rule'), icon: 'hr', node: 'horizontal_rule' },
 				{ key: 'code', label: t('Code block'), icon: 'sourcecode', node: 'code_block' },
+				{ key: 'math', label: t('Equation'), icon: 'info', custom: 'math' },
 			];
 			return all.filter((it) => {
 				if (it.media) return !!this.onMediaLibrary;
+				if (it.custom === 'math') return !!(window.ProseMirrorMathTools && s.nodes && s.nodes.math);
 				return !!(s.nodes && s.nodes[it.node]);
 			});
 		}
@@ -166,6 +168,8 @@
 					this._closeInsertMenu();
 					if (it.media) {
 						if (this.onMediaLibrary) this.onMediaLibrary(it.media);
+					} else if (it.custom === 'math') {
+						if (window.ProseMirrorMathTools) window.ProseMirrorMathTools.openDialog(this.editor);
 					} else if (it.node && this.cmds.insertBlock) {
 						this.cmds.insertBlock(this.editor, it.node, it.attrs);
 					}

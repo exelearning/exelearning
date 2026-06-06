@@ -161,6 +161,36 @@
 			},
 		},
 
+		// Math node (LaTeX equation rendered by MathJax). Serializes to the
+		// `exe-math-rendered` convention shared with the exporter / LatexPreRenderer:
+		// inline `\( … \)`, block `\[ … \]`.
+		math: {
+			inline: true,
+			group: 'inline',
+			atom: true,
+			selectable: true,
+			draggable: true,
+			attrs: {
+				latex: { default: '' },
+				display: { default: 'inline' },
+			},
+			parseDOM: [
+				{
+					tag: 'span.exe-math-rendered',
+					getAttrs: (dom) => ({
+						latex: dom.getAttribute('data-latex') || '',
+						display: dom.getAttribute('data-display') === 'block' ? 'block' : 'inline',
+					}),
+				},
+			],
+			toDOM: (node) => {
+				const latex = node.attrs.latex || '';
+				const display = node.attrs.display === 'block' ? 'block' : 'inline';
+				const wrapped = display === 'block' ? `\\[${latex}\\]` : `\\(${latex}\\)`;
+				return ['span', { class: 'exe-math-rendered', 'data-latex': latex, 'data-display': display }, wrapped];
+			},
+		},
+
 		// Video node
 		video: {
 			group: 'block',
