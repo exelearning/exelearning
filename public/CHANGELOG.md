@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.1 – 2026-06-04
+## v4.0.1 – 2026-06-09
 
 ### Added
 
@@ -20,8 +20,9 @@
 - Screenshot selector added to the Project Properties dialog
 - Preferences: personal default style for new projects
 - Admin panel: support for updating styles
-- Updated Spanish (ES) translation
-- Added automated placeholder translations for incomplete translations
+- Reviewed and completed Spanish (ES) translation
+- Reviewed existing Basque (EU) translation
+- Added automated placeholder translations for new strings in incomplete translations
 
 ### Fixed
 
