@@ -30,6 +30,7 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.loadTikzJax();
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
@@ -443,6 +444,24 @@ var $exeDevice = {
         tikzScript.dataset.showConsole = 'true';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
         preview.appendChild(tikzScript);
+    },
+
+    /**
+     * Load the TikZJax library used to render the circuit preview.
+     *
+     * TikZJax ships only in the iDevice's export/ folder (single source of
+     * truth); the edition form loads that same copy instead of bundling a
+     * duplicate. tikzjax.js installs a MutationObserver that renders any
+     * <script type="text/tikz"> element, including the preview inserted by
+     * renderTikzPreview(). The guard avoids loading it twice when the export
+     * runtime already injected it for the live node.
+     */
+    loadTikzJax: function () {
+        if (document.querySelector('script[src*="tikzjax"]')) return;
+        const exportPath = $exeDevice.idevicePath.replace(/edition\/?$/, 'export/');
+        const script = document.createElement('script');
+        script.src = exportPath + 'tikzjax.js';
+        document.head.appendChild(script);
     },
 
     clearQuestion: function () {
