@@ -356,11 +356,14 @@
           // ProseMirrorIcons must load first (provides SVG icons for toolbar)
           const prosemirrorModulesSequential = [
             'ProseMirrorIcons.js',     // TinyMCE SVG icons (must load first)
+            'ProseMirrorCommands.js',  // shared command helpers (before toolbars)
           ];
           const prosemirrorModulesParallel = [
             'ProseMirrorSchema.js',
             'ProseMirrorEditor.js',
             'ProseMirrorToolbar.js',
+            'ProseMirrorModernToolbar.js',
+            'ProseMirrorEditorMode.js',
             'YjsProseMirrorBinding.js',
           ];
 
