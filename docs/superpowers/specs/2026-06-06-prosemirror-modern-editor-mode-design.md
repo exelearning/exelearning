@@ -124,8 +124,8 @@ reconfigure to complement the existing `addPlugins()`.
 1. **Core:** `ProseMirrorCommands` + `ProseMirrorEditorMode` +
    `ProseMirrorModernToolbar` + classic Utilidades "Modo moderno" item + iDevice
    integration + CSS. Outcome: compact bar + working classic/modern toggle.
-2. **Block menu:** `ProseMirrorBlockMenu` (`+` insert; drag-reorder is an
-   optional sub-step within this phase).
+2. **Block menu:** `ProseMirrorBlockMenu` — the `+` insert popup **and** the
+   `⠿` drag handle for drag-to-reorder of blocks (both included).
 3. **Floating toolbar:** `ProseMirrorFloatingToolbar`.
 
 ## Risks / notes
