@@ -245,6 +245,7 @@
 			this.container = options.container;
 			this.onMediaLibrary = options.onMediaLibrary || null;
 			this.onLinkDialog = options.onLinkDialog || null;
+			this.onSwitchToModern = options.onSwitchToModern || null;
 
 			if (!this.editor || !this.container) {
 				throw new Error('ProseMirrorToolbar: editor and container are required');
@@ -403,6 +404,8 @@
 					name: 'tools',
 					label: _('Tools'),
 					items: [
+						{ name: 'modernmode', label: _('Modern mode'), action: 'switchModern' },
+						{ type: 'separator' },
 						{ name: 'sourcecode', label: _('Source code'), icon: 'sourcecode', action: 'sourceCode' },
 						{ name: 'visualchars', label: _('Show invisible characters'), action: 'visualChars' },
 						{ name: 'visualblocks', label: _('Show block elements'), action: 'visualBlocks' },
@@ -1148,6 +1151,10 @@
 
 				case 'abbr':
 					this._showAbbrDialog();
+					break;
+
+				case 'switchModern':
+					if (this.onSwitchToModern) this.onSwitchToModern();
 					break;
 
 				default:
