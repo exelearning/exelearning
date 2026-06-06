@@ -338,6 +338,37 @@ describe('ProseMirrorToolbar', () => {
 		});
 	});
 
+	describe('_showImageDialog', () => {
+		it('delegates to ProseMirrorImageTools when the dialog framework is available', () => {
+			const openProperties = vi.fn();
+			window.ProseMirrorImageTools = { openProperties };
+			window.ProseMirrorDialog = { openForm: vi.fn() };
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showImageDialog();
+
+			expect(openProperties).toHaveBeenCalledWith(mockEditor);
+			delete window.ProseMirrorImageTools;
+			delete window.ProseMirrorDialog;
+		});
+
+		it('falls back to a prompt when the dialog framework is unavailable', () => {
+			delete window.ProseMirrorImageTools;
+			delete window.ProseMirrorDialog;
+			const prevPrompt = window.prompt;
+			const promptSpy = vi.fn(() => 'http://img.png');
+			window.prompt = promptSpy;
+			mockEditor.schema.nodes.image.create.mockReturnValue({ type: 'image' });
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showImageDialog();
+
+			expect(promptSpy).toHaveBeenCalled();
+			expect(mockEditor.schema.nodes.image.create).toHaveBeenCalledWith({ src: 'http://img.png', alt: '' });
+			window.prompt = prevPrompt;
+		});
+	});
+
 	describe('destroy', () => {
 		it('removes toolbar from DOM', () => {
 			const toolbar = new ProseMirrorToolbar({

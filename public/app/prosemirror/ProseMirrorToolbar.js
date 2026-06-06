@@ -1201,6 +1201,13 @@
 		 * @private
 		 */
 		_showImageDialog() {
+			// Prefer the shared image-properties dialog (source via Media Library,
+			// alt, title, size, alignment); fall back to a prompt only if it is
+			// unavailable (e.g. dialog framework not loaded).
+			if (window.ProseMirrorImageTools && window.ProseMirrorDialog) {
+				window.ProseMirrorImageTools.openProperties(this.editor);
+				return;
+			}
 			const url = prompt(_('Enter image URL:'), 'https://');
 			if (url) {
 				this.insertImage({ src: url, alt: '' });

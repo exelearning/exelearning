@@ -363,6 +363,7 @@
             'ProseMirrorEditor.js',
             'ProseMirrorDialog.js',
             'ProseMirrorLinkDialog.js',
+            'ProseMirrorImageTools.js',
             'ProseMirrorToolbar.js',
             'ProseMirrorModernToolbar.js',
             'ProseMirrorBlockMenu.js',

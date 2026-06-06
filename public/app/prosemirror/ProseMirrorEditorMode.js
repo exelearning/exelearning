@@ -82,6 +82,13 @@
 			) {
 				toAdd.push(window.proseMirrorFloatingToolbarPlugin({ editor }));
 			}
+			if (
+				window.proseMirrorImageToolbarPlugin &&
+				window.imageToolbarPluginKey &&
+				!editor.hasPlugin?.(window.imageToolbarPluginKey)
+			) {
+				toAdd.push(window.proseMirrorImageToolbarPlugin({ editor }));
+			}
 			if (toAdd.length) editor.addPlugins(toAdd);
 		}
 
@@ -90,6 +97,7 @@
 			const keys = [];
 			if (window.blockMenuPluginKey) keys.push(window.blockMenuPluginKey);
 			if (window.floatingToolbarPluginKey) keys.push(window.floatingToolbarPluginKey);
+			if (window.imageToolbarPluginKey) keys.push(window.imageToolbarPluginKey);
 			if (keys.length) editor.removePlugins(keys);
 		}
 

@@ -1150,6 +1150,83 @@
 }
 
 /* ============================================
+   Contextual image toolbar (modern mode)
+   ============================================ */
+
+.prosemirror-image-toolbar {
+	position: absolute;
+	z-index: 1300;
+	display: none;
+	flex-direction: row;
+	gap: 2px;
+	padding: 3px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.prosemirror-image-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: #333;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.prosemirror-image-btn:hover {
+	background: #f0f0f0;
+}
+
+.prosemirror-image-btn.is-active {
+	background: rgba(4, 120, 87, 0.12);
+	color: #047857;
+}
+
+.prosemirror-image-btn svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}
+
+/* Mirror the eXe export alignment classes so images line up the same way while
+   editing as they do in exported content. */
+.prosemirror-editor .ProseMirror img.position-left {
+	display: block;
+	margin: 0.5em auto 0.5em 0;
+}
+
+.prosemirror-editor .ProseMirror img.position-center {
+	display: block;
+	margin: 0.5em auto;
+}
+
+.prosemirror-editor .ProseMirror img.position-right {
+	display: block;
+	margin: 0.5em 0 0.5em auto;
+}
+
+.prosemirror-editor .ProseMirror img.float-left {
+	float: left;
+	margin: 0.5em 1.5em 1em 0;
+}
+
+.prosemirror-editor .ProseMirror img.float-right {
+	float: right;
+	margin: 0.5em 0 1em 1.5em;
+}
+
+.prosemirror-editor .ProseMirror img.ProseMirror-selectednode {
+	outline: 2px solid #047857;
+}
+
+/* ============================================
    Editor dialogs (ProseMirrorDialog forms in eXe modals)
    ============================================ */
 
