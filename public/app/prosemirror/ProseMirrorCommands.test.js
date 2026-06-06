@@ -57,4 +57,36 @@ describe('ProseMirrorCommands', () => {
 		};
 		expect(window.ProseMirrorCommands.isMarkActive(state, schema, 'strong')).toBe(false);
 	});
+
+	describe('isBlockActive', () => {
+		it('returns true when the current node type matches', () => {
+			const paragraphType = { name: 'paragraph' };
+			const headingType = { name: 'heading' };
+			const schema = { nodes: { paragraph: paragraphType, heading: headingType } };
+			const state = {
+				selection: {
+					$from: {
+						depth: 1,
+						node: (depth) => (depth === 1 ? { type: paragraphType, attrs: {} } : null),
+					},
+				},
+			};
+			expect(window.ProseMirrorCommands.isBlockActive(state, schema, 'paragraph')).toBe(true);
+		});
+
+		it('returns false when the current node type does not match', () => {
+			const paragraphType = { name: 'paragraph' };
+			const headingType = { name: 'heading' };
+			const schema = { nodes: { paragraph: paragraphType, heading: headingType } };
+			const state = {
+				selection: {
+					$from: {
+						depth: 1,
+						node: (depth) => (depth === 1 ? { type: headingType, attrs: { level: 2 } } : null),
+					},
+				},
+			};
+			expect(window.ProseMirrorCommands.isBlockActive(state, schema, 'paragraph')).toBe(false);
+		});
+	});
 });

@@ -1627,12 +1627,13 @@
 			this.editor.view.dom.addEventListener('mouseup', this._updateHandler);
 			this.editor.view.dom.addEventListener('focus', this._updateHandler);
 
-			// Close menus when clicking outside
-			document.addEventListener('click', (e) => {
+			// Close menus when clicking outside — store reference for cleanup
+			this._docClickHandler = (e) => {
 				if (!this.container.contains(e.target)) {
 					this._closeAllMenus();
 				}
-			});
+			};
+			document.addEventListener('click', this._docClickHandler);
 
 			// Initial update
 			this._updateActiveStates();
@@ -1668,6 +1669,17 @@
 		 * Destroy the toolbar
 		 */
 		destroy() {
+			// Remove editor DOM listeners to avoid leaks on detached toolbar
+			if (this._updateHandler && this.editor?.view?.dom) {
+				this.editor.view.dom.removeEventListener('keyup', this._updateHandler);
+				this.editor.view.dom.removeEventListener('mouseup', this._updateHandler);
+				this.editor.view.dom.removeEventListener('focus', this._updateHandler);
+			}
+			if (this._docClickHandler) {
+				document.removeEventListener('click', this._docClickHandler);
+				this._docClickHandler = null;
+			}
+
 			if (this.wrapper && this.wrapper.parentNode) {
 				this.wrapper.parentNode.removeChild(this.wrapper);
 			}

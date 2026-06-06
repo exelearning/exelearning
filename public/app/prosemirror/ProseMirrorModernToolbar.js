@@ -139,9 +139,43 @@
 
 			this.container.appendChild(bar);
 			this.bar = bar;
+
+			// Bind selection-change listener for active-state highlighting
+			this._updateHandler = () => this._updateActiveStates();
+			if (this.editor.view?.dom) {
+				this.editor.view.dom.addEventListener('keyup', this._updateHandler);
+				this.editor.view.dom.addEventListener('mouseup', this._updateHandler);
+				this.editor.view.dom.addEventListener('focus', this._updateHandler);
+			}
+
+			// Apply initial active states
+			this._updateActiveStates();
+		}
+
+		/**
+		 * Update the `.is-active` class on each [data-cmd] button based on
+		 * the current editor selection state.
+		 * @private
+		 */
+		_updateActiveStates() {
+			const state = this.editor.view?.state;
+			if (!state || !this.bar) return;
+			this.bar.querySelectorAll('[data-cmd]').forEach((btn) => {
+				const name = btn.getAttribute('data-cmd');
+				const active =
+					this.cmds.isMarkActive(state, this.schema, name) ||
+					this.cmds.isBlockActive(state, this.schema, name);
+				btn.classList.toggle('is-active', !!active);
+			});
 		}
 
 		destroy() {
+			// Remove editor DOM listeners before tearing down the bar
+			if (this._updateHandler && this.editor?.view?.dom) {
+				this.editor.view.dom.removeEventListener('keyup', this._updateHandler);
+				this.editor.view.dom.removeEventListener('mouseup', this._updateHandler);
+				this.editor.view.dom.removeEventListener('focus', this._updateHandler);
+			}
 			if (this.bar && this.bar.parentNode) this.bar.parentNode.removeChild(this.bar);
 			this.bar = null;
 		}

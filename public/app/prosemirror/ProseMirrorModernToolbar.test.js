@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -29,14 +29,30 @@ describe('ProseMirrorModernToolbar', () => {
 			marks: { strong: {}, em: {}, underline: {}, code: {}, link: {} },
 			nodes: { paragraph: {}, heading: {}, bullet_list: {}, ordered_list: {} },
 		};
+		const mockNode = { type: { name: 'paragraph' }, attrs: {} };
 		editor = {
 			schema,
-			view: { state: { selection: { empty: true } }, focus: vi.fn() },
+			view: {
+				state: {
+					selection: {
+						empty: true,
+						$head: { marks: () => [] },
+						$from: { depth: 1, node: () => mockNode },
+					},
+					storedMarks: null,
+				},
+				dom: document.createElement('div'),
+				focus: vi.fn(),
+			},
 			execCommand: vi.fn(() => true),
 			focus: vi.fn(),
 		};
 		container = document.createElement('div');
 		document.body.appendChild(container);
+	});
+
+	afterEach(() => {
+		document.body.innerHTML = '';
 	});
 
 	it('renders a single compact toolbar row', () => {
@@ -64,7 +80,7 @@ describe('ProseMirrorModernToolbar', () => {
 		expect(onMediaLibrary).toHaveBeenCalledWith('image');
 	});
 
-	it('"Modo clásico" button calls onSwitchToClassic', () => {
+	it('"Classic mode" button calls onSwitchToClassic', () => {
 		const onSwitchToClassic = vi.fn();
 		new window.ProseMirrorModernToolbar({ editor, container, onSwitchToClassic });
 		container.querySelector('[data-action="switch-classic"]').click();
@@ -75,5 +91,28 @@ describe('ProseMirrorModernToolbar', () => {
 		const tb = new window.ProseMirrorModernToolbar({ editor, container });
 		tb.destroy();
 		expect(container.querySelector('.prosemirror-modern-toolbar')).toBeFalsy();
+	});
+
+	it('applies is-active class to [data-cmd="strong"] when isMarkActive returns true', () => {
+		// Override ProseMirrorCommands so isMarkActive returns true for 'strong'
+		global.window.ProseMirrorCommands.isMarkActive = vi.fn((state, schema, name) => name === 'strong');
+
+		new window.ProseMirrorModernToolbar({ editor, container });
+
+		const boldBtn = container.querySelector('[data-cmd="strong"]');
+		expect(boldBtn.classList.contains('is-active')).toBe(true);
+
+		// Other buttons should not be active
+		const italicBtn = container.querySelector('[data-cmd="em"]');
+		expect(italicBtn.classList.contains('is-active')).toBe(false);
+	});
+
+	it('removes editor DOM listeners on destroy', () => {
+		const removeEventListener = vi.spyOn(editor.view.dom, 'removeEventListener');
+		const tb = new window.ProseMirrorModernToolbar({ editor, container });
+		tb.destroy();
+		expect(removeEventListener).toHaveBeenCalledWith('keyup', tb._updateHandler);
+		expect(removeEventListener).toHaveBeenCalledWith('mouseup', tb._updateHandler);
+		expect(removeEventListener).toHaveBeenCalledWith('focus', tb._updateHandler);
 	});
 });

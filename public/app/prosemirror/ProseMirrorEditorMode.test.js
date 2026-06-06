@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -26,6 +26,11 @@ describe('ProseMirrorEditorMode', () => {
 		};
 		delete global.window.ProseMirrorEditorMode;
 		loadScript('./ProseMirrorEditorMode.js');
+	});
+
+	afterEach(() => {
+		delete global.window.ProseMirrorToolbar;
+		delete global.window.ProseMirrorModernToolbar;
 	});
 
 	const fakeEditor = () => ({ focus: vi.fn(), isDestroyed: () => false });
@@ -68,5 +73,14 @@ describe('ProseMirrorEditorMode', () => {
 		const handle = window.ProseMirrorEditorMode.mount(fakeEditor(), { toolbarHost: container });
 		handle.destroy();
 		expect(modernDestroy).toHaveBeenCalled();
+	});
+
+	it('calls onModeChange with "classic" after toggle from modern', () => {
+		const onModeChange = vi.fn();
+		const container = document.createElement('div');
+		const handle = window.ProseMirrorEditorMode.mount(fakeEditor(), { toolbarHost: container, onModeChange });
+		expect(handle.mode).toBe('modern');
+		handle.toggle();
+		expect(onModeChange).toHaveBeenCalledWith('classic');
 	});
 });

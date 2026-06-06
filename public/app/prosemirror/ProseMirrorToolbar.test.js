@@ -77,7 +77,7 @@ describe('ProseMirrorToolbar', () => {
 			},
 			view: {
 				state: {
-					selection: { from: 0, to: 0, $from: { marks: () => [], sharedDepth: () => 0, node: () => ({ type: {} }) } },
+					selection: { from: 0, to: 0, $from: { marks: () => [], sharedDepth: () => 0, node: () => ({ type: {} }), depth: 0 } },
 					storedMarks: null,
 					doc: { rangeHasMark: vi.fn(), nodesBetween: vi.fn() },
 					tr: {
@@ -91,6 +91,7 @@ describe('ProseMirrorToolbar', () => {
 				dispatch: vi.fn(),
 				dom: {
 					addEventListener: vi.fn(),
+					removeEventListener: vi.fn(),
 				},
 			},
 			focus: vi.fn(),
@@ -459,6 +460,55 @@ describe('ProseMirrorToolbar', () => {
 			mediaBtn.click();
 
 			expect(onMediaLibrary).toHaveBeenCalledWith('media');
+		});
+	});
+
+	describe('switchModern action', () => {
+		it('calls onSwitchToModern when switchModern action is executed', () => {
+			const onSwitchToModern = vi.fn();
+
+			const toolbar = new ProseMirrorToolbar({
+				editor: mockEditor,
+				container: container,
+				onSwitchToModern,
+			});
+
+			toolbar._executeAction('switchModern');
+
+			expect(onSwitchToModern).toHaveBeenCalled();
+		});
+
+		it('tools menu items include a switchModern action entry', () => {
+			const toolbar = new ProseMirrorToolbar({
+				editor: mockEditor,
+				container: container,
+			});
+
+			const toolsMenu = toolbar.menus.find((m) => m.config.name === 'tools');
+			expect(toolsMenu).toBeTruthy();
+			const switchItem = toolsMenu.config.items.find((item) => item.action === 'switchModern');
+			expect(switchItem).toBeTruthy();
+		});
+	});
+
+	describe('destroy listener cleanup', () => {
+		it('removes keyup/mouseup/focus listeners from editor dom on destroy', () => {
+			const removeEventListener = vi.fn();
+			mockEditor.view.dom = {
+				addEventListener: vi.fn(),
+				removeEventListener,
+			};
+
+			const toolbar = new ProseMirrorToolbar({
+				editor: mockEditor,
+				container: container,
+			});
+
+			toolbar.destroy();
+
+			expect(removeEventListener).toHaveBeenCalledWith('keyup', toolbar._updateHandler);
+			expect(removeEventListener).toHaveBeenCalledWith('mouseup', toolbar._updateHandler);
+			expect(removeEventListener).toHaveBeenCalledWith('focus', toolbar._updateHandler);
 		});
 	});
 });
