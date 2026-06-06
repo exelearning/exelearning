@@ -68,16 +68,6 @@
   // ProseMirror bundle path (lazy loaded when needed)
   const getProseMirrorBundlePath = () => assetPath('/libs/prosemirror/prosemirror.bundle.js');
 
-  // Lexical bundle path (lazy loaded when needed)
-  const getLexicalBundlePath = () => assetPath('/libs/lexical/lexical.bundle.js');
-
-  // Lexical Playground bundle path (lazy loaded when needed)
-  const getLexicalPlaygroundBundlePath = () => assetPath('/libs/lexical/lexical-playground.bundle.js');
-
-  // React paths (lazy loaded when needed for Lexical Playground)
-  const getReactPath = () => assetPath('/libs/react/react.production.min.js');
-  const getReactDOMPath = () => assetPath('/libs/react/react-dom.production.min.js');
-
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   // Note: Paths starting with '/' are absolute and use assetPath() for versioning
@@ -125,6 +115,11 @@
 
   // Flatten for backwards compatibility (if needed elsewhere)
   const LOCAL_MODULES = LOCAL_MODULE_GROUPS.flat();
+
+  // In-flight ProseMirror load, shared across concurrent callers so multiple
+  // collaborative iDevices (or the main + feedback editors) don't race on the
+  // same <script> tag and spuriously fail with "bundle failed to load".
+  let proseMirrorLoadingPromise = null;
 
   /**
    * Load a script dynamically
@@ -333,9 +328,6 @@
         yjsAvailable: isYjsLoaded(),
         modulesAvailable: areModulesLoaded(),
         prosemirrorAvailable: isProseMirrorLoaded(),
-        lexicalAvailable: isLexicalLoaded(),
-        lexicalPlaygroundAvailable: isLexicalPlaygroundLoaded(),
-        reactAvailable: isReactLoaded(),
       };
     },
 
@@ -344,126 +336,53 @@
      * @returns {Promise<void>}
      */
     async loadProseMirror() {
-      if (isProseMirrorLoaded()) {
-        Logger.log('[YjsLoader] ProseMirror already loaded');
+      if (isProseMirrorLoaded() && window.ProseMirrorEditor) {
         return;
       }
 
-      Logger.log('[YjsLoader] Loading ProseMirror bundle...');
-      await loadScript(getProseMirrorBundlePath());
+      // Reuse an in-flight load so concurrent callers share a single load and
+      // don't race on the bundle <script> tag.
+      if (!proseMirrorLoadingPromise) {
+        proseMirrorLoadingPromise = (async () => {
+          Logger.log('[YjsLoader] Loading ProseMirror bundle...');
+          await loadScript(getProseMirrorBundlePath());
 
-      if (!isProseMirrorLoaded()) {
-        throw new Error('ProseMirror bundle failed to load');
+          if (!isProseMirrorLoaded()) {
+            throw new Error('ProseMirror bundle failed to load');
+          }
+
+          // Load ProseMirror integration modules
+          const prosemirrorBasePath = assetPath('/app/prosemirror');
+          // ProseMirrorIcons must load first (provides SVG icons for toolbar)
+          const prosemirrorModulesSequential = [
+            'ProseMirrorIcons.js',     // TinyMCE SVG icons (must load first)
+          ];
+          const prosemirrorModulesParallel = [
+            'ProseMirrorSchema.js',
+            'ProseMirrorEditor.js',
+            'ProseMirrorToolbar.js',
+            'YjsProseMirrorBinding.js',
+          ];
+
+          // Load CSS and icons first
+          await Promise.all([
+            loadCSS(`${prosemirrorBasePath}/prosemirror.css`),
+            loadScriptsSequentially(prosemirrorModulesSequential.map(m => `${prosemirrorBasePath}/${m}`)),
+          ]);
+
+          // Then load remaining modules in parallel
+          await loadScriptsParallel(prosemirrorModulesParallel.map(m => `${prosemirrorBasePath}/${m}`));
+
+          Logger.log('[YjsLoader] ProseMirror loaded successfully');
+        })();
+
+        // Allow a retry if the load fails
+        proseMirrorLoadingPromise.catch(() => {
+          proseMirrorLoadingPromise = null;
+        });
       }
 
-      // Load ProseMirror integration modules
-      const prosemirrorBasePath = assetPath('/app/prosemirror');
-      // ProseMirrorIcons must load first (provides SVG icons for toolbar)
-      const prosemirrorModulesSequential = [
-        'ProseMirrorIcons.js',     // TinyMCE SVG icons (must load first)
-      ];
-      const prosemirrorModulesParallel = [
-        'ProseMirrorSchema.js',
-        'ProseMirrorEditor.js',
-        'ProseMirrorToolbar.js',
-        'YjsProseMirrorBinding.js',
-      ];
-
-      // Load CSS and icons first
-      await Promise.all([
-        loadCSS(`${prosemirrorBasePath}/prosemirror.css`),
-        loadScriptsSequentially(prosemirrorModulesSequential.map(m => `${prosemirrorBasePath}/${m}`)),
-      ]);
-
-      // Then load remaining modules in parallel
-      await loadScriptsParallel(prosemirrorModulesParallel.map(m => `${prosemirrorBasePath}/${m}`));
-
-      Logger.log('[YjsLoader] ProseMirror loaded successfully');
-    },
-
-    /**
-     * Load Lexical bundle (lazy loading)
-     * @returns {Promise<void>}
-     */
-    async loadLexical() {
-      if (isLexicalLoaded()) {
-        Logger.log('[YjsLoader] Lexical already loaded');
-        return;
-      }
-
-      Logger.log('[YjsLoader] Loading Lexical bundle...');
-      await loadScript(getLexicalBundlePath());
-
-      if (!isLexicalLoaded()) {
-        throw new Error('Lexical bundle failed to load');
-      }
-
-      // Load Lexical integration modules
-      const lexicalBasePath = assetPath('/app/lexical');
-      // EditorIcons must load first (provides SVG icons for toolbar)
-      // LexicalNodes, ImageResizer, TableResizer must load before LexicalEditor (dependencies)
-      const lexicalModulesSequential = [
-        'EditorIcons.js',      // TinyMCE SVG icons (must load first)
-        'LexicalNodes.js',     // Custom nodes (before LexicalEditor)
-        'ImageResizer.js',     // Image resize (before LexicalEditor)
-        'TableResizer.js',     // Table resize (before LexicalEditor)
-      ];
-      const lexicalModulesParallel = [
-        'LexicalEditor.js',
-        'LexicalToolbar.js',
-        'YjsLexicalBinding.js',
-      ];
-
-      // Load CSS and icons first
-      await Promise.all([
-        loadCSS(`${lexicalBasePath}/lexical.css`),
-        loadScriptsSequentially(lexicalModulesSequential.map(m => `${lexicalBasePath}/${m}`)),
-      ]);
-
-      // Then load remaining modules in parallel
-      await loadScriptsParallel(lexicalModulesParallel.map(m => `${lexicalBasePath}/${m}`));
-
-      Logger.log('[YjsLoader] Lexical loaded successfully');
-    },
-
-    /**
-     * Load Lexical Playground (React-based) bundle (lazy loading)
-     * Includes full playground with all plugins: toolbar, floating toolbar, insert menu, etc.
-     * @returns {Promise<void>}
-     */
-    async loadLexicalPlayground() {
-      if (isLexicalPlaygroundLoaded()) {
-        Logger.log('[YjsLoader] Lexical Playground already loaded');
-        return;
-      }
-
-      // First, load React if not already present
-      if (!isReactLoaded()) {
-        Logger.log('[YjsLoader] Loading React...');
-        await loadScript(getReactPath());
-        await loadScript(getReactDOMPath());
-
-        if (!isReactLoaded()) {
-          throw new Error('React failed to load');
-        }
-        Logger.log('[YjsLoader] React loaded');
-      }
-
-      // Also need Yjs loaded for collaboration
-      if (!isYjsLoaded()) {
-        Logger.log('[YjsLoader] Loading Yjs dependencies for Lexical Playground...');
-        await loadScriptsSequentially(getYJS_DEPENDENCIES());
-      }
-
-      Logger.log('[YjsLoader] Loading Lexical Playground bundle...');
-      await loadScript(getLexicalPlaygroundBundlePath());
-
-      if (!isLexicalPlaygroundLoaded()) {
-        throw new Error('Lexical Playground bundle failed to load');
-      }
-
-      Logger.log('[YjsLoader] Lexical Playground loaded successfully');
-      return window.LexicalPlayground;
+      return proseMirrorLoadingPromise;
     },
   };
 
@@ -473,30 +392,6 @@
    */
   function isProseMirrorLoaded() {
     return typeof window.ProseMirrorBundle !== 'undefined';
-  }
-
-  /**
-   * Check if Lexical is loaded
-   * @returns {boolean}
-   */
-  function isLexicalLoaded() {
-    return typeof window.LexicalBundle !== 'undefined';
-  }
-
-  /**
-   * Check if Lexical Playground is loaded
-   * @returns {boolean}
-   */
-  function isLexicalPlaygroundLoaded() {
-    return typeof window.LexicalPlayground !== 'undefined';
-  }
-
-  /**
-   * Check if React is loaded
-   * @returns {boolean}
-   */
-  function isReactLoaded() {
-    return typeof window.React !== 'undefined' && typeof window.ReactDOM !== 'undefined';
   }
 
   // Auto-load if data attribute is present

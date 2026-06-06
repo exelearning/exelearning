@@ -1,5 +1,5 @@
 /**
- * Unit tests for collaborative-editing iDevice - Edition Mode
+ * Unit tests for collaborative-editing iDevice - Edition Mode (ProseMirror)
  */
 
 import { readFileSync } from 'fs';
@@ -18,6 +18,23 @@ function loadIdevice(code) {
 	return global.$exeDevice;
 }
 
+/**
+ * Build a fresh mock ProseMirror editor.
+ */
+function makeMockEditor(html = '<p>Test content</p>', empty = false) {
+	return {
+		schema: { nodes: { image: {}, video: { create: vi.fn(() => ({})) }, audio: { create: vi.fn(() => ({})) } } },
+		view: { state: { tr: { replaceSelectionWith: vi.fn(() => ({})) } }, dispatch: vi.fn() },
+		getHTML: vi.fn().mockReturnValue(html),
+		setHTML: vi.fn(),
+		isEmpty: vi.fn().mockReturnValue(empty),
+		isDestroyed: vi.fn().mockReturnValue(false),
+		insertImage: vi.fn(),
+		destroy: vi.fn(),
+		focus: vi.fn(),
+	};
+}
+
 describe('collaborative-editing iDevice - Edition', () => {
 	let $exeDevice;
 	let mockElement;
@@ -34,47 +51,23 @@ describe('collaborative-editing iDevice - Edition', () => {
 		mockElement.setAttribute('idevice-id', 'test-collab-123');
 		document.body.appendChild(mockElement);
 
-		// Mock YjsLoader
+		// Mock YjsLoader (ProseMirror loader)
 		global.window.YjsLoader = {
-			loadLexical: vi.fn().mockResolvedValue(undefined),
+			loadProseMirror: vi.fn().mockResolvedValue(undefined),
 		};
 
-		// Mock LexicalBundle
-		global.window.LexicalBundle = {
-			createEditor: vi.fn(),
-			$getRoot: vi.fn(),
-			$getSelection: vi.fn(),
-			$insertNodes: vi.fn(),
-		};
-
-		// Mock LexicalEditor - use class for proper constructor behavior
-		global.window.LexicalEditor = class MockLexicalEditor {
+		// Mock ProseMirrorEditor class
+		global.window.ProseMirrorEditor = class MockProseMirrorEditor {
 			constructor() {
-				this.getHTML = vi.fn().mockReturnValue('<p>Test content</p>');
-				this.setHTML = vi.fn();
-				this.isEmpty = vi.fn().mockReturnValue(false);
-				this.isDestroyed = vi.fn().mockReturnValue(false);
-				this.destroy = vi.fn();
-				this.focus = vi.fn();
-				this.getEditor = vi.fn().mockReturnValue({});
-				this.update = vi.fn();
-				this.insertImage = vi.fn();
+				Object.assign(this, makeMockEditor());
 			}
 		};
 
-		// Mock LexicalToolbar - use class for proper constructor behavior
-		global.window.LexicalToolbar = class MockLexicalToolbar {
+		// Mock ProseMirrorToolbar class
+		global.window.ProseMirrorToolbar = class MockProseMirrorToolbar {
 			constructor() {
 				this.destroy = vi.fn();
 			}
-		};
-
-		// Mock LexicalNodes
-		global.window.LexicalNodes = {
-			$createImageNode: vi.fn(),
-			$createVideoNode: vi.fn(),
-			$createAudioNode: vi.fn(),
-			$createIframeNode: vi.fn(),
 		};
 
 		// Read and execute the iDevice file
@@ -87,6 +80,10 @@ describe('collaborative-editing iDevice - Edition', () => {
 
 	afterEach(() => {
 		mockElement = null;
+		delete global.window.ProseMirrorEditor;
+		delete global.window.ProseMirrorToolbar;
+		delete global.window.YjsProseMirrorBinding;
+		delete global.window.Y;
 	});
 
 	describe('i18n and configuration', () => {
@@ -135,6 +132,12 @@ describe('collaborative-editing iDevice - Edition', () => {
 			expect(editor).toBeTruthy();
 		});
 
+		it('creates the main editor toolbar host', () => {
+			$exeDevice.init(mockElement, {});
+			const toolbar = mockElement.querySelector('#collabMainEditorToolbar');
+			expect(toolbar).toBeTruthy();
+		});
+
 		it('creates the feedback fieldset', () => {
 			$exeDevice.init(mockElement, {});
 			const fieldset = mockElement.querySelector('#collabFeedbackFieldset');
@@ -145,6 +148,14 @@ describe('collaborative-editing iDevice - Edition', () => {
 			$exeDevice.init(mockElement, {});
 			const input = mockElement.querySelector('#collabFeedbackInput');
 			expect(input).toBeTruthy();
+		});
+	});
+
+	describe('editorHostHtml', () => {
+		it('returns toolbar + editor host markup for the given id', () => {
+			const html = $exeDevice.editorHostHtml('myEditor');
+			expect(html).toContain('id="myEditorToolbar"');
+			expect(html).toContain('id="myEditor"');
 		});
 	});
 
@@ -191,52 +202,66 @@ describe('collaborative-editing iDevice - Edition', () => {
 	describe('checkFormValues', () => {
 		it('returns false if main editor is null', () => {
 			$exeDevice.init(mockElement, {});
-			// mainEditor is null without async initialization
+			$exeDevice.mainEditor = null;
 			const result = $exeDevice.checkFormValues();
 			expect(result).toBe(false);
 		});
 
 		it('returns true if main editor has content', () => {
 			$exeDevice.init(mockElement, {});
-			// Manually set up editor mock
-			$exeDevice.mainEditor = {
-				isEmpty: vi.fn().mockReturnValue(false),
-				getHTML: vi.fn().mockReturnValue('<p>Test</p>'),
-			};
-
+			$exeDevice.mainEditor = makeMockEditor('<p>Test</p>', false);
 			const result = $exeDevice.checkFormValues();
 			expect(result).toBe(true);
+		});
+	});
+
+	describe('readEditorHtml', () => {
+		it('returns empty string when editor is null', () => {
+			$exeDevice.init(mockElement, {});
+			expect($exeDevice.readEditorHtml(null, null)).toBe('');
+		});
+
+		it('returns editor HTML when no binding present', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor('<p>raw</p>');
+			expect($exeDevice.readEditorHtml(editor, null)).toBe('<p>raw</p>');
+		});
+
+		it('converts blob URLs to asset URLs via the binding', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor('<p>blob</p>');
+			const binding = {
+				convertBlobUrlsToAssetUrls: vi.fn().mockReturnValue('<p>asset</p>'),
+			};
+			expect($exeDevice.readEditorHtml(editor, binding)).toBe('<p>asset</p>');
+			expect(binding.convertBlobUrlsToAssetUrls).toHaveBeenCalledWith('<p>blob</p>');
 		});
 	});
 
 	describe('save', () => {
 		it('returns object with htmlContent when editor exists', () => {
 			$exeDevice.init(mockElement, {});
-			// Manually set up editor mocks
-			$exeDevice.mainEditor = {
-				isEmpty: vi.fn().mockReturnValue(false),
-				getHTML: vi.fn().mockReturnValue('<p>Main content</p>'),
-			};
-			$exeDevice.feedbackEditor = {
-				isEmpty: vi.fn().mockReturnValue(true),
-				getHTML: vi.fn().mockReturnValue(''),
-			};
+			$exeDevice.mainEditor = makeMockEditor('<p>Main content</p>', false);
+			$exeDevice.feedbackEditor = makeMockEditor('', true);
 
 			const result = $exeDevice.save();
 			expect(result).toHaveProperty('htmlContent');
 			expect(result.htmlContent).toBe('<p>Main content</p>');
 		});
 
+		it('clears feedbackContent when the feedback editor is empty', () => {
+			$exeDevice.init(mockElement, {});
+			$exeDevice.mainEditor = makeMockEditor('<p>Test</p>', false);
+			$exeDevice.feedbackEditor = makeMockEditor('<p>ignored</p>', true);
+
+			const result = $exeDevice.save();
+			expect(result.feedbackContent).toBe('');
+		});
+
 		it('returns object with feedbackButtonText', () => {
 			$exeDevice.init(mockElement, {});
-			$exeDevice.mainEditor = {
-				isEmpty: vi.fn().mockReturnValue(false),
-				getHTML: vi.fn().mockReturnValue('<p>Test</p>'),
-			};
-			$exeDevice.feedbackEditor = {
-				isEmpty: vi.fn().mockReturnValue(true),
-				getHTML: vi.fn().mockReturnValue(''),
-			};
+			$exeDevice.mainEditor = makeMockEditor('<p>Test</p>', false);
+			$exeDevice.feedbackEditor = makeMockEditor('', true);
 
 			const result = $exeDevice.save();
 			expect(result).toHaveProperty('feedbackButtonText');
@@ -244,14 +269,8 @@ describe('collaborative-editing iDevice - Edition', () => {
 
 		it('returns object with ideviceId', () => {
 			$exeDevice.init(mockElement, {});
-			$exeDevice.mainEditor = {
-				isEmpty: vi.fn().mockReturnValue(false),
-				getHTML: vi.fn().mockReturnValue('<p>Test</p>'),
-			};
-			$exeDevice.feedbackEditor = {
-				isEmpty: vi.fn().mockReturnValue(true),
-				getHTML: vi.fn().mockReturnValue(''),
-			};
+			$exeDevice.mainEditor = makeMockEditor('<p>Test</p>', false);
+			$exeDevice.feedbackEditor = makeMockEditor('', true);
 
 			const result = $exeDevice.save();
 			expect(result).toHaveProperty('ideviceId');
@@ -262,31 +281,87 @@ describe('collaborative-editing iDevice - Edition', () => {
 	describe('getDataJson', () => {
 		it('returns empty object when checkFormValues fails', () => {
 			$exeDevice.init(mockElement, {});
-			// mainEditor is null, so checkFormValues returns false
+			$exeDevice.mainEditor = null;
 			const result = $exeDevice.getDataJson();
 			expect(result).toEqual({});
 		});
 
 		it('returns save() result when checkFormValues passes', () => {
 			$exeDevice.init(mockElement, {});
-			$exeDevice.mainEditor = {
-				isEmpty: vi.fn().mockReturnValue(false),
-				getHTML: vi.fn().mockReturnValue('<p>Test</p>'),
-			};
-			$exeDevice.feedbackEditor = {
-				isEmpty: vi.fn().mockReturnValue(true),
-				getHTML: vi.fn().mockReturnValue(''),
-			};
+			$exeDevice.mainEditor = makeMockEditor('<p>Test</p>', false);
+			$exeDevice.feedbackEditor = makeMockEditor('', true);
 
 			const result = $exeDevice.getDataJson();
 			expect(result).toHaveProperty('htmlContent');
 		});
 	});
 
+	describe('insertMedia', () => {
+		it('inserts an image via editor.insertImage', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor();
+			$exeDevice.insertMedia(editor, 'image', { src: 'blob:abc', alt: 'pic' });
+			expect(editor.insertImage).toHaveBeenCalledWith({ src: 'blob:abc', alt: 'pic' });
+		});
+
+		it('inserts a video node for media type', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor();
+			$exeDevice.insertMedia(editor, 'media', { src: 'blob:vid' });
+			expect(editor.schema.nodes.video.create).toHaveBeenCalledWith({ src: 'blob:vid' });
+			expect(editor.view.dispatch).toHaveBeenCalled();
+		});
+
+		it('inserts an audio node for audio type', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor();
+			$exeDevice.insertMedia(editor, 'audio', { src: 'blob:aud' });
+			expect(editor.schema.nodes.audio.create).toHaveBeenCalledWith({ src: 'blob:aud' });
+		});
+	});
+
+	describe('handleMediaLibrary', () => {
+		it('does nothing when the editor is missing', () => {
+			$exeDevice.init(mockElement, {});
+			$exeDevice.mainEditor = null;
+			expect(() => $exeDevice.handleMediaLibrary('main', 'image')).not.toThrow();
+		});
+
+		it('warns when the media library is not available', () => {
+			$exeDevice.init(mockElement, {});
+			$exeDevice.mainEditor = makeMockEditor();
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			// Ensure no filemanager
+			if (window.eXeLearning?.app?.modals) {
+				window.eXeLearning.app.modals.filemanager = undefined;
+			}
+			$exeDevice.handleMediaLibrary('main', 'image');
+			expect(warnSpy).toHaveBeenCalled();
+			warnSpy.mockRestore();
+		});
+	});
+
+	describe('bindEditor', () => {
+		it('seeds the editor with saved HTML when Yjs is not enabled', () => {
+			$exeDevice.init(mockElement, {});
+			const editor = makeMockEditor();
+			const binding = $exeDevice.bindEditor(editor, 'main', 'htmlContent', '<p>saved</p>');
+			expect(binding).toBeNull();
+			expect(editor.setHTML).toHaveBeenCalledWith('<p>saved</p>');
+		});
+	});
+
+	describe('getUserColor', () => {
+		it('returns a hex color string', () => {
+			$exeDevice.init(mockElement, {});
+			const color = $exeDevice.getUserColor();
+			expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+		});
+	});
+
 	describe('extractYjsIds', () => {
 		it('extracts component ID from DOM', () => {
 			// Create DOM structure with IDs
-			// The new extractYjsIds looks for idevice_node class and id attribute
 			const pageEl = document.createElement('div');
 			pageEl.setAttribute('nav-id', 'page-123');
 
@@ -328,17 +403,19 @@ describe('collaborative-editing iDevice - Edition', () => {
 	});
 
 	describe('destroy', () => {
-		it('destroys editors and bindings when they exist', () => {
+		it('destroys editors, toolbars and bindings when they exist', () => {
 			$exeDevice.init(mockElement, {});
 
 			// Manually set up mocks
 			const mainEditorDestroy = vi.fn();
 			const mainToolbarDestroy = vi.fn();
+			const mainBindingDestroy = vi.fn();
 			const feedbackEditorDestroy = vi.fn();
 			const feedbackToolbarDestroy = vi.fn();
 
 			$exeDevice.mainEditor = { destroy: mainEditorDestroy };
 			$exeDevice.mainToolbar = { destroy: mainToolbarDestroy };
+			$exeDevice.mainBinding = { destroy: mainBindingDestroy };
 			$exeDevice.feedbackEditor = { destroy: feedbackEditorDestroy };
 			$exeDevice.feedbackToolbar = { destroy: feedbackToolbarDestroy };
 
@@ -346,8 +423,10 @@ describe('collaborative-editing iDevice - Edition', () => {
 
 			expect(mainEditorDestroy).toHaveBeenCalled();
 			expect(mainToolbarDestroy).toHaveBeenCalled();
+			expect(mainBindingDestroy).toHaveBeenCalled();
 			expect($exeDevice.mainEditor).toBeNull();
 			expect($exeDevice.mainToolbar).toBeNull();
+			expect($exeDevice.mainBinding).toBeNull();
 		});
 
 		it('handles null editors gracefully', () => {

@@ -24,6 +24,6 @@
     <export-template-filename>collaborative-editing.html</export-template-filename>
     <author>eXeLearning</author>
     <license>AGPL-3.0</license>
-    <description>Collaborative rich text editor with real-time sync using Lexical</description>
+    <description>Collaborative rich text editor with real-time sync using ProseMirror</description>
     <downloadable>0</downloadable>
 </idevice>

@@ -430,6 +430,18 @@
 	outline: none;
 }
 
+/* The container already shows a focus highlight via :focus-within, so suppress
+   the app-wide global `:focus-visible` ring (border-radius + box-shadow) that
+   would otherwise draw a redundant inner box around the editable text when the
+   editor is focused via keyboard. */
+.prosemirror-editor:focus-visible,
+.prosemirror-editor .ProseMirror:focus,
+.prosemirror-editor .ProseMirror:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+}
+
 /* ProseMirror content styles */
 .prosemirror-editor .ProseMirror {
 	outline: none;
@@ -794,92 +806,10 @@
 }
 
 /* ============================================
-   Dark Mode Support
+   Note: the editor intentionally does NOT follow the OS dark color scheme.
+   It edits light document content inside eXeLearning's workarea, so it must
+   stay light regardless of `prefers-color-scheme`.
    ============================================ */
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--pm-toolbar-bg: #2d2d2d;
-		--pm-toolbar-border: #444;
-		--pm-button-hover: #3d3d3d;
-		--pm-button-active: #4d4d4d;
-		--pm-menu-bg: #2d2d2d;
-		--pm-text-color: #e0e0e0;
-		--pm-text-secondary: #999;
-	}
-
-	.prosemirror-editor-container {
-		background: #1e1e1e;
-		border-color: #444;
-	}
-
-	.prosemirror-editor {
-		color: #e0e0e0;
-		background: #1e1e1e;
-	}
-
-	.prosemirror-menubar {
-		background: linear-gradient(to bottom, #3d3d3d 0%, #2d2d2d 100%);
-		border-color: #444;
-	}
-
-	.prosemirror-toolbar-row {
-		border-color: #444;
-	}
-
-	.prosemirror-menu-dropdown,
-	.prosemirror-submenu,
-	.prosemirror-select-dropdown {
-		background: #2d2d2d;
-		border-color: #444;
-	}
-
-	.prosemirror-menu-item:hover,
-	.prosemirror-select-option:hover {
-		background: #3d3d3d;
-	}
-
-	.prosemirror-menu-separator {
-		background: #444;
-	}
-
-	.prosemirror-select-btn {
-		background: #3d3d3d;
-		border-color: #555;
-		color: #e0e0e0;
-	}
-
-	.prosemirror-toolbar-btn.tox-tbtn--enabled {
-		background: #1a365d;
-		border-color: #4285f4;
-	}
-
-	.prosemirror-color-picker {
-		background: #2d2d2d;
-		border-color: #444;
-	}
-
-	.color-picker-custom {
-		border-color: #444;
-	}
-
-	.prosemirror-editor .ProseMirror pre {
-		background: #2d2d2d;
-	}
-
-	.prosemirror-editor .ProseMirror code {
-		background: #3d3d3d;
-	}
-
-	.prosemirror-editor .ProseMirror th {
-		background: #2d2d2d;
-	}
-
-	.prosemirror-editor .ProseMirror th,
-	.prosemirror-editor .ProseMirror td {
-		border-color: #444;
-	}
-}
 
 /* ============================================
    Legacy toolbar class support

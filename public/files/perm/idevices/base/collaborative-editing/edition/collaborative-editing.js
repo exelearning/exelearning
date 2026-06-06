@@ -1,8 +1,9 @@
 /**
  * Collaborative Editing iDevice - Edition Mode
  *
- * Uses Lexical Playground (React) with @lexical/yjs for real-time collaborative editing.
- * Features the full playground toolbar, insert menu, floating toolbar, etc.
+ * Uses ProseMirror with y-prosemirror for real-time collaborative editing.
+ * Features the full ProseMirror toolbar (menubar + button rows) and the same
+ * Media Library integration as the rest of the application.
  */
 /* global $exeDevice:true */
 var $exeDevice = {
@@ -23,14 +24,18 @@ var $exeDevice = {
 	// Default values
 	feedbackInputValue: c_('Show Feedback'),
 
-	// Editor handles (React-based Lexical Playground)
+	// Editor handles (ProseMirror)
 	mainEditor: null,
 	feedbackEditor: null,
+	mainToolbar: null,
+	feedbackToolbar: null,
+	mainBinding: null,
+	feedbackBinding: null,
 
 	// State
 	ideviceBody: null,
 	idevicePreviousData: null,
-	_lexicalPlaygroundLoaded: false,
+	_proseMirrorLoaded: false,
 	_clickOutsideHandler: null,
 	_autoSaveTimeout: null,
 	_ideviceNode: null,
@@ -47,6 +52,24 @@ var $exeDevice = {
 	},
 
 	/**
+	 * Build the toolbar + editor host markup for a single editor
+	 * @param {string} editorId - Base id for the editor host
+	 * @returns {string}
+	 */
+	editorHostHtml: function (editorId) {
+		// Class names must match public/app/prosemirror/prosemirror.css:
+		// `.prosemirror-editor-container` (framed wrapper) and `.prosemirror-editor`
+		// (the editable host that ProseMirror mounts `.ProseMirror` into and that
+		// provides the min-height needed to click/type).
+		return `
+			<div class="prosemirror-editor-container">
+				<div id="${editorId}Toolbar" class="prosemirror-toolbar-host"></div>
+				<div id="${editorId}" class="prosemirror-editor"></div>
+			</div>
+		`;
+	},
+
+	/**
 	 * Create the editing form
 	 */
 	createForm: function () {
@@ -55,7 +78,7 @@ var $exeDevice = {
 				<!-- Main Content Section -->
 				<div class="exe-field">
 					<label for="${this.mainEditorId}">${this.textareaTitle}</label>
-					<div id="${this.mainEditorId}" class="lexical-playground-container"></div>
+					${this.editorHostHtml(this.mainEditorId)}
 				</div>
 
 				<!-- Feedback Section (collapsible) -->
@@ -71,7 +94,7 @@ var $exeDevice = {
 						</div>
 						<div class="exe-field">
 							<label>${this.feedbackTitle}</label>
-							<div id="${this.feedbackEditorId}" class="lexical-playground-container"></div>
+							${this.editorHostHtml(this.feedbackEditorId)}
 						</div>
 					</div>
 				</fieldset>
@@ -80,7 +103,7 @@ var $exeDevice = {
 
 		this.ideviceBody.innerHTML = html;
 		this.setBehaviour();
-		this.initLexicalEditors();
+		this.initEditors();
 	},
 
 	/**
@@ -132,7 +155,7 @@ var $exeDevice = {
 			// Check if click is outside the iDevice container
 			if (!ideviceContainer.contains(event.target)) {
 				// Don't auto-save if clicking on modals or dropdowns
-				if (event.target.closest('.modal, .dropdown-menu, .tox-dialog, .lexical-select-dropdown')) {
+				if (event.target.closest('.modal, .dropdown-menu, .tox-dialog, .prosemirror-menu')) {
 					return;
 				}
 				this.triggerAutoSave();
@@ -194,138 +217,147 @@ var $exeDevice = {
 	},
 
 	/**
-	 * Initialize Lexical Playground editors (React-based)
+	 * Initialize the ProseMirror editors (main + feedback)
 	 */
-	initLexicalEditors: async function () {
+	initEditors: async function () {
+		// Guard against double initialization on the same iDevice instance
+		if (this.mainEditor || this.feedbackEditor) {
+			return;
+		}
 		try {
-			// Load Lexical Playground if not already loaded
-			await this.ensureLexicalPlaygroundLoaded();
-
-			const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+			// Load the ProseMirror bundle and integration modules
+			await this.ensureProseMirrorLoaded();
 
 			// Create main editor
-			const mainContainer = document.getElementById(this.mainEditorId);
-			if (mainContainer) {
-				this.mainEditor = window.LexicalPlayground.mount(mainContainer, {
-					editorId: this.mainEditorId,
-					placeholder: this.placeholderText,
-					initialHTML: this.idevicePreviousData.htmlContent || '',
-					editable: true,
-					onMediaLibraryOpen: this.handleMediaLibrary.bind(this, 'main'),
-					assetManager: assetManager,
-				});
-
-				// Bind to Yjs
-				this.bindMainEditorToYjs();
+			this.mainEditor = this.createEditor(this.mainEditorId, this.placeholderText, 'main');
+			if (this.mainEditor) {
+				this.mainBinding = this.bindEditor(this.mainEditor, 'main', 'htmlContent', this.idevicePreviousData.htmlContent);
 			}
 
 			// Create feedback editor
-			const feedbackContainer = document.getElementById(this.feedbackEditorId);
-			if (feedbackContainer) {
-				this.feedbackEditor = window.LexicalPlayground.mount(feedbackContainer, {
-					editorId: this.feedbackEditorId,
-					placeholder: _('Enter feedback...'),
-					initialHTML: this.idevicePreviousData.feedbackContent || '',
-					editable: true,
-					onMediaLibraryOpen: this.handleMediaLibrary.bind(this, 'feedback'),
-					assetManager: assetManager,
-				});
-
-				// Bind to Yjs
-				this.bindFeedbackEditorToYjs();
+			this.feedbackEditor = this.createEditor(this.feedbackEditorId, _('Enter feedback...'), 'feedback');
+			if (this.feedbackEditor) {
+				this.feedbackBinding = this.bindEditor(this.feedbackEditor, 'feedback', 'feedbackContent', this.idevicePreviousData.feedbackContent);
 			}
 
-			// Load previous values
+			// Load previous values (feedback button text, fieldset state)
 			this.loadPreviousValues();
 		} catch (error) {
-			console.error('[CollaborativeEditing] Failed to initialize Lexical Playground:', error);
+			console.error('[CollaborativeEditing] Failed to initialize ProseMirror editor:', error);
 			eXe.app.alert(_('Failed to initialize collaborative editor'));
 		}
 	},
 
 	/**
-	 * Ensure Lexical Playground (React) is loaded
+	 * Ensure the ProseMirror bundle and integration modules are loaded
 	 */
-	ensureLexicalPlaygroundLoaded: async function () {
-		if (this._lexicalPlaygroundLoaded && window.LexicalPlayground) {
+	ensureProseMirrorLoaded: async function () {
+		if (this._proseMirrorLoaded && window.ProseMirrorEditor) {
 			return;
 		}
 
-		if (window.YjsLoader) {
-			await window.YjsLoader.loadLexicalPlayground();
-			this._lexicalPlaygroundLoaded = true;
-		} else {
+		if (!window.YjsLoader) {
 			throw new Error('YjsLoader not available');
 		}
+
+		await window.YjsLoader.loadProseMirror();
+		this._proseMirrorLoaded = true;
 	},
 
 	/**
-	 * Bind main editor to Yjs
+	 * Create a ProseMirror editor and its toolbar for the given host
+	 * @param {string} editorId - Editor host element id
+	 * @param {string} placeholder - Placeholder text
+	 * @param {string} which - 'main' or 'feedback'
+	 * @returns {ProseMirrorEditor|null}
 	 */
-	bindMainEditorToYjs: function () {
-		const project = window.eXeLearning?.app?.project;
-		const Logger = window.Logger || console;
+	createEditor: function (editorId, placeholder, which) {
+		const editorHost = document.getElementById(editorId);
+		const toolbarHost = document.getElementById(`${editorId}Toolbar`);
+		if (!editorHost || !window.ProseMirrorEditor) {
+			return null;
+		}
 
-		Logger.log('[CollaborativeEditing] bindMainEditorToYjs called', {
-			hasProject: !!project,
-			yjsEnabled: project?._yjsEnabled,
-			hasBridge: !!project?._yjsBridge,
-			hasMainEditor: !!this.mainEditor,
+		const editor = new window.ProseMirrorEditor({
+			container: editorHost,
+			placeholder: placeholder,
+			editable: true,
 		});
 
-		if (!project?._yjsEnabled || !project?._yjsBridge?.documentManager?.wsProvider) {
-			Logger.warn('[CollaborativeEditing] Yjs not enabled or WebSocket provider not available');
-			return;
+		// Create the toolbar wired to the Media Library
+		if (toolbarHost && window.ProseMirrorToolbar) {
+			const toolbar = new window.ProseMirrorToolbar({
+				editor: editor,
+				container: toolbarHost,
+				onMediaLibrary: (mediaType) => this.handleMediaLibrary(which, mediaType),
+			});
+			if (which === 'main') {
+				this.mainToolbar = toolbar;
+			} else {
+				this.feedbackToolbar = toolbar;
+			}
 		}
 
-		const ids = this.extractYjsIds();
-		Logger.log('[CollaborativeEditing] Extracted IDs:', ids);
-		if (!ids) {
-			Logger.warn('[CollaborativeEditing] Could not extract Yjs IDs');
-			return;
-		}
-
-		// Use the new setYjsBinding API from the React editor
-		if (this.mainEditor && typeof this.mainEditor.setYjsBinding === 'function') {
-			const userId = project._yjsBridge.app?.user?.id;
-			this.mainEditor.setYjsBinding({
-				provider: project._yjsBridge.documentManager.wsProvider,
-				docId: `${ids.componentId}-htmlContent`,
-				userId: String(userId || 'unknown'),
-				userName: project._yjsBridge.app?.user?.name || 'User',
-				userColor: this.getUserColor(),
-			});
-			Logger.log('[CollaborativeEditing] Main editor Yjs binding set:', {
-				docId: `${ids.componentId}-htmlContent`,
-			});
-		}
+		return editor;
 	},
 
 	/**
-	 * Bind feedback editor to Yjs
+	 * Bind an editor to Yjs for real-time collaboration.
+	 *
+	 * The content lives in a top-level Y.XmlFragment keyed by
+	 * `${componentId}-${fieldName}` (mirroring how the previous Lexical editor
+	 * keyed a top-level Y.XmlText), which is what y-prosemirror's ySyncPlugin
+	 * expects. Falls back to seeding the saved HTML when Yjs is not enabled.
+	 *
+	 * @param {ProseMirrorEditor} editor - The editor instance
+	 * @param {string} which - 'main' or 'feedback' (unused, kept for symmetry)
+	 * @param {string} fieldName - Field to bind ('htmlContent'|'feedbackContent')
+	 * @param {string} fallbackHtml - Saved HTML to seed
+	 * @returns {YjsProseMirrorBinding|null}
 	 */
-	bindFeedbackEditorToYjs: function () {
+	bindEditor: function (editor, which, fieldName, fallbackHtml) {
+		const bridge = window.eXeLearning?.app?.project?._yjsBridge;
 		const project = window.eXeLearning?.app?.project;
-		if (!project?._yjsEnabled || !project?._yjsBridge?.documentManager?.wsProvider) {
-			return;
+		const documentManager = bridge?.documentManager;
+		const ydoc = documentManager?.ydoc || documentManager?.getDoc?.();
+		const Y = window.Y;
+
+		const yjsReady =
+			project?._yjsEnabled && documentManager?.wsProvider && ydoc && Y && window.YjsProseMirrorBinding;
+
+		if (yjsReady) {
+			const ids = this.extractYjsIds();
+			if (ids) {
+				// Top-level shared type for this editor's content
+				const docId = `${ids.componentId}-${fieldName}`;
+				const yXmlFragment = ydoc.get(docId, Y.XmlFragment);
+
+				const binding = new window.YjsProseMirrorBinding(editor, yXmlFragment, {
+					awareness: documentManager.awareness,
+					userId: String(bridge.app?.user?.id || 'unknown'),
+					userName: bridge.app?.user?.name || 'User',
+					userColor: this.getUserColor(),
+				});
+
+				// Seed a brand-new (empty) fragment with the saved HTML so the first
+				// editor to open the document populates the shared content.
+				if (fallbackHtml && yXmlFragment.length === 0) {
+					setTimeout(() => {
+						if (!editor.isDestroyed() && yXmlFragment.length === 0) {
+							editor.setHTML(fallbackHtml);
+						}
+					}, 0);
+				}
+
+				return binding;
+			}
 		}
 
-		const ids = this.extractYjsIds();
-		if (!ids) {
-			return;
+		// Non-collaborative fallback: seed the editor with saved content
+		if (fallbackHtml && typeof editor.setHTML === 'function') {
+			editor.setHTML(fallbackHtml);
 		}
-
-		// Use the new setYjsBinding API from the React editor
-		if (this.feedbackEditor && typeof this.feedbackEditor.setYjsBinding === 'function') {
-			const userId = project._yjsBridge.app?.user?.id;
-			this.feedbackEditor.setYjsBinding({
-				provider: project._yjsBridge.documentManager.wsProvider,
-				docId: `${ids.componentId}-feedbackContent`,
-				userId: String(userId || 'unknown'),
-				userName: project._yjsBridge.app?.user?.name || 'User',
-				userColor: this.getUserColor(),
-			});
-		}
+		return null;
 	},
 
 	/**
@@ -369,7 +401,7 @@ var $exeDevice = {
 			return null;
 		}
 
-		// pageId and blockId are optional - bindLexical can find the component by ID alone
+		// pageId and blockId are optional - the binding can find the component by ID alone
 		// Try to find them anyway for completeness
 		let blockElement = element;
 		while (blockElement && !blockElement.classList?.contains('block-content')) {
@@ -387,61 +419,63 @@ var $exeDevice = {
 	},
 
 	/**
-	 * Handle Media Library callback
-	 * Called from the React editor's onMediaLibraryOpen callback
-	 * @param {string} editorType - 'main' or 'feedback'
-	 * @param {string} mediaType - 'image', 'video', 'audio', or 'file'
+	 * Handle Media Library callback from the ProseMirror toolbar.
+	 * @param {string} which - 'main' or 'feedback'
+	 * @param {string} mediaType - 'image', 'media' (video/iframe), or 'audio'
 	 */
-	handleMediaLibrary: function (editorType, mediaType) {
-		const editorHandle = editorType === 'main' ? this.mainEditor : this.feedbackEditor;
-		if (!editorHandle) return;
+	handleMediaLibrary: function (which, mediaType) {
+		const editor = which === 'main' ? this.mainEditor : this.feedbackEditor;
+		if (!editor) return;
 
 		// Open Media Library modal
 		const filemanager = window.eXeLearning?.app?.modals?.filemanager;
-		if (filemanager) {
-			filemanager.show({
-				onSelect: (result) => {
-					// result = { assetUrl, blobUrl, asset }
-					if (!result || !result.asset) return;
-
-					const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-
-					// Ensure blob URL is in cache
-					if (assetManager && result.blobUrl && result.asset?.id) {
-						if (!assetManager.reverseBlobCache.has(result.blobUrl)) {
-							assetManager.reverseBlobCache.set(result.blobUrl, result.asset.id);
-							assetManager.blobURLCache.set(result.asset.id, result.blobUrl);
-						}
-					}
-
-					// Use the editor handle's insert methods
-					const editor = editorHandle.getEditor();
-					if (!editor) return;
-
-					if (mediaType === 'image') {
-						editorHandle.insertImage?.({
-							src: result.blobUrl,
-							altText: result.asset.filename || '',
-							dataAssetId: result.asset.id,
-							dataAssetSrc: result.assetUrl,
-						});
-					} else if (mediaType === 'video') {
-						editorHandle.insertVideo?.({
-							src: result.blobUrl,
-							dataAssetId: result.asset.id,
-							dataAssetSrc: result.assetUrl,
-						});
-					} else if (mediaType === 'audio') {
-						editorHandle.insertAudio?.({
-							src: result.blobUrl,
-							dataAssetId: result.asset.id,
-							dataAssetSrc: result.assetUrl,
-						});
-					}
-				},
-			});
-		} else {
+		if (!filemanager) {
 			console.warn('[CollaborativeEditing] Media Library not available');
+			return;
+		}
+
+		filemanager.show({
+			onSelect: (result) => {
+				// result = { assetUrl, blobUrl, asset }
+				if (!result || !result.asset) return;
+
+				const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+				// Ensure blob URL is in cache so it can be converted back to asset:// on save
+				if (assetManager && result.blobUrl && result.asset?.id) {
+					if (!assetManager.reverseBlobCache.has(result.blobUrl)) {
+						assetManager.reverseBlobCache.set(result.blobUrl, result.asset.id);
+						assetManager.blobURLCache.set(result.asset.id, result.blobUrl);
+					}
+				}
+
+				this.insertMedia(editor, mediaType, {
+					src: result.blobUrl || result.assetUrl,
+					alt: result.asset.filename || '',
+				});
+			},
+		});
+	},
+
+	/**
+	 * Insert a media node (image/video/audio) into a ProseMirror editor.
+	 * @param {ProseMirrorEditor} editor
+	 * @param {string} mediaType - 'image', 'media', or 'audio'
+	 * @param {Object} attrs - { src, alt }
+	 */
+	insertMedia: function (editor, mediaType, attrs) {
+		if (mediaType === 'image') {
+			editor.insertImage?.(attrs);
+			return;
+		}
+
+		// video / audio nodes are inserted directly via the schema
+		const nodeName = mediaType === 'audio' ? 'audio' : 'video';
+		const nodeType = editor.schema?.nodes?.[nodeName];
+		if (nodeType) {
+			const { state, dispatch } = editor.view;
+			const node = nodeType.create({ src: attrs.src });
+			dispatch(state.tr.replaceSelectionWith(node));
 		}
 	},
 
@@ -486,6 +520,23 @@ var $exeDevice = {
 	},
 
 	/**
+	 * Read HTML from an editor, converting blob: URLs back to asset:// for persistence.
+	 * @param {ProseMirrorEditor} editor
+	 * @param {YjsProseMirrorBinding|null} binding
+	 * @returns {string}
+	 */
+	readEditorHtml: function (editor, binding) {
+		if (!editor || typeof editor.getHTML !== 'function') {
+			return '';
+		}
+		const html = editor.getHTML();
+		if (binding && typeof binding.convertBlobUrlsToAssetUrls === 'function') {
+			return binding.convertBlobUrlsToAssetUrls(html);
+		}
+		return html;
+	},
+
+	/**
 	 * Save handler - returns JSON data
 	 * @returns {Object|false}
 	 */
@@ -494,9 +545,9 @@ var $exeDevice = {
 			return false;
 		}
 
-		// Get content from editors
-		const htmlContent = this.mainEditor ? this.mainEditor.getHTML() : '';
-		let feedbackContent = this.feedbackEditor ? this.feedbackEditor.getHTML() : '';
+		// Get content from editors (blob URLs converted to asset:// for storage)
+		const htmlContent = this.readEditorHtml(this.mainEditor, this.mainBinding);
+		let feedbackContent = this.readEditorHtml(this.feedbackEditor, this.feedbackBinding);
 
 		// Check if feedback is empty
 		if (this.feedbackEditor && this.feedbackEditor.isEmpty()) {
@@ -549,13 +600,33 @@ var $exeDevice = {
 			this._clickOutsideHandler = null;
 		}
 
-		// Destroy editors (React-based - handles unmount and cleanup)
+		// Destroy Yjs bindings
+		if (this.mainBinding) {
+			this.mainBinding.destroy?.();
+			this.mainBinding = null;
+		}
+		if (this.feedbackBinding) {
+			this.feedbackBinding.destroy?.();
+			this.feedbackBinding = null;
+		}
+
+		// Destroy toolbars
+		if (this.mainToolbar) {
+			this.mainToolbar.destroy?.();
+			this.mainToolbar = null;
+		}
+		if (this.feedbackToolbar) {
+			this.feedbackToolbar.destroy?.();
+			this.feedbackToolbar = null;
+		}
+
+		// Destroy editors
 		if (this.mainEditor) {
-			this.mainEditor.destroy();
+			this.mainEditor.destroy?.();
 			this.mainEditor = null;
 		}
 		if (this.feedbackEditor) {
-			this.feedbackEditor.destroy();
+			this.feedbackEditor.destroy?.();
 			this.feedbackEditor = null;
 		}
 

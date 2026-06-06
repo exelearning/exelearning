@@ -1,8 +1,13 @@
 var ProseMirrorBundle = (() => {
+  var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __commonJS = (cb, mod) => function __require() {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  };
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
@@ -15,7 +20,25 @@ var ProseMirrorBundle = (() => {
     }
     return to;
   };
+  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+    mod
+  ));
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // yjs-global:yjs
+  var require_yjs = __commonJS({
+    "yjs-global:yjs"(exports, module) {
+      if (!window.Y) {
+        console.error("[ProseMirror] Yjs not found. Ensure yjs.min.js is loaded first.");
+      }
+      module.exports = window.Y;
+    }
+  });
 
   // src/shared/prosemirror/browser/index.ts
   var index_exports = {};
@@ -548,7 +571,7 @@ var ProseMirrorBundle = (() => {
         return _Fragment.empty;
       if (!Array.isArray(value))
         throw new RangeError("Invalid input for Fragment.fromJSON");
-      return new _Fragment(value.map(schema2.nodeFromJSON));
+      return _Fragment.fromArray(value.map(schema2.nodeFromJSON));
     }
     /**
     Build a fragment from an array of nodes. Ensures that adjacent
@@ -771,7 +794,7 @@ var ProseMirrorBundle = (() => {
     @internal
     */
     insertAt(pos, fragment) {
-      let content = insertInto(this.content, pos + this.openStart, fragment);
+      let content = insertInto(this.content, pos + this.openStart, fragment, this.openStart + 1, this.openEnd + 1);
       return content && new _Slice(content, this.openStart, this.openEnd);
     }
     /**
@@ -842,14 +865,14 @@ var ProseMirrorBundle = (() => {
       throw new RangeError("Removing non-flat range");
     return content.replaceChild(index, child.copy(removeRange(child.content, from2 - offset - 1, to - offset - 1)));
   }
-  function insertInto(content, dist, insert, parent) {
+  function insertInto(content, dist, insert, openStart, openEnd, parent) {
     let { index, offset } = content.findIndex(dist), child = content.maybeChild(index);
     if (offset == dist || child.isText) {
-      if (parent && !parent.canReplace(index, index, insert))
+      if (parent && openStart <= 0 && openEnd <= 0 && !parent.canReplace(index, index, insert))
         return null;
       return content.cut(0, dist).append(insert).append(content.cut(dist));
     }
-    let inner = insertInto(child.content, dist - offset - 1, insert, child);
+    let inner = insertInto(child.content, dist - offset - 1, insert, index == 0 ? openStart - 1 : 0, index == content.childCount - 1 ? openEnd - 1 : 0, child);
     return inner && content.replaceChild(index, child.copy(inner));
   }
   function replace($from, $to, slice2) {
@@ -1327,10 +1350,11 @@ var ProseMirrorBundle = (() => {
       this.content.forEach(f);
     }
     /**
-    Invoke a callback for all descendant nodes recursively between
+    Invoke a callback for all descendant nodes recursively overlapping
     the given two positions that are relative to start of this
-    node's content. The callback is invoked with the node, its
-    position relative to the original node (method receiver),
+    node's content. This includes all ancestors of the nodes
+    containing the two positions. The callback is invoked with the
+    node, its position relative to the original node (method receiver),
     its parent node, and its child index. When the callback returns
     false for a given node, that node's children will not be
     recursed over. The last parameter can be used to specify a
@@ -3286,6 +3310,8 @@ var ProseMirrorBundle = (() => {
     @internal
     */
     serializeNodeInner(node, options) {
+      if (node.isText)
+        return doc(options).createTextNode(node.text);
       let { dom, contentDOM } = renderSpec(doc(options), this.nodes[node.type.name](node), null, node.attrs);
       if (contentDOM) {
         if (node.isLeaf)
@@ -3320,6 +3346,8 @@ var ProseMirrorBundle = (() => {
       return toDOM && renderSpec(doc(options), toDOM(mark, inline), null, mark.attrs);
     }
     static renderSpec(doc4, structure, xmlNS = null, blockArraysIn) {
+      if (typeof structure == "string")
+        return { dom: doc4.createTextNode(structure) };
       return renderSpec(doc4, structure, xmlNS, blockArraysIn);
     }
     /**
@@ -3388,11 +3416,9 @@ var ProseMirrorBundle = (() => {
     return result;
   }
   function renderSpec(doc4, structure, xmlNS, blockArraysIn) {
-    if (typeof structure == "string")
-      return { dom: doc4.createTextNode(structure) };
-    if (structure.nodeType != null)
+    if (structure.nodeType == 1)
       return { dom: structure };
-    if (structure.dom && structure.dom.nodeType != null)
+    if (structure.dom && structure.dom.nodeType == 1)
       return structure;
     let tagName = structure[0], suspicious;
     if (typeof tagName != "string")
@@ -3426,6 +3452,8 @@ var ProseMirrorBundle = (() => {
         if (i < structure.length - 1 || i > start)
           throw new RangeError("Content hole must be the only child of its parent node");
         return { dom, contentDOM: dom };
+      } else if (typeof child == "string") {
+        dom.appendChild(doc4.createTextNode(child));
       } else {
         let { dom: inner, contentDOM: innerContent } = renderSpec(doc4, child, xmlNS, blockArraysIn);
         dom.appendChild(inner);
@@ -4028,7 +4056,8 @@ var ProseMirrorBundle = (() => {
       return new _ReplaceStep(this.from, this.from + this.slice.size, doc4.slice(this.from, this.to));
     }
     map(mapping) {
-      let from2 = mapping.mapResult(this.from, 1), to = mapping.mapResult(this.to, -1);
+      let to = mapping.mapResult(this.to, -1);
+      let from2 = this.from == this.to && _ReplaceStep.MAP_BIAS < 0 ? to : mapping.mapResult(this.from, 1);
       if (from2.deletedAcross && to.deletedAcross)
         return null;
       return new _ReplaceStep(from2.pos, Math.max(from2.pos, to.pos), this.slice, this.structure);
@@ -4063,6 +4092,7 @@ var ProseMirrorBundle = (() => {
       return new _ReplaceStep(json.from, json.to, Slice.fromJSON(schema2, json.slice), !!json.structure);
     }
   };
+  ReplaceStep.MAP_BIAS = 1;
   Step.jsonID("replace", ReplaceStep);
   var ReplaceAroundStep = class _ReplaceAroundStep extends Step {
     /**
@@ -4892,6 +4922,23 @@ var ProseMirrorBundle = (() => {
   }
   function deleteRange(tr, from2, to) {
     let $from = tr.doc.resolve(from2), $to = tr.doc.resolve(to);
+    if ($from.parent.isTextblock && $to.parent.isTextblock && $from.start() != $to.start() && $from.parentOffset == 0 && $to.parentOffset == 0) {
+      let shared = $from.sharedDepth(to), isolated = false;
+      for (let d = $from.depth; d > shared; d--)
+        if ($from.node(d).type.spec.isolating)
+          isolated = true;
+      for (let d = $to.depth; d > shared; d--)
+        if ($to.node(d).type.spec.isolating)
+          isolated = true;
+      if (!isolated) {
+        for (let d = $from.depth; d > 0 && from2 == $from.start(d); d--)
+          from2 = $from.before(d);
+        for (let d = $to.depth; d > 0 && to == $to.start(d); d--)
+          to = $to.before(d);
+        $from = tr.doc.resolve(from2);
+        $to = tr.doc.resolve(to);
+      }
+    }
     let covered = coveredDepths($from, $to);
     for (let i = 0; i < covered.length; i++) {
       let depth = covered[i], last = i == covered.length - 1;
@@ -5046,6 +5093,27 @@ var ProseMirrorBundle = (() => {
     */
     get docChanged() {
       return this.steps.length > 0;
+    }
+    /**
+    Return a single range, in post-transform document positions,
+    that covers all content changed by this transform. Returns null
+    if no replacements are made. Note that this will ignore changes
+    that add/remove marks without replacing the underlying content.
+    */
+    changedRange() {
+      let from2 = 1e9, to = -1e9;
+      for (let i = 0; i < this.mapping.maps.length; i++) {
+        let map2 = this.mapping.maps[i];
+        if (i) {
+          from2 = map2.map(from2, 1);
+          to = map2.map(to, -1);
+        }
+        map2.forEach((_f, _t2, fromB, toB) => {
+          from2 = Math.min(from2, fromB);
+          to = Math.max(to, toB);
+        });
+      }
+      return from2 == 1e9 ? null : { from: from2, to };
     }
     /**
     @internal
@@ -7422,12 +7490,12 @@ var ProseMirrorBundle = (() => {
       let updater = new ViewTreeUpdater(this, localComposition && localComposition.node, view);
       iterDeco(this.node, this.innerDeco, (widget, i, insideNode) => {
         if (widget.spec.marks)
-          updater.syncToMarks(widget.spec.marks, inline, view);
+          updater.syncToMarks(widget.spec.marks, inline, view, i);
         else if (widget.type.side >= 0 && !insideNode)
-          updater.syncToMarks(i == this.node.childCount ? Mark.none : this.node.child(i).marks, inline, view);
+          updater.syncToMarks(i == this.node.childCount ? Mark.none : this.node.child(i).marks, inline, view, i);
         updater.placeWidget(widget, view, off);
       }, (child, outerDeco, innerDeco, i) => {
-        updater.syncToMarks(child.marks, inline, view);
+        updater.syncToMarks(child.marks, inline, view, i);
         let compIndex;
         if (updater.findNodeMatch(child, outerDeco, innerDeco, i)) ;
         else if (compositionInChild && view.state.selection.from > off && view.state.selection.to < off + child.nodeSize && (compIndex = updater.findIndexWithChild(composition.node)) > -1 && updater.updateNodeAt(child, outerDeco, innerDeco, compIndex, view)) ;
@@ -7437,7 +7505,7 @@ var ProseMirrorBundle = (() => {
         }
         off += child.nodeSize;
       });
-      updater.syncToMarks([], inline, view);
+      updater.syncToMarks([], inline, view, 0);
       if (this.node.isTextblock)
         updater.addTextblockHacks();
       updater.destroyRest();
@@ -7803,7 +7871,7 @@ var ProseMirrorBundle = (() => {
     }
     // Sync the current stack of mark descs with the given array of
     // marks, reusing existing mark descs when possible.
-    syncToMarks(marks2, inline, view) {
+    syncToMarks(marks2, inline, view, parentIndex) {
       let keep = 0, depth = this.stack.length >> 1;
       let maxKeep = Math.min(depth, marks2.length);
       while (keep < maxKeep && (keep == depth - 1 ? this.top : this.stack[keep + 1 << 1]).matchesMark(marks2[keep]) && marks2[keep].type.spec.spanning !== false)
@@ -7817,8 +7885,10 @@ var ProseMirrorBundle = (() => {
       }
       while (depth < marks2.length) {
         this.stack.push(this.top, this.index + 1);
-        let found2 = -1;
-        for (let i = this.index; i < Math.min(this.index + 3, this.top.children.length); i++) {
+        let found2 = -1, scanTo = this.top.children.length;
+        if (parentIndex < this.preMatch.index)
+          scanTo = Math.min(this.index + 3, scanTo);
+        for (let i = this.index; i < scanTo; i++) {
           let next = this.top.children[i];
           if (next.matchesMark(marks2[depth]) && !this.isLocked(next.dom)) {
             found2 = i;
@@ -8936,6 +9006,7 @@ var ProseMirrorBundle = (() => {
       this.compositionNodes = [];
       this.compositionEndedAt = -2e8;
       this.compositionID = 1;
+      this.badSafariComposition = false;
       this.compositionPendingChanges = 0;
       this.domChangeCount = 0;
       this.eventHandlers = /* @__PURE__ */ Object.create(null);
@@ -9186,7 +9257,7 @@ var ProseMirrorBundle = (() => {
       const targetDesc = target ? view.docView.nearestDesc(target, true) : null;
       this.target = targetDesc && targetDesc.nodeDOM.nodeType == 1 ? targetDesc.nodeDOM : null;
       let { selection } = view.state;
-      if (event.button == 0 && targetNode.type.spec.draggable && targetNode.type.spec.selectable !== false || selection instanceof NodeSelection && selection.from <= targetPos && selection.to > targetPos)
+      if (event.button == 0 && (targetNode.type.spec.draggable && targetNode.type.spec.selectable !== false || selection instanceof NodeSelection && selection.from <= targetPos && selection.to > targetPos))
         this.mightDrag = {
           node: targetNode,
           pos: targetPos,
@@ -9326,7 +9397,9 @@ var ProseMirrorBundle = (() => {
       view.input.compositionEndedAt = event.timeStamp;
       view.input.compositionPendingChanges = view.domObserver.pendingRecords().length ? view.input.compositionID : 0;
       view.input.compositionNode = null;
-      if (view.input.compositionPendingChanges)
+      if (view.input.badSafariComposition)
+        view.domObserver.forceFlush();
+      else if (view.input.compositionPendingChanges)
         Promise.resolve().then(() => view.domObserver.flush());
       view.input.compositionID++;
       scheduleComposeEnd(view, 20);
@@ -9484,8 +9557,11 @@ var ProseMirrorBundle = (() => {
   };
   var dragCopyModifier = mac ? "altKey" : "ctrlKey";
   function dragMoves(view, event) {
-    let moves = view.someProp("dragCopies", (test) => !test(event));
-    return moves != null ? moves : !event[dragCopyModifier];
+    let copy2;
+    view.someProp("dragCopies", (test) => {
+      copy2 = copy2 || test(event);
+    });
+    return copy2 != null ? !copy2 : !event[dragCopyModifier];
   }
   handlers.dragstart = (view, _event) => {
     let event = _event;
@@ -10296,10 +10372,14 @@ var ProseMirrorBundle = (() => {
       this.observer = window.MutationObserver && new window.MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++)
           this.queue.push(mutations[i]);
-        if (ie && ie_version <= 11 && mutations.some((m) => m.type == "childList" && m.removedNodes.length || m.type == "characterData" && m.oldValue.length > m.target.nodeValue.length))
+        if (ie && ie_version <= 11 && mutations.some((m) => m.type == "childList" && m.removedNodes.length || m.type == "characterData" && m.oldValue.length > m.target.nodeValue.length)) {
           this.flushSoon();
-        else
+        } else if (safari && view.composing && mutations.some((m) => m.type == "childList" && m.target.nodeName == "TR")) {
+          view.input.badSafariComposition = true;
+          this.flushSoon();
+        } else {
           this.flush();
+        }
       });
       if (useCharData) {
         this.onCharData = (e) => {
@@ -10418,7 +10498,19 @@ var ProseMirrorBundle = (() => {
           }
         }
       }
-      if (gecko && added.length) {
+      if (added.some((n) => n.nodeName == "BR") && (view.input.lastKeyCode == 8 || view.input.lastKeyCode == 46)) {
+        for (let node of added)
+          if (node.nodeName == "BR" && node.parentNode) {
+            let after = node.nextSibling;
+            while (after && after.nodeType == 1) {
+              if (after.contentEditable == "false") {
+                node.parentNode.removeChild(node);
+                break;
+              }
+              after = after.firstChild;
+            }
+          }
+      } else if (gecko && added.length) {
         let brs = added.filter((n) => n.nodeName == "BR");
         if (brs.length == 2) {
           let [a, b] = brs;
@@ -10434,13 +10526,6 @@ var ProseMirrorBundle = (() => {
               br.remove();
           }
         }
-      } else if ((chrome || safari) && added.some((n) => n.nodeName == "BR") && (view.input.lastKeyCode == 8 || view.input.lastKeyCode == 46)) {
-        for (let node of added)
-          if (node.nodeName == "BR" && node.parentNode) {
-            let after = node.nextSibling;
-            if (after && after.nodeType == 1 && after.contentEditable == "false")
-              node.parentNode.removeChild(node);
-          }
       }
       let readSel = null;
       if (from2 < 0 && newSel && view.input.lastFocus > Date.now() - 200 && Math.max(view.input.lastTouch, view.input.lastClick.time) < Date.now() - 300 && selectionCollapsed(sel) && (readSel = selectionFromDOM(view)) && readSel.eq(Selection.near(view.state.doc.resolve(0), 1))) {
@@ -10452,6 +10537,10 @@ var ProseMirrorBundle = (() => {
         if (from2 > -1) {
           view.docView.markDirty(from2, to);
           checkCSS(view);
+        }
+        if (view.input.badSafariComposition) {
+          view.input.badSafariComposition = false;
+          fixUpBadSafariComposition(view, added);
         }
         this.handleDOMChange(from2, to, typeOver, added);
         if (view.docView && view.docView.dirty)
@@ -10556,6 +10645,31 @@ var ProseMirrorBundle = (() => {
         return p;
     }
     return null;
+  }
+  function fixUpBadSafariComposition(view, addedNodes) {
+    var _a;
+    let { focusNode, focusOffset } = view.domSelectionRange();
+    for (let node of addedNodes) {
+      if (((_a = node.parentNode) === null || _a === void 0 ? void 0 : _a.nodeName) == "TR") {
+        let nextCell2 = node.nextSibling;
+        while (nextCell2 && (nextCell2.nodeName != "TD" && nextCell2.nodeName != "TH"))
+          nextCell2 = nextCell2.nextSibling;
+        if (nextCell2) {
+          let parent = nextCell2;
+          for (; ; ) {
+            let first = parent.firstChild;
+            if (!first || first.nodeType != 1 || first.contentEditable == "false" || /^(BR|IMG)$/.test(first.nodeName))
+              break;
+            parent = first;
+          }
+          parent.insertBefore(node, parent.firstChild);
+          if (focusNode == node)
+            view.domSelection().collapse(node, focusOffset);
+        } else {
+          node.parentNode.removeChild(node);
+        }
+      }
+    }
   }
   function parseBetween(view, from_, to_) {
     let { node: parent, fromOffset, toOffset, from: from2, to } = view.docView.parseRange(from_, to_);
@@ -10996,7 +11110,7 @@ var ProseMirrorBundle = (() => {
             this.docView.destroy();
             this.docView = docViewDesc(state.doc, outerDeco, innerDeco, this.dom, this);
           }
-          if (chromeKludge && !this.trackWrites)
+          if (chromeKludge && (!this.trackWrites || !this.dom.contains(this.trackWrites)))
             forceSelUpdate = true;
         }
         if (forceSelUpdate || !(this.input.mouseDown && this.domObserver.currentSelection.eq(this.domSelectionRange()) && anchorInRightPlace(this))) {
@@ -11063,11 +11177,11 @@ var ProseMirrorBundle = (() => {
     }
     updateDraggedNode(dragging, prev) {
       let sel = dragging.node, found2 = -1;
-      if (this.state.doc.nodeAt(sel.from) == sel.node) {
+      if (sel.from < this.state.doc.content.size && this.state.doc.nodeAt(sel.from) == sel.node) {
         found2 = sel.from;
       } else {
         let movedPos = sel.from + (this.state.doc.content.size - prev.doc.content.size);
-        let moved = movedPos > 0 && this.state.doc.nodeAt(movedPos);
+        let moved = movedPos > 0 && movedPos < this.state.doc.content.size && this.state.doc.nodeAt(movedPos);
         if (moved == sel.node)
           found2 = movedPos;
       }
@@ -15094,7 +15208,7 @@ var ProseMirrorBundle = (() => {
     */
     static valid($pos) {
       let parent = $pos.parent;
-      if (parent.isTextblock || !closedBefore($pos) || !closedAfter($pos))
+      if (parent.inlineContent || !closedBefore($pos) || !closedAfter($pos))
         return false;
       let override = parent.type.spec.allowGapCursor;
       if (override != null)
@@ -15401,52 +15515,8 @@ var ProseMirrorBundle = (() => {
     }
   };
 
-  // yjs-global:yjs
-  var Y = window.Y;
-  if (!Y) {
-    console.error("[ProseMirror] Yjs not found. Ensure yjs.min.js is loaded first.");
-  }
-  var Doc = Y?.Doc;
-  var Map2 = Y?.Map;
-  var Array2 = Y?.Array;
-  var Text = Y?.Text;
-  var XmlFragment = Y?.XmlFragment;
-  var XmlElement = Y?.XmlElement;
-  var XmlText = Y?.XmlText;
-  var UndoManager = Y?.UndoManager;
-  var createAbsolutePositionFromRelativePosition = Y?.createAbsolutePositionFromRelativePosition;
-  var createRelativePositionFromTypeIndex = Y?.createRelativePositionFromTypeIndex;
-  var encodeStateAsUpdate = Y?.encodeStateAsUpdate;
-  var applyUpdate = Y?.applyUpdate;
-  var Snapshot = Y?.Snapshot;
-  var snapshot = Y?.snapshot;
-  var isDeleted = Y?.isDeleted;
-  var isParentOf = Y?.isParentOf;
-  var equalSnapshots = Y?.equalSnapshots;
-  var AbstractType = Y?.AbstractType;
-  var RelativePosition = Y?.RelativePosition;
-  var Item2 = Y?.Item;
-  var ContentType = Y?.ContentType;
-  var Transaction2 = Y?.Transaction;
-  var AbstractStruct = Y?.AbstractStruct;
-  var GC = Y?.GC;
-
-  // node_modules/lib0/mutex.js
-  var createMutex = () => {
-    let token = true;
-    return (f, g) => {
-      if (token) {
-        token = false;
-        try {
-          f();
-        } finally {
-          token = true;
-        }
-      } else if (g !== void 0) {
-        g();
-      }
-    };
-  };
+  // node_modules/y-prosemirror/src/plugins/cursor-plugin.js
+  var Y4 = __toESM(require_yjs(), 1);
 
   // node_modules/lib0/math.js
   var floor = Math.floor;
@@ -15455,166 +15525,6 @@ var ProseMirrorBundle = (() => {
   var max = (a, b) => a > b ? a : b;
   var isNaN = Number.isNaN;
   var isNegativeZero = (n) => n !== 0 ? n < 0 : 1 / n < 0;
-
-  // node_modules/lib0/trait/equality.js
-  var EqualityTraitSymbol = /* @__PURE__ */ Symbol("Equality");
-  var equals = (a, b) => a === b || !!a?.[EqualityTraitSymbol]?.(b) || false;
-
-  // node_modules/lib0/object.js
-  var isObject = (o) => typeof o === "object";
-  var keys2 = Object.keys;
-  var size = (obj) => keys2(obj).length;
-  var every = (obj, f) => {
-    for (const key in obj) {
-      if (!f(obj[key], key)) {
-        return false;
-      }
-    }
-    return true;
-  };
-  var hasProperty = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-
-  // node_modules/lib0/set.js
-  var create = () => /* @__PURE__ */ new Set();
-
-  // node_modules/lib0/array.js
-  var every2 = (arr, f) => {
-    for (let i = 0; i < arr.length; i++) {
-      if (!f(arr[i], i, arr)) {
-        return false;
-      }
-    }
-    return true;
-  };
-  var some = (arr, f) => {
-    for (let i = 0; i < arr.length; i++) {
-      if (f(arr[i], i, arr)) {
-        return true;
-      }
-    }
-    return false;
-  };
-  var unfold = (len, f) => {
-    const array = new Array(len);
-    for (let i = 0; i < len; i++) {
-      array[i] = f(i, array);
-    }
-    return array;
-  };
-  var isArray = Array.isArray;
-
-  // node_modules/lib0/function.js
-  var equalityDeep = (a, b) => {
-    if (a === b) {
-      return true;
-    }
-    if (a == null || b == null || a.constructor !== b.constructor && (a.constructor || Object) !== (b.constructor || Object)) {
-      return false;
-    }
-    if (a[EqualityTraitSymbol] != null) {
-      return a[EqualityTraitSymbol](b);
-    }
-    switch (a.constructor) {
-      case ArrayBuffer:
-        a = new Uint8Array(a);
-        b = new Uint8Array(b);
-      // eslint-disable-next-line no-fallthrough
-      case Uint8Array: {
-        if (a.byteLength !== b.byteLength) {
-          return false;
-        }
-        for (let i = 0; i < a.length; i++) {
-          if (a[i] !== b[i]) {
-            return false;
-          }
-        }
-        break;
-      }
-      case Set: {
-        if (a.size !== b.size) {
-          return false;
-        }
-        for (const value of a) {
-          if (!b.has(value)) {
-            return false;
-          }
-        }
-        break;
-      }
-      case Map: {
-        if (a.size !== b.size) {
-          return false;
-        }
-        for (const key of a.keys()) {
-          if (!b.has(key) || !equalityDeep(a.get(key), b.get(key))) {
-            return false;
-          }
-        }
-        break;
-      }
-      case void 0:
-      case Object:
-        if (size(a) !== size(b)) {
-          return false;
-        }
-        for (const key in a) {
-          if (!hasProperty(a, key) || !equalityDeep(a[key], b[key])) {
-            return false;
-          }
-        }
-        break;
-      case Array:
-        if (a.length !== b.length) {
-          return false;
-        }
-        for (let i = 0; i < a.length; i++) {
-          if (!equalityDeep(a[i], b[i])) {
-            return false;
-          }
-        }
-        break;
-      default:
-        return false;
-    }
-    return true;
-  };
-  var isOneOf = (value, options) => options.includes(value);
-
-  // node_modules/lib0/diff.js
-  var highSurrogateRegex = /[\uD800-\uDBFF]/;
-  var lowSurrogateRegex = /[\uDC00-\uDFFF]/;
-  var simpleDiffString = (a, b) => {
-    let left = 0;
-    let right = 0;
-    while (left < a.length && left < b.length && a[left] === b[left]) {
-      left++;
-    }
-    if (left > 0 && highSurrogateRegex.test(a[left - 1])) left--;
-    while (right + left < a.length && right + left < b.length && a[a.length - right - 1] === b[b.length - right - 1]) {
-      right++;
-    }
-    if (right > 0 && lowSurrogateRegex.test(a[a.length - right])) right--;
-    return {
-      index: left,
-      remove: a.length - left - right,
-      insert: b.slice(left, b.length - right)
-    };
-  };
-  var simpleDiff = simpleDiffString;
-
-  // node_modules/lib0/error.js
-  var create2 = (s) => new Error(s);
-  var methodUnimplemented = () => {
-    throw create2("Method unimplemented");
-  };
-  var unexpectedCase = () => {
-    throw create2("Unexpected case");
-  };
-
-  // node_modules/y-prosemirror/src/plugins/keys.js
-  var ySyncPluginKey = new PluginKey("y-sync");
-  var yUndoPluginKey = new PluginKey("y-undo");
-  var yCursorPluginKey = new PluginKey("yjs-cursor");
 
   // node_modules/lib0/binary.js
   var BIT7 = 64;
@@ -15652,20 +15562,42 @@ var ProseMirrorBundle = (() => {
   var BITS30 = BIT31 - 1;
   var BITS31 = 2147483647;
 
-  // node_modules/lib0/random.js
-  var rand = Math.random;
-  var oneOf = (arr) => arr[floor(rand() * arr.length)];
-  var uuidv4Template = "10000000-1000-4000-8000" + -1e11;
+  // node_modules/lib0/number.js
+  var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
+  var MIN_SAFE_INTEGER = Number.MIN_SAFE_INTEGER;
+  var LOWEST_INT32 = 1 << 31;
+  var isInteger = Number.isInteger || ((num) => typeof num === "number" && isFinite(num) && floor(num) === num);
+  var isNaN2 = Number.isNaN;
+  var parseInt = Number.parseInt;
 
-  // node_modules/lib0/map.js
-  var create3 = () => /* @__PURE__ */ new Map();
-  var setIfUndefined = (map2, key, createT) => {
-    let set = map2.get(key);
-    if (set === void 0) {
-      map2.set(key, set = createT());
+  // node_modules/lib0/set.js
+  var create = () => /* @__PURE__ */ new Set();
+
+  // node_modules/lib0/array.js
+  var every = (arr, f) => {
+    for (let i = 0; i < arr.length; i++) {
+      if (!f(arr[i], i, arr)) {
+        return false;
+      }
     }
-    return set;
+    return true;
   };
+  var some = (arr, f) => {
+    for (let i = 0; i < arr.length; i++) {
+      if (f(arr[i], i, arr)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  var unfold = (len, f) => {
+    const array = new Array(len);
+    for (let i = 0; i < len; i++) {
+      array[i] = f(i, array);
+    }
+    return array;
+  };
+  var isArray = Array.isArray;
 
   // node_modules/lib0/string.js
   var fromCharCode = String.fromCharCode;
@@ -15697,101 +15629,6 @@ var ProseMirrorBundle = (() => {
     utf8TextDecoder = null;
   }
   var repeat = (source, n) => unfold(n, () => source).join("");
-
-  // node_modules/lib0/conditions.js
-  var undefinedToNull = (v) => v === void 0 ? null : v;
-
-  // node_modules/lib0/storage.js
-  var VarStoragePolyfill = class {
-    constructor() {
-      this.map = /* @__PURE__ */ new Map();
-    }
-    /**
-     * @param {string} key
-     * @param {any} newValue
-     */
-    setItem(key, newValue) {
-      this.map.set(key, newValue);
-    }
-    /**
-     * @param {string} key
-     */
-    getItem(key) {
-      return this.map.get(key);
-    }
-  };
-  var _localStorage = new VarStoragePolyfill();
-  var usePolyfill = true;
-  try {
-    if (typeof localStorage !== "undefined" && localStorage) {
-      _localStorage = localStorage;
-      usePolyfill = false;
-    }
-  } catch (e) {
-  }
-  var varStorage = _localStorage;
-
-  // node_modules/lib0/environment.js
-  var isNode = typeof process !== "undefined" && process.release && /node|io\.js/.test(process.release.name) && Object.prototype.toString.call(typeof process !== "undefined" ? process : 0) === "[object process]";
-  var isBrowser = typeof window !== "undefined" && typeof document !== "undefined" && !isNode;
-  var isMac = typeof navigator !== "undefined" ? /Mac/.test(navigator.platform) : false;
-  var params;
-  var args = [];
-  var computeParams = () => {
-    if (params === void 0) {
-      if (isNode) {
-        params = create3();
-        const pargs = process.argv;
-        let currParamName = null;
-        for (let i = 0; i < pargs.length; i++) {
-          const parg = pargs[i];
-          if (parg[0] === "-") {
-            if (currParamName !== null) {
-              params.set(currParamName, "");
-            }
-            currParamName = parg;
-          } else {
-            if (currParamName !== null) {
-              params.set(currParamName, parg);
-              currParamName = null;
-            } else {
-              args.push(parg);
-            }
-          }
-        }
-        if (currParamName !== null) {
-          params.set(currParamName, "");
-        }
-      } else if (typeof location === "object") {
-        params = create3();
-        (location.search || "?").slice(1).split("&").forEach((kv) => {
-          if (kv.length !== 0) {
-            const [key, value] = kv.split("=");
-            params.set(`--${fromCamelCase(key, "-")}`, value);
-            params.set(`-${fromCamelCase(key, "-")}`, value);
-          }
-        });
-      } else {
-        params = create3();
-      }
-    }
-    return params;
-  };
-  var hasParam = (name) => computeParams().has(name);
-  var getVariable = (name) => isNode ? undefinedToNull(process.env[name.toUpperCase().replaceAll("-", "_")]) : undefinedToNull(varStorage.getItem(name));
-  var hasConf = (name) => hasParam("--" + name) || getVariable(name) !== null;
-  var production = hasConf("production");
-  var forceColor = isNode && isOneOf(process.env.FORCE_COLOR, ["true", "1", "2"]);
-  var supportsColor = forceColor || !hasParam("--no-colors") && // @todo deprecate --no-colors
-  !hasConf("no-color") && (!isNode || process.stdout.isTTY) && (!isNode || hasParam("--color") || getVariable("COLORTERM") !== null || (getVariable("TERM") || "").includes("color"));
-
-  // node_modules/lib0/number.js
-  var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
-  var MIN_SAFE_INTEGER = Number.MIN_SAFE_INTEGER;
-  var LOWEST_INT32 = 1 << 31;
-  var isInteger = Number.isInteger || ((num) => typeof num === "number" && isFinite(num) && floor(num) === num);
-  var isNaN2 = Number.isNaN;
-  var parseInt = Number.parseInt;
 
   // node_modules/lib0/encoding.js
   var Encoder = class {
@@ -15976,6 +15813,262 @@ var ProseMirrorBundle = (() => {
     }
   };
 
+  // node_modules/lib0/error.js
+  var create2 = (s) => new Error(s);
+  var methodUnimplemented = () => {
+    throw create2("Method unimplemented");
+  };
+  var unexpectedCase = () => {
+    throw create2("Unexpected case");
+  };
+
+  // node_modules/lib0/map.js
+  var create3 = () => /* @__PURE__ */ new Map();
+  var setIfUndefined = (map2, key, createT) => {
+    let set = map2.get(key);
+    if (set === void 0) {
+      map2.set(key, set = createT());
+    }
+    return set;
+  };
+
+  // node_modules/lib0/trait/equality.js
+  var EqualityTraitSymbol = /* @__PURE__ */ Symbol("Equality");
+  var equals = (a, b) => a === b || !!a?.[EqualityTraitSymbol]?.(b) || false;
+
+  // node_modules/lib0/object.js
+  var isObject = (o) => typeof o === "object";
+  var keys2 = Object.keys;
+  var size = (obj) => keys2(obj).length;
+  var every2 = (obj, f) => {
+    for (const key in obj) {
+      if (!f(obj[key], key)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  var hasProperty = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+  // node_modules/lib0/function.js
+  var equalityDeep = (a, b) => {
+    if (a === b) {
+      return true;
+    }
+    if (a == null || b == null || a.constructor !== b.constructor && (a.constructor || Object) !== (b.constructor || Object)) {
+      return false;
+    }
+    if (a[EqualityTraitSymbol] != null) {
+      return a[EqualityTraitSymbol](b);
+    }
+    switch (a.constructor) {
+      case ArrayBuffer:
+        a = new Uint8Array(a);
+        b = new Uint8Array(b);
+      // eslint-disable-next-line no-fallthrough
+      case Uint8Array: {
+        if (a.byteLength !== b.byteLength) {
+          return false;
+        }
+        for (let i = 0; i < a.length; i++) {
+          if (a[i] !== b[i]) {
+            return false;
+          }
+        }
+        break;
+      }
+      case Set: {
+        if (a.size !== b.size) {
+          return false;
+        }
+        for (const value of a) {
+          if (!b.has(value)) {
+            return false;
+          }
+        }
+        break;
+      }
+      case Map: {
+        if (a.size !== b.size) {
+          return false;
+        }
+        for (const key of a.keys()) {
+          if (!b.has(key) || !equalityDeep(a.get(key), b.get(key))) {
+            return false;
+          }
+        }
+        break;
+      }
+      case void 0:
+      case Object:
+        if (size(a) !== size(b)) {
+          return false;
+        }
+        for (const key in a) {
+          if (!hasProperty(a, key) || !equalityDeep(a[key], b[key])) {
+            return false;
+          }
+        }
+        break;
+      case Array:
+        if (a.length !== b.length) {
+          return false;
+        }
+        for (let i = 0; i < a.length; i++) {
+          if (!equalityDeep(a[i], b[i])) {
+            return false;
+          }
+        }
+        break;
+      default:
+        return false;
+    }
+    return true;
+  };
+  var isOneOf = (value, options) => options.includes(value);
+
+  // node_modules/y-protocols/awareness.js
+  var Y = __toESM(require_yjs(), 1);
+
+  // node_modules/lib0/mutex.js
+  var createMutex = () => {
+    let token = true;
+    return (f, g) => {
+      if (token) {
+        token = false;
+        try {
+          f();
+        } finally {
+          token = true;
+        }
+      } else if (g !== void 0) {
+        g();
+      }
+    };
+  };
+
+  // node_modules/lib0/diff.js
+  var highSurrogateRegex = /[\uD800-\uDBFF]/;
+  var lowSurrogateRegex = /[\uDC00-\uDFFF]/;
+  var simpleDiffString = (a, b) => {
+    let left = 0;
+    let right = 0;
+    while (left < a.length && left < b.length && a[left] === b[left]) {
+      left++;
+    }
+    if (left > 0 && highSurrogateRegex.test(a[left - 1])) left--;
+    while (right + left < a.length && right + left < b.length && a[a.length - right - 1] === b[b.length - right - 1]) {
+      right++;
+    }
+    if (right > 0 && lowSurrogateRegex.test(a[a.length - right])) right--;
+    return {
+      index: left,
+      remove: a.length - left - right,
+      insert: b.slice(left, b.length - right)
+    };
+  };
+  var simpleDiff = simpleDiffString;
+
+  // node_modules/y-prosemirror/src/plugins/keys.js
+  var ySyncPluginKey = new PluginKey("y-sync");
+  var yUndoPluginKey = new PluginKey("y-undo");
+  var yCursorPluginKey = new PluginKey("yjs-cursor");
+
+  // node_modules/y-prosemirror/src/plugins/sync-plugin.js
+  var Y2 = __toESM(require_yjs(), 1);
+
+  // node_modules/lib0/random.js
+  var rand = Math.random;
+  var oneOf = (arr) => arr[floor(rand() * arr.length)];
+  var uuidv4Template = "10000000-1000-4000-8000" + -1e11;
+
+  // node_modules/lib0/conditions.js
+  var undefinedToNull = (v) => v === void 0 ? null : v;
+
+  // node_modules/lib0/storage.js
+  var VarStoragePolyfill = class {
+    constructor() {
+      this.map = /* @__PURE__ */ new Map();
+    }
+    /**
+     * @param {string} key
+     * @param {any} newValue
+     */
+    setItem(key, newValue) {
+      this.map.set(key, newValue);
+    }
+    /**
+     * @param {string} key
+     */
+    getItem(key) {
+      return this.map.get(key);
+    }
+  };
+  var _localStorage = new VarStoragePolyfill();
+  var usePolyfill = true;
+  try {
+    if (typeof localStorage !== "undefined" && localStorage) {
+      _localStorage = localStorage;
+      usePolyfill = false;
+    }
+  } catch (e) {
+  }
+  var varStorage = _localStorage;
+
+  // node_modules/lib0/environment.js
+  var isNode = typeof process !== "undefined" && process.release && /node|io\.js/.test(process.release.name) && Object.prototype.toString.call(typeof process !== "undefined" ? process : 0) === "[object process]";
+  var isBrowser = typeof window !== "undefined" && typeof document !== "undefined" && !isNode;
+  var isMac = typeof navigator !== "undefined" ? /Mac/.test(navigator.platform) : false;
+  var params;
+  var args = [];
+  var computeParams = () => {
+    if (params === void 0) {
+      if (isNode) {
+        params = create3();
+        const pargs = process.argv;
+        let currParamName = null;
+        for (let i = 0; i < pargs.length; i++) {
+          const parg = pargs[i];
+          if (parg[0] === "-") {
+            if (currParamName !== null) {
+              params.set(currParamName, "");
+            }
+            currParamName = parg;
+          } else {
+            if (currParamName !== null) {
+              params.set(currParamName, parg);
+              currParamName = null;
+            } else {
+              args.push(parg);
+            }
+          }
+        }
+        if (currParamName !== null) {
+          params.set(currParamName, "");
+        }
+      } else if (typeof location === "object") {
+        params = create3();
+        (location.search || "?").slice(1).split("&").forEach((kv) => {
+          if (kv.length !== 0) {
+            const [key, value] = kv.split("=");
+            params.set(`--${fromCamelCase(key, "-")}`, value);
+            params.set(`-${fromCamelCase(key, "-")}`, value);
+          }
+        });
+      } else {
+        params = create3();
+      }
+    }
+    return params;
+  };
+  var hasParam = (name) => computeParams().has(name);
+  var getVariable = (name) => isNode ? undefinedToNull(process.env[name.toUpperCase().replaceAll("-", "_")]) : undefinedToNull(varStorage.getItem(name));
+  var hasConf = (name) => hasParam("--" + name) || getVariable(name) !== null;
+  var production = hasConf("production");
+  var forceColor = isNode && isOneOf(process.env.FORCE_COLOR, ["true", "1", "2"]);
+  var supportsColor = forceColor || !hasParam("--no-colors") && // @todo deprecate --no-colors
+  !hasConf("no-color") && (!isNode || process.stdout.isTTY) && (!isNode || hasParam("--color") || getVariable("COLORTERM") !== null || (getVariable("TERM") || "").includes("color"));
+
   // node_modules/lib0/buffer.js
   var toBase64Browser = (bytes) => {
     let s = "";
@@ -16033,12 +16126,12 @@ var ProseMirrorBundle = (() => {
     if (a == null || b == null || a.constructor !== b.constructor) return false;
     if (a[EqualityTraitSymbol]) return equals(a, b);
     if (isArray(a)) {
-      return every2(
+      return every(
         a,
         (aitem) => some(b, (bitem) => shapeExtends(aitem, bitem))
       );
     } else if (isObject(a)) {
-      return every(
+      return every2(
         a,
         (aitem, akey) => shapeExtends(aitem, b[akey])
       );
@@ -16347,7 +16440,7 @@ var ProseMirrorBundle = (() => {
         err?.extend(null, "object", "null");
         return false;
       }
-      return every(this.shape, (vv, vk) => {
+      return every2(this.shape, (vv, vk) => {
         const c = this._isPartial && !hasProperty(o, vk) || vv.check(o[vk], err);
         !c && err?.extend(vk.toString(), vv.toString(), typeof o[vk], "Object property does not match");
         return c;
@@ -16378,7 +16471,7 @@ var ProseMirrorBundle = (() => {
      * @return {o is { [key in Unwrap<Keys>]: Unwrap<Values> }}
      */
     check(o, err) {
-      return o != null && every(o, (vv, vk) => {
+      return o != null && every2(o, (vv, vk) => {
         const ck = this.shape.keys.check(vk, err);
         !ck && err?.extend(vk + "", "Record", typeof o, ck ? "Key doesn't match schema" : "Value doesn't match value");
         return ck && this.shape.values.check(vv, err);
@@ -16401,7 +16494,7 @@ var ProseMirrorBundle = (() => {
      * @return {o is { [K in keyof S]: S[K] extends Schema<infer Type> ? Type : never }}
      */
     check(o, err) {
-      return o != null && every(this.shape, (vv, vk) => {
+      return o != null && every2(this.shape, (vv, vk) => {
         const c = (
           /** @type {Schema<any>} */
           vv.check(o[vk], err)
@@ -16427,7 +16520,7 @@ var ProseMirrorBundle = (() => {
      * @return {o is Array<S extends Schema<infer T> ? T : never>} o
      */
     check(o, err) {
-      const c = isArray(o) && every2(o, (oi) => this.shape.check(oi));
+      const c = isArray(o) && every(o, (oi) => this.shape.check(oi));
       !c && err?.extend(null, "Array", "");
       return c;
     }
@@ -16496,7 +16589,7 @@ var ProseMirrorBundle = (() => {
      * @return {o is Intersect<UnwrapArray<T>>}
      */
     check(o, err) {
-      const c = every2(this.shape, (check) => check.check(o, err));
+      const c = every(this.shape, (check) => check.check(o, err));
       !c && err?.extend(null, "Intersectinon", typeof o);
       return c;
     }
@@ -16962,7 +17055,7 @@ ${err.toString()}`);
 
   // node_modules/y-prosemirror/src/plugins/sync-plugin.js
   var isVisible = (item, snapshot2) => snapshot2 === void 0 ? !item.deleted : snapshot2.sv.has(item.id.client) && /** @type {number} */
-  snapshot2.sv.get(item.id.client) > item.id.clock && !isDeleted(snapshot2.ds, item.id);
+  snapshot2.sv.get(item.id.client) > item.id.clock && !Y2.isDeleted(snapshot2.ds, item.id);
   var defaultColors = [{ light: "#ecd44433", dark: "#ecd444" }];
   var getUserColor = (colorMapping, colors, user) => {
     if (!colorMapping.has(user)) {
@@ -17217,7 +17310,7 @@ ${err.toString()}`);
      */
     renderSnapshot(snapshot2, prevSnapshot) {
       if (!prevSnapshot) {
-        prevSnapshot = (void 0)((void 0)(), /* @__PURE__ */ new Map());
+        prevSnapshot = Y2.createSnapshot(Y2.createDeleteSet(), /* @__PURE__ */ new Map());
       }
       this.prosemirrorView.dispatch(
         this._tr.setMeta(ySyncPluginKey, { snapshot: snapshot2, prevSnapshot })
@@ -17279,17 +17372,17 @@ ${err.toString()}`);
       let historyDoc = this.doc;
       let historyType = this.type;
       if (!snapshot2) {
-        snapshot2 = snapshot(this.doc);
+        snapshot2 = Y2.snapshot(this.doc);
       }
       if (snapshot2 instanceof Uint8Array || prevSnapshot instanceof Uint8Array) {
         if (!(snapshot2 instanceof Uint8Array) || !(prevSnapshot instanceof Uint8Array)) {
           unexpectedCase();
         }
-        historyDoc = new Doc({ gc: false });
-        (void 0)(historyDoc, prevSnapshot);
-        prevSnapshot = snapshot(historyDoc);
-        (void 0)(historyDoc, snapshot2);
-        snapshot2 = snapshot(historyDoc);
+        historyDoc = new Y2.Doc({ gc: false });
+        Y2.applyUpdateV2(historyDoc, prevSnapshot);
+        prevSnapshot = Y2.snapshot(historyDoc);
+        Y2.applyUpdateV2(historyDoc, snapshot2);
+        snapshot2 = Y2.snapshot(historyDoc);
         if (historyType._item === null) {
           const rootKey = Array.from(this.doc.share.keys()).find(
             (key) => this.doc.share.get(key) === this.type
@@ -17297,7 +17390,7 @@ ${err.toString()}`);
           historyType = historyDoc.getXmlFragment(rootKey);
         } else {
           const historyStructs = historyDoc.store.clients.get(historyType._item.id.client) ?? [];
-          const itemIndex = (void 0)(
+          const itemIndex = Y2.findIndexSS(
             historyStructs,
             historyType._item.id.clock
           );
@@ -17319,7 +17412,7 @@ ${err.toString()}`);
           const pud = pluginState.permanentUserData;
           if (pud) {
             pud.dss.forEach((ds) => {
-              (void 0)(transaction, ds, (_item) => {
+              Y2.iterateDeletedStructs(transaction, ds, (_item) => {
               });
             });
           }
@@ -17335,9 +17428,9 @@ ${err.toString()}`);
               )
             };
           };
-          const fragmentContent = (void 0)(
+          const fragmentContent = Y2.typeListToArraySnapshot(
             historyType,
-            new Snapshot(prevSnapshot.ds, snapshot2.sv)
+            new Y2.Snapshot(prevSnapshot.ds, snapshot2.sv)
           ).map((t) => {
             if (!t._item.deleted || isVisible(t._item, snapshot2) || isVisible(t._item, prevSnapshot)) {
               return createNodeFromYElement(
@@ -17376,11 +17469,11 @@ ${err.toString()}`);
       }
       this.mux(() => {
         const delType = (_, type) => this.mapping.delete(type);
-        (void 0)(
+        Y2.iterateDeletedStructs(
           transaction,
           transaction.deleteSet,
           (struct) => {
-            if (struct.constructor === Item2) {
+            if (struct.constructor === Y2.Item) {
               const type = (
                 /** @type {Y.ContentType} */
                 /** @type {Y.Item} */
@@ -17406,7 +17499,7 @@ ${err.toString()}`);
           new Slice(Fragment.from(fragmentContent), 0, 0)
         );
         restoreRelativeSelection(tr, this.beforeTransactionSelection, this);
-        tr = tr.setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: transaction.origin instanceof UndoManager });
+        tr = tr.setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: transaction.origin instanceof Y2.UndoManager });
         if (this.beforeTransactionSelection !== null && this._isLocalCursorInView()) {
           tr.scrollIntoView();
         }
@@ -17450,7 +17543,7 @@ ${err.toString()}`);
       meta.mapping.get(el)
     );
     if (node === void 0) {
-      if (el instanceof XmlElement) {
+      if (el instanceof Y2.XmlElement) {
         return createNodeFromYElement(
           el,
           schema2,
@@ -17468,7 +17561,7 @@ ${err.toString()}`);
   var createNodeFromYElement = (el, schema2, meta, snapshot2, prevSnapshot, computeYChange) => {
     const children = [];
     const createChildren = (type) => {
-      if (type instanceof XmlElement) {
+      if (type instanceof Y2.XmlElement) {
         const n = createNodeIfNotExists(
           type,
           schema2,
@@ -17485,7 +17578,7 @@ ${err.toString()}`);
           /** @type {Y.ContentType} */
           type._item.right?.content?.type
         );
-        if (nextytext instanceof Text && !nextytext._item.deleted && nextytext._item.id.client === nextytext.doc.clientID) {
+        if (nextytext instanceof Y2.Text && !nextytext._item.deleted && nextytext._item.id.client === nextytext.doc.clientID) {
           type.applyDelta([
             { retain: type.length },
             ...nextytext.toDelta()
@@ -17514,7 +17607,7 @@ ${err.toString()}`);
     if (snapshot2 === void 0 || prevSnapshot === void 0) {
       el.toArray().forEach(createChildren);
     } else {
-      (void 0)(el, new Snapshot(prevSnapshot.ds, snapshot2.sv)).forEach(createChildren);
+      Y2.typeListToArraySnapshot(el, new Y2.Snapshot(prevSnapshot.ds, snapshot2.sv)).forEach(createChildren);
     }
     try {
       const attrs = el.getAttributes(snapshot2);
@@ -17569,7 +17662,7 @@ ${err.toString()}`);
     return nodes2;
   };
   var createTypeFromTextNodes = (nodes2, meta) => {
-    const type = new XmlText();
+    const type = new Y2.XmlText();
     const delta = nodes2.map((node) => ({
       // @ts-ignore
       insert: node.text,
@@ -17580,7 +17673,7 @@ ${err.toString()}`);
     return type;
   };
   var createTypeFromElementNode = (node, meta) => {
-    const type = new XmlElement(node.type.name);
+    const type = new Y2.XmlElement(node.type.name);
     for (const key in node.attrs) {
       const val = node.attrs[key];
       if (val !== null && key !== "ychange") {
@@ -17632,7 +17725,7 @@ ${err.toString()}`);
     return delta.length === ptexts.length && delta.every(
       /** @type {(d:any,i:number) => boolean} */
       (d, i) => d.insert === /** @type {any} */
-      ptexts[i].text && keys2(d.attributes || {}).length === ptexts[i].marks.length && every(d.attributes, (attr, yattrname) => {
+      ptexts[i].text && keys2(d.attributes || {}).length === ptexts[i].marks.length && every2(d.attributes, (attr, yattrname) => {
         const markname = yattr2markname(yattrname);
         const pmarks = ptexts[i].marks;
         return equalAttrs(attr, pmarks.find(
@@ -17643,13 +17736,13 @@ ${err.toString()}`);
     );
   };
   var equalYTypePNode = (ytype, pnode) => {
-    if (ytype instanceof XmlElement && !(pnode instanceof Array) && matchNodeName(ytype, pnode)) {
+    if (ytype instanceof Y2.XmlElement && !(pnode instanceof Array) && matchNodeName(ytype, pnode)) {
       const normalizedContent = normalizePNodeContent(pnode);
       return ytype._length === normalizedContent.length && equalAttrs(ytype.getAttributes(), pnode.attrs) && ytype.toArray().every(
         (ychild, i) => equalYTypePNode(ychild, normalizedContent[i])
       );
     }
-    return ytype instanceof XmlText && pnode instanceof Array && equalYTextPText(ytype, pnode);
+    return ytype instanceof Y2.XmlText && pnode instanceof Array && equalYTextPText(ytype, pnode);
   };
   var mappedIdentity = (mapped, pcontent) => mapped === pcontent || mapped instanceof Array && pcontent instanceof Array && mapped.length === pcontent.length && mapped.every(
     (a, i) => pcontent[i] === a
@@ -17692,9 +17785,9 @@ ${err.toString()}`);
     const nAttrs = {};
     while (n !== null) {
       if (!n.deleted) {
-        if (n.countable && n.content instanceof void 0) {
+        if (n.countable && n.content instanceof Y2.ContentString) {
           str += n.content.str;
-        } else if (n.content instanceof void 0) {
+        } else if (n.content instanceof Y2.ContentFormat) {
           nAttrs[n.content.key] = null;
         }
       }
@@ -17745,11 +17838,11 @@ ${err.toString()}`);
     return pattrs;
   };
   var updateYFragment = (y, yDomFragment, pNode, meta) => {
-    if (yDomFragment instanceof XmlElement && yDomFragment.nodeName !== pNode.type.name) {
+    if (yDomFragment instanceof Y2.XmlElement && yDomFragment.nodeName !== pNode.type.name) {
       throw new Error("node name mismatch!");
     }
     meta.mapping.set(yDomFragment, pNode);
-    if (yDomFragment instanceof XmlElement) {
+    if (yDomFragment instanceof Y2.XmlElement) {
       const yDomAttrs = yDomFragment.getAttributes();
       const pAttrs = pNode.attrs;
       for (const key in pAttrs) {
@@ -17802,14 +17895,14 @@ ${err.toString()}`);
         const leftP = pChildren[left];
         const rightY = yChildren[yChildCnt - right - 1];
         const rightP = pChildren[pChildCnt - right - 1];
-        if (leftY instanceof XmlText && leftP instanceof Array) {
+        if (leftY instanceof Y2.XmlText && leftP instanceof Array) {
           if (!equalYTextPText(leftY, leftP)) {
             updateYText(leftY, leftP, meta);
           }
           left += 1;
         } else {
-          let updateLeft = leftY instanceof XmlElement && matchNodeName(leftY, leftP);
-          let updateRight = rightY instanceof XmlElement && matchNodeName(rightY, rightP);
+          let updateLeft = leftY instanceof Y2.XmlElement && matchNodeName(leftY, leftP);
+          let updateRight = rightY instanceof Y2.XmlElement && matchNodeName(rightY, rightP);
           if (updateLeft && updateRight) {
             const equalityLeft = computeChildEqualityFactor(
               /** @type {Y.XmlElement} */
@@ -17866,7 +17959,7 @@ ${err.toString()}`);
         }
       }
       const yDelLen = yChildCnt - left - right;
-      if (yChildCnt === 1 && pChildCnt === 0 && yChildren[0] instanceof XmlText) {
+      if (yChildCnt === 1 && pChildCnt === 0 && yChildren[0] instanceof Y2.XmlText) {
         meta.mapping.delete(yChildren[0]);
         yChildren[0].delete(0, yChildren[0].length);
       } else if (yDelLen > 0) {
@@ -17885,6 +17978,7 @@ ${err.toString()}`);
   var matchNodeName = (yElement, pNode) => !(pNode instanceof Array) && yElement.nodeName === pNode.type.name;
 
   // node_modules/y-prosemirror/src/lib.js
+  var Y3 = __toESM(require_yjs(), 1);
   var viewsToUpdate = null;
   var updateMetas = () => {
     const ups = (
@@ -17912,16 +18006,16 @@ ${err.toString()}`);
   };
   var absolutePositionToRelativePosition = (pos, type, mapping) => {
     if (pos === 0) {
-      return createRelativePositionFromTypeIndex(type, 0, type.length === 0 ? -1 : 0);
+      return Y3.createRelativePositionFromTypeIndex(type, 0, type.length === 0 ? -1 : 0);
     }
     let n = type._first === null ? null : (
       /** @type {Y.ContentType} */
       type._first.content.type
     );
     while (n !== null && type !== n) {
-      if (n instanceof XmlText) {
+      if (n instanceof Y3.XmlText) {
         if (n._length >= pos) {
-          return createRelativePositionFromTypeIndex(n, pos, type.length === 0 ? -1 : 0);
+          return Y3.createRelativePositionFromTypeIndex(n, pos, type.length === 0 ? -1 : 0);
         } else {
           pos -= n._length;
         }
@@ -17952,7 +18046,7 @@ ${err.toString()}`);
           pos--;
         } else {
           if (pos === 1 && n._length === 0 && pNodeSize > 1) {
-            return new RelativePosition(n._item === null ? null : n._item.id, n._item === null ? (void 0)(n) : null, null);
+            return new Y3.RelativePosition(n._item === null ? null : n._item.id, n._item === null ? Y3.findRootTypeKey(n) : null, null);
           }
           pos -= pNodeSize;
           if (n._item !== null && n._item.next !== null) {
@@ -17961,7 +18055,7 @@ ${err.toString()}`);
           } else {
             if (pos === 0) {
               n = n._item === null ? n : n._item.parent;
-              return new RelativePosition(n._item === null ? null : n._item.id, n._item === null ? (void 0)(n) : null, null);
+              return new Y3.RelativePosition(n._item === null ? null : n._item.id, n._item === null ? Y3.findRootTypeKey(n) : null, null);
             }
             do {
               n = /** @type {Y.Item} */
@@ -17981,30 +18075,30 @@ ${err.toString()}`);
       if (n === null) {
         throw unexpectedCase();
       }
-      if (pos === 0 && n.constructor !== XmlText && n !== type) {
+      if (pos === 0 && n.constructor !== Y3.XmlText && n !== type) {
         return createRelativePosition(n._item.parent, n._item);
       }
     }
-    return createRelativePositionFromTypeIndex(type, type._length, type.length === 0 ? -1 : 0);
+    return Y3.createRelativePositionFromTypeIndex(type, type._length, type.length === 0 ? -1 : 0);
   };
   var createRelativePosition = (type, item) => {
     let typeid = null;
     let tname = null;
     if (type._item === null) {
-      tname = (void 0)(type);
+      tname = Y3.findRootTypeKey(type);
     } else {
-      typeid = (void 0)(type._item.id.client, type._item.id.clock);
+      typeid = Y3.createID(type._item.id.client, type._item.id.clock);
     }
-    return new RelativePosition(typeid, tname, item.id);
+    return new Y3.RelativePosition(typeid, tname, item.id);
   };
   var relativePositionToAbsolutePosition = (y, documentType, relPos, mapping) => {
-    const decodedPos = createAbsolutePositionFromRelativePosition(relPos, y);
-    if (decodedPos === null || decodedPos.type !== documentType && !isParentOf(documentType, decodedPos.type._item)) {
+    const decodedPos = Y3.createAbsolutePositionFromRelativePosition(relPos, y);
+    if (decodedPos === null || decodedPos.type !== documentType && !Y3.isParentOf(documentType, decodedPos.type._item)) {
       return null;
     }
     let type = decodedPos.type;
     let pos = 0;
-    if (type.constructor === XmlText) {
+    if (type.constructor === Y3.XmlText) {
       pos = decodedPos.index;
     } else if (type._item === null || !type._item.deleted) {
       let n = type._first;
@@ -18016,7 +18110,7 @@ ${err.toString()}`);
             n.content.type
           );
           i++;
-          if (t instanceof XmlText) {
+          if (t instanceof Y3.XmlText) {
             pos += t._length;
           } else {
             pos += /** @type {any} */
@@ -18045,7 +18139,7 @@ ${err.toString()}`);
             break;
           }
           if (!n.deleted) {
-            if (contentType instanceof XmlText) {
+            if (contentType instanceof Y3.XmlText) {
               pos += contentType._length;
             } else {
               pos += /** @type {any} */
@@ -18061,10 +18155,10 @@ ${err.toString()}`);
     return pos - 1;
   };
   function prosemirrorToYDoc(doc4, xmlFragment = "prosemirror") {
-    const ydoc = new Doc();
+    const ydoc = new Y3.Doc();
     const type = (
       /** @type {Y.XmlFragment} */
-      ydoc.get(xmlFragment, XmlFragment)
+      ydoc.get(xmlFragment, Y3.XmlFragment)
     );
     if (!type.doc) {
       return ydoc;
@@ -18073,7 +18167,7 @@ ${err.toString()}`);
     return type.doc;
   }
   function prosemirrorToYXmlFragment(doc4, xmlFragment) {
-    const type = xmlFragment || new XmlFragment();
+    const type = xmlFragment || new Y3.XmlFragment();
     const ydoc = type.doc ? type.doc : { transact: (transaction) => transaction(void 0) };
     updateYFragment(ydoc, type, doc4, { mapping: /* @__PURE__ */ new Map(), isOMark: /* @__PURE__ */ new Map() });
     return type;
@@ -18097,7 +18191,7 @@ ${err.toString()}`);
     const items = xmlFragment.toArray();
     const serialize = (item) => {
       let response;
-      if (item instanceof XmlText) {
+      if (item instanceof Y3.XmlText) {
         const delta = item.toDelta();
         response = delta.map(
           /** @param {any} d */
@@ -18122,7 +18216,7 @@ ${err.toString()}`);
             return text;
           }
         );
-      } else if (item instanceof XmlElement) {
+      } else if (item instanceof Y3.XmlElement) {
         response = {
           type: item.nodeName
         };
@@ -18192,13 +18286,13 @@ ${err.toString()}`);
         let anchor = relativePositionToAbsolutePosition(
           y,
           ystate.type,
-          (void 0)(aw.cursor.anchor),
+          Y4.createRelativePositionFromJSON(aw.cursor.anchor),
           ystate.binding.mapping
         );
         let head = relativePositionToAbsolutePosition(
           y,
           ystate.type,
-          (void 0)(aw.cursor.head),
+          Y4.createRelativePositionFromJSON(aw.cursor.head),
           ystate.binding.mapping
         );
         if (anchor !== null && head !== null) {
@@ -18282,11 +18376,11 @@ ${err.toString()}`);
             ystate.type,
             ystate.binding.mapping
           );
-          if (current.cursor == null || !(void 0)(
-            (void 0)(current.cursor.anchor),
+          if (current.cursor == null || !Y4.compareRelativePositions(
+            Y4.createRelativePositionFromJSON(current.cursor.anchor),
             anchor
-          ) || !(void 0)(
-            (void 0)(current.cursor.head),
+          ) || !Y4.compareRelativePositions(
+            Y4.createRelativePositionFromJSON(current.cursor.head),
             head
           )) {
             awareness.setLocalStateField(cursorStateField, {
@@ -18297,7 +18391,7 @@ ${err.toString()}`);
         } else if (current.cursor != null && relativePositionToAbsolutePosition(
           ystate.doc,
           ystate.type,
-          (void 0)(current.cursor.anchor),
+          Y4.createRelativePositionFromJSON(current.cursor.anchor),
           ystate.binding.mapping
         ) !== null) {
           awareness.setLocalStateField(cursorStateField, null);
@@ -18319,16 +18413,17 @@ ${err.toString()}`);
   });
 
   // node_modules/y-prosemirror/src/plugins/undo-plugin.js
+  var import_yjs = __toESM(require_yjs(), 1);
   var undo2 = (state) => yUndoPluginKey.getState(state)?.undoManager?.undo() != null;
   var redo2 = (state) => yUndoPluginKey.getState(state)?.undoManager?.redo() != null;
   var defaultProtectedNodes = /* @__PURE__ */ new Set(["paragraph"]);
-  var defaultDeleteFilter = (item, protectedNodes) => !(item instanceof Item2) || !(item.content instanceof ContentType) || !(item.content.type instanceof Text || item.content.type instanceof XmlElement && protectedNodes.has(item.content.type.nodeName)) || item.content.type._length === 0;
+  var defaultDeleteFilter = (item, protectedNodes) => !(item instanceof import_yjs.Item) || !(item.content instanceof import_yjs.ContentType) || !(item.content.type instanceof import_yjs.Text || item.content.type instanceof import_yjs.XmlElement && protectedNodes.has(item.content.type.nodeName)) || item.content.type._length === 0;
   var yUndoPlugin = ({ protectedNodes = defaultProtectedNodes, trackedOrigins = [], undoManager = null } = {}) => new Plugin({
     key: yUndoPluginKey,
     state: {
       init: (initargs, state) => {
         const ystate = ySyncPluginKey.getState(state);
-        const _undoManager = undoManager || new UndoManager(ystate.type, {
+        const _undoManager = undoManager || new import_yjs.UndoManager(ystate.type, {
           trackedOrigins: new Set([ySyncPluginKey].concat(trackedOrigins)),
           deleteFilter: (item) => defaultDeleteFilter(item, protectedNodes),
           captureTransaction: (tr) => tr.meta.get("addToHistory") !== false

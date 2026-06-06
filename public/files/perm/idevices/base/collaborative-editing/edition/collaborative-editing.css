@@ -28,9 +28,9 @@
 }
 
 .collab-edit-form .exe-input:focus {
-	border-color: #4285f4;
+	border-color: #047857;
 	outline: none;
-	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+	box-shadow: 0 0 0 2px rgba(4, 120, 87, 0.15);
 }
 
 /* Fieldset styling */
@@ -89,12 +89,12 @@
 }
 
 .collab-edit-form .prosemirror-editor-container:focus-within {
-	border-color: #4285f4;
-	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+	border-color: #047857;
+	box-shadow: 0 0 0 2px rgba(4, 120, 87, 0.15);
 }
 
 .collab-edit-form .prosemirror-editor {
-	min-height: 200px;
+	min-height: 140px;
 	padding: 12px 15px;
 }
 

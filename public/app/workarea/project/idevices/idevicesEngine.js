@@ -965,12 +965,15 @@ export default class IdevicesEngine {
                     return;
                 }
                 if (this.clickIdeviceMenuEnabled) {
+                    // Lock BEFORE the async work: otherwise a duplicated/re-fired
+                    // click event passes this guard while createIdeviceInContent is
+                    // still awaiting, creating two iDevices from a single click.
+                    this.clickIdeviceMenuEnabled = false;
                     let ideviceData = { odeIdeviceTypeName: element.id };
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
                         this.nodeContentElement
                     );
-                    this.clickIdeviceMenuEnabled = false;
                     setTimeout(() => {
                         this.clickIdeviceMenuEnabled = true;
                     }, this.intervalTime);
