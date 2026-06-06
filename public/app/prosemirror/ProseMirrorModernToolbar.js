@@ -105,15 +105,10 @@
 			this._setButtonContent(btn, 'link', t('Link'));
 			btn.addEventListener('click', (e) => {
 				e.preventDefault();
-				const linkMark = this.schema.marks.link;
-				if (!linkMark) return;
-				// eslint-disable-next-line no-alert
-				const href = window.prompt(t('Enter the link URL:'), 'https://');
-				if (href) {
-					const cmd = window.ProseMirrorBundle.toggleMark(linkMark, { href });
-					this.editor.execCommand(cmd);
+				if (!this.schema.marks.link) return;
+				if (window.ProseMirrorLinkDialog) {
+					window.ProseMirrorLinkDialog.open(this.editor);
 				}
-				this.editor.focus();
 			});
 			return btn;
 		}

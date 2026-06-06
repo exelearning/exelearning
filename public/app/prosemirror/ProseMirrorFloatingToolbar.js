@@ -126,18 +126,17 @@
 		});
 	}
 
-	/** Toggle a mark on the current selection. For links, prompt for the URL. */
+	/** Toggle a mark on the current selection. Links open the link dialog. */
 	function applyMark(view, schema, markName) {
 		const markType = schema.marks[markName];
 		if (!markType) return;
-		let attrs;
 		if (markName === 'link') {
-			// eslint-disable-next-line no-alert
-			const href = window.prompt(t('Enter the link URL:'), 'https://');
-			if (!href) return;
-			attrs = { href };
+			if (window.ProseMirrorLinkDialog) {
+				window.ProseMirrorLinkDialog.open({ view, schema, focus: () => view.focus() });
+			}
+			return;
 		}
-		const cmd = window.ProseMirrorBundle.toggleMark(markType, attrs);
+		const cmd = window.ProseMirrorBundle.toggleMark(markType);
 		cmd(view.state, view.dispatch, view);
 		view.focus();
 	}

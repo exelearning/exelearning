@@ -361,6 +361,8 @@
           const prosemirrorModulesParallel = [
             'ProseMirrorSchema.js',
             'ProseMirrorEditor.js',
+            'ProseMirrorDialog.js',
+            'ProseMirrorLinkDialog.js',
             'ProseMirrorToolbar.js',
             'ProseMirrorModernToolbar.js',
             'ProseMirrorBlockMenu.js',

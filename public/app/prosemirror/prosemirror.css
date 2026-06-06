@@ -1148,3 +1148,77 @@
 	height: 18px;
 	fill: currentColor;
 }
+
+/* ============================================
+   Editor dialogs (ProseMirrorDialog forms in eXe modals)
+   ============================================ */
+
+.pm-dialog-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.pm-dialog-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pm-dialog-field > label {
+	font-weight: 600;
+	font-size: 13px;
+	color: #333;
+}
+
+.pm-dialog-field .pm-dialog-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.pm-dialog-field .pm-dialog-input:focus {
+	outline: none;
+	border-color: #047857;
+	box-shadow: 0 0 0 2px rgba(4, 120, 87, 0.15);
+}
+
+.pm-dialog-field textarea.pm-dialog-input {
+	min-height: 80px;
+	resize: vertical;
+}
+
+.pm-dialog-inline {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	font-size: 13px;
+	color: #333;
+}
+
+.pm-dialog-media {
+	display: flex;
+	gap: 6px;
+}
+
+.pm-dialog-media .pm-dialog-input {
+	flex: 1;
+}
+
+.pm-dialog-browse {
+	padding: 0 12px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: #f5f5f5;
+	cursor: pointer;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.pm-dialog-browse:hover {
+	background: #e9ecef;
+}

@@ -1167,6 +1167,11 @@
 		 * @private
 		 */
 		_showLinkDialog() {
+			if (window.ProseMirrorLinkDialog) {
+				window.ProseMirrorLinkDialog.open(this.editor);
+				return;
+			}
+			// Fallback (dialog module not loaded): minimal prompt.
 			const url = prompt(_('Enter URL:'), 'https://');
 			if (url) {
 				const { state, dispatch } = this.editor.view;
