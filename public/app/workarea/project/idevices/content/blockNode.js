@@ -369,7 +369,8 @@ export default class IdeviceBlockNode {
     }
 
     renderMaterialSpriteIcon(iconName) {
-        const safeIconName = MATERIAL_ICON_CATALOG.includes(iconName) ? iconName : 'help';
+        const safeIconName =
+            Array.isArray(MATERIAL_ICON_CATALOG) && MATERIAL_ICON_CATALOG.includes(iconName) ? iconName : 'help';
         const spritePath = this.getMaterialSpritePath();
         const spriteHref = `${spritePath}#${safeIconName}`;
         return `<svg class="exe-material-icon-sprite" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
