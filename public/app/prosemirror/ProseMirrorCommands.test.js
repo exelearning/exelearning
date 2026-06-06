@@ -58,6 +58,104 @@ describe('ProseMirrorCommands', () => {
 		expect(window.ProseMirrorCommands.isMarkActive(state, schema, 'strong')).toBe(false);
 	});
 
+	describe('insertBlock', () => {
+		it('returns false for an unknown node name', () => {
+			const editor = { schema: { nodes: {} }, view: {} };
+			expect(window.ProseMirrorCommands.insertBlock(editor, 'heading', {})).toBe(false);
+		});
+
+		it('returns false when createAndFill returns null', () => {
+			const headingType = { createAndFill: vi.fn(() => null) };
+			const editor = {
+				schema: { nodes: { heading: headingType } },
+				view: {
+					state: {
+						selection: { $from: { depth: 1, node: () => ({ isTextblock: true, content: { size: 0 }, nodeSize: 2 }), before: () => 5, after: () => 7 } },
+						tr: { replaceWith: vi.fn(), insert: vi.fn(), scrollIntoView: vi.fn() },
+					},
+				},
+			};
+			expect(window.ProseMirrorCommands.insertBlock(editor, 'heading', { level: 1 })).toBe(false);
+			expect(headingType.createAndFill).toHaveBeenCalledWith({ level: 1 });
+		});
+
+		it('calls replaceWith when cursor is in an empty textblock', () => {
+			const fakeNode = { isTextblock: true, nodeSize: 2 };
+			const headingType = { createAndFill: vi.fn(() => fakeNode) };
+			const dispatchSpy = vi.fn();
+			const scrollIntoViewMock = vi.fn();
+			const replaceWithMock = vi.fn();
+			const tr = {
+				replaceWith: vi.fn(function () { return this; }),
+				insert: vi.fn(function () { return this; }),
+				scrollIntoView: vi.fn(function () { scrollIntoViewMock(); return this; }),
+			};
+			const focusSpy = vi.fn();
+			const editor = {
+				schema: { nodes: { heading: headingType } },
+				view: {
+					state: {
+						selection: {
+							$from: {
+								depth: 1,
+								node: (depth) => depth === 1 ? { isTextblock: true, content: { size: 0 }, nodeSize: 2 } : null,
+								before: () => 5,
+								after: () => 7,
+							},
+						},
+						tr,
+					},
+					dispatch: dispatchSpy,
+				},
+				focus: focusSpy,
+			};
+
+			const result = window.ProseMirrorCommands.insertBlock(editor, 'heading', { level: 2 });
+
+			expect(result).toBe(true);
+			expect(headingType.createAndFill).toHaveBeenCalledWith({ level: 2 });
+			expect(tr.replaceWith).toHaveBeenCalled();
+			expect(tr.insert).not.toHaveBeenCalled();
+			expect(dispatchSpy).toHaveBeenCalled();
+			expect(focusSpy).toHaveBeenCalled();
+		});
+
+		it('calls insert when cursor is in a non-empty textblock', () => {
+			const fakeNode = { isTextblock: true, nodeSize: 2 };
+			const headingType = { createAndFill: vi.fn(() => fakeNode) };
+			const dispatchSpy = vi.fn();
+			const tr = {
+				replaceWith: vi.fn(function () { return this; }),
+				insert: vi.fn(function () { return this; }),
+				scrollIntoView: vi.fn(function () { return this; }),
+			};
+			const editor = {
+				schema: { nodes: { heading: headingType } },
+				view: {
+					state: {
+						selection: {
+							$from: {
+								depth: 1,
+								node: (depth) => depth === 1 ? { isTextblock: true, content: { size: 5 }, nodeSize: 7 } : null,
+								before: () => 5,
+								after: () => 12,
+							},
+						},
+						tr,
+					},
+					dispatch: dispatchSpy,
+				},
+			};
+
+			const result = window.ProseMirrorCommands.insertBlock(editor, 'heading', { level: 3 });
+
+			expect(result).toBe(true);
+			expect(tr.replaceWith).not.toHaveBeenCalled();
+			expect(tr.insert).toHaveBeenCalledWith(12, fakeNode);
+			expect(dispatchSpy).toHaveBeenCalled();
+		});
+	});
+
 	describe('isBlockActive', () => {
 		it('returns true when the current node type matches', () => {
 			const paragraphType = { name: 'paragraph' };

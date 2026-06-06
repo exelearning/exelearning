@@ -49,11 +49,34 @@
 		return Object.keys(attrs).every((k) => node.attrs[k] === attrs[k]);
 	}
 
+	function insertBlock(editor, nodeName, attrs) {
+		const schema = editor && editor.schema;
+		const type = schema && schema.nodes && schema.nodes[nodeName];
+		if (!type) return false;
+		const view = editor.view;
+		const { state } = view;
+		const { $from } = state.selection;
+		const node = type.createAndFill(attrs || {});
+		if (!node) return false;
+		let tr = state.tr;
+		const cur = $from.node($from.depth);
+		const start = $from.before($from.depth);
+		if (cur.isTextblock && cur.content.size === 0) {
+			tr = tr.replaceWith(start, start + cur.nodeSize, node);
+		} else {
+			tr = tr.insert($from.after($from.depth), node);
+		}
+		view.dispatch(tr.scrollIntoView());
+		if (typeof editor.focus === 'function') editor.focus();
+		return true;
+	}
+
 	window.ProseMirrorCommands = {
 		toggleMark,
 		setBlockType,
 		wrapInList,
 		isMarkActive,
 		isBlockActive,
+		insertBlock,
 	};
 })();

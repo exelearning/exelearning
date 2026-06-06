@@ -336,6 +336,34 @@
 		}
 
 		/**
+		 * Remove previously-added plugins, matched by PluginKey or plugin identity.
+		 * @param {Array} keys - PluginKey instances or Plugin instances to remove
+		 */
+		removePlugins(keys) {
+			if (!Array.isArray(keys)) keys = [keys];
+			const matches = (p) =>
+				keys.some(
+					(k) =>
+						p === k ||
+						(p.spec && p.spec.key && k && (p.spec.key === k || (k.key && p.spec.key.key === k.key)))
+				);
+			this._additionalPlugins = this._additionalPlugins.filter((p) => !matches(p));
+			const base = this.view.state.plugins.filter((p) => !matches(p));
+			const newState = this.view.state.reconfigure({ plugins: base });
+			this.view.updateState(newState);
+			this.state = newState;
+		}
+
+		/**
+		 * Whether a plugin with the given PluginKey (or identity) is active.
+		 */
+		hasPlugin(key) {
+			return this.view.state.plugins.some(
+				(p) => p === key || (p.spec && p.spec.key && (p.spec.key === key || (key && key.key && p.spec.key.key === key.key)))
+			);
+		}
+
+		/**
 		 * Execute a command
 		 * @param {Function} command
 		 * @returns {boolean}
