@@ -1195,6 +1195,47 @@
 	fill: currentColor;
 }
 
+/* ============================================
+   Contextual table toolbar (modern mode)
+   ============================================ */
+
+.prosemirror-table-toolbar {
+	position: absolute;
+	z-index: 1300;
+	display: none;
+	flex-direction: row;
+	gap: 2px;
+	padding: 3px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.prosemirror-table-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: #333;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.prosemirror-table-btn:hover {
+	background: #f0f0f0;
+}
+
+.prosemirror-table-btn svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}
+
 /* ----- In-place image resize (NodeView) ----- */
 
 /* Wrapper added by the image NodeView so the <img> can carry resize handles. */

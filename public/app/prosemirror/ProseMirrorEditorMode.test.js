@@ -33,6 +33,9 @@ describe('ProseMirrorEditorMode', () => {
 		// Image toolbar plugin stubs
 		global.window.proseMirrorImageToolbarPlugin = vi.fn(() => ({ imageToolbar: true }));
 		global.window.imageToolbarPluginKey = { key: 'exeImageToolbar' };
+		// Table toolbar plugin stubs
+		global.window.proseMirrorTableToolbarPlugin = vi.fn(() => ({ tableToolbar: true }));
+		global.window.tableToolbarPluginKey = { key: 'exeTableToolbar' };
 		delete global.window.ProseMirrorEditorMode;
 		loadScript('./ProseMirrorEditorMode.js');
 	});
@@ -46,6 +49,8 @@ describe('ProseMirrorEditorMode', () => {
 		delete global.window.floatingToolbarPluginKey;
 		delete global.window.proseMirrorImageToolbarPlugin;
 		delete global.window.imageToolbarPluginKey;
+		delete global.window.proseMirrorTableToolbarPlugin;
+		delete global.window.tableToolbarPluginKey;
 	});
 
 	const fakeEditor = () => ({
@@ -108,17 +113,18 @@ describe('ProseMirrorEditorMode', () => {
 	// -----------------------------------------------------------------------
 	// Block-menu plugin wiring
 	// -----------------------------------------------------------------------
-	it('mounting in modern mode calls editor.addPlugins once with the block menu, floating, and image toolbar plugins', () => {
+	it('mounting in modern mode calls editor.addPlugins once with the block menu, floating, image, and table toolbar plugins', () => {
 		const editor = fakeEditor();
 		const container = document.createElement('div');
 		window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
 		expect(editor.addPlugins).toHaveBeenCalledTimes(1);
-		// The plugin array must contain the block-menu, floating-toolbar, and image-toolbar results.
+		// The plugin array must contain the block-menu, floating-, image-, and table-toolbar results.
 		const pluginsArg = editor.addPlugins.mock.calls[0][0];
-		expect(pluginsArg).toHaveLength(3);
+		expect(pluginsArg).toHaveLength(4);
 		expect(pluginsArg).toContainEqual({ mockPlugin: true });
 		expect(pluginsArg).toContainEqual({ floating: true });
 		expect(pluginsArg).toContainEqual({ imageToolbar: true });
+		expect(pluginsArg).toContainEqual({ tableToolbar: true });
 	});
 
 	it('does NOT call addPlugins when plugin is already active (hasPlugin returns true)', () => {
@@ -139,6 +145,7 @@ describe('ProseMirrorEditorMode', () => {
 		expect(keysArg).toContain(window.blockMenuPluginKey);
 		expect(keysArg).toContain(window.floatingToolbarPluginKey);
 		expect(keysArg).toContain(window.imageToolbarPluginKey);
+		expect(keysArg).toContain(window.tableToolbarPluginKey);
 	});
 
 	it('mounting in classic mode does NOT call addPlugins', () => {

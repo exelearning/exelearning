@@ -369,6 +369,50 @@ describe('ProseMirrorToolbar', () => {
 		});
 	});
 
+	describe('_showTableDialog', () => {
+		it('delegates to ProseMirrorTableTools when the dialog framework is available', () => {
+			const openInsertDialog = vi.fn();
+			window.ProseMirrorTableTools = { openInsertDialog };
+			window.ProseMirrorDialog = { openForm: vi.fn() };
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showTableDialog();
+
+			expect(openInsertDialog).toHaveBeenCalledWith(mockEditor);
+			delete window.ProseMirrorTableTools;
+			delete window.ProseMirrorDialog;
+		});
+
+		it('falls back to prompts when the dialog framework is unavailable', () => {
+			delete window.ProseMirrorTableTools;
+			delete window.ProseMirrorDialog;
+			const prevPrompt = window.prompt;
+			window.prompt = vi.fn(() => '2');
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+			const spy = vi.spyOn(toolbar, '_insertTable').mockImplementation(() => {});
+
+			toolbar._showTableDialog();
+
+			expect(spy).toHaveBeenCalledWith(2, 2);
+			window.prompt = prevPrompt;
+		});
+	});
+
+	describe('_showTablePropsDialog', () => {
+		it('delegates to ProseMirrorTableTools.openProperties', () => {
+			const openProperties = vi.fn();
+			window.ProseMirrorTableTools = { openProperties };
+			window.ProseMirrorDialog = { openForm: vi.fn() };
+			const toolbar = new ProseMirrorToolbar({ editor: mockEditor, container });
+
+			toolbar._showTablePropsDialog();
+
+			expect(openProperties).toHaveBeenCalledWith(mockEditor);
+			delete window.ProseMirrorTableTools;
+			delete window.ProseMirrorDialog;
+		});
+	});
+
 	describe('destroy', () => {
 		it('removes toolbar from DOM', () => {
 			const toolbar = new ProseMirrorToolbar({

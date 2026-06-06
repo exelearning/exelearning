@@ -1056,6 +1056,12 @@
 					}
 					break;
 
+				case 'tableProps':
+					if (isInTable(state)) {
+						this._showTablePropsDialog();
+					}
+					break;
+
 				case 'textColor':
 					this._showColorPicker('textColor');
 					break;
@@ -1286,11 +1292,27 @@
 		 * @private
 		 */
 		_showTableDialog() {
+			// Prefer the shared insert-table dialog; fall back to a prompt only if
+			// the dialog framework is unavailable.
+			if (window.ProseMirrorTableTools && window.ProseMirrorDialog) {
+				window.ProseMirrorTableTools.openInsertDialog(this.editor);
+				return;
+			}
 			const rows = parseInt(prompt(_('Number of rows:'), '3'), 10);
 			const cols = parseInt(prompt(_('Number of columns:'), '3'), 10);
 
 			if (rows > 0 && cols > 0) {
 				this._insertTable(rows, cols);
+			}
+		}
+
+		/**
+		 * Show the cell-properties dialog (background / border colour).
+		 * @private
+		 */
+		_showTablePropsDialog() {
+			if (window.ProseMirrorTableTools && window.ProseMirrorDialog) {
+				window.ProseMirrorTableTools.openProperties(this.editor);
 			}
 		}
 
