@@ -457,7 +457,14 @@ var $exeDevice = {
      * runtime already injected it for the live node.
      */
     loadTikzJax: function () {
-        if (document.querySelector('script[src*="tikzjax"]')) return;
+        // Match the actual tikzjax.js file, not any src that merely contains the
+        // string "tikzjax" — cache-busting query strings (e.g. a static build
+        // versioned "...-tikzjax-...") would otherwise be a false positive and
+        // skip the real injection, leaving the preview unrendered.
+        const alreadyLoaded = Array.from(document.querySelectorAll('script[src]')).some((s) =>
+            /(^|\/)tikzjax\.js(\?|$)/.test(s.getAttribute('src') || '')
+        );
+        if (alreadyLoaded) return;
         const exportPath = $exeDevice.idevicePath.replace(/edition\/?$/, 'export/');
         const script = document.createElement('script');
         script.src = exportPath + 'tikzjax.js';
