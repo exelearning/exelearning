@@ -46,6 +46,7 @@
 			// Clear any previous DOM the toolbar appended
 			toolbarHost.innerHTML = '';
 			if (mode === 'classic') {
+				removeModePlugins();
 				current = new window.ProseMirrorToolbar({
 					editor,
 					container: toolbarHost,
@@ -59,6 +60,25 @@
 					onMediaLibrary: opts.onMediaLibrary,
 					onSwitchToClassic: () => setMode('classic'),
 				});
+				addModePlugins();
+			}
+		}
+
+		// "modern"-only ProseMirror plugins (block menu, and later floating toolbar).
+		function addModePlugins() {
+			if (
+				window.proseMirrorBlockMenuPlugin &&
+				window.blockMenuPluginKey &&
+				editor.addPlugins &&
+				!editor.hasPlugin?.(window.blockMenuPluginKey)
+			) {
+				editor.addPlugins([window.proseMirrorBlockMenuPlugin({ editor })]);
+			}
+		}
+
+		function removeModePlugins() {
+			if (window.blockMenuPluginKey && editor.removePlugins) {
+				editor.removePlugins([window.blockMenuPluginKey]);
 			}
 		}
 
@@ -86,6 +106,7 @@
 
 		function destroy() {
 			teardownChrome();
+			removeModePlugins();
 		}
 
 		buildChrome(handle.mode);

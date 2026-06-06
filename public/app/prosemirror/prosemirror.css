@@ -946,3 +946,82 @@
 	font-size: 13px;
 	color: #047857;
 }
+
+/* ============================================
+   Block menu (modern mode): gutter + insert popup
+   ============================================ */
+
+.prosemirror-block-gutter {
+	position: absolute;
+	left: -34px;
+	display: none;
+	flex-direction: row;
+	gap: 2px;
+	z-index: 20;
+}
+
+.prosemirror-block-handle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: #888;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 15px;
+	line-height: 1;
+}
+
+.prosemirror-block-handle:hover {
+	background: rgba(4, 120, 87, 0.12);
+	color: #047857;
+}
+
+.prosemirror-block-handle[data-role='drag'] {
+	cursor: grab;
+}
+
+.prosemirror-block-menu-popup {
+	position: absolute;
+	z-index: 1200;
+	width: 240px;
+	max-height: 320px;
+	overflow-y: auto;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+	padding: 6px;
+}
+
+.prosemirror-block-menu-filter {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+	margin-bottom: 6px;
+}
+
+.prosemirror-block-menu-filter:focus {
+	outline: none;
+	border-color: #047857;
+}
+
+.prosemirror-block-menu-item {
+	padding: 7px 8px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	color: #333;
+}
+
+.prosemirror-block-menu-item:hover {
+	background: rgba(4, 120, 87, 0.1);
+	color: #047857;
+}

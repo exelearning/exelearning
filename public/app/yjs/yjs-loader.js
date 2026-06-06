@@ -363,6 +363,7 @@
             'ProseMirrorEditor.js',
             'ProseMirrorToolbar.js',
             'ProseMirrorModernToolbar.js',
+            'ProseMirrorBlockMenu.js',
             'ProseMirrorEditorMode.js',
             'YjsProseMirrorBinding.js',
           ];
