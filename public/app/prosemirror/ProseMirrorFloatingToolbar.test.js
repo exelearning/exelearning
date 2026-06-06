@@ -206,7 +206,7 @@ describe('ProseMirrorFloatingToolbar', () => {
 
 			strongBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-			expect(toggleMark).toHaveBeenCalledWith(fakeView.state.schema.marks.strong, undefined);
+			expect(toggleMark).toHaveBeenCalledWith(fakeView.state.schema.marks.strong);
 		});
 
 		it('mousedown on [data-cmd="em"] calls toggleMark with the em mark type', () => {
@@ -218,7 +218,7 @@ describe('ProseMirrorFloatingToolbar', () => {
 			const emBtn = hostDiv.querySelector('[data-cmd="em"]');
 			emBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-			expect(toggleMark).toHaveBeenCalledWith(fakeView.state.schema.marks.em, undefined);
+			expect(toggleMark).toHaveBeenCalledWith(fakeView.state.schema.marks.em);
 		});
 
 		it('mousedown on [data-cmd="strong"] calls the returned command with view.dispatch', () => {
