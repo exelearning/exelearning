@@ -1025,3 +1025,80 @@
 	background: rgba(4, 120, 87, 0.1);
 	color: #047857;
 }
+
+/* ============================================
+   Modern toolbar — icons + Insert dropdown
+   ============================================ */
+
+.prosemirror-modern-toolbar {
+	position: relative;
+}
+
+.prosemirror-modern-toolbar .pm-modern-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.prosemirror-modern-toolbar .pm-modern-icon svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-btn {
+	width: auto;
+	gap: 4px;
+	padding: 0 8px;
+	font-size: 13px;
+	color: #333;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-btn .pm-modern-chevron svg {
+	width: 12px;
+	height: 12px;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-label {
+	font-size: 13px;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-menu {
+	position: absolute;
+	z-index: 1200;
+	min-width: 200px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+	padding: 4px;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 10px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	color: #333;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-item:hover {
+	background: rgba(4, 120, 87, 0.1);
+	color: #047857;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-icon {
+	display: inline-flex;
+	width: 20px;
+	align-items: center;
+	justify-content: center;
+}
+
+.prosemirror-modern-toolbar .pm-modern-insert-icon svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}

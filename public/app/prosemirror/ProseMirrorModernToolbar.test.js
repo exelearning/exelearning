@@ -14,7 +14,10 @@ describe('ProseMirrorModernToolbar', () => {
 	let editor, container;
 
 	beforeEach(() => {
-		global.window.ProseMirrorIcons = { bold: '<svg/>', italic: '<svg/>', underline: '<svg/>', link: '<svg/>', code: '<svg/>' };
+		// Icon helper: new shape — getIcon(name) returns an SVG string
+		global.window.ProseMirrorIcons = {
+			getIcon: vi.fn((n) => `<svg data-icon="${n}"></svg>`),
+		};
 		global.window.ProseMirrorBundle = {
 			toggleMark: vi.fn(() => ({ kind: 'toggleMark' })),
 			setBlockType: vi.fn(() => ({ kind: 'setBlockType' })),
@@ -25,9 +28,18 @@ describe('ProseMirrorModernToolbar', () => {
 		loadScript('./ProseMirrorCommands.js');
 		loadScript('./ProseMirrorModernToolbar.js');
 
+		// Schema includes nodes needed for insert-menu items
 		const schema = {
 			marks: { strong: {}, em: {}, underline: {}, code: {}, link: {} },
-			nodes: { paragraph: {}, heading: {}, bullet_list: {}, ordered_list: {} },
+			nodes: {
+				paragraph: {},
+				heading: {},
+				bullet_list: {},
+				ordered_list: {},
+				horizontal_rule: {},
+				table: {},
+				code_block: {},
+			},
 		};
 		const mockNode = { type: { name: 'paragraph' }, attrs: {} };
 		editor = {
@@ -73,11 +85,52 @@ describe('ProseMirrorModernToolbar', () => {
 		expect(editor.execCommand).toHaveBeenCalled();
 	});
 
-	it('Insert button calls onMediaLibrary with "image"', () => {
+	it('clicking [data-action="insert-menu"] opens the insert menu', () => {
 		const onMediaLibrary = vi.fn();
 		new window.ProseMirrorModernToolbar({ editor, container, onMediaLibrary });
-		container.querySelector('[data-action="insert-image"]').click();
+		const insertBtn = container.querySelector('[data-action="insert-menu"]');
+		expect(insertBtn).toBeTruthy();
+		insertBtn.click();
+		expect(container.querySelector('.pm-modern-insert-menu')).toBeTruthy();
+	});
+
+	it('mousedown on [data-insert="image"] calls onMediaLibrary with "image"', () => {
+		const onMediaLibrary = vi.fn();
+		new window.ProseMirrorModernToolbar({ editor, container, onMediaLibrary });
+		// Open the menu first
+		container.querySelector('[data-action="insert-menu"]').click();
+		const imageItem = container.querySelector('.pm-modern-insert-item[data-insert="image"]');
+		expect(imageItem).toBeTruthy();
+		imageItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 		expect(onMediaLibrary).toHaveBeenCalledWith('image');
+	});
+
+	it('clicking [data-action="insert-menu"] a second time closes the menu', () => {
+		const onMediaLibrary = vi.fn();
+		new window.ProseMirrorModernToolbar({ editor, container, onMediaLibrary });
+		const insertBtn = container.querySelector('[data-action="insert-menu"]');
+		// First click: open
+		insertBtn.click();
+		expect(container.querySelector('.pm-modern-insert-menu')).toBeTruthy();
+		// Second click: close
+		insertBtn.click();
+		expect(container.querySelector('.pm-modern-insert-menu')).toBeFalsy();
+	});
+
+	it('mousedown on [data-insert="hr"] calls insertBlock with horizontal_rule', () => {
+		const onMediaLibrary = vi.fn();
+		// Spy + replace implementation BEFORE constructing toolbar so the
+		// cmds reference captured inside the toolbar already points to the spy.
+		const insertBlockSpy = vi
+			.spyOn(window.ProseMirrorCommands, 'insertBlock')
+			.mockReturnValue(true);
+		new window.ProseMirrorModernToolbar({ editor, container, onMediaLibrary });
+		// Open the insert menu
+		container.querySelector('[data-action="insert-menu"]').click();
+		const hrItem = container.querySelector('.pm-modern-insert-item[data-insert="hr"]');
+		expect(hrItem).toBeTruthy();
+		hrItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		expect(insertBlockSpy).toHaveBeenCalledWith(editor, 'horizontal_rule', undefined);
 	});
 
 	it('"Classic mode" button calls onSwitchToClassic', () => {
