@@ -439,4 +439,149 @@ describe('ProseMirrorImageTools', () => {
 			expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function));
 		});
 	});
+
+	// -------------------------------------------------------------------------
+	// In-place resize: computeResize
+	// -------------------------------------------------------------------------
+	describe('computeResize', () => {
+		let computeResize;
+		beforeEach(() => {
+			computeResize = window.ProseMirrorImageToolsInternals.computeResize;
+		});
+
+		it('grows width on east corners and preserves the aspect ratio', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: 20, corner: 'se' })).toEqual({ width: 120, height: 60 });
+			expect(computeResize({ startW: 100, startH: 50, dx: 20, corner: 'ne' })).toEqual({ width: 120, height: 60 });
+		});
+
+		it('inverts the dx direction on west corners', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: -20, corner: 'sw' })).toEqual({ width: 120, height: 60 });
+			expect(computeResize({ startW: 100, startH: 50, dx: 30, corner: 'nw' })).toEqual({ width: 70, height: 35 });
+		});
+
+		it('clamps to the minimum size', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: -500, corner: 'se', minSize: 24 })).toEqual({ width: 24, height: 24 });
+		});
+
+		it('does not divide by zero when the start width is 0', () => {
+			expect(computeResize({ startW: 0, startH: 0, dx: 50, corner: 'se' })).toEqual({ width: 50, height: 50 });
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// applyImgAttrs / resolvePos
+	// -------------------------------------------------------------------------
+	describe('applyImgAttrs', () => {
+		it('sets attributes and mirrors alignment onto the wrapper', () => {
+			const { applyImgAttrs } = window.ProseMirrorImageToolsInternals;
+			const wrap = document.createElement('span');
+			const img = document.createElement('img');
+			applyImgAttrs(img, wrap, { src: 'a.png', alt: 'A', title: null, class: 'position-center', width: 120, height: 60 });
+			expect(img.getAttribute('src')).toBe('a.png');
+			expect(img.getAttribute('alt')).toBe('A');
+			expect(img.hasAttribute('title')).toBe(false);
+			expect(img.getAttribute('width')).toBe('120');
+			expect(wrap.className).toBe('pm-image-wrap position-center');
+		});
+
+		it('removes empty attrs and resets the wrapper class when unaligned', () => {
+			const { applyImgAttrs } = window.ProseMirrorImageToolsInternals;
+			const wrap = document.createElement('span');
+			const img = document.createElement('img');
+			applyImgAttrs(img, wrap, { src: 'b.png', class: null });
+			expect(img.hasAttribute('class')).toBe(false);
+			expect(wrap.className).toBe('pm-image-wrap');
+		});
+	});
+
+	describe('resolvePos', () => {
+		it('calls a function getPos and returns numbers only', () => {
+			const { resolvePos } = window.ProseMirrorImageToolsInternals;
+			expect(resolvePos(() => 5)).toBe(5);
+			expect(resolvePos(3)).toBe(3);
+			expect(resolvePos(() => undefined)).toBeNull();
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// createImageNodeView
+	// -------------------------------------------------------------------------
+	describe('createImageNodeView', () => {
+		function buildView(node) {
+			const tr = buildChainableTr();
+			const dispatch = vi.fn();
+			const view = { state: { doc: { nodeAt: vi.fn(() => node) }, tr }, dispatch };
+			return { view, tr, dispatch };
+		}
+
+		it('renders an img wrapper with four corner handles', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', class: null, width: 100, height: 50 } };
+			const { view } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			expect(nv.dom.classList.contains('pm-image-wrap')).toBe(true);
+			expect(nv.dom.querySelector('img').getAttribute('src')).toBe('a.png');
+			expect(nv.dom.querySelectorAll('.pm-image-handle').length).toBe(4);
+		});
+
+		it('toggles the selected class on select / deselect', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png' } };
+			const { view } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			nv.selectNode();
+			expect(nv.dom.classList.contains('pm-image-selected')).toBe(true);
+			nv.deselectNode();
+			expect(nv.dom.classList.contains('pm-image-selected')).toBe(false);
+		});
+
+		it('update() re-syncs attrs for the same type and rejects a different type', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', class: null } };
+			const { view } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			expect(nv.update({ type: IMAGE_TYPE, attrs: { src: 'b.png', class: 'position-right' } })).toBe(true);
+			expect(nv.dom.querySelector('img').getAttribute('src')).toBe('b.png');
+			expect(nv.dom.className).toBe('pm-image-wrap position-right');
+			expect(nv.update({ type: { name: 'paragraph' }, attrs: {} })).toBe(false);
+		});
+
+		it('stopEvent swallows only events on a handle; ignoreMutation ignores all but selection', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png' } };
+			const { view } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			expect(nv.stopEvent({ target: nv.dom.querySelector('.pm-image-handle') })).toBe(true);
+			expect(nv.stopEvent({ target: nv.dom.querySelector('img') })).toBe(false);
+			expect(nv.ignoreMutation({ type: 'attributes' })).toBe(true);
+			expect(nv.ignoreMutation({ type: 'selection' })).toBe(false);
+		});
+
+		it('dragging a corner handle commits new width/height via setNodeMarkup', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', class: null, width: 100, height: 50 } };
+			const { view, tr, dispatch } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			const img = nv.dom.querySelector('img');
+			img.setAttribute('width', '100');
+			img.setAttribute('height', '50');
+			document.body.appendChild(nv.dom);
+
+			const se = nv.dom.querySelector('.pm-image-handle-se');
+			se.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }));
+			document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 40, clientY: 0 }));
+			document.dispatchEvent(new window.MouseEvent('mouseup', { clientX: 40, clientY: 0 }));
+
+			expect(tr.setNodeMarkup).toHaveBeenCalledWith(1, null, expect.objectContaining({ width: 140, height: 70 }));
+			expect(dispatch).toHaveBeenCalled();
+			nv.dom.remove();
+		});
+
+		it('does not commit when getPos resolves to no position', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', width: 100, height: 50 } };
+			const { view, dispatch } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => undefined);
+			document.body.appendChild(nv.dom);
+			const se = nv.dom.querySelector('.pm-image-handle-se');
+			se.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }));
+			document.dispatchEvent(new window.MouseEvent('mouseup', { clientX: 40, clientY: 0 }));
+			expect(dispatch).not.toHaveBeenCalled();
+			nv.dom.remove();
+		});
+	});
 });

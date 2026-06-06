@@ -239,11 +239,19 @@
 				plugins,
 			});
 
+			// Node views (optional, loaded lazily alongside the toolbars). The image
+			// node view adds in-place corner resize handles.
+			const nodeViews = {};
+			if (this.schema.nodes.image && window.ProseMirrorImageTools?.createImageNodeView) {
+				nodeViews.image = (node, view, getPos) => window.ProseMirrorImageTools.createImageNodeView(node, view, getPos);
+			}
+
 			// Create editor view
 			this.view = new EditorView(this.container, {
 				state: this.state,
 				editable: () => options.editable !== false,
 				dispatchTransaction: this._dispatchTransaction.bind(this),
+				nodeViews,
 			});
 
 			Logger.log('[ProseMirrorEditor] Initialized');

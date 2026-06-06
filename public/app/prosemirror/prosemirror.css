@@ -1195,35 +1195,102 @@
 	fill: currentColor;
 }
 
+/* ----- In-place image resize (NodeView) ----- */
+
+/* Wrapper added by the image NodeView so the <img> can carry resize handles. */
+.prosemirror-editor .ProseMirror .pm-image-wrap {
+	position: relative;
+	display: inline-block;
+	line-height: 0;
+	max-width: 100%;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-wrap img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* Corner resize handles — hidden until the image is selected or hovered. */
+.prosemirror-editor .ProseMirror .pm-image-handle {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	background: #fff;
+	border: 1px solid #047857;
+	border-radius: 2px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	opacity: 0;
+	transition: opacity 0.1s ease;
+	z-index: 5;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-wrap:hover .pm-image-handle,
+.prosemirror-editor .ProseMirror .pm-image-wrap.pm-image-selected .pm-image-handle {
+	opacity: 1;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-handle-nw {
+	top: -5px;
+	left: -5px;
+	cursor: nwse-resize;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-handle-ne {
+	top: -5px;
+	right: -5px;
+	cursor: nesw-resize;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-handle-sw {
+	bottom: -5px;
+	left: -5px;
+	cursor: nesw-resize;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-handle-se {
+	bottom: -5px;
+	right: -5px;
+	cursor: nwse-resize;
+}
+
+.prosemirror-editor .ProseMirror .pm-image-wrap.pm-image-selected,
+.prosemirror-editor .ProseMirror .pm-image-wrap.ProseMirror-selectednode {
+	outline: 2px solid #047857;
+}
+
 /* Mirror the eXe export alignment classes so images line up the same way while
-   editing as they do in exported content. */
-.prosemirror-editor .ProseMirror img.position-left {
+   editing as they do in exported content. The block-level alignment lives on the
+   NodeView wrapper (the <img> keeps the class for serialization/export). */
+.prosemirror-editor .ProseMirror .pm-image-wrap.position-left {
 	display: block;
 	margin: 0.5em auto 0.5em 0;
 }
 
-.prosemirror-editor .ProseMirror img.position-center {
+.prosemirror-editor .ProseMirror .pm-image-wrap.position-center {
 	display: block;
 	margin: 0.5em auto;
 }
 
-.prosemirror-editor .ProseMirror img.position-right {
+.prosemirror-editor .ProseMirror .pm-image-wrap.position-right {
 	display: block;
 	margin: 0.5em 0 0.5em auto;
 }
 
-.prosemirror-editor .ProseMirror img.float-left {
+.prosemirror-editor .ProseMirror .pm-image-wrap.float-left {
 	float: left;
 	margin: 0.5em 1.5em 1em 0;
 }
 
-.prosemirror-editor .ProseMirror img.float-right {
+.prosemirror-editor .ProseMirror .pm-image-wrap.float-right {
 	float: right;
 	margin: 0.5em 0 1em 1.5em;
 }
 
-.prosemirror-editor .ProseMirror img.ProseMirror-selectednode {
-	outline: 2px solid #047857;
+/* Fallback alignment when no NodeView is active (img keeps the class directly). */
+.prosemirror-editor .ProseMirror > p > img.position-center,
+.prosemirror-editor .ProseMirror > p > img.position-left,
+.prosemirror-editor .ProseMirror > p > img.position-right {
+	display: block;
 }
 
 /* ============================================

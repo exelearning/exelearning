@@ -300,12 +300,140 @@
 		});
 	}
 
+	// Smallest size (px) an image may be dragged down to.
+	const MIN_IMAGE_SIZE = 24;
+
+	/**
+	 * Compute a new width/height while dragging a corner handle, preserving the
+	 * image's aspect ratio. Pure + testable.
+	 * @param {{startW:number,startH:number,dx:number,corner:string,minSize?:number}} opts
+	 * @returns {{width:number,height:number}}
+	 */
+	function computeResize(opts) {
+		const { startW, startH, dx, corner } = opts;
+		const minSize = opts.minSize != null ? opts.minSize : MIN_IMAGE_SIZE;
+		// East corners grow with +dx, west corners with -dx.
+		const growX = corner === 'ne' || corner === 'se' ? dx : -dx;
+		let width = Math.round(startW + growX);
+		if (width < minSize) width = minSize;
+		const ratio = startW > 0 ? startH / startW : 1;
+		const height = Math.max(minSize, Math.round(width * ratio));
+		return { width, height };
+	}
+
+	/** Sync an <img> (and mirror alignment onto its wrapper) from node attrs. */
+	function applyImgAttrs(img, wrap, attrs) {
+		img.setAttribute('src', attrs.src || '');
+		setOrRemove(img, 'alt', attrs.alt);
+		setOrRemove(img, 'title', attrs.title);
+		setOrRemove(img, 'class', attrs.class);
+		setOrRemove(img, 'width', attrs.width);
+		setOrRemove(img, 'height', attrs.height);
+		// The block-level alignment classes only take effect on a block element,
+		// so mirror the alignment token onto the inline-block wrapper.
+		const alignToken = alignFromClass(attrs.class);
+		wrap.className = 'pm-image-wrap' + (alignToken ? ' ' + alignToken : '');
+	}
+
+	function setOrRemove(el, name, value) {
+		if (value == null || value === '') el.removeAttribute(name);
+		else el.setAttribute(name, value);
+	}
+
+	/** Resolve a ProseMirror getPos (function in current versions) to a number. */
+	function resolvePos(getPos) {
+		const pos = typeof getPos === 'function' ? getPos() : getPos;
+		return typeof pos === 'number' ? pos : null;
+	}
+
+	/** Wire a corner handle to live-resize the image and commit on mouseup. */
+	function attachResizeHandle(handle, corner, img, view, getPos) {
+		handle.addEventListener('mousedown', (e) => {
+			// Don't let ProseMirror start a node-drag or move the selection.
+			e.preventDefault();
+			e.stopPropagation();
+			const startX = e.clientX;
+			const startW = img.offsetWidth || Number(img.getAttribute('width')) || 0;
+			const startH = img.offsetHeight || Number(img.getAttribute('height')) || 0;
+
+			const onMove = (ev) => {
+				const { width, height } = computeResize({ startW, startH, dx: ev.clientX - startX, corner });
+				img.style.width = `${width}px`;
+				img.style.height = `${height}px`;
+			};
+			const onUp = (ev) => {
+				document.removeEventListener('mousemove', onMove);
+				document.removeEventListener('mouseup', onUp);
+				img.style.width = '';
+				img.style.height = '';
+				const { width, height } = computeResize({ startW, startH, dx: ev.clientX - startX, corner });
+				const pos = resolvePos(getPos);
+				if (pos == null) return;
+				const node = view.state.doc.nodeAt(pos);
+				if (!node) return;
+				view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, width, height }));
+			};
+			document.addEventListener('mousemove', onMove);
+			document.addEventListener('mouseup', onUp);
+		});
+	}
+
+	// Corner handles, in DOM order.
+	const RESIZE_CORNERS = ['nw', 'ne', 'sw', 'se'];
+
+	/**
+	 * ProseMirror NodeView for `image`: renders the <img> wrapped so it can carry
+	 * corner resize handles. Dragging a handle live-previews the new size and
+	 * commits width/height (aspect-ratio preserved) as a single transaction —
+	 * which round-trips through HTML export and the Yjs binding like any other
+	 * attribute change. Works in both classic and modern editor modes.
+	 */
+	function createImageNodeView(node, view, getPos) {
+		const wrap = document.createElement('span');
+		const img = document.createElement('img');
+		applyImgAttrs(img, wrap, node.attrs);
+		wrap.appendChild(img);
+
+		RESIZE_CORNERS.forEach((corner) => {
+			const handle = document.createElement('span');
+			handle.className = `pm-image-handle pm-image-handle-${corner}`;
+			handle.setAttribute('data-corner', corner);
+			attachResizeHandle(handle, corner, img, view, getPos);
+			wrap.appendChild(handle);
+		});
+
+		return {
+			dom: wrap,
+			selectNode() {
+				wrap.classList.add('pm-image-selected');
+			},
+			deselectNode() {
+				wrap.classList.remove('pm-image-selected');
+			},
+			update(newNode) {
+				if (newNode.type !== node.type) return false;
+				node = newNode;
+				applyImgAttrs(img, wrap, newNode.attrs);
+				return true;
+			},
+			// Our own style/attribute mutations (live resize) aren't document edits.
+			ignoreMutation(m) {
+				return m.type !== 'selection';
+			},
+			// Let handle drags through without ProseMirror hijacking them.
+			stopEvent(e) {
+				return !!(e.target && e.target.classList && e.target.classList.contains('pm-image-handle'));
+			},
+		};
+	}
+
 	window.ProseMirrorImageTools = {
 		openProperties,
 		applyImage,
 		setAlign,
 		getSelectedImage,
 		insertImage,
+		createImageNodeView,
 	};
 	window.proseMirrorImageToolbarPlugin = proseMirrorImageToolbarPlugin;
 	window.imageToolbarPluginKey = imageToolbarPluginKey;
@@ -318,5 +446,9 @@
 		valuesToAttrs,
 		applyImageAttrs,
 		runAction,
+		computeResize,
+		applyImgAttrs,
+		attachResizeHandle,
+		resolvePos,
 	};
 })();
