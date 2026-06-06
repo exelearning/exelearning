@@ -27,6 +27,9 @@ describe('ProseMirrorEditorMode', () => {
 		// Block-menu plugin stubs (overridden per-test when needed)
 		global.window.proseMirrorBlockMenuPlugin = vi.fn(() => ({ mockPlugin: true }));
 		global.window.blockMenuPluginKey = { key: 'exeBlockMenu' };
+		// Floating toolbar plugin stubs
+		global.window.proseMirrorFloatingToolbarPlugin = vi.fn(() => ({ floating: true }));
+		global.window.floatingToolbarPluginKey = { key: 'exeFloatingToolbar' };
 		delete global.window.ProseMirrorEditorMode;
 		loadScript('./ProseMirrorEditorMode.js');
 	});
@@ -36,6 +39,8 @@ describe('ProseMirrorEditorMode', () => {
 		delete global.window.ProseMirrorModernToolbar;
 		delete global.window.proseMirrorBlockMenuPlugin;
 		delete global.window.blockMenuPluginKey;
+		delete global.window.proseMirrorFloatingToolbarPlugin;
+		delete global.window.floatingToolbarPluginKey;
 	});
 
 	const fakeEditor = () => ({
@@ -98,13 +103,16 @@ describe('ProseMirrorEditorMode', () => {
 	// -----------------------------------------------------------------------
 	// Block-menu plugin wiring
 	// -----------------------------------------------------------------------
-	it('mounting in modern mode calls editor.addPlugins once', () => {
+	it('mounting in modern mode calls editor.addPlugins once with both the block menu and floating toolbar plugins', () => {
 		const editor = fakeEditor();
 		const container = document.createElement('div');
 		window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
 		expect(editor.addPlugins).toHaveBeenCalledTimes(1);
-		// The plugin array should contain the result of proseMirrorBlockMenuPlugin()
-		expect(editor.addPlugins).toHaveBeenCalledWith([{ mockPlugin: true }]);
+		// The plugin array must contain both the block-menu and floating-toolbar results.
+		const pluginsArg = editor.addPlugins.mock.calls[0][0];
+		expect(pluginsArg).toHaveLength(2);
+		expect(pluginsArg).toContainEqual({ mockPlugin: true });
+		expect(pluginsArg).toContainEqual({ floating: true });
 	});
 
 	it('does NOT call addPlugins when plugin is already active (hasPlugin returns true)', () => {
@@ -115,13 +123,15 @@ describe('ProseMirrorEditorMode', () => {
 		expect(editor.addPlugins).not.toHaveBeenCalled();
 	});
 
-	it('toggling from modern to classic calls editor.removePlugins with blockMenuPluginKey', () => {
+	it('toggling from modern to classic calls editor.removePlugins with both plugin keys', () => {
 		const editor = fakeEditor();
 		const container = document.createElement('div');
 		const handle = window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
 		expect(handle.mode).toBe('modern');
 		handle.toggle(); // → classic
-		expect(editor.removePlugins).toHaveBeenCalledWith([window.blockMenuPluginKey]);
+		const keysArg = editor.removePlugins.mock.calls[0][0];
+		expect(keysArg).toContain(window.blockMenuPluginKey);
+		expect(keysArg).toContain(window.floatingToolbarPluginKey);
 	});
 
 	it('mounting in classic mode does NOT call addPlugins', () => {

@@ -364,6 +364,7 @@
             'ProseMirrorToolbar.js',
             'ProseMirrorModernToolbar.js',
             'ProseMirrorBlockMenu.js',
+            'ProseMirrorFloatingToolbar.js',
             'ProseMirrorEditorMode.js',
             'YjsProseMirrorBinding.js',
           ];

@@ -64,22 +64,33 @@
 			}
 		}
 
-		// "modern"-only ProseMirror plugins (block menu, and later floating toolbar).
+		// "modern"-only ProseMirror plugins (block menu + floating selection toolbar).
 		function addModePlugins() {
+			if (!editor.addPlugins) return;
+			const toAdd = [];
 			if (
 				window.proseMirrorBlockMenuPlugin &&
 				window.blockMenuPluginKey &&
-				editor.addPlugins &&
 				!editor.hasPlugin?.(window.blockMenuPluginKey)
 			) {
-				editor.addPlugins([window.proseMirrorBlockMenuPlugin({ editor })]);
+				toAdd.push(window.proseMirrorBlockMenuPlugin({ editor }));
 			}
+			if (
+				window.proseMirrorFloatingToolbarPlugin &&
+				window.floatingToolbarPluginKey &&
+				!editor.hasPlugin?.(window.floatingToolbarPluginKey)
+			) {
+				toAdd.push(window.proseMirrorFloatingToolbarPlugin({ editor }));
+			}
+			if (toAdd.length) editor.addPlugins(toAdd);
 		}
 
 		function removeModePlugins() {
-			if (window.blockMenuPluginKey && editor.removePlugins) {
-				editor.removePlugins([window.blockMenuPluginKey]);
-			}
+			if (!editor.removePlugins) return;
+			const keys = [];
+			if (window.blockMenuPluginKey) keys.push(window.blockMenuPluginKey);
+			if (window.floatingToolbarPluginKey) keys.push(window.floatingToolbarPluginKey);
+			if (keys.length) editor.removePlugins(keys);
 		}
 
 		function teardownChrome() {
