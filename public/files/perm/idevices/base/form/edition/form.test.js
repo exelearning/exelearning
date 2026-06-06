@@ -569,6 +569,151 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('reorderQuestionsByIds', () => {
+    it('reorders questions to match the given id order', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['b', 'a', 'c']);
+      expect(result.map(q => q.id)).toEqual(['b', 'a', 'c']);
+    });
+
+    it('ignores ids that do not match any question', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      // The null id corresponds to an in-edition <li> without data-id.
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['b', null, 'a']);
+      expect(result.map(q => q.id)).toEqual(['b', 'a']);
+    });
+
+    it('returns the original array when a question would be lost', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      // 'b' is missing from the id list, so reordering would drop it.
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a']);
+      expect(result).toBe(questions);
+    });
+
+    it('handles empty arrays', () => {
+      expect($exeDevice.reorderQuestionsByIds([], [])).toEqual([]);
+    });
+  });
+
+  describe('syncQuestionsFormToDomOrder', () => {
+    it('reorders questionsForm to match the DOM order', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question" data-id="a"></li>
+          <li class="FormView_question" data-id="c"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+
+      $exeDevice.syncQuestionsFormToDomOrder();
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a', 'c']);
+    });
+
+    it('ignores the in-edition list item without a data-id', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question"></li>
+          <li class="FormView_question" data-id="a"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+
+      $exeDevice.syncQuestionsFormToDomOrder();
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a']);
+    });
+
+    it('does nothing when the preview container is missing', () => {
+      document.body.innerHTML = '';
+      $exeDevice.ideviceBody = document.body;
+      const questions = [{ id: 'a' }];
+      $exeDevice.questionsForm = questions;
+
+      expect(() => $exeDevice.syncQuestionsFormToDomOrder()).not.toThrow();
+      expect($exeDevice.questionsForm).toBe(questions);
+    });
+  });
+
+  describe('addQuestionfrmorm question ordering', () => {
+    it('keeps the saved order aligned with the visual position (B, A, C)', () => {
+      // DOM already shows B above A (B was added with the top button); the new
+      // question C is appended at the bottom with the bottom button.
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question" data-id="a"></li>
+        </ul>
+        <div id="msgNoQuestions"></div>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      $exeDevice.createQuestionObject = vi.fn(() => ({ id: 'c', baseText: 'C' }));
+      $exeDevice.renderQuestion = vi.fn(() => {
+        document
+          .getElementById('formPreview')
+          .insertAdjacentHTML(
+            'beforeend',
+            '<li class="FormView_question" data-id="c"></li>',
+          );
+      });
+
+      $exeDevice.addQuestionfrmorm('formPreview', 'true-false');
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a', 'c']);
+      expect($exeDevice.active).toBe(2);
+      expect(document.getElementById('msgNoQuestions').style.display).toBe('none');
+    });
+  });
+
+  describe('handleDragEnd', () => {
+    it('rebuilds questionsForm from the dropped DOM order', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="c"></li>
+          <li class="FormView_question" data-id="a"></li>
+          <li class="FormView_question" data-id="b"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+      const remove = vi.fn();
+
+      $exeDevice.handleDragEnd({ currentTarget: { classList: { remove } } });
+
+      expect(remove).toHaveBeenCalledWith('dragging');
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['c', 'a', 'b']);
+    });
+  });
+
   // Note: Form class tests removed because $exeDevice.Form
   // does not exist in the current version of form.js from main branch.
   // These tests were written for a modified version of the code.

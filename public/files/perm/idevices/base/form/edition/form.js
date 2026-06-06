@@ -117,6 +117,39 @@ var $exeDevice = {
         );
     },
 
+    /**
+     * Reorders the questions array to match the given list of ids (the visual
+     * order taken from the DOM). Ids without a matching question are ignored.
+     * If the resulting list does not contain every question (e.g. a malformed
+     * DOM), the original array is returned untouched to avoid data loss.
+     */
+    reorderQuestionsByIds(questions, orderedIds) {
+        const reordered = orderedIds
+            .map((id) => questions.find((q) => q.id === id))
+            .filter((q) => q !== undefined);
+        return reordered.length === questions.length ? reordered : questions;
+    },
+
+    /**
+     * Synchronizes the questionsForm array with the current DOM order of the
+     * preview list. This is the single source of truth used by drag & drop and
+     * by the add-question buttons so the saved order always matches what the
+     * user sees on screen.
+     */
+    syncQuestionsFormToDomOrder() {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return;
+        const orderedIds = Array.from(formPreview.children).map((li) =>
+            li.getAttribute('data-id')
+        );
+        $exeDevice.questionsForm = $exeDevice.reorderQuestionsByIds(
+            $exeDevice.questionsForm,
+            orderedIds
+        );
+    },
+
     normalizeTrueFalseAnswer(answer) {
         const normalizedAnswer =
             typeof answer === 'string' ? answer.trim().toLowerCase() : answer;
@@ -1785,7 +1818,10 @@ var $exeDevice = {
         );
         $exeDevice.questionsForm.push(newQuestion);
         this.renderQuestion(newQuestion);
-        $exeDevice.active = $exeDevice.questionsForm.length - 1;
+        // The new question may have been inserted above/below existing ones via
+        // the top/bottom add buttons, so realign the array with the DOM order.
+        $exeDevice.syncQuestionsFormToDomOrder();
+        $exeDevice.active = $exeDevice.getQuestionIndexById(newQuestion.id);
         $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.msgNoQuestionsId}`
         ).style.display = 'none';
@@ -3245,16 +3281,7 @@ var $exeDevice = {
 
     handleDragEnd(e) {
         e.currentTarget.classList.remove('dragging');
-        const formPreview = $exeDevice.ideviceBody.querySelector(
-            `#${$exeDevice.formPreviewId}`
-        );
-        const newOrder = Array.from(formPreview.children).map((li) =>
-            li.getAttribute('data-id')
-        );
-        const reorderedQuestions = newOrder
-            .map((id) => $exeDevice.questionsForm.find((q) => q.id === id))
-            .filter((q) => q !== undefined);
-        $exeDevice.questionsForm = reorderedQuestions;
+        $exeDevice.syncQuestionsFormToDomOrder();
         $exeDevice.disableArrowUpDown();
     },
 
