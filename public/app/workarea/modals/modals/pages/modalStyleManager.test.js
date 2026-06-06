@@ -968,7 +968,7 @@ describe('ModalStyleManager', () => {
                 const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
                 const theme = { dirName: 'test-theme', name: 'Test Theme' };
-                modal.downloadThemeZip(theme);
+                modal?.downloadThemeZip(theme);
 
                 // Wait for async operations to complete
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -995,7 +995,7 @@ describe('ModalStyleManager', () => {
                 const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
                 const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-                modal.downloadThemeZip({ dirName: 'test-theme', name: 'Test Theme' });
+                modal?.downloadThemeZip({ dirName: 'test-theme', name: 'Test Theme' });
                 await new Promise(resolve => setTimeout(resolve, 50));
 
                 expect(window.eXeLearning.app.resourceFetcher.fetchThemeZipBlob).toHaveBeenCalledWith('test-theme');
@@ -1017,7 +1017,7 @@ describe('ModalStyleManager', () => {
                 global.fetch = vi.fn();
                 const alertSpy = vi.spyOn(modal, 'showElementAlert');
 
-                await modal.downloadThemeFromBundle({ dirName: 'test-theme', name: 'Test Theme' });
+                await modal?.downloadThemeFromBundle({ dirName: 'test-theme', name: 'Test Theme' });
 
                 expect(alertSpy).toHaveBeenCalledWith(
                     expect.stringContaining('Failed to download'),
@@ -1039,7 +1039,7 @@ describe('ModalStyleManager', () => {
                 const alertSpy = vi.spyOn(modal, 'showElementAlert');
 
                 const theme = { dirName: 'nonexistent', name: 'Nonexistent Theme' };
-                modal.downloadThemeZip(theme);
+                modal?.downloadThemeZip(theme);
 
                 // Wait for async operations to complete
                 await new Promise(resolve => setTimeout(resolve, 50));

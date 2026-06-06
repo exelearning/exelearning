@@ -446,7 +446,7 @@ describe('NavbarStyles', () => {
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        navbarStyles?.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
         await new Promise(resolve => setTimeout(resolve, 50));
 
         expect(fetch).toHaveBeenCalledWith('/bundles/themes/base-1.zip');
@@ -469,7 +469,7 @@ describe('NavbarStyles', () => {
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        navbarStyles?.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
         await new Promise(resolve => setTimeout(resolve, 50));
 
         // Static mode assembles client-side from loose files; no zip is fetched.
@@ -492,7 +492,7 @@ describe('NavbarStyles', () => {
         global.fetch = vi.fn();
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
 
-        await navbarStyles.downloadThemeFromBundle({ dirName: 'base-1', name: 'Base', type: 'base' });
+        await navbarStyles?.downloadThemeFromBundle({ dirName: 'base-1', name: 'Base', type: 'base' });
 
         expect(alertSpy).toHaveBeenCalledWith(
             expect.stringContaining('Failed to download'),
@@ -516,7 +516,7 @@ describe('NavbarStyles', () => {
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        navbarStyles.downloadThemeZip({ dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' });
+        navbarStyles?.downloadThemeZip({ dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' });
         await new Promise(resolve => setTimeout(resolve, 50));
 
         expect(fetch).toHaveBeenCalledWith('/api/resources/bundle/theme/site-1');
@@ -529,7 +529,7 @@ describe('NavbarStyles', () => {
 
     it('shows alert when theme is not downloadable', async () => {
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        await navbarStyles.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
+        await navbarStyles?.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
         expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
         expect(eXeLearning.app.api.getThemeZip).not.toHaveBeenCalled();
     });
@@ -548,7 +548,7 @@ describe('NavbarStyles', () => {
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        await navbarStyles.downloadThemeZip({
+        await navbarStyles?.downloadThemeZip({
             name: 'user-theme',
             type: 'user',
             downloadable: '1',
@@ -573,7 +573,7 @@ describe('NavbarStyles', () => {
         };
 
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        await navbarStyles.downloadThemeZip({
+        await navbarStyles?.downloadThemeZip({
             name: 'missing-theme',
             type: 'user',
             downloadable: '1',
@@ -591,7 +591,7 @@ describe('NavbarStyles', () => {
 
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
 
-        navbarStyles.downloadThemeZip({
+        navbarStyles?.downloadThemeZip({
             dirName: 'nonexistent',
             name: 'Nonexistent Theme',
             downloadable: '1',
