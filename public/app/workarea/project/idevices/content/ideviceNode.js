@@ -3120,8 +3120,11 @@ export default class IdeviceNode {
             $exeDevices.iDevice.gamification.media.stopSound();
         }
         if (this.engine.mode == 'view') {
-            // Acquire Yjs CRDT lock before entering edit mode
-            if (this.isYjsEnabled()) {
+            // Acquire Yjs CRDT lock before entering edit mode.
+            // Skip for collaborative iDevices: they allow concurrent multi-user
+            // editing, so they must never acquire or be blocked by the lock
+            // (mirrors the release-side guard in saveIdevice()).
+            if (this.isYjsEnabled() && !this.isCollaborativeIdevice()) {
                 const componentId = this.yjsComponentId || this.odeIdeviceId;
                 const lockManager = this.getLockManager();
                 if (lockManager) {

@@ -1575,6 +1575,7 @@ describe('IdevicesEngine', () => {
                 lockedByRemote: true,
                 lockUserName: 'RemoteUser',
                 lockUserColor: '#f00',
+                isCollaborativeIdevice: vi.fn(() => false),
                 updateLockIndicator: vi.fn(),
             };
             engine.components.idevices = [mockIdevice];
@@ -2258,6 +2259,39 @@ describe('IdevicesEngine', () => {
             await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: 'new content' });
 
             expect(mockIdevice.htmlView).toBe('new content');
+            expect(mockIdevice.lockedByRemote).toBe(false);
+        });
+
+        it('marks lockedByRemote for a non-collaborative iDevice with a remote lock', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '',
+                lockedByRemote: false,
+                lockUserName: null,
+                isCollaborativeIdevice: vi.fn(() => false),
+                updateLockIndicator: vi.fn(),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', lockUserName: 'User2' });
+
+            expect(mockIdevice.lockedByRemote).toBe(true);
+            expect(mockIdevice.lockUserName).toBe('User2');
+        });
+
+        it('does NOT mark lockedByRemote for a collaborative iDevice', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '',
+                lockedByRemote: false,
+                lockUserName: null,
+                isCollaborativeIdevice: vi.fn(() => true),
+                updateLockIndicator: vi.fn(),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', lockUserName: 'User2' });
+
             expect(mockIdevice.lockedByRemote).toBe(false);
         });
     });

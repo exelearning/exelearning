@@ -760,6 +760,58 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('isCollaborativeIdevice', () => {
+        it('returns true when the installed iDevice config is collaborative', () => {
+            idevice.idevice = { isCollaborative: true };
+            expect(idevice.isCollaborativeIdevice()).toBe(true);
+        });
+
+        it('returns true via the collaborative-editing type-name fallback', () => {
+            idevice.idevice = null;
+            idevice.odeIdeviceTypeName = 'collaborative-editing';
+            expect(idevice.isCollaborativeIdevice()).toBe(true);
+        });
+
+        it('returns false for a regular iDevice', () => {
+            idevice.idevice = { isCollaborative: false };
+            idevice.odeIdeviceTypeName = 'text';
+            expect(idevice.isCollaborativeIdevice()).toBe(false);
+        });
+    });
+
+    describe('edition() lock acquisition', () => {
+        let mockLockManager;
+
+        beforeEach(() => {
+            mockEngine.mode = 'view';
+            mockEngine.updateMode = vi.fn();
+            eXeLearning.app.project._yjsEnabled = true;
+            mockLockManager = {
+                requestLock: vi.fn(() => true),
+                getClientId: vi.fn(() => 'client-1'),
+                getCurrentUser: vi.fn(() => ({ name: 'Me', color: '#000' })),
+            };
+            vi.spyOn(idevice, 'getLockManager').mockReturnValue(mockLockManager);
+            vi.spyOn(idevice, 'isYjsEnabled').mockReturnValue(true);
+            vi.spyOn(idevice, 'goWindowToIdevice').mockImplementation(() => {});
+            vi.spyOn(idevice, 'loadInitScriptIdevice').mockImplementation(() => {});
+        });
+
+        it('acquires the lock for a non-collaborative iDevice', () => {
+            vi.spyOn(idevice, 'isCollaborativeIdevice').mockReturnValue(false);
+            idevice.edition();
+            expect(mockLockManager.requestLock).toHaveBeenCalled();
+        });
+
+        it('does NOT acquire the lock for a collaborative iDevice (concurrent editing)', () => {
+            vi.spyOn(idevice, 'isCollaborativeIdevice').mockReturnValue(true);
+            idevice.edition();
+            expect(mockLockManager.requestLock).not.toHaveBeenCalled();
+            // still enters edit mode
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+        });
+    });
+
     describe('releaseYjsEditingLock', () => {
         it('does nothing when Yjs is not enabled', () => {
             eXeLearning.app.project._yjsEnabled = false;

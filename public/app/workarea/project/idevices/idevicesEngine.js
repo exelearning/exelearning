@@ -1520,8 +1520,9 @@ export default class IdevicesEngine {
             }
         }
 
-        // Update lock status from remote data
-        if (componentData.lockedBy || componentData.lockUserName) {
+        // Update lock status from remote data (skip for collaborative iDevices
+        // that allow multi-user editing — mirrors renderRemoteIdevice()).
+        if ((componentData.lockedBy || componentData.lockUserName) && !ideviceNode.isCollaborativeIdevice?.()) {
             ideviceNode.lockedByRemote = true;
             ideviceNode.lockUserName = componentData.lockUserName || 'Another user';
             ideviceNode.lockUserColor = componentData.lockUserColor || '#999';
@@ -2926,7 +2927,7 @@ export default class IdevicesEngine {
             );
             if (ideviceNode) {
                 // Skip lock handling for collaborative iDevices (allow multi-user editing)
-                if (ideviceNode.isCollaborativeIdevice()) {
+                if (ideviceNode.isCollaborativeIdevice?.()) {
                     return;
                 }
 
