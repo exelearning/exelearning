@@ -24,6 +24,9 @@ describe('ProseMirrorEditorMode', () => {
 		global.window.ProseMirrorModernToolbar = class {
 			constructor(opts) { this.opts = opts; this.destroy = modernDestroy; }
 		};
+		// Block-menu plugin stubs (overridden per-test when needed)
+		global.window.proseMirrorBlockMenuPlugin = vi.fn(() => ({ mockPlugin: true }));
+		global.window.blockMenuPluginKey = { key: 'exeBlockMenu' };
 		delete global.window.ProseMirrorEditorMode;
 		loadScript('./ProseMirrorEditorMode.js');
 	});
@@ -31,9 +34,17 @@ describe('ProseMirrorEditorMode', () => {
 	afterEach(() => {
 		delete global.window.ProseMirrorToolbar;
 		delete global.window.ProseMirrorModernToolbar;
+		delete global.window.proseMirrorBlockMenuPlugin;
+		delete global.window.blockMenuPluginKey;
 	});
 
-	const fakeEditor = () => ({ focus: vi.fn(), isDestroyed: () => false });
+	const fakeEditor = () => ({
+		focus: vi.fn(),
+		isDestroyed: () => false,
+		addPlugins: vi.fn(),
+		removePlugins: vi.fn(),
+		hasPlugin: vi.fn(() => false),
+	});
 
 	it('defaults to modern when no preference stored', () => {
 		expect(window.ProseMirrorEditorMode.getMode()).toBe('modern');
@@ -82,5 +93,42 @@ describe('ProseMirrorEditorMode', () => {
 		expect(handle.mode).toBe('modern');
 		handle.toggle();
 		expect(onModeChange).toHaveBeenCalledWith('classic');
+	});
+
+	// -----------------------------------------------------------------------
+	// Block-menu plugin wiring
+	// -----------------------------------------------------------------------
+	it('mounting in modern mode calls editor.addPlugins once', () => {
+		const editor = fakeEditor();
+		const container = document.createElement('div');
+		window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
+		expect(editor.addPlugins).toHaveBeenCalledTimes(1);
+		// The plugin array should contain the result of proseMirrorBlockMenuPlugin()
+		expect(editor.addPlugins).toHaveBeenCalledWith([{ mockPlugin: true }]);
+	});
+
+	it('does NOT call addPlugins when plugin is already active (hasPlugin returns true)', () => {
+		const editor = fakeEditor();
+		editor.hasPlugin = vi.fn(() => true); // already present
+		const container = document.createElement('div');
+		window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
+		expect(editor.addPlugins).not.toHaveBeenCalled();
+	});
+
+	it('toggling from modern to classic calls editor.removePlugins with blockMenuPluginKey', () => {
+		const editor = fakeEditor();
+		const container = document.createElement('div');
+		const handle = window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
+		expect(handle.mode).toBe('modern');
+		handle.toggle(); // → classic
+		expect(editor.removePlugins).toHaveBeenCalledWith([window.blockMenuPluginKey]);
+	});
+
+	it('mounting in classic mode does NOT call addPlugins', () => {
+		localStorage.setItem('exe.pm.editorMode', 'classic');
+		const editor = fakeEditor();
+		const container = document.createElement('div');
+		window.ProseMirrorEditorMode.mount(editor, { toolbarHost: container });
+		expect(editor.addPlugins).not.toHaveBeenCalled();
 	});
 });
