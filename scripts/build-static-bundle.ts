@@ -1254,9 +1254,21 @@ async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
-    // Copy bundles folder (pre-built resource ZIPs)
-    copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
-    console.log('  Copied bundles/');
+    // Ship only the bundle manifest, not the pre-built resource ZIPs.
+    // In static mode the client assembles each bundle on demand from the loose
+    // files (already copied below) using the manifest's per-bundle file lists,
+    // then persists the result to IndexedDB. The zips would be a redundant,
+    // incompressible ~17 MB duplicate of bytes that are present loosely anyway.
+    // Server mode still serves public/bundles/*.zip via /api/resources/bundle/*.
+    const manifestSrc = path.join(projectRoot, 'public/bundles/manifest.json');
+    if (fs.existsSync(manifestSrc)) {
+        const bundlesOut = path.join(outputDir, 'bundles');
+        fs.mkdirSync(bundlesOut, { recursive: true });
+        fs.copyFileSync(manifestSrc, path.join(bundlesOut, 'manifest.json'));
+        console.log('  Copied bundles/manifest.json (zips assembled client-side from loose files)');
+    } else {
+        console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
+    }
 
     // Copy files/perm (themes, iDevices, favicon)
     copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));

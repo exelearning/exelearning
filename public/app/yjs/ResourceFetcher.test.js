@@ -787,7 +787,8 @@ describe('ResourceFetcher', () => {
         'Memory cache',
         'User themes (Yjs)',
         'IndexedDB user themes',
-        'Local ZIP bundles (/bundles/)',
+        'IndexedDB resource cache',
+        'Loose files (assembled on demand)',
       ]);
     });
 
@@ -2140,9 +2141,19 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       };
     });
 
+    // Response stub for a loose-file fetch (assembleBundleFromLoose reads
+    // response.arrayBuffer()).
+    function looseResp(bytes = [1]) {
+      return {
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new Uint8Array(bytes).buffer),
+      };
+    }
+
     describe('init', () => {
       it('detects static mode from capabilities', async () => {
         const fetcher = new ResourceFetcher();
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 }); // manifest probe
         await fetcher.init();
 
         expect(fetcher.isStaticMode).toBe(true);
@@ -2152,47 +2163,64 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       it('skips loadBundleManifest in static mode', async () => {
         const fetcher = new ResourceFetcher();
         const loadManifestSpy = vi.spyOn(fetcher, 'loadBundleManifest');
+        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
         await fetcher.init();
 
         expect(loadManifestSpy).not.toHaveBeenCalled();
       });
+
+      it('loads the static manifest in static mode', async () => {
+        const fetcher = new ResourceFetcher();
+        const manifest = { staticFiles: { themes: { base: [] } } };
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(manifest),
+        });
+
+        await fetcher.init();
+
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/manifest.json');
+        expect(fetcher.bundleManifest).toEqual(manifest);
+      });
     });
 
     describe('fetchThemeStatic', () => {
-      it('fetches theme from local bundle ZIP', async () => {
+      it('assembles a theme from its loose files listed in the manifest', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'style.css': new Uint8Array([1]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: {
+              base: [
+                { s: 'files/perm/themes/base/base/style.css', t: 'style.css' },
+                { s: 'files/perm/themes/base/base/config.xml', t: 'config.xml' },
+              ],
+            },
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchThemeStatic('base');
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/base.zip');
-        expect(result.size).toBe(1);
-
-        delete window.fflate;
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/style.css');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/config.xml');
+        expect(result.size).toBe(2);
+        expect(result.has('style.css')).toBe(true);
+        expect(result.has('config.xml')).toBe(true);
       });
 
-      it('returns empty Map when bundle not found', async () => {
+      it('returns empty Map when theme is not in the manifest', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
-        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+        fetcher.bundleManifest = { staticFiles: { themes: {} } };
 
         const result = await fetcher.fetchThemeStatic('missing');
 
         expect(result).toBeInstanceOf(Map);
         expect(result.size).toBe(0);
+        expect(mockFetch).not.toHaveBeenCalled();
       });
 
       describe('admin-uploaded themes (themeRegistryOverride)', () => {
@@ -2349,10 +2377,15 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
           expect(result.size).toBe(1);
         });
 
-        it('falls back to the bundle when the admin fetch produces no files', async () => {
+        it('falls back to assembling loose files when the admin fetch produces no files', async () => {
           const fetcher = new ResourceFetcher();
           fetcher.isStaticMode = true;
           fetcher.basePath = '';
+          fetcher.bundleManifest = {
+            staticFiles: {
+              themes: { acme: [{ s: 'files/perm/themes/base/acme/style.css', t: 'style.css' }] },
+            },
+          };
           window.eXeLearning.config.themeRegistryOverride = {
             uploaded: [{
               name: 'acme',
@@ -2362,26 +2395,24 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
           };
           mockFetch
             .mockResolvedValueOnce(notFoundResponse())   // admin file 404
-            .mockResolvedValueOnce({                      // bundle zip
-              ok: true,
-              headers: { get: () => '100' },
-              arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-            });
-          window.fflate = {
-            unzipSync: vi.fn().mockReturnValue({ 'style.css': new Uint8Array([1]) }),
-          };
+            .mockResolvedValueOnce(looseResp());          // loose theme file
 
           const result = await fetcher.fetchThemeStatic('acme');
 
-          expect(mockFetch).toHaveBeenNthCalledWith(2, '/bundles/themes/acme.zip');
+          expect(mockFetch).toHaveBeenNthCalledWith(2, '/files/perm/themes/base/acme/style.css');
           expect(result.size).toBe(1);
-          delete window.fflate;
+          expect(result.has('style.css')).toBe(true);
         });
 
         it('ignores admin entries with a non-absolute URL', async () => {
           const fetcher = new ResourceFetcher();
           fetcher.isStaticMode = true;
           fetcher.basePath = '';
+          fetcher.bundleManifest = {
+            staticFiles: {
+              themes: { acme: [{ s: 'files/perm/themes/base/acme/style.css', t: 'style.css' }] },
+            },
+          };
           window.eXeLearning.config.themeRegistryOverride = {
             uploaded: [{
               name: 'acme',
@@ -2389,20 +2420,21 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
               files: ['style.css'],
             }],
           };
-          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+          mockFetch.mockResolvedValueOnce(looseResp());
 
           const result = await fetcher.fetchThemeStatic('acme');
 
-          expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/acme.zip');
-          expect(result.size).toBe(0);
+          // Non-absolute admin URL is ignored; assembly uses the loose manifest.
+          expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/acme/style.css');
+          expect(result.size).toBe(1);
         });
 
         it('returns empty Map when the override is malformed', async () => {
           const fetcher = new ResourceFetcher();
           fetcher.isStaticMode = true;
           fetcher.basePath = '';
+          fetcher.bundleManifest = { staticFiles: { themes: {} } };
           window.eXeLearning.config.themeRegistryOverride = { uploaded: 'nope' };
-          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
           const result = await fetcher.fetchThemeStatic('missing');
 
@@ -2419,180 +2451,219 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
     });
 
     describe('fetchIdeviceStatic', () => {
-      it('loads iDevices from common bundle', async () => {
+      it('assembles a single iDevice from its loose export files', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'text/script.js': new Uint8Array([1]),
-            'text/style.css': new Uint8Array([2]),
-            'quiz/quiz.js': new Uint8Array([3]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            idevices: {
+              text: [
+                { s: 'files/perm/idevices/base/text/export/text.js', t: 'text.js' },
+                { s: 'files/perm/idevices/base/text/export/text.css', t: 'text.css' },
+              ],
+            },
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchIdeviceStatic('text');
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/idevices.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js');
         expect(result.size).toBe(2);
-        expect(result.has('script.js')).toBe(true);
-        expect(result.has('style.css')).toBe(true);
-
-        delete window.fflate;
+        expect(result.has('text.js')).toBe(true);
+        expect(result.has('text.css')).toBe(true);
       });
 
-      it('returns cached iDevice on subsequent calls', async () => {
+      it('fetches only the requested iDevice, not every iDevice', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.bundleManifest = {
+          staticFiles: {
+            idevices: {
+              text: [{ s: 'files/perm/idevices/base/text/export/text.js', t: 'text.js' }],
+              quiz: [{ s: 'files/perm/idevices/base/quiz/export/quiz.js', t: 'quiz.js' }],
+            },
+          },
+        };
+        mockFetch.mockResolvedValue(looseResp());
 
-        // Pre-populate cache
-        const ideviceFiles = new Map([['script.js', new Blob(['js'])]]);
-        fetcher.cache.set('idevice:cached-idev', ideviceFiles);
-        fetcher.cache.set('idevices:all', new Map([['cached-idev', ideviceFiles]]));
+        await fetcher.fetchIdeviceStatic('text');
 
-        const result = await fetcher.fetchIdeviceStatic('cached-idev');
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js');
+      });
 
+      it('returns empty Map when iDevice is not in the manifest', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.bundleManifest = { staticFiles: { idevices: {} } };
+
+        const result = await fetcher.fetchIdeviceStatic('missing');
+
+        expect(result.size).toBe(0);
         expect(mockFetch).not.toHaveBeenCalled();
-        expect(result).toBe(ideviceFiles);
       });
     });
 
     describe('fetchContentCssStatic', () => {
-      it('fetches CSS from content-css.zip bundle', async () => {
+      it('assembles content CSS from loose files with the content/css/ prefix', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'base.css': new Uint8Array([1]),
-            'content.css': new Uint8Array([2]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            contentCss: [
+              { s: 'style/workarea/base.css', t: 'content/css/base.css' },
+              { s: 'style/workarea/custom.css', t: 'content/css/custom.css' },
+            ],
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchContentCssStatic();
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/content-css.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/style/workarea/base.css');
         expect(result.size).toBe(2);
-
-        delete window.fflate;
+        expect(result.has('content/css/base.css')).toBe(true);
+        expect(result.has('content/css/custom.css')).toBe(true);
       });
 
-      it('returns empty Map when bundle fails', async () => {
+      it('returns empty Map when content CSS is missing from the manifest', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
-        mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+        fetcher.bundleManifest = { staticFiles: {} };
 
         const result = await fetcher.fetchContentCssStatic();
 
         expect(result.size).toBe(0);
+        expect(mockFetch).not.toHaveBeenCalled();
       });
     });
 
     describe('fetchBaseLibrariesStatic', () => {
-      it('fetches libraries from libs.zip bundle', async () => {
+      it('assembles base libraries from loose files listed in the manifest', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'jquery/jquery.min.js': new Uint8Array([1]),
-            'common/common.js': new Uint8Array([2]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            libs: [
+              { s: 'libs/jquery/jquery.min.js', t: 'jquery/jquery.min.js' },
+              { s: 'app/common/common.js', t: 'common.js' },
+            ],
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchBaseLibrariesStatic();
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/libs.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/libs/jquery/jquery.min.js');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/common.js');
         expect(result.size).toBe(2);
-
-        delete window.fflate;
+        expect(result.has('jquery/jquery.min.js')).toBe(true);
+        expect(result.has('common.js')).toBe(true);
       });
 
-      it('returns empty Map when bundle not available', async () => {
+      it('returns empty Map when libs are missing from the manifest', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
-        mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+        fetcher.bundleManifest = { staticFiles: {} };
 
         const result = await fetcher.fetchBaseLibrariesStatic();
 
         expect(result.size).toBe(0);
+        expect(mockFetch).not.toHaveBeenCalled();
       });
     });
 
     describe('fetchLibraryDirectory in static mode', () => {
-      it('loads library from common.zip bundle', async () => {
+      it('assembles a library directory from its loose files', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'exe_effects/exe_effects.js': new Uint8Array([1]),
-            'exe_effects/exe_effects.css': new Uint8Array([2]),
-            'other_lib/other.js': new Uint8Array([3]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            common: {
+              exe_effects: [
+                { s: 'app/common/exe_effects/exe_effects.js', t: 'exe_effects/exe_effects.js' },
+                { s: 'app/common/exe_effects/exe_effects.css', t: 'exe_effects/exe_effects.css' },
+              ],
+            },
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchLibraryDirectory('exe_effects');
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/common.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js');
         expect(result.size).toBe(2);
         expect(result.has('exe_effects/exe_effects.js')).toBe(true);
         expect(result.has('exe_effects/exe_effects.css')).toBe(true);
-
-        delete window.fflate;
       });
 
-      it('caches common.zip bundle for subsequent calls', async () => {
+      it('returns the library from the in-memory cache on subsequent calls', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
 
-        // Pre-populate common:all cache
-        const commonFiles = new Map([
-          ['lib1/file.js', new Blob(['js1'])],
-          ['lib2/file.js', new Blob(['js2'])],
-        ]);
-        fetcher.cache.set('common:all', commonFiles);
+        // Pre-populate the per-library memory cache
+        const libFiles = new Map([['lib1/file.js', new Blob(['js1'])]]);
+        fetcher.cache.set('libdir:lib1', libFiles);
 
         const result = await fetcher.fetchLibraryDirectory('lib1');
 
         expect(mockFetch).not.toHaveBeenCalled();
-        expect(result.size).toBe(1);
-        expect(result.has('lib1/file.js')).toBe(true);
+        expect(result).toBe(libFiles);
       });
 
-      it('returns empty Map for non-existent library', async () => {
+      it('reads the library from IndexedDB before assembling from loose files', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
+        const cached = new Map([['exe_math/exe_math.js', new Blob(['js'])]]);
+        fetcher.resourceCache = {
+          get: vi.fn().mockResolvedValue(cached),
+          set: vi.fn(),
+        };
 
-        fetcher.cache.set('common:all', new Map());
+        const result = await fetcher.fetchLibraryDirectory('exe_math');
+
+        expect(fetcher.resourceCache.get).toHaveBeenCalledWith('libdir', 'exe_math', fetcher.version);
+        expect(mockFetch).not.toHaveBeenCalled();
+        expect(result).toBe(cached);
+      });
+
+      it('persists the assembled library to IndexedDB', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.bundleManifest = {
+          staticFiles: {
+            common: { exe_media: [{ s: 'app/common/exe_media/exe_media.js', t: 'exe_media/exe_media.js' }] },
+          },
+        };
+        fetcher.resourceCache = {
+          get: vi.fn().mockResolvedValue(null),
+          set: vi.fn().mockResolvedValue(undefined),
+        };
+        mockFetch.mockResolvedValue(looseResp());
+
+        await fetcher.fetchLibraryDirectory('exe_media');
+
+        expect(fetcher.resourceCache.set).toHaveBeenCalledWith(
+          'libdir', 'exe_media', fetcher.version, expect.any(Map),
+        );
+      });
+
+      it('returns empty Map for a library not in the manifest', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.bundleManifest = { staticFiles: { common: {} } };
 
         const result = await fetcher.fetchLibraryDirectory('nonexistent');
 
         expect(result.size).toBe(0);
+        expect(mockFetch).not.toHaveBeenCalled();
       });
     });
 
@@ -2629,42 +2700,172 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
     });
 
     describe('fetchTheme integration with static mode', () => {
-      it('uses fetchThemeStatic when in static mode', async () => {
+      it('uses fetchThemeStatic (assemble from loose) when in static mode', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
         fetcher.basePath = '';
-
-        window.fflate = {
-          unzipSync: vi.fn().mockReturnValue({
-            'style.css': new Uint8Array([1]),
-          }),
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: { 'custom-theme': [{ s: 'files/perm/themes/base/custom-theme/style.css', t: 'style.css' }] },
+          },
         };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          headers: { get: () => '100' },
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-        });
+        mockFetch.mockResolvedValue(looseResp());
 
         const result = await fetcher.fetchTheme('custom-theme');
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/custom-theme.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/custom-theme/style.css');
         expect(result.size).toBe(1);
-
-        delete window.fflate;
       });
 
-      it('does not fall back to individual files in static mode', async () => {
+      it('does not fall back to the server API in static mode', async () => {
         const fetcher = new ResourceFetcher();
         fetcher.isStaticMode = true;
-
-        // Bundle fails
+        fetcher.basePath = '';
+        // One loose file that 404s — assembly yields empty, no API fallback.
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: { 'missing-theme': [{ s: 'files/perm/themes/base/missing-theme/style.css', t: 'style.css' }] },
+          },
+        };
         mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
         const result = await fetcher.fetchTheme('missing-theme');
 
-        // Should NOT call the fallback API
+        // Only the single loose-file probe; no /api/resources/theme fallback.
         expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/missing-theme/style.css');
         expect(result.size).toBe(0);
+      });
+    });
+
+    describe('assembly helpers', () => {
+      it('getStaticFileList returns grouped and flat lists from the manifest', () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: { base: [{ s: 'a', t: 'b' }] },
+            libs: [{ s: 'c', t: 'd' }],
+          },
+        };
+
+        expect(fetcher.getStaticFileList('themes', 'base')).toEqual([{ s: 'a', t: 'b' }]);
+        expect(fetcher.getStaticFileList('libs')).toEqual([{ s: 'c', t: 'd' }]);
+        expect(fetcher.getStaticFileList('themes', 'missing')).toEqual([]);
+        expect(fetcher.getStaticFileList('idevices', 'x')).toEqual([]);
+      });
+
+      it('getStaticFileList returns [] when no manifest is loaded', () => {
+        const fetcher = new ResourceFetcher();
+        expect(fetcher.getStaticFileList('libs')).toEqual([]);
+      });
+
+      it('assembleBundleFromLoose fetches each entry and keys by target path', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.basePath = '';
+        mockFetch.mockResolvedValue(looseResp([7]));
+
+        const result = await fetcher.assembleBundleFromLoose([
+          { s: 'x/a.css', t: 'a.css' },
+          { s: 'x/b.js', t: 'b.js' },
+        ]);
+
+        expect(result.size).toBe(2);
+        expect(result.has('a.css')).toBe(true);
+        expect(result.get('a.css').type).toBe('text/css');
+        expect(result.get('b.js').type).toBe('application/javascript');
+      });
+
+      it('assembleBundleFromLoose skips files that fail to fetch', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.basePath = '';
+        mockFetch
+          .mockResolvedValueOnce(looseResp())
+          .mockResolvedValueOnce({ ok: false, status: 404 });
+
+        const result = await fetcher.assembleBundleFromLoose([
+          { s: 'x/a.css', t: 'a.css' },
+          { s: 'x/missing.css', t: 'missing.css' },
+        ]);
+
+        expect(result.size).toBe(1);
+        expect(result.has('a.css')).toBe(true);
+        expect(result.has('missing.css')).toBe(false);
+      });
+
+      it('assembleBundleFromLoose returns an empty Map for no entries', async () => {
+        const fetcher = new ResourceFetcher();
+        const result = await fetcher.assembleBundleFromLoose([]);
+        expect(result.size).toBe(0);
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      it('loadStaticManifest tolerates a fetch failure', async () => {
+        const fetcher = new ResourceFetcher();
+        mockFetch.mockRejectedValueOnce(new Error('offline'));
+
+        await fetcher.loadStaticManifest();
+
+        expect(fetcher.bundleManifest).toBeNull();
+      });
+    });
+
+    describe('fetchThemeZipBlob', () => {
+      it('zips the assembled theme files for download', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.bundleManifest = {
+          staticFiles: {
+            themes: { base: [{ s: 'files/perm/themes/base/base/style.css', t: 'style.css' }] },
+          },
+        };
+        mockFetch.mockResolvedValue(looseResp([1, 2, 3]));
+        window.fflate = { zipSync: vi.fn().mockReturnValue(new Uint8Array([80, 75])) };
+
+        const blob = await fetcher.fetchThemeZipBlob('base');
+
+        expect(window.fflate.zipSync).toHaveBeenCalled();
+        const [zipArg] = window.fflate.zipSync.mock.calls[0];
+        expect(Object.keys(zipArg)).toContain('style.css');
+        expect(blob).toBeInstanceOf(Blob);
+        expect(blob.type).toBe('application/zip');
+
+        delete window.fflate;
+      });
+
+      it('returns null when the theme has no files', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.bundleManifest = { staticFiles: { themes: {} } };
+
+        const blob = await fetcher.fetchThemeZipBlob('missing');
+
+        expect(blob).toBeNull();
+      });
+    });
+
+    describe('fetchIdevice persists to IndexedDB in static mode', () => {
+      it('writes the assembled iDevice to the resource cache', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.bundleManifest = {
+          staticFiles: {
+            idevices: { text: [{ s: 'files/perm/idevices/base/text/export/text.js', t: 'text.js' }] },
+          },
+        };
+        fetcher.resourceCache = {
+          get: vi.fn().mockResolvedValue(null),
+          set: vi.fn().mockResolvedValue(undefined),
+        };
+        mockFetch.mockResolvedValue(looseResp());
+
+        const result = await fetcher.fetchIdevice('text');
+
+        expect(result.size).toBe(1);
+        expect(fetcher.resourceCache.set).toHaveBeenCalledWith(
+          'idevice', 'text', fetcher.version, expect.any(Map),
+        );
       });
     });
   });

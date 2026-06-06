@@ -983,6 +983,32 @@ describe('ModalStyleManager', () => {
                 clickSpy.mockRestore();
             });
 
+            it('should assemble the theme zip via ResourceFetcher in static mode', async () => {
+                const mockBlob = new Blob(['zip'], { type: 'application/zip' });
+                window.eXeLearning.app.capabilities = { storage: { remote: false } };
+                window.eXeLearning.app.resourceFetcher = {
+                    fetchThemeZipBlob: vi.fn().mockResolvedValue(mockBlob),
+                };
+                global.fetch = vi.fn();
+
+                const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+                const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+                const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+                modal.downloadThemeZip({ dirName: 'test-theme', name: 'Test Theme' });
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                expect(window.eXeLearning.app.resourceFetcher.fetchThemeZipBlob).toHaveBeenCalledWith('test-theme');
+                expect(fetch).not.toHaveBeenCalled();
+                expect(clickSpy).toHaveBeenCalled();
+
+                createObjectURLSpy.mockRestore();
+                revokeObjectURLSpy.mockRestore();
+                clickSpy.mockRestore();
+                delete window.eXeLearning.app.capabilities;
+                delete window.eXeLearning.app.resourceFetcher;
+            });
+
             it('should show error when bundle not found', async () => {
                 const mockResponse = {
                     ok: false,

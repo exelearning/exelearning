@@ -457,6 +457,33 @@ describe('NavbarStyles', () => {
         clickSpy.mockRestore();
     });
 
+    it('assembles the theme zip via ResourceFetcher in static mode', async () => {
+        const mockBlob = new Blob(['zip'], { type: 'application/zip' });
+        eXeLearning.app.capabilities = { storage: { remote: false } };
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeZipBlob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        global.fetch = vi.fn();
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Static mode assembles client-side from loose files; no zip is fetched.
+        expect(eXeLearning.app.resourceFetcher.fetchThemeZipBlob).toHaveBeenCalledWith('base-1');
+        expect(fetch).not.toHaveBeenCalled();
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+        delete eXeLearning.app.capabilities;
+        delete eXeLearning.app.resourceFetcher;
+    });
+
     it('downloads site theme zip from API endpoint', async () => {
         const mockBlob = new Blob(['test'], { type: 'application/zip' });
         const mockResponse = {
