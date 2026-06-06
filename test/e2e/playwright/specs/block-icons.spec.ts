@@ -90,6 +90,58 @@ test.describe('Block Icon Selection Modal', () => {
         expect(emptyIconId).toBe('0'); // Empty icon should have id "0"
     });
 
+    test('should render an applied Material icon as a self-contained data: URI', async ({
+        authenticatedPage,
+        createProject,
+    }, testInfo) => {
+        // Skip in static mode - requires server to create projects and add iDevices
+        skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
+
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Test Applied Material Icon');
+        expect(projectUuid).toBeDefined();
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addTextIdevice(page);
+        await page.waitForTimeout(500);
+
+        // Open the icon picker for the first block.
+        const blockIconBtn = page.locator('button[aria-label="Select an icon"]').first();
+        await blockIconBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await blockIconBtn.click();
+
+        const modalBody = page.locator('#change-block-icon-modal-content').last();
+        await modalBody.waitFor({ state: 'visible', timeout: 10000 });
+
+        // Pick a known Material icon ("lightbulb") deterministically by its id.
+        const lightbulb = modalBody.locator('.option-block-icon[icon-id="mi-lightbulb"]').first();
+        await lightbulb.scrollIntoViewIfNeeded();
+        await lightbulb.click();
+
+        // Confirm the selection (the confirm modal's primary button is "Save").
+        const modal = page.locator('.modal.show').filter({ has: modalBody }).last();
+        await modal.locator('button.btn.button-primary').first().click();
+        await page.waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 });
+
+        // The applied block icon must render from the sprite as an inline data: URI
+        // (the loose per-icon SVG files were removed), not a /libs/.../icons/*.svg path.
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                const span = block?.querySelector('header.box-head button.box-icon .exe-material-icon');
+                if (!span) return false;
+                const url = (span as HTMLElement).style.getPropertyValue('--exe-material-icon-url');
+                return url.includes('data:image/svg+xml') && !url.includes('/icons/');
+            },
+            undefined,
+            { timeout: 10000 },
+        );
+    });
+
     test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }, testInfo) => {
         // Skip in static mode - requires server API endpoints
         skipInStaticMode(test, testInfo, 'Requires server API endpoints');

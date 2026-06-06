@@ -39,10 +39,20 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchBaseLibraries: async () => new Map(),
     fetchLibraryFiles: async (files: string[]) => {
         const result = new Map<string, Buffer>();
-        for (const file of files) {
-            if (file.startsWith('material-icons/icons/')) {
-                result.set(file, Buffer.from(`<svg data-icon="${file}"></svg>`));
-            }
+        if (files.includes('material-icons/material-icons.svg')) {
+            result.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
         }
         return result;
     },

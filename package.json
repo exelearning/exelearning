@@ -23,6 +23,7 @@
     "bundle:exporters": "bun scripts/build-exporters-bundle.js",
     "bundle:resources": "bun scripts/build-resource-bundles.js",
     "bundle:slide-editor": "bun scripts/build-slide-editor.ts",
+    "icons:generate": "node scripts/generate-material-icons.js",
     "upload:bundles": "bun scripts/upload-bundle-analysis.js",
     "predev": "bun scripts/setup-local.js",
     "seed": "bun run src/db/seed.ts",

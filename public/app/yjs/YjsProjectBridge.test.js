@@ -6322,6 +6322,17 @@ describe('YjsProjectBridge', () => {
     });
 
     it('renders material icons with the shared mask runtime', () => {
+      // The shared runtime rebuilds the icon from the in-memory sprite as a
+      // self-contained data: URI (loose per-icon files were removed).
+      const iconRuntime = require('../common/blockIconRuntime.js');
+      iconRuntime.loadMaterialSprite(
+        [
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+          '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+          '</svg>',
+        ].join('\n'),
+      );
+
       const mockIconEl = {
         innerHTML: '',
         style: {
@@ -6338,7 +6349,8 @@ describe('YjsProjectBridge', () => {
       bridge._syncBlockIcon(mockIconEl, { source: 'material', value: 'alarm' }, 'block-1');
 
       expect(mockIconEl.innerHTML).toContain('class="exe-material-icon"');
-      expect(mockIconEl.innerHTML).toContain('alarm.svg');
+      expect(mockIconEl.innerHTML).toContain('data:image/svg+xml;utf8,');
+      expect(mockIconEl.innerHTML).not.toContain('alarm.svg');
       expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
       expect(mockIconEl.style.removeProperty).toHaveBeenCalledWith('color');
     });

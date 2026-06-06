@@ -405,6 +405,33 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
+    // Preload the single Material icon sprite into the shared block-icon runtime
+    // so applied block icons render as self-contained data: URIs. The loose
+    // per-icon SVG files were removed in favour of this one sprite.
+    try {
+      if (
+        blockIconRuntime
+        && typeof blockIconRuntime.loadMaterialSprite === 'function'
+        && !blockIconRuntime.isMaterialSpriteLoaded?.()
+      ) {
+        let spriteText = null;
+        if (this.resourceFetcher?.fetchLibraryFile) {
+          const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
+          if (spriteBlob) spriteText = await spriteBlob.text();
+        }
+        if (!spriteText) {
+          const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
+          if (spriteResp.ok) spriteText = await spriteResp.text();
+        }
+        if (spriteText) {
+          const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
+          Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
+        }
+      }
+    } catch (e) {
+      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
+    }
+
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
     if (window.AssetWebSocketHandler && this.assetManager && this.documentManager?.wsProvider) {
       this.assetWebSocketHandler = new window.AssetWebSocketHandler(

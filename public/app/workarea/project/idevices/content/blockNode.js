@@ -68,8 +68,23 @@ const localBlockIconRuntime = {
     },
 
     renderMaterialMaskIcon(iconName, options = {}) {
-        const iconPath = this.getMaterialIconPath(iconName, options);
-        return `<span class="exe-material-icon" style="--exe-material-icon-url:url('${iconPath}');" aria-hidden="true"></span>`;
+        // Prefer the shared runtime: it owns the in-memory sprite and rebuilds
+        // the icon as a self-contained data: URI (the loose per-icon SVG files
+        // were removed in favour of the single material-icons.svg sprite).
+        const shared = window.eXeBlockIconRuntime;
+        if (shared && shared !== this && typeof shared.renderMaterialMaskIcon === 'function') {
+            return shared.renderMaterialMaskIcon(iconName, options);
+        }
+        // Degraded fallback (no shared runtime in this context): emit a
+        // placeholder that hydrateMaterialIcons() fills once the sprite loads.
+        const catalog = options.catalog;
+        const safeIconName = !iconName
+            ? 'help'
+            : (!Array.isArray(catalog) || catalog.includes(iconName))
+                ? iconName
+                : 'help';
+        const pendingName = String(safeIconName).replace(/[^a-z0-9_-]/gi, '');
+        return `<span class="exe-material-icon" data-exe-material-icon="${pendingName}" aria-hidden="true"></span>`;
     },
 };
 

@@ -24,9 +24,18 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import { parseMaterialIconSprite, buildStandaloneSvg } from '../../material-icons/spriteParser';
 
-function collectUsedMaterialIconPaths(pages: ExportPage[]): string[] {
-    const iconPaths = new Set<string>();
+/** Path of the single vendored Material Symbols sprite, relative to `libs/`. */
+const MATERIAL_ICON_SPRITE_PATH = 'material-icons/material-icons.svg';
+
+/**
+ * Collect the distinct Material icon names referenced by a project's blocks.
+ * Icons come either as `block.icon = { source: 'material', value }` or as a
+ * legacy `block.iconName` prefixed with `mi-`.
+ */
+function collectUsedMaterialIconNames(pages: ExportPage[]): string[] {
+    const names = new Set<string>();
 
     for (const page of pages) {
         for (const block of page.blocks || []) {
@@ -34,32 +43,29 @@ function collectUsedMaterialIconPaths(pages: ExportPage[]): string[] {
             const iconName = block.iconName || '';
 
             if (icon?.source === 'material' && icon.value) {
-                iconPaths.add(`material-icons/icons/${icon.value}.svg`);
+                names.add(icon.value);
                 continue;
             }
 
             if (iconName.startsWith('mi-')) {
-                iconPaths.add(`material-icons/icons/${iconName.replace(/^mi-/, '')}.svg`);
+                names.add(iconName.replace(/^mi-/, ''));
             }
         }
     }
 
-    return Array.from(iconPaths);
+    return Array.from(names);
 }
 
-function buildMaterialIconDataUriMapFromFiles(iconFiles: Map<string, Uint8Array>): Map<string, string> {
-    const decoder = new TextDecoder();
-    const dataUris = new Map<string, string>();
-
-    for (const [libPath, content] of iconFiles) {
-        const match = libPath.match(/^material-icons\/icons\/(.+)\.svg$/);
-        if (!match) continue;
-        dataUris.set(match[1], `data:image/svg+xml;utf8,${encodeURIComponent(decoder.decode(content))}`);
-    }
-
-    return dataUris;
-}
-
+/**
+ * Resolve the Material icons used by a project from the single sprite file.
+ *
+ * The loose per-icon SVG files no longer exist on disk — the sprite is the only
+ * source — so we fetch it once, parse it, and rebuild standalone SVGs for just
+ * the used icons. The return shape is unchanged so every exporter keeps working:
+ * - `files`  → `material-icons/icons/{name}.svg` reconstructed bytes (written to
+ *   the export package, byte-equivalent to the files they replace).
+ * - `dataUris` → `name -> data:` URI inlined into the rendered HTML.
+ */
 export async function resolveMaterialIconDataUris(
     resources: ResourceProvider,
     pages: ExportPage[],
@@ -68,28 +74,46 @@ export async function resolveMaterialIconDataUris(
     files: Map<string, Uint8Array>;
     dataUris: Map<string, string>;
 }> {
-    const paths = collectUsedMaterialIconPaths(pages);
-    if (paths.length === 0) {
-        return {
-            paths,
-            files: new Map<string, Uint8Array>(),
-            dataUris: new Map<string, string>(),
-        };
+    const empty = {
+        paths: [] as string[],
+        files: new Map<string, Uint8Array>(),
+        dataUris: new Map<string, string>(),
+    };
+
+    const names = collectUsedMaterialIconNames(pages);
+    if (names.length === 0) {
+        return empty;
     }
 
     try {
-        const files = await resources.fetchLibraryFiles(paths);
-        return {
-            paths,
-            files,
-            dataUris: buildMaterialIconDataUriMapFromFiles(files),
-        };
+        const spriteFiles = await resources.fetchLibraryFiles([MATERIAL_ICON_SPRITE_PATH]);
+        const spriteContent = spriteFiles.get(MATERIAL_ICON_SPRITE_PATH);
+        if (!spriteContent) {
+            return empty;
+        }
+
+        const symbols = parseMaterialIconSprite(new TextDecoder().decode(spriteContent));
+        const encoder = new TextEncoder();
+
+        const paths: string[] = [];
+        const files = new Map<string, Uint8Array>();
+        const dataUris = new Map<string, string>();
+
+        for (const name of names) {
+            const symbol = symbols.get(name);
+            if (!symbol) {
+                continue;
+            }
+            const svg = buildStandaloneSvg(symbol);
+            const libPath = `material-icons/icons/${name}.svg`;
+            paths.push(libPath);
+            files.set(libPath, encoder.encode(svg));
+            dataUris.set(name, `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
+        }
+
+        return { paths, files, dataUris };
     } catch {
-        return {
-            paths,
-            files: new Map<string, Uint8Array>(),
-            dataUris: new Map<string, string>(),
-        };
+        return empty;
     }
 }
 

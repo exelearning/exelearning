@@ -775,6 +775,34 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('renderMaterialMaskIcon (shared sprite runtime)', () => {
+        afterEach(() => {
+            delete window.eXeBlockIconRuntime;
+        });
+
+        it('emits a placeholder for hydration when no shared runtime is present', () => {
+            // window.eXeBlockIconRuntime is unset here → local fallback path.
+            const html = block.renderMaterialMaskIcon('lightbulb');
+            expect(html).toContain('class="exe-material-icon"');
+            expect(html).toContain('data-exe-material-icon="lightbulb"');
+            expect(html).not.toContain('.svg');
+
+            // Unknown names collapse to the "help" fallback.
+            expect(block.renderMaterialMaskIcon('totally-unknown-icon')).toContain('data-exe-material-icon="help"');
+        });
+
+        it('delegates to the shared runtime (sprite data: URI) when available', () => {
+            window.eXeBlockIconRuntime = {
+                renderMaterialMaskIcon: () =>
+                    '<span class="exe-material-icon" style="--exe-material-icon-url:url(\'data:image/svg+xml;utf8,X\');"></span>',
+            };
+
+            const html = block.renderMaterialMaskIcon('lightbulb');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('data-exe-material-icon');
+        });
+    });
+
     describe('apiUpdateIcon', () => {
         it('updates iconName property', () => {
             block.apiUpdateIcon('new-icon');
