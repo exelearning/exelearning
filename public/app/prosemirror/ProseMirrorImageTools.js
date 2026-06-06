@@ -304,20 +304,30 @@
 	const MIN_IMAGE_SIZE = 24;
 
 	/**
-	 * Compute a new width/height while dragging a corner handle, preserving the
-	 * image's aspect ratio. Pure + testable.
-	 * @param {{startW:number,startH:number,dx:number,corner:string,minSize?:number}} opts
+	 * Compute a new width/height while dragging a corner handle. By default width
+	 * and height move independently (free resize); when `keepRatio` is set (Shift
+	 * held) the height follows the width to preserve the aspect ratio. Pure + testable.
+	 * @param {{startW:number,startH:number,dx:number,dy?:number,corner:string,keepRatio?:boolean,minSize?:number}} opts
 	 * @returns {{width:number,height:number}}
 	 */
 	function computeResize(opts) {
 		const { startW, startH, dx, corner } = opts;
+		const dy = opts.dy || 0;
 		const minSize = opts.minSize != null ? opts.minSize : MIN_IMAGE_SIZE;
 		// East corners grow with +dx, west corners with -dx.
 		const growX = corner === 'ne' || corner === 'se' ? dx : -dx;
 		let width = Math.round(startW + growX);
 		if (width < minSize) width = minSize;
-		const ratio = startW > 0 ? startH / startW : 1;
-		const height = Math.max(minSize, Math.round(width * ratio));
+		let height;
+		if (opts.keepRatio) {
+			const ratio = startW > 0 ? startH / startW : 1;
+			height = Math.max(minSize, Math.round(width * ratio));
+		} else {
+			// South corners grow with +dy, north corners with -dy.
+			const growY = corner === 'sw' || corner === 'se' ? dy : -dy;
+			height = Math.round(startH + growY);
+			if (height < minSize) height = minSize;
+		}
 		return { width, height };
 	}
 
@@ -353,11 +363,15 @@
 			e.preventDefault();
 			e.stopPropagation();
 			const startX = e.clientX;
+			const startY = e.clientY;
 			const startW = img.offsetWidth || Number(img.getAttribute('width')) || 0;
 			const startH = img.offsetHeight || Number(img.getAttribute('height')) || 0;
+			// Free resize by default; hold Shift to preserve the aspect ratio.
+			const sizeFor = (ev) =>
+				computeResize({ startW, startH, dx: ev.clientX - startX, dy: ev.clientY - startY, corner, keepRatio: ev.shiftKey });
 
 			const onMove = (ev) => {
-				const { width, height } = computeResize({ startW, startH, dx: ev.clientX - startX, corner });
+				const { width, height } = sizeFor(ev);
 				img.style.width = `${width}px`;
 				img.style.height = `${height}px`;
 			};
@@ -366,7 +380,7 @@
 				document.removeEventListener('mouseup', onUp);
 				img.style.width = '';
 				img.style.height = '';
-				const { width, height } = computeResize({ startW, startH, dx: ev.clientX - startX, corner });
+				const { width, height } = sizeFor(ev);
 				const pos = resolvePos(getPos);
 				if (pos == null) return;
 				const node = view.state.doc.nodeAt(pos);

@@ -449,22 +449,31 @@ describe('ProseMirrorImageTools', () => {
 			computeResize = window.ProseMirrorImageToolsInternals.computeResize;
 		});
 
-		it('grows width on east corners and preserves the aspect ratio', () => {
-			expect(computeResize({ startW: 100, startH: 50, dx: 20, corner: 'se' })).toEqual({ width: 120, height: 60 });
-			expect(computeResize({ startW: 100, startH: 50, dx: 20, corner: 'ne' })).toEqual({ width: 120, height: 60 });
+		it('resizes width and height independently by default (free resize)', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: 20, dy: 10, corner: 'se' })).toEqual({ width: 120, height: 60 });
+			// ne: east grows width with +dx, north grows height with -dy
+			expect(computeResize({ startW: 100, startH: 50, dx: 20, dy: 10, corner: 'ne' })).toEqual({ width: 120, height: 40 });
 		});
 
-		it('inverts the dx direction on west corners', () => {
-			expect(computeResize({ startW: 100, startH: 50, dx: -20, corner: 'sw' })).toEqual({ width: 120, height: 60 });
-			expect(computeResize({ startW: 100, startH: 50, dx: 30, corner: 'nw' })).toEqual({ width: 70, height: 35 });
+		it('inverts the dx/dy direction on the opposite corners', () => {
+			// nw: west + north → -dx, -dy
+			expect(computeResize({ startW: 100, startH: 50, dx: 30, dy: 20, corner: 'nw' })).toEqual({ width: 70, height: 30 });
+			// sw: west + south → -dx, +dy
+			expect(computeResize({ startW: 100, startH: 50, dx: -20, dy: 10, corner: 'sw' })).toEqual({ width: 120, height: 60 });
 		});
 
-		it('clamps to the minimum size', () => {
-			expect(computeResize({ startW: 100, startH: 50, dx: -500, corner: 'se', minSize: 24 })).toEqual({ width: 24, height: 24 });
+		it('preserves the aspect ratio when keepRatio (Shift) is set, ignoring dy', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: 20, dy: 200, corner: 'se', keepRatio: true })).toEqual({ width: 120, height: 60 });
+			expect(computeResize({ startW: 100, startH: 50, dx: 30, dy: -5, corner: 'nw', keepRatio: true })).toEqual({ width: 70, height: 35 });
 		});
 
-		it('does not divide by zero when the start width is 0', () => {
-			expect(computeResize({ startW: 0, startH: 0, dx: 50, corner: 'se' })).toEqual({ width: 50, height: 50 });
+		it('clamps both dimensions to the minimum size', () => {
+			expect(computeResize({ startW: 100, startH: 50, dx: -500, dy: -500, corner: 'se', minSize: 24 })).toEqual({ width: 24, height: 24 });
+			expect(computeResize({ startW: 100, startH: 50, dx: -500, corner: 'se', minSize: 24, keepRatio: true })).toEqual({ width: 24, height: 24 });
+		});
+
+		it('does not divide by zero when keeping ratio with start width 0', () => {
+			expect(computeResize({ startW: 0, startH: 0, dx: 50, corner: 'se', keepRatio: true })).toEqual({ width: 50, height: 50 });
 		});
 	});
 
@@ -553,7 +562,7 @@ describe('ProseMirrorImageTools', () => {
 			expect(nv.ignoreMutation({ type: 'selection' })).toBe(false);
 		});
 
-		it('dragging a corner handle commits new width/height via setNodeMarkup', () => {
+		it('dragging a corner handle commits new width/height (free resize)', () => {
 			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', class: null, width: 100, height: 50 } };
 			const { view, tr, dispatch } = buildView(node);
 			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
@@ -564,11 +573,30 @@ describe('ProseMirrorImageTools', () => {
 
 			const se = nv.dom.querySelector('.pm-image-handle-se');
 			se.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }));
-			document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 40, clientY: 0 }));
-			document.dispatchEvent(new window.MouseEvent('mouseup', { clientX: 40, clientY: 0 }));
+			document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 40, clientY: 30 }));
+			document.dispatchEvent(new window.MouseEvent('mouseup', { clientX: 40, clientY: 30 }));
+
+			// free resize: width += 40, height += 30 (no ratio lock)
+			expect(tr.setNodeMarkup).toHaveBeenCalledWith(1, null, expect.objectContaining({ width: 140, height: 80 }));
+			expect(dispatch).toHaveBeenCalled();
+			nv.dom.remove();
+		});
+
+		it('holding Shift while dragging preserves the aspect ratio', () => {
+			const node = { type: IMAGE_TYPE, attrs: { src: 'a.png', class: null, width: 100, height: 50 } };
+			const { view, tr } = buildView(node);
+			const nv = window.ProseMirrorImageTools.createImageNodeView(node, view, () => 1);
+			const img = nv.dom.querySelector('img');
+			img.setAttribute('width', '100');
+			img.setAttribute('height', '50');
+			document.body.appendChild(nv.dom);
+
+			const se = nv.dom.querySelector('.pm-image-handle-se');
+			se.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }));
+			// large dy but Shift held → height follows width via ratio (50/100), not dy
+			document.dispatchEvent(new window.MouseEvent('mouseup', { clientX: 40, clientY: 200, shiftKey: true }));
 
 			expect(tr.setNodeMarkup).toHaveBeenCalledWith(1, null, expect.objectContaining({ width: 140, height: 70 }));
-			expect(dispatch).toHaveBeenCalled();
 			nv.dom.remove();
 		});
 
