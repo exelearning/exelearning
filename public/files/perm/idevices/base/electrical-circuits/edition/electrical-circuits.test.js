@@ -107,6 +107,87 @@ describe('electrical-circuits iDevice edition', () => {
         expect(showMessage).toHaveBeenCalledWith($exeDevice.msgs.msgERenderCircuitPreview);
     });
 
+    it('collapses line breaks in the TikZ code before compiling', () => {
+        document.body.innerHTML = `
+            <textarea id="elceTikzCode"></textarea>
+            <div id="elceTikzPreview"></div>
+            <div id="elceNoCircuit"></div>
+        `;
+        const multiline =
+            '\\begin{circuitikz}\n\\draw (0,0)\n  to[R, l=$R_1$] (3,0);\n\\end{circuitikz}';
+        $('#elceTikzCode').val(multiline);
+
+        $exeDevice.renderTikzPreview();
+
+        const script = document.querySelector(
+            '#elceTikzPreview script[type="text/tikz"]'
+        );
+        expect(script).not.toBeNull();
+        expect(script.textContent).not.toContain('\n');
+        expect(script.textContent).toBe(
+            '\\begin{document}\\begin{circuitikz} \\draw (0,0) to[R, l=$R_1$] (3,0); \\end{circuitikz}\\end{document}'
+        );
+    });
+
+    it('ignores the loading spinner and captures only after tikzjax-load-finished', () => {
+        document.body.innerHTML = `
+            <textarea id="elceTikzCode"></textarea>
+            <div id="elceTikzPreview"></div>
+            <div id="elceNoCircuit"></div>
+        `;
+        $('#elceTikzCode').val(
+            '\\begin{circuitikz}\\draw (0,0) to[R, l=$R$] (3,0);\\end{circuitikz}'
+        );
+        const code = $exeDevice.normalizeTikzCode($('#elceTikzCode').val());
+        const preview = document.getElementById('elceTikzPreview');
+
+        $exeDevice.renderTikzPreview();
+
+        // TikZJax first inserts its loading-spinner <svg> placeholder. Without
+        // the finished event nothing must be captured (this is what used to
+        // require a second click).
+        preview.innerHTML = '<svg class="spinner"><circle r="15"></circle></svg>';
+        expect($exeDevice.getRenderedTikzSvgForCode(code)).toBe('');
+
+        // TikZJax then swaps in the real circuit and fires the finished event.
+        preview.innerHTML = '<svg viewBox="0 0 10 10"><path d="M0 0"></path></svg>';
+        preview
+            .querySelector('svg')
+            .dispatchEvent(
+                new Event('tikzjax-load-finished', { bubbles: true })
+            );
+
+        expect($exeDevice.getRenderedTikzSvgForCode(code)).toContain('<svg');
+    });
+
+    it('normalizeTikzCode collapses line breaks and surrounding indentation', () => {
+        expect(
+            $exeDevice.normalizeTikzCode(
+                '\\begin{circuitikz}\n  \\draw (0,0);\n\\end{circuitikz}'
+            )
+        ).toBe('\\begin{circuitikz} \\draw (0,0); \\end{circuitikz}');
+        expect($exeDevice.normalizeTikzCode('')).toBe('');
+        expect($exeDevice.normalizeTikzCode(null)).toBe('');
+    });
+
+    it('finds the cached SVG whether the code is queried multi-line or single-line', () => {
+        const multiline =
+            '\\begin{circuitikz}\n\\draw (0,0)\n  to[R, l=$R$] (3,0);\n\\end{circuitikz}';
+        const singleLine =
+            '\\begin{circuitikz} \\draw (0,0) to[R, l=$R$] (3,0); \\end{circuitikz}';
+
+        const stored = $exeDevice.setRenderedTikzSvg(
+            multiline,
+            '<svg viewBox="0 0 10 10"><path d="M0 0"></path></svg>'
+        );
+
+        expect(stored).toContain('<svg');
+        // Both forms resolve to the same cache key, so validateQuestion (which
+        // reads the raw textarea) and renderTikzPreview stay in sync.
+        expect($exeDevice.getRenderedTikzSvgForCode(multiline)).toBe(stored);
+        expect($exeDevice.getRenderedTikzSvgForCode(singleLine)).toBe(stored);
+    });
+
     it('round-trips tikzCode and tikzSvg without tikzSvgHash', () => {
         setQuestionForm();
         $('#elceTikzCode').val('\\draw (0,0);');

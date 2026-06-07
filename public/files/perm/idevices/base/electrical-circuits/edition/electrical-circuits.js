@@ -26,6 +26,7 @@ var $exeDevice = {
     ci18n: {},
     version: 3.1,
     renderedTikzPreview: null,
+    tikzFinishedHandler: null,
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -466,8 +467,16 @@ var $exeDevice = {
         return new XMLSerializer().serializeToString(parsedSvg);
     },
 
+    normalizeTikzCode: function (code) {
+        // Single source of truth: collapse line breaks (and the surrounding
+        // indentation) into single spaces. TikZJax fails on multi-line input,
+        // and using this everywhere keeps the rendered-SVG cache key aligned
+        // with what validateQuestion/save look up.
+        return (code || '').trim().replace(/\s*\r?\n\s*/g, ' ');
+    },
+
     setRenderedTikzSvg: function (code, svg) {
-        const normalizedCode = (code || '').trim(),
+        const normalizedCode = $exeDevice.normalizeTikzCode(code),
             sanitizedSvg = $exeDevice.sanitizeTikzSvg(svg);
 
         if (!normalizedCode || !sanitizedSvg) {
@@ -483,7 +492,7 @@ var $exeDevice = {
     },
 
     getRenderedTikzSvgForCode: function (code) {
-        const normalizedCode = (code || '').trim();
+        const normalizedCode = $exeDevice.normalizeTikzCode(code);
 
         if (
             !normalizedCode ||
@@ -527,7 +536,7 @@ var $exeDevice = {
      * Render TikZ code in the preview area using TikZJax
      */
     renderTikzPreview: function () {
-        const code = $('#elceTikzCode').val().trim();
+        const code = $exeDevice.normalizeTikzCode($('#elceTikzCode').val());
         const preview = document.getElementById('elceTikzPreview');
         const $noCircuit = $('#elceNoCircuit');
 
@@ -539,23 +548,40 @@ var $exeDevice = {
             return;
         }
 
+        // Drop any listener still pending from a previous render.
+        if ($exeDevice.tikzFinishedHandler) {
+            preview.removeEventListener(
+                'tikzjax-load-finished',
+                $exeDevice.tikzFinishedHandler
+            );
+            $exeDevice.tikzFinishedHandler = null;
+        }
+
         $noCircuit.hide();
         preview.innerHTML = '';
 
-        // Insert <script type="text/tikz"> via DOM so MutationObserver detects it
+        // Insert <script type="text/tikz"> so TikZJax (which observes <body>)
+        // picks it up.
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
         tikzScript.dataset.texPackages = JSON.stringify({'circuitikz': '', 'amsmath': '', 'amssymb': ''});
         tikzScript.dataset.showConsole = 'true';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
-        preview.appendChild(tikzScript);
 
-        const observer = new MutationObserver(() => {
-            if ($exeDevice.captureRenderedTikzPreview(code, preview)) {
-                observer.disconnect();
-            }
-        });
-        observer.observe(preview, { childList: true, subtree: true });
+        // While compiling, TikZJax inserts a loading-spinner <svg> placeholder
+        // and only fires `tikzjax-load-finished` on the FINAL circuit <svg>
+        // (both for cached and freshly compiled results). Grabbing any <svg>
+        // captured the spinner by mistake and required a second click, so wait
+        // for that event and then capture the real circuit.
+        const onFinished = () => {
+            preview.removeEventListener('tikzjax-load-finished', onFinished);
+            $exeDevice.tikzFinishedHandler = null;
+            $exeDevice.captureRenderedTikzPreview(code, preview);
+        };
+        $exeDevice.tikzFinishedHandler = onFinished;
+        preview.addEventListener('tikzjax-load-finished', onFinished);
+
+        preview.appendChild(tikzScript);
     },
 
     clearQuestion: function () {
@@ -1122,7 +1148,7 @@ var $exeDevice = {
         p.numberOptions = parseInt($('input[name=slcnumber]:checked').val());
         p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
         p.customScore = parseFloat($('#elceScoreQuestion').val()) || 1;
-        p.tikzCode = $('#elceTikzCode').val().trim();
+        p.tikzCode = $exeDevice.normalizeTikzCode($('#elceTikzCode').val());
         p.tikzSvg = $exeDevice.getRenderedTikzSvgForCode(p.tikzCode);
         p.description = $('#elceDescription').val().trim();
 
