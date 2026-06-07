@@ -1045,27 +1045,34 @@ var $eXeEC = {
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXeEC.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXeEC.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full correct word.
+                            $eXeEC.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXeEC.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXeEC.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXeEC.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXeEC.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1395,6 +1402,14 @@ var $eXeEC = {
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
     },
 
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#elcpEdAnswer-${instance}, #elcpBtnReply-${instance}, #elcpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
+    },
+
     answerQuestion: function (instance) {
         const mOptions = $eXeEC.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
@@ -1443,6 +1458,11 @@ var $eXeEC = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
+
         $eXeEC.updateScore(correct, instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -1467,13 +1487,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1484,6 +1500,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1500,6 +1522,11 @@ var $eXeEC = {
 
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
+
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
 
         $eXeEC.updateScore(value, instance);
 
@@ -1525,13 +1552,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1542,6 +1565,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1681,8 +1710,6 @@ var $eXeEC = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -1691,10 +1718,25 @@ var $eXeEC = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {
