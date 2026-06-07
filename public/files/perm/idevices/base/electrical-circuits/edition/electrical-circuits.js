@@ -2,7 +2,7 @@
 /**
  * Electrical Circuits Quiz iDevice (edition code)
  * Based on Select Activity (quick-questions-multiple-choice).
- * Questions are paired with TikZ circuit diagrams rendered via TikZJax.
+ * Questions are paired with SVG circuit diagrams rendered from TikZJax in edition.
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
@@ -25,6 +25,7 @@ var $exeDevice = {
     id: false,
     ci18n: {},
     version: 3.1,
+    renderedTikzPreview: null,
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -193,6 +194,9 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
+        msgs.msgERenderCircuitPreview = _(
+            'Please render the circuit preview before saving.'
+        );
         msgs.msgIDLenght = _(
             'The report identifier must have at least 5 characters'
         );
@@ -360,9 +364,12 @@ var $exeDevice = {
         $('#elceNumberQuestion').val(num + 1);
 
         // Load TikZ code, description and render preview
-        $('#elceTikzCode').val(p.tikzCode || '');
+        const tikzCode = (p.tikzCode || '').trim();
+        $('#elceTikzCode').val(tikzCode);
         $('#elceDescription').val(p.description || '');
-        $exeDevice.renderTikzPreview();
+        if (!tikzCode || !$exeDevice.showStoredTikzSvg(tikzCode, p.tikzSvg)) {
+            $exeDevice.renderTikzPreview();
+        }
 
         if (activityMode === 'show') return;
 
@@ -419,6 +426,103 @@ var $exeDevice = {
         $('#elceSolutionSelect').text(solution);
     },
 
+    sanitizeTikzSvg: function (svg) {
+        if (!svg) return '';
+
+        const parser = new DOMParser();
+        let parsedSvg = null;
+
+        if (typeof svg === 'string') {
+            const parsed = parser.parseFromString(svg, 'image/svg+xml');
+            if (parsed.querySelector('parsererror')) return '';
+            parsedSvg = parsed.querySelector('svg');
+        } else if (svg.nodeType === 1) {
+            parsedSvg =
+                svg.tagName.toLowerCase() === 'svg'
+                    ? svg.cloneNode(true)
+                    : svg.querySelector('svg')?.cloneNode(true);
+        }
+
+        if (!parsedSvg || parsedSvg.tagName.toLowerCase() !== 'svg') return '';
+
+        parsedSvg.querySelectorAll('script, foreignObject').forEach((node) => {
+            node.remove();
+        });
+
+        [parsedSvg, ...parsedSvg.querySelectorAll('*')].forEach((node) => {
+            [...node.attributes].forEach((attribute) => {
+                const name = attribute.name.toLowerCase(),
+                    value = attribute.value.replace(/\s+/g, '').toLowerCase();
+
+                if (name.startsWith('on') || value.includes('javascript:')) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        parsedSvg.removeAttribute('width');
+        parsedSvg.removeAttribute('height');
+
+        return new XMLSerializer().serializeToString(parsedSvg);
+    },
+
+    setRenderedTikzSvg: function (code, svg) {
+        const normalizedCode = (code || '').trim(),
+            sanitizedSvg = $exeDevice.sanitizeTikzSvg(svg);
+
+        if (!normalizedCode || !sanitizedSvg) {
+            $exeDevice.renderedTikzPreview = null;
+            return '';
+        }
+
+        $exeDevice.renderedTikzPreview = {
+            code: normalizedCode,
+            svg: sanitizedSvg,
+        };
+        return sanitizedSvg;
+    },
+
+    getRenderedTikzSvgForCode: function (code) {
+        const normalizedCode = (code || '').trim();
+
+        if (
+            !normalizedCode ||
+            !$exeDevice.renderedTikzPreview ||
+            $exeDevice.renderedTikzPreview.code !== normalizedCode
+        ) {
+            return '';
+        }
+
+        return $exeDevice.renderedTikzPreview.svg;
+    },
+
+    invalidateTikzSvgPreview: function () {
+        $exeDevice.renderedTikzPreview = null;
+    },
+
+    captureRenderedTikzPreview: function (code, preview) {
+        const svg = preview.querySelector('svg');
+        if (!svg) return '';
+
+        const sanitizedSvg = $exeDevice.setRenderedTikzSvg(code, svg);
+        if (sanitizedSvg) {
+            preview.innerHTML = sanitizedSvg;
+        }
+        return sanitizedSvg;
+    },
+
+    showStoredTikzSvg: function (code, svg) {
+        const preview = document.getElementById('elceTikzPreview'),
+            $noCircuit = $('#elceNoCircuit'),
+            sanitizedSvg = $exeDevice.setRenderedTikzSvg(code, svg);
+
+        if (!preview || !sanitizedSvg) return false;
+
+        preview.innerHTML = sanitizedSvg;
+        $noCircuit.hide();
+        return true;
+    },
+
     /**
      * Render TikZ code in the preview area using TikZJax
      */
@@ -426,6 +530,8 @@ var $exeDevice = {
         const code = $('#elceTikzCode').val().trim();
         const preview = document.getElementById('elceTikzPreview');
         const $noCircuit = $('#elceNoCircuit');
+
+        $exeDevice.invalidateTikzSvgPreview();
 
         if (!code) {
             preview.innerHTML = '';
@@ -443,9 +549,17 @@ var $exeDevice = {
         tikzScript.dataset.showConsole = 'true';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
         preview.appendChild(tikzScript);
+
+        const observer = new MutationObserver(() => {
+            if ($exeDevice.captureRenderedTikzPreview(code, preview)) {
+                observer.disconnect();
+            }
+        });
+        observer.observe(preview, { childList: true, subtree: true });
     },
 
     clearQuestion: function () {
+        $exeDevice.invalidateTikzSvgPreview();
         $exeDevice.showOptions(4);
         $exeDevice.showSolution('');
         $('.ELCE-Times')[0].checked = true;
@@ -803,6 +917,7 @@ var $exeDevice = {
             time: 0,
             numberOptions: 4,
             tikzCode: $exeDevice.defaultTikzCode,
+            tikzSvg: '',
             quextion: c_('What type of circuit is shown?'),
             options: [c_('Series circuit'), c_('Parallel circuit'), c_('Mixed circuit'), c_('Open circuit')],
             solution: 'A',
@@ -910,6 +1025,10 @@ var $exeDevice = {
                 typeof game.selectsGame[i].tikzCode == 'undefined'
                     ? ''
                     : game.selectsGame[i].tikzCode;
+            game.selectsGame[i].tikzSvg =
+                typeof game.selectsGame[i].tikzSvg == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].tikzSvg;
             game.selectsGame[i].description =
                 typeof game.selectsGame[i].description == 'undefined'
                     ? ''
@@ -1004,6 +1123,7 @@ var $exeDevice = {
         p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
         p.customScore = parseFloat($('#elceScoreQuestion').val()) || 1;
         p.tikzCode = $('#elceTikzCode').val().trim();
+        p.tikzSvg = $exeDevice.getRenderedTikzSvgForCode(p.tikzCode);
         p.description = $('#elceDescription').val().trim();
 
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
@@ -1033,7 +1153,9 @@ var $exeDevice = {
             p.options.push(option);
         });
 
-        if (activityMode === 'test') {
+        if (p.tikzCode.length > 0 && p.tikzSvg.length == 0) {
+            message = msgs.msgERenderCircuitPreview;
+        } else if (activityMode === 'test') {
             if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
                 message = msgs.msgTypeChoose;
             } else if (p.typeSelect != 2 && p.quextion.length == 0) {
@@ -1164,6 +1286,17 @@ var $exeDevice = {
             }
         }
         const selectsGame = $exeDevice.selectsGame;
+
+        for (let i = 0; i < selectsGame.length; i++) {
+            const mquestion = selectsGame[i],
+                tikzCode = (mquestion.tikzCode || '').trim(),
+                tikzSvg = (mquestion.tikzSvg || '').trim();
+
+            if (tikzCode.length > 0 && tikzSvg.length == 0) {
+                $exeDevice.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
+                return false;
+            }
+        }
 
         if (activityMode === 'test') {
             for (let i = 0; i < selectsGame.length; i++) {
@@ -1415,6 +1548,9 @@ var $exeDevice = {
         $('#elcePreviewTikz').on('click', (e) => {
             e.preventDefault();
             $exeDevice.renderTikzPreview();
+        });
+        $('#elceTikzCode').on('input', () => {
+            $exeDevice.invalidateTikzSvgPreview();
         });
 
         $elceTimeShowSolution
