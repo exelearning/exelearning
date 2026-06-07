@@ -10923,11 +10923,15 @@
       </trans-unit>
       <trans-unit id="H3EiJ5m" resname="&quot;Made with eXeLearning&quot; link">
         <source>"Made with eXeLearning" link</source>
-        <target>"eXeLearning-ekin egidako" esteka</target>
+        <target>"eXeLearning-ekin egina" esteka</target>
       </trans-unit>
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Lagundu eXeLearning zabaltzen. Aukera hau markatuz gero, "eXeLearning-ekin egidako" esteka agertuko da zure orrietan.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>eXeLearning-ekin egina</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
