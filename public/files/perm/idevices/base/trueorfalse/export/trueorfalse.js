@@ -36,9 +36,6 @@ var $trueorfalse = {
         const content = htmlContent + medias;
 
         const html = template.replace('{content}', content);
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.exe-trueorfalse-container'
-        );
 
         return html;
     },
@@ -93,11 +90,29 @@ var $trueorfalse = {
 
         $trueorfalse.addEvents(ldata);
 
-        const dataString = JSON.stringify(ldata);
-        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '#tofPMainContainer-' + ldata.id
-            );
+        $trueorfalse.updateLatexInView(ldata.id);
+    },
+
+    /**
+     * Re-typesets the iDevice LaTeX once the runtime HTML is in the DOM.
+     *
+     * The instructions (.TOFP-instructions) and the "after" text (.TOFP-After)
+     * are rendered as SIBLINGS of #tofPMainContainer, so targeting that
+     * container alone leaves their LaTeX untouched. We target the wrapping
+     * .exe-trueorfalse-container instead: the single element that holds the
+     * whole iDevice (instructions, questions and after-text) and that is
+     * present both in exports and in the preview.
+     *
+     * @param {String} id - iDevice instance id
+     */
+    updateLatexInView: function (id) {
+        const container = document
+            .querySelector('#tofPMainContainer-' + id)
+            ?.closest('.exe-trueorfalse-container');
+        if (!container) return;
+        const math = $exeDevices.iDevice.gamification.math;
+        if (math.hasLatex(container.innerHTML)) {
+            math.updateLatex(container);
         }
     },
 
