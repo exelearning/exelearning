@@ -600,6 +600,28 @@ describe('form iDevice edition', () => {
       expect(result).toBe(questions);
     });
 
+    it('returns the original array when the DOM order repeats a question id', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a', 'a']);
+
+      expect(result).toBe(questions);
+    });
+
+    it('returns the original array when the source questions have duplicate ids', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'a', baseText: 'Duplicate A' },
+      ];
+
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a', 'a']);
+
+      expect(result).toBe(questions);
+    });
+
     it('handles empty arrays', () => {
       expect($exeDevice.reorderQuestionsByIds([], [])).toEqual([]);
     });

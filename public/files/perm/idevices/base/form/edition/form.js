@@ -124,10 +124,19 @@ var $exeDevice = {
      * DOM), the original array is returned untouched to avoid data loss.
      */
     reorderQuestionsByIds(questions, orderedIds) {
-        const reordered = orderedIds
-            .map((id) => questions.find((q) => q.id === id))
-            .filter((q) => q !== undefined);
-        return reordered.length === questions.length ? reordered : questions;
+        const questionsById = new Map(questions.map((question) => [question.id, question]));
+        if (questionsById.size !== questions.length) return questions;
+
+        const seenIds = new Set();
+        const reordered = [];
+        for (const id of orderedIds) {
+            if (!questionsById.has(id)) continue;
+            if (seenIds.has(id)) return questions;
+            seenIds.add(id);
+            reordered.push(questionsById.get(id));
+        }
+
+        return seenIds.size === questions.length ? reordered : questions;
     },
 
     /**
