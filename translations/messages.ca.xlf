@@ -10929,6 +10929,10 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Ajudeu-nos a difondre eXeLearning. En seleccionar aquesta opció, s'afegirà  l'enllaç "Creat amb eXeLearning" a les vostres pàgines.</target>
       </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Creat amb eXeLearning</target>
+      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>Comptador de pàgines</target>

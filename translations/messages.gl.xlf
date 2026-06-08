@@ -4951,7 +4951,7 @@
       </trans-unit>
       <trans-unit id="uNPuyer" resname="Click here to toggle between Word starts with... and Word contains...">
         <source>Click here to toggle between Word starts with... and Word contains...</source>
-        <target>Preme aquí para alternar entre "Palabra que comeza con..." e "Palabra que contén...”</target>
+        <target>Preme aquí para alternar entre "Palabra que comeza con..." e "Palabra que contén..."</target>
       </trans-unit>
       <trans-unit id="ronRdQx" resname="The word starts with...">
         <source>The word starts with...</source>
@@ -10923,11 +10923,15 @@
       </trans-unit>
       <trans-unit id="H3EiJ5m" resname="&quot;Made with eXeLearning&quot; link">
         <source>"Made with eXeLearning" link</source>
-        <target>Ligazón "Feito con eXeLearning”</target>
+        <target>Ligazón "Feito con eXeLearning"</target>
       </trans-unit>
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Axúdanos a difundir eXeLearning. Ao marcar esta opción, amosarase unha ligazón "Feito con eXeLearning" nas túas páxinas.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Feito con eXeLearning</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
