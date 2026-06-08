@@ -10929,6 +10929,10 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Helpu nin disvastigi eXeLearning. Se vi markos ĉi tiun opcion, "Farita kun eXeLearning" ligilo aperos en viaj paĝoj.</target>
       </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>~Farita kun eXeLearning</target>
+      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Paĝa kalkulilo</target>
