@@ -351,6 +351,39 @@ var $exeDevice = {
         });
     },
 
+    /**
+     * Resolve the project AssetManager (single source of truth for asset metadata).
+     * @returns {Object|null}
+     */
+    getAssetManager: function () {
+        return (
+            (typeof window !== 'undefined' &&
+                window.eXeLearning &&
+                window.eXeLearning.app &&
+                window.eXeLearning.app.project &&
+                window.eXeLearning.app.project._yjsBridge &&
+                window.eXeLearning.app.project._yjsBridge.assetManager) ||
+            null
+        );
+    },
+
+    /**
+     * Pre-fill the Authorship field from the picked asset's centralized metadata,
+     * only when it is empty so a value the user typed is never overwritten. No-op for
+     * non-asset URLs or when the asset has no author.
+     * @param {string} selectedFile - the value of the image picker (e.g. asset://<id>.jpg)
+     */
+    prefillAuthorFromAsset: function (selectedFile) {
+        if (typeof selectedFile !== 'string' || selectedFile.indexOf('asset://') !== 0) return;
+        const am = this.getAssetManager();
+        if (!am || typeof am.getAssetMetadata !== 'function') return;
+        const assetId = selectedFile.replace(/^asset:\/\//, '').replace(/\.[^.]*$/, '');
+        const meta = am.getAssetMetadata(assetId);
+        if (!meta || !meta.author) return;
+        const authorEl = document.getElementById('hiEAuthor');
+        if (authorEl && !authorEl.value) authorEl.value = meta.author;
+    },
+
     clearQuestion: function () {
         $exeDevice.showOptions(4);
         $exeDevice.showSolution(0);
@@ -1157,6 +1190,7 @@ var $exeDevice = {
             const url = selectedFile,
                 alt = $('#hiEAlt').val();
             $exeDevice.showImage(url, alt);
+            $exeDevice.prefillAuthorFromAsset(selectedFile);
         });
 
         $('#hiEPlayImage').on('click', (e) => {

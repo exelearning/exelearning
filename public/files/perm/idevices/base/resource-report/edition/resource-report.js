@@ -215,6 +215,7 @@ var $exeDevice = {
                     <select id="rrLayout" class="ideviceTextfield">
                         ${opt('list', _('List'), d.layout)}
                         ${opt('cards', _('Cards'), d.layout)}
+                        ${opt('table', _('Table'), d.layout)}
                     </select>
                 </div>
             </div>

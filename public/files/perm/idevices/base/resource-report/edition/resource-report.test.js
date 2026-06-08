@@ -156,6 +156,16 @@ describe('resource-report iDevice edition', () => {
             expect(saved.resources[0].assetUrl).toBe('asset://used-1.png');
         });
 
+        it('offers and round-trips the table layout', () => {
+            setAssetManager(SAMPLE);
+            $exeDevice.init(container, {});
+            const options = Array.from(container.querySelectorAll('#rrLayout option')).map((o) => o.value);
+            expect(options).toContain('table');
+
+            $exeDevice.init(container, { layout: 'table' });
+            expect($exeDevice.save().layout).toBe('table');
+        });
+
         it('uses defaults when there is no previous data', () => {
             setAssetManager(SAMPLE);
             $exeDevice.init(container, {});

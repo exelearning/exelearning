@@ -104,3 +104,64 @@
     max-width: 100%;
     max-height: 120px;
 }
+
+/* Keep long titles/descriptions inside the card instead of overflowing it. */
+.resource-report-IDevice .resource-report-layout-cards .resource-report-item-title,
+.resource-report-IDevice .resource-report-layout-cards .resource-report-desc {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* License label / link */
+.resource-report-IDevice .resource-report-license {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+}
+
+.resource-report-IDevice .resource-report-license-icon {
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+
+/* Table / condensed layout */
+.resource-report-IDevice .resource-report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.resource-report-IDevice .resource-report-table th,
+.resource-report-IDevice .resource-report-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.5em 0.6em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.resource-report-IDevice .resource-report-table thead th {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+}
+
+.resource-report-IDevice .resource-report-table .resource-report-thumb {
+    width: 48px;
+    height: 48px;
+}
+
+.resource-report-IDevice .resource-report-table .resource-report-img {
+    max-width: 48px;
+    max-height: 48px;
+}
+
+.resource-report-IDevice .resource-report-table .resource-report-actions {
+    margin-top: 0;
+}
+
+@media (max-width: 600px) {
+    .resource-report-IDevice .resource-report-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
