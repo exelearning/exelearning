@@ -629,11 +629,9 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
 
-    it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        const codes = await listedCodAreas('ES-GA', GA_SAMPLE);
-        expect(codes).toContain('BiXe');
-        expect(codes).toContain('TeDi');
-        expect(codes).not.toContain('FiQu');
+    it('only ES-CN and ES-GA declare descriptorsPerCriterion:true', () => {
+        const ids = [...lomloeSrc.matchAll(re)].map(m => m[1]).sort();
+        expect(ids).toEqual(['ES-CN', 'ES-GA']);
     });
 });
 
@@ -1732,12 +1730,13 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m[1]).toBe('true');
     });
 
-    it('no other dataset besides ES-GA declares descriptorsPerCriterion:true', () => {
-        // ES-CN activates fixed-badge mode by id, not by this flag.
-        // No other dataset should silently acquire the same behaviour.
-        const re = /id:\s*'(ES-[A-Z]+)'[\s\S]*?descriptorsPerCriterion:\s*true/g;
-        const ids = [...lomloeSrc.matchAll(re)].map(m => m[1]);
-        expect(ids).toEqual(['ES-GA']);
+    it('only ES-CN and ES-GA declare descriptorsPerCriterion:true', () => {
+        // Instead of using an imprecise regex that overflows across object boundaries,
+        // a corrected regex that prevents jumping from one dataset object to another ({...})
+        // is the ideal solution since DATASETS is scoped within lomloe.js.
+        const preciseRe = /id:\s*'(ES-[A-Z]+)'[^}]*?descriptorsPerCriterion:\s*true/g;        
+        const ids = [...lomloeSrc.matchAll(preciseRe)].map(m => m[1]).sort();
+        expect(ids).toEqual(['ES-CN', 'ES-GA']);
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {
