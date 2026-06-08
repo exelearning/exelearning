@@ -29,6 +29,7 @@ lomloe/
     ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
     ├── lomloe-ES-EX.json   # Extremadura (ISO ES-EX) — Decretos 98/2022, 107/2022, 110/2022, 109/2022
     ├── lomloe-ES-MD.json   # Comunidad de Madrid (ISO ES-MD) — Decretos 36/2022, 61/2022, 65/2022, 64/2022
+    ├── lomloe-ES-GA.json   # Galicia (ISO ES-GA) — Proens DB
     └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
 ```
 
@@ -309,9 +310,9 @@ A Python script (`generate_lomloe_es_md.py`) implements the hybrid build. It is 
 
 ## `lomloe-ES-GA.json` — Galicia concretion
 
-Full extraction from the official Galician-language DOG (*Diario Oficial de Galicia*) decrees published by the Xunta de Galicia. Unlike the hybrid strategy used for Extremadura and Madrid, **all curriculum content is taken verbatim from the Galician-language official sources**. No Spanish text is inherited, translated, or paraphrased.
-
-### Base curriculum decrees (DOG, Galician language `_gl.html`)
+The JSON dataset comes from the Proens database of the Consellería de Educación, Ciencia, Universidades e Formación Profesional. There is no extraction from the Diario Oficial de Galicia (DOG).
+ 
+### Base curriculum decrees
 
 | DOG | Date | Norma | Etapa |
 |-----|------|-------|-------|
@@ -334,27 +335,19 @@ Galicia's decrees use Galician terminology that maps onto the LOMLOE framework:
 
 | Etapa | Nivel keys |
 |-------|-----------|
-| Educación Infantil | `Primeiro ciclo (0-3 anos)`, `Segundo ciclo (3-6 anos)` |
-| Educación Primaria | `1º de educación primaria` … `6º de educación primaria` |
-| Educación Secundaria Obrigatoria | `1º de ESO` … `4º de ESO` |
-| Bacharelato | `1º de bacharelato`, `2º de bacharelato` |
+| Educación Infantil | `4º Educación infantil, 5º Educación infantil, 6º Educación infantil` |
+| Educación Primaria | `1º Educación primaria` … `6º Educación primaria` |
+| Educación Secundaria Obrigatoria | `1º ESO` … `4º ESO` |
+| Bacharelato | `1º Bacharelato`, `2º Bacharelato` |
 
 ### Language policy
 
-All text in `lomloe-ES-GA.json` is in Galician (`gl`). The generator does **not** inherit from `lomloe-ES.json` and does **not** translate or paraphrase any content. Every OBX description, CA criterio, and Contido item is extracted verbatim from the official Galician-language DOG HTML.
+All text in `lomloe-ES-GA.json` is in Galician (`gl`).
 
 ### Build strategy (full Galician extraction)
 
-1. Fetch the four DOG Galician HTML files (cached locally).
-2. Locate `ANEXO II` in each decree; split by subject/area using `dog-base-sangria` section headers.
-3. For each subject: extract OBX objectives (→ `competencias_especificas`) from the "Obxectivos" subsection.
-4. For each course (per-year for Primaria/ESO/Bacharelato; per-ciclo for Infantil): extract CA criterio items (→ `criterios_evaluacion`) and Contidos items (→ `saberes_basicos`) organized by bloques.
-5. Link each CA criterio to its competencia específica via the OBX reference tag.
-6. Skip ciclo-level markers in Primaria (Primeiro/Segundo/Terceiro ciclo) that carry no direct content.
+Sourced from Proens DB
 
-### Generator script
-
-A Python script (`generate_lomloe_es_ga.py`, requires `beautifulsoup4`) implements the full extraction. It is **attached to the PR** that introduced this dataset rather than committed to the repo.
 
 ## Data source (Canary Islands)
 
@@ -437,7 +430,7 @@ The iDevice stores a JSON object in the Yjs document:
 3. Change to **Ámbito de gestión MEFPD** — verify the Ceuta/Melilla dataset loads (Infantil/Primaria/ESO/Bachillerato etapas all present) and previous ES selections persist.
 4. Change to **Extremadura** — verify the regional dataset loads and that competencias mirror the state RD (inherited) while saberes show Extremadura-specific concretion where the DOE provides it.
 5. Change to **Comunidad de Madrid** — verify the regional dataset loads; Primaria shows BOCM-specific contenidos, other etapas inherit the state saberes.
-6. Change to **Galicia** — verify the regional dataset loads; all etapa and nivel labels are in Galician (`Educación Secundaria Obrigatoria`, `1º de educación primaria`, `Primeiro ciclo (0-3 anos)`, etc.) and competencia codes start with `ES-GA-`.
+6. Change to **Galicia** — verify the regional dataset loads correctly.
 7. Change back to **Canarias** — verify it still loads correctly.
 
 ### Empty state
