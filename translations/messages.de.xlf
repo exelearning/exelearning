@@ -10927,11 +10927,15 @@
       </trans-unit>
       <trans-unit id="H3EiJ5m" resname="&quot;Made with eXeLearning&quot; link">
         <source>"Made with eXeLearning" link</source>
-        <target>~"Mit eXeLearning erstellt" Link</target>
+        <target>~"Erstellt mit eXeLearning" Link</target>
       </trans-unit>
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Helfen Sie uns, eXeLearning zu verbreiten. Wenn Sie diese Option aktivieren, wird in Ihren Seiten ein Link "Mit eXeLearning erstellt" angezeigt.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>~Erstellt mit eXeLearning</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>

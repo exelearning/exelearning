@@ -589,7 +589,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderFooterSection', () => {
-        it('should render footer with license', () => {
+        it('should render footer with license using English label by default', () => {
             const html = renderer.renderFooterSection({
                 license: 'creative commons: attribution - share alike 4.0',
                 licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
@@ -598,10 +598,20 @@ describe('PageRenderer', () => {
             expect(html).toContain('<footer id="siteFooter">');
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
-            expect(html).toContain('class="license-label">Licencia: </span>');
+            expect(html).toContain('class="license-label">License: </span>');
             // formatLicenseText returns the lowercase key for CC licenses (used as translation key)
             expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
             expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
+        });
+
+        it('should use navLabels.licenseLabel when provided', () => {
+            const html = renderer.renderFooterSection({
+                license: 'creative commons: attribution - share alike 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+                navLabels: { licenseLabel: 'Licencia' },
+            });
+
+            expect(html).toContain('class="license-label">Licencia: </span>');
         });
 
         it('should render correct license class for different licenses', () => {
@@ -699,14 +709,33 @@ describe('PageRenderer', () => {
     });
 
     describe('renderMadeWithEXe', () => {
-        it('should render made-with-eXe credit', () => {
+        it('should render made-with-eXe credit with English defaults', () => {
             const html = renderer.renderMadeWithEXe();
 
             expect(html).toContain('id="made-with-eXe"');
             expect(html).toContain('href="https://exelearning.net/"');
-            expect(html).toContain('Creado con eXeLearning');
+            expect(html).toContain('Made with eXeLearning');
+            expect(html).toContain('(New window)');
             expect(html).toContain('target="_blank"');
             expect(html).toContain('rel="noopener"');
+        });
+
+        it('should use navLabels translations when provided', () => {
+            const html = renderer.renderMadeWithEXe('es', {
+                madeWith: 'Creado con eXeLearning',
+                newWindow: 'Ventana nueva',
+            });
+
+            expect(html).toContain('Creado con eXeLearning');
+            expect(html).toContain('(Ventana nueva)');
+            expect(html).not.toContain('Made with eXeLearning');
+        });
+
+        it('should use trans() fallback when navLabels are not provided', () => {
+            const html = renderer.renderMadeWithEXe('en');
+
+            expect(html).toContain('Made with eXeLearning');
+            expect(html).toContain('(New window)');
         });
     });
 

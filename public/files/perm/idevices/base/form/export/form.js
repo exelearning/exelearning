@@ -1203,6 +1203,23 @@ var $form = {
     },
 
     /**
+     * Escape plain-text content for safe insertion as HTML text.
+     * Option/answer texts are plain text (e.g. "A<B"); without escaping, the
+     * "<" would be parsed as markup and the text after it lost.
+     */
+    escapeHtmlText(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /** Escape plain text for safe insertion inside a double-quoted attribute. */
+    escapeHtmlAttr(text) {
+        return this.escapeHtmlText(text).replace(/"/g, '&quot;');
+    },
+
+    /**
      * Processes text for selection questions
      *
      * @param {*} baseText
@@ -1224,9 +1241,9 @@ var $form = {
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline button-response-form">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${this.escapeHtmlAttr(option[1])}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
-            htmlSelection += option[1];
+            htmlSelection += this.escapeHtmlText(option[1]);
             htmlSelection += `</label>`;
             htmlSelection += `</div>`;
             if (option[0]) {
