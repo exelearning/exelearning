@@ -28,6 +28,8 @@ describe('resource-report iDevice export', () => {
     const baseConfig = {
         intro: '',
         layout: 'list',
+        resourceMode: 'all',
+        typeFilter: 'all',
         showThumbnail: true,
         showFileName: true,
         showDescription: true,
@@ -217,8 +219,92 @@ describe('resource-report iDevice export', () => {
         expect(out).toContain('resource-report-IDevice');
     });
 
-    it('renderBehaviour and init are safe no-ops', () => {
+    it('renderBehaviour and init are safe no-ops without an AssetManager', () => {
         expect(() => $rr.renderBehaviour({}, false, 'id')).not.toThrow();
         expect(() => $rr.init({}, false)).not.toThrow();
+    });
+
+    describe('live resolution from the AssetManager', () => {
+        function setAssetManager(am) {
+            global.window.eXeLearning = { app: { project: { _yjsBridge: { assetManager: am } } } };
+        }
+        afterEach(() => {
+            delete global.window.eXeLearning;
+        });
+
+        const liveMeta = [
+            { id: 'live-1', filename: 'fresh.jpg', mime: 'image/jpeg', title: 'Fresh', author: 'Ada', license: 'Creative Commons BY' },
+        ];
+
+        it('resolves the resource list live, ignoring the stored snapshot', () => {
+            setAssetManager({
+                getAllAssetsMetadata: () => liveMeta,
+                getAssetUrl: (id, fn) => `asset://${id}.${fn.split('.').pop()}`,
+            });
+            // Snapshot says "Stale"; live data must win.
+            const html = $rr.renderView({ ...baseConfig, resources: [{ id: 'old', assetUrl: 'asset://old.jpg', filename: 'stale.jpg', type: 'image', isImage: true, title: 'Stale' }] });
+            expect(html).toContain('Fresh');
+            expect(html).not.toContain('Stale');
+        });
+
+        it('falls back to the snapshot when no AssetManager is present', () => {
+            const html = render([{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, title: 'Snap' }]);
+            expect(html).toContain('Snap');
+        });
+
+        it('stamps the root with data-idevice-id when provided', () => {
+            const html = $rr.renderView({ ...baseConfig, resources: [] }, false, undefined, 'idev-42');
+            expect(html).toContain('<div class="resource-report-IDevice" data-idevice-id="idev-42">');
+        });
+    });
+
+    describe('renderBehaviour live refresh', () => {
+        afterEach(() => {
+            delete global.window.eXeLearning;
+            document.body.innerHTML = '';
+            vi.useRealTimers();
+        });
+
+        it('observes the assets map and re-renders the instance when it changes', () => {
+            vi.useFakeTimers();
+            let observer = null;
+            let meta = [{ id: 'a', filename: 'a.jpg', mime: 'image/jpeg', title: 'First' }];
+            const am = {
+                getAllAssetsMetadata: () => meta,
+                getAssetUrl: (id, fn) => `asset://${id}.${fn.split('.').pop()}`,
+                getAssetsYMap: () => ({ observe: (cb) => { observer = cb; } }),
+            };
+            global.window.eXeLearning = { app: { project: { _yjsBridge: { assetManager: am } } } };
+
+            // Initial render into the DOM (as the engine would).
+            document.body.innerHTML = $rr.renderView({ ...baseConfig, resources: [] }, false, undefined, 'idev-1');
+            expect(document.body.innerHTML).toContain('First');
+
+            $rr.renderBehaviour({ ...baseConfig, ideviceId: 'idev-1' }, false, 'idev-1');
+            vi.runAllTimers(); // run the deferred observer wiring
+            expect(typeof observer).toBe('function');
+
+            // An asset changes → observer fires → debounced re-render picks up live data.
+            meta = [{ id: 'a', filename: 'a.jpg', mime: 'image/jpeg', title: 'Updated' }];
+            observer();
+            vi.runAllTimers();
+            expect(document.body.innerHTML).toContain('Updated');
+            expect(document.body.innerHTML).not.toContain('First');
+        });
+
+        it('does not attach a second observer for the same iDevice id', () => {
+            vi.useFakeTimers();
+            let observeCount = 0;
+            const am = {
+                getAllAssetsMetadata: () => [],
+                getAssetUrl: (id) => `asset://${id}`,
+                getAssetsYMap: () => ({ observe: () => { observeCount++; } }),
+            };
+            global.window.eXeLearning = { app: { project: { _yjsBridge: { assetManager: am } } } };
+            $rr.renderBehaviour({ ideviceId: 'idev-dup' }, false, 'idev-dup');
+            $rr.renderBehaviour({ ideviceId: 'idev-dup' }, false, 'idev-dup');
+            vi.runAllTimers();
+            expect(observeCount).toBe(1);
+        });
     });
 });

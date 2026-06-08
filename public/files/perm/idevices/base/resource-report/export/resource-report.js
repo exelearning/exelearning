@@ -2,10 +2,13 @@
 /**
  * Resource Report iDevice — export/render.
  *
- * Renders the saved snapshot (config + resources) into accessible HTML. Runs at
- * export-build time and in preview; it performs no live asset queries. Asset
- * references are emitted as asset:// URLs which the preview resolver and the export
- * pipeline rewrite to working links / packaged paths.
+ * Renders the resource list into accessible HTML. In the workarea (preview) and the
+ * browser-side export the list is resolved LIVE from the AssetManager, so the report is
+ * always up to date and refreshes when assets change (see renderBehaviour, which mirrors
+ * the download-source-file iDevice). The saved `resources` snapshot is the fallback for
+ * static/server exports where no AssetManager is available. Asset references are emitted
+ * as asset:// URLs which the preview resolver and the export pipeline rewrite to working
+ * links / packaged paths.
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  */
@@ -225,16 +228,122 @@ var $resourcereport = {
     },
 
     /**
-     * Build the report HTML from saved data. Pure (no DOM access) — used by the
-     * engine for the node/preview/export view.
+     * Resolve the project AssetManager when running in the workarea / browser-side export
+     * (single source of truth for assets/metadata). Returns null in static/server exports
+     * where no Yjs app is present, so callers fall back to the saved snapshot.
+     * @returns {Object|null}
      */
-    buildHtml: function (data) {
+    getAssetManager: function () {
+        return (
+            (typeof window !== 'undefined' &&
+                window.eXeLearning &&
+                window.eXeLearning.app &&
+                window.eXeLearning.app.project &&
+                window.eXeLearning.app.project._yjsBridge &&
+                window.eXeLearning.app.project._yjsBridge.assetManager) ||
+            null
+        );
+    },
+
+    /**
+     * Categorize an asset by MIME type / extension into a coarse resource type.
+     * Kept identical to the helper in edition/resource-report.js (the edition/export
+     * split cannot share a module), so the live list matches the saved snapshot.
+     * @returns {('image'|'audio'|'video'|'document'|'other')}
+     */
+    getResourceType: function (mime, filename) {
+        const m = (mime || '').toLowerCase();
+        if (m.startsWith('image/')) return 'image';
+        if (m.startsWith('audio/')) return 'audio';
+        if (m.startsWith('video/')) return 'video';
+        const docMimes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument',
+            'application/vnd.oasis.opendocument',
+            'application/vnd.ms-excel',
+            'application/vnd.ms-powerpoint',
+            'text/plain',
+            'text/markdown',
+            'text/csv',
+        ];
+        if (docMimes.some((d) => m.startsWith(d))) return 'document';
+        const ext = (filename || '').split('.').pop().toLowerCase();
+        const docExt = ['pdf', 'doc', 'docx', 'odt', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp', 'txt', 'md', 'rtf'];
+        if (docExt.includes(ext)) return 'document';
+        if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audio';
+        if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) return 'video';
+        if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif', 'bmp'].includes(ext)) return 'image';
+        return 'other';
+    },
+
+    /**
+     * Build the resource list for the current configuration. Pure; identical to the
+     * edition helper so the live (export) list matches the snapshot (edition save).
+     * @returns {Array<Object>}
+     */
+    buildResources: function (allMeta, config, referencedIds, urlFor) {
+        const list = Array.isArray(allMeta) ? allMeta : [];
+        const resolveUrl = typeof urlFor === 'function' ? urlFor : (a) => `asset://${a.id}`;
+        return list
+            .filter((a) => a && a.id)
+            .filter((a) => {
+                if (config.resourceMode === 'used' && referencedIds) {
+                    return referencedIds.has(a.id);
+                }
+                return true;
+            })
+            .map((a) => {
+                const type = this.getResourceType(a.mime, a.filename);
+                return { asset: a, type };
+            })
+            .filter((entry) => config.typeFilter === 'all' || entry.type === config.typeFilter)
+            .map(({ asset, type }) => ({
+                id: asset.id,
+                assetUrl: resolveUrl(asset),
+                filename: asset.filename || '',
+                mime: asset.mime || '',
+                type,
+                isImage: type === 'image',
+                title: (asset.title || '').trim(),
+                description: (asset.description || '').trim(),
+                author: (asset.author || '').trim(),
+                license: (asset.license || '').trim(),
+            }));
+    },
+
+    /**
+     * Resolve the CURRENT resource list from the live AssetManager, or null when none is
+     * available (caller falls back to the saved snapshot).
+     * @returns {Array<Object>|null}
+     */
+    resolveLiveResources: function (config) {
+        const am = this.getAssetManager();
+        if (!am || typeof am.getAllAssetsMetadata !== 'function') return null;
+        const allMeta = am.getAllAssetsMetadata();
+        const referencedIds =
+            config.resourceMode === 'used' && typeof am.getReferencedAssetIds === 'function'
+                ? am.getReferencedAssetIds()
+                : null;
+        const urlFor = (a) =>
+            typeof am.getAssetUrl === 'function' ? am.getAssetUrl(a.id, a.filename) : `asset://${a.id}`;
+        return this.buildResources(allMeta, config, referencedIds, urlFor);
+    },
+
+    /**
+     * Build the report HTML. Uses the live AssetManager list when available (workarea /
+     * browser export), otherwise the saved snapshot. Stamps `data-idevice-id` so a single
+     * instance can be refreshed in place by renderBehaviour.
+     */
+    buildHtml: function (data, ideviceId) {
         const esc = this.escapeHtml.bind(this);
         const config = data || {};
-        const resources = Array.isArray(config.resources) ? config.resources : [];
+        const live = this.resolveLiveResources(config);
+        const resources = live || (Array.isArray(config.resources) ? config.resources : []);
         const layout = config.layout === 'cards' ? 'cards' : config.layout === 'table' ? 'table' : 'list';
+        const id = ideviceId || config.ideviceId || '';
 
-        let html = '<div class="resource-report-IDevice">';
+        let html = `<div class="resource-report-IDevice"${id ? ` data-idevice-id="${esc(id)}"` : ''}>`;
         if (config.intro) {
             html += `<p class="resource-report-intro">${esc(config.intro)}</p>`;
         }
@@ -256,8 +365,8 @@ var $resourcereport = {
     /**
      * eXe idevice engine api: render view. Honors a {content} template when provided.
      */
-    renderView: function (data, accessibility, template) {
-        const html = this.buildHtml(data);
+    renderView: function (data, accessibility, template, ideviceId) {
+        const html = this.buildHtml(data, ideviceId);
         if (typeof template === 'string' && template.indexOf('{content}') !== -1) {
             return template.replace('{content}', html);
         }
@@ -265,9 +374,55 @@ var $resourcereport = {
     },
 
     /**
-     * eXe idevice engine api: no interactive behaviour to attach (static report).
+     * iDevice ids that already have a live-refresh observer attached, so re-renders of
+     * the node don't stack duplicate observers.
      */
-    renderBehaviour: function () {},
+    _observed: {},
+
+    /**
+     * eXe idevice engine api: in the workarea, keep the report up to date by observing the
+     * assets Y.Map and re-rendering this instance whenever assets are added/removed or
+     * their metadata changes — the same live approach the download-source-file iDevice
+     * uses for project metadata. No-op in static/server exports (no AssetManager).
+     *
+     * Note: the "used in this project" filter also depends on content references stored in
+     * the structure map (not the assets map), so it refreshes on asset changes but not on
+     * unrelated text edits elsewhere; reopening/saving still reconciles it.
+     */
+    renderBehaviour: function (data, accessibility, ideviceId) {
+        const am = this.getAssetManager();
+        if (!am || typeof am.getAssetsYMap !== 'function') return;
+        const id = ideviceId || (data && data.ideviceId) || '';
+        if (!id || this._observed[id]) return;
+        // Mark synchronously so concurrent node re-renders don't stack observers.
+        this._observed[id] = true;
+        const self = this;
+        // Defer so the rendered DOM and the Yjs document are ready (mirrors source-file).
+        setTimeout(function () {
+            let assetsMap;
+            try {
+                assetsMap = am.getAssetsYMap();
+            } catch (e) {
+                assetsMap = null;
+            }
+            if (!assetsMap || typeof assetsMap.observe !== 'function') {
+                self._observed[id] = false; // allow a later retry if the map wasn't ready
+                return;
+            }
+            let pending = null;
+            assetsMap.observe(function () {
+                // Coalesce bursts (e.g. a bulk upload) into a single re-render.
+                if (pending) return;
+                pending = setTimeout(function () {
+                    pending = null;
+                    const root = document.querySelector(
+                        '.resource-report-IDevice[data-idevice-id="' + id + '"]'
+                    );
+                    if (root) root.outerHTML = self.buildHtml(data, id);
+                }, 150);
+            });
+        }, 0);
+    },
 
     /**
      * eXe idevice engine api: no runtime initialization needed.

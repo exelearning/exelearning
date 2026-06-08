@@ -68,6 +68,37 @@ test.describe('Resource Report iDevice', () => {
         await expect(node).toContainText('sample-2.jpg');
     });
 
+    test('refreshes live when a new asset is uploaded, without re-editing the iDevice', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Resource Report Live Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        // Start with one asset and a saved report listing it.
+        await uploadAssetViaFileManager(page, 'test/fixtures/sample-2.jpg');
+        await selectFirstPage(page);
+        await addIdevice(page, 'resource-report');
+        await page.locator('#resourceReportForm').waitFor({ state: 'visible', timeout: 15000 });
+        const ideviceId = (await page
+            .locator('#node-content article .idevice_node.resource-report')
+            .first()
+            .getAttribute('id')) as string;
+        await saveIdevice(page, ideviceId);
+
+        const node = page.locator(`.idevice_node[id="${ideviceId}"]`);
+        await expect(node.locator('.resource-report-item')).toHaveCount(1);
+
+        // Upload a second asset WITHOUT touching the iDevice — the live observer
+        // (renderBehaviour) should pick it up and re-render the report.
+        await uploadAssetViaFileManager(page, 'test/fixtures/sample-3.jpg');
+
+        await expect(node.locator('.resource-report-item')).toHaveCount(2, { timeout: 15000 });
+        await expect(node).toContainText('sample-3.jpg');
+    });
+
     test('lets the author turn off the View and Download links', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         const projectUuid = await createProject(page, 'Resource Report Links Test');

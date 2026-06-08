@@ -112,6 +112,41 @@
     word-break: break-word;
 }
 
+/* License icons — reuse the shared `cc cc-<code>` markup with a self-contained sprite,
+   the same approach as the download-source-file iDevice (theme `.cc` icons are scoped to
+   #packageLicense in the footer, so they would not render in the page body). */
+.resource-report-IDevice .exe-prop-license a.cc span {
+    display: inline-block;
+    width: 90px;
+    height: 15px;
+    vertical-align: middle;
+    background: url(resource-report-licenses.png) no-repeat 0 0;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-by-sa span {
+    background-position: 0 -20px;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-by-nd span {
+    background-position: 0 -40px;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-by-nc span {
+    background-position: 0 -60px;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-by-nc-sa span {
+    background-position: 0 -80px;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-by-nc-nd span {
+    background-position: 0 -100px;
+}
+
+.resource-report-IDevice .exe-prop-license a.cc-0 span {
+    background-position: 0 -120px;
+}
+
 /* Table / condensed layout */
 .resource-report-IDevice .resource-report-table {
     width: 100%;
