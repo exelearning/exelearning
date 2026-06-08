@@ -969,9 +969,12 @@ var $trueorfalse = {
                 }
             }, 1000);
         }
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMainContainer-' + instance
-        );
+        const startHtml = $('#tofPMainContainer-' + instance).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(startHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMainContainer-' + instance
+            );
+        }
         mOptions.gameStarted = true;
     },
 
@@ -1001,9 +1004,11 @@ var $trueorfalse = {
             color: color,
             'font-size': '1.1em',
         });
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMessage-' + instance
-        );
+        if ($exeDevices.iDevice.gamification.math.hasLatex(message)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMessage-' + instance
+            );
+        }
     },
 
     msgsdefault: {

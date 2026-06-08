@@ -1036,7 +1036,7 @@ describe('Html5Exporter', () => {
         });
         afterAll(() => resetIdeviceConfigCache());
 
-        const runtimeJsonLatexIdevices = ['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list'];
+        const runtimeJsonLatexIdevices = ['form', 'scrambled-list'];
         const propsWithLatex = {
             questionsGame: [{ question: 'Solve \\(x^2 + 1 = 0\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
         };
@@ -1097,7 +1097,7 @@ describe('Html5Exporter', () => {
         });
 
         it('bundles exe_math on preview for allowed JSON iDevices with LaTeX in properties', async () => {
-            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('scrambled-list', propsWithLatex));
             exporter = new Html5Exporter(document, resources, assets, zip);
             const requested = captureRequestedLibs();
 
@@ -1109,7 +1109,7 @@ describe('Html5Exporter', () => {
         });
 
         it('does not force exe_math when allowed JSON iDevices have no LaTeX in properties', async () => {
-            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithoutLatex));
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('scrambled-list', propsWithoutLatex));
             exporter = new Html5Exporter(document, resources, assets, zip);
             const requested = captureRequestedLibs();
 
@@ -1145,7 +1145,7 @@ describe('Html5Exporter', () => {
         });
 
         it('skips LaTeX pre-render and adds the MathJax script for runtime JSON LaTeX pages', async () => {
-            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('scrambled-list', propsWithLatex));
             exporter = new Html5Exporter(document, resources, assets, zip);
             captureRequestedLibs();
 
@@ -1162,6 +1162,51 @@ describe('Html5Exporter', () => {
                 typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
             expect(preRenderCalled).toBe(false);
             expect(indexHtmlText).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders trueorfalse LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('trueorfalse', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // trueorfalse JSON LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders adaptative-quiz LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // adaptative-quiz escapes author text but keeps pre-rendered math spans,
+            // so its LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
 

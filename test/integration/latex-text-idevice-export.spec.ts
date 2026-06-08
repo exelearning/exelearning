@@ -14,6 +14,7 @@ import { Scorm2004Exporter } from '../../src/shared/export/exporters/Scorm2004Ex
 import { ImsExporter } from '../../src/shared/export/exporters/ImsExporter';
 import { PageExporter } from '../../src/shared/export/exporters/PageExporter';
 import { ElpxExporter } from '../../src/shared/export/exporters/ElpxExporter';
+import { ServerLatexPreRenderer } from '../../src/shared/export/prerender/ServerLatexPreRenderer';
 import { FileSystemResourceProvider } from '../../src/shared/export/providers/FileSystemResourceProvider';
 import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
 import type {
@@ -245,12 +246,53 @@ const createDocumentWithLatexInRuntimeJsonIdevice = (): ExportDocument => ({
                     order: 0,
                     components: [
                         {
+                            id: 'scrambled-list-1',
+                            type: 'scrambled-list',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                instructions: 'Order the steps to solve \\(x^2 = 1\\)',
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+const createDocumentWithAdaptativeQuizLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Adaptative Quiz LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Adaptative Quiz LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
                             id: 'adaptative-quiz-1',
                             type: 'adaptative-quiz',
                             order: 0,
                             content: '',
                             properties: {
-                                questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }],
+                                questionsGame: [
+                                    { question: 'Solve \\(x^2 = 1\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] },
+                                ],
                             },
                         },
                     ],
@@ -316,6 +358,29 @@ describe('Runtime JSON iDevice LaTeX Export Integration', () => {
             expect(indexHtml, `${format} should reference MathJax`).toContain('libs/exe_math/tex-mml-svg.js');
         });
     }
+
+    it('pre-renders adaptative-quiz JSON LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithAdaptativeQuizLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // The nested question/option LaTeX is baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+        // And the raw delimiters are gone from the pre-rendered payload.
+        expect(indexHtml).not.toContain('Solve \\(x^2 = 1\\)');
+    });
 });
 
 describe('LaTeX Pre-rendering Export Integration', () => {

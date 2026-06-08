@@ -1,18 +1,20 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 
-test.describe('Runtime JSON iDevice LaTeX exports', () => {
-    test('preview and browser exports include MathJax when JSON properties contain LaTeX', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
-        const projectUuid = await createProject(page, 'Runtime JSON LaTeX export');
+type ExportCheck = { hasLibrary: boolean; referencesLibrary: boolean; hasRenderedMath: boolean };
 
-        await gotoWorkarea(page, projectUuid);
-        await waitForAppReady(page);
-
-        const checks = await page.evaluate(async () => {
+/**
+ * Add a JSON iDevice with LaTeX in its properties, disable MathJax bundling,
+ * then run the preview and every browser export, reporting for each whether the
+ * MathJax engine is bundled/referenced and whether pre-rendered math is present.
+ */
+async function exportWithJsonLatex(
+    page: import('@playwright/test').Page,
+    ideviceType: string,
+    jsonProperties: Record<string, unknown>,
+): Promise<Record<string, ExportCheck>> {
+    return page.evaluate(
+        async ({ ideviceType, jsonProperties }) => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
             const exporters = (window as any).SharedExporters;
             const fflate = (window as any).fflate;
@@ -36,11 +38,9 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
             }
             if (!blockId) throw new Error('Could not create a content block');
 
-            bridge.structureBinding.createComponent(pageId, blockId, 'adaptative-quiz', {
+            bridge.structureBinding.createComponent(pageId, blockId, ideviceType, {
                 htmlContent: '',
-                jsonProperties: {
-                    questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }],
-                },
+                jsonProperties,
             });
             bridge.documentManager.getMetadata().set('addMathJax', false);
 
@@ -50,6 +50,7 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
                 return {
                     hasLibrary: Boolean(files['libs/exe_math/tex-mml-svg.js']),
                     referencesLibrary: indexHtml.includes('libs/exe_math/tex-mml-svg.js'),
+                    hasRenderedMath: indexHtml.includes('exe-math-rendered'),
                 };
             };
 
@@ -63,7 +64,7 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
                 throw new Error(preview.error || 'Preview generation failed');
             }
 
-            const result: Record<string, { hasLibrary: boolean; referencesLibrary: boolean }> = {
+            const result: Record<string, ExportCheck> = {
                 preview: inspectFiles(preview.files),
             };
 
@@ -83,12 +84,51 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
             }
 
             return result;
+        },
+        { ideviceType, jsonProperties },
+    );
+}
+
+const ALL_TARGETS = ['preview', 'html5', 'page', 'scorm12', 'scorm2004', 'ims', 'elpx'];
+
+test.describe('Runtime JSON iDevice LaTeX exports', () => {
+    test('bundles MathJax for iDevices that escape/transform text at runtime', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Runtime JSON LaTeX (MathJax)');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const checks = await exportWithJsonLatex(page, 'scrambled-list', {
+            instructions: 'Order the steps to solve \\(x^2 = 1\\)',
         });
 
-        expect(Object.keys(checks)).toEqual(['preview', 'html5', 'page', 'scorm12', 'scorm2004', 'ims', 'elpx']);
+        expect(Object.keys(checks)).toEqual(ALL_TARGETS);
         for (const check of Object.values(checks)) {
             expect(check.hasLibrary).toBe(true);
             expect(check.referencesLibrary).toBe(true);
+        }
+    });
+
+    test('pre-renders LaTeX (no MathJax) for adaptative-quiz', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Runtime JSON LaTeX (pre-render)');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const checks = await exportWithJsonLatex(page, 'adaptative-quiz', {
+            questionsGame: [{ question: 'Solve \\(x^2 = 1\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
+        });
+
+        expect(Object.keys(checks)).toEqual(ALL_TARGETS);
+        for (const check of Object.values(checks)) {
+            // adaptative-quiz keeps pre-rendered math through runtime escaping,
+            // so MathJax is never bundled and the SVG is baked into the export.
+            expect(check.hasLibrary).toBe(false);
+            expect(check.referencesLibrary).toBe(false);
+            expect(check.hasRenderedMath).toBe(true);
         }
     });
 });

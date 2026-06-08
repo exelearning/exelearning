@@ -244,7 +244,7 @@ describe('ElpxExporter', () => {
                     components: [
                         {
                             id: 'comp-runtime-json',
-                            type: 'adaptative-quiz',
+                            type: 'scrambled-list',
                             order: 0,
                             content: '',
                             properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },

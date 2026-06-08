@@ -2276,6 +2276,25 @@ describe('common.js $exeDevices', () => {
       expect(math.hasLatex('plain text')).toBe(false);
     });
 
+    it('hasLatex ignores already pre-rendered math (no MathJax re-trigger)', () => {
+      const math = getMath();
+      // Inline math whose delimiters were stripped into data-latex: no re-render.
+      expect(
+        math.hasLatex('<span class="exe-math-rendered" data-latex="x^2"><svg></svg></span>')
+      ).toBe(false);
+      // Environment math keeps \begin{...} in data-latex but is already rendered.
+      expect(
+        math.hasLatex(
+          '<span class="exe-math-rendered" data-latex="\\begin{matrix}1\\end{matrix}"><svg></svg></span>'
+        )
+      ).toBe(false);
+      // Unrendered LaTeX next to a rendered span is still detected.
+      expect(
+        math.hasLatex('<span class="exe-math-rendered" data-latex="a"><svg></svg></span> \\(b\\)')
+      ).toBe(true);
+      expect(math.hasLatex('')).toBe(false);
+    });
+
     it('has engine property', () => {
       const math = getMath();
       // Engine path points to local exe_math library

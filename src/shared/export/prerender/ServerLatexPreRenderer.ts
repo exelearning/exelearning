@@ -45,6 +45,11 @@ const NUMBERED_EQUATION_ENVS = new Set(['equation', 'align', 'gather', 'multline
 // Tags that should skip LaTeX processing
 const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea', 'noscript']);
 
+// JSON iDevices whose LaTeX lives in NESTED fields (questions/answers/feedback)
+// and must be pre-rendered recursively inside data-idevice-json-data. Mirrors
+// RECURSIVE_JSON_LATEX_IDEVICES in public/app/common/LatexPreRenderer.js.
+const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz']);
+
 // XOR encryption key (same as common.js)
 const ENCRYPT_KEY = 146;
 
@@ -125,6 +130,19 @@ function cleanLatexDelimiters(latex: string): string {
  */
 function escapeHtmlAttribute(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Decode an HTML attribute value escaped by escapeHtmlAttribute (and the
+ * browser's setAttribute). Reverses the entity replacements; &amp; is decoded
+ * last so sequences like &amp;lt; round-trip correctly.
+ */
+function decodeHtmlAttribute(text: string): string {
+    return text
+        .replace(/&gt;/g, '>')
+        .replace(/&lt;/g, '<')
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&');
 }
 
 /**
@@ -334,9 +352,78 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     }
 
     /**
-     * Pre-render all LaTeX expressions in HTML
+     * Pre-render all LaTeX expressions in HTML.
+     *
+     * Runs two passes: first the data-idevice-json-data attributes of nested-field
+     * JSON iDevices (the body pass skips attribute values), then the visible body.
      */
     async preRender(html: string): Promise<LatexPreRenderResult> {
+        const jsonPass = await this.preRenderJsonDataAttributes(html);
+        const bodyResult = await this.preRenderHtmlBody(jsonPass.html);
+
+        return {
+            html: bodyResult.html,
+            hasLatex: bodyResult.hasLatex || jsonPass.count > 0,
+            latexRendered: bodyResult.latexRendered || jsonPass.count > 0,
+            count: bodyResult.count + jsonPass.count,
+        };
+    }
+
+    /**
+     * Pre-render LaTeX stored inside data-idevice-json-data attributes.
+     *
+     * Only iDevices in RECURSIVE_JSON_LATEX_IDEVICES are processed; others
+     * escape/transform their text at runtime and must not receive pre-rendered
+     * SVG in their properties. Mirrors preRenderPerIdevice in the browser renderer.
+     */
+    private async preRenderJsonDataAttributes(html: string): Promise<{ html: string; count: number }> {
+        if (!html || typeof html !== 'string') {
+            return { html, count: 0 };
+        }
+
+        // Opening div tags exposing both the iDevice type and its JSON payload.
+        // IdeviceRenderer emits data-idevice-type before data-idevice-json-data,
+        // and attribute values are entity-escaped (no raw " or > inside them).
+        const tagPattern = /<div\b[^>]*\bdata-idevice-type="([^"]+)"[^>]*\bdata-idevice-json-data="([^"]*)"[^>]*>/g;
+        const matches = [...html.matchAll(tagPattern)];
+        if (matches.length === 0) {
+            return { html, count: 0 };
+        }
+
+        let result = html;
+        let count = 0;
+
+        for (const match of matches) {
+            const ideviceType = match[1];
+            const escapedJson = match[2];
+            if (!RECURSIVE_JSON_LATEX_IDEVICES.has(ideviceType)) continue;
+
+            const jsonStr = decodeHtmlAttribute(escapedJson);
+            if (!this.hasLatex(jsonStr)) continue;
+
+            try {
+                const data = JSON.parse(jsonStr);
+                const newJsonStr = JSON.stringify(await this.preRenderLatexInGameData(data));
+                if (newJsonStr === jsonStr) continue;
+
+                const newTag = match[0].replace(
+                    `data-idevice-json-data="${escapedJson}"`,
+                    `data-idevice-json-data="${escapeHtmlAttribute(newJsonStr)}"`,
+                );
+                result = result.replace(match[0], newTag);
+                count++;
+            } catch (error) {
+                console.warn('[ServerLatexPreRenderer] Failed to process JSON data attribute:', error);
+            }
+        }
+
+        return { html: result, count };
+    }
+
+    /**
+     * Pre-render all LaTeX expressions in the visible HTML body.
+     */
+    private async preRenderHtmlBody(html: string): Promise<LatexPreRenderResult> {
         // Quick check: any LaTeX at all?
         if (!html || !HAS_LATEX_PATTERN.test(html)) {
             return {
@@ -486,7 +573,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             return text;
         }
 
-        const result = await this.preRender(text);
+        const result = await this.preRenderHtmlBody(text);
         return result.html;
     }
 

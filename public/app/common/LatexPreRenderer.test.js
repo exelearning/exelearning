@@ -1655,6 +1655,99 @@ describe('LatexPreRenderer', () => {
         });
     });
 
+    describe('JSON iDevice nested LaTeX (recursive gate by data-idevice-type)', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+                texReset: vi.fn(),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('recursively pre-renders nested LaTeX for trueorfalse', async () => {
+            const jsonData = {
+                eXeGameInstructions: '<p>Intro \\(a\\)</p>',
+                questionsGame: [
+                    { question: '<p>\\(x^2\\)</p>', feedback: '<p>\\(y^2\\)</p>', suggestion: '' },
+                ],
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node trueorfalse" data-idevice-type="trueorfalse" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            expect(newJsonData.eXeGameInstructions).toContain('exe-math-rendered');
+            expect(newJsonData.questionsGame[0].question).toContain('exe-math-rendered');
+            expect(newJsonData.questionsGame[0].feedback).toContain('exe-math-rendered');
+        });
+
+        test('recursively pre-renders nested LaTeX for adaptative-quiz', async () => {
+            const jsonData = {
+                questions: [{ question: 'Solve \\(x^2\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node adaptative-quiz" data-idevice-type="adaptative-quiz" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            expect(newJsonData.questions[0].question).toContain('exe-math-rendered');
+            expect(newJsonData.questions[0].options[0].text).toContain('exe-math-rendered');
+        });
+
+        test('does NOT recurse into nested LaTeX for non-allowlisted JSON iDevices', async () => {
+            const jsonData = {
+                instructions: '<p>Top \\(a\\)</p>',
+                questions: [{ question: '<p>\\(x^2\\)</p>' }],
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node scrambled-list" data-idevice-type="scrambled-list" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            // Top-level string still handled (unchanged behaviour)
+            expect(newJsonData.instructions).toContain('exe-math-rendered');
+            // Nested LaTeX must remain raw: this iDevice escapes text at runtime,
+            // so pre-rendered SVG would be shown as source. MathJax handles it instead.
+            expect(newJsonData.questions[0].question).toBe('<p>\\(x^2\\)</p>');
+            expect(newJsonData.questions[0].question).not.toContain('exe-math-rendered');
+        });
+    });
+
     describe('double-processing prevention', () => {
         let originalMathJax;
 

@@ -8,6 +8,7 @@ import type {
     ExportDocument,
     ExportMetadata,
     ExportPage,
+    ExportComponent,
     ResourceProvider,
     AssetProvider,
     ZipProvider,
@@ -227,6 +228,14 @@ class TestExporter extends BaseExporter {
     testInjectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
         return this.injectElpxScripts(html, page, isIndex);
     }
+
+    testComponentHasRuntimeJsonLatex(component: ExportComponent): boolean {
+        return this.componentHasRuntimeJsonLatex(component);
+    }
+
+    testPageHasRuntimeJsonLatex(page: ExportPage): boolean {
+        return this.pageHasRuntimeJsonLatex(page);
+    }
 }
 
 describe('BaseExporter', () => {
@@ -242,6 +251,43 @@ describe('BaseExporter', () => {
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    describe('Runtime JSON LaTeX detection (MathJax bundling)', () => {
+        const makeComponent = (type: string, latex: boolean): ExportComponent => ({
+            id: 'c1',
+            type,
+            order: 0,
+            content: '',
+            properties: { questionsGame: [{ question: latex ? '<p>\\(x^2\\)</p>' : '<p>plain</p>' }] },
+        });
+
+        const makePage = (component: ExportComponent): ExportPage => ({
+            id: 'p1',
+            title: 'Page',
+            parentId: null,
+            order: 0,
+            blocks: [{ id: 'b1', name: '', order: 0, components: [component] }],
+        });
+
+        it('does NOT flag pre-rendered iDevices (trueorfalse, adaptative-quiz)', () => {
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('trueorfalse', true))).toBe(false);
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('adaptative-quiz', true))).toBe(false);
+        });
+
+        it('flags scrambled-list and form (need runtime MathJax)', () => {
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('scrambled-list', true))).toBe(true);
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('form', true))).toBe(true);
+        });
+
+        it('does not flag components without LaTeX', () => {
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('scrambled-list', false))).toBe(false);
+        });
+
+        it('pageHasRuntimeJsonLatex reflects component detection', () => {
+            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('scrambled-list', true)))).toBe(true);
+            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('adaptative-quiz', true)))).toBe(false);
+        });
     });
 
     describe('Structure Access', () => {

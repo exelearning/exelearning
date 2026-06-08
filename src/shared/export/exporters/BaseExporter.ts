@@ -28,7 +28,12 @@ import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../confi
 import { getIdeviceConfig } from '../../../services/idevice-config';
 
 const RUNTIME_LATEX_PATTERN = /\\\(|\\\[|\\begin\{|\$\$/;
-const RUNTIME_JSON_LATEX_IDEVICES = new Set(['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list']);
+// JSON iDevices that escape/transform their text at runtime and therefore need
+// MathJax bundled to render LaTeX (pre-rendered SVG would be escaped/broken).
+// trueorfalse and adaptative-quiz are intentionally absent: their nested JSON
+// LaTeX is pre-rendered to SVG+MathML during export and kept through escaping at
+// runtime (see RECURSIVE_JSON_LATEX_IDEVICES + escapeHtmlButKeepRenderedMath).
+const RUNTIME_JSON_LATEX_IDEVICES = new Set(['form', 'scrambled-list']);
 
 /**
  * Abstract base class for exporters

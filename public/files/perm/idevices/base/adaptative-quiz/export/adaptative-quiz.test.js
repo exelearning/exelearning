@@ -353,8 +353,9 @@ describe('adaptative-quiz export', () => {
             adq.renderCurrentQuestion(id);
         }
 
-        it('typesets the export template when runtime behaviour is attached', () => {
+        it('typesets the export template when its instructions contain LaTeX', () => {
             const data = {
+                eXeFormInstructions: 'Intro \\(z\\)',
                 questionsGame: [
                     {
                         type: 0,
@@ -375,6 +376,52 @@ describe('adaptative-quiz export', () => {
             adq.renderBehaviour(data, false, 'latex-template');
 
             expect(updateLatexSpy).toHaveBeenCalledWith('.exe-adaptative-quiz-template');
+        });
+
+        it('does NOT typeset the template when it has no unrendered LaTeX', () => {
+            const data = {
+                eXeFormInstructions: 'Plain intro, no math',
+                questionsGame: [
+                    { type: 0, typeSelect: 0, question: 'Plain', options: [{ text: '1' }], solutionMulti: [0] },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+            };
+            const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+
+            document.body.innerHTML = adq.renderView(data, false, template, 'plain-template');
+            adq.renderBehaviour(data, false, 'plain-template');
+
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('keeps pre-rendered math spans (no MathJax) but escapes author text in options', () => {
+            renderQuestion('prerendered-opt', {
+                typeSelect: 0,
+                question: 'Stem',
+                options: [
+                    {
+                        text: '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>',
+                    },
+                    { text: '<b>plain</b>' },
+                ],
+                solutionMulti: [0],
+            });
+            const container = document.getElementById('adaptativeQuizQuestionContainer-prerendered-opt');
+            // The trusted pre-rendered SVG survives intact...
+            expect(container.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            // ...while plain author markup is still escaped.
+            expect(container.innerHTML).toContain('&lt;b&gt;plain&lt;/b&gt;');
+            // No MathJax needed: nothing unrendered to typeset.
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('escapeHtmlButKeepRenderedMath neutralises a forged math span (XSS boundary)', () => {
+            const forged = '<span class="exe-math-rendered" data-latex=""><svg onload="alert(1)"></svg></span>';
+            const out = adq.escapeHtmlButKeepRenderedMath('Pick ' + forged);
+            // The script-bearing span is escaped, not kept raw.
+            expect(out).not.toContain('<svg onload');
+            expect(out).toContain('&lt;svg onload');
         });
 
         it('typesets the question container when the stem contains LaTeX', () => {
