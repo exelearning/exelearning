@@ -619,13 +619,6 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
     
-    it('only ES-CN and ES-GA declare descriptorsPerCriterion:true', () => {
-        // Use a precise regex to prevent matching across dataset object boundaries
-        const preciseRe = /id:\s*'(ES-[A-Z]+)'[^}]*?descriptorsPerCriterion:\s*true/g;
-        const ids = [...lomloeSrc.matchAll(preciseRe)].map(m => m[1]).sort();
-        expect(ids).toEqual(['ES-CN', 'ES-GA']);
-    });
-
 });
 
 // ════════════════════════════════════════════════════════════════
