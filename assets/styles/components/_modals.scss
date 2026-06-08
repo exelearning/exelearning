@@ -3969,11 +3969,38 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Sort and filter selects - wider for longer text */
 #modalFileManager .media-library-sort {
-    min-width: 150px;
+    /* Wide enough for the longest option (e.g. "References: most used first" /
+       "Referencias: más usadas primero") without truncation, but responsive. */
+    min-width: 210px;
+    max-width: 100%;
+    width: auto;
 }
 
 #modalFileManager .media-library-filter {
     min-width: 120px;
+}
+
+/* "Used in" usage-locations list in the asset details panel */
+#modalFileManager .media-library-usage-locations {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        font-size: 12px;
+        color: var(--body-text-color);
+        padding: 2px 0;
+        word-break: break-word;
+    }
+
+    .media-library-usage-empty {
+        font-style: italic;
+        color: var(--icon-gray);
+    }
+
+    .media-library-usage-more {
+        color: var(--icon-gray);
+    }
 }
 
 /* Container with grid and sidebar - flex row */
