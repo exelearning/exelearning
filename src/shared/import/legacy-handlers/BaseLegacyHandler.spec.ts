@@ -411,6 +411,45 @@ describe('BaseLegacyHandler', () => {
         });
     });
 
+    describe('extractTextAreaFieldRawContent (quiz option plain text)', () => {
+        // How a quiz option is read by MultichoiceHandler / ScormTestHandler:
+        // raw field value (one XML decode) -> stripHtmlTags.
+        function optionPlainText(unicodeAttrValue: string): string {
+            const field = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="${unicodeAttrValue}"/>
+                    </dictionary>
+                </instance>
+            `);
+            return handler.stripHtmlTags(handler.extractTextAreaFieldRawContent(field));
+        }
+
+        it('returns the raw content without decoding entities', () => {
+            const field = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="&lt;p&gt;A &amp;lt; B&lt;/p&gt;"/>
+                    </dictionary>
+                </instance>
+            `);
+            expect(handler.extractTextAreaFieldRawContent(field)).toBe('<p>A &lt; B</p>');
+        });
+
+        // Real <unicode value="..."> values from an eXe 2.9 contentv3.xml.
+        it.each([
+            ['&lt;p&gt;A &amp;lt; B&lt;/p&gt;', 'A < B'],
+            ['&lt;p&gt;A&amp;gt;B&lt;/p&gt;', 'A>B'],
+            ['&lt;p&gt;A=B&lt;/p&gt;', 'A=B'],
+            ['&lt;p&gt;A + B &amp;gt; C+D &amp;amp;&amp;amp; 4&lt;/p&gt;', 'A + B > C+D && 4'],
+            ['&lt;p&gt;a = b &amp;amp;&amp;amp;  c&amp;gt;a y &amp;amp; b&amp;lt;a&lt;/p&gt;', 'a = b && c>a y & b<a'],
+        ])('preserves real eXe 2.9 escaped option %s -> %s', (attrValue, expected) => {
+            expect(optionPlainText(attrValue)).toBe(expected);
+        });
+    });
+
     describe('stripHtmlTags', () => {
         it('should strip simple HTML tags', () => {
             expect(handler.stripHtmlTags('<p>Hello</p>')).toBe('Hello');
