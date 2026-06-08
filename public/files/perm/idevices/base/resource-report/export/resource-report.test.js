@@ -137,39 +137,38 @@ describe('resource-report iDevice export', () => {
         expect(html).toContain('resource-report-layout-cards');
     });
 
-    it('renders a known Creative Commons license as a link with the CC icon', () => {
+    it('renders a known Creative Commons license reusing the shared exe-prop-license markup', () => {
         const html = render([
             { id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, license: 'Creative Commons BY-SA' },
         ]);
-        expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
-        expect(html).toContain('rel="license noopener"');
-        expect(html).toContain('resource-report-license cc cc-by-sa');
-        expect(html).toContain('resource-report-license-icon');
-        expect(html).toContain('Creative Commons BY-SA');
+        // Same convention as the page footer / download-source-file iDevice.
+        expect(html).toContain(
+            '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA</a></span>',
+        );
     });
 
     it('resolves CC0, plain BY and GNU/GPL license URLs', () => {
         const cc0 = render([{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, license: 'Creative Commons (Public Domain)' }]);
         expect(cc0).toContain('href="https://creativecommons.org/publicdomain/zero/1.0/"');
-        expect(cc0).toContain('cc cc-0');
+        expect(cc0).toContain('class="cc cc-0"');
 
         const by = render([{ id: 'b', assetUrl: 'asset://b.jpg', filename: 'b.jpg', type: 'image', isImage: true, license: 'Creative Commons BY' }]);
         expect(by).toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+        expect(by).toContain('class="cc cc-by"');
 
         const gpl = render([{ id: 'c', assetUrl: 'asset://c.zip', filename: 'c.zip', type: 'other', isImage: false, license: 'GNU/GPL' }]);
-        expect(gpl).toContain('href="https://www.gnu.org/licenses/gpl.html"');
-        expect(gpl).not.toContain('resource-report-license-icon'); // GPL has no CC icon
+        expect(gpl).toContain('<span class="exe-prop-license"><a href="https://www.gnu.org/licenses/gpl.html" rel="license">GNU/GPL</a></span>');
+        expect(gpl).not.toContain('class="cc'); // GPL has no CC icon class
     });
 
-    it('renders non-linkable licenses as a plain span without a CC icon', () => {
+    it('renders non-linkable licenses as plain exe-prop-license text', () => {
         const html = render([
             { id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, license: 'Public Domain' },
         ]);
-        expect(html).toContain('<span class="resource-report-license">Public Domain</span>');
-        expect(html).not.toContain('resource-report-license-icon');
+        expect(html).toContain('<span class="exe-prop-license">Public Domain</span>');
+        expect(html).not.toContain('class="cc');
         const custom = render([{ id: 'b', assetUrl: 'asset://b.jpg', filename: 'b.jpg', type: 'image', isImage: true, license: 'My Custom License' }]);
-        expect(custom).toContain('My Custom License');
-        expect(custom).not.toContain('<a class="resource-report-license');
+        expect(custom).toContain('<span class="exe-prop-license">My Custom License</span>');
     });
 
     it('renders the table layout with a header row and one row per resource', () => {

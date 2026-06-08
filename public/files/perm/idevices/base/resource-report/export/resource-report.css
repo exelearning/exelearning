@@ -112,18 +112,6 @@
     word-break: break-word;
 }
 
-/* License label / link */
-.resource-report-IDevice .resource-report-license {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25em;
-}
-
-.resource-report-IDevice .resource-report-license-icon {
-    flex: 0 0 auto;
-    vertical-align: middle;
-}
-
 /* Table / condensed layout */
 .resource-report-IDevice .resource-report-table {
     width: 100%;

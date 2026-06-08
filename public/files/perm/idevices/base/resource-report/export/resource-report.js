@@ -44,27 +44,15 @@ var $resourcereport = {
     },
 
     /**
-     * Self-contained Creative Commons mark (decorative). Inlined like iconFor() so the
-     * report renders icons in exported packages without depending on theme assets.
-     */
-    ccIcon: function () {
-        return (
-            '<svg class="resource-report-license-icon" viewBox="0 0 64 64" width="16" height="16" aria-hidden="true" focusable="false">' +
-            '<circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="4"/>' +
-            '<path fill="currentColor" d="M22 27.5c-1.2-1.5-3-2.3-5-2.3-3.7 0-6.5 2.8-6.5 6.8s2.8 6.8 6.5 6.8c2 0 3.8-.9 5-2.4l3 2.3c-1.9 2.3-4.7 3.7-8 3.7-5.9 0-10.3-4.4-10.3-10.4s4.4-10.4 10.3-10.4c3.3 0 6.1 1.4 8 3.8z"/>' +
-            '<path fill="currentColor" d="M44 27.5c-1.2-1.5-3-2.3-5-2.3-3.7 0-6.5 2.8-6.5 6.8s2.8 6.8 6.5 6.8c2 0 3.8-.9 5-2.4l3 2.3c-1.9 2.3-4.7 3.7-8 3.7-5.9 0-10.3-4.4-10.3-10.4s4.4-10.4 10.3-10.4c3.3 0 6.1 1.4 8 3.8z"/>' +
-            '</svg>'
-        );
-    },
-
-    /**
      * Resolve a stored license label (the centralized vocabulary from
      * public/app/common/licenseOptions.js, e.g. "Creative Commons BY-SA") to its
      * canonical URL + CSS class. Values mirror the single source of truth
      * LICENSE_REGISTRY in src/shared/export/constants.ts; kept inline because iDevice
      * export code runs standalone in exported packages (no app/backend access), the
-     * same approach as image-gallery's getLinkLicense(). The CC BY-xx codes are not
+     * same approach as the download-source-file iDevice. The CC BY-xx codes are not
      * translated, so they match by substring; CC0 is stored as "Creative Commons (…)".
+     * The cssClass follows the shared `cc cc-<code>` convention used by the page
+     * footer and the download-source-file iDevice so themes render the matching icon.
      * @param {string|undefined} license
      * @returns {{ url: string, cssClass: string, isCC: boolean }}
      */
@@ -81,7 +69,7 @@ var $resourcereport = {
             const variant = cc[1].toLowerCase(); // '', '-sa', '-nd', '-nc', '-nc-sa', '-nc-nd'
             return {
                 url: `https://creativecommons.org/licenses/by${variant}/4.0/`,
-                cssClass: variant ? `cc cc-by${variant}` : 'cc',
+                cssClass: `cc cc-by${variant}`,
                 isCC: true,
             };
         }
@@ -93,18 +81,20 @@ var $resourcereport = {
     },
 
     /**
-     * License markup: a link when the license has a canonical URL, otherwise a span.
-     * Prepends the CC mark for Creative Commons licenses.
+     * License markup, reusing the shared `exe-prop-license` convention from the page
+     * footer and the download-source-file iDevice: a `rel="license"` link with the
+     * `cc cc-<code>` classes (the empty inner <span> is the themed icon placeholder)
+     * when the license has a canonical URL, otherwise plain text.
      */
     licenseHtml: function (license) {
         const esc = this.escapeHtml.bind(this);
         const meta = this.licenseMeta(license);
-        const icon = meta.isCC ? this.ccIcon() : '';
-        const cls = 'resource-report-license' + (meta.cssClass ? ' ' + meta.cssClass : '');
-        if (meta.url) {
-            return `<a class="${cls}" href="${esc(meta.url)}" target="_blank" rel="license noopener">${icon}${esc(license)}</a>`;
+        if (!meta.url) {
+            return `<span class="exe-prop-license">${esc(license)}</span>`;
         }
-        return `<span class="${cls}">${icon}${esc(license)}</span>`;
+        const classAttr = meta.cssClass ? ` class="${meta.cssClass}"` : '';
+        const iconSpan = meta.isCC ? '<span></span>' : '';
+        return `<span class="exe-prop-license"><a href="${esc(meta.url)}" rel="license"${classAttr}>${iconSpan}${esc(license)}</a></span>`;
     },
 
     /**
