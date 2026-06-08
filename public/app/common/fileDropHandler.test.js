@@ -37,17 +37,19 @@ function makeDragEvent({ files = [], hasFiles = true } = {}) {
 
 afterEach(() => {
     delete window.electronAPI;
+    document.body.innerHTML = '';
 });
 
 describe('isOpenableProjectFile', () => {
-    it('accepts .elpx and .elp regardless of case', () => {
+    it('accepts .elpx, .elp and .zip regardless of case', () => {
         expect(isOpenableProjectFile('project.elpx')).toBe(true);
         expect(isOpenableProjectFile('project.elp')).toBe(true);
+        expect(isOpenableProjectFile('project.zip')).toBe(true);
         expect(isOpenableProjectFile('PROJECT.ELPX')).toBe(true);
+        expect(isOpenableProjectFile('PROJECT.ZIP')).toBe(true);
     });
 
     it('rejects other extensions and non-strings', () => {
-        expect(isOpenableProjectFile('project.zip')).toBe(false);
         expect(isOpenableProjectFile('project.pdf')).toBe(false);
         expect(isOpenableProjectFile('elpx')).toBe(false);
         expect(isOpenableProjectFile(null)).toBe(false);
@@ -177,6 +179,58 @@ describe('FileDropHandler drag events', () => {
         handler._onDrop(drop);
         expect(drop.preventDefault).toHaveBeenCalled();
         expect(app.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+});
+
+describe('FileDropHandler defers while a side panel is open', () => {
+    /** Inject an element with the given id and the `active` class. */
+    function openPanel(id) {
+        const el = document.createElement('div');
+        el.id = id;
+        el.classList.add('active');
+        document.body.appendChild(el);
+        return el;
+    }
+
+    it.each([
+        ['styles panel', () => openPanel('stylessidenav')],
+        ['preview slide-out panel', () => openPanel('previewsidenav')],
+        [
+            'pinned preview panel',
+            () => {
+                const workarea = document.createElement('div');
+                workarea.id = 'workarea';
+                workarea.setAttribute('data-preview-pinned', 'true');
+                document.body.appendChild(workarea);
+            },
+        ],
+    ])('shows no overlay and does not open on drop when the %s is open', (_label, setup) => {
+        setup();
+        const app = makeApp();
+        const handler = new FileDropHandler({ app });
+
+        const enter = makeDragEvent();
+        handler._onDragEnter(enter);
+        // Native open is still prevented, but the overlay never appears.
+        expect(enter.preventDefault).toHaveBeenCalled();
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        handler._onDrop(drop);
+        expect(drop.preventDefault).toHaveBeenCalled();
+        expect(app.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+
+    it('shows the overlay again once the panel is closed', () => {
+        const panel = openPanel('stylessidenav');
+        const handler = new FileDropHandler({ app: makeApp() });
+
+        handler._onDragEnter(makeDragEvent());
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
+
+        panel.classList.remove('active');
+        handler._onDragEnter(makeDragEvent());
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeTruthy();
     });
 });
 

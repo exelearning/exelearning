@@ -40,6 +40,56 @@ describe('form iDevice export', () => {
     $form = loadExportIdevice(code);
   });
 
+  describe('escapeHtmlText / escapeHtmlAttr', () => {
+    it('escapes <, > and & in text', () => {
+      expect($form.escapeHtmlText('A<B')).toBe('A&lt;B');
+      expect($form.escapeHtmlText('x>y')).toBe('x&gt;y');
+      expect($form.escapeHtmlText('a && b')).toBe('a &amp;&amp; b');
+      expect($form.escapeHtmlText('A + B > C+D && 4')).toBe('A + B &gt; C+D &amp;&amp; 4');
+    });
+
+    it('escapes double quotes for attributes', () => {
+      expect($form.escapeHtmlAttr('a"b<c')).toBe('a&quot;b&lt;c');
+    });
+
+    it('handles null/undefined', () => {
+      expect($form.escapeHtmlText(null)).toBe('');
+      expect($form.escapeHtmlText(undefined)).toBe('');
+    });
+  });
+
+  describe('getProcessTextSelectionQuestion escaping', () => {
+    it('renders plain-text symbols without changing the stored answers', () => {
+      $form.replaceResourceDirectoryPaths = (_data, text) => text;
+      const data = {
+        msgs: { msgSingleSelectionHelp: 'single', msgMultipleSelectionHelp: 'multiple' },
+      };
+      const answers = [
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ];
+
+      document.body.innerHTML = $form.getProcessTextSelectionQuestion(
+        '<p>Q</p>',
+        'radio',
+        answers,
+        data,
+      );
+
+      const labels = [...document.querySelectorAll('.selection-buttons-container label')];
+      const inputs = [...document.querySelectorAll('.selection-buttons-container input')];
+
+      expect(labels.map(label => label.textContent)).toEqual(answers.map(answer => answer[1]));
+      expect(inputs.map(input => input.value)).toEqual(answers.map(answer => answer[1]));
+      expect(answers).toEqual([
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ]);
+    });
+  });
+
   describe('formatTime', () => {
     it('formats seconds to mm:ss format', () => {
       expect($form.formatTime(0)).toBe('00:00');
