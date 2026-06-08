@@ -34,6 +34,66 @@ function makeXlf(targetLang: string, units: { id: string; resname: string; sourc
 }
 
 // ---------------------------------------------------------------------------
+// Unit tests — fixAttributeQuotes
+// ---------------------------------------------------------------------------
+
+describe('fixAttributeQuotes', () => {
+    let fixAttributeQuotes: (content: string) => string;
+
+    beforeEach(async () => {
+        ({ fixAttributeQuotes } = await import('./translations-format'));
+    });
+
+    it('replaces left/right curly double-quote attribute delimiters with straight quotes', () => {
+        const input = '      <trans-unit id=“MwExe01” resname=“Made with eXeLearning”>';
+        const expected = '      <trans-unit id="MwExe01" resname="Made with eXeLearning">';
+        expect(fixAttributeQuotes(input)).toBe(expected);
+    });
+
+    it('leaves straight-quote attributes unchanged', () => {
+        const input = '      <trans-unit id="safe" resname="Also safe">';
+        expect(fixAttributeQuotes(input)).toBe(input);
+    });
+
+    it('does not touch curly quotes inside element text content (e.g. Romanian typography)', () => {
+        // Romanian uses „ (U+201E) as opening quote — different character, not affected
+        const input = '        <target>Faceți clic pe „Salvează” pentru a salva.</target>';
+        expect(fixAttributeQuotes(input)).toBe(input);
+    });
+
+    it('handles multiple attributes with curly quotes on the same line', () => {
+        const input = '<file source-language=“en” target-language=“ro” datatype=“plaintext”>';
+        const expected = '<file source-language="en" target-language="ro" datatype="plaintext">';
+        expect(fixAttributeQuotes(input)).toBe(expected);
+    });
+
+    it('replaces U+201D used as both opening and closing delimiter (real-world ro.xlf case)', () => {
+        // messages.ro.xlf uses U+201D (“) for both opening and closing attr delimiters.
+        // String.fromCharCode() is used for all special chars to prevent editor conversion.
+        const U201D = String.fromCharCode(0x201d);
+        const Q = String.fromCharCode(0x22); // straight double quote
+        const input = `      <trans-unit id=${U201D}MwExe01${U201D} resname=${U201D}Made with eXeLearning${U201D}>`;
+        const expected = `      <trans-unit id=${Q}MwExe01${Q} resname=${Q}Made with eXeLearning${Q}>`;
+        expect(fixAttributeQuotes(input)).toBe(expected);
+    });
+
+    it('is idempotent — running twice produces the same output', () => {
+        const U = String.fromCharCode(0x201c);
+        const input = `      <trans-unit id=${U}MwExe01${String.fromCharCode(0x201d)} resname=${U}Made with eXeLearning${String.fromCharCode(0x201d)}>`;
+        const once = fixAttributeQuotes(input);
+        const twice = fixAttributeQuotes(once);
+        expect(twice).toBe(once);
+    });
+
+    it('preserves attribute values that contain curly quotes as typographic content', () => {
+        // A resname whose value uses curly quotes as part of the text
+        // (the value is delimited by straight quotes, so this is untouched)
+        const input = '      <trans-unit id="abc" resname="Click “OK” button">';
+        expect(fixAttributeQuotes(input)).toBe(input);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Unit tests — needsCDATA
 // ---------------------------------------------------------------------------
 
@@ -417,6 +477,50 @@ describe('runMain', () => {
 // ---------------------------------------------------------------------------
 // Unit tests — formatXlfContent edge cases
 // ---------------------------------------------------------------------------
+
+describe('formatXlfContent — curly-quote attribute fix', () => {
+    let formatXlfContent: (content: string) => string;
+
+    beforeEach(async () => {
+        ({ formatXlfContent } = await import('./translations-format'));
+    });
+
+    it('fixes curly-quote attribute delimiters in a trans-unit opening tag', () => {
+        const content =
+            `<?xml version="1.0" encoding="utf-8"?>\n` +
+            `<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">\n` +
+            `  <file source-language="en" target-language="ro">\n` +
+            `    <body>\n` +
+            `      <trans-unit id="MwExe01" resname="Made with eXeLearning">\n` +
+            `        <source>Made with eXeLearning</source>\n` +
+            `        <target>Realizat cu eXeLearning</target>\n` +
+            `      </trans-unit>\n` +
+            `    </body>\n` +
+            `  </file>\n` +
+            `</xliff>`;
+        const result = formatXlfContent(content);
+        expect(result).toContain('id="MwExe01"');
+        expect(result).toContain('resname="Made with eXeLearning"');
+        expect(result).not.toContain('id=“MwExe01”');
+        expect(result).not.toContain('resname=“Made with eXeLearning”');
+    });
+
+    it('preserves Romanian typographic quotes inside target content', () => {
+        const content =
+            `<?xml version="1.0"?>\n` +
+            `<xliff>\n` +
+            `    <body>\n` +
+            `      <trans-unit id="x" resname="y">\n` +
+            `        <source>y</source>\n` +
+            `        <target>Faceți clic pe „Salvează”.</target>\n` +
+            `      </trans-unit>\n` +
+            `    </body>\n` +
+            `</xliff>`;
+        const result = formatXlfContent(content);
+        // Romanian „ (U+201E) + " (U+201D) inside target must be untouched
+        expect(result).toContain('„Salvează”');
+    });
+});
 
 describe('formatXlfContent — edge cases', () => {
     let formatXlfContent: (content: string) => string;
