@@ -48,7 +48,16 @@ const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea',
 // JSON iDevices whose LaTeX lives in NESTED fields (questions/answers/feedback)
 // and must be pre-rendered recursively inside data-idevice-json-data. Mirrors
 // RECURSIVE_JSON_LATEX_IDEVICES in public/app/common/LatexPreRenderer.js.
-const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz']);
+const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list']);
+
+// JSON keys whose values are compared/used verbatim at runtime, or rendered in a
+// context that cannot show an SVG (access codes, identifiers, button labels placed
+// in an <input value="">). These must never be turned into pre-rendered <span>
+// markup -- even if they contain LaTeX-like delimiters. Otherwise the substituted
+// SVG would change the literal (e.g. adaptative-quiz enterCodeAccess() matches
+// itinerary.codeAccess) or appear as raw markup (scrambled-list buttonText).
+// Mirrors NON_RENDERABLE_JSON_KEYS in public/app/common/LatexPreRenderer.js.
+const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText']);
 
 // XOR encryption key (same as common.js)
 const ENCRYPT_KEY = 146;
@@ -594,7 +603,8 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         if (typeof data === 'object' && data !== null) {
             const result: Record<string, unknown> = {};
             for (const [key, value] of Object.entries(data)) {
-                result[key] = await this.preRenderLatexInGameData(value);
+                // Leave literal-compared fields (codes/identifiers) untouched.
+                result[key] = NON_RENDERABLE_JSON_KEYS.has(key) ? value : await this.preRenderLatexInGameData(value);
             }
             return result;
         }

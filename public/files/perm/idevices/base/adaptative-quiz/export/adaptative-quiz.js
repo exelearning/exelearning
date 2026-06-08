@@ -1609,7 +1609,11 @@ var $adaptativequiz = {
         const inScormPackage = this.isWaitingForScorm(opts);
         if (inScormPackage) opts.scormReady = false;
         if (itinerary.showCodeAccess) {
-            $('#adaptativeQuizMessageCodeAccess-' + id).text(itinerary.messageCodeAccess || '');
+            const messageCodeAccess = this.escapeHtmlButKeepRenderedMath(itinerary.messageCodeAccess || '');
+            $('#adaptativeQuizMessageCodeAccess-' + id).html(messageCodeAccess);
+            if ($exeDevices.iDevice.gamification.math.hasLatex(messageCodeAccess)) {
+                $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizMessageCodeAccess-' + id);
+            }
             $('#adaptativeQuizCubierta-' + id).show();
             $('#adaptativeQuizCodeAccessDiv-' + id).show();
         } else if (!opts.gameStarted && opts.questions.length > 0 && !inScormPackage) {

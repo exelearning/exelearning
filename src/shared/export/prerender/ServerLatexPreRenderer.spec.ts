@@ -364,7 +364,7 @@ describe('ServerLatexPreRenderer', () => {
         });
 
         it('does NOT pre-render JSON LaTeX for non-allowlisted iDevices', async () => {
-            const html = buildIdevice('scrambled-list', {
+            const html = buildIdevice('form', {
                 questions: [{ question: '<p>\\(x^2\\)</p>' }],
             });
 
@@ -373,6 +373,34 @@ describe('ServerLatexPreRenderer', () => {
             // Attribute left untouched (this iDevice transforms text at runtime → MathJax).
             expect(result.html).toBe(html);
             expect(result.html).not.toContain('exe-math-rendered');
+        });
+
+        it('recursively pre-renders nested LaTeX for scrambled-list', async () => {
+            const html = buildIdevice('scrambled-list', {
+                instructions: '<p>Order: \\(a\\)</p>',
+                options: ['\\(x^2\\)', '\\(y^2\\)', 'plain'],
+            });
+
+            const result = await renderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('exe-math-rendered');
+            expect(result.html).not.toContain('\\(x^2\\)');
+        });
+
+        it('does not pre-render scrambled-list buttonText (rendered in an input value)', async () => {
+            const html = buildIdevice('scrambled-list', {
+                options: ['\\(x^2\\)', 'plain'],
+                buttonText: 'Check \\(k\\)',
+            });
+
+            const result = await renderer.preRender(html);
+
+            // The option IS rendered...
+            expect(result.html).toContain('exe-math-rendered');
+            // ...but buttonText (used as an <input value>) stays raw.
+            const decoded = decodeJsonAttr(result.html);
+            expect(decoded.buttonText).toBe('Check \\(k\\)');
         });
 
         it('leaves trueorfalse JSON without LaTeX unchanged', async () => {
@@ -385,6 +413,41 @@ describe('ServerLatexPreRenderer', () => {
 
             expect(result.html).toBe(html);
             expect(result.count).toBe(0);
+        });
+
+        // Reverse of escapeHtmlAttribute (&amp; last) so we can read the JSON back.
+        const decodeJsonAttr = (html: string): Record<string, any> => {
+            const match = html.match(/data-idevice-json-data="([^"]*)"/);
+            if (!match) throw new Error('No data-idevice-json-data attribute found');
+            const json = match[1]
+                .replace(/&gt;/g, '>')
+                .replace(/&lt;/g, '<')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&');
+            return JSON.parse(json);
+        };
+
+        it('does not pre-render literal-compared fields like itinerary.codeAccess', async () => {
+            const html = buildIdevice('adaptative-quiz', {
+                questionsGame: [{ question: 'Solve \\(x^2\\)' }],
+                itinerary: {
+                    showCodeAccess: true,
+                    codeAccess: '\\(secret\\)',
+                    messageCodeAccess: 'Enter \\(k\\)',
+                },
+            });
+
+            const result = await renderer.preRender(html);
+
+            // Visible content (and the visible message field) is still rendered...
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('exe-math-rendered');
+
+            const decoded = decodeJsonAttr(result.html);
+            // ...but the access code, compared verbatim at runtime, is left intact.
+            expect(decoded.itinerary.codeAccess).toBe('\\(secret\\)');
+            // The neighbouring visible field in the same object IS rendered.
+            expect(decoded.itinerary.messageCodeAccess).toContain('exe-math-rendered');
         });
     });
 });

@@ -1730,7 +1730,7 @@ describe('LatexPreRenderer', () => {
                 questions: [{ question: '<p>\\(x^2\\)</p>' }],
             };
             const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
-            const html = `<div class="idevice_node scrambled-list" data-idevice-type="scrambled-list" data-idevice-json-data="${jsonStr}"></div>`;
+            const html = `<div class="idevice_node form" data-idevice-type="form" data-idevice-json-data="${jsonStr}"></div>`;
 
             const result = await LatexPreRenderer.preRender(html);
 
@@ -1745,6 +1745,76 @@ describe('LatexPreRenderer', () => {
             // so pre-rendered SVG would be shown as source. MathJax handles it instead.
             expect(newJsonData.questions[0].question).toBe('<p>\\(x^2\\)</p>');
             expect(newJsonData.questions[0].question).not.toContain('exe-math-rendered');
+        });
+
+        test('recursively pre-renders nested LaTeX for scrambled-list options', async () => {
+            const jsonData = {
+                instructions: '<p>Order: \\(a\\)</p>',
+                options: ['\\(x^2\\)', '\\(y^2\\)', 'plain'],
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node scrambled-list" data-idevice-type="scrambled-list" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            expect(newJsonData.options[0]).toContain('exe-math-rendered');
+            expect(newJsonData.options[1]).toContain('exe-math-rendered');
+            expect(newJsonData.options[2]).toBe('plain');
+        });
+
+        test('does not pre-render scrambled-list buttonText (rendered in an input value)', async () => {
+            const jsonData = {
+                options: ['\\(x^2\\)', 'plain'],
+                buttonText: 'Check \\(k\\)',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node scrambled-list" data-idevice-type="scrambled-list" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            // Option IS rendered, but buttonText stays raw.
+            expect(newJsonData.options[0]).toContain('exe-math-rendered');
+            expect(newJsonData.buttonText).toBe('Check \\(k\\)');
+        });
+
+        test('does not pre-render literal-compared fields like itinerary.codeAccess', async () => {
+            const jsonData = {
+                questionsGame: [{ question: 'Solve \\(x^2\\)' }],
+                itinerary: {
+                    showCodeAccess: true,
+                    codeAccess: '\\(secret\\)',
+                    messageCodeAccess: 'Enter \\(k\\)',
+                },
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node adaptative-quiz" data-idevice-type="adaptative-quiz" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            // The access code is compared verbatim at runtime → must stay raw.
+            expect(newJsonData.itinerary.codeAccess).toBe('\\(secret\\)');
+            // Neighbouring visible fields are still rendered.
+            expect(newJsonData.itinerary.messageCodeAccess).toContain('exe-math-rendered');
+            expect(newJsonData.questionsGame[0].question).toContain('exe-math-rendered');
         });
     });
 

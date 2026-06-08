@@ -210,7 +210,7 @@ describe('ImsExporter', () => {
                     components: [
                         {
                             id: 'comp-runtime-json',
-                            type: 'scrambled-list',
+                            type: 'form',
                             order: 0,
                             content: '',
                             properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },

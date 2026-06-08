@@ -101,7 +101,7 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        const checks = await exportWithJsonLatex(page, 'scrambled-list', {
+        const checks = await exportWithJsonLatex(page, 'form', {
             instructions: 'Order the steps to solve \\(x^2 = 1\\)',
         });
 
@@ -126,6 +126,26 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
         for (const check of Object.values(checks)) {
             // adaptative-quiz keeps pre-rendered math through runtime escaping,
             // so MathJax is never bundled and the SVG is baked into the export.
+            expect(check.hasLibrary).toBe(false);
+            expect(check.referencesLibrary).toBe(false);
+            expect(check.hasRenderedMath).toBe(true);
+        }
+    });
+
+    test('pre-renders LaTeX (no MathJax) for scrambled-list', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Runtime JSON LaTeX (scrambled-list)');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const checks = await exportWithJsonLatex(page, 'scrambled-list', {
+            options: ['Solve \\(x^2 = 1\\)', 'Then \\(x = \\pm 1\\)', 'Done'],
+        });
+
+        expect(Object.keys(checks)).toEqual(ALL_TARGETS);
+        for (const check of Object.values(checks)) {
+            // scrambled-list now scores answers by a stable index, so the baked SVG
+            // survives sorting/checking and MathJax is never bundled.
             expect(check.hasLibrary).toBe(false);
             expect(check.referencesLibrary).toBe(false);
             expect(check.hasRenderedMath).toBe(true);

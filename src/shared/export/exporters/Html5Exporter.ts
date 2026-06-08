@@ -49,6 +49,57 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
+     * Pre-render LaTeX in a page's HTML to SVG+MathML so the export can drop the
+     * MathJax engine. Encrypted DataGame data is processed first, then the visible
+     * body (which also covers recursive JSON iDevices like adaptative-quiz and
+     * trueorfalse). Hooks come from `options` (server/CLI) or, as a fallback, from
+     * the browser-global LatexPreRenderer.
+     *
+     * The caller decides *whether* pre-rendering applies (typically only when
+     * MathJax is not bundled). Keeping this the single source of truth ensures the
+     * HTML5, single-page (PAGE) and ELPX exports render LaTeX identically.
+     *
+     * @returns the (possibly updated) HTML and whether any LaTeX was rendered.
+     */
+    protected async preRenderHtmlLatex(
+        html: string,
+        options: ExportOptions | undefined,
+    ): Promise<{ html: string; latexRendered: boolean }> {
+        let latexRendered = false;
+
+        // Encrypted DataGame divs store questions in encrypted JSON -- handle first.
+        const preRenderDataGameLatex =
+            options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
+        if (preRenderDataGameLatex) {
+            try {
+                const result = await preRenderDataGameLatex(html);
+                if (result.count > 0) {
+                    html = result.html;
+                    latexRendered = true;
+                }
+            } catch (error) {
+                console.warn('[Html5Exporter] DataGame LaTeX pre-render failed:', error);
+            }
+        }
+
+        // Visible body LaTeX + recursive JSON iDevices (data-idevice-json-data).
+        const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
+        if (preRenderLatex) {
+            try {
+                const result = await preRenderLatex(html);
+                if (result.latexRendered) {
+                    html = result.html;
+                    latexRendered = true;
+                }
+            } catch (error) {
+                console.warn('[Html5Exporter] LaTeX pre-render failed:', error);
+            }
+        }
+
+        return { html, latexRendered };
+    }
+
+    /**
      * Get file extension for HTML5 format
      */
     getFileExtension(): string {
@@ -136,44 +187,10 @@ export class Html5Exporter extends BaseExporter {
 
                 // Pre-render LaTeX only when MathJax is not needed at runtime.
                 if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
-                    // Pre-render LaTeX in encrypted DataGame divs FIRST
-                    // (game iDevices store questions in encrypted JSON)
-                    const preRenderDataGameLatex =
-                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
-                    if (preRenderDataGameLatex) {
-                        try {
-                            const result = await preRenderDataGameLatex(html);
-                            if (result.count > 0) {
-                                html = result.html;
-                                latexWasRendered = true;
-                                console.log(
-                                    `[Html5Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
-                                );
-                            }
-                        } catch (error) {
-                            console.warn(
-                                '[Html5Exporter] DataGame LaTeX pre-render failed for page:',
-                                page.title,
-                                error,
-                            );
-                        }
-                    }
-
-                    // Pre-render visible LaTeX to SVG+MathML if hook is provided
-                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
-                    if (preRenderLatex) {
-                        try {
-                            const result = await preRenderLatex(html);
-                            if (result.latexRendered) {
-                                html = result.html;
-                                latexWasRendered = true;
-                                console.log(
-                                    `[Html5Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
-                                );
-                            }
-                        } catch (error) {
-                            console.warn('[Html5Exporter] LaTeX pre-render failed for page:', page.title, error);
-                        }
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
                     }
                 }
 
@@ -610,31 +627,10 @@ export class Html5Exporter extends BaseExporter {
 
                 // Pre-render LaTeX only when MathJax is not needed at runtime.
                 if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
-                    const preRenderDataGameLatex =
-                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
-                    if (preRenderDataGameLatex) {
-                        try {
-                            const result = await preRenderDataGameLatex(html);
-                            if (result.count > 0) {
-                                html = result.html;
-                                latexWasRendered = true;
-                            }
-                        } catch {
-                            // Continue without pre-rendering
-                        }
-                    }
-
-                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
-                    if (preRenderLatex) {
-                        try {
-                            const result = await preRenderLatex(html);
-                            if (result.latexRendered) {
-                                html = result.html;
-                                latexWasRendered = true;
-                            }
-                        } catch {
-                            // Continue without pre-rendering
-                        }
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
                     }
                 }
 

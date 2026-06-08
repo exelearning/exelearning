@@ -1285,6 +1285,63 @@ describe('adaptative-quiz export', () => {
         });
     });
 
+    describe('code access message rendering', () => {
+        function setupCodeAccessGame(id, messageCodeAccess) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizCubierta-${id}">
+                    <a id="adaptativeQuizCodeAccessButton-${id}">
+                        <img src="exequextreply.svg" class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
+                    </a>
+                </div>
+                <div id="adaptativeQuizMainContainer-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" />
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <button id="adaptativeQuizBtnStart-${id}"></button>
+            `;
+            adq.options[id] = {
+                id,
+                idevicePath: '/exe/idevices/adaptative-quiz/export/',
+                itinerary: { showCodeAccess: true, messageCodeAccess },
+                questions: [],
+                isScorm: 0,
+                evaluation: false,
+            };
+        }
+
+        it('keeps pre-rendered math in the access-code message while escaping author HTML', () => {
+            const id = 'access-message-prerendered';
+            const renderedMath =
+                '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>';
+            setupCodeAccessGame(id, `Use <b>bold</b> ${renderedMath}`);
+
+            adq.addEvents(id);
+
+            const message = document.getElementById(`adaptativeQuizMessageCodeAccess-${id}`);
+            expect(message.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            expect(message.querySelector('b')).toBeNull();
+            expect(message.innerHTML).toContain('&lt;b&gt;bold&lt;/b&gt;');
+            expect(message.textContent).not.toContain('<span');
+        });
+
+        it('requests MathJax for unrendered LaTeX in the access-code message', () => {
+            const id = 'access-message-latex';
+            const updateLatexSpy = vi
+                .spyOn(global.$exeDevices.iDevice.gamification.math, 'updateLatex')
+                .mockImplementation(() => {});
+            setupCodeAccessGame(id, 'Solve \\(x + 1 = 2\\)');
+
+            try {
+                adq.addEvents(id);
+                expect(updateLatexSpy).toHaveBeenCalledWith(`#adaptativeQuizMessageCodeAccess-${id}`);
+            } finally {
+                updateLatexSpy.mockRestore();
+            }
+        });
+    });
+
     describe('SCORM auto-save per answer (integration with real helper)', () => {
         let store;
 

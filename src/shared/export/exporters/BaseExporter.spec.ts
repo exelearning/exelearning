@@ -270,23 +270,24 @@ describe('BaseExporter', () => {
             blocks: [{ id: 'b1', name: '', order: 0, components: [component] }],
         });
 
-        it('does NOT flag pre-rendered iDevices (trueorfalse, adaptative-quiz)', () => {
+        it('does NOT flag pre-rendered iDevices (trueorfalse, adaptative-quiz, scrambled-list)', () => {
             expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('trueorfalse', true))).toBe(false);
             expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('adaptative-quiz', true))).toBe(false);
+            // scrambled-list now pre-renders to SVG (scored by index), so it must not be flagged.
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('scrambled-list', true))).toBe(false);
         });
 
-        it('flags scrambled-list and form (need runtime MathJax)', () => {
-            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('scrambled-list', true))).toBe(true);
+        it('flags form (needs runtime MathJax)', () => {
             expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('form', true))).toBe(true);
         });
 
         it('does not flag components without LaTeX', () => {
-            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('scrambled-list', false))).toBe(false);
+            expect(exporter.testComponentHasRuntimeJsonLatex(makeComponent('form', false))).toBe(false);
         });
 
         it('pageHasRuntimeJsonLatex reflects component detection', () => {
-            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('scrambled-list', true)))).toBe(true);
-            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('adaptative-quiz', true)))).toBe(false);
+            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('form', true)))).toBe(true);
+            expect(exporter.testPageHasRuntimeJsonLatex(makePage(makeComponent('scrambled-list', true)))).toBe(false);
         });
     });
 

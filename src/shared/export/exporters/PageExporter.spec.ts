@@ -248,7 +248,34 @@ describe('PageExporter', () => {
                     components: [
                         {
                             id: 'comp-runtime-json',
-                            type: 'scrambled-list',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
+    // adaptative-quiz keeps pre-rendered math through runtime escaping, so it must
+    // be pre-rendered to SVG at export (never bundles MathJax).
+    const recursiveJsonLatexPages = (): ExportPage[] => [
+        {
+            id: 'page-recursive-json',
+            title: 'Recursive JSON',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-recursive-json',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-recursive-json',
+                            type: 'adaptative-quiz',
                             order: 0,
                             content: '',
                             properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
@@ -293,6 +320,42 @@ describe('PageExporter', () => {
             expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
             expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
             expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders LaTeX and skips MathJax for recursive JSON iDevices (adaptative-quiz)', async () => {
+            document = new MockDocument({ addMathJax: false }, recursiveJsonLatexPages());
+            exporter = new PageExporter(document, resources, assets, zip);
+            let mathJaxRequested = false;
+            resources.fetchLibraryFiles = async files => {
+                if (files.some(file => file.includes('exe_math'))) mathJaxRequested = true;
+                return new Map();
+            };
+
+            // The hook stands in for the real LaTeX pre-renderer: it bakes the SVG
+            // marker into the HTML so we can assert the exporter actually applies it.
+            let hookCalled = false;
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: `${html}<span class="exe-math-rendered">x^2</span>`,
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(hookCalled).toBe(true);
+            // MathJax engine is never bundled for these iDevices.
+            expect(mathJaxRequested).toBe(false);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(false);
+            // The baked SVG and its supporting CSS are present in the export.
+            expect(zip.files.get('index.html') as string).toContain('exe-math-rendered');
+            const baseCss = zip.files.get('content/css/base.css');
+            const baseCssText = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(baseCssText).toContain('.exe-math-rendered');
         });
     });
 

@@ -246,8 +246,8 @@ const createDocumentWithLatexInRuntimeJsonIdevice = (): ExportDocument => ({
                     order: 0,
                     components: [
                         {
-                            id: 'scrambled-list-1',
-                            type: 'scrambled-list',
+                            id: 'form-1',
+                            type: 'form',
                             order: 0,
                             content: '',
                             properties: {
@@ -293,6 +293,45 @@ const createDocumentWithAdaptativeQuizLatex = (): ExportDocument => ({
                                 questionsGame: [
                                     { question: 'Solve \\(x^2 = 1\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] },
                                 ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+const createDocumentWithScrambledListLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Scrambled List LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Scrambled List LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'scrambled-list-1',
+                            type: 'scrambled-list',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                options: ['Solve \\(x^2 = 1\\)', 'Then \\(x = \\pm 1\\)', 'Done'],
                             },
                         },
                     ],
@@ -380,6 +419,27 @@ describe('Runtime JSON iDevice LaTeX Export Integration', () => {
         expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
         // And the raw delimiters are gone from the pre-rendered payload.
         expect(indexHtml).not.toContain('Solve \\(x^2 = 1\\)');
+    });
+
+    it('pre-renders scrambled-list option LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithScrambledListLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // Each option's LaTeX is baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
     });
 });
 

@@ -51,7 +51,16 @@
     // <span class="exe-math-rendered"> wrappers. Other JSON iDevices keep the
     // top-level-only behaviour because their runtime escapes/transforms text in
     // ways incompatible with pre-rendered SVG (see audit: scrambled-list).
-    const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz']);
+    const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list']);
+
+    // JSON keys whose values are compared/used verbatim at runtime, or rendered in a
+    // context that cannot show an SVG (access codes, identifiers, button labels placed
+    // in an <input value="">). These must never be turned into pre-rendered <span>
+    // markup -- even if they contain LaTeX-like delimiters. Otherwise the substituted
+    // SVG would change the literal (e.g. adaptative-quiz enterCodeAccess() matches
+    // itinerary.codeAccess) or appear as raw markup (scrambled-list buttonText).
+    // Mirrors NON_RENDERABLE_JSON_KEYS in src/shared/export/prerender/ServerLatexPreRenderer.ts.
+    const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText']);
 
     // Patterns for numbered equation environments (define labels, must be processed first)
     // These create equation numbers and register \label{} for later \ref{} resolution
@@ -1104,7 +1113,8 @@
         if (typeof data === 'object' && data !== null) {
             const result = {};
             for (const [key, value] of Object.entries(data)) {
-                result[key] = await preRenderLatexInGameData(value);
+                // Leave literal-compared fields (codes/identifiers) untouched.
+                result[key] = NON_RENDERABLE_JSON_KEYS.has(key) ? value : await preRenderLatexInGameData(value);
             }
             return result;
         }

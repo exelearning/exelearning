@@ -24,7 +24,7 @@
 
 import * as Y from 'yjs';
 import * as fflate from 'fflate';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import type {
     AssetHandler,
@@ -780,6 +780,19 @@ export class ElpxImporter {
                 textTextarea: htmlView,
             };
         }
+        if (legacyIdevice.type === 'scrambled-list' && htmlView) {
+            const extractedProperties = this.extractScrambledListProperties(htmlView);
+            if (extractedProperties) {
+                const previousOptions = (properties as Record<string, unknown>).options;
+                properties = {
+                    ...extractedProperties,
+                    ...properties,
+                };
+                if (!Array.isArray(previousOptions) || previousOptions.length === 0) {
+                    properties.options = extractedProperties.options;
+                }
+            }
+        }
 
         const componentData: ComponentData = {
             id: componentId,
@@ -891,6 +904,92 @@ export class ElpxImporter {
             html.includes('iDevice_buttons feedback-button') ||
             html.includes('class="feedback-button')
         );
+    }
+
+    private extractScrambledListProperties(htmlView: string): Record<string, unknown> | null {
+        if (!htmlView || !htmlView.includes('exe-sortableList')) return null;
+
+        const doc = new DOMParser().parseFromString(`<div>${htmlView}</div>`, 'text/html');
+        const activity = this.getFirstElementByClass(doc, 'exe-sortableList');
+        if (!activity) return null;
+
+        const optionsList =
+            this.getFirstElementByClass(activity, 'exe-sortableList-list') || this.getElements(activity, 'ul')[0];
+        const options = optionsList
+            ? this.getDirectChildElements(optionsList, 'li')
+                  .map(item => this.getElementInnerHtml(item) || (item.textContent || '').trim())
+                  .filter(option => option !== '')
+            : [];
+        if (options.length === 0) return null;
+
+        const textAfter = this.getElementInnerHtmlByClass(activity, 'exe-sortableList-textAfter');
+
+        return {
+            typeGame: 'ScrambledList',
+            instructions: this.getElementInnerHtmlByClass(activity, 'exe-sortableList-instructions'),
+            textAfter,
+            afterElement: textAfter ? `<div class="exe-sortableList-textAfter">${textAfter}</div>` : '',
+            options,
+            time: 0,
+            buttonText: this.getElementTextByClass(activity, 'exe-sortableList-buttonText') || 'Check',
+            rightText: this.getElementTextByClass(activity, 'exe-sortableList-rightText') || 'Right!',
+            wrongText:
+                this.getElementTextByClass(activity, 'exe-sortableList-wrongText') ||
+                "Sorry, that's incorrect... The right answer is:",
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+            repeatActivity: false,
+            weighted: 100,
+            showSolutions: true,
+            attemptsNumber: 1,
+        };
+    }
+
+    private getFirstElementByClass(parent: Document | Element, className: string): Element | null {
+        return this.getElementsByClass(parent, className)[0] || null;
+    }
+
+    private getElementsByClass(parent: Document | Element, className: string): Element[] {
+        return this.getElements(parent, '*').filter(element => this.elementHasClass(element, className));
+    }
+
+    private elementHasClass(element: Element, className: string): boolean {
+        return ` ${element.getAttribute('class') || ''} `.includes(` ${className} `);
+    }
+
+    private getDirectChildElements(parent: Element, tagName: string): Element[] {
+        const normalizedTag = tagName.toLowerCase();
+        return Array.from(parent.childNodes || []).filter(child => {
+            if (child.nodeType !== 1) return false;
+            return ((child as Element).tagName || '').toLowerCase() === normalizedTag;
+        }) as Element[];
+    }
+
+    private getElementTextByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return (element?.textContent || '').trim();
+    }
+
+    private getElementInnerHtmlByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return element ? this.getElementInnerHtml(element) : '';
+    }
+
+    private getElementInnerHtml(element: Element): string {
+        const elementWithInnerHtml = element as Element & { innerHTML?: string };
+        if (typeof elementWithInnerHtml.innerHTML === 'string') {
+            return this.stripXhtmlNamespaceAttributes(elementWithInnerHtml.innerHTML).trim();
+        }
+
+        const serializer = new XMLSerializer();
+        const html = Array.from(element.childNodes || [])
+            .map(child => serializer.serializeToString(child))
+            .join('');
+        return this.stripXhtmlNamespaceAttributes(html).trim();
+    }
+
+    private stripXhtmlNamespaceAttributes(html: string): string {
+        return html.replace(/\s+xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
     }
 
     /**
