@@ -97,16 +97,6 @@ const ESO_SAMPLE = {
     }
 };
 
-const GA_SAMPLE = {
-    ESO: {
-        '1º ESO': {
-            BiXe: area('Bioloxía e Xeoloxía'),
-            TeDi: area('Tecnoloxía e Dixitalización'),
-            FiQu: area('Física e Química')
-        }
-    }
-};
-
 function buildMockElement() {
     const el = document.createElement('article');
     el.setAttribute('idevice-id', 'test-lomloe-001');
@@ -628,11 +618,14 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).toContain('BIG');
         expect(codes).not.toContain('FQX');
     });
-
+    
     it('only ES-CN and ES-GA declare descriptorsPerCriterion:true', () => {
-        const ids = [...lomloeSrc.matchAll(re)].map(m => m[1]).sort();
+        // Use a precise regex to prevent matching across dataset object boundaries
+        const preciseRe = /id:\s*'(ES-[A-Z]+)'[^}]*?descriptorsPerCriterion:\s*true/g;
+        const ids = [...lomloeSrc.matchAll(preciseRe)].map(m => m[1]).sort();
         expect(ids).toEqual(['ES-CN', 'ES-GA']);
     });
+
 });
 
 // ════════════════════════════════════════════════════════════════
