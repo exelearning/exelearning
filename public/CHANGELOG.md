@@ -23,6 +23,7 @@
 - Reviewed and completed Spanish (ES) translation
 - Reviewed existing Basque (EU) translation
 - Added automated placeholder translations for new strings in incomplete translations
+- Exports and static editor bundle size reduced by optimising bundled raster image assets
 
 ### Fixed
 
@@ -33,6 +34,7 @@
 - Export: removed duplicate assets in saved and exported packages
 - Export issues when the assets directory is missing
 - Export: consistent license footer across single-page exports
+- Export: "Made with eXeLearning" link now displayed in the content language instead of always in Spanish
 - BASE_PATH compatibility with workarea assets
 - TinyMCE relative URL resolution issues
 - Legacy .elp import: preserved indentation inside `<pre>` blocks
@@ -51,6 +53,7 @@
 - Quick Questions iDevice: shuffle issues in order-type options
 - API v1 updateComponent endpoint issues
 - API v1 project UUID assignment issues
+- CI: improved reliability and diagnostics of Windows installer tests to prevent silent installation failures
 
 ### Upgraded
 
