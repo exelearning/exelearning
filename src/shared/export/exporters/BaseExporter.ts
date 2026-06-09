@@ -9,7 +9,6 @@
 import type {
     ExportDocument,
     ExportPage,
-    ExportComponent,
     ExportMetadata,
     ExportAsset,
     ResourceProvider,
@@ -25,17 +24,6 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
-import { getIdeviceConfig } from '../../../services/idevice-config';
-
-const RUNTIME_LATEX_PATTERN = /\\\(|\\\[|\\begin\{|\$\$/;
-// JSON iDevices that escape/transform their text at runtime and therefore need
-// MathJax bundled to render LaTeX (pre-rendered SVG would be escaped/broken).
-// trueorfalse, adaptative-quiz and scrambled-list are intentionally absent: their
-// nested JSON LaTeX is pre-rendered to SVG+MathML during export and kept through
-// runtime escaping (see RECURSIVE_JSON_LATEX_IDEVICES + escapeHtmlButKeepRenderedMath).
-// scrambled-list compares answer order by a stable index (data-orig-index), not by
-// rendered HTML, so the baked SVG survives sorting/checking.
-const RUNTIME_JSON_LATEX_IDEVICES = new Set(['form']);
 
 /**
  * Abstract base class for exporters
@@ -1039,39 +1027,6 @@ export abstract class BaseExporter {
             this.iteratePageContentFragments(pages),
             options,
         );
-    }
-
-    protected pagesHaveRuntimeJsonLatex(pages: ExportPage[]): boolean {
-        return pages.some(page => this.pageHasRuntimeJsonLatex(page));
-    }
-
-    protected pageHasRuntimeJsonLatex(page: ExportPage): boolean {
-        for (const block of page.blocks || []) {
-            for (const component of block.components || []) {
-                if (this.componentHasRuntimeJsonLatex(component)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    protected componentHasRuntimeJsonLatex(component: ExportComponent): boolean {
-        const properties = component?.properties;
-        if (!properties || typeof properties !== 'object') {
-            return false;
-        }
-
-        const config = getIdeviceConfig(component.type || 'text');
-        if (config.componentType !== 'json' || !RUNTIME_JSON_LATEX_IDEVICES.has(config.cssClass)) {
-            return false;
-        }
-
-        try {
-            return RUNTIME_LATEX_PATTERN.test(JSON.stringify(properties));
-        } catch {
-            return false;
-        }
     }
 
     // =========================================================================

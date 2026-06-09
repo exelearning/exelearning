@@ -1036,7 +1036,6 @@ describe('Html5Exporter', () => {
         });
         afterAll(() => resetIdeviceConfigCache());
 
-        const runtimeJsonLatexIdevices = ['form'];
         const propsWithLatex = {
             questionsGame: [{ question: 'Solve \\(x^2 + 1 = 0\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
         };
@@ -1080,32 +1079,35 @@ describe('Html5Exporter', () => {
             return { get: () => requested };
         }
 
-        it('bundles exe_math on export for allowed JSON iDevices with LaTeX in properties', async () => {
-            for (const ideviceType of runtimeJsonLatexIdevices) {
-                resources = new MockResourceProvider();
-                zip = new MockZipProvider();
-                document = new MockDocument({ addMathJax: false }, pageWithIdevice(ideviceType, propsWithLatex));
-                exporter = new Html5Exporter(document, resources, assets, zip);
-                const requested = captureRequestedLibs();
+        it('pre-renders form LaTeX on export and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
 
-                await exporter.export({
-                    preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
-                });
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
 
-                expect(requested.get().some(file => file.includes('exe_math'))).toBe(true);
-            }
+            // form now pre-renders its nested JSON LaTeX to SVG (graded by index /
+            // plain <u> blanks), so the MathJax engine is never bundled.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
         });
 
-        it('bundles exe_math on preview for allowed JSON iDevices with LaTeX in properties', async () => {
+        it('pre-renders form LaTeX on preview and does NOT bundle exe_math', async () => {
             document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
             exporter = new Html5Exporter(document, resources, assets, zip);
             const requested = captureRequestedLibs();
 
             await exporter.generateForPreview({
-                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+                preRenderLatex: async html => ({ html, hasLatex: true, latexRendered: true, count: 1 }),
             });
 
-            expect(requested.get().some(file => file.includes('exe_math'))).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
         });
 
         it('does not force exe_math when allowed JSON iDevices have no LaTeX in properties', async () => {
@@ -1142,26 +1144,6 @@ describe('Html5Exporter', () => {
             });
 
             expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
-        });
-
-        it('skips LaTeX pre-render and adds the MathJax script for runtime JSON LaTeX pages', async () => {
-            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
-            exporter = new Html5Exporter(document, resources, assets, zip);
-            captureRequestedLibs();
-
-            let preRenderCalled = false;
-            await exporter.export({
-                preRenderLatex: async html => {
-                    preRenderCalled = true;
-                    return { html, hasLatex: true, latexRendered: true, count: 1 };
-                },
-            });
-
-            const indexHtml = zip.files.get('index.html');
-            const indexHtmlText =
-                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
-            expect(preRenderCalled).toBe(false);
-            expect(indexHtmlText).toContain('libs/exe_math/tex-mml-svg.js');
         });
 
         it('pre-renders trueorfalse LaTeX and does NOT bundle exe_math', async () => {

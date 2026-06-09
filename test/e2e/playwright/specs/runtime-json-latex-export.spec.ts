@@ -92,23 +92,36 @@ async function exportWithJsonLatex(
 const ALL_TARGETS = ['preview', 'html5', 'page', 'scorm12', 'scorm2004', 'ims', 'elpx'];
 
 test.describe('Runtime JSON iDevice LaTeX exports', () => {
-    test('bundles MathJax for iDevices that escape/transform text at runtime', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
+    test('pre-renders LaTeX (no MathJax) for form', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
-        const projectUuid = await createProject(page, 'Runtime JSON LaTeX (MathJax)');
+        const projectUuid = await createProject(page, 'Runtime JSON LaTeX (form)');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         const checks = await exportWithJsonLatex(page, 'form', {
-            instructions: 'Order the steps to solve \\(x^2 = 1\\)',
+            eXeFormInstructions: '<p>Solve \\(x^2 = 1\\)</p>',
+            questionsData: [
+                {
+                    baseText: '<p>Which equals \\(1\\)?</p>',
+                    answers: [
+                        [true, '\\(x^2\\)'],
+                        [false, 'plain'],
+                    ],
+                    feedbackRight: '<p>Right: \\(y^2\\)</p>',
+                    feedbackWrong: '',
+                    selectionType: 'single',
+                },
+            ],
         });
 
         expect(Object.keys(checks)).toEqual(ALL_TARGETS);
         for (const check of Object.values(checks)) {
-            expect(check.hasLibrary).toBe(true);
-            expect(check.referencesLibrary).toBe(true);
+            // The form inserts question/feedback HTML directly and grades by index
+            // (or by the plain text in <u> blanks), so the baked SVG survives and
+            // MathJax is never bundled.
+            expect(check.hasLibrary).toBe(false);
+            expect(check.referencesLibrary).toBe(false);
+            expect(check.hasRenderedMath).toBe(true);
         }
     });
 

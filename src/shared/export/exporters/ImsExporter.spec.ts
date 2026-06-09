@@ -196,20 +196,23 @@ describe('ImsExporter', () => {
     let zip: MockZipProvider;
     let exporter: ImsExporter;
 
-    const runtimeJsonLatexPages = (): ExportPage[] => [
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
         {
-            id: 'page-runtime-json',
-            title: 'Runtime JSON',
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
             parentId: null,
             order: 0,
             blocks: [
                 {
-                    id: 'block-runtime-json',
+                    id: 'block-explicit-mathjax',
                     name: 'Content',
                     order: 0,
                     components: [
                         {
-                            id: 'comp-runtime-json',
+                            id: 'comp-explicit-mathjax',
                             type: 'form',
                             order: 0,
                             content: '',
@@ -229,15 +232,15 @@ describe('ImsExporter', () => {
         exporter = new ImsExporter(document, resources, assets, zip);
     });
 
-    describe('MathJax for runtime JSON iDevices', () => {
+    describe('MathJax when explicitly requested (addMathJax)', () => {
         beforeAll(() => {
             resetIdeviceConfigCache(); // discard any base path leaked by another spec
             loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
         });
         afterAll(() => resetIdeviceConfigCache());
 
-        it('bundles and references MathJax without pre-rendering the dynamic page', async () => {
-            document = new MockDocument({ addMathJax: false }, runtimeJsonLatexPages());
+        it('bundles and references MathJax without pre-rendering the page', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
             exporter = new ImsExporter(document, resources, assets, zip);
             let requestedFiles: string[] = [];
             resources.fetchLibraryFiles = async files => {

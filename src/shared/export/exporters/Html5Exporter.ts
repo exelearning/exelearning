@@ -185,8 +185,8 @@ export class Html5Exporter extends BaseExporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX only when MathJax is not needed at runtime.
-                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
+                if (!meta.addMathJax) {
                     const latexResult = await this.preRenderHtmlLatex(html, options);
                     html = latexResult.html;
                     if (latexResult.latexRendered) {
@@ -300,7 +300,7 @@ export class Html5Exporter extends BaseExporter {
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
+                includeMathJax: meta.addMathJax === true,
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 
@@ -450,7 +450,7 @@ export class Html5Exporter extends BaseExporter {
             addPagination: meta.addPagination ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
-            addMathJax: meta.addMathJax === true || this.pageHasRuntimeJsonLatex(page),
+            addMathJax: meta.addMathJax === true,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -625,8 +625,8 @@ export class Html5Exporter extends BaseExporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX only when MathJax is not needed at runtime.
-                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
+                if (!meta.addMathJax) {
                     const latexResult = await this.preRenderHtmlLatex(html, options);
                     html = latexResult.html;
                     if (latexResult.latexRendered) {
@@ -720,7 +720,7 @@ export class Html5Exporter extends BaseExporter {
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
+                includeMathJax: meta.addMathJax === true,
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 

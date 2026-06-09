@@ -1730,7 +1730,7 @@ describe('LatexPreRenderer', () => {
                 questions: [{ question: '<p>\\(x^2\\)</p>' }],
             };
             const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
-            const html = `<div class="idevice_node form" data-idevice-type="form" data-idevice-json-data="${jsonStr}"></div>`;
+            const html = `<div class="idevice_node classify" data-idevice-type="classify" data-idevice-json-data="${jsonStr}"></div>`;
 
             const result = await LatexPreRenderer.preRender(html);
 
@@ -1767,6 +1767,40 @@ describe('LatexPreRenderer', () => {
             expect(newJsonData.options[0]).toContain('exe-math-rendered');
             expect(newJsonData.options[1]).toContain('exe-math-rendered');
             expect(newJsonData.options[2]).toBe('plain');
+        });
+
+        test('recursively pre-renders nested LaTeX for form questions', async () => {
+            const jsonData = {
+                eXeFormInstructions: '<p>Intro \\(a\\)</p>',
+                questionsData: [
+                    {
+                        baseText: '<p>Solve \\(x^2\\)</p>',
+                        answers: [[true, '\\(i\\)'], [false, 'plain']],
+                        feedbackRight: '<p>Yes \\(y^2\\)</p>',
+                        feedbackWrong: '',
+                        wrongAnswersValue: '\\(z\\)|other',
+                    },
+                ],
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node form" data-idevice-type="form" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+
+            const doc = new globalThis.DOMParser().parseFromString(result.html, 'text/html');
+            const newJsonData = JSON.parse(
+                doc.querySelector('[data-idevice-json-data]').getAttribute('data-idevice-json-data')
+            );
+
+            // Stem, feedback, instructions and selection option labels are rendered...
+            expect(newJsonData.eXeFormInstructions).toContain('exe-math-rendered');
+            expect(newJsonData.questionsData[0].baseText).toContain('exe-math-rendered');
+            expect(newJsonData.questionsData[0].feedbackRight).toContain('exe-math-rendered');
+            expect(newJsonData.questionsData[0].answers[0][1]).toContain('exe-math-rendered');
+            // ...but dropdown distractors (placed in <option value>) stay raw.
+            expect(newJsonData.questionsData[0].wrongAnswersValue).toBe('\\(z\\)|other');
         });
 
         test('does not pre-render scrambled-list buttonText (rendered in an input value)', async () => {

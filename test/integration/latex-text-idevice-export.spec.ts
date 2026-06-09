@@ -222,21 +222,24 @@ const createDocumentWithLatexInTextJson = (): ExportDocument => ({
     ],
 });
 
-const createDocumentWithLatexInRuntimeJsonIdevice = (): ExportDocument => ({
+// Every JSON iDevice that carries LaTeX now pre-renders it during export, so the
+// only way MathJax must still be bundled is when the author explicitly requests it
+// (addMathJax: true). This fixture exercises that explicit path across all formats.
+const createDocumentWithMathJaxRequested = (): ExportDocument => ({
     getMetadata: (): ExportMetadata => ({
-        title: 'Runtime JSON LaTeX Test',
+        title: 'Explicit MathJax Test',
         author: 'Test',
         description: '',
         language: 'en',
         license: 'CC-BY-SA',
         keywords: '',
         theme: 'base',
-        addMathJax: false,
+        addMathJax: true,
     }),
     getNavigation: (): ExportPage[] => [
         {
             id: 'page-1',
-            title: 'Runtime JSON LaTeX',
+            title: 'Explicit MathJax',
             parentId: null,
             order: 0,
             blocks: [
@@ -251,7 +254,7 @@ const createDocumentWithLatexInRuntimeJsonIdevice = (): ExportDocument => ({
                             order: 0,
                             content: '',
                             properties: {
-                                instructions: 'Order the steps to solve \\(x^2 = 1\\)',
+                                eXeFormInstructions: 'Order the steps to solve \\(x^2 = 1\\)',
                             },
                         },
                     ],
@@ -341,6 +344,57 @@ const createDocumentWithScrambledListLatex = (): ExportDocument => ({
     ],
 });
 
+const createDocumentWithFormLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Form LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Form LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'form-1',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                eXeFormInstructions: '<p>Solve the quiz \\(x^2 = 1\\)</p>',
+                                questionsData: [
+                                    {
+                                        baseText: '<p>Which equals \\(1\\)?</p>',
+                                        answers: [
+                                            [true, '\\(x^2\\)'],
+                                            [false, 'plain'],
+                                        ],
+                                        feedbackRight: '<p>Right: \\(y^2\\)</p>',
+                                        feedbackWrong: '',
+                                        selectionType: 'single',
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
 describe('Runtime JSON iDevice LaTeX Export Integration', () => {
     const exporters = [
         [
@@ -385,7 +439,7 @@ describe('Runtime JSON iDevice LaTeX Export Integration', () => {
 
     for (const [format, createExporter] of exporters) {
         it(`${format} includes and references MathJax`, async () => {
-            const document = createDocumentWithLatexInRuntimeJsonIdevice();
+            const document = createDocumentWithMathJaxRequested();
             const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
             const assets = createMockAssetProvider();
             const result = await createExporter(document, resources, assets, new FflateZipProvider()).export();
@@ -440,6 +494,29 @@ describe('Runtime JSON iDevice LaTeX Export Integration', () => {
         // ...so the heavy MathJax engine is never bundled or referenced.
         expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
         expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+    });
+
+    it('pre-renders form question/answer LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithFormLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // The question stem, options and feedback LaTeX are baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+        // And the raw delimiters are gone from the pre-rendered payload.
+        expect(indexHtml).not.toContain('Which equals \\(1\\)');
     });
 });
 

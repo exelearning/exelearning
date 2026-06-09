@@ -65,6 +65,28 @@ var $form = {
 
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
+
+    /**
+     * Escape a string for safe use inside an HTML attribute value.
+     *
+     * Selection option text is authored as rich HTML and rendered as innerHTML in
+     * the visible <label>. During export the LaTeX inside it is pre-rendered to a
+     * <span class="exe-math-rendered"><svg>…</svg></span>, which carries double
+     * quotes. The same text is also mirrored into the hidden radio/checkbox
+     * value="…" attribute, so it must be escaped there to avoid corrupting the
+     * input element. The value is never compared (grading is by index), so escaping
+     * is purely defensive and backward compatible with raw LaTeX.
+     *
+     * @param {String} str
+     * @returns {String}
+     */
+    escapeAttr: str =>
+        String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;'),
+
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
@@ -593,13 +615,17 @@ var $form = {
                         .text(mOptions.current + 1 + '/' + total);
                     clearPreviousMathInWrapper($wrapper.get(0));
                     setTimeout(function () {
+                        // Only invoke MathJax when the freshly shown slide still
+                        // holds unrendered LaTeX: pre-rendered exports ship no
+                        // MathJax engine, so an unconditional call would 404.
+                        // hasLatex ignores already-rendered math (see common.js).
+                        const math =
+                            $exeDevices?.iDevice?.gamification?.math;
                         if (
-                            $exeDevices?.iDevice?.gamification?.math
-                                ?.updateLatex
+                            math?.updateLatex &&
+                            math.hasLatex($wrapper.html() || '')
                         )
-                            $exeDevices.iDevice.gamification.math.updateLatex(
-                                '.FRMP-SlideshowWrapper'
-                            );
+                            math.updateLatex('.FRMP-SlideshowWrapper');
                     }, 1000);
                 }
 
@@ -618,10 +644,14 @@ var $form = {
             } else if (total === 1) {
                 clearPreviousMathInWrapper($wrapper.get(0));
                 setTimeout(function () {
-                    if ($exeDevices?.iDevice?.gamification?.math?.updateLatex)
-                        $exeDevices.iDevice.gamification.math.updateLatex(
-                            '.FRMP-SlideshowWrapper'
-                        );
+                    // See goTo(): skip MathJax when no raw LaTeX remains so
+                    // pre-rendered exports never request the absent engine.
+                    const math = $exeDevices?.iDevice?.gamification?.math;
+                    if (
+                        math?.updateLatex &&
+                        math.hasLatex($wrapper.html() || '')
+                    )
+                        math.updateLatex('.FRMP-SlideshowWrapper');
                 }, 1000);
             }
         }
@@ -717,9 +747,16 @@ var $form = {
                 }
             }
         }, 1000);
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#frmMainContainer-' + data.id
-        );
+        // Only typeset when the timed game body still contains raw LaTeX:
+        // pre-rendered exports bundle no MathJax engine (see common.js hasLatex).
+        const mainSelector = '#frmMainContainer-' + data.id;
+        if (
+            $exeDevices.iDevice.gamification.math.hasLatex(
+                $(mainSelector).html() || ''
+            )
+        ) {
+            $exeDevices.iDevice.gamification.math.updateLatex(mainSelector);
+        }
         setTimeout(function () {
             $form.resizeSlideShow(data);
         }, 100);
@@ -1224,7 +1261,7 @@ var $form = {
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline button-response-form">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${$form.escapeAttr(option[1])}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
             htmlSelection += option[1];
             htmlSelection += `</label>`;

@@ -174,7 +174,7 @@ export class ElpxExporter extends Html5Exporter {
                 // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
                 // adaptative-quiz / trueorfalse keep their math through runtime
                 // escaping (mirrors the multi-page HTML5 export).
-                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
+                if (!meta.addMathJax) {
                     const latexResult = await this.preRenderHtmlLatex(html, options);
                     html = latexResult.html;
                     if (latexResult.latexRendered) {
@@ -281,7 +281,7 @@ export class ElpxExporter extends Html5Exporter {
             // 1.7 Detect and fetch additional required libraries based on content
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
+                includeMathJax: meta.addMathJax === true,
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 

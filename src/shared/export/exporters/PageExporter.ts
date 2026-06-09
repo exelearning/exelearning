@@ -54,7 +54,7 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
-            const includeMathJax = meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages);
+            const includeMathJax = meta.addMathJax === true;
             let latexWasRendered = false;
 
             // 4. Fetch and add theme

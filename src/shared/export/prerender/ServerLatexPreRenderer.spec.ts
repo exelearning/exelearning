@@ -364,7 +364,7 @@ describe('ServerLatexPreRenderer', () => {
         });
 
         it('does NOT pre-render JSON LaTeX for non-allowlisted iDevices', async () => {
-            const html = buildIdevice('form', {
+            const html = buildIdevice('classify', {
                 questions: [{ question: '<p>\\(x^2\\)</p>' }],
             });
 
@@ -373,6 +373,35 @@ describe('ServerLatexPreRenderer', () => {
             // Attribute left untouched (this iDevice transforms text at runtime → MathJax).
             expect(result.html).toBe(html);
             expect(result.html).not.toContain('exe-math-rendered');
+        });
+
+        it('recursively pre-renders nested LaTeX for form questions', async () => {
+            const html = buildIdevice('form', {
+                eXeFormInstructions: '<p>Intro \\(a\\)</p>',
+                questionsData: [
+                    {
+                        baseText: '<p>Solve \\(x^2\\)</p>',
+                        answers: [
+                            [true, '\\(i\\)'],
+                            [false, 'plain'],
+                        ],
+                        feedbackRight: '<p>Yes \\(y^2\\)</p>',
+                        wrongAnswersValue: '\\(z\\)|other',
+                    },
+                ],
+            });
+
+            const result = await renderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('exe-math-rendered');
+            expect(result.html).not.toContain('\\(x^2\\)');
+
+            const decoded = decodeJsonAttr(result.html);
+            expect(decoded.questionsData[0].baseText).toContain('exe-math-rendered');
+            expect(decoded.questionsData[0].answers[0][1]).toContain('exe-math-rendered');
+            // Dropdown distractors land in an <option value> → kept raw.
+            expect(decoded.questionsData[0].wrongAnswersValue).toBe('\\(z\\)|other');
         });
 
         it('recursively pre-renders nested LaTeX for scrambled-list', async () => {

@@ -269,4 +269,87 @@ describe('form iDevice export', () => {
       expect($form.scormFunctions).toBe('libs/SCOFunctions.js');
     });
   });
+
+  describe('escapeAttr', () => {
+    it('escapes the five HTML-attribute-significant characters', () => {
+      expect($form.escapeAttr('a & b "c" <d> e')).toBe(
+        'a &amp; b &quot;c&quot; &lt;d&gt; e'
+      );
+    });
+
+    it('returns empty string for null/undefined', () => {
+      expect($form.escapeAttr(null)).toBe('');
+      expect($form.escapeAttr(undefined)).toBe('');
+    });
+
+    it('leaves plain text and raw LaTeX delimiters untouched', () => {
+      expect($form.escapeAttr('plain word')).toBe('plain word');
+      // Backward compatible with the MathJax mode: raw \( \) has no special chars.
+      expect($form.escapeAttr('\\(x^2\\)')).toBe('\\(x^2\\)');
+    });
+  });
+
+  describe('LaTeX pre-render compatibility', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+    let data;
+
+    beforeEach(() => {
+      // Isolate the pure HTML builders from jQuery/eXe DOM lookups.
+      $form.replaceResourceDirectoryPaths = (_data, html) => html;
+      data = { msgs: $form.msgs };
+    });
+
+    it('escapes a pre-rendered option in the selection value but keeps it visible in the label', () => {
+      const html = $form.getProcessTextSelectionQuestion(
+        'Which equals four?',
+        'radio',
+        [
+          [true, RENDERED_MATH],
+          [false, 'plain'],
+        ],
+        data
+      );
+
+      // The hidden input value is escaped so the SVG quotes cannot corrupt it...
+      expect(html).toContain('value="&lt;span class=&quot;exe-math-rendered');
+      expect(html).not.toContain('value="<span');
+      // ...while the visible label still renders the math span as innerHTML.
+      expect(html).toContain(`<label for=`);
+      expect(html).toContain(RENDERED_MATH);
+      // Grading stays index-based: the first option (index 0) is the right answer.
+      expect(html).toMatch(/class="selectionAnswer"[^>]*>0</);
+    });
+
+    it('renders stem LaTeX but keeps the plain fill blank answer intact', () => {
+      const html = $form.getProcessTextFillQuestion(
+        `Compute ${RENDERED_MATH} then write <u>four</u>`,
+        false,
+        false,
+        data
+      );
+
+      // Stem math survives as a pre-rendered span...
+      expect(html).toContain('exe-math-rendered');
+      // ...and the blank answer is the plain word, not the SVG markup.
+      expect(html).toMatch(/class="fillAnswer"[^>]*>four<\/span>/);
+      expect(html).not.toMatch(/class="fillAnswer"[^>]*>\s*<span/);
+    });
+
+    it('renders stem LaTeX but keeps the plain dropdown answer/options intact', () => {
+      const html = $form.getProcessTextDropdownQuestion(
+        `Pick ${RENDERED_MATH} <u>four</u>`,
+        'five|six',
+        data
+      );
+
+      // Stem math survives...
+      expect(html).toContain('exe-math-rendered');
+      // ...the correct answer is the plain word (compared verbatim at runtime)...
+      expect(html).toMatch(/class="dropdownAnswer"[^>]*>four<\/span>/);
+      // ...and every option value matches its plain text (no SVG injected).
+      expect(html).toContain('<option value="four">four</option>');
+      expect(html).toContain('<option value="five">five</option>');
+    });
+  });
 });

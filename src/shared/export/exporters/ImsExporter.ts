@@ -119,8 +119,8 @@ export class ImsExporter extends Html5Exporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX only when MathJax is not needed at runtime.
-                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
+                if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
                         try {
@@ -250,7 +250,7 @@ export class ImsExporter extends Html5Exporter {
             // 5. Detect and fetch additional required libraries based on content
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
+                includeMathJax: meta.addMathJax === true,
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 
@@ -429,7 +429,7 @@ export class ImsExporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
-            addMathJax: meta.addMathJax === true || this.pageHasRuntimeJsonLatex(page),
+            addMathJax: meta.addMathJax === true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,

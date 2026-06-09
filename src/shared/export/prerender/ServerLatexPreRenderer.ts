@@ -48,16 +48,18 @@ const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea',
 // JSON iDevices whose LaTeX lives in NESTED fields (questions/answers/feedback)
 // and must be pre-rendered recursively inside data-idevice-json-data. Mirrors
 // RECURSIVE_JSON_LATEX_IDEVICES in public/app/common/LatexPreRenderer.js.
-const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list']);
+const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list', 'form']);
 
 // JSON keys whose values are compared/used verbatim at runtime, or rendered in a
 // context that cannot show an SVG (access codes, identifiers, button labels placed
 // in an <input value="">). These must never be turned into pre-rendered <span>
 // markup -- even if they contain LaTeX-like delimiters. Otherwise the substituted
 // SVG would change the literal (e.g. adaptative-quiz enterCodeAccess() matches
-// itinerary.codeAccess) or appear as raw markup (scrambled-list buttonText).
+// itinerary.codeAccess), appear as raw markup (scrambled-list buttonText), or
+// corrupt an <option value=""> while breaking the value/answer comparison
+// (form dropdown wrongAnswersValue).
 // Mirrors NON_RENDERABLE_JSON_KEYS in public/app/common/LatexPreRenderer.js.
-const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText']);
+const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText', 'wrongAnswersValue']);
 
 // XOR encryption key (same as common.js)
 const ENCRYPT_KEY = 146;
