@@ -20,10 +20,10 @@
 - Screenshot selector added to the Project Properties dialog
 - Preferences: personal default style for new projects
 - Admin panel: support for updating styles
+- Exports and static editor bundle size reduced by optimising bundled raster image assets
 - Reviewed and completed Spanish (ES) translation
 - Reviewed existing Basque (EU) translation
 - Added automated placeholder translations for new strings in incomplete translations
-- Exports and static editor bundle size reduced by optimising bundled raster image assets
 
 ### Fixed
 
