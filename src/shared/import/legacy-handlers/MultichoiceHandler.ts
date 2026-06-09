@@ -169,11 +169,15 @@ export class MultichoiceHandler extends BaseLegacyHandler {
                     const optDict = this.getDirectChildByTagName(optionField, 'dictionary');
                     if (!optDict) continue;
 
-                    // Get answer text from answerTextArea
+                    // Get answer text from answerTextArea.
+                    // Use the RAW (still entity-encoded) value so stripHtmlTags
+                    // removes the real <p> tags first and decodes &lt;/&gt;/&amp;
+                    // afterwards. This preserves a literal "<": "<p>A&lt;B</p>"
+                    // becomes "A<B" instead of decoding to "<p>A<B</p>" and being
+                    // truncated to "A".
                     const answerTextArea = this.findDictInstance(optDict, 'answerTextArea');
-                    const optionHtml = answerTextArea ? this.extractTextAreaFieldContent(answerTextArea) : '';
-                    // Strip HTML tags to get plain text (matches Symfony's strip_tags())
-                    const optionText = this.stripHtmlTags(optionHtml);
+                    const optionRaw = answerTextArea ? this.extractTextAreaFieldRawContent(answerTextArea) : '';
+                    const optionText = this.stripHtmlTags(optionRaw);
 
                     // Get isCorrect flag
                     const isCorrect = this.findDictBoolValue(optDict, 'isCorrect');

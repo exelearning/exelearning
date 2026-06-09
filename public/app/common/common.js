@@ -2255,7 +2255,7 @@ var $exeDevices = {
 
                     const num = Math.max(1, Math.round((percentage * totalQuestions) / 100));
 
-                    if (num >= totalQuestions) return questions;
+                    if (num >= totalQuestions && !random) return questions;
 
                     const indices = Array.from({ length: totalQuestions }, (_, i) => i);
                     if (random) {

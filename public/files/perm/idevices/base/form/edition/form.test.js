@@ -192,6 +192,145 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('selection option rendering', () => {
+    it('renders plain-text symbols without changing the stored answers', () => {
+      const answers = [
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ];
+
+      document.body.innerHTML = $exeDevice.getProcessTextSelectionQuestion(
+        '<p>Question</p>',
+        'radio',
+        answers,
+      );
+
+      const labels = [...document.querySelectorAll('.selection-buttons-container label')];
+      const inputs = [...document.querySelectorAll('.selection-buttons-container input')];
+
+      expect(labels.map(label => label.textContent)).toEqual(answers.map(answer => answer[1]));
+      expect(inputs.map(input => input.value)).toEqual(answers.map(answer => answer[1]));
+      expect(answers).toEqual([
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ]);
+    });
+  });
+
+  describe('true/false answer persistence', () => {
+    function renderTrueFalseEditor() {
+      $exeDevice.strings = {
+        ...$exeDevice.strings,
+        msgETrue: 'Verdadero',
+        msgEFalse: 'Falso',
+      };
+      document.body.innerHTML = `
+        <div id="formPreview">
+          <textarea id="formPreviewTextarea"></textarea>
+          ${$exeDevice.showTrueFalseRadioButtons('formPreviewTrueFalseRadioButtons')}
+        </div>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.getEditorTinyMCEValue = vi.fn(() => '<p>Question</p>');
+    }
+
+    it.each([
+      ['InputTrue', '1'],
+      ['InputFalse', '0'],
+    ])('round-trip preserves the selected %s answer', (radioId, expectedAnswer) => {
+      renderTrueFalseEditor();
+      document.getElementById(radioId).checked = true;
+
+      const savedQuestion = $exeDevice.createQuestionObject(
+        'formPreview',
+        $exeDevice.ACTIVITY_TYPES.TRUE_FALSE,
+      );
+
+      expect(savedQuestion.answer).toBe(expectedAnswer);
+
+      $exeDevice.questionsForm = [{ ...savedQuestion, id: 'question-id' }];
+      document.getElementById(radioId === 'InputTrue' ? 'InputFalse' : 'InputTrue').checked = true;
+      $exeDevice.setDataFromTrueFalseQuestion({
+        dataset: { id: 'question-id' },
+      });
+
+      expect(document.getElementById(radioId).checked).toBe(true);
+    });
+
+    it('reads the selected answer from the active question container', () => {
+      renderTrueFalseEditor();
+      const otherForm = document.createElement('form');
+      otherForm.innerHTML = '<input type="radio" name="TrueFalseQuestion" value="0" checked>';
+      document.body.prepend(otherForm);
+      document.getElementById('InputTrue').checked = true;
+
+      const savedQuestion = $exeDevice.createQuestionObject(
+        'formPreview',
+        $exeDevice.ACTIVITY_TYPES.TRUE_FALSE,
+      );
+
+      expect(savedQuestion.answer).toBe('1');
+    });
+
+    it.each([
+      [1, 'InputTrue'],
+      ['1', 'InputTrue'],
+      [true, 'InputTrue'],
+      ['true', 'InputTrue'],
+      [0, 'InputFalse'],
+      ['0', 'InputFalse'],
+      [false, 'InputFalse'],
+      ['false', 'InputFalse'],
+    ])('normalizes answer %s as %s', (legacyAnswer, expectedRadioId) => {
+      renderTrueFalseEditor();
+      $exeDevice.questionsForm = [
+        {
+          id: 'legacy-question',
+          activityType: 'true-false',
+          baseText: '<p>Legacy question</p>',
+          answer: legacyAnswer,
+        },
+      ];
+
+      $exeDevice.setDataFromTrueFalseQuestion({
+        dataset: { id: 'legacy-question' },
+      });
+
+      expect(document.getElementById(expectedRadioId).checked).toBe(true);
+    });
+
+    it.each([
+      [1, '1'],
+      ['1', '1'],
+      [0, '0'],
+      ['0', '0'],
+    ])('renders legacy answer %s correctly', (legacyAnswer, expectedAnswer) => {
+      $exeDevice.getProcessTextTrueFalseQuestion = vi.fn(() => 'question-html');
+
+      expect(
+        $exeDevice.getPreviewTextTrueFalseQuestion({
+          baseText: '<p>Legacy question</p>',
+          answer: legacyAnswer,
+        }),
+      ).toBe('question-html');
+      expect($exeDevice.getProcessTextTrueFalseQuestion).toHaveBeenCalledWith(
+        '<p>Legacy question</p>',
+        expectedAnswer,
+      );
+    });
+
+    it('uses stable answer values while keeping translated labels', () => {
+      renderTrueFalseEditor();
+
+      expect(document.querySelector('label[for="InputTrue"]').textContent).toContain('Verdadero');
+      expect(document.querySelector('label[for="InputFalse"]').textContent).toContain('Falso');
+      expect(document.getElementById('InputTrue').value).toBe('1');
+      expect(document.getElementById('InputFalse').value).toBe('0');
+    });
+  });
+
   describe('getTestQuestion', () => {
     it('parses single selection question', () => {
       // Format: solutionIndex#question#option1#option2#option3
@@ -289,6 +428,68 @@ describe('form iDevice edition', () => {
   // DOM Manipulation Tests
   // ============================================
 
+  describe('question editing', () => {
+    it('replaces the edited question without removing the following question', () => {
+      const editedQuestion = {
+        id: 'edited-question',
+        activityType: 'true-false',
+        baseText: '<p>Original question</p>',
+        answer: '1',
+      };
+      const followingQuestion = {
+        id: 'following-question',
+        activityType: 'true-false',
+        baseText: '<p>Following question</p>',
+        answer: '0',
+      };
+
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="edited-question" style="display: none"></li>
+          <li class="FormView_question">
+            <div id="formPreviewTextareaContainer"></div>
+            <div id="saveQuestionContainer"></div>
+          </li>
+          <li class="FormView_question" data-id="following-question">Following question</li>
+        </ul>
+        <input id="frmEPercentageQuestions" value="100">
+        <span id="frmENumeroPercentaje"></span>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [editedQuestion, followingQuestion];
+      $exeDevice.dataIdQuestionBeforeEdit = editedQuestion.id;
+      $exeDevice.strings = {
+        ...$exeDevice.strings,
+        msgEActivity: 'Activity',
+        msgETrue: 'True',
+        msgEFalse: 'False',
+      };
+      $exeDevice.createQuestionObject = vi.fn(() => ({
+        ...editedQuestion,
+        baseText: '<p>Updated question</p>',
+      }));
+      $exeDevice.addSortableBehaviour = vi.fn();
+      $exeDevice.disableArrowUpDown = vi.fn();
+      $exeDevice.behaviourButtonCloseQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonEditQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonMoveUpQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonMoveDownQuestionInFormView = vi.fn();
+
+      $exeDevice.behaviourButtonSaveQuestion('true-false');
+      document.getElementById('saveQuestionContainer').click();
+
+      const renderedQuestions = [...document.querySelectorAll('#formPreview > .FormView_question')];
+      expect(renderedQuestions.map(question => question.dataset.id)).toEqual([
+        'edited-question',
+        'following-question',
+      ]);
+      expect(renderedQuestions[0].textContent).toContain('Updated question');
+      expect(renderedQuestions[1].textContent).toContain('Following question');
+      expect($exeDevice.questionsForm).toHaveLength(2);
+      expect($exeDevice.dataIdQuestionBeforeEdit).toBe('');
+    });
+  });
+
   describe('updateQuestionsNumber', () => {
     let originalGetQuestionsData;
 
@@ -365,6 +566,173 @@ describe('form iDevice edition', () => {
       $exeDevice.evaluationID = 'abc';
       $exeDevice.questionsData = [{ question: 'q1' }];
       expect($exeDevice.checkFormValues()).toBe(true);
+    });
+  });
+
+  describe('reorderQuestionsByIds', () => {
+    it('reorders questions to match the given id order', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['b', 'a', 'c']);
+      expect(result.map(q => q.id)).toEqual(['b', 'a', 'c']);
+    });
+
+    it('ignores ids that do not match any question', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      // The null id corresponds to an in-edition <li> without data-id.
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['b', null, 'a']);
+      expect(result.map(q => q.id)).toEqual(['b', 'a']);
+    });
+
+    it('returns the original array when a question would be lost', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      // 'b' is missing from the id list, so reordering would drop it.
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a']);
+      expect(result).toBe(questions);
+    });
+
+    it('returns the original array when the DOM order repeats a question id', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a', 'a']);
+
+      expect(result).toBe(questions);
+    });
+
+    it('returns the original array when the source questions have duplicate ids', () => {
+      const questions = [
+        { id: 'a', baseText: 'A' },
+        { id: 'a', baseText: 'Duplicate A' },
+      ];
+
+      const result = $exeDevice.reorderQuestionsByIds(questions, ['a', 'a']);
+
+      expect(result).toBe(questions);
+    });
+
+    it('handles empty arrays', () => {
+      expect($exeDevice.reorderQuestionsByIds([], [])).toEqual([]);
+    });
+  });
+
+  describe('syncQuestionsFormToDomOrder', () => {
+    it('reorders questionsForm to match the DOM order', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question" data-id="a"></li>
+          <li class="FormView_question" data-id="c"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+
+      $exeDevice.syncQuestionsFormToDomOrder();
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a', 'c']);
+    });
+
+    it('ignores the in-edition list item without a data-id', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question"></li>
+          <li class="FormView_question" data-id="a"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+
+      $exeDevice.syncQuestionsFormToDomOrder();
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a']);
+    });
+
+    it('does nothing when the preview container is missing', () => {
+      document.body.innerHTML = '';
+      $exeDevice.ideviceBody = document.body;
+      const questions = [{ id: 'a' }];
+      $exeDevice.questionsForm = questions;
+
+      expect(() => $exeDevice.syncQuestionsFormToDomOrder()).not.toThrow();
+      expect($exeDevice.questionsForm).toBe(questions);
+    });
+  });
+
+  describe('addQuestionfrmorm question ordering', () => {
+    it('keeps the saved order aligned with the visual position (B, A, C)', () => {
+      // DOM already shows B above A (B was added with the top button); the new
+      // question C is appended at the bottom with the bottom button.
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="b"></li>
+          <li class="FormView_question" data-id="a"></li>
+        </ul>
+        <div id="msgNoQuestions"></div>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+      ];
+      $exeDevice.createQuestionObject = vi.fn(() => ({ id: 'c', baseText: 'C' }));
+      $exeDevice.renderQuestion = vi.fn(() => {
+        document
+          .getElementById('formPreview')
+          .insertAdjacentHTML(
+            'beforeend',
+            '<li class="FormView_question" data-id="c"></li>',
+          );
+      });
+
+      $exeDevice.addQuestionfrmorm('formPreview', 'true-false');
+
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['b', 'a', 'c']);
+      expect($exeDevice.active).toBe(2);
+      expect(document.getElementById('msgNoQuestions').style.display).toBe('none');
+    });
+  });
+
+  describe('handleDragEnd', () => {
+    it('rebuilds questionsForm from the dropped DOM order', () => {
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="c"></li>
+          <li class="FormView_question" data-id="a"></li>
+          <li class="FormView_question" data-id="b"></li>
+        </ul>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [
+        { id: 'a', baseText: 'A' },
+        { id: 'b', baseText: 'B' },
+        { id: 'c', baseText: 'C' },
+      ];
+      const remove = vi.fn();
+
+      $exeDevice.handleDragEnd({ currentTarget: { classList: { remove } } });
+
+      expect(remove).toHaveBeenCalledWith('dragging');
+      expect($exeDevice.questionsForm.map(q => q.id)).toEqual(['c', 'a', 'b']);
     });
   });
 

@@ -3144,6 +3144,52 @@ describe('common.js $exeDevices', () => {
         );
       }
     });
+
+    it('keeps every question when percentage is 100 and random is true', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+      const result = getQuestions()(questions, 100, true);
+
+      // No question is dropped or duplicated
+      expect(result).toHaveLength(questions.length);
+      const resultIds = result.map(q => q.id).sort((a, b) => a - b);
+      expect(resultIds).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('shuffles all questions when percentage is 100 and random is true', () => {
+      const questions = [
+        { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 },
+        { id: 6 }, { id: 7 }, { id: 8 }, { id: 9 }, { id: 10 },
+      ];
+      const originalOrder = questions.map(q => q.id).join(',');
+
+      // Over many runs the order must change at least once; otherwise the
+      // "random questions" option silently does nothing at 100% (issue #1887).
+      const orders = new Set();
+      for (let i = 0; i < 20; i++) {
+        const result = getQuestions()(questions, 100, true);
+        expect(result).toHaveLength(questions.length);
+        orders.add(result.map(q => q.id).join(','));
+      }
+      const reordered = [...orders].some(order => order !== originalOrder);
+      expect(reordered).toBe(true);
+    });
+
+    it('shuffles all questions when percentage is over 100 and random is true', () => {
+      const questions = [
+        { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 },
+        { id: 6 }, { id: 7 }, { id: 8 }, { id: 9 }, { id: 10 },
+      ];
+      const originalOrder = questions.map(q => q.id).join(',');
+
+      const orders = new Set();
+      for (let i = 0; i < 20; i++) {
+        const result = getQuestions()(questions, 150, true);
+        expect(result).toHaveLength(questions.length);
+        orders.add(result.map(q => q.id).join(','));
+      }
+      const reordered = [...orders].some(order => order !== originalOrder);
+      expect(reordered).toBe(true);
+    });
   });
 
   describe('$exeDevices.iDevice.gamification.helpers.isFullscreen', () => {

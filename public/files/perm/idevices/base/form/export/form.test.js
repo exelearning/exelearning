@@ -40,6 +40,56 @@ describe('form iDevice export', () => {
     $form = loadExportIdevice(code);
   });
 
+  describe('escapeHtmlText / escapeHtmlAttr', () => {
+    it('escapes <, > and & in text', () => {
+      expect($form.escapeHtmlText('A<B')).toBe('A&lt;B');
+      expect($form.escapeHtmlText('x>y')).toBe('x&gt;y');
+      expect($form.escapeHtmlText('a && b')).toBe('a &amp;&amp; b');
+      expect($form.escapeHtmlText('A + B > C+D && 4')).toBe('A + B &gt; C+D &amp;&amp; 4');
+    });
+
+    it('escapes double quotes for attributes', () => {
+      expect($form.escapeHtmlAttr('a"b<c')).toBe('a&quot;b&lt;c');
+    });
+
+    it('handles null/undefined', () => {
+      expect($form.escapeHtmlText(null)).toBe('');
+      expect($form.escapeHtmlText(undefined)).toBe('');
+    });
+  });
+
+  describe('getProcessTextSelectionQuestion escaping', () => {
+    it('renders plain-text symbols without changing the stored answers', () => {
+      $form.replaceResourceDirectoryPaths = (_data, text) => text;
+      const data = {
+        msgs: { msgSingleSelectionHelp: 'single', msgMultipleSelectionHelp: 'multiple' },
+      };
+      const answers = [
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ];
+
+      document.body.innerHTML = $form.getProcessTextSelectionQuestion(
+        '<p>Q</p>',
+        'radio',
+        answers,
+        data,
+      );
+
+      const labels = [...document.querySelectorAll('.selection-buttons-container label')];
+      const inputs = [...document.querySelectorAll('.selection-buttons-container input')];
+
+      expect(labels.map(label => label.textContent)).toEqual(answers.map(answer => answer[1]));
+      expect(inputs.map(input => input.value)).toEqual(answers.map(answer => answer[1]));
+      expect(answers).toEqual([
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ]);
+    });
+  });
+
   describe('formatTime', () => {
     it('formats seconds to mm:ss format', () => {
       expect($form.formatTime(0)).toBe('00:00');
@@ -270,22 +320,30 @@ describe('form iDevice export', () => {
     });
   });
 
-  describe('escapeAttr', () => {
-    it('escapes the five HTML-attribute-significant characters', () => {
-      expect($form.escapeAttr('a & b "c" <d> e')).toBe(
-        'a &amp; b &quot;c&quot; &lt;d&gt; e'
-      );
+  describe('escapeHtmlButKeepRenderedMath', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+
+    it('keeps a valid pre-rendered math span raw while escaping surrounding plain text', () => {
+      const out = $form.escapeHtmlButKeepRenderedMath(`a<b ${RENDERED_MATH} c>d`);
+      // Plain-text angle brackets are escaped...
+      expect(out).toContain('a&lt;b');
+      expect(out).toContain('c&gt;d');
+      // ...but the math span survives verbatim so the SVG renders.
+      expect(out).toContain(RENDERED_MATH);
     });
 
-    it('returns empty string for null/undefined', () => {
-      expect($form.escapeAttr(null)).toBe('');
-      expect($form.escapeAttr(undefined)).toBe('');
+    it('escapes a forged span carrying an unsafe event handler', () => {
+      const forged =
+        '<span class="exe-math-rendered" data-latex="x"><svg onload="alert(1)"></svg></span>';
+      const out = $form.escapeHtmlButKeepRenderedMath(forged);
+      expect(out).not.toContain('<svg onload');
+      expect(out).toContain('&lt;span');
     });
 
-    it('leaves plain text and raw LaTeX delimiters untouched', () => {
-      expect($form.escapeAttr('plain word')).toBe('plain word');
-      // Backward compatible with the MathJax mode: raw \( \) has no special chars.
-      expect($form.escapeAttr('\\(x^2\\)')).toBe('\\(x^2\\)');
+    it('handles null/undefined as empty string', () => {
+      expect($form.escapeHtmlButKeepRenderedMath(null)).toBe('');
+      expect($form.escapeHtmlButKeepRenderedMath(undefined)).toBe('');
     });
   });
 

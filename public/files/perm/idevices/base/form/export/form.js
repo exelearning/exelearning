@@ -66,27 +66,6 @@ var $form = {
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
 
-    /**
-     * Escape a string for safe use inside an HTML attribute value.
-     *
-     * Selection option text is authored as rich HTML and rendered as innerHTML in
-     * the visible <label>. During export the LaTeX inside it is pre-rendered to a
-     * <span class="exe-math-rendered"><svg>…</svg></span>, which carries double
-     * quotes. The same text is also mirrored into the hidden radio/checkbox
-     * value="…" attribute, so it must be escaped there to avoid corrupting the
-     * input element. The value is never compared (grading is by index), so escaping
-     * is purely defensive and backward compatible with raw LaTeX.
-     *
-     * @param {String} str
-     * @returns {String}
-     */
-    escapeAttr: str =>
-        String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;'),
-
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
@@ -1240,6 +1219,58 @@ var $form = {
     },
 
     /**
+     * Escape plain-text content for safe insertion as HTML text.
+     * Option/answer texts are plain text (e.g. "A<B"); without escaping, the
+     * "<" would be parsed as markup and the text after it lost.
+     */
+    escapeHtmlText(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /** Escape plain text for safe insertion inside a double-quoted attribute. */
+    escapeHtmlAttr(text) {
+        return this.escapeHtmlText(text).replace(/"/g, '&quot;');
+    },
+
+    /**
+     * Escape plain-text content but keep pre-rendered math spans intact.
+     *
+     * Selection option text is authored as plain text and escaped to prevent
+     * HTML/script injection. During export, LaTeX in it is pre-rendered to
+     * <span class="exe-math-rendered">SVG</span>; this helper escapes everything
+     * EXCEPT those spans, so the math shows as SVG without bundling MathJax —
+     * while a stray "<" in plain text is still escaped (mirrors adaptative-quiz).
+     *
+     * Security: only spans matching our exact pre-renderer output AND carrying no
+     * script-bearing markup are kept raw. A forged span typed into a plain-text
+     * field (e.g. with an onerror handler) fails the strict pattern or the
+     * denylist and is escaped, preserving the XSS boundary.
+     *
+     * @param {String} str
+     * @returns {String}
+     */
+    escapeHtmlButKeepRenderedMath(str) {
+        const text = String(str ?? '');
+        const RENDERED_MATH =
+            /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
+        const UNSAFE = /<script|<foreignobject|<iframe|<animate|<set\b|javascript:|\son\w+\s*=/i;
+        let out = '';
+        let last = 0;
+        let match;
+        RENDERED_MATH.lastIndex = 0;
+        while ((match = RENDERED_MATH.exec(text)) !== null) {
+            out += this.escapeHtmlText(text.slice(last, match.index));
+            out += UNSAFE.test(match[0]) ? this.escapeHtmlText(match[0]) : match[0];
+            last = match.index + match[0].length;
+        }
+        out += this.escapeHtmlText(text.slice(last));
+        return out;
+    },
+
+    /**
      * Processes text for selection questions
      *
      * @param {*} baseText
@@ -1261,9 +1292,9 @@ var $form = {
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline button-response-form">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${$form.escapeAttr(option[1])}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${this.escapeHtmlAttr(option[1])}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
-            htmlSelection += option[1];
+            htmlSelection += this.escapeHtmlButKeepRenderedMath(option[1]);
             htmlSelection += `</label>`;
             htmlSelection += `</div>`;
             if (option[0]) {
