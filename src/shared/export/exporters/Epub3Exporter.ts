@@ -26,7 +26,7 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT, PRERENDERED_LATEX_CSS } from '../constants';
 import { VOID_ELEMENTS } from '../../utils/html-constants';
 
 /**
@@ -905,15 +905,7 @@ td, th {
      * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
      */
     protected getPreRenderedLatexCss(): string {
-        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
-.exe-math-rendered { display: inline-block; vertical-align: middle; }
-.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
-.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
-/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
-.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
-.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
-/* Hide MathML visually but keep accessible for screen readers */
-.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+        return PRERENDERED_LATEX_CSS;
     }
 
     /**
