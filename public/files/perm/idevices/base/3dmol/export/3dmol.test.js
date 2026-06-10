@@ -168,6 +168,137 @@ describe('3dmol iDevice export', () => {
         });
     });
 
+    describe('word questions', () => {
+        function setupWordQuestion() {
+            document.body.innerHTML = `
+                <input id="dmolpEdAnswer-0" type="text" value="OHM">
+                <button id="dmolpBtnReply-0"></button>
+                <button id="dmolpBtnMoveOn-0"></button>
+                <span id="dmolpPHits-0"></span>
+                <span id="dmolpPErrors-0"></span>
+            `;
+            dmol.options = [
+                {
+                    activeQuestion: 0,
+                    gameActived: true,
+                    respuesta: '',
+                    showSolution: false,
+                    numberQuestions: 1,
+                    hits: 0,
+                    errors: 0,
+                    timeShowSolution: 1,
+                    itinerary: { showClue: false },
+                    msgs: {},
+                    selectsGame: [{ typeSelect: 2, solutionQuestion: 'OHM' }],
+                },
+            ];
+            vi.spyOn(dmol, 'updateScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sameQuestion').mockReturnValue(false);
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+        }
+
+        it('disableWordAnswer locks the word input and its buttons', () => {
+            document.body.innerHTML = `
+                <input id="dmolpEdAnswer-0" type="text">
+                <button id="dmolpBtnReply-0"></button>
+                <button id="dmolpBtnMoveOn-0"></button>
+            `;
+
+            dmol.disableWordAnswer(0);
+
+            expect(document.getElementById('dmolpEdAnswer-0').disabled).toBe(true);
+            expect(document.getElementById('dmolpBtnReply-0').disabled).toBe(true);
+            expect(document.getElementById('dmolpBtnMoveOn-0').disabled).toBe(true);
+        });
+
+        it('answerQuestion disables the word input', () => {
+            vi.useFakeTimers();
+            setupWordQuestion();
+
+            dmol.answerQuestion(0);
+
+            expect(document.getElementById('dmolpEdAnswer-0').disabled).toBe(true);
+            vi.useRealTimers();
+        });
+
+        it('reveals the full solution word when show solution is on (ignoring sameQuestion)', () => {
+            vi.useFakeTimers();
+            setupWordQuestion();
+            dmol.options[0].showSolution = true;
+            dmol.sameQuestion.mockReturnValue(true);
+            const drawPhrase = vi
+                .spyOn(dmol, 'drawPhrase')
+                .mockImplementation(() => {});
+
+            dmol.answerQuestion(0);
+
+            expect(drawPhrase).toHaveBeenCalled();
+            const args = drawPhrase.mock.calls[0];
+            expect(args[0]).toBe('OHM'); // the correct solution word
+            expect(args[2]).toBe(100); // fully revealed
+            vi.useRealTimers();
+        });
+    });
+
+    describe('order questions', () => {
+        it('ramdonOptions shuffles order questions and remaps the solution sequence', () => {
+            // Deterministic "shuffle": reverse the array.
+            global.$exeDevices.iDevice.gamification.helpers = {
+                shuffleAds: (arr) => [...arr].reverse(),
+            };
+            dmol.options = [
+                {
+                    question: {
+                        typeSelect: 1,
+                        options: ['A1', 'B2', 'C3', 'D4'],
+                        solution: 'ACBD', // correct order: A1, C3, B2, D4
+                    },
+                },
+            ];
+
+            dmol.ramdonOptions(0);
+
+            const q = dmol.options[0].question;
+            expect(q.options).toEqual(['D4', 'C3', 'B2', 'A1']);
+            // The new positions must still read out as A1, C3, B2, D4 in order.
+            expect(q.solution).toBe('DBCA');
+        });
+
+        it('shows the order solution even when sameQuestion would block it', () => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <span id="dmolpPHits-0"></span>
+                <span id="dmolpPErrors-0"></span>
+            `;
+            dmol.options = [
+                {
+                    activeQuestion: 0,
+                    gameActived: true,
+                    respuesta: 'AB',
+                    showSolution: true,
+                    numberQuestions: 1,
+                    hits: 0,
+                    errors: 0,
+                    timeShowSolution: 1,
+                    itinerary: { showClue: false },
+                    msgs: {},
+                    selectsGame: [{ typeSelect: 1, solution: 'AB' }],
+                },
+            ];
+            vi.spyOn(dmol, 'updateScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sameQuestion').mockReturnValue(true);
+            const drawSolution = vi
+                .spyOn(dmol, 'drawSolution')
+                .mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+
+            dmol.answerQuestion(0);
+
+            expect(drawSolution).toHaveBeenCalledWith(0);
+            vi.useRealTimers();
+        });
+    });
+
     describe('export styles', () => {
         it('centers the model author caption', () => {
             const css = readFileSync(join(__dirname, '3dmol.css'), 'utf-8');

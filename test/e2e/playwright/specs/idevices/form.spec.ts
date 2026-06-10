@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -110,15 +110,20 @@ async function addFormIdeviceFromPanel(page: Page): Promise<void> {
 }
 
 /**
- * Helper to open the questions panel
+ * Helper to open the questions panel.
+ *
+ * The form iDevice exposes two identical add-question panels: the "Top" one
+ * prepends new questions (`afterbegin`) and the "Bottom" one appends them
+ * (`beforeend`). Tests add questions through the Bottom panel so that the
+ * resulting visual/persisted order matches the insertion order.
  */
-async function openQuestionsPanel(page: Page): Promise<void> {
+async function openQuestionsPanel(page: Page, location: 'Top' | 'Bottom' = 'Bottom'): Promise<void> {
     // Click on the show questions button
-    const showQuestionsBtn = page.locator('#buttonHideShowQuestionsTop').first();
+    const showQuestionsBtn = page.locator(`#buttonHideShowQuestions${location}`).first();
     await showQuestionsBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // Check if panel is already visible
-    const panel = page.locator('#questionsContainerTop');
+    const panel = page.locator(`#questionsContainer${location}`);
     const isVisible = await panel.isVisible();
 
     if (!isVisible) {
@@ -127,14 +132,45 @@ async function openQuestionsPanel(page: Page): Promise<void> {
     }
 }
 
+async function fillQuestionEditor(page: Page, questionText: string): Promise<void> {
+    const container = page.locator('#formPreviewTextareaContainer');
+    await container.waitFor({ state: 'visible', timeout: 10000 });
+
+    // The question text lives in a TinyMCE editor bound to the first `.exe-html-editor`
+    // textarea in the container. The iDevice serializes that editor's content on save
+    // (`tinyMCE.editors[id].getContent()`), so we must wait for *that* editor to be
+    // initialized before typing — under parallel load it attaches late, and the previous
+    // raw-textarea fallback was read back empty on save, persisting a question with no text.
+    const editorId = await container.locator('textarea.exe-html-editor').first().getAttribute('id');
+    if (!editorId) {
+        throw new Error('Question editor textarea not found');
+    }
+
+    await page.waitForFunction(id => (window as any).tinymce?.get(id)?.initialized === true, editorId, {
+        timeout: 15000,
+    });
+
+    const body = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').first().locator('body');
+    await body.waitFor({ state: 'visible', timeout: 10000 });
+    await body.fill(questionText);
+
+    // Confirm TinyMCE actually captured the text before continuing, otherwise the save
+    // can race ahead of the editor and store an empty question.
+    await page.waitForFunction(
+        ({ id, text }) => ((window as any).tinymce?.get(id)?.getContent({ format: 'text' }) || '').includes(text),
+        { id: editorId, text: questionText },
+        { timeout: 5000 },
+    );
+}
+
 /**
  * Helper to add a True/False question
  */
 async function addTrueFalseQuestion(page: Page, questionText: string, answer: boolean): Promise<void> {
     await openQuestionsPanel(page);
 
-    // Click add True/False button
-    const addBtn = page.locator('#buttonAddTrueFalseQuestionTop');
+    // Click add True/False button (Bottom panel appends, preserving insertion order)
+    const addBtn = page.locator('#buttonAddTrueFalseQuestionBottom');
     await addBtn.click();
     await page.waitForTimeout(500);
 
@@ -142,34 +178,11 @@ async function addTrueFalseQuestion(page: Page, questionText: string, answer: bo
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Wait for TinyMCE iframe to appear
-    await page.waitForTimeout(500);
-
-    // Find the TinyMCE editor iframe within the question container
-    const tinyMceIframe = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-
-    if ((await tinyMceIframe.count()) > 0) {
-        // Type into TinyMCE using keyboard
-        const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-        const body = frame.locator('body');
-        await body.click();
-        await page.waitForTimeout(300);
-        await page.keyboard.type(questionText, { delay: 10 });
-    } else {
-        // Fallback: try to find any textarea
-        const textarea = page.locator('#formPreviewTextareaContainer textarea').first();
-        if ((await textarea.count()) > 0) {
-            await textarea.fill(questionText);
-        }
-    }
+    await fillQuestionEditor(page, questionText);
 
     // Select True or False answer - look for radio buttons in the form
-    const trueRadio = page
-        .locator('input[type="radio"][value="true"], #formPreviewTrueFalseRadioButtons input[value="true"]')
-        .first();
-    const falseRadio = page
-        .locator('input[type="radio"][value="false"], #formPreviewTrueFalseRadioButtons input[value="false"]')
-        .first();
+    const trueRadio = page.locator('#formPreviewTrueFalseRadioButtons input[value="1"]').first();
+    const falseRadio = page.locator('#formPreviewTrueFalseRadioButtons input[value="0"]').first();
 
     if (answer && (await trueRadio.count()) > 0) {
         await trueRadio.check({ force: true });
@@ -209,8 +222,8 @@ async function addSelectionQuestion(
 ): Promise<void> {
     await openQuestionsPanel(page);
 
-    // Click add Selection button
-    const addBtn = page.locator('#buttonAddSelectionQuestionTop');
+    // Click add Selection button (Bottom panel appends, preserving insertion order)
+    const addBtn = page.locator('#buttonAddSelectionQuestionBottom');
     await addBtn.click();
     await page.waitForTimeout(500);
 
@@ -218,20 +231,7 @@ async function addSelectionQuestion(
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Wait for TinyMCE to initialize
-    await page.waitForTimeout(500);
-
-    // Find the TinyMCE editor iframe for the question text
-    const tinyMceIframes = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
-
-    if ((await tinyMceIframes.count()) > 0) {
-        // Type question into first TinyMCE using keyboard
-        const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-        const body = frame.locator('body');
-        await body.click();
-        await page.waitForTimeout(300);
-        await page.keyboard.type(questionText, { delay: 10 });
-    }
+    await fillQuestionEditor(page, questionText);
 
     // If multiple selection, click the toggle button
     if (isMultiple) {
@@ -241,12 +241,8 @@ async function addSelectionQuestion(
         }
     }
 
-    // For the first option, find the TinyMCE for it (it's already created)
-    const optionEditors = page.locator('#formPreviewTextareaContainer .tox-tinymce');
-    const optionCount = await optionEditors.count();
-
-    // Fill the first option if there's more than one editor (question + option)
-    if (optionCount > 1 && options.length > 0) {
+    // Fill the first option, whether it uses TinyMCE or the plain textarea fallback
+    if (options.length > 0) {
         const optionFrames = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
         if ((await optionFrames.count()) > 1) {
             const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').nth(1);
@@ -254,6 +250,8 @@ async function addSelectionQuestion(
             await body.click();
             await page.waitForTimeout(300);
             await page.keyboard.type(options[0].text, { delay: 10 });
+        } else {
+            await page.locator('#formPreviewTextareaContainer textarea.small-textarea').first().fill(options[0].text);
         }
 
         // Mark first option as correct if needed
@@ -281,6 +279,8 @@ async function addSelectionQuestion(
             await body.click();
             await page.waitForTimeout(300);
             await page.keyboard.type(options[i].text, { delay: 10 });
+        } else {
+            await page.locator('#formPreviewTextareaContainer textarea.small-textarea').nth(i).fill(options[i].text);
         }
 
         // Mark as correct if needed
@@ -467,6 +467,7 @@ test.describe('Form iDevice', () => {
         test('should render form correctly in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
+            const symbolOptions = ['A < B', 'a = b && c>a y & b<a', 'b<a Adias'];
 
             const projectUuid = await createProject(page, 'Form Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -477,10 +478,13 @@ test.describe('Form iDevice', () => {
 
             // Add questions
             await addTrueFalseQuestion(page, 'Preview test question: True or False?', true);
-            await addSelectionQuestion(page, 'Preview test: Select the correct answer', [
-                { text: 'Option A', correct: false },
-                { text: 'Option B', correct: true },
-            ]);
+            await addSelectionQuestion(
+                page,
+                'Preview test: Select the correct answer',
+                symbolOptions.map((text, index) => ({ text, correct: index === 1 })),
+            );
+
+            await expect(page.locator('#formPreview .selection-buttons-container label')).toHaveText(symbolOptions);
 
             await saveFormIdevice(page);
             await workarea.save();
@@ -504,6 +508,13 @@ test.describe('Form iDevice', () => {
             const questions = iframe.locator('.FRMP-Question, [class*="question"]');
             const count = await questions.count();
             expect(count).toBeGreaterThanOrEqual(1);
+
+            await expect(iframe.locator('.selection-buttons-container label')).toHaveText(symbolOptions);
+            expect(
+                await iframe
+                    .locator('.selection-buttons-container input')
+                    .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value)),
+            ).toEqual(symbolOptions);
         });
 
         test('should have check and reset buttons in preview', async ({ authenticatedPage, createProject }) => {
@@ -575,10 +586,9 @@ test.describe('Form iDevice', () => {
             await page.waitForTimeout(500);
 
             // Find and click on "True" radio button
-            const trueRadio = iframe.locator('input[type="radio"][value="true"], label:has-text("True") input');
-            if ((await trueRadio.count()) > 0) {
-                await trueRadio.first().click();
-            }
+            const trueRadio = iframe.locator('input[type="radio"][value="1"]').first();
+            await expect(trueRadio).toBeVisible();
+            await trueRadio.check();
 
             // Click check button
             const checkBtn = iframe.locator('[id^="form-button-check-"]').first();
@@ -597,6 +607,11 @@ test.describe('Form iDevice', () => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
+            // Heavy multi-step flow (add + save + reload + edit + re-save) that runs
+            // several TinyMCE inits; grant extra time so it stays reliable when the file
+            // runs fully parallel and the shared dev server is under CPU contention.
+            test.slow();
+
             const projectUuid = await createProject(page, 'Form Persistence Test');
             await gotoWorkarea(page, projectUuid);
 
@@ -605,7 +620,9 @@ test.describe('Form iDevice', () => {
             await addFormIdeviceFromPanel(page);
 
             const uniqueQuestion = `Persistence test question ${Date.now()}`;
+            const followingQuestion = `Following persistence question ${Date.now()}`;
             await addTrueFalseQuestion(page, uniqueQuestion, true);
+            await addTrueFalseQuestion(page, followingQuestion, false);
 
             await saveFormIdevice(page);
             await workarea.save();
@@ -619,6 +636,47 @@ test.describe('Form iDevice', () => {
             // Verify iDevice is still there
             const idevice = page.locator('#node-content article .idevice_node.form').first();
             await expect(idevice).toBeVisible({ timeout: 15000 });
+
+            const ideviceId = await idevice.getAttribute('id');
+            expect(ideviceId).not.toBeNull();
+            await editIdevice(page, ideviceId!);
+
+            const renderedQuestions = page.locator('#formPreview > .FormView_question');
+            await expect(renderedQuestions).toHaveCount(2);
+            const questionIds = await renderedQuestions.evaluateAll(questions =>
+                questions.map(question => question.getAttribute('data-id')),
+            );
+            expect(questionIds.every(Boolean)).toBe(true);
+
+            // Open the inline editor for the first question. Under heavy parallel load
+            // the click on the freshly rendered edit button can be dropped (its handler is
+            // wired right after the list renders), so retry the click until the editor
+            // actually opens. The guard prevents re-clicking once the editor is up — the
+            // edit handler renders synchronously, so a registered click shows the editor
+            // well within the inner timeout and only a swallowed click triggers a retry.
+            const firstQuestionEdit = renderedQuestions.first().locator('.QuestionLabel_edit');
+            const trueFalseEditor = page.locator('#formPreviewTrueFalseRadioButtons');
+            await expect(async () => {
+                if (!(await trueFalseEditor.isVisible())) {
+                    await firstQuestionEdit.click();
+                }
+                await expect(trueFalseEditor).toBeVisible({ timeout: 2000 });
+            }).toPass({ timeout: 30000 });
+
+            await expect(trueFalseEditor.locator('#InputTrue')).toBeChecked();
+            await page.locator('#formPreviewTrueFalseRadioButtons #InputFalse').check();
+            await page.locator('#saveQuestion').click();
+
+            await expect(renderedQuestions).toHaveCount(2);
+            await expect
+                .poll(() =>
+                    renderedQuestions.evaluateAll(questions =>
+                        questions.map(question => question.getAttribute('data-id')),
+                    ),
+                )
+                .toEqual(questionIds);
+            await expect(renderedQuestions.first()).toBeVisible();
+            await expect(renderedQuestions.nth(1)).toBeVisible();
         });
     });
 });

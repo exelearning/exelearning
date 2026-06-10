@@ -146,6 +146,9 @@ describe('idevice-config-browser', () => {
             // markdown-text shares the text feedback toggle wiring; without
             // componentType="json" exe_export.js never binds the toggle.
             expect(getIdeviceConfig('markdown-text').componentType).toBe('json');
+            // adaptative-quiz stores the rendered view in jsonProperties; preview
+            // needs data-idevice-json-data so exe_export.js can call renderView().
+            expect(getIdeviceConfig('adaptative-quiz').componentType).toBe('json');
 
             // HTML idevices (no JS initialization needed)
             expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
