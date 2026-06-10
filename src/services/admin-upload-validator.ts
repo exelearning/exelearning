@@ -74,6 +74,7 @@ export const SUPPORTED_LOCALES = [
     'eo',
     'nl',
     'pl',
+    'ro',
     'ru',
     'zh',
     'ja',
