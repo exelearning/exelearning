@@ -379,6 +379,88 @@ describe('PageRenderer', () => {
             // First page gets main-node class too
             expect(html).toContain('class="active main-node daddy"');
         });
+
+        it('should mark ancestors of the current page with current-page-parent', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'section', title: 'Section', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'leaf', title: 'Leaf', parentId: 'section', order: 2 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'leaf', '');
+
+            // The middle ancestor is highlighted; the deep current page is active.
+            expect(html).toContain('class="current-page-parent"');
+            expect(html).toContain('class="active"');
+            expect(html).toContain('Leaf');
+        });
+
+        it('should exclude a hidden subtree and its descendants from navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden-parent',
+                    title: 'HiddenParent',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+                createTestPage({ id: 'hidden-child', title: 'HiddenChild', parentId: 'hidden-parent', order: 2 }),
+                createTestPage({ id: 'visible', title: 'VisiblePage', parentId: 'root', order: 3 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'root', '');
+
+            expect(html).toContain('VisiblePage');
+            // Both the hidden page and its (otherwise visible) child are dropped.
+            expect(html).not.toContain('HiddenParent');
+            expect(html).not.toContain('HiddenChild');
+        });
+
+        it('should produce identical output across repeated renders (memoization is stateless per call)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'a', title: 'A', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'b', title: 'B', parentId: 'a', order: 2 }),
+                createTestPage({ id: 'c', title: 'C', parentId: 'root', order: 3 }),
+            ];
+
+            const first = renderer.renderNavigation(pages, 'b', '');
+            const second = renderer.renderNavigation(pages, 'b', '');
+
+            expect(first).toBe(second);
+        });
+    });
+
+    describe('renderNavItem (public entry point)', () => {
+        it('should render a single item with its visible children', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'parent', title: 'Parent', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'child', title: 'Child', parentId: 'parent', order: 2 }),
+            ];
+
+            const html = renderer.renderNavItem(pages[1], pages, 'child', '');
+
+            expect(html).toContain('Parent');
+            expect(html).toContain('Child');
+            expect(html).toContain('class="other-section"');
+        });
+
+        it('should return empty string for a hidden page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden',
+                    title: 'Hidden',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+            ];
+
+            expect(renderer.renderNavItem(pages[1], pages, 'root', '')).toBe('');
+        });
     });
 
     describe('renderNavButtons', () => {
