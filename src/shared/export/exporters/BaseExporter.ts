@@ -789,11 +789,15 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Pre-process pages to add filenames to asset URLs in all component content
-     * And converts internal links (exe-node:) to proper page URLs
+     * Pre-process pages to add filenames to asset URLs in all component content.
      *
-     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
-     * so the XML content keeps the original protocol for re-import compatibility
+     * This only performs XML-safe rewrites: asset URLs become {{context_path}}/... which
+     * is reversed on import, so the persisted content.xml stays re-importable.
+     *
+     * Note: exe-node: internal links and the exe-package:elp protocol are NOT rewritten
+     * here. Both are transformed at render time (PageRenderer.renderPageContent /
+     * renderSinglePage) so the XML keeps the original references and survives an
+     * export → re-import round trip (#1927).
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
         const componentCount = pages.reduce((total, page) => {
@@ -809,20 +813,12 @@ export abstract class BaseExporter {
         // This ensures multiple exports on the same document work correctly
         const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
-        // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(clonedPages);
-
-        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
-            const page = clonedPages[pageIndex];
-            const isIndex = pageIndex === 0;
-
+        for (const page of clonedPages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
                         // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Convert internal links to proper page URLs
-                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                     // Also process properties (jsonProperties may contain asset URLs)
                     if (component.properties && Object.keys(component.properties).length > 0) {
@@ -898,72 +894,10 @@ export abstract class BaseExporter {
         return filenameMap;
     }
 
-    /**
-     * Build a map of page IDs to their export URLs
-     * Used for internal link (exe-node:) conversion
-     */
-    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
-        const map = new Map<string, { url: string; urlFromSubpage: string }>();
-        const filenameMap = this.buildPageFilenameMap(pages);
-
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            const filename = filenameMap.get(page.id) || 'page.html';
-            const isFirstPage = i === 0;
-
-            if (isFirstPage) {
-                // First page is index.html
-                map.set(page.id, {
-                    url: 'index.html',
-                    urlFromSubpage: '../index.html',
-                });
-            } else {
-                // Other pages are in html/ directory
-                map.set(page.id, {
-                    url: `html/${filename}`,
-                    urlFromSubpage: filename,
-                });
-            }
-        }
-
-        return map;
-    }
-
-    /**
-     * Replace exe-node: internal links with proper page URLs
-     *
-     * @param content - HTML content
-     * @param pageUrlMap - Map of page IDs to their export URLs
-     * @param isFromIndex - Whether the content is from the index page (affects relative paths)
-     * @returns Content with internal links replaced
-     */
-    protected replaceInternalLinks(
-        content: string,
-        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
-        isFromIndex: boolean,
-    ): string {
-        if (!content || !content.includes('exe-node:')) {
-            return content;
-        }
-
-        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
-            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
-            const hashIdx = pageIdWithAnchor.indexOf('#');
-            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
-            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
-
-            const pageUrls = pageUrlMap.get(pageId);
-            if (pageUrls) {
-                // Use the appropriate URL based on whether we're on index or subpage
-                const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}${anchorFragment}"`;
-            }
-            // If page not found, leave the link unchanged (might be an external link or error)
-            console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
-            return match;
-        });
-    }
+    // Note: exe-node: internal links are no longer rewritten here. The rewrite moved to
+    // render time (PageRenderer.replaceInternalLinks / replaceSinglePageInternalLinks), so
+    // the source HTML that feeds content.xml keeps the original exe-node: references and
+    // survives an export → re-import round trip (#1927).
 
     /**
      * Replace exe-package:elp protocol with client-side download handler
