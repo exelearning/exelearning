@@ -98,6 +98,7 @@ export async function resolveDefaultThemeForNewProject(
 }
 import { getAppVersion } from '../utils/version';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { isSafePathSegment, isWithinBase } from '../utils/safe-path';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -486,7 +487,14 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             // =====================================================
 
             // POST /api/project/upload-chunk - Upload a file chunk
-            .post('/upload-chunk', async ({ body, set }) => {
+            .post('/upload-chunk', async ({ body, set, currentUser }) => {
+                // This fallback upload endpoint writes attacker-controlled bytes
+                // to disk, so it must require authentication like every other
+                // state-changing handler in this group.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'error: authentication required', success: false };
+                }
                 try {
                     const { odeFilePart, odeFileName, odeSessionId } = body as ProjectUploadChunkRequest;
 
@@ -498,12 +506,27 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                         };
                     }
 
+                    // odeSessionId becomes a directory segment; reject anything
+                    // that is not a single safe segment (UUIDs and legacy
+                    // timestamp ids both qualify) so it cannot escape FILES_DIR.
+                    if (!isSafePathSegment(odeSessionId)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeSessionId', success: false };
+                    }
+
                     // Get or create session temp directory
                     const tempDir = getOdeSessionTempDir(odeSessionId);
                     await fs.ensureDir(tempDir);
 
-                    // Build target file path
+                    // Build target file path. odeFileName is a user-chosen name
+                    // (may contain spaces/unicode), so instead of restricting the
+                    // charset we assert the resolved path stays inside tempDir,
+                    // rejecting traversal like '../../etc/cron.d/x'.
                     const targetPath = path.join(tempDir, odeFileName);
+                    if (!isWithinBase(tempDir, targetPath)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeFileName', success: false };
+                    }
 
                     // Get the chunk data
                     let chunkBuffer: Buffer;

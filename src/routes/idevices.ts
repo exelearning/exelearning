@@ -458,9 +458,20 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             cleanFilename = 'file_' + Date.now();
         }
 
-        // Get iDevice directory
+        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+        // controlled; build the path with safeJoin so traversal segments
+        // (e.g. '../../etc') are rejected before any filesystem write.
         const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        let iDeviceDir: string;
+        try {
+            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        } catch (err) {
+            if (err instanceof UnsafePathError) {
+                set.status = 400;
+                return { code: 'error: invalid identifier' };
+            }
+            throw err;
+        }
 
         // Ensure directory exists
         await fse.ensureDir(iDeviceDir);
@@ -566,9 +577,20 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             cleanFilename = 'file_' + Date.now();
         }
 
-        // Get iDevice directory
+        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+        // controlled; build the path with safeJoin so traversal segments
+        // (e.g. '../../etc') are rejected before any filesystem write.
         const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        let iDeviceDir: string;
+        try {
+            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        } catch (err) {
+            if (err instanceof UnsafePathError) {
+                set.status = 400;
+                return { code: 'error: invalid identifier' };
+            }
+            throw err;
+        }
 
         // Ensure directory exists
         await fse.ensureDir(iDeviceDir);

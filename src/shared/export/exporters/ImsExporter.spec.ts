@@ -576,5 +576,49 @@ describe('ImsExporter', () => {
             expect(manifest).toContain('<file href="content.xml"/>');
             expect(manifest).toContain('<file href="content.dtd"/>');
         });
+
+        it('should keep hidden pages in the re-editable content.xml', async () => {
+            // A hidden page (visibility: false) must NOT be rendered into the
+            // package HTML or the manifest, but MUST survive in content.xml so a
+            // re-import recovers it.
+            const pagesWithHidden: ExportPage[] = [
+                samplePages[0],
+                samplePages[1],
+                {
+                    id: 'page-hidden',
+                    title: 'Secret Draft',
+                    parentId: null,
+                    order: 2,
+                    properties: { visibility: false },
+                    blocks: [
+                        {
+                            id: 'block-hidden',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-hidden',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Teacher-only notes</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithHidden);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // content.xml retains the hidden page (re-import recovers it).
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('Secret Draft');
+
+            // The hidden page is excluded from the rendered organization/manifest.
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('Secret Draft');
+        });
     });
 });
