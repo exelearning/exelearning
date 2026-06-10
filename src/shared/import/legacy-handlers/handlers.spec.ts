@@ -863,6 +863,65 @@ describe('MultichoiceHandler', () => {
             expect(questions[0].selectionType).toBe('single');
         });
 
+        it('should preserve literal comparison and ampersand characters in options', () => {
+            handler.canHandle('MultichoiceIdevice');
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="questions"/>
+                    <list>
+                        <instance class="QuizQuestionField">
+                            <dictionary>
+                                <string role="key" value="questionTextArea"/>
+                                <instance class="TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content"/>
+                                        <unicode value="Question"/>
+                                    </dictionary>
+                                </instance>
+                                <string role="key" value="options"/>
+                                <list>
+                                    <instance class="QuizOptionField">
+                                        <dictionary>
+                                            <string role="key" value="answerTextArea"/>
+                                            <instance class="TextAreaField">
+                                                <dictionary>
+                                                    <string role="key" value="content_w_resourcePaths"/>
+                                                    <unicode value="&lt;p&gt;a = b &amp;amp;&amp;amp; c&amp;gt;a y &amp;amp; b&amp;lt;a&lt;/p&gt;"/>
+                                                </dictionary>
+                                            </instance>
+                                            <string role="key" value="isCorrect"/>
+                                            <bool value="1"/>
+                                        </dictionary>
+                                    </instance>
+                                    <instance class="QuizOptionField">
+                                        <dictionary>
+                                            <string role="key" value="answerTextArea"/>
+                                            <instance class="TextAreaField">
+                                                <dictionary>
+                                                    <string role="key" value="content_w_resourcePaths"/>
+                                                    <unicode value="&lt;p&gt;b&amp;lt;a Adias&lt;/p&gt;"/>
+                                                </dictionary>
+                                            </instance>
+                                            <string role="key" value="isCorrect"/>
+                                            <bool value="0"/>
+                                        </dictionary>
+                                    </instance>
+                                </list>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { answers: [boolean, string][] }[];
+
+            expect(questions[0].answers).toEqual([
+                [true, 'a = b && c>a y & b<a'],
+                [false, 'b<a Adias'],
+            ]);
+        });
+
         it('should set multiple selection type for MultiSelectIdevice', () => {
             handler.canHandle('MultiSelectIdevice'); // Set multiple selection type
             const dict = createDomElement(`
@@ -1813,6 +1872,64 @@ describe('ScormTestHandler', () => {
             expect(questions[0].answers.length).toBe(2);
             expect(questions[0].answers[0]).toEqual([true, 'Paris']);
             expect(questions[0].answers[1]).toEqual([false, 'London']);
+        });
+
+        it('should preserve literal comparison and ampersand characters in options', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="questions"/>
+                    <list>
+                        <instance class="TestQuestion">
+                            <dictionary>
+                                <string role="key" value="questionTextArea"/>
+                                <instance class="TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content"/>
+                                        <unicode value="Question"/>
+                                    </dictionary>
+                                </instance>
+                                <string role="key" value="options"/>
+                                <list>
+                                    <instance class="AnswerOption">
+                                        <dictionary>
+                                            <string role="key" value="answerTextArea"/>
+                                            <instance class="TextAreaField">
+                                                <dictionary>
+                                                    <string role="key" value="content_w_resourcePaths"/>
+                                                    <unicode value="&lt;p&gt;a = b &amp;amp;&amp;amp; c&amp;gt;a y &amp;amp; b&amp;lt;a&lt;/p&gt;"/>
+                                                </dictionary>
+                                            </instance>
+                                            <string role="key" value="isCorrect"/>
+                                            <bool value="1"/>
+                                        </dictionary>
+                                    </instance>
+                                    <instance class="AnswerOption">
+                                        <dictionary>
+                                            <string role="key" value="answerTextArea"/>
+                                            <instance class="TextAreaField">
+                                                <dictionary>
+                                                    <string role="key" value="content_w_resourcePaths"/>
+                                                    <unicode value="&lt;p&gt;b&amp;lt;a Adias&lt;/p&gt;"/>
+                                                </dictionary>
+                                            </instance>
+                                            <string role="key" value="isCorrect"/>
+                                            <bool value="0"/>
+                                        </dictionary>
+                                    </instance>
+                                </list>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { answers: [boolean, string][] }[];
+
+            expect(questions[0].answers).toEqual([
+                [true, 'a = b && c>a y & b<a'],
+                [false, 'b<a Adias'],
+            ]);
         });
 
         it('should detect multiple selection type', () => {
