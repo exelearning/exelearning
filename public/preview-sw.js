@@ -216,6 +216,74 @@ function getMimeType(filename) {
 }
 
 /**
+ * Detect a MIME type from a file's leading bytes (magic-byte sniffing).
+ *
+ * Minimal twin of `sniffMimeFromBytes` in public/app/common/mime-sniff.js —
+ * the service worker is a standalone file that cannot import app modules. Keep
+ * the two in sync. Lets the SW serve the correct Content-Type for assets that
+ * lost their extension (e.g. a PDF stored as `asset-<uuid>`), so iframe/object
+ * embeds render inline instead of being downloaded.
+ *
+ * @param {Uint8Array|ArrayBuffer|null|undefined} input
+ * @returns {string|null} MIME type, or null when unrecognized.
+ */
+function sniffMimeFromBytes(input) {
+    if (input == null) return null;
+    const b = input instanceof Uint8Array ? input : (input instanceof ArrayBuffer ? new Uint8Array(input) : null);
+    if (!b || b.length < 3) return null;
+
+    const isAscii = (text, offset = 0) => {
+        if (b.length < offset + text.length) return false;
+        for (let i = 0; i < text.length; i++) {
+            if (b[offset + i] !== text.charCodeAt(i)) return false;
+        }
+        return true;
+    };
+    const startsWith = (sig) => {
+        if (b.length < sig.length) return false;
+        for (let i = 0; i < sig.length; i++) {
+            if (b[i] !== sig[i]) return false;
+        }
+        return true;
+    };
+
+    if (isAscii('%PDF-')) return 'application/pdf';
+    if (startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+    if (startsWith([0xff, 0xd8, 0xff])) return 'image/jpeg';
+    if (isAscii('GIF87a') || isAscii('GIF89a')) return 'image/gif';
+    if (isAscii('RIFF')) {
+        if (isAscii('WEBP', 8)) return 'image/webp';
+        if (isAscii('WAVE', 8)) return 'audio/wav';
+    }
+    if (startsWith([0x50, 0x4b, 0x03, 0x04]) || startsWith([0x50, 0x4b, 0x05, 0x06]) || startsWith([0x50, 0x4b, 0x07, 0x08])) {
+        return 'application/zip';
+    }
+    if (isAscii('OggS')) return 'audio/ogg';
+    if (isAscii('ID3')) return 'audio/mpeg';
+    if (isAscii('ftyp', 4)) return 'video/mp4';
+
+    let textStart = 0;
+    if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) textStart = 3;
+    if (isAscii('<?xml', textStart) || isAscii('<svg', textStart)) return 'image/svg+xml';
+
+    return null;
+}
+
+/**
+ * Resolve the Content-Type to serve for a file: trust a known extension, and
+ * only sniff the bytes when the extension is unknown/missing (octet-stream).
+ *
+ * @param {string} filePath
+ * @param {Uint8Array} body
+ * @returns {string} MIME type to serve.
+ */
+function resolveServedMime(filePath, body) {
+    const mime = getMimeType(filePath);
+    if (mime !== 'application/octet-stream') return mime;
+    return sniffMimeFromBytes(body) || mime;
+}
+
+/**
  * Extract file path from viewer URL
  * @param {string} pathname - The URL pathname
  * @param {number} viewerIndex - Index where /viewer/ starts
@@ -692,6 +760,8 @@ if (typeof module !== 'undefined' && module.exports) {
         KEEPALIVE_SCRIPT,
         PDF_EMBED_HANDLER_SCRIPT,
         getMimeType,
+        sniffMimeFromBytes,
+        resolveServedMime,
         extractFilePath,
         findFileInContent,
         convertToUint8Array,
@@ -965,7 +1035,13 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
         const fileData = findFileInContent(contentFiles, filePath);
 
         if (fileData) {
-            const mimeType = getMimeType(filePath);
+            let body = convertToUint8Array(fileData);
+
+            // Resolve the Content-Type from the extension, falling back to
+            // content sniffing when the asset lost its extension (e.g. a PDF
+            // stored as `asset-<uuid>`). Without this it would be served as
+            // application/octet-stream and force-downloaded on every render.
+            const mimeType = resolveServedMime(filePath, body);
 
             // PDF top-level navigation: serve PDF.js viewer HTML
             // Chrome blocks PDFium for ALL SW-served PDFs. PDF.js renders to canvas instead.
@@ -974,8 +1050,6 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                 const swBasePath = pathname.substring(0, viewerIndex) + '/';
                 return createPdfViewerResponse(filePath, pathname, swBasePath);
             }
-
-            let body = convertToUint8Array(fileData);
 
             // For HTML files, inject helper scripts
             if (mimeType.startsWith('text/html')) {

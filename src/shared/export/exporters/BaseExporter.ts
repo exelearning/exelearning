@@ -663,10 +663,14 @@ export abstract class BaseExporter {
             for (const item of items) {
                 let folderPath = item.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
-                const filename =
+                const rawFilename =
                     item.filename && item.filename !== 'unknown'
                         ? item.filename
                         : this._deriveFilenameFromMime(item.id, item.mime);
+                // Ensure the export name carries an extension. Assets saved as
+                // `asset-<uuid>` (no extension) would otherwise be re-imported as
+                // application/octet-stream and force-downloaded (PDF iframes).
+                const filename = this._ensureFilenameExtension(rawFilename, item.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -711,6 +715,18 @@ export abstract class BaseExporter {
      */
     private _deriveFilenameFromMime(assetId: string, mime: string): string {
         return deriveFilenameFromMime(assetId, mime);
+    }
+
+    /**
+     * Ensure a filename carries a file extension. When it lacks one, append the
+     * extension derived from the MIME type — but only a meaningful one, never
+     * the generic `.bin` fallback (we leave truly-unknown binaries unchanged).
+     */
+    private _ensureFilenameExtension(filename: string, mime: string): string {
+        if (/\.[a-z0-9]{1,8}$/i.test(filename)) return filename;
+        const ext = getExtensionFromMimeType(mime, true);
+        if (!ext || ext === '.bin') return filename;
+        return `${filename}${ext}`;
     }
 
     /**

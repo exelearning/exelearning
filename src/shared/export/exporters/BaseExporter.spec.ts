@@ -820,6 +820,53 @@ describe('BaseExporter', () => {
             });
         });
 
+        describe('extension-less filename handling', () => {
+            it('appends the MIME extension when a stored filename has none (prevents lossy PDF export)', async () => {
+                // Reproduces the real bug: a PDF stored as `asset-<uuid>` with no extension.
+                assets.addAsset(
+                    'e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<iframe src="asset://e9e79be2-7b98-3e8c-0143-91e790c196f8"></iframe>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+            });
+
+            it('does not append .bin for an unknown MIME (leaves the name unchanged)', async () => {
+                assets.addAsset(
+                    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'application/octet-stream',
+                    Buffer.from([1, 2, 3]),
+                );
+
+                const content = '<a href="asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee">x</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"');
+                expect(result).not.toContain('.bin');
+            });
+
+            it('leaves a well-formed filename untouched', async () => {
+                assets.addAsset(
+                    'ffffffff-1111-2222-3333-444444444444',
+                    'report.pdf',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<a href="asset://ffffffff-1111-2222-3333-444444444444.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/report.pdf');
+                expect(result).not.toContain('report.pdf.pdf');
+            });
+        });
+
         describe('asset path duplication fix', () => {
             it('should fix folderPath that equals filename (file.pdf → root)', async () => {
                 // This simulates corrupted ELPX where folderPath was set to the filename
