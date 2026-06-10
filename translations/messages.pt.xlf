@@ -10929,6 +10929,10 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Ajude a divulgar o eXeLearning. Ao marcar esta opção, um link "Feito com eXeLearning" será exibido em suas páginas.  </target>
       </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>~Feito com eXeLearning</target>
+      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Contador de páginas  </target>
@@ -15059,295 +15063,299 @@
       </trans-unit>
       <trans-unit id="rbp3nom" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
         <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
-        <target></target>
+        <target>~Nível: 0 (baixo), 1 (médio), 2 (alto), 3 (especialista) ou 4 (mestre).</target>
       </trans-unit>
       <trans-unit id="1ltab78" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
         <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
-        <target></target>
+        <target>~Nível: 0 (baixo), 1 (médio), 2 (alto) ou 3 (especialista).</target>
       </trans-unit>
       <trans-unit id="iqp6lnq" resname="Level: 0 (low), 1 (medium) or 2 (high).">
         <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
-        <target></target>
+        <target>~Nível: 0 (baixo), 1 (médio) ou 2 (alto).</target>
       </trans-unit>
       <trans-unit id="gi30ipb" resname="OptionE">
         <source>OptionE</source>
-        <target></target>
+        <target>~OpçãoE</target>
       </trans-unit>
       <trans-unit id="1xxnzv0" resname="OptionF">
         <source>OptionF</source>
-        <target></target>
+        <target>~OpçãoF</target>
       </trans-unit>
       <trans-unit id="xng75va" resname="Which of the following are prime numbers?">
         <source>Which of the following are prime numbers?</source>
-        <target></target>
+        <target>~Quais dos seguintes são números primos?</target>
       </trans-unit>
       <trans-unit id="nw8s7o2" resname="Sort from largest to smallest">
         <source>Sort from largest to smallest</source>
-        <target></target>
+        <target>~Ordena do maior para o menor</target>
       </trans-unit>
       <trans-unit id="zeqlqo7" resname="Elephant">
         <source>Elephant</source>
-        <target></target>
+        <target>~Elefante</target>
       </trans-unit>
       <trans-unit id="f26qrhb" resname="Mouse">
         <source>Mouse</source>
-        <target></target>
+        <target>~Rato</target>
       </trans-unit>
       <trans-unit id="afwa1oq" resname="Which of these are transcendental numbers?">
         <source>Which of these are transcendental numbers?</source>
-        <target></target>
+        <target>~Quais destes são números transcendentes?</target>
       </trans-unit>
       <trans-unit id="15gegzu" resname="Liouville constant">
         <source>Liouville constant</source>
-        <target></target>
+        <target>~Constante de Liouville</target>
       </trans-unit>
       <trans-unit id="ow97q0q" resname="Champernowne constant">
         <source>Champernowne constant</source>
-        <target></target>
+        <target>~Constante de Champernowne</target>
       </trans-unit>
       <trans-unit id="adox97s" resname="Sort these chemical elements from lowest to highest atomic number">
         <source>Sort these chemical elements from lowest to highest atomic number</source>
-        <target></target>
+        <target>~Ordena estes elementos químicos do menor para o maior número atómico</target>
       </trans-unit>
       <trans-unit id="wglprmq" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
         <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
-        <target></target>
+        <target>~São aceites três tipos de perguntas. Cada linha deve começar com o número do tipo, seguido de @, o nível e os restantes campos separados com #:</target>
       </trans-unit>
       <trans-unit id="lf00v3d" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
         <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
-        <target></target>
+        <target>~Tipo 0 (escolha múltipla): 0@Nível#Solução#Pergunta#OpçãoA#OpçãoB[#OpçãoC][#OpçãoD][#OpçãoE][#OpçãoF]. A solução é uma combinação em maiúsculas de A, B, C, D, E, F que identifica as opções corretas (p. ex. A, AB, ACD, ABCDEF). Usa até 6 letras e nunca mais do que o número de opções. Deixa Solução vazia se nenhuma opção estiver correta.</target>
       </trans-unit>
       <trans-unit id="4xwbkt6" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
         <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
-        <target></target>
+        <target>~Tipo 1 (ordenar): 1@Nível#Pergunta#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Fornece entre 3 e 6 itens já listados na ordem correta de acordo com o critério da pergunta.</target>
       </trans-unit>
       <trans-unit id="g5pvvgu" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
         <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
-        <target></target>
+        <target>~Tipo 2 (palavra/definição): 2@Nível#Palavra#Definição.</target>
       </trans-unit>
       <trans-unit id="0ev8jf2" resname="Do not include the # character inside any field.">
         <source>Do not include the # character inside any field.</source>
-        <target></target>
+        <target>~Não incluas o caractere # dentro de nenhum campo.</target>
       </trans-unit>
       <trans-unit id="shl10oj" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
         <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
-        <target></target>
+        <target>~distribuídas pelos 5 níveis (0=baixo, 1=médio, 2=alto, 3=especialista, 4=mestre)</target>
       </trans-unit>
       <trans-unit id="ti61bao" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
         <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
-        <target></target>
+        <target>~distribuídas pelos 4 níveis (0=baixo, 1=médio, 2=alto, 3=especialista)</target>
       </trans-unit>
       <trans-unit id="fpd9fdv" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
         <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
-        <target></target>
+        <target>~distribuídas pelos 3 níveis (0=baixo, 1=médio, 2=alto)</target>
       </trans-unit>
       <trans-unit id="xppk2z0" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
-        <target></target>
+        <target>~O nível 0 deve conter as perguntas mais fáceis (factos básicos e memorização simples); cada nível seguinte deve ser estritamente mais difícil do que o anterior (mais raciocínio, opções mais longas ou complicadas, vocabulário mais abstrato), e o nível 4 (mestre) deve conter as perguntas mais difíceis.</target>
       </trans-unit>
       <trans-unit id="bjz9aib" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
-        <target></target>
+        <target>~O nível 0 deve conter as perguntas mais fáceis (factos básicos e memorização simples); cada nível seguinte deve ser estritamente mais difícil do que o anterior (mais raciocínio, opções mais longas ou complicadas, vocabulário mais abstrato), e o nível 3 (especialista) deve conter as perguntas mais difíceis.</target>
       </trans-unit>
       <trans-unit id="o0k20mk" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
-        <target></target>
+        <target>~O nível 0 deve conter as perguntas mais fáceis (factos básicos e memorização simples); cada nível seguinte deve ser estritamente mais difícil do que o anterior (mais raciocínio, opções mais longas ou complicadas, vocabulário mais abstrato), e o nível 2 (alto) deve conter as perguntas mais difíceis.</target>
       </trans-unit>
       <trans-unit id="kp2i8dt" resname="Your browser is not compatible with this type of activity.">
         <source>Your browser is not compatible with this type of activity.</source>
-        <target></target>
+        <target>~O teu navegador não é compatível com este tipo de atividade.</target>
       </trans-unit>
       <trans-unit id="78aygkh" resname="You must add at least one question.">
         <source>You must add at least one question.</source>
-        <target></target>
+        <target>~Tens de adicionar pelo menos uma pergunta.</target>
       </trans-unit>
       <trans-unit id="b3k2f50" resname="You must have at least one question.">
         <source>You must have at least one question.</source>
-        <target></target>
+        <target>~Tens de ter pelo menos uma pergunta.</target>
       </trans-unit>
       <trans-unit id="g0garet" resname="Question %s: the question text cannot be empty.">
         <source>Question %s: the question text cannot be empty.</source>
-        <target></target>
+        <target>~Pergunta %s: o texto da pergunta não pode estar vazio.</target>
       </trans-unit>
       <trans-unit id="93mev9e" resname="Question %s: please fill in all answer options.">
         <source>Question %s: please fill in all answer options.</source>
-        <target></target>
+        <target>~Pergunta %s: preenche todas as opções de resposta.</target>
       </trans-unit>
       <trans-unit id="l6z7q51" resname="Question %s: please mark which option is the correct answer.">
         <source>Question %s: please mark which option is the correct answer.</source>
-        <target></target>
+        <target>~Pergunta %s: indica qual opção é a resposta correta.</target>
       </trans-unit>
       <trans-unit id="h8wb94s" resname="You must add at least %s questions.">
         <source>You must add at least %s questions.</source>
-        <target></target>
+        <target>~Tens de adicionar pelo menos %s perguntas.</target>
       </trans-unit>
       <trans-unit id="6y4patk" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
         <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
-        <target></target>
+        <target>~Aviso: o nível inicial selecionado não tem perguntas. O questionário começará usando o nível de reserva.</target>
       </trans-unit>
       <trans-unit id="lvx4pi3" resname="Please provide a name for every level.">
         <source>Please provide a name for every level.</source>
-        <target></target>
+        <target>~Indica um nome para cada nível.</target>
       </trans-unit>
       <trans-unit id="a99u6tw" resname="Level &quot;%s&quot; must have at least 2 questions.">
         <source>Level "%s" must have at least 2 questions.</source>
-        <target></target>
+        <target>~O nível «%s» deve ter pelo menos 2 perguntas.</target>
       </trans-unit>
       <trans-unit id="ixano4v" resname="Please indicate the time the solution will be displayed.">
         <source>Please indicate the time the solution will be displayed.</source>
-        <target></target>
+        <target>~Indica o tempo durante o qual a solução será exibida.</target>
       </trans-unit>
       <trans-unit id="aey9qzu" resname="Question %s: please mark at least one correct answer.">
         <source>Question %s: please mark at least one correct answer.</source>
-        <target></target>
+        <target>~Pergunta %s: marca pelo menos uma resposta correta.</target>
       </trans-unit>
       <trans-unit id="rbd53a8" resname="Question %s: please provide the solution word or phrase.">
         <source>Question %s: please provide the solution word or phrase.</source>
-        <target></target>
+        <target>~Pergunta %s: fornece a palavra ou frase solução.</target>
       </trans-unit>
       <trans-unit id="n0q4xol" resname="Question %s: please provide the definition.">
         <source>Question %s: please provide the definition.</source>
-        <target></target>
+        <target>~Pergunta %s: fornece a definição.</target>
       </trans-unit>
       <trans-unit id="99a310l" resname="Question %s: please specify a unique order from 1 to %n for every option.">
         <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
-        <target></target>
+        <target>~Pergunta %s: atribui uma ordem única de 1 a %n a cada opção.</target>
       </trans-unit>
       <trans-unit id="awa71i5" resname="Audio URL">
         <source>Audio URL</source>
-        <target></target>
+        <target>~URL de áudio</target>
       </trans-unit>
       <trans-unit id="3sqvvoi" resname="Show audio options">
         <source>Show audio options</source>
-        <target></target>
+        <target>~Mostrar opções de áudio</target>
       </trans-unit>
       <trans-unit id="xplcbsn" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
         <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
-        <target></target>
+        <target>~Cria um questionário de escolha múltipla cuja dificuldade se adapta ao aluno. Escolhe o número de níveis de dificuldade (3, 4 ou 5) e atribui um a cada pergunta; o questionário sobe um nível após duas respostas corretas seguidas e desce após duas incorretas seguidas.</target>
       </trans-unit>
       <trans-unit id="zmiy1jb" resname="Number of levels">
         <source>Number of levels</source>
-        <target></target>
+        <target>~Número de níveis</target>
       </trans-unit>
       <trans-unit id="3owmnrq" resname="Level 1 name">
         <source>Level 1 name</source>
-        <target></target>
+        <target>~Nome do nível 1</target>
       </trans-unit>
       <trans-unit id="o2z9sy0" resname="Easy">
         <source>Easy</source>
-        <target></target>
+        <target>~Fácil</target>
       </trans-unit>
       <trans-unit id="9e524qu" resname="Level 2 name">
         <source>Level 2 name</source>
-        <target></target>
+        <target>~Nome do nível 2</target>
       </trans-unit>
       <trans-unit id="xfzfg7x" resname="Level 3 name">
         <source>Level 3 name</source>
-        <target></target>
+        <target>~Nome do nível 3</target>
       </trans-unit>
       <trans-unit id="gxi37qc" resname="Hard">
         <source>Hard</source>
-        <target></target>
+        <target>~Difícil</target>
       </trans-unit>
       <trans-unit id="s3w34pm" resname="Level 4 name">
         <source>Level 4 name</source>
-        <target></target>
+        <target>~Nome do nível 4</target>
       </trans-unit>
       <trans-unit id="qmbdiej" resname="Expert">
         <source>Expert</source>
-        <target></target>
+        <target>~Especialista</target>
       </trans-unit>
       <trans-unit id="vbpnz6e" resname="Level 5 name">
         <source>Level 5 name</source>
-        <target></target>
+        <target>~Nome do nível 5</target>
       </trans-unit>
       <trans-unit id="kbsp3b9" resname="Master">
         <source>Master</source>
-        <target></target>
+        <target>~Mestre</target>
       </trans-unit>
       <trans-unit id="l6julg7" resname="Initial level">
         <source>Initial level</source>
-        <target></target>
+        <target>~Nível inicial</target>
       </trans-unit>
       <trans-unit id="2ayo29v" resname="Set to 0 to disable the time limit.">
         <source>Set to 0 to disable the time limit.</source>
-        <target></target>
+        <target>~Define 0 para desativar o limite de tempo.</target>
       </trans-unit>
       <trans-unit id="bnajz72" resname="Shuffle answer options at runtime">
         <source>Shuffle answer options at runtime</source>
-        <target></target>
+        <target>~Baralhar as opções de resposta durante a execução</target>
       </trans-unit>
       <trans-unit id="abdod8j" resname="Case-sensitive answer matching (word type)">
         <source>Case-sensitive answer matching (word type)</source>
-        <target></target>
+        <target>~Distinguir maiúsculas e minúsculas (tipo palavra)</target>
       </trans-unit>
       <trans-unit id="0kraf80" resname="Require correct accents (word type)">
         <source>Require correct accents (word type)</source>
-        <target></target>
+        <target>~Exigir acentos corretos (tipo palavra)</target>
       </trans-unit>
       <trans-unit id="7bartca" resname="Level filter">
         <source>Level filter</source>
-        <target></target>
+        <target>~Filtro de nível</target>
       </trans-unit>
       <trans-unit id="tv2ingp" resname="Reload image">
         <source>Reload image</source>
-        <target></target>
+        <target>~Recarregar imagem</target>
       </trans-unit>
       <trans-unit id="cbbqwgo" resname="Adaptative Quiz">
         <source>Adaptative Quiz</source>
-        <target></target>
+        <target>~Questionário adaptativo</target>
       </trans-unit>
       <trans-unit id="gtmr683" resname="Click on an option to choose your answer.">
         <source>Click on an option to choose your answer.</source>
-        <target></target>
+        <target>~Clica numa opção para escolher a tua resposta.</target>
       </trans-unit>
       <trans-unit id="q49r5mz" resname="Highest level reached">
         <source>Highest level reached</source>
-        <target></target>
+        <target>~Nível mais alto alcançado</target>
       </trans-unit>
       <trans-unit id="sk0k6ny" resname="Level up!">
         <source>Level up!</source>
-        <target></target>
+        <target>~Sobes de nível!</target>
       </trans-unit>
       <trans-unit id="rd82u2f" resname="Level down">
         <source>Level down</source>
-        <target></target>
+        <target>~Desces de nível</target>
       </trans-unit>
       <trans-unit id="vbjokx5" resname="Final report">
         <source>Final report</source>
-        <target></target>
+        <target>~Relatório final</target>
       </trans-unit>
       <trans-unit id="tk8mbe3" resname="Excellent. You dominate the highest-level contents.">
         <source>Excellent. You dominate the highest-level contents.</source>
-        <target></target>
+        <target>~Excelente. Dominas os conteúdos de nível mais alto.</target>
       </trans-unit>
       <trans-unit id="c898p6o" resname="Good job. You have achieved the intermediate level.">
         <source>Good job. You have achieved the intermediate level.</source>
-        <target></target>
+        <target>~Bom trabalho. Atingiste o nível intermédio.</target>
       </trans-unit>
       <trans-unit id="7huvi4e" resname="You need a bit more practice. Review the basic contents.">
         <source>You need a bit more practice. Review the basic contents.</source>
-        <target></target>
+        <target>~Precisas de um pouco mais de prática. Revê os conteúdos básicos.</target>
       </trans-unit>
       <trans-unit id="68wk5kv" resname="Pause audio">
         <source>Pause audio</source>
-        <target></target>
+        <target>~Pausar áudio</target>
       </trans-unit>
       <trans-unit id="r2rrlzb" resname="Illustration">
         <source>Illustration</source>
-        <target></target>
+        <target>~Ilustração</target>
       </trans-unit>
       <trans-unit id="25zpkyx" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
         <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
-        <target></target>
+        <target>~Escolhe a resposta correta para cada pergunta. Para subir ao próximo nível tens de responder corretamente a duas perguntas seguidas. Se errares duas seguidas, descerás ao nível anterior.</target>
       </trans-unit>
       <trans-unit id="ha81qvr" resname="Time&apos;s up!">
         <source>Time's up!</source>
-        <target></target>
+        <target>~Acabou o tempo!</target>
       </trans-unit>
       <trans-unit id="hrn9d4w" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
         <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
-        <target></target>
+        <target>~Cria %total% perguntas mistas de questionário adaptativo %distribution% e dos três tipos de pergunta suportados. Cada linha deve começar com o número do tipo seguido de @, depois o nível e depois os restantes campos separados com #. Nunca coloques # dentro de um campo. As três formas de linha aceites são: Tipo 0 (escolha múltipla): 0@Nível#Solução#Pergunta#OpçãoA#OpçãoB[#OpçãoC][#OpçãoD][#OpçãoE][#OpçãoF] — A solução é uma combinação em maiúsculas das letras A, B, C, D, E, F que identifica as opções corretas (p. ex. A, AB, ACD, ABCDEF); usa até 6 letras e nunca mais do que o número de opções; deixa a solução vazia se nenhuma opção estiver correta. Tipo 1 (ordenar): 1@Nível#Pergunta#Item1#Item2#Item3[#Item4][#Item5][#Item6] — fornece entre 3 e 6 itens já listados na ordem correta de acordo com o critério da pergunta. Tipo 2 (palavra/definição): 2@Nível#Palavra#Definição. A dificuldade deve aumentar com o nível: %ladder% Dentro de cada nível deves incluir perguntas dos três tipos (Tipo 0, Tipo 1 e Tipo 2): gera cerca de %perLevel% perguntas por nível e garante que cada nível combine escolha múltipla (Tipo 0), ordenar (Tipo 1) e palavra/definição (Tipo 2). Não coloques todas do mesmo tipo juntas; intercala os três tipos dentro de cada nível.</target>
+      </trans-unit>
+      <trans-unit id="wbco08i" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Gera a pré-visualização do circuito antes de guardar</target>
       </trans-unit>
     </body>
   </file>
