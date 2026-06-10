@@ -1268,7 +1268,7 @@ class WebMCP {
     _handleToolCall(message) {
         const {id, tool, arguments: args} = message;
 
-        console.log(`Tool call: ${tool} with args:`, args);
+        console.log('Tool call:', tool, 'with args:', args);
 
         if (!this.availableTools.has(tool)) {
             this._sendMessage({
@@ -1331,7 +1331,7 @@ class WebMCP {
     _handleGetPrompt(message) {
         const {id, name, arguments: args} = message;
 
-        console.log(`Prompt request: ${name} with args:`, args);
+        console.log('Prompt request:', name, 'with args:', args);
 
         if (!this.availablePrompts.has(name)) {
             this._sendMessage({

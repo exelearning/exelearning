@@ -4,6 +4,7 @@ import {
     optionalString,
     requireString,
 } from './validators.js';
+import { escapeCssAttributeValue } from './webmcpDomUtils.js';
 
 export { isTextIdeviceType };
 
@@ -216,7 +217,7 @@ export default class WebMCPContext {
      */
     getNavElementByPageId(pageId) {
         if (!pageId) return null;
-        const safeId = String(pageId).replace(/"/g, '\\"');
+        const safeId = escapeCssAttributeValue(pageId);
 
         const fromStructureMenu =
             this._app?.project?.structure?.menuStructureCompose?.menuNav?.querySelector?.(

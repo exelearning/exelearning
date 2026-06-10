@@ -1496,4 +1496,21 @@ describe('WebMCPService', () => {
         expect(file.name).toBe('photo.png');
         expect(file.type).toBe('image/png');
     });
+
+    describe('getNavElementByPageId', () => {
+        it('returns null for an empty pageId', () => {
+            expect(service.getNavElementByPageId(null)).toBeNull();
+        });
+
+        it('finds the nav element in the DOM via an escaped selector', () => {
+            const el = document.createElement('div');
+            el.classList.add('nav-element');
+            el.setAttribute('nav-id', 'p42');
+            document.body.appendChild(el);
+
+            expect(service.getNavElementByPageId('p42')).toBe(el);
+
+            document.body.removeChild(el);
+        });
+    });
 });

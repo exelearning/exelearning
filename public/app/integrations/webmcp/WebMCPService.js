@@ -44,6 +44,7 @@ import {
     resolveImageUrlFromInput,
     requireAssetUuidUrl,
 } from './validators.js';
+import { escapeCssAttributeValue } from './webmcpDomUtils.js';
 
 const WEBMCP_DOCS_URL =
     'https://github.com/exelearning/exelearning/blob/main/doc/webmcp.md';
@@ -2313,7 +2314,7 @@ export default class WebMCPService {
 
     getNavElementByPageId(pageId) {
         if (!pageId) return null;
-        const safeId = String(pageId).replace(/"/g, '\\"');
+        const safeId = escapeCssAttributeValue(pageId);
 
         const fromStructureMenu =
             this.app?.project?.structure?.menuStructureCompose?.menuNav?.querySelector?.(
