@@ -750,6 +750,22 @@ describe('Assets Routes', () => {
 
             expect(res.status).toBe(404);
         });
+
+        it('should not leak metadata of an asset owned by another project', async () => {
+            // Asset belongs to project 2, but is requested via project 1's URL.
+            mockAssets.set(7, {
+                id: 7,
+                project_id: 2,
+                filename: 'secret.png',
+                mime_type: 'image/png',
+                file_size: '2048',
+                client_id: 'client-secret',
+            });
+
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets/7/metadata`));
+
+            expect(res.status).toBe(404);
+        });
     });
 
     describe('DELETE /api/projects/:projectId/assets/:assetId', () => {
@@ -784,6 +800,31 @@ describe('Assets Routes', () => {
             );
 
             expect(res.status).toBe(404);
+        });
+
+        it('should not delete an asset owned by another project (cross-tenant IDOR)', async () => {
+            const filePath = path.join(testDir, 'other-tenant.txt');
+            await fs.writeFile(filePath, 'Belongs to project 2');
+
+            // Asset belongs to project 2; attacker owns project 1 and targets it
+            // via /api/projects/1/assets/9 with the global numeric id.
+            mockAssets.set(9, {
+                id: 9,
+                project_id: 2,
+                filename: 'other-tenant.txt',
+                storage_path: filePath,
+            });
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/9`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            // The asset row and its file must survive.
+            expect(mockAssets.has(9)).toBe(true);
+            expect(await fs.pathExists(filePath)).toBe(true);
         });
     });
 

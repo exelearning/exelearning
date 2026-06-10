@@ -718,6 +718,63 @@ describe('iDevices Routes', () => {
             // Should be either 403 (path traversal blocked) or 404 (file not found)
             expect([403, 404]).toContain(res.status);
         });
+
+        it('should reject traversal in odeIdeviceId on base64 upload', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: '../../../../../../tmp/evil',
+                        file: 'data:text/plain;base64,SGVsbG8=',
+                        filename: 'evil.txt',
+                        odeSessionId: 'trav-session',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
+
+        it('should reject traversal in odeSessionId on base64 upload', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: 'valid-idevice',
+                        file: 'data:text/plain;base64,SGVsbG8=',
+                        filename: 'evil.txt',
+                        odeSessionId: '../../../../etc',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
+
+        it('should reject traversal in odeIdeviceId on large upload', async () => {
+            const form = new FormData();
+            form.append('odeIdeviceId', '../../../../../../tmp/evil');
+            form.append('odeSessionId', 'trav-session');
+            form.append('filename', 'evil.txt');
+            form.append('file', new Blob(['evil'], { type: 'text/plain' }), 'evil.txt');
+
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/large/file/resources', {
+                    method: 'POST',
+                    body: form,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
     });
 
     describe('CSS URL rewriting', () => {

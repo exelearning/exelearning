@@ -844,6 +844,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // GET /:assetId/metadata - Get asset metadata
             .get('/:assetId/metadata', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -851,8 +852,17 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; the asset must belong to the
+                // project named in the URL or this leaks other tenants' metadata.
+                if (!asset || asset.project_id !== projectIdNum) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
@@ -919,6 +929,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -926,8 +937,19 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; without scoping the asset to
+                // the URL project, any authenticated user could delete another
+                // tenant's asset (file + DB row) by numeric ID. Mirror the
+                // ownership guard used by GET '/:assetId'.
+                if (!asset || asset.project_id !== projectIdNum) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }

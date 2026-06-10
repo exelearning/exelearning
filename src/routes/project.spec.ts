@@ -727,6 +727,27 @@ describe('Project Routes', () => {
 
     describe('POST /api/project/upload-chunk', () => {
         it('should handle chunk upload', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['test chunk data']));
+            formData.append('odeFileName', 'test.elp');
+            formData.append('odeSessionId', 'chunk-test-session');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+            expect(body.odeFileName).toBe('test.elp');
+        });
+
+        it('should require authentication', async () => {
             const formData = new FormData();
             formData.append('odeFilePart', new Blob(['test chunk data']));
             formData.append('odeFileName', 'test.elp');
@@ -739,17 +760,17 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(401);
             const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.odeFileName).toBe('test.elp');
+            expect(body.success).toBe(false);
         });
 
         it('should return error when missing required fields', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({}),
                 }),
             );
@@ -759,7 +780,50 @@ describe('Project Routes', () => {
             expect(body.responseMessage).toContain('error');
         });
 
+        it('should reject path traversal in odeFileName', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['malicious']));
+            formData.append('odeFileName', '../../../../../../tmp/pwned.txt');
+            formData.append('odeSessionId', 'chunk-test-session');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.responseMessage).toContain('odeFileName');
+            // Ensure nothing was written outside the session temp dir.
+            expect(await fs.pathExists('/tmp/pwned.txt')).toBe(false);
+        });
+
+        it('should reject path traversal in odeSessionId', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['malicious']));
+            formData.append('odeFileName', 'file.elp');
+            formData.append('odeSessionId', '../../../../etc');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.responseMessage).toContain('odeSessionId');
+        });
+
         it('should handle Buffer input', async () => {
+            const token = await createAuthToken(1);
             const formData = new FormData();
             const buffer = Buffer.from('buffer chunk data');
             formData.append('odeFilePart', new Blob([buffer]));
@@ -769,6 +833,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                     body: formData,
                 }),
             );
@@ -3433,6 +3498,7 @@ describe('Project Routes', () => {
 
     describe('Upload Chunk Error Handling', () => {
         it('should return error message on upload failure', async () => {
+            const token = await createAuthToken(1);
             // Test missing required parameters
             const formData = new FormData();
             formData.append('odeFileName', 'test.elp');
@@ -3441,6 +3507,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                     body: formData,
                 }),
             );
