@@ -1,5 +1,30 @@
+# CodeQL / GitHub code-scanning configuration.
+#
+# IMPORTANT: this repository currently runs code scanning via GitHub "default
+# setup" (Settings -> Code security -> CodeQL analysis). Default setup does NOT
+# read this config file, so the `paths-ignore` entries below only take effect
+# once the repository is switched to an "advanced setup" CodeQL workflow (an
+# admin toggle that cannot be done from a PR alone).
+#
+# They are kept here as the canonical, declared list of paths that are not worth
+# scanning, so the exclusions apply automatically if/when advanced setup is
+# adopted. Until then, real noise must be triaged in the UI by dismissing alerts
+# as "Used in tests" / "Won't fix".
+#
+# The newer "GitHub Code Quality" preview (github-code-quality[bot]) does not yet
+# support path exclusion at all; its false positives must also be dismissed in
+# the UI for now.
+
 name: "CodeQL config"
 
 paths-ignore:
+  # Vendored third-party libraries we do not maintain.
   - public/libs/**
+  # Vendored/generated math editor assets.
   - public/app/common/fMath/**
+  # Test code and fixtures are never shipped to users.
+  - "**/*.test.js"
+  - "**/*.spec.ts"
+  - test/**
+  # Minified bundles.
+  - "**/*.min.js"
