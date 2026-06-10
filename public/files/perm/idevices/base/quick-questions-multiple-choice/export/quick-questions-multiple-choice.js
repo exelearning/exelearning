@@ -2424,7 +2424,8 @@ var $quickquestionsmultiplechoice = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
+        // Word questions (typeSelect 2) have no options to shuffle.
+        if (question.typeSelect === 2) return;
 
         let l = 0;
         const solutions = question.solution;
@@ -2440,11 +2441,20 @@ var $quickquestionsmultiplechoice = {
                 .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
-        respuestasNuevas.forEach((respuesta, index) => {
-            if (respuestaCorrectas.includes(respuesta)) {
-                solucionesNuevas += letters[index];
-            }
-        });
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is a sequence, so keep the correct
+            // ordering and remap each option to its new shuffled position.
+            solucionesNuevas = respuestaCorrectas
+                .map((respuesta) => letters[respuestasNuevas.indexOf(respuesta)])
+                .join('');
+        } else {
+            // Select questions: the solution is a set of correct options.
+            respuestasNuevas.forEach((respuesta, index) => {
+                if (respuestaCorrectas.includes(respuesta)) {
+                    solucionesNuevas += letters[index];
+                }
+            });
+        }
 
         question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
         question.solution = solucionesNuevas;

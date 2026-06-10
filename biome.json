@@ -18,6 +18,10 @@
             "!**/public/app/common",
             "!**/public/app/dist",
             "!**/*.bundle.js",
+            "!**/*.min.js",
+            "!**/*.min.css",
+            "!**/idevices/**/three.min.js",
+            "!**/idevices/**/OrbitControls.js",
             "!**/*.d.ts",
             "!**/tmp",
             "!**/test/fixtures"

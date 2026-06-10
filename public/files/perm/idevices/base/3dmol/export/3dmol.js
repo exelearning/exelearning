@@ -225,6 +225,7 @@ var $eXe3Dmol = {
                 </div>
                 <div class="DMOLP-AtomLegend" id="dmolpAtomLegend-${instance}" aria-hidden="true"></div>
                 </div>
+                <div class="DMOLP-ModelAuthor" id="dmolpModelAuthor-${instance}" style="display:none"></div>
                 <div class="DMOLP-ShowFullScreenRow" id="dmolpShowFullScreenRow-${instance}">
                     <a href="#" class="DMOLP-ShowFullScreenBtn" id="dmolpShowFullScreen-${instance}" title="${msgs.msgFullScreen}">
                         <div class="exeQuextIcons exeQuextIcons-FullScreen" aria-hidden="true"></div>
@@ -436,6 +437,14 @@ var $eXe3Dmol = {
                 typeof mOptions.selectsGame[i].description == 'undefined'
                     ? ''
                     : mOptions.selectsGame[i].description;
+            mOptions.selectsGame[i].author =
+                typeof mOptions.selectsGame[i].author == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].author;
+            mOptions.selectsGame[i].alt =
+                typeof mOptions.selectsGame[i].alt == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].alt;
             if (
                 !mOptions.selectsGame[i].modelFormat &&
                 mOptions.selectsGame[i].modelName
@@ -1200,16 +1209,37 @@ var $eXe3Dmol = {
         }
     },
 
-    updateModelA11y: function (modelName, instance) {
+    updateModelA11y: function (modelName, instance, altText) {
         const msgs = $eXe3Dmol.options[instance]
             ? $eXe3Dmol.options[instance].msgs
             : {};
         const noModel = msgs.msgNoImage || 'No 3D model';
-        const desc = modelName
-            ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
-            : noModel;
+        const alt = (altText || '').trim();
+        // A custom alternative text (when provided) takes precedence as the
+        // accessible description; otherwise fall back to the model name.
+        const desc = alt
+            ? alt
+            : modelName
+              ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
+              : noModel;
         $(`#dmolpModelPreview-${instance}`).attr('aria-label', desc);
         $(`#dmolpModelDesc-${instance}`).text(desc);
+    },
+
+    /**
+     * Show the per-question authorship caption centered below the model. When
+     * no author is set (or no model is rendered) the caption is cleared and
+     * hidden so the layout is unchanged.
+     */
+    updateModelAuthor: function (author, instance) {
+        const $author = $(`#dmolpModelAuthor-${instance}`);
+        if (!$author.length) return;
+        const text = (author || '').trim();
+        if (text) {
+            $author.text(text).show();
+        } else {
+            $author.text('').hide();
+        }
     },
 
     getViewer: function (instance) {
@@ -1283,6 +1313,10 @@ var $eXe3Dmol = {
         let modelFormat = (question.modelFormat || '').trim().toLowerCase();
         const modelName = (question.modelName || '').trim();
 
+        // Default to no author caption; only the successful render path below
+        // reveals it (the author belongs to the model image).
+        $eXe3Dmol.updateModelAuthor('', instance);
+
         if (!modelFormat && modelName) {
             modelFormat = $eXe3Dmol.getModelFormatByName(modelName);
         }
@@ -1336,7 +1370,8 @@ var $eXe3Dmol = {
                 viewer.render();
             }
             $cover.hide();
-            $eXe3Dmol.updateModelA11y(modelName, instance);
+            $eXe3Dmol.updateModelA11y(modelName, instance, question.alt);
+            $eXe3Dmol.updateModelAuthor(question.author, instance);
             $eXe3Dmol.renderAtomLegend(viewer, question, instance);
 
             // Sync toggle background button to match the question's bgDark
@@ -1600,27 +1635,34 @@ var $eXe3Dmol = {
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXe3Dmol.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXe3Dmol.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full word.
+                            $eXe3Dmol.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXe3Dmol.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXe3Dmol.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXe3Dmol.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXe3Dmol.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1953,6 +1995,14 @@ var $eXe3Dmol = {
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
     },
 
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#dmolpEdAnswer-${instance}, #dmolpBtnReply-${instance}, #dmolpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
+    },
+
     answerQuestion: function (instance) {
         const mOptions = $eXe3Dmol.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
@@ -2001,6 +2051,11 @@ var $eXe3Dmol = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
+
         $eXe3Dmol.updateScore(correct, instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -2025,13 +2080,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2042,6 +2093,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2058,6 +2115,11 @@ var $eXe3Dmol = {
 
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
+
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
 
         $eXe3Dmol.updateScore(value, instance);
 
@@ -2083,13 +2145,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2100,6 +2158,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2238,8 +2302,6 @@ var $eXe3Dmol = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -2248,10 +2310,25 @@ var $eXe3Dmol = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {

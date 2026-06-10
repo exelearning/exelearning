@@ -1,0 +1,715 @@
+.ADAPTATIVEQUIZ-MainContainer {
+    font-size: 1rem;
+    margin: 1em auto;
+    padding: 0;
+    width: 100%;
+    max-width: 800px;
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ADAPTATIVEQUIZ-MainContainer * {
+    box-sizing: border-box;
+}
+
+.ADAPTATIVEQUIZ-GameContainer {
+    padding: 1em;
+    width: 100%;
+    position: relative;
+}
+
+.ADAPTATIVEQUIZ-ScoreBoard {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    justify-content: center;
+    padding: 0.5em 0;
+    margin-bottom: 1em;
+    border-bottom: 1px solid #ddd;
+}
+
+.ADAPTATIVEQUIZ-ScoreLabel {
+    font-size: 0.95em;
+}
+
+.ADAPTATIVEQUIZ-LevelValue {
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    padding: 0;
+    letter-spacing: 0.01em;
+}
+
+.ADAPTATIVEQUIZ-LevelValue--1 {
+    color: #d62828;
+}
+
+.ADAPTATIVEQUIZ-LevelValue--2 {
+    color: #1d4ed8;
+}
+
+.ADAPTATIVEQUIZ-LevelValue--3 {
+    color: #15803d;
+}
+
+.ADAPTATIVEQUIZ-LevelValue--4 {
+    color: #7c3aed;
+}
+
+.ADAPTATIVEQUIZ-QuestionContainer {
+    padding: 0.75em 0;
+}
+
+.ADAPTATIVEQUIZ-QuestionText {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 0.5em;
+    color: #222;
+}
+
+.ADAPTATIVEQUIZ-QuestionMedia {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em;
+    margin-bottom: 0.75em;
+    align-items: center;
+    justify-content: center;
+}
+
+.ADAPTATIVEQUIZ-Image {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.ADAPTATIVEQUIZ-Image img {
+    max-width: 100%;
+    max-height: 240px;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+}
+
+.ADAPTATIVEQUIZ-ImageAuthor {
+    margin-top: 0.35em;
+    text-align: center;
+    width: 100%;
+    font-size: 0.85em;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+.ADAPTATIVEQUIZ-Audio {
+    position: relative;
+}
+
+.ADAPTATIVEQUIZ-Audio audio {
+    width: 100%;
+    max-width: 320px;
+}
+
+/*
+ * Black circular audio toggle button (with a white play triangle) overlaid
+ * on the option / stem audio container. A single click plays the audio; a
+ * second click while `.is-playing` stops it. See `bindMediaToggle` in
+ * export/adaptative-quiz.js.
+ */
+.ADAPTATIVEQUIZ-AudioToggle {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    z-index: 2;
+}
+
+.ADAPTATIVEQUIZ-AudioToggle:hover,
+.ADAPTATIVEQUIZ-AudioToggle:focus {
+    background: #222;
+    outline: none;
+}
+
+/* White play triangle, rendered with a CSS border trick. */
+.ADAPTATIVEQUIZ-AudioToggleIcon {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid #fff;
+    margin-left: 2px;
+}
+
+.ADAPTATIVEQUIZ-QuestionMedia {
+    position: relative;
+}
+
+/*
+ * Question row: stem audio button on the left, vertically centered with the\n * question text.\n */
+.ADAPTATIVEQUIZ-QuestionRow {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-bottom: 0.5em;
+}
+
+.ADAPTATIVEQUIZ-QuestionRow .ADAPTATIVEQUIZ-QuestionText {
+    flex: 1;
+    margin: 0;
+}
+
+/* Stem variant: not absolutely positioned, flows inline left of the text. */
+.ADAPTATIVEQUIZ-AudioToggle--stem {
+    position: static;
+    flex-shrink: 0;
+}
+
+/*
+ * Option variant: anchored inside the option's top-right corner. Identical
+ * placement whether the question has an image (2-column grid layout) or not
+ * (single-column layout), so the play button looks the same in both cases.
+ */
+.ADAPTATIVEQUIZ-AudioToggle--option {
+    top: 0.35em;
+    right: 0.35em;
+}
+
+.ADAPTATIVEQUIZ-Option--has-audio {
+    position: relative;
+    padding-top: 1.75em;
+    padding-right: 0.75em;
+}
+
+.ADAPTATIVEQUIZ-Options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.ADAPTATIVEQUIZ-Options[data-type-select="0"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5em 0.75em;
+}
+
+.ADAPTATIVEQUIZ-OptionsGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75em;
+}
+
+@media (max-width: 600px) {
+    .ADAPTATIVEQUIZ-Options[data-type-select="0"] {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ADAPTATIVEQUIZ-Option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    padding: 0.5em 0.75em;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #f9f9f9;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+    margin: 0;
+}
+
+.ADAPTATIVEQUIZ-Option:hover {
+    background: #eef2ff;
+    border-color: #b8c6ea;
+}
+
+.ADAPTATIVEQUIZ-Option:focus-within {
+    outline: 2px solid #3f5ba9;
+    outline-offset: 2px;
+}
+
+/*
+ * Hide the native control (radio for legacy, checkbox for select-multi)
+ * visually while keeping it in the DOM for accessibility and form
+ * semantics. The selected state is conveyed through the option's
+ * background/border colour instead.
+ */
+.ADAPTATIVEQUIZ-Option input[type="radio"],
+.ADAPTATIVEQUIZ-Option input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    pointer-events: none;
+}
+
+.ADAPTATIVEQUIZ-Option:has(input[type="radio"]:checked),
+.ADAPTATIVEQUIZ-Option:has(input[type="checkbox"]:checked) {
+    background: #dbe4f7;
+    border-color: #3f5ba9;
+    box-shadow: inset 0 0 0 1px #3f5ba9;
+}
+
+.ADAPTATIVEQUIZ-OptionBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+
+.ADAPTATIVEQUIZ-OptionText {
+    word-break: break-word;
+}
+
+.ADAPTATIVEQUIZ-OptionBody .ADAPTATIVEQUIZ-Image img {
+    max-height: 160px;
+}
+
+.ADAPTATIVEQUIZ-OptionBody .ADAPTATIVEQUIZ-Audio audio {
+    max-width: 100%;
+}
+
+.ADAPTATIVEQUIZ-OptionCorrect {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+}
+
+.ADAPTATIVEQUIZ-OptionIncorrect {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+}
+
+/* Feedback colours must beat the blue "selected" state. The selected rule
+   above uses `:has(input[type="…"]:checked)` (specificity 0,3,1), so these
+   must mirror that exact `input[type="…"]` shape — `:has(input)` alone (0,2,1)
+   would lose and a selected correct option would stay blue. Matching the
+   shape (without `:checked`) also colours correct options that the learner
+   did NOT select, so every correct answer is green. */
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionCorrect:has(input[type="radio"]),
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionCorrect:has(input[type="checkbox"]) {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+    box-shadow: inset 0 0 0 1px #a5d6a7;
+}
+
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionIncorrect:has(input[type="radio"]),
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionIncorrect:has(input[type="checkbox"]) {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+    box-shadow: inset 0 0 0 1px #ef9a9a;
+}
+
+/* Sort items already declare a background; bump specificity so the
+   correct/incorrect feedback colours win regardless of source order. */
+.ADAPTATIVEQUIZ-SortItem.ADAPTATIVEQUIZ-OptionCorrect {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+}
+
+.ADAPTATIVEQUIZ-SortItem.ADAPTATIVEQUIZ-OptionIncorrect {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+}
+
+/* Sort (typeSelect=1) drag-and-drop list. */
+.ADAPTATIVEQUIZ-SortList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ADAPTATIVEQUIZ-SortItem {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.6em 0.8em;
+    margin: 0.35em 0;
+    border: 1px solid #cfd8dc;
+    border-radius: 6px;
+    background: #fafafa;
+    cursor: grab;
+    user-select: none;
+}
+
+.ADAPTATIVEQUIZ-SortItem:focus {
+    outline: 2px solid #1976d2;
+    outline-offset: 2px;
+}
+
+.ADAPTATIVEQUIZ-SortItem.is-dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+}
+
+.ADAPTATIVEQUIZ-SortItem.is-drop-target {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.ADAPTATIVEQUIZ-SortItem--locked {
+    cursor: default;
+    opacity: 0.95;
+}
+
+.ADAPTATIVEQUIZ-SortHandle {
+    color: #607d8b;
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.ADAPTATIVEQUIZ-SortRank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.8em;
+    height: 1.8em;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    background: #1976d2;
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+/* Word (typeSelect=2): hint cells, definition, and answer input — all
+   centered and stacked vertically (Guess-style). */
+.ADAPTATIVEQUIZ-WordAnswer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75em;
+    margin: 0.5em auto;
+    max-width: 100%;
+}
+
+.ADAPTATIVEQUIZ-WordHint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em 1em;
+}
+
+.ADAPTATIVEQUIZ-WordHintWord {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ADAPTATIVEQUIZ-WordHintLetter {
+    align-items: center;
+    border: 1px solid #555;
+    border-radius: 3px;
+    display: flex;
+    font-size: 1.3em;
+    font-weight: 600;
+    height: 1.8em;
+    justify-content: center;
+    margin: 1px;
+    text-align: center;
+    /* The letter case is baked into the markup by buildWordHint (case-sensitive
+       keeps the original case, otherwise the letters are uppercased in JS), so
+       the display never depends on CSS — that proved unreliable in
+       exported/preview builds. */
+    user-select: none;
+    width: 1.3em;
+}
+
+.ADAPTATIVEQUIZ-WordHintLetter--shown {
+    color: #5877c6;
+}
+
+.ADAPTATIVEQUIZ-WordHintLetter--hidden {
+    color: transparent;
+}
+
+/* Solution feedback colours: correct = green, incorrect = red. The
+   letter colour and the cell background/border match the existing
+   OptionCorrect / OptionIncorrect palette used by select and sort
+   types. Applied on the .ADAPTATIVEQUIZ-WordHint container after the
+   learner submits when the activity has "show solution" enabled. */
+.ADAPTATIVEQUIZ-WordHint--correct .ADAPTATIVEQUIZ-WordHintLetter {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+    color: #2e7d32;
+}
+
+.ADAPTATIVEQUIZ-WordHint--incorrect .ADAPTATIVEQUIZ-WordHintLetter {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+    color: #c62828;
+}
+
+.ADAPTATIVEQUIZ-WordDefinition {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    text-align: center;
+}
+
+.ADAPTATIVEQUIZ-WordDefinitionText {
+    font-size: 1.05em;
+}
+
+.ADAPTATIVEQUIZ-WordInput {
+    max-width: 24em;
+    text-align: center;
+}
+
+.ADAPTATIVEQUIZ-ButtonsContainer {
+    margin-top: 1em;
+    text-align: center;
+    display: flex;
+    gap: 0.75em;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.ADAPTATIVEQUIZ-BtnCheck,
+.ADAPTATIVEQUIZ-BtnNext,
+.ADAPTATIVEQUIZ-BtnNewGame,
+.ADAPTATIVEQUIZ-BtnStart {
+    padding: 0.5em 2em;
+    font-size: 1em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #fff;
+    background: #5877c6;
+}
+
+.ADAPTATIVEQUIZ-BtnCheck:hover,
+.ADAPTATIVEQUIZ-BtnNext:hover,
+.ADAPTATIVEQUIZ-BtnNewGame:hover,
+.ADAPTATIVEQUIZ-BtnStart:hover {
+    background: #3f5ba9;
+}
+
+.ADAPTATIVEQUIZ-BtnCheck:focus,
+.ADAPTATIVEQUIZ-BtnNext:focus,
+.ADAPTATIVEQUIZ-BtnNewGame:focus,
+.ADAPTATIVEQUIZ-BtnStart:focus {
+    outline: 2px solid #3f5ba9;
+    outline-offset: 2px;
+}
+
+.ADAPTATIVEQUIZ-TimeBox {
+    align-items: center;
+    gap: 0.3em;
+}
+
+.ADAPTATIVEQUIZ-Time {
+    font-variant-numeric: tabular-nums;
+    font-weight: bold;
+    min-width: 4.5em;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+.ADAPTATIVEQUIZ-StartGameDiv {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    justify-content: center;
+    padding: 2em 1em;
+    text-align: center;
+}
+
+.ADAPTATIVEQUIZ-Ready {
+    font-size: 1.4em;
+    font-weight: 600;
+    margin: 0;
+}
+
+.ADAPTATIVEQUIZ-BtnStart {
+    font-size: 1.15em;
+    padding: 0.6em 2.5em;
+}
+
+.ADAPTATIVEQUIZ-Messages {
+    text-align: center;
+    margin: 0.5em 0;
+    padding: 0.4em 0.75em;
+    border-radius: 6px;
+    font-style: italic;
+    font-size: 1.1em;
+    color: #333;
+    min-height: 1.5em;
+}
+
+.ADAPTATIVEQUIZ-Messages:empty {
+    padding: 0;
+    min-height: 0;
+    background: transparent;
+    border: none;
+}
+
+.ADAPTATIVEQUIZ-Messages--info {
+    color: #1e3a8a;
+    background: #e0ecff;
+    border: 1px solid #b8c6ea;
+}
+
+.ADAPTATIVEQUIZ-Messages--success {
+    color: #1b5e20;
+    background: transparent;
+    border: none;
+    padding: 0.25em 0;
+    font-weight: 600;
+}
+
+.ADAPTATIVEQUIZ-Messages--error {
+    color: #b71c1c;
+    background: transparent;
+    border: none;
+    padding: 0.25em 0;
+    font-weight: 600;
+}
+
+.ADAPTATIVEQUIZ-ShowClue {
+    text-align: center;
+    margin: 0.5em 0;
+    padding: 0.4em 0.75em;
+    border-radius: 6px;
+    color: #1e3a8a;
+    background: #e0ecff;
+    border: 1px solid #b8c6ea;
+}
+
+.ADAPTATIVEQUIZ-ShowClueText {
+    margin: 0;
+    font-weight: 600;
+}
+
+.ADAPTATIVEQUIZ-Report {
+    margin-top: 1em;
+}
+
+.ADAPTATIVEQUIZ-ReportBox {
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 1em 1.25em;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ADAPTATIVEQUIZ-ReportBox.ADAPTATIVEQUIZ-Report-high {
+    border-color: #a5d6a7;
+    background: #f1f8f2;
+}
+
+.ADAPTATIVEQUIZ-ReportBox.ADAPTATIVEQUIZ-Report-medium {
+    border-color: #b8c6ea;
+    background: #f4f6ff;
+}
+
+.ADAPTATIVEQUIZ-ReportBox.ADAPTATIVEQUIZ-Report-low {
+    border-color: #ef9a9a;
+    background: #fdf3f1;
+}
+
+.ADAPTATIVEQUIZ-ReportTitle {
+    margin: 0 0 0.5em;
+    font-size: 1.15em;
+    color: #333;
+}
+
+.ADAPTATIVEQUIZ-ReportStats {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.5em;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.35em 1em;
+}
+
+.ADAPTATIVEQUIZ-ReportProfile {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.ADAPTATIVEQUIZ-Cubierta {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    padding: 1em;
+}
+
+.ADAPTATIVEQUIZ-CodeAccessDiv {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 1em;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.ADAPTATIVEQUIZ-MessageCodeAccess {
+    margin-bottom: 0.75em;
+    color: #333;
+    text-align: center;
+}
+
+.ADAPTATIVEQUIZ-DataCodeAccessE {
+    display: flex;
+    gap: 0.5em;
+    align-items: center;
+}
+
+.ADAPTATIVEQUIZ-DataCodeAccessE a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ADAPTATIVEQUIZ-IconSubmit {
+    width: 24px;
+    height: 24px;
+    display: block;
+}
+
+.ADAPTATIVEQUIZ-CodeAccessInput {
+    flex: 1 1 auto;
+}
+
+@media (max-width: 450px) {
+    .ADAPTATIVEQUIZ-MainContainer {
+        font-size: 0.9rem;
+    }
+
+    .ADAPTATIVEQUIZ-ScoreBoard {
+        gap: 0.6em;
+    }
+
+    .ADAPTATIVEQUIZ-Option {
+        padding: 0.4em 0.5em;
+    }
+}

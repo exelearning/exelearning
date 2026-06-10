@@ -3977,17 +3977,9 @@
         <source>Please enter the project title:</source>
         <target>Si us plau, introdueix el títol del projecte:</target>
       </trans-unit>
-      <trans-unit id="cPW6CJ0" resname="Google Drive error">
-        <source>Google Drive error</source>
-        <target>Error de Google Drive</target>
-      </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
         <target>Desconegut</target>
-      </trans-unit>
-      <trans-unit id="crz7e6x" resname="Dropbox error">
-        <source>Dropbox error</source>
-        <target>Error de Dropbox</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
@@ -4396,22 +4388,6 @@
       <trans-unit id="4oyaNcE" resname="Upload">
         <source>Upload</source>
         <target>Carrega</target>
-      </trans-unit>
-      <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
-        <source>Upload to Dropbox</source>
-        <target>Puja a Dropbox</target>
-      </trans-unit>
-      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
-        <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target>Seleccioneu el directori Dropbox on es carregarà el projecte:</target>
-      </trans-unit>
-      <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
-        <source>Upload to Google Drive</source>
-        <target>Puja a Google Drive</target>
-      </trans-unit>
-      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
-        <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>Selecciona el directori de Google Drive on es carregarà el projecte:</target>
       </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
@@ -10953,6 +10929,10 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Ajudeu-nos a difondre eXeLearning. En seleccionar aquesta opció, s'afegirà  l'enllaç "Creat amb eXeLearning" a les vostres pàgines.</target>
       </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Creat amb eXeLearning</target>
+      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>Comptador de pàgines</target>
@@ -11248,10 +11228,6 @@
       <trans-unit id="qHaNrGf" resname="Changelog">
         <source>Changelog</source>
         <target>Registre de canvis</target>
-      </trans-unit>
-      <trans-unit id="rFqGW9s" resname="Upload to Drive">
-        <source>Upload to Drive</source>
-        <target>Carregar a Drive</target>
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
@@ -14224,6 +14200,1162 @@
       <trans-unit id="kmfv717" resname="Your score will be automatically saved after each change.">
         <source>Your score will be automatically saved after each change.</source>
         <target>~La vostra puntuació es desarà automàticament després de cada canvi.</target>
+      </trans-unit>
+      <trans-unit id="bk4xzkv" resname="Use the default style of the site">
+        <source>Use the default style of the site</source>
+        <target>~Utilitza l'estil predeterminat de l'aplicació</target>
+      </trans-unit>
+      <trans-unit id="cg59nxf" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
+        <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
+        <target>~Tria un estil per defecte per als projectes nous. Té preferència sobre el valor predeterminat de l'aplicació.</target>
+      </trans-unit>
+      <trans-unit id="bng7m0d" resname="Toggle mobile preview">
+        <source>Toggle mobile preview</source>
+        <target>~Vista prèvia mòbil (alternar)</target>
+      </trans-unit>
+      <trans-unit id="yh2nqik" resname="Open from folder">
+        <source>Open from folder</source>
+        <target>~Obre des de carpeta</target>
+      </trans-unit>
+      <trans-unit id="kjt1yqh" resname="Save to folder">
+        <source>Save to folder</source>
+        <target>~Desa a la carpeta</target>
+      </trans-unit>
+      <trans-unit id="i7sbnsq" resname="3D Model">
+        <source>3D Model</source>
+        <target>~Model 3D</target>
+      </trans-unit>
+      <trans-unit id="44fo8ug" resname="3D Models">
+        <source>3D Models</source>
+        <target>~Models 3D</target>
+      </trans-unit>
+      <trans-unit id="0hxm6cn" resname="The selected folder is not a valid eXeLearning project.">
+        <source>The selected folder is not a valid eXeLearning project.</source>
+        <target>~La carpeta seleccionada no conté un projecte eXeLearning vàlid.</target>
+      </trans-unit>
+      <trans-unit id="irsldku" resname="Not supported">
+        <source>Not supported</source>
+        <target>~No compatible</target>
+      </trans-unit>
+      <trans-unit id="pa8z06a" resname="Opening a project from a folder is not available in this browser.">
+        <source>Opening a project from a folder is not available in this browser.</source>
+        <target>~Aquest navegador no permet obrir des de carpeta.</target>
+      </trans-unit>
+      <trans-unit id="xskkk03" resname="Folder save requires the Yjs export pipeline.">
+        <source>Folder save requires the Yjs export pipeline.</source>
+        <target>~Desar a la carpeta requereix el canal d'exportació Yjs.</target>
+      </trans-unit>
+      <trans-unit id="0rtb45g" resname="Generating folder project...">
+        <source>Generating folder project...</source>
+        <target>~Generant el projecte a la carpeta...</target>
+      </trans-unit>
+      <trans-unit id="vrfipmo" resname="Saving to a folder is not available in this browser.">
+        <source>Saving to a folder is not available in this browser.</source>
+        <target>~Aquest navegador no permet desar a la carpeta.</target>
+      </trans-unit>
+      <trans-unit id="27e8mgm" resname="Folder saved.">
+        <source>Folder saved.</source>
+        <target>~Carpeta desada.</target>
+      </trans-unit>
+      <trans-unit id="t1bb59p" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target>~S'ha produït un error en exportar el projecte: </target>
+      </trans-unit>
+      <trans-unit id="ndhirmh" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target>~Enviant a la plataforma...</target>
+      </trans-unit>
+      <trans-unit id="4by4k6n" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target>~No s'ha pogut enviar el projecte a la plataforma: </target>
+      </trans-unit>
+      <trans-unit id="qz393n0" resname="TikZ code">
+        <source>TikZ code</source>
+        <target>~Codi TikZ</target>
+      </trans-unit>
+      <trans-unit id="31thwur" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target>~Una pregunta per línia. Camps separats per #. Descripció: text curt que descriu el circuit. Codi TikZ: codi circuitikz per al diagrama. Solució: qualsevol combinació d'A, B, C i D (p. ex.: A, AC, BD). Pregunta: el text de la pregunta. Després, de 2 a 4 opcions de resposta.</target>
+      </trans-unit>
+      <trans-unit id="zutjie7" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target>~Circuit de resistència simple</target>
+      </trans-unit>
+      <trans-unit id="z552rf9" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target>~Quin és el valor de la resistència?</target>
+      </trans-unit>
+      <trans-unit id="3lmyc8a" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target>~Circuit amb bateria i làmpada</target>
+      </trans-unit>
+      <trans-unit id="9k6yiwd" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target>~Què passa quan es tanca l'interruptor?</target>
+      </trans-unit>
+      <trans-unit id="ddxpqho" resname="Nothing">
+        <source>Nothing</source>
+        <target>~Res</target>
+      </trans-unit>
+      <trans-unit id="2ws533v" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target>~La làmpada s'encén</target>
+      </trans-unit>
+      <trans-unit id="c2qabkh" resname="The battery drains">
+        <source>The battery drains</source>
+        <target>~La bateria s'esgota</target>
+      </trans-unit>
+      <trans-unit id="4lxasmt" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
+        <target>~Genera 5 preguntes d'opció múltiple sobre circuits elèctrics. Una pregunta per línia. Cada línia ha de contenir tots els camps separats per #: una descripció curta, codi TikZ (usant circuitikz) per al diagrama del circuit, la resposta correcta en lletres (p. ex.: A, AB), la pregunta i de 2 a 4 opcions de resposta. No utilitzis el caràcter # dins de cap camp. No afegeixis salts de línia dins d'una pregunta. IMPORTANT: El codi TikZ ha de ser compatible amb la versió 0.9.6 de circuitikz. Utilitza només components disponibles en aquesta versió: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. NO utilitzis components de circuitikz 1.0 o posterior com dipchip, qfpchip, muxdemux, flipflop, latch o pantalles de 7 segments.</target>
+      </trans-unit>
+      <trans-unit id="sypff0g" resname="Drop an .elpx file here to open it">
+        <source>Drop an .elpx file here to open it</source>
+        <target>~Deixa anar un fitxer .elpx aquí per obrir-lo</target>
+      </trans-unit>
+      <trans-unit id="q2tlq0q" resname="360° panorama viewer">
+        <source>360° panorama viewer</source>
+        <target>~Visor de panorama 360°</target>
+      </trans-unit>
+      <trans-unit id="3t5kbqw" resname="Scene">
+        <source>Scene</source>
+        <target>~Escena</target>
+      </trans-unit>
+      <trans-unit id="ji064gj" resname="Hotspot">
+        <source>Hotspot</source>
+        <target>~Punt interactiu</target>
+      </trans-unit>
+      <trans-unit id="3g2yhc1" resname="Initial view">
+        <source>Initial view</source>
+        <target>~Vista inicial</target>
+      </trans-unit>
+      <trans-unit id="fu9nrzf" resname="Yaw">
+        <source>Yaw</source>
+        <target>~Yaw (gir horitzontal)</target>
+      </trans-unit>
+      <trans-unit id="shfqtij" resname="Pitch">
+        <source>Pitch</source>
+        <target>~Pitch (inclinació vertical)</target>
+      </trans-unit>
+      <trans-unit id="ck8io35" resname="Field of view">
+        <source>Field of view</source>
+        <target>~Camp de visió</target>
+      </trans-unit>
+      <trans-unit id="0r3xe8c" resname="Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.">
+        <source>Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.</source>
+        <target>~Afegeix imatges 360° equirectangulars (relació 2:1) o desmarca «Imatge de panorama 360°» per usar una foto plana normal. El visor utilitza WebGL per a les escenes 360°.</target>
+      </trans-unit>
+      <trans-unit id="htx45hr" resname="Scenes">
+        <source>Scenes</source>
+        <target>~Escenes</target>
+      </trans-unit>
+      <trans-unit id="lus6mba" resname="Add scene">
+        <source>Add scene</source>
+        <target>~Afegeix escena</target>
+      </trans-unit>
+      <trans-unit id="6t8p8qz" resname="Active scene">
+        <source>Active scene</source>
+        <target>~Escena activa</target>
+      </trans-unit>
+      <trans-unit id="axcufn7" resname="Panorama image">
+        <source>Panorama image</source>
+        <target>~Imatge panoràmica</target>
+      </trans-unit>
+      <trans-unit id="y0oiui8" resname="Choose image…">
+        <source>Choose image…</source>
+        <target>~Tria una imatge…</target>
+      </trans-unit>
+      <trans-unit id="djg7xgi" resname="No image selected">
+        <source>No image selected</source>
+        <target>~Cap imatge seleccionada</target>
+      </trans-unit>
+      <trans-unit id="y0upby4" resname="Clear">
+        <source>Clear</source>
+        <target>~Esborra</target>
+      </trans-unit>
+      <trans-unit id="4f01h0d" resname="360° panorama image">
+        <source>360° panorama image</source>
+        <target>~Imatge panoràmica 360°</target>
+      </trans-unit>
+      <trans-unit id="s6e6y7n" resname="Uncheck for a regular flat photo (no 360° effect).">
+        <source>Uncheck for a regular flat photo (no 360° effect).</source>
+        <target>~Desmarca per usar una foto plana normal (sense efecte 360°).</target>
+      </trans-unit>
+      <trans-unit id="fwgnbw0" resname="Hotspots">
+        <source>Hotspots</source>
+        <target>~Punts interactius</target>
+      </trans-unit>
+      <trans-unit id="qqb5cxh" resname="Click on the image to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the image to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Fes clic a la imatge per col·locar un punt interactiu, o arrossega'n un d'existent per moure'l.</target>
+      </trans-unit>
+      <trans-unit id="lkxpcbl" resname="Click on the panorama to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the panorama to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Fes clic al panorama per col·locar un punt interactiu, o arrossega'n un d'existent per moure'l.</target>
+      </trans-unit>
+      <trans-unit id="hn71kky" resname="Place hotspot by clicking">
+        <source>Place hotspot by clicking</source>
+        <target>~Col·loca el punt interactiu fent clic</target>
+      </trans-unit>
+      <trans-unit id="iz9lnqf" resname="…or add at current view">
+        <source>…or add at current view</source>
+        <target>~…o afegeix a la vista actual</target>
+      </trans-unit>
+      <trans-unit id="m3pa61z" resname="Controls">
+        <source>Controls</source>
+        <target>~Controls</target>
+      </trans-unit>
+      <trans-unit id="n8qwgt1" resname="Auto-rotate">
+        <source>Auto-rotate</source>
+        <target>~Rotació automàtica</target>
+      </trans-unit>
+      <trans-unit id="8l16vwl" resname="Speed">
+        <source>Speed</source>
+        <target>~Velocitat</target>
+      </trans-unit>
+      <trans-unit id="aweyj4b" resname="Allow zoom">
+        <source>Allow zoom</source>
+        <target>~Permet el zoom</target>
+      </trans-unit>
+      <trans-unit id="vm1uad8" resname="Show fullscreen button">
+        <source>Show fullscreen button</source>
+        <target>~Mostra el botó de pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="6x1u2yf" resname="Show hotspot labels">
+        <source>Show hotspot labels</source>
+        <target>~Mostra les etiquetes dels punts interactius</target>
+      </trans-unit>
+      <trans-unit id="n2bl746" resname="Show navigation arrows">
+        <source>Show navigation arrows</source>
+        <target>~Mostra les fletxes de navegació</target>
+      </trans-unit>
+      <trans-unit id="900e1p7" resname="Select an image to see a live preview.">
+        <source>Select an image to see a live preview.</source>
+        <target>~Selecciona una imatge per veure una vista prèvia en directe.</target>
+      </trans-unit>
+      <trans-unit id="55eml29" resname="Scene actions">
+        <source>Scene actions</source>
+        <target>~Accions d'escena</target>
+      </trans-unit>
+      <trans-unit id="zglv1ed" resname="Set as start scene">
+        <source>Set as start scene</source>
+        <target>~Estableix com a escena inicial</target>
+      </trans-unit>
+      <trans-unit id="y1hv64r" resname="Duplicate scene">
+        <source>Duplicate scene</source>
+        <target>~Duplica l'escena</target>
+      </trans-unit>
+      <trans-unit id="wra42a6" resname="Remove scene">
+        <source>Remove scene</source>
+        <target>~Elimina l'escena</target>
+      </trans-unit>
+      <trans-unit id="vtqm7o1" resname="No hotspots in this scene yet.">
+        <source>No hotspots in this scene yet.</source>
+        <target>~Encara no hi ha punts interactius en aquesta escena.</target>
+      </trans-unit>
+      <trans-unit id="cjcxolg" resname="Label">
+        <source>Label</source>
+        <target>~Etiqueta</target>
+      </trans-unit>
+      <trans-unit id="patanp2" resname="Remove hotspot">
+        <source>Remove hotspot</source>
+        <target>~Elimina el punt interactiu</target>
+      </trans-unit>
+      <trans-unit id="jt5y8u8" resname="Action">
+        <source>Action</source>
+        <target>~Acció</target>
+      </trans-unit>
+      <trans-unit id="lwq4lkf" resname="Go to scene">
+        <source>Go to scene</source>
+        <target>~Vés a l'escena</target>
+      </trans-unit>
+      <trans-unit id="zymti0z" resname="External link">
+        <source>External link</source>
+        <target>~Enllaç extern</target>
+      </trans-unit>
+      <trans-unit id="wi1u72u" resname="Target scene">
+        <source>Target scene</source>
+        <target>~Escena de destinació</target>
+      </trans-unit>
+      <trans-unit id="f8h56ym" resname="Video URL">
+        <source>Video URL</source>
+        <target>~URL del vídeo</target>
+      </trans-unit>
+      <trans-unit id="04gphst" resname="Choose video…">
+        <source>Choose video…</source>
+        <target>~Selecciona un vídeo…</target>
+      </trans-unit>
+      <trans-unit id="8lt29up" resname="Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.">
+        <source>Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.</source>
+        <target>~Enganxa l'URL d'una pàgina de YouTube, Vimeo o Mediateca d'Educamadrid per inserir-lo, o tria un fitxer de vídeo pujat.</target>
+      </trans-unit>
+      <trans-unit id="vx5c4xb" resname="Open in a new tab">
+        <source>Open in a new tab</source>
+        <target>~Obre en una pestanya nova</target>
+      </trans-unit>
+      <trans-unit id="qr9dj1b" resname="Loading 3D preview…">
+        <source>Loading 3D preview…</source>
+        <target>~Carregant la vista prèvia 3D…</target>
+      </trans-unit>
+      <trans-unit id="w88b1yp" resname="Drag to move">
+        <source>Drag to move</source>
+        <target>~Arrossega per moure</target>
+      </trans-unit>
+      <trans-unit id="lw0a7l6" resname="Pan navigation">
+        <source>Pan navigation</source>
+        <target>~Navegació panoràmica</target>
+      </trans-unit>
+      <trans-unit id="549kd7j" resname="Pan left">
+        <source>Pan left</source>
+        <target>~Desplaça a l'esquerra</target>
+      </trans-unit>
+      <trans-unit id="byd0cst" resname="Pan up">
+        <source>Pan up</source>
+        <target>~Desplaça cap amunt</target>
+      </trans-unit>
+      <trans-unit id="9n6lldv" resname="Pan down">
+        <source>Pan down</source>
+        <target>~Desplaça cap avall</target>
+      </trans-unit>
+      <trans-unit id="bu22z0u" resname="Pan right">
+        <source>Pan right</source>
+        <target>~Desplaça a la dreta</target>
+      </trans-unit>
+      <trans-unit id="ptu2ut9" resname="3D Viewer">
+        <source>3D Viewer</source>
+        <target>~Visor 3D</target>
+      </trans-unit>
+      <trans-unit id="c9h5nh8" resname="Exit fullscreen">
+        <source>Exit fullscreen</source>
+        <target>~Surt de la pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="fpt2ces" resname="Select a 3D model to preview">
+        <source>Select a 3D model to preview</source>
+        <target>~Selecciona un model 3D per previsualitzar</target>
+      </trans-unit>
+      <trans-unit id="fr26mcy" resname="Rotate model">
+        <source>Rotate model</source>
+        <target>~Gira el model</target>
+      </trans-unit>
+      <trans-unit id="fmdt426" resname="Rotate left">
+        <source>Rotate left</source>
+        <target>~Gira a l'esquerra</target>
+      </trans-unit>
+      <trans-unit id="834gkfa" resname="Tilt up">
+        <source>Tilt up</source>
+        <target>~Inclina cap amunt</target>
+      </trans-unit>
+      <trans-unit id="uyzdec5" resname="Tilt down">
+        <source>Tilt down</source>
+        <target>~Inclina cap avall</target>
+      </trans-unit>
+      <trans-unit id="rl3n4r3" resname="Rotate right">
+        <source>Rotate right</source>
+        <target>~Gira a la dreta</target>
+      </trans-unit>
+      <trans-unit id="ykj0y0f" resname="Select a GLB, GLTF or STL file">
+        <source>Select a GLB, GLTF or STL file</source>
+        <target>~Selecciona un fitxer GLB, GLTF o STL</target>
+      </trans-unit>
+      <trans-unit id="mwlmhyb" resname="Describe the 3D model for accessibility">
+        <source>Describe the 3D model for accessibility</source>
+        <target>~Descriu el model 3D per a l'accessibilitat</target>
+      </trans-unit>
+      <trans-unit id="0iwij0w" resname="Describe the 3D model for screen readers and accessibility">
+        <source>Describe the 3D model for screen readers and accessibility</source>
+        <target>~Descriu el model 3D per a lectors de pantalla i accessibilitat</target>
+      </trans-unit>
+      <trans-unit id="o5ck6v3" resname="Display Options">
+        <source>Display Options</source>
+        <target>~Opcions de visualització</target>
+      </trans-unit>
+      <trans-unit id="55usknb" resname="Choose background color">
+        <source>Choose background color</source>
+        <target>~Tria el color de fons</target>
+      </trans-unit>
+      <trans-unit id="jav5ijr" resname="STL model color">
+        <source>STL model color</source>
+        <target>~Color del model STL</target>
+      </trans-unit>
+      <trans-unit id="vx5wje0" resname="Choose STL model color">
+        <source>Choose STL model color</source>
+        <target>~Tria el color del model STL</target>
+      </trans-unit>
+      <trans-unit id="k1wvwp0" resname="Only used for STL files; ignored for GLB/GLTF (materials come from the model).">
+        <source>Only used for STL files; ignored for GLB/GLTF (materials come from the model).</source>
+        <target>~Només s'utilitza per a fitxers STL; s'ignora per a GLB/GLTF (els materials provenen del model).</target>
+      </trans-unit>
+      <trans-unit id="ul7j4q2" resname="Enable camera controls">
+        <source>Enable camera controls</source>
+        <target>~Activa els controls de càmera</target>
+      </trans-unit>
+      <trans-unit id="lig5kho" resname="Auto-rotate model">
+        <source>Auto-rotate model</source>
+        <target>~Gira el model automàticament</target>
+      </trans-unit>
+      <trans-unit id="kc2pnq1" resname="Show navigation controls (fullscreen + arrows)">
+        <source>Show navigation controls (fullscreen + arrows)</source>
+        <target>~Mostra els controls de navegació (pantalla completa + fletxes)</target>
+      </trans-unit>
+      <trans-unit id="egu7gu1" resname="Mutually exclusive with auto-rotate.">
+        <source>Mutually exclusive with auto-rotate.</source>
+        <target>~Incompatible amb la rotació automàtica.</target>
+      </trans-unit>
+      <trans-unit id="muwntba" resname="Animation">
+        <source>Animation</source>
+        <target>~Animació</target>
+      </trans-unit>
+      <trans-unit id="g3v8jtp" resname="Play animation">
+        <source>Play animation</source>
+        <target>~Reprodueix l'animació</target>
+      </trans-unit>
+      <trans-unit id="8cpoflj" resname="Animation paused">
+        <source>Animation paused</source>
+        <target>~Animació pausada</target>
+      </trans-unit>
+      <trans-unit id="dvb6qfo" resname="Playing animation">
+        <source>Playing animation</source>
+        <target>~Reproduint l'animació</target>
+      </trans-unit>
+      <trans-unit id="iitcg4e" resname="Please select a 3D model file">
+        <source>Please select a 3D model file</source>
+        <target>~Selecciona un fitxer de model 3D</target>
+      </trans-unit>
+      <trans-unit id="qqshbn9" resname="Please select a valid 3D model file (GLB, GLTF, or STL)">
+        <source>Please select a valid 3D model file (GLB, GLTF, or STL)</source>
+        <target>~Selecciona un fitxer de model 3D vàlid (GLB, GLTF o STL)</target>
+      </trans-unit>
+      <trans-unit id="0d9nqxs" resname="Loading editor…">
+        <source>Loading editor…</source>
+        <target>~Carregant l'editor…</target>
+      </trans-unit>
+      <trans-unit id="bcusvz2" resname="Could not load the slide editor. Please reload the page.">
+        <source>Could not load the slide editor. Please reload the page.</source>
+        <target>~No s'ha pogut carregar l'editor de diapositives. Torna a carregar la pàgina.</target>
+      </trans-unit>
+      <trans-unit id="ejedb5h" resname="Markdown text">
+        <source>Markdown text</source>
+        <target>~Text Markdown</target>
+      </trans-unit>
+      <trans-unit id="cdjdc88" resname="Markdown content">
+        <source>Markdown content</source>
+        <target>~Contingut Markdown</target>
+      </trans-unit>
+      <trans-unit id="gry5ow9" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target>~Circuits elèctrics</target>
+      </trans-unit>
+      <trans-unit id="jxq0jq6" resname="Please write the question">
+        <source>Please write the question</source>
+        <target>~Escriu la pregunta</target>
+      </trans-unit>
+      <trans-unit id="wqe80zi" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target>~Completa totes les opcions</target>
+      </trans-unit>
+      <trans-unit id="ito1jq4" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target>~Escriu la paraula/frase</target>
+      </trans-unit>
+      <trans-unit id="19hppbn" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target>~El fitxer seleccionat no conté un joc vàlid</target>
+      </trans-unit>
+      <trans-unit id="ocy4pwb" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target>~Indica el temps per mostrar la solució</target>
+      </trans-unit>
+      <trans-unit id="omitrjm" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target>~Proporciona la paraula o frase</target>
+      </trans-unit>
+      <trans-unit id="stiz634" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target>~Crea activitats de qüestionari basades en diagrames de circuits elèctrics dibuixats amb TikZ.</target>
+      </trans-unit>
+      <trans-unit id="o2him51" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target>~&amp;percnt; d'encerts per veure el feedback</target>
+      </trans-unit>
+      <trans-unit id="tcnidha" resname="% Questions">
+        <source>% Questions</source>
+        <target>~% Preguntes</target>
+      </trans-unit>
+      <trans-unit id="en3kvxa" resname="No circuit">
+        <source>No circuit</source>
+        <target>~Sense circuit</target>
+      </trans-unit>
+      <trans-unit id="wxlu66m" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target>~Codi del circuit (TikZ)</target>
+      </trans-unit>
+      <trans-unit id="yx213n3" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target>~Vista prèvia del circuit</target>
+      </trans-unit>
+      <trans-unit id="zkn88l6" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target>~Has respost totes les preguntes.</target>
+      </trans-unit>
+      <trans-unit id="w9uoqb9" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target>~Necessites almenys &amp;percnt;s&amp;percnt; de respostes correctes per obtenir la informació. Torna-ho a intentar.</target>
+      </trans-unit>
+      <trans-unit id="6cih7yz" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target>~La puntuació no es pot desar perquè aquesta pàgina no forma part d'un paquet SCORM.</target>
+      </trans-unit>
+      <trans-unit id="op2v723" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target>~Només pots desar la puntuació una vegada</target>
+      </trans-unit>
+      <trans-unit id="j0v9vej" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target>~Inicia l'activitat abans de desar la puntuació.</target>
+      </trans-unit>
+      <trans-unit id="s9iokoq" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target>~Qüestionari de circuits elèctrics</target>
+      </trans-unit>
+      <trans-unit id="f9blfgw" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target>~Observa el circuit elèctric i respon les preguntes.</target>
+      </trans-unit>
+      <trans-unit id="tw2bgpw" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target>~Quin tipus de circuit es mostra?</target>
+      </trans-unit>
+      <trans-unit id="zsq6ii9" resname="Series circuit">
+        <source>Series circuit</source>
+        <target>~Circuit en sèrie</target>
+      </trans-unit>
+      <trans-unit id="fahypvv" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target>~Circuit en paral·lel</target>
+      </trans-unit>
+      <trans-unit id="w21cxua" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target>~Circuit mixt</target>
+      </trans-unit>
+      <trans-unit id="ish4lar" resname="Open circuit">
+        <source>Open circuit</source>
+        <target>~Circuit obert</target>
+      </trans-unit>
+      <trans-unit id="e5izkif" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target>~Circuit amb una bateria connectada en sèrie amb dues resistències</target>
+      </trans-unit>
+      <trans-unit id="u2yhb63" resname="3Dmol">
+        <source>3Dmol</source>
+        <target>~3Dmol</target>
+      </trans-unit>
+      <trans-unit id="l8odwc2" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target>~Selecciona un fitxer de model 3D vàlid</target>
+      </trans-unit>
+      <trans-unit id="ce6ksde" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target>~Format de model 3D no compatible. Formats compatibles: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</target>
+      </trans-unit>
+      <trans-unit id="7cpvoyu" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target>~No s'ha pogut renderitzar el model 3D seleccionat</target>
+      </trans-unit>
+      <trans-unit id="sqgpg6x" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target>~Fitxer de model molt gran. Això pot afectar el rendiment.</target>
+      </trans-unit>
+      <trans-unit id="dw3kj5q" resname="3D model">
+        <source>3D model</source>
+        <target>~Model 3D</target>
+      </trans-unit>
+      <trans-unit id="cyx2kmj" resname="No 3D model">
+        <source>No 3D model</source>
+        <target>~Sense model 3D</target>
+      </trans-unit>
+      <trans-unit id="lrqyzsl" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target>~Càmera activada</target>
+      </trans-unit>
+      <trans-unit id="2r5gtud" resname="Click to disable">
+        <source>Click to disable</source>
+        <target>~Fes clic per desactivar</target>
+      </trans-unit>
+      <trans-unit id="smnjc6r" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target>~Càmera desactivada</target>
+      </trans-unit>
+      <trans-unit id="75kc6s0" resname="Click to enable">
+        <source>Click to enable</source>
+        <target>~Fes clic per activar</target>
+      </trans-unit>
+      <trans-unit id="ez8yezc" resname="Dark background">
+        <source>Dark background</source>
+        <target>~Fons fosc</target>
+      </trans-unit>
+      <trans-unit id="p94e3cd" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target>~Fes clic per canviar a clar</target>
+      </trans-unit>
+      <trans-unit id="8wao8kx" resname="Light background">
+        <source>Light background</source>
+        <target>~Fons clar</target>
+      </trans-unit>
+      <trans-unit id="j954ane" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target>~Fes clic per canviar a fosc</target>
+      </trans-unit>
+      <trans-unit id="19ohsyo" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target>~Llegenda d'àtoms visible</target>
+      </trans-unit>
+      <trans-unit id="06a8moh" resname="Click to hide">
+        <source>Click to hide</source>
+        <target>~Fes clic per amagar</target>
+      </trans-unit>
+      <trans-unit id="w1m9y3o" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target>~Llegenda d'àtoms oculta</target>
+      </trans-unit>
+      <trans-unit id="z4xzqvm" resname="Click to show">
+        <source>Click to show</source>
+        <target>~Fes clic per mostrar</target>
+      </trans-unit>
+      <trans-unit id="wqr3l77" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target>~Crea activitats de qüestionari basades en models 3D interactius.</target>
+      </trans-unit>
+      <trans-unit id="j7wodns" resname="3D model preview">
+        <source>3D model preview</source>
+        <target>~Vista prèvia del model 3D</target>
+      </trans-unit>
+      <trans-unit id="rlgkxi0" resname="Molecule style">
+        <source>Molecule style</source>
+        <target>~Estil de molècula</target>
+      </trans-unit>
+      <trans-unit id="7yzeudd" resname="Smaller">
+        <source>Smaller</source>
+        <target>~Més petit</target>
+      </trans-unit>
+      <trans-unit id="5dw9hql" resname="Bigger">
+        <source>Bigger</source>
+        <target>~Més gran</target>
+      </trans-unit>
+      <trans-unit id="or1e9hy" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target>~Restableix la vista de càmera</target>
+      </trans-unit>
+      <trans-unit id="kecco45" resname="Save initial view">
+        <source>Save initial view</source>
+        <target>~Desa la vista inicial</target>
+      </trans-unit>
+      <trans-unit id="u1cnip1" resname="Download image">
+        <source>Download image</source>
+        <target>~Descarrega la imatge</target>
+      </trans-unit>
+      <trans-unit id="1j8uxcs" resname="3D model file">
+        <source>3D model file</source>
+        <target>~Fitxer de model 3D</target>
+      </trans-unit>
+      <trans-unit id="u76iil3" resname="Preview model">
+        <source>Preview model</source>
+        <target>~Vista prèvia del model</target>
+      </trans-unit>
+      <trans-unit id="d194n7l" resname="Line">
+        <source>Line</source>
+        <target>~Línia</target>
+      </trans-unit>
+      <trans-unit id="r74rezt" resname="Cross">
+        <source>Cross</source>
+        <target>~Creu</target>
+      </trans-unit>
+      <trans-unit id="ig9xj9n" resname="Stick">
+        <source>Stick</source>
+        <target>~Vareta</target>
+      </trans-unit>
+      <trans-unit id="pg9kvsv" resname="Sphere">
+        <source>Sphere</source>
+        <target>~Esfera</target>
+      </trans-unit>
+      <trans-unit id="wm83u68" resname="Cartoon">
+        <source>Cartoon</source>
+        <target>~Cartoon</target>
+      </trans-unit>
+      <trans-unit id="xo7kaot" resname="Surface">
+        <source>Surface</source>
+        <target>~Superfície</target>
+      </trans-unit>
+      <trans-unit id="7glnhvb" resname="Toggle background">
+        <source>Toggle background</source>
+        <target>~Alterna el fons</target>
+      </trans-unit>
+      <trans-unit id="n1cn6u7" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target>~Qüestionari de model 3D</target>
+      </trans-unit>
+      <trans-unit id="b4rjnsj" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target>~Composició química</target>
+      </trans-unit>
+      <trans-unit id="5gntdtg" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target>~Observa el model 3D i respon les preguntes.</target>
+      </trans-unit>
+      <trans-unit id="36fw94t" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target>~Pots girar el model 3D fent clic i arrossegant.</target>
+      </trans-unit>
+      <trans-unit id="ix01il8" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target>~Quin és l'àtom central del model?</target>
+      </trans-unit>
+      <trans-unit id="i45pg9o" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target>~Quants grups hidroxil (–OH) té una molècula de glucosa?</target>
+      </trans-unit>
+      <trans-unit id="16tyhic" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target>~La glucosa (C₆H₁₂O₆) és el monosacàrid més abundant i la principal font d'energia cel·lular. Gira el model per explorar-ne l'estructura.</target>
+      </trans-unit>
+      <trans-unit id="yjnymtg" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target>~Estil predeterminat per als documents nous</target>
+      </trans-unit>
+      <trans-unit id="ad6p1nu" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target>~Només els fitxers STL utilitzen aquest color; el fitxer actual no és STL</target>
+      </trans-unit>
+      <trans-unit id="x8oqfl3" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target>~Selecciona la resposta correcta per a cada pregunta</target>
+      </trans-unit>
+      <trans-unit id="vfiojr8" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
+        <target>~Introdueix el codi TikZ del circuit…</target>
+      </trans-unit>
+      <trans-unit id="a1o5u4o" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target>~Marc legal:</target>
+      </trans-unit>
+      <trans-unit id="jksn5eq" resname="Specification:">
+        <source>Specification:</source>
+        <target>~Concreció:</target>
+      </trans-unit>
+      <trans-unit id="28cdg0v" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target>~Aquest conjunt de dades no està disponible encara. S'afegirà en una versió pròxima.</target>
+      </trans-unit>
+      <trans-unit id="4g3w7qu" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target>~Selector d'elements curriculars</target>
+      </trans-unit>
+      <trans-unit id="1ra2y1u" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target>~Carregant les dades curriculars…</target>
+      </trans-unit>
+      <trans-unit id="0qf0z51" resname="Filter…">
+        <source>Filter…</source>
+        <target>~Filtra…</target>
+      </trans-unit>
+      <trans-unit id="pvx9phx" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target>~Sabers bàsics</target>
+      </trans-unit>
+      <trans-unit id="vsmpr0d" resname="Select a subject">
+        <source>Select a subject</source>
+        <target>~Selecciona una matèria</target>
+      </trans-unit>
+      <trans-unit id="qo93v5u" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target>~Encara no s'ha seleccionat cap element.</target>
+      </trans-unit>
+      <trans-unit id="wlt8df4" resname="Summary preview">
+        <source>Summary preview</source>
+        <target>~Vista prèvia del resum</target>
+      </trans-unit>
+      <trans-unit id="h09j06i" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target>~Resum de la fonamentació curricular</target>
+      </trans-unit>
+      <trans-unit id="qj9aeeg" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target>~Voleu restablir tota la selecció? Es perdran els canvis.</target>
+      </trans-unit>
+      <trans-unit id="lr3xhqv" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target>~Selecciona l'etapa i el nivell</target>
+      </trans-unit>
+      <trans-unit id="6tgc8z6" resname="No results">
+        <source>No results</source>
+        <target>~Sense resultats</target>
+      </trans-unit>
+      <trans-unit id="l98ndp7" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target>~No hi ha sabers bàsics per a aquesta matèria.</target>
+      </trans-unit>
+      <trans-unit id="lhznvko" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target>~No hi ha competències específiques per a aquesta matèria.</target>
+      </trans-unit>
+      <trans-unit id="w14yd6l" resname="Partial">
+        <source>Partial</source>
+        <target>~Parcial</target>
+      </trans-unit>
+      <trans-unit id="v9nn0kv" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target>~Comp. clau</target>
+      </trans-unit>
+      <trans-unit id="rfxtcsb" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target>~Descriptors operatius</target>
+      </trans-unit>
+      <trans-unit id="tt0dfr0" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target>~No hi ha elements curriculars seleccionats.</target>
+      </trans-unit>
+      <trans-unit id="wo8savz" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target>~Fonamentació curricular LOMLOE</target>
+      </trans-unit>
+      <trans-unit id="w1f1y3l" resname="Foundations">
+        <source>Foundations</source>
+        <target>~Fonamentació</target>
+      </trans-unit>
+      <trans-unit id="8qzngrn" resname="Selected elements">
+        <source>Selected elements</source>
+        <target>~Elements seleccionats</target>
+      </trans-unit>
+      <trans-unit id="18gbxxm" resname="criteria">
+        <source>criteria</source>
+        <target>~criteris</target>
+      </trans-unit>
+      <trans-unit id="gq8lq9i" resname="knowledge">
+        <source>knowledge</source>
+        <target>~sabers</target>
+      </trans-unit>
+      <trans-unit id="lwb815r" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target>~Competències específiques</target>
+      </trans-unit>
+      <trans-unit id="sistr45" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target>~Comp. específica</target>
+      </trans-unit>
+      <trans-unit id="uti2e61" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target>~Competències clau</target>
+      </trans-unit>
+      <trans-unit id="t78waql" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target>~Criteris d'avaluació</target>
+      </trans-unit>
+      <trans-unit id="xiq003d" resname="partial">
+        <source>partial</source>
+        <target>~parcial</target>
+      </trans-unit>
+      <trans-unit id="p20v6d4" resname="Error loading data: ">
+        <source>Error loading data: </source>
+        <target>~Error en carregar les dades: </target>
+      </trans-unit>
+      <trans-unit id="4u8p67u" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target>~Arrossegant, només es poden obrir fitxers de projecte .elpx, .elp o .zip.</target>
+      </trans-unit>
+      <trans-unit id="46ilu2z" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
+        <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
+        <target>~Nivell: 0 (baix), 1 (mitjà), 2 (alt), 3 (expert) o 4 (mestre).</target>
+      </trans-unit>
+      <trans-unit id="ijh8lt9" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
+        <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
+        <target>~Nivell: 0 (baix), 1 (mitjà), 2 (alt) o 3 (expert).</target>
+      </trans-unit>
+      <trans-unit id="i8ihb14" resname="Level: 0 (low), 1 (medium) or 2 (high).">
+        <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
+        <target>~Nivell: 0 (baix), 1 (mitjà) o 2 (alt).</target>
+      </trans-unit>
+      <trans-unit id="bbpljee" resname="OptionE">
+        <source>OptionE</source>
+        <target>~OpcióE</target>
+      </trans-unit>
+      <trans-unit id="vtnu45s" resname="OptionF">
+        <source>OptionF</source>
+        <target>~OpcióF</target>
+      </trans-unit>
+      <trans-unit id="xz34iyo" resname="Which of the following are prime numbers?">
+        <source>Which of the following are prime numbers?</source>
+        <target>~Quins dels següents són nombres primers?</target>
+      </trans-unit>
+      <trans-unit id="u5zqieu" resname="Sort from largest to smallest">
+        <source>Sort from largest to smallest</source>
+        <target>~Ordena de major a menor</target>
+      </trans-unit>
+      <trans-unit id="fb1eniw" resname="Elephant">
+        <source>Elephant</source>
+        <target>~Elefant</target>
+      </trans-unit>
+      <trans-unit id="x29bi0i" resname="Mouse">
+        <source>Mouse</source>
+        <target>~Ratolí</target>
+      </trans-unit>
+      <trans-unit id="ckrttw0" resname="Which of these are transcendental numbers?">
+        <source>Which of these are transcendental numbers?</source>
+        <target>~Quins d'aquests són nombres transcendents?</target>
+      </trans-unit>
+      <trans-unit id="u9jgsip" resname="Liouville constant">
+        <source>Liouville constant</source>
+        <target>~Constant de Liouville</target>
+      </trans-unit>
+      <trans-unit id="g3opkvq" resname="Champernowne constant">
+        <source>Champernowne constant</source>
+        <target>~Constant de Champernowne</target>
+      </trans-unit>
+      <trans-unit id="qvlxuga" resname="Sort these chemical elements from lowest to highest atomic number">
+        <source>Sort these chemical elements from lowest to highest atomic number</source>
+        <target>~Ordena aquests elements químics de menor a major nombre atòmic</target>
+      </trans-unit>
+      <trans-unit id="mgvvb8z" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
+        <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
+        <target>~S'accepten tres tipus de preguntes. Cada línia ha de començar amb el número de tipus, seguit de @, el nivell i la resta de camps separats amb #:</target>
+      </trans-unit>
+      <trans-unit id="kelu6px" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
+        <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
+        <target>~Tipus 0 (opció múltiple): 0@Nivell#Solució#Pregunta#OpcióA#OpcióB[#OpcióC][#OpcióD][#OpcióE][#OpcióF]. La solució és una combinació en majúscules d'A, B, C, D, E, F que identifica les opcions correctes (p. ex. A, AB, ACD, ABCDEF). Usa fins a 6 lletres i mai més que el nombre d'opcions. Deixa Solució buida si cap opció no és correcta.</target>
+      </trans-unit>
+      <trans-unit id="8nwqdvz" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
+        <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
+        <target>~Tipus 1 (ordenar): 1@Nivell#Pregunta#Element1#Element2#Element3[#Element4][#Element5][#Element6]. Proporciona entre 3 i 6 elements ja llistats en l'ordre correcte segons el criteri de la pregunta.</target>
+      </trans-unit>
+      <trans-unit id="mj2lg7q" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
+        <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
+        <target>~Tipus 2 (paraula/definició): 2@Nivell#Paraula#Definició.</target>
+      </trans-unit>
+      <trans-unit id="l1w5ihn" resname="Do not include the # character inside any field.">
+        <source>Do not include the # character inside any field.</source>
+        <target>~No incloguis el caràcter # dins de cap camp.</target>
+      </trans-unit>
+      <trans-unit id="d2eumxj" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
+        <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
+        <target>~distribuïdes entre els 5 nivells (0=baix, 1=mitjà, 2=alt, 3=expert, 4=mestre)</target>
+      </trans-unit>
+      <trans-unit id="4uj6sgy" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
+        <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
+        <target>~distribuïdes entre els 4 nivells (0=baix, 1=mitjà, 2=alt, 3=expert)</target>
+      </trans-unit>
+      <trans-unit id="vefnuk5" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
+        <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
+        <target>~distribuïdes entre els 3 nivells (0=baix, 1=mitjà, 2=alt)</target>
+      </trans-unit>
+      <trans-unit id="4cd95ns" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 4 (mestre) ha de contenir les preguntes més difícils.</target>
+      </trans-unit>
+      <trans-unit id="g2bqaj7" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 3 (expert) ha de contenir les preguntes més difícils.</target>
+      </trans-unit>
+      <trans-unit id="idt0qsj" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 2 (alt) ha de contenir les preguntes més difícils.</target>
+      </trans-unit>
+      <trans-unit id="dqcyy7e" resname="Your browser is not compatible with this type of activity.">
+        <source>Your browser is not compatible with this type of activity.</source>
+        <target>~El teu navegador no és compatible amb aquest tipus d'activitat.</target>
+      </trans-unit>
+      <trans-unit id="1bvhar4" resname="You must add at least one question.">
+        <source>You must add at least one question.</source>
+        <target>~Has d'afegir almenys una pregunta.</target>
+      </trans-unit>
+      <trans-unit id="bizh92a" resname="You must have at least one question.">
+        <source>You must have at least one question.</source>
+        <target>~Has de tenir almenys una pregunta.</target>
+      </trans-unit>
+      <trans-unit id="bbdfhay" resname="Question %s: the question text cannot be empty.">
+        <source>Question %s: the question text cannot be empty.</source>
+        <target>~Pregunta %s: el text de la pregunta no pot estar buit.</target>
+      </trans-unit>
+      <trans-unit id="pysxjdh" resname="Question %s: please fill in all answer options.">
+        <source>Question %s: please fill in all answer options.</source>
+        <target>~Pregunta %s: omple totes les opcions de resposta.</target>
+      </trans-unit>
+      <trans-unit id="e6i0l51" resname="Question %s: please mark which option is the correct answer.">
+        <source>Question %s: please mark which option is the correct answer.</source>
+        <target>~Pregunta %s: indica quina opció és la resposta correcta.</target>
+      </trans-unit>
+      <trans-unit id="24gqibf" resname="You must add at least %s questions.">
+        <source>You must add at least %s questions.</source>
+        <target>~Has d'afegir almenys %s preguntes.</target>
+      </trans-unit>
+      <trans-unit id="0zyyjfg" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
+        <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
+        <target>~Avís: el nivell inicial seleccionat no té preguntes. El qüestionari començarà usant el nivell de reserva.</target>
+      </trans-unit>
+      <trans-unit id="5bcbb3i" resname="Please provide a name for every level.">
+        <source>Please provide a name for every level.</source>
+        <target>~Indica un nom per a cada nivell.</target>
+      </trans-unit>
+      <trans-unit id="4xcljhy" resname="Level &quot;%s&quot; must have at least 2 questions.">
+        <source>Level "%s" must have at least 2 questions.</source>
+        <target>~El nivell «%s» ha de tenir almenys 2 preguntes.</target>
+      </trans-unit>
+      <trans-unit id="bivulu9" resname="Please indicate the time the solution will be displayed.">
+        <source>Please indicate the time the solution will be displayed.</source>
+        <target>~Indica el temps que es mostrarà la solució.</target>
+      </trans-unit>
+      <trans-unit id="l6ue8yh" resname="Question %s: please mark at least one correct answer.">
+        <source>Question %s: please mark at least one correct answer.</source>
+        <target>~Pregunta %s: marca almenys una resposta correcta.</target>
+      </trans-unit>
+      <trans-unit id="egbn5j9" resname="Question %s: please provide the solution word or phrase.">
+        <source>Question %s: please provide the solution word or phrase.</source>
+        <target>~Pregunta %s: proporciona la paraula o frase solució.</target>
+      </trans-unit>
+      <trans-unit id="x655xgj" resname="Question %s: please provide the definition.">
+        <source>Question %s: please provide the definition.</source>
+        <target>~Pregunta %s: proporciona la definició.</target>
+      </trans-unit>
+      <trans-unit id="m3n8lhm" resname="Question %s: please specify a unique order from 1 to %n for every option.">
+        <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
+        <target>~Pregunta %s: assigna un ordre únic de l'1 al %n a cada opció.</target>
+      </trans-unit>
+      <trans-unit id="kthem7s" resname="Audio URL">
+        <source>Audio URL</source>
+        <target>~URL d'àudio</target>
+      </trans-unit>
+      <trans-unit id="dn3c8nk" resname="Show audio options">
+        <source>Show audio options</source>
+        <target>~Mostra les opcions d'àudio</target>
+      </trans-unit>
+      <trans-unit id="5p33q3e" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
+        <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
+        <target>~Crea un qüestionari d'opció múltiple la dificultat del qual s'adapta a l'alumne. Tria el nombre de nivells de dificultat (3, 4 o 5) i assigna'n un a cada pregunta; el qüestionari puja un nivell després de dues respostes correctes seguides i baixa després de dues incorrectes seguides.</target>
+      </trans-unit>
+      <trans-unit id="qes4rjh" resname="Number of levels">
+        <source>Number of levels</source>
+        <target>~Nombre de nivells</target>
+      </trans-unit>
+      <trans-unit id="cmpkgrb" resname="Level 1 name">
+        <source>Level 1 name</source>
+        <target>~Nom del nivell 1</target>
+      </trans-unit>
+      <trans-unit id="yct6t37" resname="Easy">
+        <source>Easy</source>
+        <target>~Fàcil</target>
+      </trans-unit>
+      <trans-unit id="kyv4dgw" resname="Level 2 name">
+        <source>Level 2 name</source>
+        <target>~Nom del nivell 2</target>
+      </trans-unit>
+      <trans-unit id="r41yptz" resname="Level 3 name">
+        <source>Level 3 name</source>
+        <target>~Nom del nivell 3</target>
+      </trans-unit>
+      <trans-unit id="byf2jqz" resname="Hard">
+        <source>Hard</source>
+        <target>~Difícil</target>
+      </trans-unit>
+      <trans-unit id="l6oyk1n" resname="Level 4 name">
+        <source>Level 4 name</source>
+        <target>~Nom del nivell 4</target>
+      </trans-unit>
+      <trans-unit id="84rp47o" resname="Expert">
+        <source>Expert</source>
+        <target>~Expert</target>
+      </trans-unit>
+      <trans-unit id="losg1o0" resname="Level 5 name">
+        <source>Level 5 name</source>
+        <target>~Nom del nivell 5</target>
+      </trans-unit>
+      <trans-unit id="9yo8onl" resname="Master">
+        <source>Master</source>
+        <target>~Mestre</target>
+      </trans-unit>
+      <trans-unit id="e107hs5" resname="Initial level">
+        <source>Initial level</source>
+        <target>~Nivell inicial</target>
+      </trans-unit>
+      <trans-unit id="3t3qak5" resname="Set to 0 to disable the time limit.">
+        <source>Set to 0 to disable the time limit.</source>
+        <target>~Posa 0 per desactivar el límit de temps.</target>
+      </trans-unit>
+      <trans-unit id="5amojxn" resname="Shuffle answer options at runtime">
+        <source>Shuffle answer options at runtime</source>
+        <target>~Barreja les opcions de resposta durant l'execució</target>
+      </trans-unit>
+      <trans-unit id="8hptn1z" resname="Case-sensitive answer matching (word type)">
+        <source>Case-sensitive answer matching (word type)</source>
+        <target>~Distingeix majúscules i minúscules (tipus paraula)</target>
+      </trans-unit>
+      <trans-unit id="k0ty05j" resname="Require correct accents (word type)">
+        <source>Require correct accents (word type)</source>
+        <target>~Exigeix accents correctes (tipus paraula)</target>
+      </trans-unit>
+      <trans-unit id="bv7wd6n" resname="Level filter">
+        <source>Level filter</source>
+        <target>~Filtre de nivell</target>
+      </trans-unit>
+      <trans-unit id="mg3lzgg" resname="Reload image">
+        <source>Reload image</source>
+        <target>~Torna a carregar la imatge</target>
+      </trans-unit>
+      <trans-unit id="v5iwlnm" resname="Adaptative Quiz">
+        <source>Adaptative Quiz</source>
+        <target>~Qüestionari adaptatiu</target>
+      </trans-unit>
+      <trans-unit id="akuzeko" resname="Click on an option to choose your answer.">
+        <source>Click on an option to choose your answer.</source>
+        <target>~Fes clic en una opció per triar la teva resposta.</target>
+      </trans-unit>
+      <trans-unit id="qxy5u4c" resname="Highest level reached">
+        <source>Highest level reached</source>
+        <target>~Nivell més alt assolit</target>
+      </trans-unit>
+      <trans-unit id="03i7o4k" resname="Level up!">
+        <source>Level up!</source>
+        <target>~Puges de nivell!</target>
+      </trans-unit>
+      <trans-unit id="2m7rys4" resname="Level down">
+        <source>Level down</source>
+        <target>~Baixes de nivell</target>
+      </trans-unit>
+      <trans-unit id="852pb3d" resname="Final report">
+        <source>Final report</source>
+        <target>~Informe final</target>
+      </trans-unit>
+      <trans-unit id="if6iczi" resname="Excellent. You dominate the highest-level contents.">
+        <source>Excellent. You dominate the highest-level contents.</source>
+        <target>~Excel·lent. Domines els continguts de més alt nivell.</target>
+      </trans-unit>
+      <trans-unit id="pp715tz" resname="Good job. You have achieved the intermediate level.">
+        <source>Good job. You have achieved the intermediate level.</source>
+        <target>~Bona feina. Has assolit el nivell intermedi.</target>
+      </trans-unit>
+      <trans-unit id="twbqvib" resname="You need a bit more practice. Review the basic contents.">
+        <source>You need a bit more practice. Review the basic contents.</source>
+        <target>~Necessites una mica més de pràctica. Repassa els continguts bàsics.</target>
+      </trans-unit>
+      <trans-unit id="jckvs5f" resname="Pause audio">
+        <source>Pause audio</source>
+        <target>~Pausa l'àudio</target>
+      </trans-unit>
+      <trans-unit id="u2ztnn8" resname="Illustration">
+        <source>Illustration</source>
+        <target>~Il·lustració</target>
+      </trans-unit>
+      <trans-unit id="xqdg3p8" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
+        <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
+        <target>~Tria la resposta correcta per a cada pregunta. Per pujar al següent nivell has de respondre correctament dues preguntes seguides. Si falles dues seguides, baixaràs al nivell anterior.</target>
+      </trans-unit>
+      <trans-unit id="5yysqlm" resname="Time&apos;s up!">
+        <source>Time's up!</source>
+        <target>~S'ha acabat el temps!</target>
+      </trans-unit>
+      <trans-unit id="mvddxf3" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
+        <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
+        <target>~Crea %total% preguntes mixtes de qüestionari adaptatiu %distribution% i dels tres tipus de pregunta admesos. Cada línia ha de començar amb el número de tipus seguit de @, després el nivell i després la resta de camps separats amb #. Mai posis # dins d'un camp. Les tres formes de línia admeses són: Tipus 0 (opció múltiple): 0@Nivell#Solució#Pregunta#OpcióA#OpcióB[#OpcióC][#OpcióD][#OpcióE][#OpcióF] — La solució és una combinació en majúscules de les lletres A, B, C, D, E, F que identifica les opcions correctes (p. ex. A, AB, ACD, ABCDEF); usa fins a 6 lletres i mai més que el nombre d'opcions; deixa la solució buida si cap opció no és correcta. Tipus 1 (ordenar): 1@Nivell#Pregunta#Element1#Element2#Element3[#Element4][#Element5][#Element6] — proporciona entre 3 i 6 elements ja llistats en l'ordre correcte segons el criteri de la pregunta. Tipus 2 (paraula/definició): 2@Nivell#Paraula#Definició. La dificultat ha d'augmentar amb el nivell: %ladder% Dins de cada nivell has d'incloure preguntes dels tres tipus (Tipus 0, Tipus 1 i Tipus 2): genera al voltant de %perLevel% preguntes per nivell i assegura't que cada nivell combini seleccionar (Tipus 0), ordenar (Tipus 1) i paraula/definició (Tipus 2). No posis totes del mateix tipus juntes; intercala els tres tipus dins de cada nivell.</target>
+      </trans-unit>
+      <trans-unit id="mhmzu4t" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Genera la vista prèvia del circuit abans de desar</target>
       </trans-unit>
     </body>
   </file>
