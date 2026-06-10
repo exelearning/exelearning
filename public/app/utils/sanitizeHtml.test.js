@@ -116,6 +116,31 @@ describe('sanitizeHtml', () => {
             expect(out.toLowerCase()).not.toContain('javascript:');
         });
 
+        it('removes non-allow-listed URL schemes (vbscript:, data:) but keeps safe/relative URLs', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-3b');
+            const probe = document.implementation.createHTMLDocument('');
+
+            // Dangerous schemes are dropped (allow-list, so data: incl. svg is covered).
+            for (const danger of [
+                '<a href="vbscript:msgbox(1)">x</a>',
+                '<img src="data:text/html;base64,PHNjcmlwdD4=">',
+                '<img src="data:image/svg+xml,<svg onload=alert(1)>">',
+            ]) {
+                probe.body.innerHTML = mod.sanitizeCollaborativeHtml(danger);
+                const el = probe.body.querySelector('a, img');
+                expect(el && (el.getAttribute('href') || el.getAttribute('src'))).toBeFalsy();
+            }
+
+            // Safe schemes and relative/fragment URLs are preserved.
+            const safe = mod.sanitizeCollaborativeHtml(
+                '<a href="https://exelearning.net">a</a><a href="/page">b</a><a href="#top">c</a><img src="img.png">',
+            );
+            expect(safe).toContain('https://exelearning.net');
+            expect(safe).toContain('/page');
+            expect(safe).toContain('#top');
+            expect(safe).toContain('img.png');
+        });
+
         it('does not return the raw dangerous string (fail safe, not open)', async () => {
             const mod = await import('./sanitizeHtml.js?fallback-4');
             const raw = '<img src=x onerror="steal()">';

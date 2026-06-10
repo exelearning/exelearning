@@ -18,8 +18,9 @@
  * - Fail-safe fallback: if DOMPurify is unavailable for any reason, do NOT
  *   return the raw string. Parse the markup with the DOM (an inert document,
  *   so nothing executes or loads) and strip <script> elements, on* handler
- *   attributes and javascript:/vbscript:/data:text/html URLs. Using the real
- *   HTML parser avoids the tokenizer-boundary bypasses that defeat regex
+ *   attributes and any URL whose scheme is not on a safe allow-list
+ *   (javascript:, vbscript:, data:, … are removed). Using the real HTML parser
+ *   avoids the tokenizer-boundary bypasses that defeat regex
  *   scrubbers. If no DOM is available at all (non-browser env), escape the
  *   whole fragment to inert text — failing open would re-introduce the
  *   vulnerability.
@@ -69,22 +70,31 @@ function escapeHtmlText(value) {
 const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'background', 'poster']);
 
 /**
- * Returns true if an attribute value resolves to a script-executing scheme.
- * Whitespace and control characters are stripped first because browsers ignore
- * them inside a URL scheme (e.g. "java\tscript:" still executes).
+ * Schemes that are safe to keep on a URL-bearing attribute. This is an
+ * allow-list rather than a deny-list: relative URLs and fragments (which have
+ * no scheme) are always allowed, and anything with an unrecognised scheme -
+ * including javascript:, vbscript: and data: (a data:image/svg+xml payload can
+ * itself contain a script) - is treated as unsafe and removed.
+ */
+const SAFE_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'ftp', 'sms', 'blob']);
+
+/**
+ * Returns true if an attribute value carries a scheme that is not on the
+ * safe-scheme allow-list. Whitespace and control characters are stripped first
+ * because browsers ignore them inside a URL scheme (e.g. "java\tscript:" still
+ * executes).
  *
  * @param {string} value
  * @returns {boolean}
  */
-function hasDangerousScheme(value) {
-    // Strip control characters and spaces (char codes 0x00-0x20): browsers
-    // ignore them inside a URL scheme, so "java\tscript:" still executes.
-    const normalized = value.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
-    return (
-        normalized.startsWith('javascript:') ||
-        normalized.startsWith('vbscript:') ||
-        normalized.startsWith('data:text/html')
-    );
+function hasUnsafeUrlScheme(value) {
+    const normalized = value.replace(/[\u0000-\u0020]+/g, '');
+    const match = /^([a-z][a-z0-9+.-]*):/i.exec(normalized);
+    if (!match) {
+        // No scheme: relative URL, absolute path or fragment - safe.
+        return false;
+    }
+    return !SAFE_URL_SCHEMES.has(match[1].toLowerCase());
 }
 
 /**
@@ -97,7 +107,8 @@ function hasDangerousScheme(value) {
  * tokenizer-boundary bypasses that defeat regex scrubbers (e.g. `/`-separated
  * or quote-adjacent handlers like `<a href="x"onerror=...>`). We then remove
  * <script> elements, every on* event-handler attribute and any
- * javascript:/vbscript:/data:text/html URL, and return the cleaned markup.
+ * non-allow-listed URL scheme (javascript:, vbscript:, data:, ...),
+ * and return the cleaned markup.
  *
  * @param {string} html
  * @param {Document} doc - A document providing `implementation.createHTMLDocument`.
@@ -122,7 +133,7 @@ function domSanitize(html, doc) {
                 el.removeAttribute(attr.name);
                 continue;
             }
-            if (URL_ATTRIBUTES.has(name) && hasDangerousScheme(attr.value)) {
+            if (URL_ATTRIBUTES.has(name) && hasUnsafeUrlScheme(attr.value)) {
                 el.removeAttribute(attr.name);
             }
         }
