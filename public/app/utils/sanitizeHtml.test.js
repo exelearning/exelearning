@@ -159,5 +159,33 @@ describe('sanitizeHtml', () => {
             const out = mod.sanitizeCollaborativeHtml('javajavascript:script:alert(1)');
             expect(out.toLowerCase()).not.toContain('javascript:');
         });
+
+        it('strips event handlers separated by "/" (e.g. <svg/onload=...>)', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-10');
+            // The handler name is preceded by '/', not whitespace; HTML still
+            // parses it as an attribute, so the scrub must match it too.
+            for (const payload of [
+                '<svg/onload=alert(1)>',
+                '<svg/onload="alert(1)">',
+                "<body/onload='alert(1)'>",
+                '<input/onfocus=alert(1) autofocus>',
+            ]) {
+                const out = mod.sanitizeCollaborativeHtml(payload);
+                expect(out).not.toMatch(/\bon[a-z]+\s*=/i);
+            }
+        });
+
+        it('strips an unterminated <script tag with no closing ">"', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-11');
+            const out = mod.sanitizeCollaborativeHtml('<script src=//evil.example/x');
+            expect(out).not.toMatch(/<script/i);
+        });
+
+        it('preserves benign words that merely start with "on"', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-12');
+            // The handler regex requires "=", so plain prose is not over-stripped.
+            const out = mod.sanitizeCollaborativeHtml('<p>onset of the lesson, online</p>');
+            expect(out).toContain('onset of the lesson, online');
+        });
     });
 });

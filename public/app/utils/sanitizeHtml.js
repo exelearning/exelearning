@@ -75,11 +75,17 @@ function fallbackSanitize(html) {
             // The end tag uses [^>]* so trailing junk like "</script foo>" is
             // matched the way browsers actually close the tag (js/bad-tag-filter).
             .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, '')
-            .replace(/<script\b[^>]*>/gi, '')
-            // Drop inline event-handler attributes: on*="..." / on*='...' / on*=value
-            .replace(/\son[a-z0-9_-]+\s*=\s*"[^"]*"/gi, '')
-            .replace(/\son[a-z0-9_-]+\s*=\s*'[^']*'/gi, '')
-            .replace(/\son[a-z0-9_-]+\s*=\s*[^\s>]+/gi, '')
+            // Drop any remaining <script ...> open tag. The closing '>' is
+            // optional ('>?') so an unterminated tag at end-of-input
+            // (e.g. "<script src=x") cannot survive the scrub.
+            .replace(/<script\b[^>]*>?/gi, '')
+            // Drop inline event-handler attributes: on*="..." / on*='...' / on*=value.
+            // The name may be preceded by whitespace OR '/', both of which separate
+            // attributes inside a tag, so payloads like `<svg/onload=alert(1)>`
+            // (no whitespace before the handler) are scrubbed too.
+            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*"[^"]*"/gi, '')
+            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*'[^']*'/gi, '')
+            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*[^\s>]+/gi, '')
             // Neutralize javascript: URLs (e.g. href/src) by blanking the scheme.
             .replace(/javascript\s*:/gi, '');
     } while (output !== previous);
