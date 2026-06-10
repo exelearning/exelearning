@@ -135,5 +135,29 @@ describe('sanitizeHtml', () => {
             mod.sanitizeCollaborativeHtml('<b>b</b>');
             expect(warnSpy).toHaveBeenCalledTimes(1);
         });
+
+        it('defeats <script> tags reconstructed by a single-pass removal', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-7');
+            // Removing the inner "<script>" splices "<scr" + "ipt>" back into a
+            // fresh "<script>"; a single pass would leave that tag behind, only
+            // iterating to a fixpoint strips every reconstructed tag.
+            const out = mod.sanitizeCollaborativeHtml('<scr<script>ipt>alert(1)</scr<script>ipt>');
+            expect(out).not.toMatch(/<script/i);
+        });
+
+        it('removes script blocks whose end tag carries trailing junk', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-8');
+            // Browsers close the tag at "</script foo>"; the end-tag regex must
+            // too, otherwise the whole block survives (CodeQL js/bad-tag-filter).
+            const out = mod.sanitizeCollaborativeHtml('<script>window.__xss=1</script foo>');
+            expect(out).not.toMatch(/<script/i);
+            expect(out).not.toMatch(/__xss/);
+        });
+
+        it('defeats javascript: schemes reconstructed by a single-pass removal', async () => {
+            const mod = await import('./sanitizeHtml.js?fallback-9');
+            const out = mod.sanitizeCollaborativeHtml('javajavascript:script:alert(1)');
+            expect(out.toLowerCase()).not.toContain('javascript:');
+        });
     });
 });

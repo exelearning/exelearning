@@ -59,18 +59,32 @@ function fallbackSanitize(html) {
         );
     }
 
-    return (
-        html
+    let output = html;
+    let previous;
+    // Apply the scrubbing repeatedly until the string stops changing. A single
+    // pass is bypassable because removing one token can splice the surrounding
+    // halves back into a new dangerous token (e.g. "<scr<script>ipt>" collapses
+    // to "<script>", and "javajavascript:script:" collapses to "javascript:").
+    // Iterating to a fixpoint defeats that reconstruction. Each pass only deletes
+    // characters, so the string is strictly shortened until it stabilises and the
+    // loop is guaranteed to terminate (CodeQL js/incomplete-multi-character-sanitization).
+    do {
+        previous = output;
+        output = output
             // Drop entire <script>...</script> blocks (including unclosed ones).
-            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+            // The end tag uses [^>]* so trailing junk like "</script foo>" is
+            // matched the way browsers actually close the tag (js/bad-tag-filter).
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, '')
             .replace(/<script\b[^>]*>/gi, '')
             // Drop inline event-handler attributes: on*="..." / on*='...' / on*=value
             .replace(/\son[a-z0-9_-]+\s*=\s*"[^"]*"/gi, '')
             .replace(/\son[a-z0-9_-]+\s*=\s*'[^']*'/gi, '')
             .replace(/\son[a-z0-9_-]+\s*=\s*[^\s>]+/gi, '')
             // Neutralize javascript: URLs (e.g. href/src) by blanking the scheme.
-            .replace(/javascript\s*:/gi, '')
-    );
+            .replace(/javascript\s*:/gi, '');
+    } while (output !== previous);
+
+    return output;
 }
 
 /**
