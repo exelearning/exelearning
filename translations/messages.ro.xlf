@@ -10929,6 +10929,10 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Ajută-ne să răspândim eXeLearning. Bifând această opțiune, va fi afișat un link „Realizat cu eXeLearning” pe paginile tale.</target>
       </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Realizat cu eXeLearning</target>
+      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>Contor de pagini</target>
@@ -15059,295 +15063,299 @@
       </trans-unit>
       <trans-unit id="cq3ifph" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
         <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
-        <target></target>
+        <target>~Nivel: 0 (scăzut), 1 (mediu), 2 (ridicat), 3 (expert) sau 4 (maestru).</target>
       </trans-unit>
       <trans-unit id="953viei" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
         <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
-        <target></target>
+        <target>~Nivel: 0 (scăzut), 1 (mediu), 2 (ridicat) sau 3 (expert).</target>
       </trans-unit>
       <trans-unit id="atxh1qt" resname="Level: 0 (low), 1 (medium) or 2 (high).">
         <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
-        <target></target>
+        <target>~Nivel: 0 (scăzut), 1 (mediu) sau 2 (ridicat).</target>
       </trans-unit>
       <trans-unit id="c7qmhrj" resname="OptionE">
         <source>OptionE</source>
-        <target></target>
+        <target>~OpțiuneaE</target>
       </trans-unit>
       <trans-unit id="eydrd9t" resname="OptionF">
         <source>OptionF</source>
-        <target></target>
+        <target>~OpțiuneaF</target>
       </trans-unit>
       <trans-unit id="incyool" resname="Which of the following are prime numbers?">
         <source>Which of the following are prime numbers?</source>
-        <target></target>
+        <target>~Care dintre următoarele sunt numere prime?</target>
       </trans-unit>
       <trans-unit id="3z3xsjf" resname="Sort from largest to smallest">
         <source>Sort from largest to smallest</source>
-        <target></target>
+        <target>~Sortează de la cel mai mare la cel mai mic</target>
       </trans-unit>
       <trans-unit id="fbkwb7b" resname="Elephant">
         <source>Elephant</source>
-        <target></target>
+        <target>~Elefant</target>
       </trans-unit>
       <trans-unit id="uf0rgg2" resname="Mouse">
         <source>Mouse</source>
-        <target></target>
+        <target>~Șoarece</target>
       </trans-unit>
       <trans-unit id="6e6gxy5" resname="Which of these are transcendental numbers?">
         <source>Which of these are transcendental numbers?</source>
-        <target></target>
+        <target>~Care dintre acestea sunt numere transcendente?</target>
       </trans-unit>
       <trans-unit id="6sj8e71" resname="Liouville constant">
         <source>Liouville constant</source>
-        <target></target>
+        <target>~Constanta lui Liouville</target>
       </trans-unit>
       <trans-unit id="2z35dkc" resname="Champernowne constant">
         <source>Champernowne constant</source>
-        <target></target>
+        <target>~Constanta lui Champernowne</target>
       </trans-unit>
       <trans-unit id="mujg8uv" resname="Sort these chemical elements from lowest to highest atomic number">
         <source>Sort these chemical elements from lowest to highest atomic number</source>
-        <target></target>
+        <target>~Sortează aceste elemente chimice de la cel mai mic la cel mai mare număr atomic</target>
       </trans-unit>
       <trans-unit id="rknv1t9" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
         <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
-        <target></target>
+        <target>~Sunt acceptate trei tipuri de întrebări. Fiecare linie trebuie să înceapă cu numărul tipului, urmat de @, nivelul și restul câmpurilor separate cu #:</target>
       </trans-unit>
       <trans-unit id="gjspkod" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
         <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
-        <target></target>
+        <target>~Tipul 0 (alegere multiplă): 0@Nivel#Soluție#Întrebare#OpțiuneaA#OpțiuneaB[#OpțiuneaC][#OpțiuneaD][#OpțiuneaE][#OpțiuneaF]. Soluția este o combinație de majuscule din A, B, C, D, E, F care identifică opțiunile corecte (de ex. A, AB, ACD, ABCDEF). Folosește până la 6 litere și niciodată mai multe decât numărul de opțiuni. Lasă Soluția goală dacă nicio opțiune nu este corectă.</target>
       </trans-unit>
       <trans-unit id="f6b506d" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
         <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
-        <target></target>
+        <target>~Tipul 1 (sortare): 1@Nivel#Întrebare#Element1#Element2#Element3[#Element4][#Element5][#Element6]. Furnizează între 3 și 6 elemente deja enumerate în ordinea corectă conform criteriului întrebării.</target>
       </trans-unit>
       <trans-unit id="jgwnab5" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
         <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
-        <target></target>
+        <target>~Tipul 2 (cuvânt/definiție): 2@Nivel#Cuvânt#Definiție.</target>
       </trans-unit>
       <trans-unit id="uzpnzes" resname="Do not include the # character inside any field.">
         <source>Do not include the # character inside any field.</source>
-        <target></target>
+        <target>~Nu include caracterul # în interiorul niciunui câmp.</target>
       </trans-unit>
       <trans-unit id="28d622b" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
         <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
-        <target></target>
+        <target>~distribuite echilibrat pe cele 5 niveluri (0=scăzut, 1=mediu, 2=ridicat, 3=expert, 4=maestru)</target>
       </trans-unit>
       <trans-unit id="hwr4f6t" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
         <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
-        <target></target>
+        <target>~distribuite echilibrat pe cele 4 niveluri (0=scăzut, 1=mediu, 2=ridicat, 3=expert)</target>
       </trans-unit>
       <trans-unit id="ifq2ww0" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
         <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
-        <target></target>
+        <target>~distribuite echilibrat pe cele 3 niveluri (0=scăzut, 1=mediu, 2=ridicat)</target>
       </trans-unit>
       <trans-unit id="7k185uf" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
-        <target></target>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 4 (maestru) trebuie să conțină cele mai dificile întrebări.</target>
       </trans-unit>
       <trans-unit id="axdnyc0" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
-        <target></target>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 3 (expert) trebuie să conțină cele mai dificile întrebări.</target>
       </trans-unit>
       <trans-unit id="ha2f8if" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
-        <target></target>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 2 (ridicat) trebuie să conțină cele mai dificile întrebări.</target>
       </trans-unit>
       <trans-unit id="hka3vtc" resname="Your browser is not compatible with this type of activity.">
         <source>Your browser is not compatible with this type of activity.</source>
-        <target></target>
+        <target>~Browserul tău nu este compatibil cu acest tip de activitate.</target>
       </trans-unit>
       <trans-unit id="9i1tbkk" resname="You must add at least one question.">
         <source>You must add at least one question.</source>
-        <target></target>
+        <target>~Trebuie să adaugi cel puțin o întrebare.</target>
       </trans-unit>
       <trans-unit id="trkm1vj" resname="You must have at least one question.">
         <source>You must have at least one question.</source>
-        <target></target>
+        <target>~Trebuie să ai cel puțin o întrebare.</target>
       </trans-unit>
       <trans-unit id="v1ec5x0" resname="Question %s: the question text cannot be empty.">
         <source>Question %s: the question text cannot be empty.</source>
-        <target></target>
+        <target>~Întrebarea %s: textul întrebării nu poate fi gol.</target>
       </trans-unit>
       <trans-unit id="hjptj2j" resname="Question %s: please fill in all answer options.">
         <source>Question %s: please fill in all answer options.</source>
-        <target></target>
+        <target>~Întrebarea %s: completează toate opțiunile de răspuns.</target>
       </trans-unit>
       <trans-unit id="gztiq8g" resname="Question %s: please mark which option is the correct answer.">
         <source>Question %s: please mark which option is the correct answer.</source>
-        <target></target>
+        <target>~Întrebarea %s: indică ce opțiune este răspunsul corect.</target>
       </trans-unit>
       <trans-unit id="e757315" resname="You must add at least %s questions.">
         <source>You must add at least %s questions.</source>
-        <target></target>
+        <target>~Trebuie să adaugi cel puțin %s întrebări.</target>
       </trans-unit>
       <trans-unit id="tb43muf" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
         <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
-        <target></target>
+        <target>~Avertisment: nivelul inițial selectat nu are întrebări. Testul va începe folosind nivelul de rezervă.</target>
       </trans-unit>
       <trans-unit id="i5tqjgg" resname="Please provide a name for every level.">
         <source>Please provide a name for every level.</source>
-        <target></target>
+        <target>~Indică un nume pentru fiecare nivel.</target>
       </trans-unit>
       <trans-unit id="fah45fr" resname="Level &quot;%s&quot; must have at least 2 questions.">
         <source>Level "%s" must have at least 2 questions.</source>
-        <target></target>
+        <target>~Nivelul „%s“ trebuie să aibă cel puțin 2 întrebări.</target>
       </trans-unit>
       <trans-unit id="s8gvgnr" resname="Please indicate the time the solution will be displayed.">
         <source>Please indicate the time the solution will be displayed.</source>
-        <target></target>
+        <target>~Indică timpul în care va fi afișată soluția.</target>
       </trans-unit>
       <trans-unit id="r3rq61x" resname="Question %s: please mark at least one correct answer.">
         <source>Question %s: please mark at least one correct answer.</source>
-        <target></target>
+        <target>~Întrebarea %s: marchează cel puțin un răspuns corect.</target>
       </trans-unit>
       <trans-unit id="59mnoqj" resname="Question %s: please provide the solution word or phrase.">
         <source>Question %s: please provide the solution word or phrase.</source>
-        <target></target>
+        <target>~Întrebarea %s: furnizează cuvântul sau fraza soluție.</target>
       </trans-unit>
       <trans-unit id="odc4v2z" resname="Question %s: please provide the definition.">
         <source>Question %s: please provide the definition.</source>
-        <target></target>
+        <target>~Întrebarea %s: furnizează definiția.</target>
       </trans-unit>
       <trans-unit id="0r81bit" resname="Question %s: please specify a unique order from 1 to %n for every option.">
         <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
-        <target></target>
+        <target>~Întrebarea %s: atribuie o ordine unică de la 1 la %n fiecărei opțiuni.</target>
       </trans-unit>
       <trans-unit id="52kewb2" resname="Audio URL">
         <source>Audio URL</source>
-        <target></target>
+        <target>~URL audio</target>
       </trans-unit>
       <trans-unit id="rgy7dpr" resname="Show audio options">
         <source>Show audio options</source>
-        <target></target>
+        <target>~Afișează opțiunile audio</target>
       </trans-unit>
       <trans-unit id="x7td0zt" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
         <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
-        <target></target>
+        <target>~Creează un test cu alegere multiplă a cărui dificultate se adaptează cursantului. Alege numărul de niveluri de dificultate (3, 4 sau 5) și atribuie câte unul fiecărei întrebări; testul urcă un nivel după două răspunsuri corecte la rând și coboară după două răspunsuri greșite la rând.</target>
       </trans-unit>
       <trans-unit id="8lvyhs2" resname="Number of levels">
         <source>Number of levels</source>
-        <target></target>
+        <target>~Numărul de niveluri</target>
       </trans-unit>
       <trans-unit id="yxt96d5" resname="Level 1 name">
         <source>Level 1 name</source>
-        <target></target>
+        <target>~Numele nivelului 1</target>
       </trans-unit>
       <trans-unit id="25kn9uq" resname="Easy">
         <source>Easy</source>
-        <target></target>
+        <target>~Ușor</target>
       </trans-unit>
       <trans-unit id="3nbg90h" resname="Level 2 name">
         <source>Level 2 name</source>
-        <target></target>
+        <target>~Numele nivelului 2</target>
       </trans-unit>
       <trans-unit id="vycpkzd" resname="Level 3 name">
         <source>Level 3 name</source>
-        <target></target>
+        <target>~Numele nivelului 3</target>
       </trans-unit>
       <trans-unit id="9g0o7d6" resname="Hard">
         <source>Hard</source>
-        <target></target>
+        <target>~Greu</target>
       </trans-unit>
       <trans-unit id="0lquubx" resname="Level 4 name">
         <source>Level 4 name</source>
-        <target></target>
+        <target>~Numele nivelului 4</target>
       </trans-unit>
       <trans-unit id="u04q5f5" resname="Expert">
         <source>Expert</source>
-        <target></target>
+        <target>~Expert</target>
       </trans-unit>
       <trans-unit id="3c2eaob" resname="Level 5 name">
         <source>Level 5 name</source>
-        <target></target>
+        <target>~Numele nivelului 5</target>
       </trans-unit>
       <trans-unit id="ov2g552" resname="Master">
         <source>Master</source>
-        <target></target>
+        <target>~Maestru</target>
       </trans-unit>
       <trans-unit id="irjnsvf" resname="Initial level">
         <source>Initial level</source>
-        <target></target>
+        <target>~Nivel inițial</target>
       </trans-unit>
       <trans-unit id="tcbm1j2" resname="Set to 0 to disable the time limit.">
         <source>Set to 0 to disable the time limit.</source>
-        <target></target>
+        <target>~Setează la 0 pentru a dezactiva limita de timp.</target>
       </trans-unit>
       <trans-unit id="hk84hfc" resname="Shuffle answer options at runtime">
         <source>Shuffle answer options at runtime</source>
-        <target></target>
+        <target>~Amestecă opțiunile de răspuns la rulare</target>
       </trans-unit>
       <trans-unit id="lmpu5u9" resname="Case-sensitive answer matching (word type)">
         <source>Case-sensitive answer matching (word type)</source>
-        <target></target>
+        <target>~Potrivire a răspunsurilor sensibilă la majuscule (tip cuvânt)</target>
       </trans-unit>
       <trans-unit id="cnllj2l" resname="Require correct accents (word type)">
         <source>Require correct accents (word type)</source>
-        <target></target>
+        <target>~Solicită diacritice corecte (tip cuvânt)</target>
       </trans-unit>
       <trans-unit id="6w2e4b0" resname="Level filter">
         <source>Level filter</source>
-        <target></target>
+        <target>~Filtru de nivel</target>
       </trans-unit>
       <trans-unit id="vxbco74" resname="Reload image">
         <source>Reload image</source>
-        <target></target>
+        <target>~Reîncarcă imaginea</target>
       </trans-unit>
       <trans-unit id="0nubauq" resname="Adaptative Quiz">
         <source>Adaptative Quiz</source>
-        <target></target>
+        <target>~Test adaptativ</target>
       </trans-unit>
       <trans-unit id="km38zbo" resname="Click on an option to choose your answer.">
         <source>Click on an option to choose your answer.</source>
-        <target></target>
+        <target>~Fă clic pe o opțiune pentru a alege răspunsul.</target>
       </trans-unit>
       <trans-unit id="98q6lna" resname="Highest level reached">
         <source>Highest level reached</source>
-        <target></target>
+        <target>~Cel mai înalt nivel atins</target>
       </trans-unit>
       <trans-unit id="xq9w36e" resname="Level up!">
         <source>Level up!</source>
-        <target></target>
+        <target>~Ai urcat un nivel!</target>
       </trans-unit>
       <trans-unit id="gx9djz4" resname="Level down">
         <source>Level down</source>
-        <target></target>
+        <target>~Ai coborât un nivel</target>
       </trans-unit>
       <trans-unit id="sizxffs" resname="Final report">
         <source>Final report</source>
-        <target></target>
+        <target>~Raport final</target>
       </trans-unit>
       <trans-unit id="zaax4pm" resname="Excellent. You dominate the highest-level contents.">
         <source>Excellent. You dominate the highest-level contents.</source>
-        <target></target>
+        <target>~Excelent. Stăpânești conținuturile de cel mai înalt nivel.</target>
       </trans-unit>
       <trans-unit id="36b3rpr" resname="Good job. You have achieved the intermediate level.">
         <source>Good job. You have achieved the intermediate level.</source>
-        <target></target>
+        <target>~Bravo. Ai atins nivelul intermediar.</target>
       </trans-unit>
       <trans-unit id="kclcgi9" resname="You need a bit more practice. Review the basic contents.">
         <source>You need a bit more practice. Review the basic contents.</source>
-        <target></target>
+        <target>~Ai nevoie de puțin mai mult exercițiu. Recapitulează conținuturile de bază.</target>
       </trans-unit>
       <trans-unit id="yc9yww6" resname="Pause audio">
         <source>Pause audio</source>
-        <target></target>
+        <target>~Pune audio pe pauză</target>
       </trans-unit>
       <trans-unit id="8k7io7o" resname="Illustration">
         <source>Illustration</source>
-        <target></target>
+        <target>~Ilustrație</target>
       </trans-unit>
       <trans-unit id="391iksq" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
         <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
-        <target></target>
+        <target>~Alege răspunsul corect pentru fiecare întrebare. Pentru a urca la nivelul următor trebuie să răspunzi corect la două întrebări la rând. Dacă greșești două la rând, vei coborî la nivelul anterior.</target>
       </trans-unit>
       <trans-unit id="ms9lvxg" resname="Time&apos;s up!">
         <source>Time's up!</source>
-        <target></target>
+        <target>~Timpul a expirat!</target>
       </trans-unit>
       <trans-unit id="z4zclje" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
         <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
-        <target></target>
+        <target>~Creează %total% întrebări mixte pentru testul adaptativ %distribution% și din cele trei tipuri de întrebări acceptate. Fiecare linie trebuie să înceapă cu numărul tipului urmat de @, apoi nivelul și apoi restul câmpurilor separate cu #. Nu pune niciodată # în interiorul unui câmp. Cele trei forme de linie acceptate sunt: Tipul 0 (alegere multiplă): 0@Nivel#Soluție#Întrebare#OpțiuneaA#OpțiuneaB[#OpțiuneaC][#OpțiuneaD][#OpțiuneaE][#OpțiuneaF] — Soluția este o combinație de majuscule din literele A, B, C, D, E, F care identifică opțiunile corecte (de ex. A, AB, ACD, ABCDEF); folosește până la 6 litere și niciodată mai multe decât numărul de opțiuni; lasă soluția goală dacă nicio opțiune nu este corectă. Tipul 1 (sortare): 1@Nivel#Întrebare#Element1#Element2#Element3[#Element4][#Element5][#Element6] — furnizează între 3 și 6 elemente deja enumerate în ordinea corectă conform criteriului întrebării. Tipul 2 (cuvânt/definiție): 2@Nivel#Cuvânt#Definiție. Dificultatea trebuie să crească odată cu nivelul: %ladder% În interiorul fiecărui nivel trebuie să incluzi întrebări din toate cele trei tipuri (Tipul 0, Tipul 1 și Tipul 2): generează aproximativ %perLevel% întrebări pe nivel și asigură-te că fiecare nivel combină alegere multiplă (Tipul 0), sortare (Tipul 1) și cuvânt/definiție (Tipul 2). Nu pune toate de același tip împreună; alternează cele trei tipuri în interiorul fiecărui nivel.</target>
+      </trans-unit>
+      <trans-unit id="h6qk5u0" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Generează previzualizarea circuitului înainte de salvare</target>
       </trans-unit>
     </body>
   </file>
