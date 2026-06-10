@@ -64,7 +64,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             category: `${TRANS_PREFIX}General settings`,
         },
         defaultTheme: {
-            title: `${TRANS_PREFIX}Default style for the new documents`,
+            title: `${TRANS_PREFIX}Default style for new documents`,
             help: `${TRANS_PREFIX}Pick a style that will be preselected when you create a new project. Overrides the site default.`,
             value: '',
             type: 'select',

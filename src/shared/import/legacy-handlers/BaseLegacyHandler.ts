@@ -305,6 +305,24 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
      * @returns HTML content
      */
     extractTextAreaFieldContent(fieldInst: Element | null): string {
+        const raw = this.extractTextAreaFieldRawContent(fieldInst);
+        return raw ? this.decodeHtmlContent(raw) : '';
+    }
+
+    /**
+     * Extract the raw TextAreaField content WITHOUT decoding HTML entities.
+     *
+     * Use this when the value will be reduced to plain text (e.g. quiz option
+     * labels via stripHtmlTags). Decoding entities first turns an
+     * entity-encoded literal such as "A&lt;B" into live markup ("A<B"), which a
+     * later tag-strip then destroys ("A"). Keeping it raw lets stripHtmlTags
+     * remove the real <p> tags first and decode &lt;/&gt;/&amp; afterwards, so
+     * the literal "<" survives. See MultichoiceHandler / ScormTestHandler.
+     *
+     * @param fieldInst - TextAreaField instance element
+     * @returns Raw (still entity-encoded) content
+     */
+    extractTextAreaFieldRawContent(fieldInst: Element | null): string {
         if (!fieldInst) return '';
         const dict = this.getDirectChildByTagName(fieldInst, 'dictionary');
         if (!dict) return '';
@@ -326,7 +344,7 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
                     if (valueEl && valueEl.tagName === 'unicode') {
                         const value = valueEl.getAttribute('value') || valueEl.textContent || '';
                         if (value.trim()) {
-                            return this.decodeHtmlContent(value);
+                            return value;
                         }
                     }
                 }

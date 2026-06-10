@@ -401,6 +401,15 @@ a.DMOLP-ModeBoardShow {
 }
 
 /* Author */
+.DMOLP-ModelAuthor {
+    font-size: 0.85em;
+    font-style: italic;
+    margin: 0.35em auto 0 auto;
+    opacity: 0.85;
+    text-align: center;
+    width: 100%;
+}
+
 .DMOLP-AuthorLicence {
     margin: 0.3em auto 0 auto;
     min-height: 0.4em;
@@ -1300,6 +1309,17 @@ div:fullscreen .DMOLP-LinkMinimize {
     display: none;
 }
 
+.DMOLP-GameContainer:fullscreen .DMOLP-ModelAuthor,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelAuthor,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelAuthor,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ModelAuthor,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ModelAuthor {
+    flex: 0 0 auto;
+    margin: 0.2em auto 0;
+    order: 20;
+    width: 100%;
+}
+
 .DMOLP-GameContainer:fullscreen .DMOLP-AuthorLicence,
 .DMOLP-GameContainer:-webkit-full-screen .DMOLP-AuthorLicence,
 .DMOLP-GameContainer:-moz-full-screen .DMOLP-AuthorLicence,
@@ -1521,6 +1541,13 @@ div:fullscreen .DMOLP-LinkMinimize {
 .DMOLP-GameContainer:-ms-full-screen .DMOLP-AtomLegend,
 .DMOLP-GameContainer:-o-full-screen .DMOLP-AtomLegend {
     flex: 0 0 auto;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ModelAuthor {
+    flex: 0 0 auto;
+    margin: 0.2em auto 0;
+    order: 20;
+    width: 100%;
 }
 
 .DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-AuthorLicence {

@@ -146,6 +146,9 @@ describe('idevice-config-browser', () => {
             // markdown-text shares the text feedback toggle wiring; without
             // componentType="json" exe_export.js never binds the toggle.
             expect(getIdeviceConfig('markdown-text').componentType).toBe('json');
+            // adaptative-quiz stores the rendered view in jsonProperties; preview
+            // needs data-idevice-json-data so exe_export.js can call renderView().
+            expect(getIdeviceConfig('adaptative-quiz').componentType).toBe('json');
 
             // HTML idevices (no JS initialization needed)
             expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
@@ -298,6 +301,19 @@ describe('idevice-config-browser', () => {
             const files = getIdeviceExportFiles('image-gallery', '.js');
             expect(files).toContain('image-gallery.js');
             expect(files).toContain('simple-lightbox.min.js');
+        });
+
+        it('includes three.min.js and OrbitControls.js for three-sixty-viewer', () => {
+            const files = getIdeviceExportFiles('three-sixty-viewer', '.js');
+            expect(files).toContain('three-sixty-viewer.js');
+            expect(files).toContain('three.min.js');
+            expect(files).toContain('OrbitControls.js');
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('three-sixty-viewer.js');
+            // three.min.js MUST come before OrbitControls.js
+            const threeIdx = files.indexOf('three.min.js');
+            const orbitIdx = files.indexOf('OrbitControls.js');
+            expect(threeIdx).toBeLessThan(orbitIdx);
         });
 
         it('includes model-viewer and Three.js dependencies for three-d-viewer', () => {
