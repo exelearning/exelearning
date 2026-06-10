@@ -104,6 +104,72 @@ var $exeDevice = {
     getQuestionIndexById: function (id) {
         return this.questionsForm.findIndex((q) => q.id === id);
     },
+
+    getQuestionElementById(id) {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return null;
+        return (
+            Array.from(formPreview.children).find(
+                (question) => question.dataset.id === id
+            ) || null
+        );
+    },
+
+    /**
+     * Reorders the questions array to match the given list of ids (the visual
+     * order taken from the DOM). Ids without a matching question are ignored.
+     * If the resulting list does not contain every question (e.g. a malformed
+     * DOM), the original array is returned untouched to avoid data loss.
+     */
+    reorderQuestionsByIds(questions, orderedIds) {
+        const questionsById = new Map(questions.map((question) => [question.id, question]));
+        if (questionsById.size !== questions.length) return questions;
+
+        const seenIds = new Set();
+        const reordered = [];
+        for (const id of orderedIds) {
+            if (!questionsById.has(id)) continue;
+            if (seenIds.has(id)) return questions;
+            seenIds.add(id);
+            reordered.push(questionsById.get(id));
+        }
+
+        return seenIds.size === questions.length ? reordered : questions;
+    },
+
+    /**
+     * Synchronizes the questionsForm array with the current DOM order of the
+     * preview list. This is the single source of truth used by drag & drop and
+     * by the add-question buttons so the saved order always matches what the
+     * user sees on screen.
+     */
+    syncQuestionsFormToDomOrder() {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return;
+        const orderedIds = Array.from(formPreview.children).map((li) =>
+            li.getAttribute('data-id')
+        );
+        $exeDevice.questionsForm = $exeDevice.reorderQuestionsByIds(
+            $exeDevice.questionsForm,
+            orderedIds
+        );
+    },
+
+    normalizeTrueFalseAnswer(answer) {
+        const normalizedAnswer =
+            typeof answer === 'string' ? answer.trim().toLowerCase() : answer;
+        return normalizedAnswer === 1 ||
+            normalizedAnswer === true ||
+            normalizedAnswer === '1' ||
+            normalizedAnswer === 'true'
+            ? '1'
+            : '0';
+    },
+
     refreshTranslations: function () {
         this.ci18n = {
             msgScoreScorm: c_(
@@ -1677,6 +1743,8 @@ var $exeDevice = {
                     const questionIndex =
                         $exeDevice.getQuestionIndexById(questionId);
                     if (questionIndex !== -1) {
+                        const questionElement =
+                            $exeDevice.getQuestionElementById(questionId);
                         const updatedQuestion = $exeDevice.createQuestionObject(
                             $exeDevice.formPreviewId,
                             questionType
@@ -1689,11 +1757,12 @@ var $exeDevice = {
                                 `#${$exeDevice.formPreviewId}TextareaContainer`
                             )
                             .parentElement.remove();
-                        $exeDevice.manageHideQuestion('remove');
                         $exeDevice.renderQuestion(
                             updatedQuestion,
-                            questionIndex
+                            undefined,
+                            questionElement
                         );
+                        $exeDevice.dataIdQuestionBeforeEdit = '';
                         $exeDevice.active = questionIndex;
                     }
                 } else {
@@ -1731,8 +1800,8 @@ var $exeDevice = {
         }
     },
     manageHideQuestion(action = 'show') {
-        const hideQuestion = $exeDevice.ideviceBody.querySelector(
-            `[data-id="${$exeDevice.dataIdQuestionBeforeEdit}"]`
+        const hideQuestion = $exeDevice.getQuestionElementById(
+            $exeDevice.dataIdQuestionBeforeEdit
         );
         if (hideQuestion) {
             if (action === 'remove') hideQuestion.remove();
@@ -1758,7 +1827,10 @@ var $exeDevice = {
         );
         $exeDevice.questionsForm.push(newQuestion);
         this.renderQuestion(newQuestion);
-        $exeDevice.active = $exeDevice.questionsForm.length - 1;
+        // The new question may have been inserted above/below existing ones via
+        // the top/bottom add buttons, so realign the array with the DOM order.
+        $exeDevice.syncQuestionsFormToDomOrder();
+        $exeDevice.active = $exeDevice.getQuestionIndexById(newQuestion.id);
         $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.msgNoQuestionsId}`
         ).style.display = 'none';
@@ -1827,13 +1899,12 @@ var $exeDevice = {
                     .getAttribute('selection-type');
                 break;
             case $exeDevice.ACTIVITY_TYPES.TRUE_FALSE:
-                const trueFalseAnswer = document.querySelector(
+                const trueFalseAnswer = container.querySelector(
                     'input[name="TrueFalseQuestion"]:checked'
                 );
-                question.answer =
-                    trueFalseAnswer && trueFalseAnswer.value === 'true'
-                        ? '1'
-                        : '0';
+                question.answer = $exeDevice.normalizeTrueFalseAnswer(
+                    trueFalseAnswer?.value
+                );
                 break;
             case $exeDevice.ACTIVITY_TYPES.FILL:
                 question.capitalization = container.querySelector(
@@ -1848,13 +1919,20 @@ var $exeDevice = {
         return question;
     },
 
-    renderQuestion(question, index) {
+    renderQuestion(question, index, elementToReplace = null) {
         const formPreview = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.formPreviewId}`
         );
         const html = this.generateQuestionHTML(question);
         let renderedQuestion;
-        if (typeof index !== 'undefined' && formPreview.children[index]) {
+        if (elementToReplace?.parentElement === formPreview) {
+            elementToReplace.insertAdjacentHTML('beforebegin', html);
+            renderedQuestion = elementToReplace.previousElementSibling;
+            elementToReplace.remove();
+        } else if (
+            typeof index !== 'undefined' &&
+            formPreview.children[index]
+        ) {
             const oldElement = formPreview.children[index];
             oldElement.outerHTML = html;
             renderedQuestion = formPreview.children[index];
@@ -1949,7 +2027,7 @@ var $exeDevice = {
     },
 
     getPreviewTextTrueFalseQuestion(question) {
-        const answer = question.answer === '1' ? 1 : 0;
+        const answer = this.normalizeTrueFalseAnswer(question.answer);
         return this.getProcessTextTrueFalseQuestion(question.baseText, answer);
     },
 
@@ -2161,7 +2239,7 @@ var $exeDevice = {
                             <input type="radio" 
                                        name="TrueFalseQuestion" 
                                        id="InputTrue" 
-                                       value="${this.strings.msgETrue}" 
+                                       value="1"
                                        checked>
                             <label for="InputTrue">                                
                                 ${this.strings.msgETrue}
@@ -2171,7 +2249,7 @@ var $exeDevice = {
                             <input type="radio" 
                                     name="TrueFalseQuestion" 
                                     id="InputFalse" 
-                                    value="${this.strings.msgEFalse}">
+                                    value="0">
                              <label for="InputFalse">
                                 ${this.strings.msgEFalse}
                             </label>
@@ -2606,7 +2684,7 @@ var $exeDevice = {
         }
 
         let newTextarea = $exeDevice.ideviceBody.querySelector(
-            `TEXTAREA[id^=${$exeDevice.formPreviewId}`
+            `TEXTAREA[id^="${$exeDevice.formPreviewId}"]`
         );
         newTextarea.innerHTML = questionData.baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,
@@ -2614,7 +2692,7 @@ var $exeDevice = {
         );
         let falseBtn = $exeDevice.ideviceBody.querySelector('#InputFalse');
         let trueBtn = $exeDevice.ideviceBody.querySelector('#InputTrue');
-        if (questionData.answer === '0') {
+        if ($exeDevice.normalizeTrueFalseAnswer(questionData.answer) === '0') {
             falseBtn.checked = true;
         } else {
             trueBtn.checked = true;
@@ -2943,6 +3021,23 @@ var $exeDevice = {
         return htmlDropdown;
     },
 
+    /**
+     * Escape plain-text content for safe insertion as HTML text.
+     * Option texts are plain text (e.g. "A<B"); without escaping, the "<"
+     * would be parsed as markup and the text after it lost.
+     */
+    escapeHtmlText(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /** Escape plain text for safe insertion inside a double-quoted attribute. */
+    escapeHtmlAttr(text) {
+        return this.escapeHtmlText(text).replace(/"/g, '&quot;');
+    },
+
     getProcessTextSelectionQuestion(baseText, optionType, answer) {
         let id = this.generateRandomId();
         let htmlSelection = baseText.replace(
@@ -2953,9 +3048,9 @@ var $exeDevice = {
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${this.escapeHtmlAttr(option[1])}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
-            htmlSelection += option[1];
+            htmlSelection += this.escapeHtmlText(option[1]);
             htmlSelection += `</label>`;
             htmlSelection += `</div>`;
             if (option[0]) {
@@ -3195,16 +3290,7 @@ var $exeDevice = {
 
     handleDragEnd(e) {
         e.currentTarget.classList.remove('dragging');
-        const formPreview = $exeDevice.ideviceBody.querySelector(
-            `#${$exeDevice.formPreviewId}`
-        );
-        const newOrder = Array.from(formPreview.children).map((li) =>
-            li.getAttribute('data-id')
-        );
-        const reorderedQuestions = newOrder
-            .map((id) => $exeDevice.questionsForm.find((q) => q.id === id))
-            .filter((q) => q !== undefined);
-        $exeDevice.questionsForm = reorderedQuestions;
+        $exeDevice.syncQuestionsFormToDomOrder();
         $exeDevice.disableArrowUpDown();
     },
 

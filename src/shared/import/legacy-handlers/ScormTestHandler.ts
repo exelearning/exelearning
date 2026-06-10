@@ -172,9 +172,9 @@ export class ScormTestHandler extends BaseLegacyHandler {
             const answerTextArea = this.findDictInstance(optDict, 'answerTextArea');
             let answerText = '';
             if (answerTextArea) {
-                answerText = this.extractTextAreaFieldContent(answerTextArea);
-                // Strip HTML for answer text
-                answerText = this.stripHtmlTags(answerText);
+                // Raw value so stripHtmlTags strips real tags before decoding
+                // entities, preserving literal characters like "<" in the answer.
+                answerText = this.stripHtmlTags(this.extractTextAreaFieldRawContent(answerTextArea));
             }
 
             // Extract isCorrect

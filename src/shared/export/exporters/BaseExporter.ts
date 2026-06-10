@@ -246,7 +246,15 @@ export abstract class BaseExporter {
     protected async fetchNavLabels(
         language: string,
         license?: string,
-    ): Promise<{ previous: string; next: string; page: string; license?: string }> {
+    ): Promise<{
+        previous: string;
+        next: string;
+        page: string;
+        license?: string;
+        licenseLabel: string;
+        madeWith: string;
+        newWindow: string;
+    }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         let translatedLicense = license;
 
@@ -260,6 +268,9 @@ export abstract class BaseExporter {
             next: translations.get('Next') || 'Next',
             page: translations.get('Page') || 'Page',
             license: translatedLicense,
+            licenseLabel: translations.get('License') || 'License',
+            madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
+            newWindow: translations.get('New window') || 'New window',
         };
     }
 

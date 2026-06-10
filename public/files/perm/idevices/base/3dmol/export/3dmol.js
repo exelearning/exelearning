@@ -1635,27 +1635,34 @@ var $eXe3Dmol = {
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXe3Dmol.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXe3Dmol.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full word.
+                            $eXe3Dmol.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXe3Dmol.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXe3Dmol.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXe3Dmol.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXe3Dmol.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1988,6 +1995,14 @@ var $eXe3Dmol = {
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
     },
 
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#dmolpEdAnswer-${instance}, #dmolpBtnReply-${instance}, #dmolpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
+    },
+
     answerQuestion: function (instance) {
         const mOptions = $eXe3Dmol.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
@@ -2036,6 +2051,11 @@ var $eXe3Dmol = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
+
         $eXe3Dmol.updateScore(correct, instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -2060,13 +2080,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2077,6 +2093,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2093,6 +2115,11 @@ var $eXe3Dmol = {
 
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
+
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
 
         $eXe3Dmol.updateScore(value, instance);
 
@@ -2118,13 +2145,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2135,6 +2158,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2273,8 +2302,6 @@ var $eXe3Dmol = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -2283,10 +2310,25 @@ var $eXe3Dmol = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {
