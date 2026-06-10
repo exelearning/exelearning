@@ -1,8 +1,8 @@
 /* eslint-disable no-undef */
 /**
- * Electrical Circuits iDevice (export code)
+ * Electrical Circuits iDevice (export code) 
  *
- * Questions are paired with TikZ circuit diagrams rendered via TikZJax.
+ * Questions are paired with prerendered SVG circuit diagrams.
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
@@ -35,20 +35,7 @@ var $eXeEC = {
     },
 
     enable: function () {
-        $eXeEC.loadTikzJax();
         $eXeEC.loadGame();
-    },
-
-    /**
-     * Load the TikZJax library from the iDevice export path.
-     * tikzjax.js uses a MutationObserver to detect <script type="text/tikz">
-     * elements and render them automatically.
-     */
-    loadTikzJax: function () {
-        if (document.querySelector('script[src*="tikzjax"]')) return;
-        const script = document.createElement('script');
-        script.src = $eXeEC.idevicePath + 'tikzjax.js';
-        document.head.appendChild(script);
     },
 
     sendScore: function (auto, instance) {
@@ -194,7 +181,7 @@ var $eXeEC = {
                     <img src="${path}elcHome.png" class="ELCP-Cover" id="elcpCover-${instance}" alt="${msgs.msgNoImage}" />
                     <div class="ELCP-GameOver" id="elcpGamerOver-${instance}">
                         <div class="ELCP-DataImage">
-                            <img src="${path}exequextwon.png" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
+                            <img src="${path}exequextscore.svg" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
                             <img src="${path}exequextlost.png" class="ELCP-LostGGame" id="elcpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="ELCP-DataScore">
@@ -348,6 +335,10 @@ var $eXeEC = {
                 typeof mOptions.selectsGame[i].tikzCode == 'undefined'
                     ? ''
                     : mOptions.selectsGame[i].tikzCode;
+            mOptions.selectsGame[i].tikzSvg =
+                typeof mOptions.selectsGame[i].tikzSvg == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].tikzSvg;
             mOptions.selectsGame[i].description =
                 typeof mOptions.selectsGame[i].description == 'undefined'
                     ? ''
@@ -722,13 +713,7 @@ var $eXeEC = {
         $prev.attr('src', index === 0 ? path + 'bfafpreviousd.png' : path + 'bfafprevious.png');
         $next.attr('src', index >= total - 1 ? path + 'bfafnextd.png' : path + 'bfafnext.png');
 
-        // Show TikZ circuit
-        $(`#elcpCover-${instance}`).hide();
-        $(`#elcpTikzPreview-${instance}`).empty().show();
-
-        if (question.tikzCode && question.tikzCode.trim().length > 0) {
-            $eXeEC.showTikzCircuit(question.tikzCode, instance);
-        }
+        $eXeEC.showTikzCircuit(question, instance);
 
         // Show description
         const desc = question.description || '';
@@ -830,43 +815,61 @@ var $eXeEC = {
         }
     },
 
-    /**
-     * Render a TikZ circuit diagram in the multimedia area.
-     * Uses TikZJax's MutationObserver to auto-render <script type="text/tikz">.
-     */
-    showTikzCircuit: function (tikzCode, instance) {
+    sanitizeTikzSvg: function (svg) {
+        if (!svg) return '';
+
+        const parser = new DOMParser();
+        let parsedSvg = null;
+
+        if (typeof svg === 'string') {
+            const parsed = parser.parseFromString(svg, 'image/svg+xml');
+            if (parsed.querySelector('parsererror')) return '';
+            parsedSvg = parsed.querySelector('svg');
+        } else if (svg.nodeType === 1) {
+            parsedSvg =
+                svg.tagName.toLowerCase() === 'svg'
+                    ? svg.cloneNode(true)
+                    : svg.querySelector('svg')?.cloneNode(true);
+        }
+
+        if (!parsedSvg || parsedSvg.tagName.toLowerCase() !== 'svg') return '';
+
+        parsedSvg.querySelectorAll('script, foreignObject').forEach((node) => {
+            node.remove();
+        });
+
+        [parsedSvg, ...parsedSvg.querySelectorAll('*')].forEach((node) => {
+            [...node.attributes].forEach((attribute) => {
+                const name = attribute.name.toLowerCase(),
+                    value = attribute.value.replace(/\s+/g, '').toLowerCase();
+
+                if (name.startsWith('on') || value.includes('javascript:')) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        parsedSvg.removeAttribute('width');
+        parsedSvg.removeAttribute('height');
+
+        return new XMLSerializer().serializeToString(parsedSvg);
+    },
+
+    showTikzCircuit: function (question, instance) {
         const $preview = $(`#elcpTikzPreview-${instance}`),
-            $cover = $(`#elcpCover-${instance}`);
+            $cover = $(`#elcpCover-${instance}`),
+            tikzSvg = question && typeof question.tikzSvg === 'string' ? question.tikzSvg : '',
+            sanitizedSvg = $eXeEC.sanitizeTikzSvg(tikzSvg);
 
         $preview.empty().hide();
         $cover.hide();
 
-        if (!tikzCode || tikzCode.trim().length === 0) {
+        if (!sanitizedSvg) {
             $cover.show();
             return;
         }
 
-        // Create <script type="text/tikz"> via DOM so MutationObserver detects it
-        const tikzScript = document.createElement('script');
-        tikzScript.type = 'text/tikz';
-        tikzScript.dataset.texPackages = JSON.stringify({ 'circuitikz': '', 'amsmath': '', 'amssymb': '' });
-        tikzScript.dataset.showConsole = 'true';
-        tikzScript.textContent = '\\begin{document}' + tikzCode + '\\end{document}';
-
-        $preview.show();
-        $preview[0].appendChild(tikzScript);
-
-        // Observe when TikZJax replaces the <script> with an <svg>.
-        // Remove inline width/height so CSS can scale it to fill the container.
-        const observer = new MutationObserver(() => {
-            const svg = $preview[0].querySelector('svg');
-            if (svg) {
-                svg.removeAttribute('width');
-                svg.removeAttribute('height');
-                observer.disconnect();
-            }
-        });
-        observer.observe($preview[0], { childList: true, subtree: true });
+        $preview.html(sanitizedSvg).show();
     },
 
     enterCodeAccess: function (instance) {
@@ -1042,27 +1045,34 @@ var $eXeEC = {
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXeEC.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXeEC.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full correct word.
+                            $eXeEC.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXeEC.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXeEC.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXeEC.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXeEC.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1276,10 +1286,7 @@ var $eXeEC = {
 
         $(`#elcpPAuthor-${instance}`).text('');
 
-        // Render TikZ circuit diagram for this question
-        if (mQuestion.tikzCode && mQuestion.tikzCode.trim().length > 0) {
-            $eXeEC.showTikzCircuit(mQuestion.tikzCode, instance);
-        }
+        $eXeEC.showTikzCircuit(mQuestion, instance);
 
         $(`#elcpDivModeBoard-${instance}`).hide();
 
@@ -1395,6 +1402,14 @@ var $eXeEC = {
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
     },
 
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#elcpEdAnswer-${instance}, #elcpBtnReply-${instance}, #elcpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
+    },
+
     answerQuestion: function (instance) {
         const mOptions = $eXeEC.options[instance],
             question = mOptions.selectsGame[mOptions.activeQuestion];
@@ -1443,6 +1458,11 @@ var $eXeEC = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
+
         $eXeEC.updateScore(correct, instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -1467,13 +1487,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1484,6 +1500,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1500,6 +1522,11 @@ var $eXeEC = {
 
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
+
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
 
         $eXeEC.updateScore(value, instance);
 
@@ -1525,13 +1552,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1542,6 +1565,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1681,8 +1710,6 @@ var $eXeEC = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -1691,10 +1718,25 @@ var $eXeEC = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {

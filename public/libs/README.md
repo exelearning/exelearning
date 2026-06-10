@@ -375,7 +375,7 @@
 *   File: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js (3Dmol.js)
     *   Copyright: 2014, University of Pittsburgh and contributors
     *   License: BSD-3-Clause
-*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js and /public/files/perm/idevices/base/electrical-circuits/export/tikzjax.js
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js
     *   Copyright: Jim Fowler (kisonecat)
     *   License: LPPL-1.3c
 *   Files: /public/files/perm/idevices/base/electrical-circuits/edition/fonts/*.ttf and /public/files/perm/idevices/base/electrical-circuits/export/fonts/*.ttf (BaKoMa Fonts Collection)

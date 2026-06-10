@@ -15,6 +15,7 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -149,8 +150,9 @@ jobs:
     needs: package
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]        
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Download installers
         uses: actions/download-artifact@v8
@@ -275,26 +277,151 @@ jobs:
           $port           = [int]($env:APP_PORT ?? 41309)
           $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 300)
           $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 6)
+          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $installPoll    = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
 
-          # -------- Find installer and install silently --------
+          # -------- Find installer --------
           $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) { throw "No Windows installer found in 'installers'." }
 
-          # /S = silent for NSIS oneClick; avoids UI + autolaunch races
-          Start-Process $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
+          # Deterministic per-user install dir (NSIS perMachine:false default base).
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning'
 
-          # -------- Locate installed EXE --------
-          $exePath = @(
-            (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
+          $candidatePaths = @(
+            (Join-Path $installDir 'eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          ) | Select-Object -Unique
 
-          if (-not $exePath) {
-            $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
-              Select-Object -First 1 | ForEach-Object FullName
+          # -------- Defender exclusions (best-effort) --------
+          # The 240s poll added in #1894 assumed a slow "NSIS extraction race",
+          # but the step kept failing on main *after the full timeout* - the EXE
+          # never appears at all on some runs, so the silent install is genuinely
+          # failing, not racing. The most likely cause on windows-latest is
+          # Windows Defender real-time scanning quarantining/locking the freshly
+          # extracted Electron binary mid-install, which NSIS silent mode swallows.
+          # Exclude the install/temp dirs before installing to rule it out.
+          foreach ($p in @($installDir, (Join-Path $env:LOCALAPPDATA 'Programs'), $env:TEMP, $installer.DirectoryName)) {
+            try { Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue } catch {}
           }
-          if (-not $exePath) { throw "Installed EXE not found to launch." }
+          try { Add-MpPreference -ExclusionProcess 'eXeLearning.exe' -ErrorAction SilentlyContinue } catch {}
+
+          function Test-ExeInstalled {
+            param([string[]]$Paths)
+            $hit = $Paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $hit) {
+              $hit = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 `
+                       -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
+                     Select-Object -First 1 | ForEach-Object FullName
+            }
+            return $hit
+          }
+
+          function Invoke-SilentInstall {
+            param([string]$Installer, [string]$Dir)
+            # /S = silent (NSIS oneClick). /D=<dir> MUST be the last arg and UNQUOTED.
+            $exeArgs = "/S", "/D=$Dir"
+            Write-Host "Running installer: $Installer $($exeArgs -join ' ')"
+            $proc = Start-Process -FilePath $Installer -ArgumentList $exeArgs -Wait -NoNewWindow -PassThru
+            Write-Host "Installer exit code: $($proc.ExitCode)"
+            return $proc.ExitCode
+          }
+
+          function Wait-ForExe {
+            param([string[]]$Paths, [int]$TimeoutSec, [int]$PollSec)
+            $deadline = (Get-Date).AddSeconds($TimeoutSec)
+            do {
+              $exe = Test-ExeInstalled -Paths $Paths
+              if ($exe) { return $exe }
+              # Wait for any lingering Setup processes, then retry until the EXE
+              # shows up or we hit the install timeout.
+              Get-Process -Name '*Setup*' -ErrorAction SilentlyContinue | ForEach-Object {
+                try { $_.WaitForExit($PollSec * 1000) | Out-Null } catch {}
+              }
+              Start-Sleep -Seconds $PollSec
+            } until ((Get-Date) -ge $deadline)
+            return $null
+          }
+
+          # -------- Install (1 attempt + 1 automatic retry) --------
+          $exePath      = $null
+          $maxAttempts  = 2
+          $lastExitCode = $null
+          for ($attempt = 1; $attempt -le $maxAttempts -and -not $exePath; $attempt++) {
+            Write-Host "=== Install attempt $attempt of $maxAttempts ==="
+
+            $lastExitCode = Invoke-SilentInstall -Installer $installer.FullName -Dir $installDir
+
+            # Neutralize runAfterFinish:true - kill any app the installer auto-launched
+            # (CI-only; package.json keeps runAfterFinish for the shipped installer).
+            Get-Process -Name 'eXeLearning' -ErrorAction SilentlyContinue |
+              ForEach-Object { try { $_.Kill() } catch {} }
+
+            $exePath = Wait-ForExe -Paths $candidatePaths -TimeoutSec $installTimeout -PollSec $installPoll
+            if (-not $exePath) {
+              Write-Warning "Attempt $attempt produced no eXeLearning.exe (installer exit=$lastExitCode)."
+            }
+          }
+
+          # -------- Diagnostics dump on total failure (best-effort, never throws) --------
+          if (-not $exePath) {
+            Write-Host "##[group]Windows install failure diagnostics"
+            Write-Host "Installer: $($installer.FullName)  size=$($installer.Length)  lastExitCode=$lastExitCode"
+
+            try {
+              Write-Host "--- Recursive listing: %LOCALAPPDATA%\Programs ---"
+              Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 4 -ErrorAction SilentlyContinue |
+                Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Programs listing failed: $_" }
+
+            try {
+              Write-Host "--- Top-level listing: %LOCALAPPDATA% ---"
+              Get-ChildItem -Path $env:LOCALAPPDATA -ErrorAction SilentlyContinue |
+                Select-Object Name, LastWriteTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "LOCALAPPDATA listing failed: $_" }
+
+            try {
+              Write-Host "--- eXeLearning* under Program Files / Program Files(x86) ---"
+              @(${env:ProgramFiles}, ${env:ProgramFiles(x86)}) | Where-Object { $_ } | ForEach-Object {
+                Get-ChildItem -Path $_ -Filter 'eXeLearning*' -ErrorAction SilentlyContinue |
+                  Select-Object FullName | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+              }
+            } catch { Write-Host "Program Files listing failed: $_" }
+
+            try {
+              Write-Host "--- NSIS install log (if any) ---"
+              Get-ChildItem -Path $installDir -Filter '*.log' -Recurse -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "### $($_.FullName)"; Get-Content $_.FullName -Tail 200 -ErrorAction SilentlyContinue }
+            } catch { Write-Host "NSIS log read failed: $_" }
+
+            try {
+              Write-Host "--- Running processes matching eXeLearning|Setup ---"
+              Get-Process -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProcessName -match 'eXeLearning|Setup' } |
+                Select-Object Id, ProcessName, StartTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Process listing failed: $_" }
+
+            try {
+              Write-Host "--- Windows Defender threat detections ---"
+              Get-MpThreatDetection -ErrorAction SilentlyContinue |
+                Select-Object ThreatID, ActionSuccess, InitialDetectionTime, Resources |
+                Format-List | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Get-MpThreatDetection failed: $_" }
+
+            try {
+              Write-Host "--- Defender Operational event log (last 25) ---"
+              Get-WinEvent -FilterHashtable @{
+                LogName = 'Microsoft-Windows-Windows Defender/Operational'
+              } -MaxEvents 25 -ErrorAction SilentlyContinue |
+                Select-Object TimeCreated, Id, LevelDisplayName, Message |
+                Format-List | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Get-WinEvent (Defender) failed: $_" }
+
+            Write-Host "##[endgroup]"
+            throw "Installed EXE not found after $maxAttempts attempt(s); install timeout ${installTimeout}s each. Last installer exit code: $lastExitCode. See diagnostics above."
+          }
+
+          Write-Host "Found installed EXE: $exePath"
 
           # -------- Launch with deterministic env for CI --------
           $psi = New-Object System.Diagnostics.ProcessStartInfo
