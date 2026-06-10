@@ -1,0 +1,363 @@
+#adaptativeQuizIdeviceForm input[type="radio"],
+#adaptativeQuizIdeviceForm input[type="checkbox"],
+#adaptativeQuizIdeviceForm input[type="button"] {
+    cursor: pointer;
+}
+
+#adaptativeQuizIdeviceForm .exe-block-close {
+    position: absolute;
+    top: 6px;
+    right: 5px;
+}
+
+.ADQ-EPanel {
+    margin: 0.7em auto;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+
+.ADQ-EOptionsMedia {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1em;
+    width: 100%;
+}
+
+.ADQ-EOptionsGame {
+    min-height: 300px;
+    width: 50%;
+}
+
+.ADQ-EOptionsGame input[type="text"] {
+    width: auto;
+}
+
+.ADQ-EMultimedia {
+    background-color: #fff;
+    border-radius: 0.5em;
+    height: 227px;
+    margin: 40px auto auto auto;
+    position: relative;
+    width: 400px;
+}
+
+.ADQ-EMedia {
+    border: 1px solid #cccccc;
+    border-radius: 0.5em;
+    height: 100%;
+    left: 0;
+    /* Keep the image proportioned inside the fixed preview box: scale to fit
+       without stretching (letterboxed for portrait/landscape images). */
+    object-fit: contain;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+.ADQ-EAudioField {
+    margin-top: 0.15em;
+}
+
+/* Collapsed by default (inline style="display:none"). The Bootstrap utility
+   `d-flex` on the same element would override it, so use a high-specificity
+   rule to guarantee the collapsed state wins until the toggle reveals it. */
+#adaptativeQuizIdeviceForm .ADQ-EAudioField[style*="display:none"],
+#adaptativeQuizIdeviceForm .ADQ-EAudioField[style*="display: none"] {
+    display: none !important;
+}
+
+.ADQ-EAudioInput {
+    width: 100%;
+}
+
+.ADQ-EAudioField .ADQ-EAudioPlay {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ADQ-EAudioField .ADQ-EAudioPlay img {
+    display: block;
+    height: 1.7em;
+    width: 1.7em;
+}
+
+.ADQ-EInputWithToggle {
+    width: 100%;
+}
+
+.ADQ-EInputWithToggle > input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ADQ-EAudioToggle {
+    flex: 0 0 auto;
+    padding: 0.15em 0.4em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ADQ-EAudioToggle svg {
+    display: block;
+}
+
+.ADQ-EAudioToggle--active,
+.ADQ-EAudioToggle[aria-expanded="true"] {
+    background-color: #e7f1ff;
+    border-color: #86b7fe;
+}
+
+#adaptativeQuizIdeviceForm .ADQ-ETypeGameHelp {
+    font-size: 0.95em;
+}
+
+.ADQ-ELevelsGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em;
+    margin-bottom: 0.75em;
+}
+
+.ADQ-ELevelsGrid > div {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.ADQ-ELevelsGrid > div input[type="text"] {
+    width: 100%;
+}
+
+@media (max-width: 720px) {
+    .ADQ-ELevelsGrid > div {
+        flex: 0 0 calc(50% - 0.375em);
+    }
+}
+
+.ADQ-EDifficulty {
+    min-width: 6ch;
+}
+
+article.box.idevice-element-in-content
+    .idevice_node[mode="edition"]
+    #adaptativeQuizIdeviceForm
+    input[type="number"].ADQ-ENumberInput {
+    flex: 0 0 10ch;
+    min-width: 10ch !important;
+    max-width: 10ch !important;
+    width: 10ch !important;
+}
+
+.ADQ-EContents {
+    width: 100%;
+}
+
+.ADQ-EQuestionDiv {
+    margin-bottom: 0.3em;
+    width: 100%;
+}
+
+.ADQ-EQuestion {
+    width: 100%;
+}
+
+.ADQ-EAnswers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5em 1em;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.ADQ-EOptionDiv {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin: 6px 0;
+    width: 48%;
+    min-width: 260px;
+}
+
+.ADQ-EOptionRow {
+    align-items: center;
+    display: flex;
+    gap: 0.35em;
+    width: 100%;
+}
+
+.ADQ-EOptionRow input[type="radio"] {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.ADQ-EAnwersOptions {
+    flex: 1;
+    width: 100%;
+}
+
+@media (max-width: 720px) {
+    .ADQ-EOptionDiv {
+        width: 100%;
+    }
+}
+
+.ADQ-EOrders {
+    margin-top: 0.5em;
+    display: none;
+}
+
+.ADQ-EOrders > div {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-bottom: 0.25em;
+}
+
+.ADQ-EOrders > div * {
+    margin-right: 0.2em;
+}
+
+.ADQ-EOrders input[type="text"] {
+    width: 100%;
+}
+
+.ADQ-EOrders label {
+    white-space: nowrap;
+}
+
+.ADQ-EHit {
+    color: #2f8f3a;
+    font-size: 1.2em;
+    display: inline-block;
+    width: 1.5em;
+    text-align: center;
+}
+
+.ADQ-EError {
+    color: #b3092f;
+    font-size: 1.2em;
+    display: inline-block;
+    width: 1.5em;
+    text-align: center;
+}
+
+.ADQ-ECustomMessage {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 0.5em;
+    width: 100%;
+}
+
+.ADQ-ECustomMessage input[type="text"] {
+    width: 100%;
+    margin-right: 0.1em;
+}
+
+.ADQ-ECustomMessage label {
+    margin: 0 0.1em;
+}
+
+.ADQ-ENumQuestionDiv {
+    align-items: center;
+    display: flex;
+    height: 1.5em;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+    top: 0.3em;
+    width: 4em;
+    z-index: 20;
+}
+
+.ADQ-ENumQ {
+    background-image: url(quextIENumber.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.ADQ-ENumQuestions {
+    text-align: center;
+    vertical-align: middle;
+    width: 3em;
+}
+
+.ADQ-ENavigationButtons {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.ADQ-ENavigationButton {
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
+}
+
+.ADQ-NumberQuestion {
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+    width: 4em;
+    margin: 0 0.3em;
+}
+
+.GameModeHelpLink {
+    margin: 0 2px;
+    vertical-align: middle;
+}
+
+.GameModeLabel {
+    font-weight: normal;
+}
+
+/* "Custom texts" tab (generated by gamification.common.getLanguageTab): an
+   intro paragraph followed by one `.ci18n` row per editable string. Lay the
+   rows out in two responsive columns — the same treatment the guess iDevice
+   gives this tab — with the intro spanning the full width. Targeted by the
+   `.ci18n` content so it does not depend on the tab index. */
+#adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25em 2%;
+}
+
+#adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) > * {
+    flex: 0 0 49%;
+}
+
+#adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) > :first-child {
+    flex: 0 0 100%;
+    margin-top: 0;
+}
+
+#adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) .ci18n label {
+    display: block;
+    margin-bottom: 0.2em;
+    /* Coloured, semibold labels using the same teal as the guess iDevice. */
+    color: #0ba1a1;
+    font-weight: 500;
+}
+
+#adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) .ci18n input {
+    width: 100%;
+}
+
+@media screen and (max-width: 720px) {
+    #adaptativeQuizIdeviceForm .exe-form-tab:has(> .ci18n) > * {
+        flex: 0 0 100%;
+    }
+}

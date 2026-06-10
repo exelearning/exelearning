@@ -162,7 +162,7 @@ export class PageRenderer {
             : '';
 
         // Build "Made with eXeLearning" link (only if enabled)
-        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
+        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(language, options.navLabels) : '';
 
         // Extract page filename map for navigation links (handles title collisions)
         const pageFilenameMap = options.pageFilenameMap;
@@ -831,7 +831,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         licenseUrl?: string;
         userFooterContent?: string;
         language?: string;
-        navLabels?: { license?: string };
+        navLabels?: { license?: string; licenseLabel?: string };
     }): string {
         const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
@@ -850,23 +850,28 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const licenseText = formatLicenseText(license);
         const translatedLicenseText = navLabels?.license || trans(licenseText, {}, language);
         const licenseClass = getLicenseClass(license);
+        const licenseLabel = navLabels?.licenseLabel || trans('License', {}, language);
 
         // If there's a license URL, create a link; otherwise, just show the text
         const licenseContent = licenseUrl
             ? `<a href="${licenseUrl}" class="license">${translatedLicenseText}</a>`
             : `<span class="license">${translatedLicenseText}</span>`;
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">${licenseLabel}: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
 
     /**
-     * Render "Made with eXeLearning" credit
+     * Render "Made with eXeLearning" credit in the document language.
+     * @param language - Document language code (e.g. 'es', 'en')
+     * @param navLabels - Pre-translated labels (browser-side exports supply these via fetchNavLabels)
      * @returns Made with eXe HTML
      */
-    renderMadeWithEXe(): string {
-        return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>Creado con eXeLearning <span>(nueva ventana)</span></span></a></p>`;
+    renderMadeWithEXe(language: string = 'en', navLabels?: { madeWith?: string; newWindow?: string }): string {
+        const madeWithText = navLabels?.madeWith || trans('Made with eXeLearning', {}, language);
+        const newWindowText = navLabels?.newWindow || trans('New window', {}, language);
+        return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>${madeWithText} <span>(${newWindowText})</span></span></a></p>`;
     }
 
     /**
@@ -1110,9 +1115,9 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
-${addExeLink ? this.renderMadeWithEXe() : ''}
+${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
 </body>
 </html>`;
     }
