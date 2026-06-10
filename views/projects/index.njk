@@ -279,7 +279,11 @@
 </div>
 
 <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
-<script>
+<script type="module">
+// Reuse the same pending-import bridge the workarea uses, so a file selected
+// here survives the navigation into /workarea and is imported client-side.
+import { storePendingImport } from '{{ '/app/workarea/project/pendingImport.js' | asset }}';
+
 (function() {
     const basePath = '{{ basePath }}';
     const locale = '{{ locale or "en" }}';
@@ -486,47 +490,36 @@
         document.getElementById('file-input')?.click();
     });
 
-    // File input change
+    // File input change. Mirrors projectManager.transitionToProject({action:'import'}):
+    // stash the file in IndexedDB, create a fresh project, then let the workarea
+    // import it client-side (pendingImport=1). No server-side ELP parsing.
     document.getElementById('file-input')?.addEventListener('change', async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const CHUNK_SIZE = 15 * 1024 * 1024;
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const uploadId = crypto.randomUUID();
+        const openBtn = document.getElementById('btn-open-file');
+        if (openBtn) openBtn.disabled = true;
 
         try {
-            for (let i = 0; i < totalChunks; i++) {
-                const start = i * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, file.size);
-                const chunk = file.slice(start, end);
-                const formData = new FormData();
-                formData.append('file', chunk, file.name);
-                formData.append('chunkIndex', String(i));
-                formData.append('totalChunks', String(totalChunks));
-                formData.append('uploadId', uploadId);
-                formData.append('fileName', file.name);
-                const resp = await fetch(basePath + '/api/project/upload-chunk', {
-                    method: 'POST', credentials: 'include', body: formData
-                });
-                if (!resp.ok) throw new Error('Chunk upload failed');
-            }
+            // Persist the chosen file so it survives the full-page navigation.
+            await storePendingImport(file);
 
-            const openResp = await fetch(basePath + '/api/odes/local/elp/open', {
+            // Create the project to import into; derive the title from the file name.
+            const title = file.name.replace(/\.(elp|elpx)$/i, '') || t.untitled;
+            const resp = await fetch(basePath + '/api/project/create-quick', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ uploadId, fileName: file.name })
+                body: JSON.stringify({ title })
             });
-            if (!openResp.ok) throw new Error('Failed to open file');
-            const openData = await openResp.json();
-            const projectUuid = openData.projectUuid || openData.uuid;
-            const importPath = openData.elpImportPath || '';
-            let url = basePath + '/workarea?project=' + projectUuid;
-            if (importPath) url += '&import=' + encodeURIComponent(importPath);
-            window.location.href = url;
+            if (!resp.ok) throw new Error('Failed to create project');
+            const data = await resp.json();
+
+            // The workarea reads the pending import and imports it via Yjs on load.
+            window.location.href = basePath + '/workarea?project=' + data.uuid + '&new=1&pendingImport=1';
         } catch (err) {
             console.error('Failed to open file:', err);
+            if (openBtn) openBtn.disabled = false;
             e.target.value = '';
         }
     });

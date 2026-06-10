@@ -38,12 +38,22 @@ test.describe('Admin Impersonation', () => {
         page.once('dialog', dialog => dialog.accept());
         await targetRow.locator('button[data-action="impersonate"]').click();
 
-        await page.waitForURL(/\/workarea/);
+        // Impersonation redirects to /workarea, which in online mode lands on the
+        // /projects page; the banner (rendered by base.njk) is visible there too.
+        await page.waitForURL(/\/(workarea|projects)/);
         const banner = page.locator('#impersonation-banner');
         await expect(banner).toBeVisible();
         await expect(banner).toContainText(targetEmail);
 
-        await page.goto('/workarea');
+        // Confirm the banner also persists inside an actual workarea.
+        const projectResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Impersonation Workarea' },
+            headers: { 'Content-Type': 'application/json' },
+        });
+        expect(projectResponse.ok()).toBeTruthy();
+        const { uuid: impersonationProjectUuid } = await projectResponse.json();
+        await page.goto(`/workarea?project=${impersonationProjectUuid}`);
+        await page.waitForURL(/\/workarea/);
         await expect(page.locator('#impersonation-banner')).toBeVisible();
 
         await page.locator('#impersonation-return-button').click();

@@ -529,8 +529,8 @@ test.describe('Real-Time Collaboration', () => {
             getShareUrl,
             joinSharedProject,
         }) => {
-            // Open workarea and import a local .elpx (creates/reinitializes project without full reload)
-            await authenticatedPage.goto('/workarea');
+            // authenticatedPage already lands in a workarea; import a local .elpx
+            // (creates/reinitializes project without full reload)
             await openElpFile(authenticatedPage, LOCAL_ELPX_FIXTURE, 1);
             await waitForYjsSync(authenticatedPage);
 
