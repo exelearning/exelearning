@@ -16,10 +16,13 @@
  *   benign structural markup. We extend the allow-list so that legitimate
  *   educational media (iframes/embeds) keeps rendering.
  * - Fail-safe fallback: if DOMPurify is unavailable for any reason, do NOT
- *   return the raw string. Apply a conservative regex-based scrub that
- *   removes <script> blocks, on* handler attributes and javascript: URLs.
- *   This is intentionally aggressive (it may over-strip) because failing
- *   open would re-introduce the vulnerability.
+ *   return the raw string. Parse the markup with the DOM (an inert document,
+ *   so nothing executes or loads) and strip <script> elements, on* handler
+ *   attributes and javascript:/vbscript:/data:text/html URLs. Using the real
+ *   HTML parser avoids the tokenizer-boundary bypasses that defeat regex
+ *   scrubbers. If no DOM is available at all (non-browser env), escape the
+ *   whole fragment to inert text — failing open would re-introduce the
+ *   vulnerability.
  */
 
 /**
@@ -43,9 +46,96 @@ export const COLLABORATIVE_HTML_CONFIG = {
 let fallbackWarningShown = false;
 
 /**
- * Conservative regex-based scrub used only when DOMPurify is unavailable.
- * Removes <script> blocks, inline on* handler attributes and javascript:
- * URLs. Aggressive by design — failing safe is preferred over failing open.
+ * Escape every HTML-significant character so the string can only ever render
+ * as inert text. Used as the last-resort fallback when neither DOMPurify nor a
+ * DOM is available (e.g. a non-browser worker). This is complete escaping, not
+ * partial token removal, so there is nothing left to bypass.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeHtmlText(value) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * URL-bearing attributes whose value must not carry a script-executing scheme.
+ */
+const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'background', 'poster']);
+
+/**
+ * Returns true if an attribute value resolves to a script-executing scheme.
+ * Whitespace and control characters are stripped first because browsers ignore
+ * them inside a URL scheme (e.g. "java\tscript:" still executes).
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function hasDangerousScheme(value) {
+    // Strip control characters and spaces (char codes 0x00-0x20): browsers
+    // ignore them inside a URL scheme, so "java\tscript:" still executes.
+    const normalized = value.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
+    return (
+        normalized.startsWith('javascript:') ||
+        normalized.startsWith('vbscript:') ||
+        normalized.startsWith('data:text/html')
+    );
+}
+
+/**
+ * Strip active content from an HTML fragment using the DOM rather than regex.
+ *
+ * The fragment is parsed into an INERT document (created via
+ * `createHTMLDocument`, which is not attached to any browsing context), so
+ * setting innerHTML neither executes scripts nor loads resources. Because the
+ * real HTML parser normalizes the markup first, this is immune to the
+ * tokenizer-boundary bypasses that defeat regex scrubbers (e.g. `/`-separated
+ * or quote-adjacent handlers like `<a href="x"onerror=...>`). We then remove
+ * <script> elements, every on* event-handler attribute and any
+ * javascript:/vbscript:/data:text/html URL, and return the cleaned markup.
+ *
+ * @param {string} html
+ * @param {Document} doc - A document providing `implementation.createHTMLDocument`.
+ * @returns {string}
+ */
+function domSanitize(html, doc) {
+    const inert = doc.implementation.createHTMLDocument('');
+    const root = inert.body;
+    root.innerHTML = html;
+
+    // Remove scripts (and noscript, whose contents become live if scripting is
+    // later enabled) entirely, including any nested ones.
+    for (const el of Array.from(root.querySelectorAll('script, noscript'))) {
+        el.remove();
+    }
+
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+        for (const attr of Array.from(el.attributes)) {
+            const name = attr.name.toLowerCase();
+            if (name.startsWith('on')) {
+                // No standard non-event attribute starts with "on".
+                el.removeAttribute(attr.name);
+                continue;
+            }
+            if (URL_ATTRIBUTES.has(name) && hasDangerousScheme(attr.value)) {
+                el.removeAttribute(attr.name);
+            }
+        }
+    }
+
+    return root.innerHTML;
+}
+
+/**
+ * Fail-safe sanitizer used only when DOMPurify is unavailable. Prefers a
+ * DOM-based scrub (robust, parser-accurate); when no DOM is available at all it
+ * falls back to escaping the whole fragment to inert text. Never returns the
+ * raw string — failing safe is preferred over failing open.
  *
  * @param {string} html
  * @returns {string}
@@ -59,38 +149,17 @@ function fallbackSanitize(html) {
         );
     }
 
-    let output = html;
-    let previous;
-    // Apply the scrubbing repeatedly until the string stops changing. A single
-    // pass is bypassable because removing one token can splice the surrounding
-    // halves back into a new dangerous token (e.g. "<scr<script>ipt>" collapses
-    // to "<script>", and "javajavascript:script:" collapses to "javascript:").
-    // Iterating to a fixpoint defeats that reconstruction. Each pass only deletes
-    // characters, so the string is strictly shortened until it stabilises and the
-    // loop is guaranteed to terminate (CodeQL js/incomplete-multi-character-sanitization).
-    do {
-        previous = output;
-        output = output
-            // Drop entire <script>...</script> blocks (including unclosed ones).
-            // The end tag uses [^>]* so trailing junk like "</script foo>" is
-            // matched the way browsers actually close the tag (js/bad-tag-filter).
-            .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, '')
-            // Drop any remaining <script ...> open tag. The closing '>' is
-            // optional ('>?') so an unterminated tag at end-of-input
-            // (e.g. "<script src=x") cannot survive the scrub.
-            .replace(/<script\b[^>]*>?/gi, '')
-            // Drop inline event-handler attributes: on*="..." / on*='...' / on*=value.
-            // The name may be preceded by whitespace OR '/', both of which separate
-            // attributes inside a tag, so payloads like `<svg/onload=alert(1)>`
-            // (no whitespace before the handler) are scrubbed too.
-            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*"[^"]*"/gi, '')
-            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*'[^']*'/gi, '')
-            .replace(/[\s/]on[a-z0-9_-]+\s*=\s*[^\s>]+/gi, '')
-            // Neutralize javascript: URLs (e.g. href/src) by blanking the scheme.
-            .replace(/javascript\s*:/gi, '');
-    } while (output !== previous);
+    const doc = typeof document !== 'undefined' ? document : undefined;
+    if (doc && doc.implementation && typeof doc.implementation.createHTMLDocument === 'function') {
+        try {
+            return domSanitize(html, doc);
+        } catch {
+            // Fall through to text escaping if DOM parsing fails for any reason.
+        }
+    }
 
-    return output;
+    // No DOM available: escape everything so the result is inert text.
+    return escapeHtmlText(html);
 }
 
 /**

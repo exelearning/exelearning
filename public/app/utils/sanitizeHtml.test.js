@@ -136,13 +136,17 @@ describe('sanitizeHtml', () => {
             expect(warnSpy).toHaveBeenCalledTimes(1);
         });
 
-        it('defeats <script> tags reconstructed by a single-pass removal', async () => {
+        it('leaves no executable <script> element for nested/reconstructed markup', async () => {
             const mod = await import('./sanitizeHtml.js?fallback-7');
-            // Removing the inner "<script>" splices "<scr" + "ipt>" back into a
-            // fresh "<script>"; a single pass would leave that tag behind, only
-            // iterating to a fixpoint strips every reconstructed tag.
+            // Parser-based sanitization cannot be defeated by the splice trick
+            // ("<scr" + "ipt>") that bypasses single-pass regex scrubbers. The
+            // sanitized output may still contain the *text* "<script" (a bogus
+            // element name), but re-parsing it the way the consumer will (via
+            // innerHTML) must yield zero real <script> elements.
             const out = mod.sanitizeCollaborativeHtml('<scr<script>ipt>alert(1)</scr<script>ipt>');
-            expect(out).not.toMatch(/<script/i);
+            const probe = document.implementation.createHTMLDocument('');
+            probe.body.innerHTML = out;
+            expect(probe.body.querySelectorAll('script').length).toBe(0);
         });
 
         it('removes script blocks whose end tag carries trailing junk', async () => {
@@ -154,10 +158,26 @@ describe('sanitizeHtml', () => {
             expect(out).not.toMatch(/__xss/);
         });
 
-        it('defeats javascript: schemes reconstructed by a single-pass removal', async () => {
+        it('strips event handlers placed directly after a quoted attribute value', async () => {
             const mod = await import('./sanitizeHtml.js?fallback-9');
-            const out = mod.sanitizeCollaborativeHtml('javajavascript:script:alert(1)');
-            expect(out.toLowerCase()).not.toContain('javascript:');
+            // HTML parsers recover from the missing space and treat `onerror`
+            // here as a real attribute, so `<a href="x"onerror=...>` executes.
+            // Regex scrubbers that key on a whitespace/"/" separator miss it;
+            // the DOM parser normalizes the attribute so it is removed.
+            for (const payload of [
+                '<a href="x"onerror=alert(1)>link</a>',
+                "<img src='x'onerror=alert(1)>",
+                '<a title="a"onpointerenter=alert(1)>x</a>',
+            ]) {
+                const out = mod.sanitizeCollaborativeHtml(payload);
+                const probe = document.implementation.createHTMLDocument('');
+                probe.body.innerHTML = out;
+                for (const el of probe.body.querySelectorAll('*')) {
+                    for (const attr of Array.from(el.attributes)) {
+                        expect(attr.name.toLowerCase().startsWith('on')).toBe(false);
+                    }
+                }
+            }
         });
 
         it('strips event handlers separated by "/" (e.g. <svg/onload=...>)', async () => {
