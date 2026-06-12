@@ -743,6 +743,24 @@ describe('BaseExporter', () => {
             expect(result).toBe('<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012">');
         });
 
+        // Defense-in-depth (#1941): an unresolved asset reference means the ZIP will ship a
+        // dangling URL with no binary behind it (the collaborative image-loss bug:
+        // exported `content/resources/<uuid>` with no file). The exporter must RECORD
+        // these so the save/export flow can surface them instead of losing data silently.
+        it('records unresolved asset references so silent data loss is detectable', async () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012">';
+            await exporter.addFilenamesToAssetUrls(content);
+
+            expect(exporter.getUnresolvedAssetRefs()).toContain('12345678-1234-1234-1234-123456789012');
+        });
+
+        it('does not record resolved asset references', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+            await exporter.addFilenamesToAssetUrls('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">');
+
+            expect(exporter.getUnresolvedAssetRefs()).toHaveLength(0);
+        });
+
         it('should return empty string for empty content', async () => {
             const result = await exporter.addFilenamesToAssetUrls('');
             expect(result).toBe('');
