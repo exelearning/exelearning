@@ -21,6 +21,8 @@ import {
     createNotFoundResponse,
     createSuccessResponse,
     createPdfViewerResponse,
+    sniffMimeFromBytes,
+    resolveServedMime,
 } from './preview-sw.js';
 
 describe('Preview Service Worker', () => {
@@ -206,6 +208,50 @@ describe('Preview Service Worker', () => {
             expect(getMimeType('archive.zip')).toBe('application/zip');
             expect(getMimeType('animation.swf')).toBe('application/x-shockwave-flash');
             expect(getMimeType('schema.dtd')).toBe('application/xml-dtd');
+        });
+    });
+
+    describe('sniffMimeFromBytes', () => {
+        const ascii = (s) => Array.from(s, (c) => c.charCodeAt(0));
+        const bytes = (vals, len) => {
+            const a = new Uint8Array(len ?? vals.length);
+            a.set(vals);
+            return a;
+        };
+
+        it('detects PDF from the %PDF- signature', () => {
+            expect(sniffMimeFromBytes(bytes(ascii('%PDF-1.4'), 16))).toBe('application/pdf');
+        });
+
+        it('detects common image signatures', () => {
+            expect(sniffMimeFromBytes(bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 16))).toBe('image/png');
+            expect(sniffMimeFromBytes(bytes([0xff, 0xd8, 0xff, 0xe0], 16))).toBe('image/jpeg');
+        });
+
+        it('returns null for unrecognized or empty input', () => {
+            expect(sniffMimeFromBytes(bytes([0x01, 0x02, 0x03, 0x04], 16))).toBeNull();
+            expect(sniffMimeFromBytes(new Uint8Array(0))).toBeNull();
+            expect(sniffMimeFromBytes(null)).toBeNull();
+        });
+    });
+
+    describe('resolveServedMime', () => {
+        const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
+
+        it('trusts a known extension and ignores the body', () => {
+            // .png extension wins even if the bytes look like a PDF.
+            expect(resolveServedMime('photo.png', pdfBytes)).toBe('image/png');
+            expect(resolveServedMime('doc.pdf', pdfBytes)).toBe('application/pdf');
+        });
+
+        it('sniffs the body when the extension is unknown/missing (octet-stream)', () => {
+            expect(resolveServedMime('content/resources/asset-e9e79be2-7b98-3e8c', pdfBytes)).toBe('application/pdf');
+            expect(resolveServedMime('mystery.xyz', pdfBytes)).toBe('application/pdf');
+        });
+
+        it('falls back to octet-stream when the body is unrecognized', () => {
+            const junk = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
+            expect(resolveServedMime('content/resources/asset-abc', junk)).toBe('application/octet-stream');
         });
     });
 
