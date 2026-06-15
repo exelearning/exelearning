@@ -500,6 +500,7 @@ var $exeDevice = {
     getModelFormatByName: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
         if (!name || name.indexOf('.') === -1) return '';
+        if (name.endsWith('.tar.gz')) return '';
         const parts = name.split('.');
         const ext = parts[parts.length - 1];
         const map = $exeDevice.getSupportedModelFormatMap();
@@ -532,10 +533,10 @@ var $exeDevice = {
 
     hasCompressedModelExtension: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
+        if (name.endsWith('.tar.gz')) return false;
         return (
             name.endsWith('.zip') ||
             name.endsWith('.tgz') ||
-            name.endsWith('.tar.gz') ||
             name.endsWith('.gz')
         );
     },
@@ -907,7 +908,7 @@ var $exeDevice = {
             return extracted;
         }
 
-        if (lowerName.endsWith('.tgz') || lowerName.endsWith('.tar.gz')) {
+        if (lowerName.endsWith('.tgz')) {
             if (!window.fflate.gunzipSync) {
                 throw new Error('GZIP support not available');
             }

@@ -38,8 +38,19 @@ describe('3dmol iDevice edition', () => {
             expect(dmol.getModelFormatByName('a.pdb')).toBe('pdb');
             expect(dmol.getModelFormatByName('a.SDF')).toBe('sdf');
             expect(dmol.getModelFormatByName('a.mmcif')).toBe('cif');
+            expect(dmol.getModelFormatByName('a.pdb.gz')).toBe('pdb');
+            expect(dmol.getModelFormatByName('a.tar.gz')).toBe('');
             expect(dmol.getModelFormatByName('a.txt')).toBe('');
             expect(dmol.getModelFormatByName('noext')).toBe('');
+        });
+    });
+
+    describe('hasCompressedModelExtension', () => {
+        it('keeps zip, tgz and gz support but rejects tar.gz', () => {
+            expect(dmol.hasCompressedModelExtension('models.zip')).toBe(true);
+            expect(dmol.hasCompressedModelExtension('models.tgz')).toBe(true);
+            expect(dmol.hasCompressedModelExtension('model.pdb.gz')).toBe(true);
+            expect(dmol.hasCompressedModelExtension('models.tar.gz')).toBe(false);
         });
     });
 

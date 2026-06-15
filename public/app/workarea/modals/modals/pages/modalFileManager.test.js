@@ -433,7 +433,6 @@ it('should filter by accept=3d for 3D models', () => {
         'structure.mmcif',
         'big.pdb.gz',
         'bundle.zip',
-        'archive.tar.gz',
       ]);
     });
 
@@ -1304,7 +1303,7 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.isMoleculeAsset('application/gzip', 'big.pdb.gz')).toBe(true);
       expect(modal.isMoleculeAsset('application/zip', 'bundle.zip')).toBe(true);
       expect(modal.isMoleculeAsset('application/x-tar', 'bundle.tgz')).toBe(true);
-      expect(modal.isMoleculeAsset('application/gzip', 'bundle.tar.gz')).toBe(true);
+      expect(modal.isMoleculeAsset('application/gzip', 'bundle.tar.gz')).toBe(false);
     });
 
     it('returns false for non-molecule assets and missing input', () => {

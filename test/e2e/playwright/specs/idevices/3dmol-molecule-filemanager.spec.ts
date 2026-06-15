@@ -140,8 +140,9 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
         // the viewer actually parsed the atoms.
         const atomCount = await page.waitForFunction(
             () => {
-                const dev = (window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } })
-                    .$exeDevice;
+                const dev = (
+                    window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
+                ).$exeDevice;
                 const viewer = dev?.modelViewer;
                 if (!viewer || typeof viewer.selectedAtoms !== 'function') {
                     return false;
@@ -178,8 +179,9 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
         // empty). The viewer must now hold the second model's atoms.
         const atomCount = await page.waitForFunction(
             () => {
-                const dev = (window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } })
-                    .$exeDevice;
+                const dev = (
+                    window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
+                ).$exeDevice;
                 const viewer = dev?.modelViewer;
                 if (!viewer || typeof viewer.selectedAtoms !== 'function') {
                     return false;

@@ -1188,6 +1188,7 @@ var $eXe3Dmol = {
     getModelFormatByName: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
         if (!name || name.indexOf('.') === -1) return '';
+        if (name.endsWith('.tar.gz')) return '';
         const ext = name.split('.').pop();
         const map = {
             pdb: 'pdb',

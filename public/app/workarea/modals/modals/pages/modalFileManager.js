@@ -1569,7 +1569,7 @@ export default class ModalFilemanager extends Modal {
      * Whether an asset is a molecular-structure file accepted by the 3Dmol
      * iDevice. Keep this list aligned with 3Dmol's local model parser:
      * pdb, sdf, mol2, xyz, cif, mmcif, plus compressed containers it unpacks
-     * (zip, tgz, tar.gz, gz). Extension detection is required because uploaded
+     * (zip, tgz, gz). Extension detection is required because uploaded
      * molecule files often carry a generic MIME type (text/plain,
      * application/octet-stream) instead of a chemical MIME type.
      *
@@ -1591,9 +1591,10 @@ export default class ModalFilemanager extends Modal {
             return true;
         }
         const name = filename || '';
+        if (/\.tar\.gz$/i.test(name)) return false;
         return (
             /\.(pdb|sdf|mol2|xyz|cif|mmcif)$/i.test(name) ||
-            /\.(zip|tgz|tar\.gz|gz)$/i.test(name)
+            /\.(zip|tgz|gz)$/i.test(name)
         );
     }
 
