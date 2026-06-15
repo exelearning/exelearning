@@ -458,6 +458,22 @@ class YjsProjectBridge {
           this.assetManager.setServerConfig(apiBaseUrl, token);
         }
 
+        // Self-heal assets that lost their type/extension (older projects whose
+        // assets were saved as `asset-<uuid>` without extension → octet-stream →
+        // PDFs in iframes get force-downloaded). Runs after blobs are available.
+        const repairAssetTypes = () => {
+          if (typeof this.assetManager.repairAssetsWithoutType !== 'function') return;
+          this.assetManager.repairAssetsWithoutType()
+            .then(repaired => {
+              if (repaired > 0) {
+                Logger.log(`[YjsProjectBridge] Repaired ${repaired} asset(s) missing a usable type/extension`);
+              }
+            })
+            .catch(err => {
+              console.warn('[YjsProjectBridge] Asset type repair failed:', err);
+            });
+        };
+
         if (token && projectId) {
           // Don't await - download in background to avoid blocking UI
           this.assetManager.downloadMissingAssets(apiBaseUrl, token)
@@ -468,7 +484,11 @@ class YjsProjectBridge {
             })
             .catch(err => {
               console.warn('[YjsProjectBridge] Failed to download missing assets:', err);
-            });
+            })
+            .finally(repairAssetTypes);
+        } else {
+          // Offline / no server: blobs come from the local cache; still self-heal.
+          repairAssetTypes();
         }
       }
 
