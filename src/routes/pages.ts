@@ -27,6 +27,12 @@ import {
 import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicViewFile } from '../services/public-view-content';
+import {
+    PUBLIC_VIEW_SANDBOX,
+    publicViewCspHeader,
+    publicViewPermissionsPolicy,
+} from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
@@ -623,11 +629,59 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     title: project.title || 'Untitled Project',
                     lang: locale,
                     impersonation,
+                    // Tokens for the isolating iframe (opaque origin: no
+                    // allow-same-origin). Single source of truth shared with the
+                    // CSP emitted on the content responses below.
+                    sandboxTokens: PUBLIC_VIEW_SANDBOX,
                 };
 
                 const html = renderTemplate('viewer/viewer', viewModel);
                 set.headers['Content-Type'] = 'text/html';
                 return html;
+            })
+
+            // =====================================================
+            // Public viewer content (isolated, opaque origin)
+            // =====================================================
+            // Serves the individual files of a public project's HTML5 export so
+            // the untrusted author content runs inside a sandboxed iframe with an
+            // opaque origin. The `sandbox` directive is emitted in the response
+            // CSP (not only in the iframe attribute) so the document stays opaque
+            // even if the content URL is opened directly (new tab, fullscreen,
+            // raw URL). It must never reach the authenticated session.
+            .get('/view/:publicViewId/_/*', async ({ params, set }) => {
+                const { publicViewId } = params;
+                const relPath = (params as Record<string, string>)['*'] ?? '';
+
+                const project = await findProjectByPublicViewId(db, publicViewId);
+                if (!project || !project.public_view_enabled) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                let file;
+                try {
+                    file = await getPublicViewFile(project, relPath);
+                } catch (err) {
+                    console.error('[Public viewer content] Error building export:', err);
+                    set.status = 500;
+                    return 'Error building preview';
+                }
+
+                if (!file) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                return new Response(file.content, {
+                    headers: {
+                        'Content-Type': file.contentType,
+                        'Content-Security-Policy': publicViewCspHeader(),
+                        'Permissions-Policy': publicViewPermissionsPolicy(),
+                        'X-Content-Type-Options': 'nosniff',
+                        'Cache-Control': 'no-store',
+                    },
+                });
             })
 
             // =====================================================

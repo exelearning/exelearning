@@ -240,6 +240,10 @@ The UI **tries browser-side first**, falling back to server-side.
 
 Static editor embeds in LMS plugins (WordPress, Moodle, Drupal, Omeka-S) via iframe + postMessage. Key files: `RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, `app.js`, `previewPanel.js`, `main.scss`. See `doc/development/embedding.md`.
 
+### 7.11 Public View Isolation (untrusted content)
+
+The public read-only view (`/view/:publicViewId`) serves **author HTML/JS as untrusted content** and MUST run in an **opaque origin**: a sandboxed iframe **without** `allow-same-origin`, with content served from the server at `/view/:publicViewId/_/*` and a response-level `Content-Security-Policy: sandbox …` header (so isolation holds even fullscreen / new tab / raw URL). Never serve public content same-origin (e.g. via the workarea Service Worker) — same-origin content can reach the viewer's session, cookies, API and IndexedDB. Sandbox tokens + CSP live in one place: `src/shared/security/publicViewSandbox.ts`. The workarea preview (§7.6) stays same-origin (author previews own content). See `doc/architecture.md` §8.6.
+
 ## 8. Environment Configuration
 
 Configure via `.env` file (use `.env.dist` as template).

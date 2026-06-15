@@ -10,7 +10,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
 import { findProjectByUuid, findProjectByPublicViewId } from '../../../db/queries';
-import type { Project } from '../../../db/types';
 import { getFilesDir } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
@@ -30,6 +29,7 @@ import {
     ServerLatexPreRenderer,
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
+import { buildHtml5PreviewExport } from '../../../services/public-view-content';
 import {
     authenticateRequest,
     errorResponse,
@@ -133,48 +133,8 @@ async function checkProjectAccess(
     return { project };
 }
 
-/**
- * Build an HTML5 preview export (multi-page) for a project as a ZIP.
- *
- * Shared by the authenticated and public preview paths. It works purely from
- * the project record: the internal UUID is only used server-side to locate
- * Yjs data and assets, and is never returned to the caller.
- */
-async function buildHtml5PreviewExport(
-    project: Project,
-): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
-    // Load the Yjs document
-    const ydoc = await reconstructDocument(project.id);
-
-    // Create document adapter
-    const wrapper = new ServerYjsDocumentWrapper(ydoc, project.uuid);
-    const documentAdapter = new YjsDocumentAdapter(wrapper);
-
-    // Create asset providers
-    const filesDir = getFilesDir();
-    const assetsPath = path.join(filesDir, 'assets', project.uuid);
-    const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
-    const dbAssetProvider = new DatabaseAssetProvider(db, project.id);
-    const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
-
-    // Create resource provider
-    const resourceProvider = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
-
-    // Create ZIP provider
-    const zipProvider = new FflateZipProvider();
-
-    // Create the HTML5 exporter for preview
-    const exporter = new Html5Exporter(documentAdapter, resourceProvider, assetProvider, zipProvider, {
-        singlePage: false,
-    });
-
-    // Run the export with server-side LaTeX pre-render hooks.
-    const latexRenderer = new ServerLatexPreRenderer();
-    return exporter.export({
-        preRenderLatex: async (html: string) => latexRenderer.preRender(html),
-        preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
-    });
-}
+// `buildHtml5PreviewExport` lives in the public-view content service so it is the
+// single source of truth shared by the public viewer and this export API.
 
 // ============================================================================
 // ROUTES

@@ -7,6 +7,7 @@ import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
+import { zipSync, strToU8 } from 'fflate';
 import {
     createPagesRoutes,
     type PagesDependencies,
@@ -17,6 +18,8 @@ import {
     type PagesUtilsDeps,
     type PagesSettingsDeps,
 } from './pages';
+import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
+import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
 
 // Mock data stores
 let mockUsers: Map<number, any>;
@@ -3314,6 +3317,91 @@ describe('Pages Routes', () => {
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
             expect(location).toContain('/login');
+        });
+    });
+
+    describe('GET /view/:publicViewId/_/* (isolated public content)', () => {
+        beforeEach(() => {
+            mockProjects.set('pub-1', {
+                id: 10,
+                uuid: 'pub-1-uuid',
+                public_view_id: 'pub-1',
+                public_view_enabled: 1,
+                updated_at: 1000,
+                title: 'Public project',
+            });
+            mockProjects.set('pub-disabled', {
+                id: 11,
+                uuid: 'pub-disabled-uuid',
+                public_view_id: 'pub-disabled',
+                public_view_enabled: 0,
+                updated_at: 1000,
+                title: 'Disabled',
+            });
+
+            configurePublicViewContent({
+                buildExport: async (): Promise<ExportResult> => ({
+                    success: true,
+                    data: zipSync({
+                        'index.html': strToU8('<h1>public</h1>'),
+                        'html/page.html': strToU8('<p>page</p>'),
+                        'css/style.css': strToU8('body{}'),
+                    }),
+                }),
+            });
+        });
+
+        afterEach(() => {
+            resetPublicViewContent();
+        });
+
+        it('serves index.html in an opaque origin via the response CSP sandbox directive', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+
+            const csp = res.headers.get('Content-Security-Policy') ?? '';
+            expect(csp).toContain(`sandbox ${PUBLIC_VIEW_SANDBOX}`);
+            expect(csp).not.toContain('allow-same-origin');
+            expect(csp).toContain("frame-ancestors 'self'");
+
+            expect(res.headers.get('Permissions-Policy')).toContain('camera=()');
+            expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+            expect(res.headers.get('Cache-Control')).toBe('no-store');
+
+            expect(await res.text()).toBe('<h1>public</h1>');
+        });
+
+        it('serves nested files with the right content type', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/css/style.css'));
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('text/css; charset=utf-8');
+            expect(await res.text()).toBe('body{}');
+        });
+
+        it('returns 404 for a file that is not in the export', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/missing.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 404 for an unknown public view id without leaking existence', async () => {
+            const res = await app.handle(new Request('http://localhost/view/does-not-exist/_/index.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 404 when the public view link is disabled', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-disabled/_/index.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 500 when the export build throws', async () => {
+            configurePublicViewContent({
+                buildExport: async (): Promise<ExportResult> => {
+                    throw new Error('build failed');
+                },
+            });
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+            expect(res.status).toBe(500);
         });
     });
 });
