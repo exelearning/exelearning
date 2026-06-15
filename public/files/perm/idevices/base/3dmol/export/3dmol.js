@@ -1309,7 +1309,10 @@ var $eXe3Dmol = {
             $preview = $(`#dmolpModelPreview-${instance}`),
             $cover = $(`#dmolpCover-${instance}`);
 
-        let modelData = (question.modelData || '').trim();
+        // Keep the model data raw: MDL molfiles (SDF/MOL) are line-position
+        // sensitive (line 1 is the title, which may be empty), so trimming the
+        // leading blank line shifts the counts line and breaks parsing.
+        let modelData = question.modelData || '';
         let modelFormat = (question.modelFormat || '').trim().toLowerCase();
         const modelName = (question.modelName || '').trim();
 
@@ -1321,7 +1324,7 @@ var $eXe3Dmol = {
             modelFormat = $eXe3Dmol.getModelFormatByName(modelName);
         }
 
-        if (!modelData || !modelFormat) {
+        if (!modelData.trim() || !modelFormat) {
             $preview.hide();
             $cover.show();
             $(`#dmolpAtomLegend-${instance}`).hide();

@@ -392,6 +392,51 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.filteredAssets[0].filename).toBe('model.glb');
     });
 
+    it('should not let molecule files through the mesh accept=3d filter', () => {
+      // accept=3d is the three-d-viewer mesh filter; molecule files must not
+      // appear there. The 3Dmol picker uses accept=molecule instead.
+      modal.acceptFilter = '3d';
+      modal.assets = [
+        { id: '1', filename: 'glucose.sdf', mime: 'text/plain' },
+        { id: '2', filename: 'protein.pdb', mime: 'application/octet-stream' },
+        { id: '3', filename: 'mesh.glb', mime: 'model/gltf-binary' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.map((a) => a.filename)).toEqual(['mesh.glb']);
+    });
+
+    it('should filter by accept=molecule for 3Dmol molecule and compressed files', () => {
+      modal.acceptFilter = 'molecule';
+      modal.assets = [
+        { id: '1', filename: 'glucose.sdf', mime: 'text/plain' },
+        { id: '2', filename: 'protein.pdb', mime: 'application/octet-stream' },
+        { id: '3', filename: 'ligand.mol2', mime: 'application/octet-stream' },
+        { id: '4', filename: 'cluster.xyz', mime: 'application/octet-stream' },
+        { id: '5', filename: 'crystal.cif', mime: 'application/octet-stream' },
+        { id: '6', filename: 'structure.mmcif', mime: 'application/octet-stream' },
+        { id: '7', filename: 'big.pdb.gz', mime: 'application/gzip' },
+        { id: '8', filename: 'bundle.zip', mime: 'application/zip' },
+        { id: '9', filename: 'archive.tar.gz', mime: 'application/gzip' },
+        { id: '10', filename: 'structure.mmtf', mime: 'application/vnd.mmtf' },
+        { id: '11', filename: 'topology.prmtop', mime: 'chemical/x-amber-prmtop' },
+        { id: '12', filename: 'mesh.glb', mime: 'model/gltf-binary' },
+        { id: '13', filename: 'notes.txt', mime: 'text/plain' },
+        { id: '14', filename: 'pic.png', mime: 'image/png' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.map((a) => a.filename)).toEqual([
+        'glucose.sdf',
+        'protein.pdb',
+        'ligand.mol2',
+        'cluster.xyz',
+        'crystal.cif',
+        'structure.mmcif',
+        'big.pdb.gz',
+        'bundle.zip',
+        'archive.tar.gz',
+      ]);
+    });
+
     it('should search recursively across all folders when search term is entered', () => {
       modal.currentPath = '';
       modal.searchInput.value = 'test';
@@ -1170,15 +1215,22 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.getAssetTypeCategory('application/pdf')).toBe('pdf');
     });
 
-    it('should return model for model and molecular mime types', () => {
+    it('should return model for triangle-mesh model mime types', () => {
       expect(modal.getAssetTypeCategory('model/stl')).toBe('model');
       expect(modal.getAssetTypeCategory('model/gltf-binary')).toBe('model');
       expect(modal.getAssetTypeCategory('model/gltf+json')).toBe('model');
-      expect(modal.getAssetTypeCategory('chemical/x-pdb')).toBe('model');
-      expect(modal.getAssetTypeCategory('application/vnd.mmtf')).toBe('model');
     });
 
-    it('should return model for 3D file extensions when mime is generic', () => {
+    it('should return molecule for molecular mime/extension (separate from mesh models)', () => {
+      expect(modal.getAssetTypeCategory('chemical/x-pdb')).toBe('molecule');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'a.sdf')).toBe('molecule');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'a.pdb')).toBe('molecule');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'a.mol2')).toBe('molecule');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'a.cif')).toBe('molecule');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'a.mmcif')).toBe('molecule');
+    });
+
+    it('should return model for mesh 3D file extensions when mime is generic', () => {
       expect(modal.getAssetTypeCategory('application/octet-stream', 'model.glb')).toBe('model');
       expect(modal.getAssetTypeCategory('application/octet-stream', 'model.gltf')).toBe('model');
       expect(modal.getAssetTypeCategory('application/octet-stream', 'model.stl')).toBe('model');
@@ -1200,6 +1252,78 @@ it('should filter by accept=3d for 3D models', () => {
     });
   });
 
+  describe('passesAcceptFilter', () => {
+    it('returns true when no accept filter is active', () => {
+      modal.acceptFilter = null;
+      expect(modal.passesAcceptFilter({ mime: 'image/png', filename: 'a.png' })).toBe(true);
+    });
+
+    it('filters by image / audio / video', () => {
+      modal.acceptFilter = 'image';
+      expect(modal.passesAcceptFilter({ mime: 'image/png' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'video/mp4' })).toBe(false);
+      modal.acceptFilter = 'video';
+      expect(modal.passesAcceptFilter({ mime: 'video/mp4' })).toBe(true);
+      modal.acceptFilter = 'audio';
+      expect(modal.passesAcceptFilter({ mime: 'audio/mpeg' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'image/png' })).toBe(false);
+    });
+
+    it('separates 3d (mesh) from molecule', () => {
+      modal.acceptFilter = '3d';
+      expect(modal.passesAcceptFilter({ mime: 'model/gltf-binary', filename: 'm.glb' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'application/octet-stream', filename: 'm.stl' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'text/plain', filename: 'm.sdf' })).toBe(false);
+      modal.acceptFilter = 'molecule';
+      expect(modal.passesAcceptFilter({ mime: 'text/plain', filename: 'm.sdf' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'model/gltf-binary', filename: 'm.glb' })).toBe(false);
+    });
+  });
+
+  describe('isMoleculeAsset', () => {
+    it('detects supported molecules by MIME type', () => {
+      expect(modal.isMoleculeAsset('chemical/x-pdb', '')).toBe(true);
+      expect(modal.isMoleculeAsset('chemical/x-mdl-sdfile', '')).toBe(true);
+      expect(modal.isMoleculeAsset('chemical/x-mol2', '')).toBe(true);
+      expect(modal.isMoleculeAsset('chemical/x-xyz', '')).toBe(true);
+      expect(modal.isMoleculeAsset('chemical/x-cif', '')).toBe(true);
+      expect(modal.isMoleculeAsset('chemical/x-mmcif', '')).toBe(true);
+    });
+
+    it('detects molecules by extension when mime is generic', () => {
+      expect(modal.isMoleculeAsset('text/plain', 'm.sdf')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'm.pdb')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'm.mol2')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'm.xyz')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'm.cif')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'm.mmcif')).toBe(true);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'M.PDB')).toBe(true);
+    });
+
+    it('detects compressed molecule containers', () => {
+      expect(modal.isMoleculeAsset('application/gzip', 'big.pdb.gz')).toBe(true);
+      expect(modal.isMoleculeAsset('application/zip', 'bundle.zip')).toBe(true);
+      expect(modal.isMoleculeAsset('application/x-tar', 'bundle.tgz')).toBe(true);
+      expect(modal.isMoleculeAsset('application/gzip', 'bundle.tar.gz')).toBe(true);
+    });
+
+    it('returns false for non-molecule assets and missing input', () => {
+      expect(modal.isMoleculeAsset('model/gltf-binary', 'mesh.glb')).toBe(false);
+      expect(modal.isMoleculeAsset('application/octet-stream', 'mesh.stl')).toBe(false);
+      expect(modal.isMoleculeAsset('application/vnd.mmtf', 'model.mmtf')).toBe(false);
+      expect(modal.isMoleculeAsset('chemical/x-gromacs', 'model.gro')).toBe(false);
+      expect(modal.isMoleculeAsset('chemical/x-pqr', 'model.pqr')).toBe(false);
+      expect(modal.isMoleculeAsset('chemical/x-amber-prmtop', 'model.prmtop')).toBe(false);
+      expect(modal.isMoleculeAsset('model/x-poscar', 'model.vasp')).toBe(false);
+      expect(modal.isMoleculeAsset('chemical/x-gaussian-cube', 'model.cube')).toBe(false);
+      expect(modal.isMoleculeAsset('image/png', 'a.png')).toBe(false);
+      expect(modal.isMoleculeAsset('text/plain', 'notes.txt')).toBe(false);
+      expect(modal.isMoleculeAsset('', '')).toBe(false);
+      expect(modal.isMoleculeAsset(null, null)).toBe(false);
+      expect(modal.isMoleculeAsset(undefined, undefined)).toBe(false);
+    });
+  });
+
   describe('updateFilterOptions', () => {
     it('should populate filter options based on available asset types', () => {
       modal.assets = [
@@ -1211,12 +1335,36 @@ it('should filter by accept=3d for 3D models', () => {
       modal.updateFilterOptions();
 
       const options = modal.filterSelect.querySelectorAll('option');
-      expect(options.length).toBe(5); // All + image + video + model + pdf
+      expect(options.length).toBe(5); // All + image + video + molecule + pdf
       expect(options[0].value).toBe('');
       expect(options[1].value).toBe('image');
       expect(options[2].value).toBe('video');
-      expect(options[3].value).toBe('model');
+      expect(options[3].value).toBe('molecule');
       expect(options[4].value).toBe('pdf');
+    });
+
+    it('separates 3D meshes (model) from molecules (molecule)', () => {
+      modal.assets = [
+        { id: '1', filename: 'mesh.glb', mime: 'model/gltf-binary' },
+        { id: '2', filename: 'protein.pdb', mime: 'application/octet-stream' },
+      ];
+      modal.updateFilterOptions();
+      const values = Array.from(modal.filterSelect.querySelectorAll('option')).map((o) => o.value);
+      expect(values).toEqual(['', 'model', 'molecule']);
+    });
+
+    it('omits type options incompatible with the active accept filter', () => {
+      // Opened from 3Dmol (accept=molecule): only molecule-compatible options
+      // should appear — not "Images"/"Videos" that the accept filter hides.
+      modal.acceptFilter = 'molecule';
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+        { id: '2', filename: 'protein.pdb', mime: 'application/octet-stream' },
+        { id: '3', filename: 'b.mp4', mime: 'video/mp4' },
+      ];
+      modal.updateFilterOptions();
+      const values = Array.from(modal.filterSelect.querySelectorAll('option')).map((o) => o.value);
+      expect(values).toEqual(['', 'molecule']);
     });
 
     it('should only show types that exist', () => {
@@ -3150,10 +3298,15 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.getFileTypeLabel('application/pdf')).toBe('PDF');
     });
 
-    it('should return 3D Model for molecular and model mime types', () => {
+    it('should return 3D Model for triangle-mesh model types', () => {
       expect(modal.getFileTypeLabel('model/stl')).toBe('3D Model');
-      expect(modal.getFileTypeLabel('chemical/x-pdb')).toBe('3D Model');
-      expect(modal.getFileTypeLabel('application/vnd.mmtf')).toBe('3D Model');
+      expect(modal.getFileTypeLabel('application/octet-stream', 'mesh.glb')).toBe('3D Model');
+    });
+
+    it('should return 3D Molecule for molecular types', () => {
+      expect(modal.getFileTypeLabel('chemical/x-pdb')).toBe('3D Molecule');
+      expect(modal.getFileTypeLabel('application/octet-stream', 'protein.pdb')).toBe('3D Molecule');
+      expect(modal.getFileTypeLabel('application/octet-stream', 'ligand.sdf')).toBe('3D Molecule');
     });
 
     it('should return File for other mime types', () => {

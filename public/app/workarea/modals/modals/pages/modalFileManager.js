@@ -906,17 +906,7 @@ export default class ModalFilemanager extends Modal {
         // Filter
         this.filteredAssets = assetsToSearch.filter(asset => {
             // Filter by file type (accept filter - programmatic)
-            if (this.acceptFilter) {
-                const mime = asset.mime || '';
-                if (this.acceptFilter === 'image' && !mime.startsWith('image/')) return false;
-                if (this.acceptFilter === 'audio' && !mime.startsWith('audio/')) return false;
-                if (this.acceptFilter === 'video' && !mime.startsWith('video/')) return false;
-                if (this.acceptFilter === '3d') {
-                    const filename = asset.filename || '';
-                    const is3D = mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
-                    if (!is3D) return false;
-                }
-            }
+            if (!this.passesAcceptFilter(asset)) return false;
             // Filter by type (user-selected filter)
             if (this.typeFilter) {
                 const category = this.getAssetTypeCategory(asset.mime, asset.filename);
@@ -1427,7 +1417,7 @@ export default class ModalFilemanager extends Modal {
         // Type cell
         const typeCell = document.createElement('td');
         typeCell.className = 'col-type';
-        typeCell.textContent = this.getFileTypeLabel(asset.mime);
+        typeCell.textContent = this.getFileTypeLabel(asset.mime, asset.filename);
         row.appendChild(typeCell);
 
         // Size cell
@@ -1459,13 +1449,17 @@ export default class ModalFilemanager extends Modal {
     /**
      * Get human-readable file type label
      */
-    getFileTypeLabel(mime) {
+    getFileTypeLabel(mime, filename) {
+        if (mime) {
+            if (mime.startsWith('image/')) return _('Image');
+            if (mime.startsWith('video/')) return _('Video');
+            if (mime.startsWith('audio/')) return _('Audio');
+        }
+        if (this.isMoleculeAsset(mime, filename)) return _('3D Molecule');
+        if ((mime && mime.startsWith('model/')) || (filename && /\.(glb|gltf|stl|obj|fbx)$/i.test(filename)))
+            return _('3D Model');
+        if (mime && mime.includes('pdf')) return _('PDF');
         if (!mime) return _('Unknown');
-        if (mime.startsWith('image/')) return _('Image');
-        if (mime.startsWith('video/')) return _('Video');
-        if (mime.startsWith('audio/')) return _('Audio');
-        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return _('3D Model');
-        if (mime.includes('pdf')) return _('PDF');
         return _('File');
     }
 
@@ -1558,14 +1552,79 @@ export default class ModalFilemanager extends Modal {
      * Get asset type category for filtering
      */
     getAssetTypeCategory(mime, filename) {
-        if (!mime) return 'other';
-        if (mime.startsWith('image/')) return 'image';
-        if (mime.startsWith('video/')) return 'video';
-        if (mime.startsWith('audio/')) return 'audio';
-        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return 'model';
-        if (filename && /\.(glb|gltf|stl|obj|fbx)$/i.test(filename)) return 'model';
-        if (mime === 'application/pdf') return 'pdf';
+        const m = mime || '';
+        if (m.startsWith('image/')) return 'image';
+        if (m.startsWith('video/')) return 'video';
+        if (m.startsWith('audio/')) return 'audio';
+        // Molecular-structure files (3Dmol iDevice) are a distinct category from
+        // triangle-mesh 3D models (3D Viewer iDevice), so the type filter can
+        // offer "3D Molecules" and "3D Models" separately.
+        if (this.isMoleculeAsset(m, filename)) return 'molecule';
+        if (m.startsWith('model/') || (filename && /\.(glb|gltf|stl|obj|fbx)$/i.test(filename))) return 'model';
+        if (m === 'application/pdf') return 'pdf';
         return 'other';
+    }
+
+    /**
+     * Whether an asset is a molecular-structure file accepted by the 3Dmol
+     * iDevice. Keep this list aligned with 3Dmol's local model parser:
+     * pdb, sdf, mol2, xyz, cif, mmcif, plus compressed containers it unpacks
+     * (zip, tgz, tar.gz, gz). Extension detection is required because uploaded
+     * molecule files often carry a generic MIME type (text/plain,
+     * application/octet-stream) instead of a chemical MIME type.
+     *
+     * @param {string} mime - MIME type
+     * @param {string} filename - Filename with extension
+     * @returns {boolean}
+     */
+    isMoleculeAsset(mime, filename) {
+        const m = mime || '';
+        const supportedMimes = new Set([
+            'chemical/x-pdb',
+            'chemical/x-mdl-sdfile',
+            'chemical/x-mol2',
+            'chemical/x-xyz',
+            'chemical/x-cif',
+            'chemical/x-mmcif',
+        ]);
+        if (supportedMimes.has(m)) {
+            return true;
+        }
+        const name = filename || '';
+        return (
+            /\.(pdb|sdf|mol2|xyz|cif|mmcif)$/i.test(name) ||
+            /\.(zip|tgz|tar\.gz|gz)$/i.test(name)
+        );
+    }
+
+    /**
+     * Whether an asset passes the active programmatic accept filter (set by an
+     * iDevice picker via show({accept})). Returns true when no accept filter is
+     * active. Centralises the rule so the grid filter and the type dropdown
+     * stay consistent — the dropdown must not offer types that the accept
+     * filter would hide (e.g. "Images" when picking a molecule for 3Dmol).
+     *
+     * @param {{mime?: string, filename?: string}} asset
+     * @returns {boolean}
+     */
+    passesAcceptFilter(asset) {
+        if (!this.acceptFilter) return true;
+        const mime = asset.mime || '';
+        const filename = asset.filename || '';
+        switch (this.acceptFilter) {
+            case 'image':
+                return mime.startsWith('image/');
+            case 'audio':
+                return mime.startsWith('audio/');
+            case 'video':
+                return mime.startsWith('video/');
+            case '3d':
+                return mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
+            case 'molecule':
+                return this.isMoleculeAsset(mime, filename);
+            default:
+                return true;
+        }
     }
 
     /**
@@ -1574,9 +1633,13 @@ export default class ModalFilemanager extends Modal {
     updateFilterOptions() {
         if (!this.filterSelect) return;
 
-        // Get unique type categories from assets
+        // Get unique type categories from assets. When a programmatic accept
+        // filter is active (e.g. 3Dmol picks molecules), only offer types whose
+        // files are actually selectable — otherwise the dropdown would list,
+        // say, "Images" that the accept filter hides, showing nothing.
         const typeCategories = new Set();
         for (const asset of this.assets) {
+            if (!this.passesAcceptFilter(asset)) continue;
             const category = this.getAssetTypeCategory(asset.mime, asset.filename);
             typeCategories.add(category);
         }
@@ -1590,12 +1653,13 @@ export default class ModalFilemanager extends Modal {
             video: _('Videos'),
             audio: _('Audio'),
             model: _('3D Models'),
+            molecule: _('3D Molecules'),
             pdf: _('PDF'),
             other: _('Other')
         };
 
         // Type order for consistent display
-        const typeOrder = ['image', 'video', 'audio', 'model', 'pdf', 'other'];
+        const typeOrder = ['image', 'video', 'audio', 'model', 'molecule', 'pdf', 'other'];
 
         // Add options for existing types
         for (const type of typeOrder) {
