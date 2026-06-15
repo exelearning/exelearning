@@ -793,11 +793,121 @@ class AssetManager {
   }
 
   /**
+   * Whether a filename ends with a plausible file extension (1-8 alnum chars).
+   * `asset-<uuid>` → false; `report.pdf` → true.
+   * @param {string|undefined|null} filename
+   * @returns {boolean}
+   */
+  _filenameHasExtension(filename) {
+    return typeof filename === 'string' && /\.[a-z0-9]{1,8}$/i.test(filename);
+  }
+
+  /**
+   * Whether a MIME type is missing or the generic binary fallback.
+   * @param {string|undefined|null} mime
+   * @returns {boolean}
+   */
+  _isMimeUnknown(mime) {
+    return !mime || mime === 'application/octet-stream';
+  }
+
+  /**
+   * Whether an asset needs MIME/extension recovery (synchronous pre-check, so
+   * the well-formed path stays fully synchronous).
+   * @param {Object} asset
+   * @returns {boolean}
+   */
+  _needsTypeRecovery(asset) {
+    return !!asset && (this._isMimeUnknown(asset.mime) || !this._filenameHasExtension(asset.filename));
+  }
+
+  /**
+   * Resolve the mime-sniff helpers. In the browser they arrive via the
+   * window.eXeMimeSniff global (mime-sniff.js is a classic <script> loaded by
+   * yjs-loader.js); under Vitest they arrive via CommonJS require. Resolved on
+   * demand inside methods so this classic-script file declares no top-level
+   * binding that could clash with sibling scripts.
+   * @returns {{ sniffMimeFromBytes?: Function, extensionForMime?: Function }}
+   */
+  _mimeSniff() {
+    if (typeof window !== 'undefined' && window.eXeMimeSniff) return window.eXeMimeSniff;
+    if (typeof require === 'function') {
+      try {
+        return require('../common/mime-sniff');
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  }
+
+  /**
+   * Recover a usable MIME type and filename extension for an asset whose type
+   * information was lost. Mutates `asset` in place:
+   * - If `mime` is missing/`application/octet-stream`, sniff the blob's magic
+   *   bytes; on a hit, set the real MIME and re-type the blob (so `<iframe>`/
+   *   `<object>` embeds render inline instead of being downloaded).
+   * - If the filename lacks an extension and the MIME is known, append it
+   *   (so `getAssetUrl()` produces `asset://<id>.<ext>` and exports keep a name).
+   *
+   * No-op for assets that already have a known MIME and an extension, so the
+   * blob of well-formed assets is never copied.
+   *
+   * @param {Object} asset - asset with at least `{ mime, filename, blob }`
+   * @returns {Promise<Object>} the same asset (mutated)
+   */
+  async _recoverAssetType(asset) {
+    if (!asset) return asset;
+
+    const mimeUnknown = this._isMimeUnknown(asset.mime);
+    if (!mimeUnknown && this._filenameHasExtension(asset.filename)) {
+      return asset; // already well-formed — do not touch the blob
+    }
+
+    const { sniffMimeFromBytes, extensionForMime } = this._mimeSniff();
+
+    if (mimeUnknown && asset.blob && typeof sniffMimeFromBytes === 'function') {
+      try {
+        const buf = await asset.blob.arrayBuffer();
+        const detected = sniffMimeFromBytes(new Uint8Array(buf));
+        if (detected) {
+          asset.mime = detected;
+          if (asset.blob.type !== detected) {
+            asset.blob = new Blob([buf], { type: detected });
+          }
+        }
+      } catch (e) {
+        // Unable to read the blob — keep the asset as-is.
+        if (typeof Logger?.warn === 'function') {
+          Logger.warn(`[AssetManager] MIME sniff failed for ${asset.id}:`, e);
+        }
+      }
+    }
+
+    if (asset.filename && !this._filenameHasExtension(asset.filename) && typeof extensionForMime === 'function') {
+      const ext = extensionForMime(asset.mime);
+      if (ext) asset.filename = `${asset.filename}.${ext}`;
+    }
+
+    return asset;
+  }
+
+  /**
    * Store asset - metadata to Yjs, blob to in-memory cache
    * @param {Object} asset - Full asset object with blob and metadata
    * @returns {Promise<void>}
    */
   async putAsset(asset) {
+    // 0. Recover a real MIME type / extension when they were lost (e.g. assets
+    //    exported as `asset-<uuid>` without extension → octet-stream). Without
+    //    this, a PDF embedded in an <iframe> is force-downloaded by the browser
+    //    instead of rendered. See public/app/common/mime-sniff.js.
+    //    Gate on a synchronous pre-check so well-formed assets keep populating
+    //    blobCache within the same tick (callers may not await putAsset()).
+    if (this._needsTypeRecovery(asset)) {
+      await this._recoverAssetType(asset);
+    }
+
     // 1. Store metadata in Yjs (instant sync to other clients)
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
@@ -833,6 +943,12 @@ class AssetManager {
    * @returns {Promise<void>}
    */
   async putBlob(id, blob) {
+    // Align the blob's type with the asset's MIME (or recover it by sniffing)
+    // so iframe/object embeds render inline instead of being downloaded. This
+    // matters for peer/server transfers where the received blob may be
+    // application/octet-stream even though the metadata knows the real type.
+    blob = await this._normalizeBlobType(id, blob);
+
     this.blobCache.set(id, blob);
     // Persist to Cache API, then evict from memory to save RAM
     this._putToCache(id, blob).then(() => {
@@ -842,6 +958,104 @@ class AssetManager {
     }).catch(() => {
       // Keep in memory if Cache API fails
     });
+  }
+
+  /**
+   * Return a blob whose `type` matches the asset's real MIME.
+   * - Known metadata MIME: align the blob's type to it (cheap; re-wrap only if
+   *   it differs).
+   * - Unknown metadata MIME: sniff the bytes; on a hit, fix the metadata
+   *   (MIME + filename extension) and re-type the blob.
+   *
+   * @param {string} id - Asset UUID
+   * @param {Blob} blob - Incoming blob
+   * @returns {Promise<Blob>} possibly re-typed blob
+   */
+  async _normalizeBlobType(id, blob) {
+    if (!blob) return blob;
+    const meta = this.getAssetMetadata(id);
+
+    if (!this._isMimeUnknown(meta?.mime)) {
+      if (blob.type === meta.mime) return blob;
+      try {
+        const buf = await blob.arrayBuffer();
+        return new Blob([buf], { type: meta.mime });
+      } catch {
+        return blob;
+      }
+    }
+
+    const { sniffMimeFromBytes, extensionForMime } = this._mimeSniff();
+    if (typeof sniffMimeFromBytes !== 'function') return blob;
+    try {
+      const buf = await blob.arrayBuffer();
+      const detected = sniffMimeFromBytes(new Uint8Array(buf));
+      if (!detected) return blob;
+      if (meta) {
+        const ext =
+          !this._filenameHasExtension(meta.filename) && typeof extensionForMime === 'function'
+            ? extensionForMime(detected)
+            : null;
+        this.setAssetMetadata(id, {
+          ...meta,
+          mime: detected,
+          filename: ext ? `${meta.filename}.${ext}` : meta.filename,
+        });
+      }
+      return blob.type === detected ? blob : new Blob([buf], { type: detected });
+    } catch {
+      return blob;
+    }
+  }
+
+  /**
+   * Self-heal assets whose type information was lost (e.g. older projects whose
+   * assets were saved as `asset-<uuid>` without extension and therefore resolve
+   * to application/octet-stream). Scans every asset's metadata; for those that
+   * need recovery and whose blob is available, sniffs the content and fixes the
+   * MIME, filename extension and cached blob type. Idempotent.
+   *
+   * Intended to run once when a project is opened (and after .elpx import).
+   *
+   * @returns {Promise<number>} number of assets repaired
+   */
+  async repairAssetsWithoutType() {
+    const all = this.getAllAssetsMetadata();
+    let repaired = 0;
+
+    for (const meta of all) {
+      if (!this._needsTypeRecovery(meta)) continue;
+
+      let blob = null;
+      try {
+        blob = await this.getBlob(meta.id);
+      } catch {
+        blob = null;
+      }
+      if (!blob) continue; // can't sniff without the bytes — skip for now
+
+      const asset = { id: meta.id, mime: meta.mime, filename: meta.filename, blob };
+      await this._recoverAssetType(asset);
+
+      const metaChanged = asset.mime !== meta.mime || asset.filename !== meta.filename;
+      const blobChanged = asset.blob !== blob;
+
+      if (metaChanged) {
+        this.setAssetMetadata(meta.id, { ...meta, mime: asset.mime, filename: asset.filename });
+      }
+      if (blobChanged) {
+        this.blobCache.set(meta.id, asset.blob);
+        if (typeof this._putToCache === 'function') {
+          this._putToCache(meta.id, asset.blob).catch(() => {});
+        }
+      }
+      if (metaChanged || blobChanged) repaired++;
+    }
+
+    if (repaired > 0) {
+      Logger.log(`[AssetManager] Repaired ${repaired} asset(s) missing a usable type/extension`);
+    }
+    return repaired;
   }
 
   /**

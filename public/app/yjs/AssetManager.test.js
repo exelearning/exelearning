@@ -398,6 +398,176 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('putAsset type recovery (extension-less / octet-stream assets)', () => {
+    // %PDF-1.4 header bytes
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('recovers MIME, blob type and extension for an octet-stream PDF without extension', async () => {
+      const blob = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'pdf-1',
+        filename: 'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+        folderPath: '',
+        mime: 'application/octet-stream',
+        size: PDF_BYTES.length,
+        hash: 'h1',
+        uploaded: false,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-1');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+      expect(assetManager.blobCache.get('pdf-1').type).toBe('application/pdf');
+    });
+
+    it('recovers when mime is missing entirely', async () => {
+      const blob = new Blob([PDF_BYTES]); // no type
+      await assetManager.putAsset({
+        id: 'pdf-2',
+        filename: 'document',
+        mime: '',
+        size: PDF_BYTES.length,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-2');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('document.pdf');
+    });
+
+    it('appends the correct extension when MIME is already known but filename has none', async () => {
+      const blob = new Blob(['x'], { type: 'image/png' });
+      await assetManager.putAsset({
+        id: 'png-1',
+        filename: 'logo',
+        mime: 'image/png',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('png-1');
+      expect(meta.filename).toBe('logo.png');
+      expect(meta.mime).toBe('image/png');
+    });
+
+    it('leaves well-formed assets untouched (no blob re-wrap)', async () => {
+      const blob = new Blob(['x'], { type: 'image/jpeg' });
+      await assetManager.putAsset({
+        id: 'jpg-ok',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('jpg-ok');
+      expect(meta.filename).toBe('photo.jpg');
+      expect(meta.mime).toBe('image/jpeg');
+      // Same blob reference: untouched when already valid.
+      expect(assetManager.blobCache.get('jpg-ok')).toBe(blob);
+    });
+
+    it('leaves unknown binary content as octet-stream (no false positives)', async () => {
+      const blob = new Blob([new Uint8Array([0x01, 0x02, 0x03, 0x04])], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'bin-1',
+        filename: 'asset-xyz',
+        mime: 'application/octet-stream',
+        size: 4,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('bin-1');
+      expect(meta.mime).toBe('application/octet-stream');
+      expect(meta.filename).toBe('asset-xyz');
+    });
+  });
+
+  describe('putBlob type normalization', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('aligns a received blob to the known metadata MIME', async () => {
+      mockYjsBridge._assetsMap.set('x', { filename: 'asset-x.pdf', mime: 'application/pdf', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('x', received);
+
+      expect(assetManager.blobCache.get('x').type).toBe('application/pdf');
+    });
+
+    it('sniffs and fixes metadata when the metadata MIME is unknown', async () => {
+      mockYjsBridge._assetsMap.set('y', { filename: 'asset-y', mime: 'application/octet-stream', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('y', received);
+
+      const meta = mockYjsBridge._assetsMap.get('y');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-y.pdf');
+      expect(assetManager.blobCache.get('y').type).toBe('application/pdf');
+    });
+
+    it('does not throw when there is no metadata for the id', async () => {
+      const received = new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'application/octet-stream' });
+      await assetManager.putBlob('orphan', received);
+      expect(assetManager.blobCache.get('orphan')).toBeDefined();
+    });
+  });
+
+  describe('repairAssetsWithoutType (self-heal on open)', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    beforeEach(() => {
+      // a) PDF stored as octet-stream without extension (the bug)
+      mockYjsBridge._assetsMap.set('a', { filename: 'asset-uuid-a', mime: 'application/octet-stream', size: 9 });
+      assetManager.blobCache.set('a', new Blob([PDF_BYTES], { type: 'application/octet-stream' }));
+      // b) well-formed asset — must stay untouched
+      const okBlob = new Blob(['x'], { type: 'image/jpeg' });
+      mockYjsBridge._assetsMap.set('b', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+      assetManager.blobCache.set('b', okBlob);
+      assetManager._okBlobRef = okBlob;
+      // c) known MIME but missing extension — only the filename needs fixing
+      mockYjsBridge._assetsMap.set('c', { filename: 'pic', mime: 'image/png', size: 1 });
+      assetManager.blobCache.set('c', new Blob(['x'], { type: 'image/png' }));
+    });
+
+    it('repairs only the assets that lost their type/extension', async () => {
+      const repaired = await assetManager.repairAssetsWithoutType();
+
+      expect(repaired).toBe(2);
+
+      const a = mockYjsBridge._assetsMap.get('a');
+      expect(a.mime).toBe('application/pdf');
+      expect(a.filename).toBe('asset-uuid-a.pdf');
+      expect(assetManager.blobCache.get('a').type).toBe('application/pdf');
+
+      const b = mockYjsBridge._assetsMap.get('b');
+      expect(b.mime).toBe('image/jpeg');
+      expect(b.filename).toBe('photo.jpg');
+      expect(assetManager.blobCache.get('b')).toBe(assetManager._okBlobRef);
+
+      const c = mockYjsBridge._assetsMap.get('c');
+      expect(c.filename).toBe('pic.png');
+      expect(c.mime).toBe('image/png');
+    });
+
+    it('is idempotent (a second pass repairs nothing)', async () => {
+      await assetManager.repairAssetsWithoutType();
+      const repairedAgain = await assetManager.repairAssetsWithoutType();
+      expect(repairedAgain).toBe(0);
+    });
+
+    it('skips assets whose blob is not available', async () => {
+      mockYjsBridge._assetsMap.set('missing-blob', { filename: 'asset-mb', mime: 'application/octet-stream', size: 9 });
+      // no blob in cache for 'missing-blob'
+      const repaired = await assetManager.repairAssetsWithoutType();
+      // a + c repaired; missing-blob skipped (no blob to sniff)
+      expect(repaired).toBe(2);
+      expect(mockYjsBridge._assetsMap.get('missing-blob').mime).toBe('application/octet-stream');
+    });
+  });
+
   describe('getAsset', () => {
     it('retrieves asset combining Yjs metadata and in-memory blob', async () => {
       // Setup metadata in Yjs
