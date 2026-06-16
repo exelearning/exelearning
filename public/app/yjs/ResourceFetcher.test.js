@@ -2889,6 +2889,77 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       });
     });
 
+    describe('fetchThemeBundleBlob', () => {
+      it('assembles a base theme from loose files in static mode (no network)', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        const assembled = new Blob(['zip'], { type: 'application/zip' });
+        const zipBlobSpy = vi.spyOn(fetcher, 'fetchThemeZipBlob').mockResolvedValue(assembled);
+
+        const blob = await fetcher.fetchThemeBundleBlob({ dirName: 'base', type: 'base' });
+
+        expect(zipBlobSpy).toHaveBeenCalledWith('base');
+        expect(blob).toBe(assembled);
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      it('throws in static mode when the theme cannot be assembled', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        vi.spyOn(fetcher, 'fetchThemeZipBlob').mockResolvedValue(null);
+
+        await expect(fetcher.fetchThemeBundleBlob({ dirName: 'base' })).rejects.toThrow(
+          'Theme could not be assembled from loose files',
+        );
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      it('fetches the pre-built bundle for a base theme in server mode', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = false;
+        fetcher.basePath = '/base';
+        const bundleBlob = new Blob(['zip'], { type: 'application/zip' });
+        mockFetch.mockResolvedValue({ ok: true, blob: vi.fn().mockResolvedValue(bundleBlob) });
+
+        const blob = await fetcher.fetchThemeBundleBlob({ dirName: 'clean', type: 'base' });
+
+        expect(mockFetch).toHaveBeenCalledWith('/base/bundles/themes/clean.zip');
+        expect(blob).toBe(bundleBlob);
+      });
+
+      it('routes site/admin themes to the API endpoint (even in static mode)', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '/base';
+        const apiBlob = new Blob(['zip'], { type: 'application/zip' });
+        mockFetch.mockResolvedValue({ ok: true, blob: vi.fn().mockResolvedValue(apiBlob) });
+        const zipBlobSpy = vi.spyOn(fetcher, 'fetchThemeZipBlob');
+
+        const siteBlob = await fetcher.fetchThemeBundleBlob({ dirName: 'site-1', type: 'site' });
+        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/site-1');
+        expect(siteBlob).toBe(apiBlob);
+
+        const adminBlob = await fetcher.fetchThemeBundleBlob({ dirName: 'admin-1', type: 'admin' });
+        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/admin-1');
+        expect(adminBlob).toBe(apiBlob);
+
+        // Server themes never go through the loose-file assembler.
+        expect(zipBlobSpy).not.toHaveBeenCalled();
+      });
+
+      it('throws when the server returns a non-ok response', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = false;
+        fetcher.basePath = '';
+        mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+        await expect(fetcher.fetchThemeBundleBlob({ dirName: 'missing' })).rejects.toThrow(
+          'Theme bundle not found: 404',
+        );
+      });
+    });
+
     describe('fetchIdevice persists to IndexedDB in static mode', () => {
       it('writes the assembled iDevice to the resource cache', async () => {
         const fetcher = new ResourceFetcher();

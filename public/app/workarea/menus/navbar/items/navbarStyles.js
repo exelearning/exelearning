@@ -1023,29 +1023,14 @@ export default class NavbarFile {
      */
     async downloadThemeFromBundle(theme) {
         try {
-            const basePath = eXeLearning.config?.basePath || '';
-            const isStatic = eXeLearning.app?.capabilities?.storage?.remote === false;
-            const isServerTheme = theme.type === 'site' || theme.type === 'admin';
-
-            let blob;
-            if (isStatic && !isServerTheme) {
-                // Static builds ship no zips: assemble the theme zip on demand
-                // from the loose files via ResourceFetcher.
-                const fetcher = eXeLearning.app?.resourceFetcher;
-                blob = fetcher ? await fetcher.fetchThemeZipBlob(theme.dirName) : null;
-                if (!blob) {
-                    throw new Error('Theme could not be assembled from loose files');
-                }
-            } else {
-                const bundleUrl = isServerTheme
-                    ? `${basePath}/api/resources/bundle/theme/${theme.dirName}`
-                    : `${basePath}/bundles/themes/${theme.dirName}.zip`;
-                const response = await fetch(bundleUrl);
-                if (!response.ok) {
-                    throw new Error(`Theme bundle not found: ${response.status}`);
-                }
-                blob = await response.blob();
+            const fetcher = eXeLearning.app?.resourceFetcher;
+            if (!fetcher) {
+                throw new Error('Theme could not be assembled from loose files');
             }
+            // Single source of truth for resolving the theme zip across modes
+            // (static assemble-from-loose, server site/admin API, server base
+            // bundle). Preserves site/admin handling via theme.type.
+            const blob = await fetcher.fetchThemeBundleBlob(theme);
 
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');

@@ -955,13 +955,11 @@ describe('ModalStyleManager', () => {
         });
 
         describe('downloadThemeZip', () => {
-            it('should download theme as zip file from bundle', async () => {
+            it('should download theme as zip file via the shared ResourceFetcher helper', async () => {
                 const mockBlob = new Blob(['test'], { type: 'application/zip' });
-                const mockResponse = {
-                    ok: true,
-                    blob: vi.fn().mockResolvedValue(mockBlob),
+                window.eXeLearning.app.resourceFetcher = {
+                    fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
                 };
-                global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
                 const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
                 const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -973,7 +971,7 @@ describe('ModalStyleManager', () => {
                 // Wait for async operations to complete
                 await new Promise(resolve => setTimeout(resolve, 50));
 
-                expect(fetch).toHaveBeenCalledWith('/base/bundles/themes/test-theme.zip');
+                expect(window.eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(theme);
                 expect(createObjectURLSpy).toHaveBeenCalled();
                 expect(clickSpy).toHaveBeenCalled();
                 expect(revokeObjectURLSpy).toHaveBeenCalled();
@@ -981,40 +979,39 @@ describe('ModalStyleManager', () => {
                 createObjectURLSpy.mockRestore();
                 revokeObjectURLSpy.mockRestore();
                 clickSpy.mockRestore();
+                delete window.eXeLearning.app.resourceFetcher;
             });
 
-            it('should assemble the theme zip via ResourceFetcher in static mode', async () => {
+            it('should delegate static-mode assembly to the shared ResourceFetcher helper', async () => {
                 const mockBlob = new Blob(['zip'], { type: 'application/zip' });
-                window.eXeLearning.app.capabilities = { storage: { remote: false } };
                 window.eXeLearning.app.resourceFetcher = {
-                    fetchThemeZipBlob: vi.fn().mockResolvedValue(mockBlob),
+                    fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
                 };
-                global.fetch = vi.fn();
 
                 const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
                 const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
                 const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-                modal?.downloadThemeZip({ dirName: 'test-theme', name: 'Test Theme' });
+                const theme = { dirName: 'test-theme', name: 'Test Theme' };
+                modal?.downloadThemeZip(theme);
                 await new Promise(resolve => setTimeout(resolve, 50));
 
-                expect(window.eXeLearning.app.resourceFetcher.fetchThemeZipBlob).toHaveBeenCalledWith('test-theme');
-                expect(fetch).not.toHaveBeenCalled();
+                // The helper decides static-vs-server internally (single source of truth).
+                expect(window.eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(theme);
                 expect(clickSpy).toHaveBeenCalled();
 
                 createObjectURLSpy.mockRestore();
                 revokeObjectURLSpy.mockRestore();
                 clickSpy.mockRestore();
-                delete window.eXeLearning.app.capabilities;
                 delete window.eXeLearning.app.resourceFetcher;
             });
 
-            it('should alert when the theme cannot be assembled in static mode', async () => {
-                window.eXeLearning.app.capabilities = { storage: { remote: false } };
+            it('should alert when the shared helper cannot resolve the theme zip', async () => {
                 window.eXeLearning.app.resourceFetcher = {
-                    fetchThemeZipBlob: vi.fn().mockResolvedValue(null),
+                    fetchThemeBundleBlob: vi
+                        .fn()
+                        .mockRejectedValue(new Error('Theme could not be assembled from loose files')),
                 };
-                global.fetch = vi.fn();
                 const alertSpy = vi.spyOn(modal, 'showElementAlert');
 
                 await modal?.downloadThemeFromBundle({ dirName: 'test-theme', name: 'Test Theme' });
@@ -1023,18 +1020,26 @@ describe('ModalStyleManager', () => {
                     expect.stringContaining('Failed to download'),
                     expect.any(Object),
                 );
-                expect(fetch).not.toHaveBeenCalled();
 
-                delete window.eXeLearning.app.capabilities;
                 delete window.eXeLearning.app.resourceFetcher;
             });
 
-            it('should show error when bundle not found', async () => {
-                const mockResponse = {
-                    ok: false,
-                    status: 404,
+            it('should alert when no ResourceFetcher is available', async () => {
+                delete window.eXeLearning.app.resourceFetcher;
+                const alertSpy = vi.spyOn(modal, 'showElementAlert');
+
+                await modal?.downloadThemeFromBundle({ dirName: 'test-theme', name: 'Test Theme' });
+
+                expect(alertSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('Failed to download'),
+                    expect.any(Object),
+                );
+            });
+
+            it('should show error when the shared helper reports the bundle not found', async () => {
+                window.eXeLearning.app.resourceFetcher = {
+                    fetchThemeBundleBlob: vi.fn().mockRejectedValue(new Error('Theme bundle not found: 404')),
                 };
-                global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
                 const alertSpy = vi.spyOn(modal, 'showElementAlert');
 
@@ -1048,6 +1053,8 @@ describe('ModalStyleManager', () => {
                     expect.stringContaining('Failed to download'),
                     expect.objectContaining({ error: expect.stringContaining('not found') })
                 );
+
+                delete window.eXeLearning.app.resourceFetcher;
             });
         });
     });

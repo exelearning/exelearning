@@ -507,6 +507,46 @@ class ResourceFetcher {
     return new Blob([zipped], { type: 'application/zip' });
   }
 
+  /**
+   * Resolve a downloadable ZIP Blob for a theme, choosing the right source for
+   * the current mode. Single source of truth for the "download theme" UI in
+   * both the navbar and the style-manager modal.
+   *
+   * - Static mode (base/blue/... themes): assemble the zip on demand from the
+   *   loose files shipped in the static build (no pre-built zips exist).
+   * - Server mode, site/admin themes: request on-demand zip generation from the
+   *   API endpoint.
+   * - Server mode, base themes: fetch the pre-built /bundles/themes/{dir}.zip.
+   *
+   * @param {Object} theme - Theme with `dirName` and optional `type`
+   *   ('site'|'admin' route through the API; anything else is a base theme).
+   * @returns {Promise<Blob>} the theme zip blob
+   * @throws {Error} when the theme cannot be assembled or fetched
+   */
+  async fetchThemeBundleBlob(theme) {
+    const dirName = theme?.dirName;
+    const isServerTheme = theme?.type === 'site' || theme?.type === 'admin';
+
+    if (this.isStaticMode && !isServerTheme) {
+      // Static builds ship no zips: assemble the theme zip on demand from the
+      // loose files via fetchThemeZipBlob().
+      const blob = await this.fetchThemeZipBlob(dirName);
+      if (!blob) {
+        throw new Error('Theme could not be assembled from loose files');
+      }
+      return blob;
+    }
+
+    const bundleUrl = isServerTheme
+      ? `${this.basePath}/api/resources/bundle/theme/${dirName}`
+      : `${this.basePath}/bundles/themes/${dirName}.zip`;
+    const response = await fetch(bundleUrl);
+    if (!response.ok) {
+      throw new Error(`Theme bundle not found: ${response.status}`);
+    }
+    return await response.blob();
+  }
+
   // =========================================================================
   // Theme Resources
   // =========================================================================

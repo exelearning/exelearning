@@ -1166,6 +1166,30 @@ function copyDirRecursive(
 }
 
 /**
+ * Ship only the bundle manifest into the static distribution, never the
+ * pre-built resource ZIPs.
+ *
+ * In static mode the client assembles each bundle on demand from the loose
+ * files (copied separately) using the manifest's per-bundle file lists, then
+ * persists the result to IndexedDB. Copying the zips would be a redundant,
+ * incompressible ~17 MB duplicate of bytes that ship loosely anyway. Server
+ * mode still serves `public/bundles/*.zip` via `/api/resources/bundle/*`.
+ *
+ * Returns `true` when the manifest was copied, `false` when the source
+ * manifest is missing (caller-visible so the build can warn).
+ */
+export function copyBundleManifest(projectRoot: string, outputDir: string): boolean {
+    const manifestSrc = path.join(projectRoot, 'public/bundles/manifest.json');
+    if (!fs.existsSync(manifestSrc)) {
+        return false;
+    }
+    const bundlesOut = path.join(outputDir, 'bundles');
+    fs.mkdirSync(bundlesOut, { recursive: true });
+    fs.copyFileSync(manifestSrc, path.join(bundlesOut, 'manifest.json'));
+    return true;
+}
+
+/**
  * Main build function
  */
 async function buildStaticBundle() {
@@ -1254,17 +1278,9 @@ async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
-    // Ship only the bundle manifest, not the pre-built resource ZIPs.
-    // In static mode the client assembles each bundle on demand from the loose
-    // files (already copied below) using the manifest's per-bundle file lists,
-    // then persists the result to IndexedDB. The zips would be a redundant,
-    // incompressible ~17 MB duplicate of bytes that are present loosely anyway.
-    // Server mode still serves public/bundles/*.zip via /api/resources/bundle/*.
-    const manifestSrc = path.join(projectRoot, 'public/bundles/manifest.json');
-    if (fs.existsSync(manifestSrc)) {
-        const bundlesOut = path.join(outputDir, 'bundles');
-        fs.mkdirSync(bundlesOut, { recursive: true });
-        fs.copyFileSync(manifestSrc, path.join(bundlesOut, 'manifest.json'));
+    // Ship only the bundle manifest, not the pre-built resource ZIPs (see
+    // copyBundleManifest for the rationale).
+    if (copyBundleManifest(projectRoot, outputDir)) {
         console.log('  Copied bundles/manifest.json (zips assembled client-side from loose files)');
     } else {
         console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
