@@ -740,8 +740,9 @@ it('should filter by accept=3d for 3D models', () => {
       vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
-      // Now uploads to current folder (empty = root by default)
-      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: '' });
+      // Now uploads to current folder (empty = root by default).
+      // #1951: forceNewId so byte-identical files at different paths stay distinct assets.
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: '', forceNewId: true });
       expect(loadSpy).toHaveBeenCalled();
     });
 
@@ -751,9 +752,43 @@ it('should filter by accept=3d for 3D models', () => {
       modal.currentPath = 'images/icons';
       const file = new File(['x'], 'icon.svg', { type: 'image/svg+xml' });
       await modal.uploadFiles([file]);
-      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: 'images/icons' });
+      // #1951: forceNewId so byte-identical files at different paths stay distinct assets.
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: 'images/icons', forceNewId: true });
       expect(loadSpy).toHaveBeenCalled();
       modal.currentPath = ''; // Reset
+    });
+
+    it('should pass forceNewId for byte-identical files dropped into different folders (#1951)', async () => {
+      // Regression for #1951: a self-contained bundle (e.g. Hype export) can contain
+      // byte-identical resource files (same HYPE-runtime.js) in different folders.
+      // Without forceNewId, content-hash dedup collapses the second file onto the first
+      // and overwrites its folderPath, breaking the bundle's relative links (404).
+      // The file manager is filesystem-like: distinct paths must remain distinct assets.
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
+      const insertImage = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage;
+
+      // Two byte-identical files, uploaded one into each of two folders.
+      modal.currentPath = 'bundle-a/index.hyperesources';
+      const fileA = new File(['IDENTICAL-RUNTIME-BYTES'], 'HYPE-runtime.js', { type: 'text/javascript' });
+      await modal.uploadFiles([fileA]);
+
+      modal.currentPath = 'bundle-b/index.hyperesources';
+      const fileB = new File(['IDENTICAL-RUNTIME-BYTES'], 'HYPE-runtime.js', { type: 'text/javascript' });
+      await modal.uploadFiles([fileB]);
+
+      modal.currentPath = ''; // Reset
+
+      // Both uploads must opt out of content-hash dedup, each keeping its own folderPath.
+      expect(insertImage).toHaveBeenCalledTimes(2);
+      expect(insertImage).toHaveBeenNthCalledWith(1, fileA, {
+        folderPath: 'bundle-a/index.hyperesources',
+        forceNewId: true,
+      });
+      expect(insertImage).toHaveBeenNthCalledWith(2, fileB, {
+        folderPath: 'bundle-b/index.hyperesources',
+        forceNewId: true,
+      });
     });
 
     it('should keep going when upload fails', async () => {

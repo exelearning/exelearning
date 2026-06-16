@@ -2085,8 +2085,17 @@ export default class ModalFilemanager extends Modal {
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
-                // Upload to current folder
-                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                // Upload to current folder.
+                // #1951: the file manager is a filesystem-like view where distinct paths are
+                // distinct files. forceNewId opts out of content-hash dedup so byte-identical
+                // files dropped into different folders keep their own folderPath instead of one
+                // collapsing onto the other and overwriting its folderPath (which broke
+                // self-contained HTML bundles, e.g. Hype exports). Mirrors extractZipAsset
+                // and duplicateSelectedAsset, which already use forceNewId.
+                const url = await this.assetManager.insertImage(file, {
+                    folderPath: this.currentPath,
+                    forceNewId: true,
+                });
                 uploadedCount++;
                 lastUploadedUrl = url;
             } catch (err) {
