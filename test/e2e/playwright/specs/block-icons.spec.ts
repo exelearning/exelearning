@@ -34,11 +34,10 @@ test.describe('Block Icon Selection Modal', () => {
         await selectFirstPage(page);
         await addTextIdevice(page);
 
-        // Wait a moment for the UI to stabilize
-        await page.waitForTimeout(500);
-
         // Click on the block icon button (the + icon with dashed border) to open the icon selection modal
         // The button has aria-label="Select an icon"
+        // Wait deterministically for the block's icon button to render rather than
+        // sleeping a fixed amount of time.
         const blockIconBtn = page.locator('button[aria-label="Select an icon"]').first();
         await blockIconBtn.waitFor({ state: 'visible', timeout: 10000 });
         await blockIconBtn.click();
@@ -107,9 +106,9 @@ test.describe('Block Icon Selection Modal', () => {
 
         await selectFirstPage(page);
         await addTextIdevice(page);
-        await page.waitForTimeout(500);
 
-        // Open the icon picker for the first block.
+        // Open the icon picker for the first block. Wait deterministically for the
+        // block's icon button to render rather than sleeping a fixed amount of time.
         const blockIconBtn = page.locator('button[aria-label="Select an icon"]').first();
         await blockIconBtn.waitFor({ state: 'visible', timeout: 10000 });
         await blockIconBtn.click();

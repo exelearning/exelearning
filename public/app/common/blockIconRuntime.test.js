@@ -62,12 +62,18 @@ describe('blockIconRuntime', () => {
     })).toBe('/libs/test.svg');
   });
 
-  it('getMaterialIconPath falls back when icon is missing from catalog', () => {
+  it('deriveBlockIcon maps legacy icon names to structured descriptors', () => {
     const runtime = require('./blockIconRuntime.js');
 
-    expect(runtime.getMaterialIconPath('', { catalog: ['alarm'] })).toContain('help.svg');
-    expect(runtime.getMaterialIconPath('unknown', { catalog: ['alarm'] })).toContain('help.svg');
-    expect(runtime.getMaterialIconPath('alarm', { catalog: ['alarm'] })).toContain('alarm.svg');
+    expect(runtime.deriveBlockIcon('mi-lightbulb')).toEqual({ source: 'material', value: 'lightbulb' });
+    expect(runtime.deriveBlockIcon('asset://uuid/icon.png')).toEqual({
+      source: 'asset',
+      value: 'asset://uuid/icon.png',
+    });
+    expect(runtime.deriveBlockIcon('/files/x.png')).toEqual({ source: 'asset', value: '/files/x.png' });
+    expect(runtime.deriveBlockIcon('objectives')).toEqual({ source: 'theme', value: 'objectives' });
+    expect(runtime.deriveBlockIcon('')).toEqual({ source: 'none', value: '' });
+    expect(runtime.deriveBlockIcon(null)).toEqual({ source: 'none', value: '' });
   });
 
   it('renderMaterialMaskIcon emits a placeholder before the sprite is loaded', () => {

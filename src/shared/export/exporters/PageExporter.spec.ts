@@ -403,8 +403,11 @@ describe('PageExporter', () => {
             expect(indexHtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
 
-        it('should fall back to library paths when material icon files cannot be fetched', async () => {
-            const pagesWithBootstrapIcon: ExportPage[] = [
+        it('falls back to the inlined help data URI when the material icon sprite cannot be fetched', async () => {
+            // The loose per-icon SVG files were removed, so a sprite-fetch failure
+            // must NOT leave a dangling libs/material-icons/icons/{name}.svg URL in
+            // the HTML — the renderer emits a self-contained help data: URI instead.
+            const pagesWithMaterialIcon: ExportPage[] = [
                 {
                     id: 'page-1',
                     title: 'Introduction',
@@ -422,7 +425,7 @@ describe('PageExporter', () => {
                     ],
                 },
             ];
-            document = new MockDocument({}, pagesWithBootstrapIcon);
+            document = new MockDocument({}, pagesWithMaterialIcon);
             resources.fetchLibraryFiles = async (files: string[]) => {
                 if (files.includes('material-icons/material-icons.svg')) {
                     throw new Error('material icon fetch failed');
@@ -436,7 +439,10 @@ describe('PageExporter', () => {
             expect(result.success).toBe(true);
             expect(zip.files.has('libs/material-icons/icons/lightbulb.svg')).toBe(false);
             const indexHtml = zip.files.get('index.html') as string;
-            expect(indexHtml).toContain('libs/material-icons/icons/lightbulb.svg');
+            // No dead /icons/ path anywhere, and a real inlined icon is emitted.
+            expect(indexHtml).not.toContain('libs/material-icons/icons/');
+            expect(indexHtml).toContain('--exe-material-icon-url:url(');
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
         });
     });
 

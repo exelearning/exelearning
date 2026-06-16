@@ -57,14 +57,15 @@ const localBlockIconRuntime = {
         return cleanBasePath ? `${cleanBasePath}${normalizedPath}` : normalizedPath;
     },
 
-    getMaterialIconPath(iconName, options = {}) {
-        const catalog = options.catalog;
-        const safeIconName = !iconName
-            ? 'help'
-            : (!Array.isArray(catalog) || catalog.includes(iconName))
-                ? iconName
-                : 'help';
-        return this.resolveAppAssetUrl(`/libs/material-icons/icons/${safeIconName}.svg`, options);
+    // JS twin of src/shared/block-icon.ts (deriveBlockIcon). Mirrors the shared
+    // runtime so the degraded fallback path (no window.eXeBlockIconRuntime) keeps
+    // deriving icons identically.
+    deriveBlockIcon(iconName) {
+        const name = iconName == null ? '' : String(iconName);
+        if (!name) return { source: 'none', value: '' };
+        if (name.startsWith('mi-')) return { source: 'material', value: name.slice(3) };
+        if (name.startsWith('asset://') || name.startsWith('/')) return { source: 'asset', value: name };
+        return { source: 'theme', value: name };
     },
 
     renderMaterialMaskIcon(iconName, options = {}) {
@@ -221,12 +222,12 @@ export default class IdeviceBlockNode {
         const legacy = legacyIconName || '';
         if (!legacy) return { source: 'none', value: '' };
 
-        if (legacy.startsWith('mi-')) {
-            const value = legacy.replace(/^mi-/, '');
-            return { source: 'material', value, name: value };
-        }
-        if (legacy.startsWith('asset://') || legacy.startsWith('/')) {
-            return { source: 'asset', value: legacy, name: legacy };
+        // Reuse the shared derivation (JS twin of src/shared/block-icon.ts) for the
+        // unambiguous material / asset prefixes; only plain names need the extra
+        // theme-resolution + legacy-map handling below.
+        const derived = blockIconRuntime.deriveBlockIcon(legacy);
+        if (derived.source === 'material' || derived.source === 'asset') {
+            return { source: derived.source, value: derived.value, name: derived.value };
         }
         // Prefer the current style's own icon when it provides one with this id.
         // Only fall back to the legacy → Material mapping when the active style
@@ -259,14 +260,6 @@ export default class IdeviceBlockNode {
 <circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="2.5"/>
 <path d="M28.5 11.5L11.5 28.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
 </svg>`;
-    }
-
-    getMaterialIconPath(iconName) {
-        return blockIconRuntime.getMaterialIconPath(iconName, {
-            app: window.eXeLearning?.app,
-            config: window.eXeLearning?.config,
-            catalog: MATERIAL_ICON_CATALOG,
-        });
     }
 
     getMaterialSpritePath() {

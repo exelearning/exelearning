@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'bun:test';
 import {
     MATERIAL_ICON_FALLBACK,
+    HELP_ICON_FALLBACK_DATA_URI,
     parseMaterialIconSprite,
     resolveMaterialIconSymbol,
     buildStandaloneSvg,
@@ -120,5 +121,17 @@ describe('getMaterialIconDataUri', () => {
 
     it('returns null when nothing resolves', () => {
         expect(getMaterialIconDataUri(parseMaterialIconSprite(''), 'alarm')).toBeNull();
+    });
+});
+
+describe('HELP_ICON_FALLBACK_DATA_URI', () => {
+    it('is a self-contained svg data URI (no dead /icons/ path)', () => {
+        expect(HELP_ICON_FALLBACK_DATA_URI).toStartWith('data:image/svg+xml;utf8,');
+        expect(HELP_ICON_FALLBACK_DATA_URI).not.toContain('/icons/');
+
+        const decoded = decodeURIComponent(HELP_ICON_FALLBACK_DATA_URI.replace('data:image/svg+xml;utf8,', ''));
+        expect(decoded).toStartWith('<svg');
+        // The help glyph path begins with this signature in the vendored sprite.
+        expect(decoded).toContain('<path d="M484-247');
     });
 });

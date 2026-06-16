@@ -925,7 +925,7 @@ class ResourceFetcher {
       try {
         const cached = await this.resourceCache.get('libs', 'base', cacheVersion);
         if (cached) {
-          const filteredCached = this.filterDeprecatedBootstrapIconBaseLibs(cached);
+          const filteredCached = this.excludeMaterialIconSpriteFromBaseLibs(cached);
           this.cache.set(cacheKey, filteredCached);
           Logger.log('[ResourceFetcher] Base libraries loaded from IndexedDB cache');
           return filteredCached;
@@ -956,7 +956,7 @@ class ResourceFetcher {
     }
 
     // 5. Cache the result (cache even if empty to avoid repeated fetches)
-    libFiles = this.filterDeprecatedBootstrapIconBaseLibs(libFiles);
+    libFiles = this.excludeMaterialIconSpriteFromBaseLibs(libFiles);
     this.cache.set(cacheKey, libFiles);
 
     if (libFiles.size > 0 && this.resourceCache) {
@@ -971,7 +971,18 @@ class ResourceFetcher {
     return libFiles;
   }
 
-  filterDeprecatedBootstrapIconBaseLibs(libFiles) {
+  /**
+   * Drop any `material-icons/` entries from a base-library map.
+   *
+   * The Material Symbols sprite is fetched on demand by the icon runtime, never
+   * bundled with the base libraries, so a stale cache that still carries
+   * `material-icons/material-icons.svg` (or the removed loose `icons/*.svg`
+   * files) must be filtered out to avoid shipping dead/duplicate entries.
+   *
+   * @param {Map<string, Blob>} libFiles - base-library map (path -> blob)
+   * @returns {Map<string, Blob>} the map without any `material-icons/` entries
+   */
+  excludeMaterialIconSpriteFromBaseLibs(libFiles) {
     if (!libFiles || typeof libFiles.entries !== 'function') {
       return libFiles || new Map();
     }

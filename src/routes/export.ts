@@ -12,6 +12,7 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { buildContentDisposition } from '../shared/http/headers';
+import { deriveBlockIcon } from '../shared/block-icon';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
@@ -256,15 +257,7 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
             blockMap.set('id', block.id);
             blockMap.set('blockName', block.blockName || '');
             blockMap.set('iconName', block.iconName || '');
-            blockMap.set(
-                'icon',
-                block.icon ||
-                    (block.iconName
-                        ? String(block.iconName).startsWith('mi-')
-                            ? { source: 'material', value: String(block.iconName).replace(/^mi-/, '') }
-                            : { source: 'theme', value: block.iconName }
-                        : { source: 'none', value: '' }),
-            );
+            blockMap.set('icon', block.icon || deriveBlockIcon(block.iconName));
 
             // Block properties
             if (block.properties) {

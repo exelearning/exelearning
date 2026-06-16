@@ -449,9 +449,9 @@ describe('ResourceFetcher', () => {
       expect(result.has('missing.js')).toBe(false);
     });
 
-    it('filters deprecated material-icons base library entries from library maps', async () => {
+    it('excludes material-icons sprite entries from base library maps', async () => {
       const fetcher = new ResourceFetcher();
-      const result = fetcher.filterDeprecatedBootstrapIconBaseLibs(new Map([
+      const result = fetcher.excludeMaterialIconSpriteFromBaseLibs(new Map([
         ['material-icons/material-icons.svg', new Blob(['sprite'])],
         ['material-icons/icons/alarm.svg', new Blob(['alarm'])],
         ['jquery/jquery.min.js', new Blob(['jquery'])],

@@ -13,6 +13,7 @@
  */
 import * as Y from 'yjs';
 import { generateId } from '../shared/ids';
+import { deriveBlockIcon } from '../shared/block-icon';
 import type {
     PageData,
     CreatePageInput,
@@ -563,7 +564,7 @@ export function createBlock(ydoc: Y.Doc, input: CreateBlockInput): OperationResu
     blockMap.set('blockId', blockId);
     blockMap.set('blockName', input.name ?? 'Block');
     blockMap.set('iconName', '');
-    blockMap.set('icon', { source: 'none', value: '' });
+    blockMap.set('icon', createYjsBlockIcon({ source: 'none', value: '' }));
     blockMap.set('blockType', 'default');
     blockMap.set('order', targetOrder);
     blockMap.set('components', new Y.Array());
@@ -628,15 +629,7 @@ export function updateBlock(ydoc: Y.Doc, blockId: string, updates: UpdateBlockIn
     if (updates.iconName !== undefined) {
         blockMap.set('iconName', updates.iconName);
         if (!updates.icon) {
-            const iconName = updates.iconName;
-            const icon = iconName
-                ? iconName.startsWith('mi-')
-                    ? { source: 'material', value: iconName.replace(/^mi-/, '') }
-                    : iconName.startsWith('asset://') || iconName.startsWith('/')
-                      ? { source: 'asset', value: iconName }
-                      : { source: 'theme', value: iconName }
-                : { source: 'none', value: '' };
-            blockMap.set('icon', createYjsBlockIcon(icon));
+            blockMap.set('icon', createYjsBlockIcon(deriveBlockIcon(updates.iconName)));
         }
     }
 
@@ -765,10 +758,13 @@ function cloneBlockMap(sourceBlock: Y.Map<unknown>): Y.Map<unknown> {
     sourceBlock.forEach((value, key) => {
         if (key === 'components') {
             // Clone components separately
-        } else if (key === 'properties' && value instanceof Y.Map) {
-            const newProps = new Y.Map();
-            value.forEach((v, k) => newProps.set(k, v));
-            newBlock.set(key, newProps);
+        } else if (value instanceof Y.Map) {
+            // Nested Y.Maps (e.g. `properties`, `icon`) cannot be re-inserted once
+            // they are integrated, so they must be shallow-cloned key-by-key. Both
+            // hold only primitive values, so a flat copy is sufficient.
+            const cloned = new Y.Map();
+            value.forEach((v, k) => cloned.set(k, v));
+            newBlock.set(key, cloned);
         } else if (value !== null && value !== undefined) {
             newBlock.set(key, value);
         }

@@ -966,7 +966,11 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('renderBlock with icon', () => {
-        it('should render material icon SVG when iconName uses mi- prefix', () => {
+        it('falls back to the inlined help data URI when no icon data URI is provided', () => {
+            // The loose per-icon SVG files were removed; the renderer must NOT
+            // emit a dead libs/material-icons/icons/{name}.svg path. With no
+            // materialIconDataUris map (e.g. total sprite-fetch failure) it must
+            // still emit a self-contained help data: URI.
             const block: ExportBlock = {
                 id: 'block-material',
                 name: 'Material Block',
@@ -977,8 +981,32 @@ describe('IdeviceRenderer', () => {
 
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
 
-            expect(html).toContain('libs/material-icons/icons/lightbulb.svg');
+            expect(html).not.toContain('libs/material-icons/icons/');
             expect(html).not.toContain('theme/icons/');
+            expect(html).toContain('--exe-material-icon-url:url(');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+        });
+
+        it('falls back to the help data URI for an unknown material icon name', () => {
+            // The requested icon ("does-not-exist") is absent from the provided
+            // map, so the renderer must reuse the map's "help" entry rather than
+            // point at a missing file.
+            const block: ExportBlock = {
+                id: 'block-material-unknown',
+                name: 'Material Block Unknown',
+                order: 0,
+                components: [],
+                iconName: 'mi-does-not-exist',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['help', 'data:image/svg+xml;utf8,%3Chelp%2F%3E']]),
+            });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).toContain('data:image/svg+xml;utf8,%3Chelp%2F%3E');
         });
 
         it('should inline material icon mask as data URI when provided', () => {

@@ -119,9 +119,14 @@
     return MATERIAL_ICON_FALLBACK;
   }
 
-  function getMaterialIconPath(iconName, options = {}) {
-    const safeIconName = sanitizeMaterialIconName(iconName, options.catalog);
-    return resolveAppAssetUrl(`/libs/material-icons/icons/${safeIconName}.svg`, options);
+  // Derive a structured block-icon descriptor from a legacy iconName string.
+  // JS twin of src/shared/block-icon.ts (deriveBlockIcon) — keep both in sync.
+  function deriveBlockIcon(iconName) {
+    const name = iconName == null ? '' : String(iconName);
+    if (!name) return { source: 'none', value: '' };
+    if (name.startsWith('mi-')) return { source: 'material', value: name.slice(3) };
+    if (name.startsWith('asset://') || name.startsWith('/')) return { source: 'asset', value: name };
+    return { source: 'theme', value: name };
   }
 
   function renderMaterialMaskIcon(iconName, options = {}) {
@@ -139,7 +144,7 @@
     MATERIAL_ICON_FALLBACK,
     MATERIAL_ICON_MASK_STYLE,
     resolveAppAssetUrl,
-    getMaterialIconPath,
+    deriveBlockIcon,
     renderMaterialMaskIcon,
     parseMaterialIconSprite,
     loadMaterialSprite,

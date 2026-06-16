@@ -24,7 +24,11 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
-import { parseMaterialIconSprite, buildStandaloneSvg } from '../../material-icons/spriteParser';
+import {
+    parseMaterialIconSprite,
+    buildStandaloneSvg,
+    resolveMaterialIconSymbol,
+} from '../../material-icons/spriteParser';
 
 /** Path of the single vendored Material Symbols sprite, relative to `libs/`. */
 const MATERIAL_ICON_SPRITE_PATH = 'material-icons/material-icons.svg';
@@ -100,7 +104,11 @@ export async function resolveMaterialIconDataUris(
         const dataUris = new Map<string, string>();
 
         for (const name of names) {
-            const symbol = symbols.get(name);
+            // Resolve to the requested glyph, falling back to the `help` symbol
+            // when the name is unknown. The loose per-icon SVG files were removed,
+            // so a missing name must still yield a real inlined icon rather than a
+            // dangling `material-icons/icons/{name}.svg` reference.
+            const symbol = resolveMaterialIconSymbol(symbols, name);
             if (!symbol) {
                 continue;
             }
@@ -339,14 +347,6 @@ export abstract class BaseExporter {
         }
 
         return Array.from(types);
-    }
-
-    protected getUsedMaterialIconPaths(pages: ExportPage[]): string[] {
-        return collectUsedMaterialIconPaths(pages);
-    }
-
-    protected buildMaterialIconDataUriMap(iconFiles: Map<string, Uint8Array>): Map<string, string> {
-        return buildMaterialIconDataUriMapFromFiles(iconFiles);
     }
 
     protected async resolveMaterialIconDataUris(pages: ExportPage[]): Promise<{

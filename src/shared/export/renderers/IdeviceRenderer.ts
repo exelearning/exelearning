@@ -18,6 +18,8 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
+import { deriveBlockIcon } from '../../block-icon';
+import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
 /**
  * CSS link for an iDevice
@@ -249,15 +251,7 @@ ${contentHtml}
         const components = block.components || [];
         const properties: ExportBlockProperties = block.properties || {};
         const iconName = block.iconName || '';
-        const icon =
-            block.icon ||
-            (iconName
-                ? iconName.startsWith('mi-')
-                    ? { source: 'material' as const, value: iconName.replace(/^mi-/, '') }
-                    : iconName.startsWith('asset://') || iconName.startsWith('/')
-                      ? { source: 'asset' as const, value: iconName }
-                      : { source: 'theme' as const, value: iconName }
-                : { source: 'none' as const, value: '' });
+        const icon = block.icon || deriveBlockIcon(iconName);
 
         // Build CSS classes for block
         const classes = ['box'];
@@ -290,9 +284,15 @@ ${contentHtml}
         let iconHtml = '';
         if (hasIcon) {
             if (icon.source === 'material') {
+                // The loose per-icon SVG files no longer exist on disk (only the
+                // single sprite does), so there is no `libs/.../icons/{name}.svg`
+                // path to fall back to. When the inlined map lacks this icon
+                // (unknown name) or is empty entirely (the sprite could not be
+                // fetched), emit the self-contained `help` data URI instead.
                 const iconPath =
                     materialIconDataUris?.get(icon.value || '') ||
-                    `${basePath}libs/material-icons/icons/${icon.value || 'help'}.svg`;
+                    materialIconDataUris?.get(MATERIAL_ICON_FALLBACK) ||
+                    HELP_ICON_FALLBACK_DATA_URI;
                 iconHtml = `<div class="box-icon exe-icon">
 <span class="exe-material-icon" style="--exe-material-icon-url:url('${this.escapeAttr(iconPath)}');" aria-hidden="true"></span>
 </div>

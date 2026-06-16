@@ -1,24 +1,17 @@
 
-function normalizeBlockIcon(icon, iconName = '') {
-  if (icon && typeof icon === 'object' && icon.source) return icon;
-  if (!iconName) return { source: 'none', value: '' };
-  if (iconName.startsWith('mi-')) return { source: 'material', value: iconName.replace(/^mi-/, '') };
-  if (iconName.startsWith('asset://') || iconName.startsWith('/')) return { source: 'asset', value: iconName };
-  return { source: 'theme', value: iconName };
-}
-
 const blockIconRuntime = window.eXeBlockIconRuntime
   || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
 
-function resolveAppAssetUrl(path) {
-  return blockIconRuntime.resolveAppAssetUrl(path, {
-    app: window.eXeLearning?.app,
-    config: window.eXeLearning?.config,
-  });
+function normalizeBlockIcon(icon, iconName = '') {
+  // A structured icon descriptor wins verbatim (it may carry extra fields).
+  if (icon && typeof icon === 'object' && icon.source) return icon;
+  // Otherwise derive from the legacy iconName via the shared derivation
+  // (JS twin of src/shared/block-icon.ts).
+  return blockIconRuntime.deriveBlockIcon(iconName);
 }
 
-function getMaterialIconPath(iconName) {
-  return blockIconRuntime.getMaterialIconPath(iconName, {
+function resolveAppAssetUrl(path) {
+  return blockIconRuntime.resolveAppAssetUrl(path, {
     app: window.eXeLearning?.app,
     config: window.eXeLearning?.config,
   });
