@@ -20,16 +20,23 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 /** Resolve a path relative to node_modules root. */
-const nm = (p) => path.join(ROOT, 'node_modules', p);
+const nm = p => path.join(ROOT, 'node_modules', p);
 
 /** Resolve a path relative to public/. */
-const pub = (p) => path.join(ROOT, 'public', p);
+const pub = p => path.join(ROOT, 'public', p);
 
 const createdDirs = new Set();
 
+/** Reset the per-directory cache (used by tests so each run starts clean). */
+function resetCreatedDirs() {
+    createdDirs.clear();
+}
+
 /**
  * Copy a single file. Creates destination directory if needed (once per dir).
- * Exits with an error if source does not exist or cannot be read.
+ * Throws if source does not exist or cannot be read; the CLI wrapper (run)
+ * turns that into a non-zero exit. Throwing (rather than calling process.exit
+ * inline) keeps the error path unit-testable.
  */
 function copyFile(src, dest) {
     const destDir = path.dirname(dest);
@@ -40,15 +47,23 @@ function copyFile(src, dest) {
     try {
         fs.copyFileSync(src, dest);
     } catch (err) {
-        console.error(`ERROR: could not copy ${src}: ${err.message}`);
-        process.exit(1);
+        throw new Error(`could not copy ${src}: ${err.message}`);
     }
     console.log(`  ✓ ${path.relative(ROOT, dest)}`);
 }
 
+/** Copy every entry in COPIES. Throws on the first failure. */
+function run() {
+    console.log('Copying vendor libs from node_modules...');
+    for (const { src, dest } of COPIES) {
+        copyFile(src, dest);
+    }
+    console.log('Done.');
+}
+
 const COPIES = [
     // pdfjs-dist: two ESM module files (worker must live alongside the main file)
-    { src: nm('pdfjs-dist/build/pdf.min.mjs'),        dest: pub('libs/pdfjs/pdf.min.mjs') },
+    { src: nm('pdfjs-dist/build/pdf.min.mjs'), dest: pub('libs/pdfjs/pdf.min.mjs') },
     { src: nm('pdfjs-dist/build/pdf.worker.min.mjs'), dest: pub('libs/pdfjs/pdf.worker.min.mjs') },
 
     // mermaid: single minified bundle
@@ -58,10 +73,13 @@ const COPIES = [
     { src: nm('jquery/dist/jquery.min.js'), dest: pub('libs/jquery/jquery.min.js') },
 
     // bootstrap (bundle includes Popper.js)
-    { src: nm('bootstrap/dist/js/bootstrap.bundle.min.js'),     dest: pub('libs/bootstrap/bootstrap.bundle.min.js') },
-    { src: nm('bootstrap/dist/js/bootstrap.bundle.min.js.map'), dest: pub('libs/bootstrap/bootstrap.bundle.min.js.map') },
-    { src: nm('bootstrap/dist/css/bootstrap.min.css'),          dest: pub('libs/bootstrap/bootstrap.min.css') },
-    { src: nm('bootstrap/dist/css/bootstrap.min.css.map'),      dest: pub('libs/bootstrap/bootstrap.min.css.map') },
+    { src: nm('bootstrap/dist/js/bootstrap.bundle.min.js'), dest: pub('libs/bootstrap/bootstrap.bundle.min.js') },
+    {
+        src: nm('bootstrap/dist/js/bootstrap.bundle.min.js.map'),
+        dest: pub('libs/bootstrap/bootstrap.bundle.min.js.map'),
+    },
+    { src: nm('bootstrap/dist/css/bootstrap.min.css'), dest: pub('libs/bootstrap/bootstrap.min.css') },
+    { src: nm('bootstrap/dist/css/bootstrap.min.css.map'), dest: pub('libs/bootstrap/bootstrap.min.css.map') },
 
     // showdown
     { src: nm('showdown/dist/showdown.min.js'), dest: pub('libs/showdown/showdown.min.js') },
@@ -72,9 +90,20 @@ const COPIES = [
     // abcjs (basic build — no audio, smaller footprint)
     { src: nm('abcjs/dist/abcjs-basic-min.js'), dest: pub('libs/abcjs/abcjs-basic-min.js') },
 
-    // html2canvas — duplicated in two iDevices; both get the same file
-    { src: nm('html2canvas/dist/html2canvas.min.js'), dest: pub('files/perm/idevices/base/progress-report/export/html2canvas.js') },
-    { src: nm('html2canvas/dist/html2canvas.min.js'), dest: pub('files/perm/idevices/base/checklist/export/html2canvas.js') },
+    // html2canvas — duplicated across three iDevices; all get the same file.
+    // The rubric copy is the one loaded at runtime by YjsProjectBridge.js and rubric.js.
+    {
+        src: nm('html2canvas/dist/html2canvas.min.js'),
+        dest: pub('files/perm/idevices/base/progress-report/export/html2canvas.js'),
+    },
+    {
+        src: nm('html2canvas/dist/html2canvas.min.js'),
+        dest: pub('files/perm/idevices/base/checklist/export/html2canvas.js'),
+    },
+    {
+        src: nm('html2canvas/dist/html2canvas.min.js'),
+        dest: pub('files/perm/idevices/base/rubric/export/html2canvas.js'),
+    },
 
     // DOMPurify (embedded inside edicuatex)
     { src: nm('dompurify/dist/purify.min.js'), dest: pub('app/common/edicuatex/js/DOMPurify/purify.min.js') },
@@ -87,23 +116,47 @@ const COPIES = [
     { src: nm('fabric/dist/index.min.js'), dest: pub('libs/fabric/fabric.min.js') },
 
     // interact.js (interactjs npm package provides the full minified bundle)
-    { src: nm('interactjs/dist/interact.min.js'),     dest: pub('libs/interact/interact.min.js') },
+    { src: nm('interactjs/dist/interact.min.js'), dest: pub('libs/interact/interact.min.js') },
     { src: nm('interactjs/dist/interact.min.js.map'), dest: pub('libs/interact/interact.min.js.map') },
 
     // jquery-ui
-    { src: nm('jquery-ui/dist/jquery-ui.min.js'),              dest: pub('libs/jquery-ui/jquery-ui.min.js') },
+    { src: nm('jquery-ui/dist/jquery-ui.min.js'), dest: pub('libs/jquery-ui/jquery-ui.min.js') },
     { src: nm('jquery-ui/dist/themes/base/jquery-ui.min.css'), dest: pub('libs/jquery-ui/jquery-ui.min.css') },
 
     // simplelightbox — only min.js and min.css are referenced (from public/libs/simplelightbox/dist/)
     // and from image-gallery iDevice export directory
-    { src: nm('simplelightbox/dist/simple-lightbox.min.js'),  dest: pub('libs/simplelightbox/dist/simple-lightbox.min.js') },
-    { src: nm('simplelightbox/dist/simple-lightbox.min.css'), dest: pub('libs/simplelightbox/dist/simple-lightbox.min.css') },
-    { src: nm('simplelightbox/dist/simple-lightbox.min.js'),  dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js') },
-    { src: nm('simplelightbox/dist/simple-lightbox.min.css'), dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css') },
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.js'),
+        dest: pub('libs/simplelightbox/dist/simple-lightbox.min.js'),
+    },
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.css'),
+        dest: pub('libs/simplelightbox/dist/simple-lightbox.min.css'),
+    },
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.js'),
+        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js'),
+    },
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.css'),
+        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
+    },
 ];
 
-console.log('Copying vendor libs from node_modules...');
-for (const { src, dest } of COPIES) {
-    copyFile(src, dest);
+// Exported for unit testing. The CLI entry point runs below.
+module.exports = {
+    COPIES,
+    copyFile,
+    resetCreatedDirs,
+    run,
+};
+
+// Run only when executed directly (not when imported by a test).
+if (require.main === module) {
+    try {
+        run();
+    } catch (err) {
+        console.error(`ERROR: ${err.message}`);
+        process.exit(1);
+    }
 }
-console.log('Done.');
