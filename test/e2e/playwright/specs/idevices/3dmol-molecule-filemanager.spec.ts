@@ -80,6 +80,63 @@ async function selectMoleculeViaPicker(page: Page, fixturePath: string): Promise
     );
 }
 
+/** True when the page's browser exposes a WebGL context. */
+async function hasWebGL(page: Page): Promise<boolean> {
+    return page.evaluate(() => {
+        try {
+            const canvas = document.createElement('canvas');
+            return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+        } catch {
+            return false;
+        }
+    });
+}
+
+/**
+ * Assert the active model parsed to `expected` atoms.
+ *
+ * With WebGL we read the live 3Dmol viewer (full-fidelity render path). On a
+ * GPU-less runner where WebGL is unavailable the iDevice deliberately skips
+ * creating the viewer (3dmol.js: `isWebGLAvailable()` guard), so we assert the
+ * same invariant on the raw model text the iDevice stores in `#dmoleModelData`
+ * *before* that guard. An MDL V2000 molfile keeps its atom count as the first
+ * token of the counts line (line index 3); reaching `expected` there proves the
+ * leading title line was kept (untrimmed) and that the active model is the
+ * intended one — exactly the two regressions these tests cover.
+ */
+async function expectModelAtomCount(page: Page, expected: number): Promise<void> {
+    if (await hasWebGL(page)) {
+        const atomCount = await page.waitForFunction(
+            () => {
+                const dev = (
+                    window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
+                ).$exeDevice;
+                const viewer = dev?.modelViewer;
+                if (!viewer || typeof viewer.selectedAtoms !== 'function') {
+                    return false;
+                }
+                const count = viewer.selectedAtoms({}).length;
+                return count > 0 ? count : false;
+            },
+            { timeout: 20000 },
+        );
+        expect(await atomCount.jsonValue()).toBe(expected);
+        return;
+    }
+
+    const atomCount = await page.waitForFunction(
+        exp => {
+            const ta = document.querySelector('#dmoleModelData') as HTMLTextAreaElement | null;
+            const lines = (ta?.value ?? '').split(/\r?\n/);
+            const count = Number.parseInt((lines[3] ?? '').trim().split(/\s+/)[0] ?? '', 10);
+            return count === exp ? count : false;
+        },
+        expected,
+        { timeout: 20000 },
+    );
+    expect(await atomCount.jsonValue()).toBe(expected);
+}
+
 test.describe('3Dmol iDevice — molecule upload via file manager', () => {
     test('model picker opts into the molecule file-manager filter', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -137,22 +194,8 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
         // The fixture is a benzene molfile (12 atoms) whose first line (title) is
         // empty. Before the fix, the data was trimmed, the molfile counts line
         // shifted and 3Dmol parsed 0 atoms (the viewer rendered empty). Assert
-        // the viewer actually parsed the atoms.
-        const atomCount = await page.waitForFunction(
-            () => {
-                const dev = (
-                    window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
-                ).$exeDevice;
-                const viewer = dev?.modelViewer;
-                if (!viewer || typeof viewer.selectedAtoms !== 'function') {
-                    return false;
-                }
-                const count = viewer.selectedAtoms({}).length;
-                return count > 0 ? count : false;
-            },
-            { timeout: 20000 },
-        );
-        expect(await atomCount.jsonValue()).toBe(12);
+        // the molecule actually parsed to its 12 atoms.
+        await expectModelAtomCount(page, 12);
     });
 
     test('switching to a second molecule loads the new model, not the previous one', async ({
@@ -176,21 +219,8 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
 
         // Regression: switching used to reuse the previous model's blob (stale
         // jQuery .data('blobUrl')), leaving the viewer on the first molecule (or
-        // empty). The viewer must now hold the second model's atoms.
-        const atomCount = await page.waitForFunction(
-            () => {
-                const dev = (
-                    window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
-                ).$exeDevice;
-                const viewer = dev?.modelViewer;
-                if (!viewer || typeof viewer.selectedAtoms !== 'function') {
-                    return false;
-                }
-                const count = viewer.selectedAtoms({}).length;
-                return count > 0 ? count : false;
-            },
-            { timeout: 20000 },
-        );
-        expect(await atomCount.jsonValue()).toBe(12);
+        // empty). The active model must now be the second one (benzene, 12 atoms),
+        // not the first (water, 3 atoms).
+        await expectModelAtomCount(page, 12);
     });
 });
