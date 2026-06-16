@@ -59,10 +59,11 @@ interface AssetManagerInterface {
         size?: number;
         hash?: string;
         description?: string;
-        altText?: string;
         title?: string;
         license?: string;
         author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }>;
     getAssetMetadata?(assetId: string): {
         id: string;

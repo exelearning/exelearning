@@ -1234,7 +1234,7 @@ describe('ElpxExporter', () => {
 
         it('writes content/asset-metadata.json keyed by export path when metadata exists', async () => {
             const provider = new MetadataAssetProvider(
-                new Map([['a1', { description: 'A sunset', altText: 'Sunset over the sea' }]]),
+                new Map([['a1', { description: 'A sunset', author: 'Ada', authorUrl: 'https://ada.example' }]]),
             );
             const exporter2 = new ElpxExporter(document, resources, provider, zip);
 
@@ -1245,7 +1245,8 @@ describe('ElpxExporter', () => {
             expect(sidecar.version).toBe(1);
             expect(sidecar.assets['photo.jpg']).toEqual({
                 description: 'A sunset',
-                altText: 'Sunset over the sea',
+                author: 'Ada',
+                authorUrl: 'https://ada.example',
             });
         });
 

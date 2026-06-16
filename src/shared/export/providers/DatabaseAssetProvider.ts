@@ -239,10 +239,11 @@ export class DatabaseAssetProvider implements AssetProvider {
         for (const dbAsset of dbAssets) {
             const picked = pickAssetExportMetadata({
                 description: dbAsset.description,
-                altText: dbAsset.alt_text,
                 title: dbAsset.title,
                 license: dbAsset.license,
                 author: dbAsset.author,
+                authorUrl: dbAsset.author_url,
+                sourceUrl: dbAsset.source_url,
             });
             if (picked) {
                 map.set(dbAsset.client_id || String(dbAsset.id), picked);

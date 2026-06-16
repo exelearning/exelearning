@@ -142,9 +142,10 @@ export async function findAllAssetsForProject(db: Kysely<Database>, projectId: n
 }
 
 /**
- * Search assets in a project by filename, description or alt text (case-insensitive).
- * An empty/blank term returns every asset (same as findAllAssetsForProject), so the
- * caller can use a single endpoint for both listing and searching.
+ * Search assets in a project by filename, description, title, author or license
+ * (case-insensitive) so educators can find "everything by X" or "everything under
+ * license Y". An empty/blank term returns every asset (same as findAllAssetsForProject),
+ * so the caller can use a single endpoint for both listing and searching.
  *
  * Implemented with a normalized comparison so it behaves the same across SQLite,
  * PostgreSQL and MariaDB without relying on dialect-specific case folding.
@@ -165,7 +166,9 @@ export async function searchAssetsForProject(db: Kysely<Database>, projectId: nu
             eb.or([
                 eb(sql<string>`lower(${eb.ref('filename')})`, 'like', pattern),
                 eb(sql<string>`lower(coalesce(${eb.ref('description')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('alt_text')}, ''))`, 'like', pattern),
+                eb(sql<string>`lower(coalesce(${eb.ref('title')}, ''))`, 'like', pattern),
+                eb(sql<string>`lower(coalesce(${eb.ref('author')}, ''))`, 'like', pattern),
+                eb(sql<string>`lower(coalesce(${eb.ref('license')}, ''))`, 'like', pattern),
             ]),
         )
         .orderBy('created_at', 'desc')
@@ -453,10 +456,11 @@ export async function updateAssetFilenameByClientId(
  */
 export interface AssetMetadataPatch {
     description?: string;
-    altText?: string;
     title?: string;
     license?: string;
     author?: string;
+    authorUrl?: string;
+    sourceUrl?: string;
 }
 
 /**
@@ -476,10 +480,11 @@ export async function updateAssetMetadataByClientId(
 ): Promise<boolean> {
     const update: AssetUpdate = { updated_at: now() };
     if (patch.description !== undefined) update.description = patch.description.trim();
-    if (patch.altText !== undefined) update.alt_text = patch.altText.trim();
     if (patch.title !== undefined) update.title = patch.title.trim();
     if (patch.license !== undefined) update.license = patch.license.trim();
     if (patch.author !== undefined) update.author = patch.author.trim();
+    if (patch.authorUrl !== undefined) update.author_url = patch.authorUrl.trim();
+    if (patch.sourceUrl !== undefined) update.source_url = patch.sourceUrl.trim();
 
     const result = await db
         .updateTable('assets')

@@ -1,14 +1,17 @@
 /**
  * Helpers for the centralized, reusable asset metadata that travels with exports.
  *
- * The metadata itself (description / altText / title / license / author) lives in the
- * Yjs assets map (browser) and the assets DB table (server). These helpers normalize
- * an arbitrary source object into an {@link AssetExportMetadata} containing only the
- * known, non-empty string fields — used when building the ELPX asset-metadata sidecar.
+ * The metadata itself (description / title / license / author / authorUrl / sourceUrl)
+ * lives in the Yjs assets map (browser) and the assets DB table (server). These helpers
+ * normalize an arbitrary source object into an {@link AssetExportMetadata} containing only
+ * the known, non-empty string fields — used when building the ELPX asset-metadata sidecar.
+ *
+ * Per-instance, context-specific values (alternative text, accessibility title, caption
+ * heading/notes) are intentionally NOT part of this set: they live on each insertion.
  */
 import type { AssetExportMetadata } from './interfaces';
 
-export const ASSET_METADATA_FIELDS = ['description', 'altText', 'title', 'license', 'author'] as const;
+export const ASSET_METADATA_FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'] as const;
 
 /**
  * Pick the known centralized metadata fields from a source object, keeping only

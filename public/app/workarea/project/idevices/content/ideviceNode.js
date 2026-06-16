@@ -4,9 +4,14 @@ import {
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
 import { parseCssClassList } from './cssClassHelper.js';
+import { renderAssetCaptions, observeAssetCaptions } from '../../../../common/assetCaptionResolver.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+// One shared live caption observer for the whole workarea: a File Manager metadata edit
+// re-derives the caption on every inserted image (see assetCaptionResolver.js). Bound once.
+let _assetCaptionObserverBound = false;
 /**
  * eXeLearning
  *
@@ -1859,7 +1864,34 @@ export default class IdeviceNode {
         // Typeset LaTeX in iDevice content after loading
         this.typesetLatexInContent();
 
+        // Resolve image captions from the centralized File Manager metadata, and keep
+        // them live (re-render on metadata changes).
+        this.renderAssetCaptionsInContent();
+
         return response;
+    }
+
+    /**
+     * Build/refresh the auto-derived image captions in this iDevice's content from the
+     * centralized File Manager metadata, and ensure the workarea-wide live observer is
+     * attached so a later metadata edit propagates to every inserted instance.
+     */
+    renderAssetCaptionsInContent() {
+        if (!this.ideviceBody) return;
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+        // Initial pass for the content just rendered into this body.
+        renderAssetCaptions(this.ideviceBody, id =>
+            assetManager && typeof assetManager.getAssetMetadata === 'function' ? assetManager.getAssetMetadata(id) : null,
+        );
+        // Attach the shared live observer once (re-renders captions across the workarea
+        // whenever centralized asset metadata changes).
+        if (!_assetCaptionObserverBound && assetManager && typeof assetManager.getAssetsYMap === 'function') {
+            const root = this.nodeContainer || document.querySelector('#node-content-container') || document.body;
+            if (root) {
+                observeAssetCaptions(root, assetManager);
+                _assetCaptionObserverBound = true;
+            }
+        }
     }
 
     /**

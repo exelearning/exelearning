@@ -161,7 +161,9 @@ describe('Assets Routes', () => {
                         return (
                             (a.filename || '').toLowerCase().includes(t) ||
                             (a.description || '').toLowerCase().includes(t) ||
-                            (a.alt_text || '').toLowerCase().includes(t)
+                            (a.title || '').toLowerCase().includes(t) ||
+                            (a.author || '').toLowerCase().includes(t) ||
+                            (a.license || '').toLowerCase().includes(t)
                         );
                     });
                 },
@@ -171,10 +173,11 @@ describe('Assets Routes', () => {
                     );
                     if (!asset) return false;
                     if (patch.description !== undefined) asset.description = patch.description.trim();
-                    if (patch.altText !== undefined) asset.alt_text = patch.altText.trim();
                     if (patch.title !== undefined) asset.title = patch.title.trim();
                     if (patch.license !== undefined) asset.license = patch.license.trim();
                     if (patch.author !== undefined) asset.author = patch.author.trim();
+                    if (patch.authorUrl !== undefined) asset.author_url = patch.authorUrl.trim();
+                    if (patch.sourceUrl !== undefined) asset.source_url = patch.sourceUrl.trim();
                     return true;
                 },
                 findAssetByClientId: async (_db: any, clientId: string, projectId?: number) => {
@@ -467,20 +470,22 @@ describe('Assets Routes', () => {
                 file_size: '100',
                 client_id: 'client-1',
                 description: 'A description',
-                alt_text: 'Alt text',
                 title: 'Title',
                 license: 'Creative Commons BY',
                 author: 'Ada',
+                author_url: 'https://ada.example',
+                source_url: 'https://src.example/image.png',
             });
 
             const res = await handle(new Request(`http://localhost/api/projects/1/assets`));
             const body = await res.json();
 
             expect(body.data[0].description).toBe('A description');
-            expect(body.data[0].altText).toBe('Alt text');
             expect(body.data[0].title).toBe('Title');
             expect(body.data[0].license).toBe('Creative Commons BY');
             expect(body.data[0].author).toBe('Ada');
+            expect(body.data[0].authorUrl).toBe('https://ada.example');
+            expect(body.data[0].sourceUrl).toBe('https://src.example/image.png');
         });
 
         it('should default metadata to empty strings for assets without metadata', async () => {
@@ -490,10 +495,10 @@ describe('Assets Routes', () => {
             const body = await res.json();
 
             expect(body.data[0].description).toBe('');
-            expect(body.data[0].altText).toBe('');
+            expect(body.data[0].authorUrl).toBe('');
         });
 
-        it('should filter by ?search= over filename, description and alt text', async () => {
+        it('should filter by ?search= over filename, description, title, author and license', async () => {
             mockAssets.set(1, {
                 id: 1,
                 project_id: 1,
@@ -506,7 +511,7 @@ describe('Assets Routes', () => {
                 project_id: 1,
                 filename: 'beach.png',
                 file_size: '1',
-                alt_text: 'Sandy shoreline',
+                author: 'Grace Hopper',
             });
 
             const byDesc = await handle(new Request(`http://localhost/api/projects/1/assets?search=peak`));
@@ -514,10 +519,10 @@ describe('Assets Routes', () => {
             expect(descBody.data.length).toBe(1);
             expect(descBody.data[0].filename).toBe('mountain.jpg');
 
-            const byAlt = await handle(new Request(`http://localhost/api/projects/1/assets?search=SHORELINE`));
-            const altBody = await byAlt.json();
-            expect(altBody.data.length).toBe(1);
-            expect(altBody.data[0].filename).toBe('beach.png');
+            const byAuthor = await handle(new Request(`http://localhost/api/projects/1/assets?search=HOPPER`));
+            const authorBody = await byAuthor.json();
+            expect(authorBody.data.length).toBe(1);
+            expect(authorBody.data[0].filename).toBe('beach.png');
         });
     });
 
@@ -539,7 +544,7 @@ describe('Assets Routes', () => {
                     headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({
                         description: '  A sunset  ',
-                        altText: 'Sunset over the sea',
+                        authorUrl: 'https://ada.example',
                         license: 'Creative Commons BY',
                     }),
                 }),
@@ -549,7 +554,7 @@ describe('Assets Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(body.data.description).toBe('A sunset');
-            expect(body.data.altText).toBe('Sunset over the sea');
+            expect(body.data.authorUrl).toBe('https://ada.example');
             expect(body.data.license).toBe('Creative Commons BY');
         });
 

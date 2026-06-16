@@ -78,10 +78,11 @@ interface SerializedAsset {
     folderPath: string;
     // Centralized, reusable asset-level metadata (empty string when unset)
     description: string;
-    altText: string;
     title: string;
     license: string;
     author: string;
+    authorUrl: string;
+    sourceUrl: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -95,10 +96,11 @@ function serializeAsset(asset: Asset): SerializedAsset {
         size: parseInt(asset.file_size || '0', 10),
         folderPath: asset.folder_path || '',
         description: asset.description || '',
-        altText: asset.alt_text || '',
         title: asset.title || '',
         license: asset.license || '',
         author: asset.author || '',
+        authorUrl: asset.author_url || '',
+        sourceUrl: asset.source_url || '',
         createdAt: asset.created_at,
         updatedAt: asset.updated_at,
     };

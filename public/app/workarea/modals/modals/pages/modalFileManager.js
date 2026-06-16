@@ -217,11 +217,11 @@ export default class ModalFilemanager extends Modal {
         // Editable centralized metadata (images only)
         this.editMetadataForm = this.modalElement.querySelector('.media-library-edit-metadata');
         this.metaDescriptionInput = this.modalElement.querySelector('.media-library-meta-description');
-        this.metaAltRow = this.modalElement.querySelector('.metadata-edit-alt-row');
-        this.metaAltInput = this.modalElement.querySelector('.media-library-meta-alt');
         this.metaTitleInput = this.modalElement.querySelector('.media-library-meta-title');
         this.metaLicenseSelect = this.modalElement.querySelector('.media-library-meta-license');
         this.metaAuthorInput = this.modalElement.querySelector('.media-library-meta-author');
+        this.metaAuthorUrlInput = this.modalElement.querySelector('.media-library-meta-author-url');
+        this.metaSourceUrlInput = this.modalElement.querySelector('.media-library-meta-source-url');
         this.metaStatus = this.modalElement.querySelector('.media-library-meta-status');
         // Collapsible section wrapping the editable metadata (expanded by default).
         this.metadataSection = this.modalElement.querySelector('.media-library-section-metadata');
@@ -246,10 +246,11 @@ export default class ModalFilemanager extends Modal {
      */
     getMetadataFieldEntries() {
         return [
-            ['description', this.metaDescriptionInput],
-            ['altText', this.metaAltInput],
             ['title', this.metaTitleInput],
+            ['description', this.metaDescriptionInput],
             ['author', this.metaAuthorInput],
+            ['authorUrl', this.metaAuthorUrlInput],
+            ['sourceUrl', this.metaSourceUrlInput],
         ];
     }
 
@@ -1023,13 +1024,12 @@ export default class ModalFilemanager extends Modal {
                 if (category !== this.typeFilter) return false;
             }
             // Filter by search term across filename + all centralized metadata
-            // (title, description, alt text, author, license) — case-insensitive.
+            // (image name/title, description, author, license) — case-insensitive.
             if (!searchTerm) return true;
             return [
                 asset.filename,
                 asset.title,
                 asset.description,
-                asset.altText,
                 asset.author,
                 asset.license,
             ].some(field => (field || '').toLowerCase().includes(searchTerm));
@@ -2157,9 +2157,10 @@ export default class ModalFilemanager extends Modal {
 
     /**
      * Populate (and show) the editable metadata form for the selected asset.
-     * Available for every file type; the image-specific "Alternative text" row is
-     * only shown for images. Reads the asset's centralized metadata
-     * (description / altText / title / license / author) from Yjs.
+     * Available for every file type. Reads the asset's centralized metadata
+     * (image name/title, description, license, author, author link, image URL) from
+     * Yjs. Per-instance values (alt text, accessibility title) are NOT edited here —
+     * they live on each insertion.
      *
      * When this is a refresh of the asset already shown (e.g. a remote collaborator
      * edited it), fields the local user is currently editing — focused or with a
@@ -2182,20 +2183,17 @@ export default class ModalFilemanager extends Modal {
         }
         this._metaPopulatedId = asset.id;
 
-        // Alt text is image-specific accessibility metadata: only relevant for images.
-        const isImage = !!(asset.mime && asset.mime.startsWith('image/'));
-        if (this.metaAltRow) this.metaAltRow.style.display = isImage ? '' : 'none';
-
         // Set a field unless the user is actively editing it (focused or dirty).
         const setField = (key, el, value) => {
             if (!el) return;
             if (preserve && (this._metaDirty.has(key) || document.activeElement === el)) return;
             el.value = value;
         };
-        setField('description', this.metaDescriptionInput, asset.description || '');
-        setField('altText', this.metaAltInput, asset.altText || '');
         setField('title', this.metaTitleInput, asset.title || '');
+        setField('description', this.metaDescriptionInput, asset.description || '');
         setField('author', this.metaAuthorInput, asset.author || '');
+        setField('authorUrl', this.metaAuthorUrlInput, asset.authorUrl || '');
+        setField('sourceUrl', this.metaSourceUrlInput, asset.sourceUrl || '');
         if (this.metaLicenseSelect) {
             const license = asset.license || '';
             // If the stored license is not one of the known options, add it so the
@@ -2270,16 +2268,17 @@ export default class ModalFilemanager extends Modal {
      * Collect the patch of metadata fields the user has changed since the last
      * populate (field-level updates). Returns an empty object when nothing is dirty
      * so a flush with no pending changes is a no-op.
-     * @returns {{description?: string, altText?: string, title?: string, license?: string, author?: string}}
+     * @returns {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}}
      */
     collectMetadataPatch() {
         if (!this._metaDirty || this._metaDirty.size === 0) return {};
         const values = {
             description: (this.metaDescriptionInput?.value || '').trim(),
-            altText: (this.metaAltInput?.value || '').trim(),
             title: (this.metaTitleInput?.value || '').trim(),
             license: this.metaLicenseSelect?.value || '',
             author: (this.metaAuthorInput?.value || '').trim(),
+            authorUrl: (this.metaAuthorUrlInput?.value || '').trim(),
+            sourceUrl: (this.metaSourceUrlInput?.value || '').trim(),
         };
         const patch = {};
         for (const key of this._metaDirty) {

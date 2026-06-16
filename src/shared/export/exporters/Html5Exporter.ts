@@ -110,6 +110,9 @@ export class Html5Exporter extends BaseExporter {
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
+            // Bake image captions from the current centralized metadata (see IdeviceRenderer).
+            this.pageRenderer.setAssetCaptionMetadataMap(await this.buildAssetCaptionMetadataMap());
+
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
@@ -584,6 +587,9 @@ export class Html5Exporter extends BaseExporter {
 
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
+
+            // Bake image captions from the current centralized metadata (see IdeviceRenderer).
+            this.pageRenderer.setAssetCaptionMetadataMap(await this.buildAssetCaptionMetadataMap());
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);

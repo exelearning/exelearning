@@ -13,6 +13,7 @@ import type {
     ExportAsset,
     ResourceProvider,
     AssetProvider,
+    AssetExportMetadata,
     ZipProvider,
     ExportOptions,
     ExportResult,
@@ -48,6 +49,7 @@ export abstract class BaseExporter {
     protected assetFilenameMap: Map<string, string> | null = null;
     // Cache for asset export path lookups (folderPath-based)
     protected assetExportPathMap: Map<string, string> | null = null;
+    protected assetCaptionMetadataMap: Map<string, AssetExportMetadata> | null = null;
 
     // UUID-format asset references that could not be resolved to a bundled file.
     // These produce a dangling `content/resources/<uuid>` URL with no binary behind
@@ -713,6 +715,27 @@ export abstract class BaseExporter {
         }
 
         return this.assetExportPathMap;
+    }
+
+    /**
+     * Build the centralized asset metadata map (assetId → metadata) used to re-derive
+     * image captions at export, from the provider's optional getExportMetadataMap().
+     * Cached. Returns an empty map when the provider doesn't expose metadata.
+     */
+    async buildAssetCaptionMetadataMap(): Promise<Map<string, AssetExportMetadata>> {
+        if (this.assetCaptionMetadataMap) {
+            return this.assetCaptionMetadataMap;
+        }
+        let map = new Map<string, AssetExportMetadata>();
+        try {
+            if (typeof this.assets.getExportMetadataMap === 'function') {
+                map = await this.assets.getExportMetadataMap();
+            }
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to build asset caption metadata map:', e);
+        }
+        this.assetCaptionMetadataMap = map;
+        return map;
     }
 
     /**

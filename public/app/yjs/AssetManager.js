@@ -49,6 +49,12 @@ class AssetManager {
   static BLOB_IDB_VERSION = 1;
   static BLOB_IDB_STORE = 'blobs';
 
+  // Centralized, reusable asset-level metadata fields (single source of truth).
+  // These are the values that must not be re-entered on each insertion and are
+  // propagated to every place the asset is used. Per-instance, context-specific
+  // values (alt text, accessibility title, caption heading/notes) are NOT here.
+  static CENTRALIZED_METADATA_FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'];
+
   /**
    * @param {string} projectId - Project UUID
    */
@@ -531,12 +537,12 @@ class AssetManager {
    * Set asset metadata in Yjs
    * @param {string} assetId
    * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt,
-   *   description, altText, title, license, author}
+   *   description, title, license, author, authorUrl, sourceUrl}
    *
    * Note: this writes an explicit whitelist of fields. The centralized metadata
-   * fields (description/altText/title/license/author) MUST be included here so they
-   * are preserved across rename/move/import, all of which call this method with a
-   * spread of the existing metadata. Dropping them here would silently lose them.
+   * fields (description/title/license/author/authorUrl/sourceUrl) MUST be included
+   * here so they are preserved across rename/move/import, all of which call this method
+   * with a spread of the existing metadata. Dropping them here would silently lose them.
    */
   setAssetMetadata(assetId, metadata) {
     const assetsMap = this.getAssetsYMap();
@@ -555,7 +561,7 @@ class AssetManager {
     };
     // Centralized, reusable metadata: only persist fields that have a value so
     // assets without metadata keep a minimal entry (backward compatible).
-    for (const field of ['description', 'altText', 'title', 'license', 'author']) {
+    for (const field of AssetManager.CENTRALIZED_METADATA_FIELDS) {
       if (metadata[field] !== undefined && metadata[field] !== null && metadata[field] !== '') {
         entry[field] = metadata[field];
       }
@@ -565,13 +571,14 @@ class AssetManager {
   }
 
   /**
-   * Update centralized, reusable metadata for an asset (description, altText, title,
-   * license, author). Merges the patch into the existing Yjs metadata (source of truth)
-   * and best-effort persists it to the server via the PATCH endpoint when online.
+   * Update centralized, reusable metadata for an asset (description, title, license,
+   * author, authorUrl, sourceUrl). Merges the patch into the existing Yjs metadata
+   * (source of truth) and best-effort persists it to the server via the PATCH endpoint
+   * when online.
    *
    * Only the keys present in `patch` are changed; pass an empty string to clear a field.
    * @param {string} assetId
-   * @param {{description?: string, altText?: string, title?: string, license?: string, author?: string}} patch
+   * @param {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}} patch
    * @returns {Promise<boolean>} True if the asset existed and was updated locally
    */
   async updateAssetMetadata(assetId, patch) {
@@ -581,7 +588,7 @@ class AssetManager {
       return false;
     }
 
-    const ALLOWED = ['description', 'altText', 'title', 'license', 'author'];
+    const ALLOWED = AssetManager.CENTRALIZED_METADATA_FIELDS;
 
     // Atomic read-modify-write inside a Yjs transaction: re-read the *current* entry
     // and merge only the patched fields, so a debounced flush never clobbers fields a
@@ -877,7 +884,7 @@ class AssetManager {
   /**
    * Replace the binary content of an existing asset while preserving its identity
    * (same id/clientId), so existing references (asset://id) and centralized metadata
-   * (description/altText/title/license/author) stay intact. The new file's mime/size/
+   * (description/title/license/author/authorUrl/sourceUrl) stay intact. The new file's mime/size/
    * hash/filename are applied; createdAt is preserved. Server persistence happens on the
    * next save (idempotent overwrite by clientId), like a normal upload.
    * @param {string} assetId
@@ -914,10 +921,11 @@ class AssetManager {
       filename,
       folderPath: metadata.folderPath || '',
       description: metadata.description,
-      altText: metadata.altText,
       title: metadata.title,
       license: metadata.license,
       author: metadata.author,
+      authorUrl: metadata.authorUrl,
+      sourceUrl: metadata.sourceUrl,
     });
 
     // Refresh any DOM media using this asset and let peers fetch the new blob.
@@ -1266,8 +1274,8 @@ class AssetManager {
     }
 
     // 1. Store metadata in Yjs (instant sync to other clients).
-    // Forward centralized metadata (description/altText/title/license/author) when
-    // present so it survives import (e.g. the ELPX asset-metadata.json sidecar).
+    // Forward centralized metadata (description/title/license/author/authorUrl/sourceUrl)
+    // when present so it survives import (e.g. the ELPX asset-metadata.json sidecar).
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
       folderPath: asset.folderPath || '',
@@ -1277,10 +1285,11 @@ class AssetManager {
       uploaded: asset.uploaded || false,
       createdAt: asset.createdAt || new Date().toISOString(),
       description: asset.description,
-      altText: asset.altText,
       title: asset.title,
       license: asset.license,
-      author: asset.author
+      author: asset.author,
+      authorUrl: asset.authorUrl,
+      sourceUrl: asset.sourceUrl
     });
 
     // 2. Store blob in memory temporarily (for immediate use by callers)
@@ -3647,7 +3656,7 @@ class AssetManager {
    * Returns a plain object keyed by resource export path, or an empty object when
    * the sidecar is absent or malformed (tolerant by design for backward compatibility).
    * @param {Object} zip - Extracted ZIP files {path: Uint8Array}
-   * @returns {Object<string, {description?: string, altText?: string, title?: string, license?: string, author?: string}>}
+   * @returns {Object<string, {description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}>}
    */
   _parseAssetMetadataSidecar(zip) {
     const SIDECAR_PATHS = ['content/asset-metadata.json', 'asset-metadata.json'];
@@ -3672,10 +3681,11 @@ class AssetManager {
   /**
    * Resolve centralized metadata for an extracted asset path from the sidecar.
    * Tries the path with the content/resources/ (or resources/) prefix stripped,
-   * then the raw path. Returns an object with only the known string fields.
+   * then the raw path. Returns an object with only the known string fields; a legacy
+   * `altText` key from older exports is ignored (alt text is now per-instance).
    * @param {Object} sidecar - Parsed sidecar (keyed by resource export path)
    * @param {string} path - The ZIP-relative path of the extracted asset
-   * @returns {{description?: string, altText?: string, title?: string, license?: string, author?: string}}
+   * @returns {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}}
    */
   _lookupAssetMetadataForPath(sidecar, path) {
     if (!sidecar) return {};
@@ -3693,7 +3703,7 @@ class AssetManager {
     if (!entry || typeof entry !== 'object') return {};
 
     const result = {};
-    for (const field of ['description', 'altText', 'title', 'license', 'author']) {
+    for (const field of AssetManager.CENTRALIZED_METADATA_FIELDS) {
       if (typeof entry[field] === 'string' && entry[field] !== '') {
         result[field] = entry[field];
       }

@@ -23,10 +23,11 @@ describe('DatabaseAssetProvider', () => {
         component_id: null,
         content_hash: null,
         description: null,
-        alt_text: null,
         title: null,
         license: null,
         author: null,
+        author_url: null,
+        source_url: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...overrides,
@@ -535,7 +536,7 @@ describe('DatabaseAssetProvider', () => {
                     createMockDbAsset({
                         client_id: 'with-meta',
                         description: 'A sunset',
-                        alt_text: 'Sunset over the sea',
+                        author_url: 'https://ada.example',
                         license: 'Creative Commons BY',
                     }),
                     createMockDbAsset({ id: 2, client_id: 'no-meta' }),
@@ -548,7 +549,7 @@ describe('DatabaseAssetProvider', () => {
             expect(map.size).toBe(1);
             expect(map.get('with-meta')).toEqual({
                 description: 'A sunset',
-                altText: 'Sunset over the sea',
+                authorUrl: 'https://ada.example',
                 license: 'Creative Commons BY',
             });
             expect(map.has('no-meta')).toBe(false);

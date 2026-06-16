@@ -6,9 +6,11 @@ import type { Page } from '@playwright/test';
  * E2E Tests for centralized File Manager asset metadata (#1244, #1243).
  *
  * Covers:
- * - Editing & saving an image's description / alt text / title in the properties panel
+ * - Editing & saving an image's centralized metadata (image name/title, description,
+ *   license, author, author link, image URL) in the properties panel
+ * - Alt text is NOT here (it is per-instance, edited in the image dialog)
  * - Persistence across reopening the File Manager
- * - Searching assets by description
+ * - Searching assets by description / author
  * - The metadata panel being available for non-image files too
  */
 
@@ -59,8 +61,9 @@ test.describe('File Manager - centralized asset metadata', () => {
         await uploadFile(page, 'test/fixtures/sample-2.jpg');
         await selectFirstFile(page);
 
-        // The image-specific alt-text row is visible for images.
-        await expect(page.locator('#modalFileManager .metadata-edit-alt-row')).toBeVisible();
+        // Alt text is per-instance (edited in the image dialog), so it is NOT in the
+        // File Manager panel anymore.
+        await expect(page.locator('#modalFileManager .media-library-meta-alt')).toHaveCount(0);
 
         // Fill metadata — there is no Save button: changes autosave on blur/debounce.
         // Edit each field and wait for the "Saved" status before the next one. The
@@ -74,11 +77,12 @@ test.describe('File Manager - centralized asset metadata', () => {
             await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
         };
         await editField('#modalFileManager .media-library-meta-description', 'A scenic mountain sunset');
-        await editField('#modalFileManager .media-library-meta-alt', 'Sunset over mountains');
         await editField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
         await page.locator('#modalFileManager .media-library-meta-license').selectOption('Creative Commons BY');
         await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
         await editField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
+        await editField('#modalFileManager .media-library-meta-author-url', 'https://ada.example');
+        await editField('#modalFileManager .media-library-meta-source-url', 'https://src.example/sunset.jpg');
 
         // Search by description finds the image.
         await page.locator('#modalFileManager .media-library-search').fill('mountain');
@@ -102,9 +106,14 @@ test.describe('File Manager - centralized asset metadata', () => {
         await expect(page.locator('#modalFileManager .media-library-meta-description')).toHaveValue(
             'A scenic mountain sunset',
         );
-        await expect(page.locator('#modalFileManager .media-library-meta-alt')).toHaveValue('Sunset over mountains');
         await expect(page.locator('#modalFileManager .media-library-meta-title')).toHaveValue('Mountain Sunset');
         await expect(page.locator('#modalFileManager .media-library-meta-author')).toHaveValue('Ada Lovelace');
         await expect(page.locator('#modalFileManager .media-library-meta-license')).toHaveValue('Creative Commons BY');
+        await expect(page.locator('#modalFileManager .media-library-meta-author-url')).toHaveValue(
+            'https://ada.example',
+        );
+        await expect(page.locator('#modalFileManager .media-library-meta-source-url')).toHaveValue(
+            'https://src.example/sunset.jpg',
+        );
     });
 });

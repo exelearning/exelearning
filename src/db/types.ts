@@ -98,12 +98,15 @@ interface AssetsTable {
     content_hash: string | null;
     folder_path: string; // Relative folder path: "" = root, "website/css" = nested
     // Centralized, reusable asset-level metadata (see migration 008). All optional;
-    // null means "no metadata set" and is treated as empty everywhere.
+    // null means "no metadata set" and is treated as empty everywhere. These are the
+    // values that must not be re-entered on each insertion; per-instance values
+    // (alt text, accessibility title, caption heading/notes) are NOT stored here.
     description: string | null; // Human-readable description of the asset
-    alt_text: string | null; // Alternative text reused when inserting the image
-    title: string | null; // Optional image title
+    title: string | null; // Image name / display title
     license: string | null; // License label (resolved via LICENSE_REGISTRY at export)
     author: string | null; // Author / creator attribution
+    author_url: string | null; // Link to the author / creator
+    source_url: string | null; // Link to the original resource (image URL)
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }

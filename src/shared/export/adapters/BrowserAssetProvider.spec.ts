@@ -31,10 +31,11 @@ interface MockAssetManagerInterface {
         folderPath?: string;
         mime?: string;
         description?: string;
-        altText?: string;
         title?: string;
         license?: string;
         author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }>;
     getAssetMetadata?(assetId: string): {
         id: string;
@@ -59,10 +60,11 @@ class MockAssetManager implements MockAssetManagerInterface {
             originalPath?: string;
             folderPath?: string;
             description?: string;
-            altText?: string;
             title?: string;
             license?: string;
             author?: string;
+            authorUrl?: string;
+            sourceUrl?: string;
         }
     > = new Map();
     private urlMap: Map<string, string> = new Map();
@@ -79,10 +81,11 @@ class MockAssetManager implements MockAssetManagerInterface {
             mime?: string;
             skipOriginalPath?: boolean;
             description?: string;
-            altText?: string;
             title?: string;
             license?: string;
             author?: string;
+            authorUrl?: string;
+            sourceUrl?: string;
         } = {},
     ): void {
         const blob = createMockBlob(content);
@@ -97,10 +100,11 @@ class MockAssetManager implements MockAssetManagerInterface {
                 ? undefined
                 : (options.originalPath ?? `${id}/${options.filename || 'file.bin'}`),
             description: options.description,
-            altText: options.altText,
             title: options.title,
             license: options.license,
             author: options.author,
+            authorUrl: options.authorUrl,
+            sourceUrl: options.sourceUrl,
         });
     }
 
@@ -131,10 +135,11 @@ class MockAssetManager implements MockAssetManagerInterface {
         folderPath?: string;
         mime?: string;
         description?: string;
-        altText?: string;
         title?: string;
         license?: string;
         author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }> {
         return Array.from(this.assets.values()).map(asset => ({
             id: asset.id,
@@ -142,10 +147,11 @@ class MockAssetManager implements MockAssetManagerInterface {
             folderPath: asset.folderPath || asset.originalPath?.split('/').slice(0, -1).join('/'),
             mime: asset.mime,
             description: asset.description,
-            altText: asset.altText,
             title: asset.title,
             license: asset.license,
             author: asset.author,
+            authorUrl: asset.authorUrl,
+            sourceUrl: asset.sourceUrl,
         }));
     }
 
@@ -835,7 +841,8 @@ describe('BrowserAssetProvider', () => {
                 filename: 'photo.jpg',
                 mime: 'image/jpeg',
                 description: 'A sunset',
-                altText: 'Sunset over the sea',
+                author: 'Ada',
+                authorUrl: 'https://ada.example',
             });
             mockManager.addAsset('no-meta', 'y', { filename: 'plain.jpg', mime: 'image/jpeg' });
 
@@ -843,7 +850,8 @@ describe('BrowserAssetProvider', () => {
 
             expect(map.get('with-meta')).toEqual({
                 description: 'A sunset',
-                altText: 'Sunset over the sea',
+                author: 'Ada',
+                authorUrl: 'https://ada.example',
             });
             expect(map.has('no-meta')).toBe(false);
         });

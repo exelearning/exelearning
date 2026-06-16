@@ -274,10 +274,10 @@ export interface AssetProvider {
     listAssetMetadata?(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>>;
 
     /**
-     * Get centralized, reusable metadata (description/altText/title/license/author)
-     * for assets that have any, keyed by asset id. Used by the ELPX exporter to write
-     * an asset-metadata sidecar so this metadata survives an export → re-import round
-     * trip. Optional: when not implemented, no sidecar is written.
+     * Get centralized, reusable metadata (description/title/license/author/authorUrl/
+     * sourceUrl) for assets that have any, keyed by asset id. Used by the ELPX exporter
+     * to write an asset-metadata sidecar so this metadata survives an export → re-import
+     * round trip. Optional: when not implemented, no sidecar is written.
      */
     getExportMetadataMap?(): Promise<Map<string, AssetExportMetadata>>;
 
@@ -293,10 +293,11 @@ export interface AssetProvider {
  */
 export interface AssetExportMetadata {
     description?: string;
-    altText?: string;
     title?: string;
     license?: string;
     author?: string;
+    authorUrl?: string;
+    sourceUrl?: string;
 }
 
 /**
@@ -714,6 +715,12 @@ export interface ComponentRenderOptions {
     includeDataAttributes: boolean;
     /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
     assetExportPathMap?: Map<string, string>;
+    /**
+     * Centralized asset metadata keyed by asset id (from {@link AssetProvider.getExportMetadataMap}).
+     * When present, the renderer re-derives the caption of every `figure[data-asset-id]` so the
+     * exported package reflects the current File Manager metadata (see bakeFigureCaptions).
+     */
+    assetCaptionMetadataMap?: Map<string, AssetExportMetadata>;
 }
 
 /**

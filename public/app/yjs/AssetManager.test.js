@@ -2016,24 +2016,38 @@ describe('AssetManager', () => {
   });
 
   describe('centralized asset metadata', () => {
-    it('persists description/altText/title/license/author via setAssetMetadata', () => {
+    it('persists description/title/license/author/authorUrl/sourceUrl via setAssetMetadata', () => {
       assetManager.setAssetMetadata('a1', {
         filename: 'photo.jpg',
         mime: 'image/jpeg',
         size: 100,
         description: 'A sunset',
-        altText: 'Sunset over the sea',
         title: 'Sunset',
         license: 'Creative Commons BY',
         author: 'Ada',
+        authorUrl: 'https://ada.example',
+        sourceUrl: 'https://src.example/sunset.jpg',
       });
 
       const meta = mockYjsBridge._assetsMap.get('a1');
       expect(meta.description).toBe('A sunset');
-      expect(meta.altText).toBe('Sunset over the sea');
       expect(meta.title).toBe('Sunset');
       expect(meta.license).toBe('Creative Commons BY');
       expect(meta.author).toBe('Ada');
+      expect(meta.authorUrl).toBe('https://ada.example');
+      expect(meta.sourceUrl).toBe('https://src.example/sunset.jpg');
+    });
+
+    it('does not persist per-instance alt text (no longer centralized)', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        altText: 'a cat on a mat',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect('altText' in meta).toBe(false);
     });
 
     it('omits empty metadata fields to keep entries minimal', () => {
@@ -2042,12 +2056,12 @@ describe('AssetManager', () => {
         mime: 'image/jpeg',
         size: 100,
         description: '',
-        altText: undefined,
+        authorUrl: undefined,
       });
 
       const meta = mockYjsBridge._assetsMap.get('a1');
       expect('description' in meta).toBe(false);
-      expect('altText' in meta).toBe(false);
+      expect('authorUrl' in meta).toBe(false);
     });
 
     it('preserves metadata across a rename (setAssetMetadata whitelist)', async () => {
@@ -2056,7 +2070,8 @@ describe('AssetManager', () => {
         mime: 'image/jpeg',
         size: 100,
         description: 'A sunset',
-        altText: 'Sunset',
+        author: 'Ada',
+        authorUrl: 'https://ada.example',
       });
 
       await assetManager.renameAsset('a1', 'new.jpg');
@@ -2064,7 +2079,8 @@ describe('AssetManager', () => {
       const meta = mockYjsBridge._assetsMap.get('a1');
       expect(meta.filename).toBe('new.jpg');
       expect(meta.description).toBe('A sunset');
-      expect(meta.altText).toBe('Sunset');
+      expect(meta.author).toBe('Ada');
+      expect(meta.authorUrl).toBe('https://ada.example');
     });
 
     it('merges a patch via updateAssetMetadata and trims values', async () => {
@@ -2156,12 +2172,12 @@ describe('AssetManager', () => {
         size: 1,
         filename: 'photo.jpg',
         description: 'A sunset',
-        altText: 'Sunset',
+        authorUrl: 'https://ada.example',
       });
 
       const meta = mockYjsBridge._assetsMap.get('a1');
       expect(meta.description).toBe('A sunset');
-      expect(meta.altText).toBe('Sunset');
+      expect(meta.authorUrl).toBe('https://ada.example');
     });
   });
 
@@ -2188,10 +2204,12 @@ describe('AssetManager', () => {
       expect(assetManager._parseAssetMetadataSidecar(zip)).toEqual({});
     });
 
-    it('looks up metadata by the resources-relative path', () => {
-      const sidecar = { 'photo.jpg': { description: 'A sunset', altText: 'Sunset', extra: 'ignored' } };
+    it('looks up metadata by the resources-relative path, ignoring legacy alt text', () => {
+      const sidecar = {
+        'photo.jpg': { description: 'A sunset', altText: 'legacy alt (ignored)', authorUrl: 'https://ada.example', extra: 'ignored' },
+      };
       const result = assetManager._lookupAssetMetadataForPath(sidecar, 'content/resources/photo.jpg');
-      expect(result).toEqual({ description: 'A sunset', altText: 'Sunset' });
+      expect(result).toEqual({ description: 'A sunset', authorUrl: 'https://ada.example' });
     });
 
     it('returns empty object when no sidecar entry matches', () => {
@@ -2351,10 +2369,11 @@ describe('AssetManager', () => {
         uploaded: true,
         createdAt: '2020-01-01T00:00:00Z',
         description: 'A description',
-        altText: 'Alt',
         title: 'Title',
         license: 'Creative Commons BY',
         author: 'Ada',
+        authorUrl: 'https://ada.example',
+        sourceUrl: 'https://src.example/old.png',
       });
       // Avoid real DOM/network side effects
       assetManager.invalidateLocalBlob = mock(async () => {});
@@ -2388,10 +2407,11 @@ describe('AssetManager', () => {
       expect(stored.createdAt).toBe('2020-01-01T00:00:00Z');
       expect(stored.folderPath).toBe('images');
       expect(stored.description).toBe('A description');
-      expect(stored.altText).toBe('Alt');
       expect(stored.title).toBe('Title');
       expect(stored.license).toBe('Creative Commons BY');
       expect(stored.author).toBe('Ada');
+      expect(stored.authorUrl).toBe('https://ada.example');
+      expect(stored.sourceUrl).toBe('https://src.example/old.png');
       expect(assetManager._scheduleAssetAvailabilityAnnouncement).toHaveBeenCalled();
     });
 

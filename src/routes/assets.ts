@@ -753,12 +753,13 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 // Whitelist + coerce known metadata fields. Unknown keys are ignored.
                 const patch: {
                     description?: string;
-                    altText?: string;
                     title?: string;
                     license?: string;
                     author?: string;
+                    authorUrl?: string;
+                    sourceUrl?: string;
                 } = {};
-                const FIELDS = ['description', 'altText', 'title', 'license', 'author'] as const;
+                const FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'] as const;
                 for (const key of FIELDS) {
                     const value = raw[key];
                     if (value === undefined) continue;
@@ -1245,10 +1246,11 @@ interface SerializedAsset {
     folderPath: string;
     // Centralized, reusable asset-level metadata (empty string when unset)
     description: string;
-    altText: string;
     title: string;
     license: string;
     author: string;
+    authorUrl: string;
+    sourceUrl: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -1266,10 +1268,11 @@ function serializeAsset(asset: Asset): SerializedAsset {
         clientId: asset.client_id,
         folderPath: asset.folder_path || '',
         description: asset.description || '',
-        altText: asset.alt_text || '',
         title: asset.title || '',
         license: asset.license || '',
         author: asset.author || '',
+        authorUrl: asset.author_url || '',
+        sourceUrl: asset.source_url || '',
         createdAt: asset.created_at,
         updatedAt: asset.updated_at,
     };

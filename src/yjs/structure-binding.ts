@@ -74,11 +74,14 @@ export interface AssetMetadata {
     createdAt: string;
     // Centralized, reusable asset-level metadata. All optional so older documents
     // (and assets created before this feature) load unchanged with empty metadata.
+    // Per-instance values (alt text, accessibility title, caption heading/notes)
+    // are NOT stored here — they live on each insertion.
     description?: string;
-    altText?: string;
     title?: string;
     license?: string;
     author?: string;
+    authorUrl?: string;
+    sourceUrl?: string;
 }
 
 /**

@@ -504,19 +504,21 @@ describe('Asset Queries', () => {
 
             const ok = await updateAssetMetadataByClientId(db, 'meta-client', testProjectId, {
                 description: 'A sunset',
-                altText: 'Sunset over the sea',
                 title: 'Sunset',
                 license: 'Creative Commons BY',
                 author: 'Ada Lovelace',
+                authorUrl: 'https://ada.example',
+                sourceUrl: 'https://source.example/sunset.jpg',
             });
 
             expect(ok).toBe(true);
             const found = await findAssetById(db, asset.id);
             expect(found?.description).toBe('A sunset');
-            expect(found?.alt_text).toBe('Sunset over the sea');
             expect(found?.title).toBe('Sunset');
             expect(found?.license).toBe('Creative Commons BY');
             expect(found?.author).toBe('Ada Lovelace');
+            expect(found?.author_url).toBe('https://ada.example');
+            expect(found?.source_url).toBe('https://source.example/sunset.jpg');
         });
 
         it('should trim strings and allow clearing with empty values', async () => {
@@ -529,12 +531,12 @@ describe('Asset Queries', () => {
 
             await updateAssetMetadataByClientId(db, 'trim-client', testProjectId, {
                 description: '  spaced  ',
-                altText: '',
+                authorUrl: '',
             });
 
             const found = await findAssetByClientId(db, 'trim-client', testProjectId);
             expect(found?.description).toBe('spaced');
-            expect(found?.alt_text).toBe('');
+            expect(found?.author_url).toBe('');
         });
 
         it('should only update provided keys', async () => {
@@ -573,7 +575,7 @@ describe('Asset Queries', () => {
                 filename: 'beach.png',
                 storage_path: '/beach.png',
                 client_id: 's2',
-                alt_text: 'Sandy shoreline',
+                author: 'Grace Hopper',
             });
             await createAsset(db, {
                 project_id: testProjectId,
@@ -598,8 +600,8 @@ describe('Asset Queries', () => {
             expect(result.map(a => a.client_id)).toEqual(['s1']);
         });
 
-        it('matches by alt text', async () => {
-            const result = await searchAssetsForProject(db, testProjectId, 'shoreline');
+        it('matches by author', async () => {
+            const result = await searchAssetsForProject(db, testProjectId, 'hopper');
             expect(result.map(a => a.client_id)).toEqual(['s2']);
         });
 

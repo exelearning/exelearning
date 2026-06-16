@@ -609,12 +609,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://abc123/file.png', {
-        title: '',
         text: 'file.png',
-        alt: '',
-        attr_imagetitle: '',
-        authorname: '',
-        captionlicense: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -643,12 +638,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://file.png', {
-        title: '',
         text: 'file.png',
-        alt: '',
-        attr_imagetitle: '',
-        authorname: '',
-        captionlicense: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -675,12 +665,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/image.jpg`, {
-        title: '',
         text: 'image.jpg',
-        alt: '',
-        attr_imagetitle: '',
-        authorname: '',
-        captionlicense: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -715,12 +700,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/video.mp4`, {
-        title: '',
         text: 'video.mp4',
-        alt: '',
-        attr_imagetitle: '',
-        authorname: '',
-        captionlicense: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -2680,71 +2660,22 @@ describe('TinyMCE 5 Settings', () => {
   describe('buildImagePickerMeta', () => {
     const buildImagePickerMeta = tinyMCEModule.buildImagePickerMeta;
 
-    it('pre-fills alt from altText and the asset title into the caption text', () => {
+    it('carries only the filename and asset id (no seeded caption/alt)', () => {
       const meta = buildImagePickerMeta({
         id: 'a1',
         filename: 'photo.jpg',
-        altText: 'A sunset',
+        // Centralized metadata is intentionally NOT pre-filled — it is auto-derived from
+        // the asset id at submit time, and alt text is per-instance.
         title: 'Sunset',
-      });
-      expect(meta.alt).toBe('A sunset');
-      // The image name belongs in the footer caption, not the HTML title attribute.
-      expect(meta.attr_imagetitle).toBe('Sunset');
-      expect(meta.title).toBe('');
-      expect(meta['data-asset-id']).toBe('a1');
-      expect(meta.text).toBe('photo.jpg');
-    });
-
-    it('pre-fills author and maps license to the caption-license code', () => {
-      const meta = buildImagePickerMeta({
-        id: 'a1',
-        filename: 'photo.jpg',
         author: 'Ada Lovelace',
         license: 'Creative Commons BY-SA',
+        description: 'A sunset',
       });
-      expect(meta.authorname).toBe('Ada Lovelace');
-      expect(meta.captionlicense).toBe('CC-BY-SA');
-    });
-
-    it('falls back to description for alt when no altText exists', () => {
-      const meta = buildImagePickerMeta({ id: 'a1', filename: 'p.jpg', description: 'desc only' });
-      expect(meta.alt).toBe('desc only');
-    });
-
-    it('leaves the caption text empty when the asset has no title', () => {
-      const meta = buildImagePickerMeta({ id: 'a1', filename: 'p.jpg' });
-      expect(meta.attr_imagetitle).toBe('');
-      expect(meta.title).toBe('');
-      expect(meta.alt).toBe('');
+      expect(meta).toEqual({ text: 'photo.jpg', 'data-asset-id': 'a1' });
     });
 
     it('is null-safe', () => {
-      const meta = buildImagePickerMeta(undefined);
-      expect(meta).toEqual({
-        title: '',
-        text: '',
-        alt: '',
-        attr_imagetitle: '',
-        authorname: '',
-        captionlicense: '',
-        'data-asset-id': undefined,
-      });
-    });
-  });
-
-  describe('mapAssetLicenseToCaptionCode', () => {
-    const mapAssetLicenseToCaptionCode = tinyMCEModule.mapAssetLicenseToCaptionCode;
-
-    it('maps Creative Commons labels to their listbox codes', () => {
-      expect(mapAssetLicenseToCaptionCode('Creative Commons BY')).toBe('CC-BY');
-      expect(mapAssetLicenseToCaptionCode('Creative Commons BY-NC-ND')).toBe('CC-BY-NC-ND');
-      expect(mapAssetLicenseToCaptionCode('GNU/GPL')).toBe('gnu-gpl');
-    });
-
-    it('returns empty string for empty or unknown licenses', () => {
-      expect(mapAssetLicenseToCaptionCode('')).toBe('');
-      expect(mapAssetLicenseToCaptionCode(undefined)).toBe('');
-      expect(mapAssetLicenseToCaptionCode('Some Unknown License')).toBe('');
+      expect(buildImagePickerMeta(undefined)).toEqual({ text: '', 'data-asset-id': undefined });
     });
   });
 });

@@ -8,7 +8,7 @@ import { Kysely, sql } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import { up, down } from './008_asset_metadata';
 
-const NEW_COLUMNS = ['description', 'alt_text', 'title', 'license', 'author'];
+const NEW_COLUMNS = ['description', 'title', 'license', 'author', 'author_url', 'source_url'];
 
 describe('008_asset_metadata migration', () => {
     let db: Kysely<any>;
@@ -46,26 +46,28 @@ describe('008_asset_metadata migration', () => {
             await up(db);
 
             await sql`
-                INSERT INTO assets (project_id, filename, storage_path, description, alt_text, title, license, author)
-                VALUES (1, 'a.jpg', '/a.jpg', 'desc', 'alt', 'ttl', 'Creative Commons BY', 'Ada')
+                INSERT INTO assets (project_id, filename, storage_path, description, title, license, author, author_url, source_url)
+                VALUES (1, 'a.jpg', '/a.jpg', 'desc', 'ttl', 'Creative Commons BY', 'Ada', 'https://author.example', 'https://source.example/a.jpg')
             `.execute(db);
 
             const result = await sql<{
                 description: string;
-                alt_text: string;
                 title: string;
                 license: string;
                 author: string;
+                author_url: string;
+                source_url: string;
             }>`
-                SELECT description, alt_text, title, license, author FROM assets WHERE id = 1
+                SELECT description, title, license, author, author_url, source_url FROM assets WHERE id = 1
             `.execute(db);
 
             expect(result.rows[0]).toEqual({
                 description: 'desc',
-                alt_text: 'alt',
                 title: 'ttl',
                 license: 'Creative Commons BY',
                 author: 'Ada',
+                author_url: 'https://author.example',
+                source_url: 'https://source.example/a.jpg',
             });
         });
 
@@ -79,7 +81,7 @@ describe('008_asset_metadata migration', () => {
             await up(db);
 
             const result = await sql<Record<string, unknown>>`
-                SELECT description, alt_text, title, license, author FROM assets WHERE id = 1
+                SELECT description, title, license, author, author_url, source_url FROM assets WHERE id = 1
             `.execute(db);
 
             for (const col of NEW_COLUMNS) {

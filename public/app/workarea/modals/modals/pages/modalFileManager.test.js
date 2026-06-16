@@ -108,20 +108,12 @@ describe('ModalFilemanager', () => {
                 <summary class="media-library-section-summary">Metadata</summary>
                 <form class="media-library-edit-metadata" style="display:none;">
                   <span class="media-library-meta-status" role="status" aria-live="polite"></span>
-                  <fieldset class="metadata-edit-group metadata-edit-alt-row">
-                    <legend class="metadata-edit-legend">Accessibility</legend>
-                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-alt"></div>
-                  </fieldset>
-                  <fieldset class="metadata-edit-group">
-                    <legend class="metadata-edit-legend">Identification</legend>
-                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-title"></div>
-                    <div class="metadata-row metadata-edit-row"><textarea class="media-library-meta-description"></textarea></div>
-                  </fieldset>
-                  <fieldset class="metadata-edit-group">
-                    <legend class="metadata-edit-legend">Attribution</legend>
-                    <div class="metadata-row metadata-edit-row"><select class="media-library-meta-license"></select></div>
-                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-author"></div>
-                  </fieldset>
+                  <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-title"></div>
+                  <div class="metadata-row metadata-edit-row"><textarea class="media-library-meta-description"></textarea></div>
+                  <div class="metadata-row metadata-edit-row"><select class="media-library-meta-license"></select></div>
+                  <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-author"></div>
+                  <div class="metadata-row metadata-edit-row"><input type="url" class="media-library-meta-author-url"></div>
+                  <div class="metadata-row metadata-edit-row"><input type="url" class="media-library-meta-source-url"></div>
                 </form>
               </details>
 
@@ -4067,7 +4059,7 @@ describe('getMimeTypeFromFilename', () => {
       expect(values[0]).toBe(''); // "no license" first
     });
 
-    it('shows the edit form for images (with alt row) and pre-fills values', () => {
+    it('shows the edit form and pre-fills the centralized fields (no alt text)', () => {
       modal.populateEditMetadata({
         id: 'a1',
         mime: 'image/png',
@@ -4076,28 +4068,30 @@ describe('getMimeTypeFromFilename', () => {
         title: 'Sunset',
         license: 'Creative Commons BY',
         author: 'Ada',
+        authorUrl: 'https://ada.example',
+        sourceUrl: 'https://src.example/sunset.jpg',
       });
 
       expect(modal.editMetadataForm.style.display).toBe('block');
-      expect(modal.metaAltRow.style.display).toBe('');
-      expect(modal.metaDescriptionInput.value).toBe('A sunset');
-      expect(modal.metaAltInput.value).toBe('Sunset over the sea');
       expect(modal.metaTitleInput.value).toBe('Sunset');
+      expect(modal.metaDescriptionInput.value).toBe('A sunset');
       expect(modal.metaLicenseSelect.value).toBe('Creative Commons BY');
       expect(modal.metaAuthorInput.value).toBe('Ada');
+      expect(modal.metaAuthorUrlInput.value).toBe('https://ada.example');
+      expect(modal.metaSourceUrlInput.value).toBe('https://src.example/sunset.jpg');
+      // Alt text is per-instance and is not edited here anymore.
+      expect(modal.modalElement.querySelector('.media-library-meta-alt')).toBeNull();
     });
 
-    it('shows the edit form for non-image assets but hides the alt-text row', () => {
+    it('shows the edit form for non-image assets too', () => {
       modal.populateEditMetadata({ id: 'a2', mime: 'application/pdf', description: 'A report' });
       expect(modal.editMetadataForm.style.display).toBe('block');
-      expect(modal.metaAltRow.style.display).toBe('none');
       expect(modal.metaDescriptionInput.value).toBe('A report');
     });
 
     it('shows the edit form for a 3D model (e.g. .stl)', () => {
       modal.populateEditMetadata({ id: 'a3', mime: 'model/stl', filename: 'part.stl' });
       expect(modal.editMetadataForm.style.display).toBe('block');
-      expect(modal.metaAltRow.style.display).toBe('none');
     });
 
     it('preserves an unknown stored license value as an option', () => {
@@ -4119,7 +4113,7 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.filteredAssets.map(a => a.id)).toEqual(['a1']);
     });
 
-    it('finds an image by alt text via applyFiltersAndRender', () => {
+    it('does not match the per-instance alt text (no longer centralized)', () => {
       modal.assets = [
         { id: 'a1', filename: 'IMG_001.jpg', folderPath: '', mime: 'image/jpeg', altText: 'A red bicycle' },
         { id: 'a2', filename: 'IMG_002.jpg', folderPath: '', mime: 'image/jpeg', altText: 'A blue car' },
@@ -4128,7 +4122,7 @@ describe('getMimeTypeFromFilename', () => {
       modal.searchInput.value = 'CAR';
       modal.applyFiltersAndRender();
 
-      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a2']);
+      expect(modal.filteredAssets.map(a => a.id)).toEqual([]);
     });
 
     it('finds assets by title, author and license via applyFiltersAndRender', () => {
@@ -4191,11 +4185,19 @@ describe('getMimeTypeFromFilename', () => {
       });
 
       it('blur flushes pending changes immediately', () => {
-        modal.metaAltInput.value = 'Alt text';
-        modal.metaAltInput.dispatchEvent(new Event('input'));
-        modal.metaAltInput.dispatchEvent(new Event('blur'));
+        modal.metaAuthorUrlInput.value = 'https://ada.example';
+        modal.metaAuthorUrlInput.dispatchEvent(new Event('input'));
+        modal.metaAuthorUrlInput.dispatchEvent(new Event('blur'));
 
-        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { altText: 'Alt text' });
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { authorUrl: 'https://ada.example' });
+      });
+
+      it('autosaves the image URL (source) field', () => {
+        modal.metaSourceUrlInput.value = '  https://src.example/x.jpg  ';
+        modal.metaSourceUrlInput.dispatchEvent(new Event('input'));
+        modal.metaSourceUrlInput.dispatchEvent(new Event('blur'));
+
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { sourceUrl: 'https://src.example/x.jpg' });
       });
 
       it('changing the license flushes immediately', () => {

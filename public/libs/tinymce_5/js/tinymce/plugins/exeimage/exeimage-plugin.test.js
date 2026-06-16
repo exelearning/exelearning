@@ -272,54 +272,52 @@ describe('ExeImage Plugin - TinyMCE Editor Direct Update', () => {
   });
 });
 
-describe('ExeImage Plugin - formFillFromMeta2 attribution pre-fill', () => {
-  // Mirrors the title/author/license mapping added to formFillFromMeta2 so the
-  // File Manager picker pre-fills the exeimage attribution fields. Only non-empty
-  // meta values are applied so user-typed values are never overwritten.
-  const isString = (v) => typeof v === 'string';
-  const isBoolean = (v) => typeof v === 'boolean';
-  function fillFromMeta(data, meta) {
-    if (isString(meta.alt)) data.alt = meta.alt;
-    if (isString(meta.title) && meta.title !== '') data.title = meta.title;
-    if (isString(meta.attr_imagetitle) && meta.attr_imagetitle !== '') {
-      data.attr_imagetitle = meta.attr_imagetitle;
-      data.caption = true;
-    }
-    if (isString(meta.authorname) && meta.authorname !== '') data.authorname = meta.authorname;
-    if (isString(meta.captionlicense) && meta.captionlicense !== '') data.captionlicense = meta.captionlicense;
-    if (isBoolean(meta.caption)) data.caption = meta.caption;
-    return data;
+describe('ExeImage Plugin - centralized caption contract', () => {
+  // Mirrors the helpers added to mySubmit: the figure carries the asset id + the
+  // per-instance caption presentation as data-* so the live resolver / exporter can
+  // re-derive the caption from the centralized File Manager metadata.
+
+  // Mirror of exeAssetIdFromSrc().
+  function exeAssetIdFromSrc(src) {
+    const m = /^asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?:[/?#]|$)/i.exec(src || '');
+    return m ? m[1] : '';
   }
 
-  it('pre-fills title, author and license from the picker meta', () => {
-    const data = { alt: '', title: '', authorname: '', captionlicense: '' };
-    fillFromMeta(data, {
-      alt: 'A sunset',
-      title: 'Sunset',
-      authorname: 'Ada Lovelace',
-      captionlicense: 'CC-BY-SA',
-    });
-    expect(data.alt).toBe('A sunset');
-    expect(data.title).toBe('Sunset');
-    expect(data.authorname).toBe('Ada Lovelace');
-    expect(data.captionlicense).toBe('CC-BY-SA');
+  // Mirror of exeFigureAttrs().
+  function exeFigureAttrs(figureClasses, figureStyle, assetId, heading, notes, hidden) {
+    const attrs = { class: figureClasses, style: (figureStyle || '').trim() };
+    if (assetId) attrs['data-asset-id'] = assetId;
+    if (heading) attrs['data-caption-heading'] = heading;
+    if (notes) attrs['data-caption-notes'] = notes;
+    if (hidden) attrs['data-caption-hidden'] = 'true';
+    return attrs;
+  }
+
+  it('extracts the asset id from an asset:// src (with or without extension)', () => {
+    expect(exeAssetIdFromSrc('asset://abc123.jpg')).toBe('abc123');
+    expect(exeAssetIdFromSrc('asset://abc123')).toBe('abc123');
+    expect(exeAssetIdFromSrc('asset://uuid-with-dashes.png')).toBe('uuid-with-dashes');
   });
 
-  it('applies the asset title to the caption text and enables the caption', () => {
-    const data = { alt: '', title: '', attr_imagetitle: '', caption: false };
-    fillFromMeta(data, { attr_imagetitle: 'Mountain Sunset' });
-    expect(data.attr_imagetitle).toBe('Mountain Sunset');
-    expect(data.caption).toBe(true);
-    // The HTML title attribute is left untouched (the image name is a caption).
-    expect(data.title).toBe('');
+  it('returns no id for non-asset srcs', () => {
+    expect(exeAssetIdFromSrc('https://example.com/x.jpg')).toBe('');
+    expect(exeAssetIdFromSrc('blob:http://localhost/abc')).toBe('');
+    expect(exeAssetIdFromSrc('')).toBe('');
   });
 
-  it('does not overwrite existing values with empty meta', () => {
-    const data = { alt: 'kept', title: 'kept', authorname: 'kept', captionlicense: 'CC-BY', attr_imagetitle: 'kept' };
-    fillFromMeta(data, { title: '', authorname: '', captionlicense: '', attr_imagetitle: '' });
-    expect(data.title).toBe('kept');
-    expect(data.authorname).toBe('kept');
-    expect(data.captionlicense).toBe('CC-BY');
-    expect(data.attr_imagetitle).toBe('kept');
+  it('stamps the asset id + per-instance caption data on the figure, omitting empties', () => {
+    const attrs = exeFigureAttrs('exe-figure position-center', 'width: 200px;', 'u1', 'Fig 1', 'A note', true);
+    expect(attrs['data-asset-id']).toBe('u1');
+    expect(attrs['data-caption-heading']).toBe('Fig 1');
+    expect(attrs['data-caption-notes']).toBe('A note');
+    expect(attrs['data-caption-hidden']).toBe('true');
+  });
+
+  it('omits empty per-instance attributes (clean markup when nothing is set)', () => {
+    const attrs = exeFigureAttrs('exe-figure', '', 'u1', '', '', false);
+    expect(attrs['data-asset-id']).toBe('u1');
+    expect('data-caption-heading' in attrs).toBe(false);
+    expect('data-caption-notes' in attrs).toBe(false);
+    expect('data-caption-hidden' in attrs).toBe(false);
   });
 });

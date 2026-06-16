@@ -40,8 +40,8 @@ export class ElpxExporter extends Html5Exporter {
     /**
      * Write the centralized asset metadata sidecar (content/asset-metadata.json),
      * mapping each asset's resource export path to its reusable metadata
-     * (description/altText/title/license/author). This lets the importer restore
-     * the metadata onto the re-created assets.
+     * (description/title/license/author/authorUrl/sourceUrl). This lets the importer
+     * restore the metadata onto the re-created assets.
      *
      * No-op when the provider does not expose getExportMetadataMap or when no asset
      * has metadata — so existing packages remain byte-for-byte identical.
@@ -351,9 +351,9 @@ export class ElpxExporter extends Html5Exporter {
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 1.9b Add centralized asset metadata sidecar (description/altText/title/
-            // license/author) so reusable metadata survives an ELPX re-import. Written
-            // only when at least one asset has metadata, keeping packages unchanged otherwise.
+            // 1.9b Add centralized asset metadata sidecar (description/title/license/
+            // author/authorUrl/sourceUrl) so reusable metadata survives an ELPX re-import.
+            // Written only when at least one asset has metadata, keeping packages unchanged otherwise.
             await this.addAssetMetadataSidecar(fileList);
 
             // 1.10 Generate ELPX manifest and add HTML pages to ZIP

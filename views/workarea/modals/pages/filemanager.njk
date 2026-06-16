@@ -4,7 +4,7 @@
             <div class="modal-header">
                 <div class="modal-title">{{ 'File manager' | trans }}</div>
                 <div class="media-library-header-search d-none d-md-block">
-                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search by name, title, description, alt text, author or license' | trans }}">
+                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search by name, title, description, author or license' | trans }}">
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
@@ -135,12 +135,8 @@
                                     <summary class="media-library-section-summary">{{ 'Metadata' | trans }}</summary>
                                     <form class="media-library-edit-metadata" style="display:none;">
                                         <span class="media-library-meta-status small" role="status" aria-live="polite"></span>
-                                        <div class="metadata-row metadata-edit-row metadata-edit-alt-row">
-                                            <label for="media-library-meta-alt">{{ 'Alternative text' | trans }}</label>
-                                            <input type="text" id="media-library-meta-alt" class="form-control form-control-sm media-library-meta-alt">
-                                        </div>
                                         <div class="metadata-row metadata-edit-row">
-                                            <label for="media-library-meta-title">{{ 'Title' | trans }}</label>
+                                            <label for="media-library-meta-title">{{ 'Image name' | trans }}</label>
                                             <input type="text" id="media-library-meta-title" class="form-control form-control-sm media-library-meta-title">
                                         </div>
                                         <div class="metadata-row metadata-edit-row">
@@ -154,6 +150,14 @@
                                         <div class="metadata-row metadata-edit-row">
                                             <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
                                             <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-author-url">{{ 'Author link' | trans }}</label>
+                                            <input type="url" id="media-library-meta-author-url" class="form-control form-control-sm media-library-meta-author-url">
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-source-url">{{ 'Image URL' | trans }}</label>
+                                            <input type="url" id="media-library-meta-source-url" class="form-control form-control-sm media-library-meta-source-url">
                                         </div>
                                     </form>
                                 </details>
