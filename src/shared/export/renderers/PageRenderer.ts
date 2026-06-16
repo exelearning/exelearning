@@ -1173,13 +1173,20 @@ ${userFooterHtml}</div></footer>`;
 
             // Render the section content WITHOUT allPages so the multi-page exe-node:
             // rewrite is skipped; single-page uses its own anchor-based rewrite instead.
-            let sectionContent = this.renderPageContent(page, '', projectTitle, undefined, {
-                author: options.author,
-                description: options.description,
-                license: options.license,
-                language: options.language,
-                translatedLicense: navLabels?.license,
-            }, materialIconDataUris);
+            let sectionContent = this.renderPageContent(
+                page,
+                '',
+                projectTitle,
+                undefined,
+                {
+                    author: options.author,
+                    description: options.description,
+                    license: options.license,
+                    language: options.language,
+                    translatedLicense: navLabels?.license,
+                },
+                materialIconDataUris,
+            );
             // Namespace this page's named anchors, then resolve exe-node: links to in-page
             // anchors — both at render time so content.xml keeps the raw source (#1927).
             sectionContent = this.namespaceSinglePageAnchors(sectionContent, page.id);
