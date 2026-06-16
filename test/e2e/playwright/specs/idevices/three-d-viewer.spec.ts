@@ -7,7 +7,11 @@ import {
     saveProject,
     reloadPage,
 } from '../../helpers/workarea-helpers';
-import type { Page } from '@playwright/test';
+import { unzipSync } from '../../../../../src/shared/export';
+import type { Download, Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 /**
  * E2E Tests for 3D Viewer iDevice
@@ -101,6 +105,43 @@ async function save3DViewerIdevice(page: Page): Promise<void> {
         .catch(() => {});
 
     await page.waitForTimeout(500);
+}
+
+/**
+ * Trigger an HTML5 (offline website) export and return the Playwright download.
+ */
+async function exportHtml5Website(page: Page): Promise<Download> {
+    await page.locator('#dropdownFile').click();
+    await page.waitForTimeout(300);
+    const exportSubmenuToggle = page.locator('#dropdownExportAs:visible, #dropdownExportAsOffline:visible').first();
+    if ((await exportSubmenuToggle.count()) > 0) {
+        await exportSubmenuToggle.click();
+        await page.waitForTimeout(300);
+    }
+    const exportOption = page
+        .locator('#navbar-button-export-html5:visible, #navbar-button-exportas-html5:visible')
+        .first();
+    await exportOption.waitFor({ state: 'visible', timeout: 10000 });
+    const downloadPromise = page.waitForEvent('download', { timeout: 90000 });
+    await exportOption.click();
+    return downloadPromise;
+}
+
+/** Best-effort content type for serving the unzipped export over page.route(). */
+function exportContentType(p: string): string {
+    if (p.endsWith('.html')) return 'text/html; charset=utf-8';
+    if (p.endsWith('.js') || p.endsWith('.mjs')) return 'text/javascript; charset=utf-8';
+    if (p.endsWith('.css')) return 'text/css; charset=utf-8';
+    if (p.endsWith('.json')) return 'application/json; charset=utf-8';
+    if (p.endsWith('.glb')) return 'model/gltf-binary';
+    if (p.endsWith('.stl')) return 'model/stl';
+    if (p.endsWith('.svg')) return 'image/svg+xml';
+    if (p.endsWith('.wasm')) return 'application/wasm';
+    if (p.endsWith('.png')) return 'image/png';
+    if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg';
+    if (p.endsWith('.woff2')) return 'font/woff2';
+    if (p.endsWith('.woff')) return 'font/woff';
+    return 'application/octet-stream';
 }
 
 test.describe('3D Viewer iDevice', () => {
@@ -696,6 +737,86 @@ test.describe('3D Viewer iDevice', () => {
             });
             const src = await previewModelViewer.getAttribute('src');
             expect(src).toBeTruthy();
+
+            // #1957: once a model is shown the "Select a 3D model to display"
+            // empty-state overlay must be hidden — it used to stay on top of
+            // the rendered model in exported / preview content.
+            const emptyOverlay = iframe.locator('.three-d-viewer-wrapper [data-empty]').first();
+            await expect(emptyOverlay).toBeHidden({ timeout: 10000 });
+        });
+
+        test('hides the empty-state overlay in a real HTML5 export (#1957)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, '3D Viewer Export Overlay Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await selectFirstPage(page);
+            await add3DViewerIdevice(page);
+            await uploadModelViaFilePicker(page, 'test/fixtures/sample-model.glb');
+            await page.waitForFunction(
+                () => {
+                    const mv = document.querySelector('#threeDViewerPreview model-viewer') as any;
+                    return mv && (mv.loaded || mv.src);
+                },
+                { timeout: 30000 },
+            );
+            await save3DViewerIdevice(page);
+            await saveProject(page);
+
+            // Generate a real offline HTML5 export. This is the faithful bug
+            // condition: the exporter rewrites the model source to a relative
+            // `content/resources/<file>` path and the standalone page has no
+            // AssetManager, so the runtime's empty-state decision must work for
+            // that relative path. Before the fix the ".viewer-empty" overlay
+            // stayed on top of the rendered model.
+            const download = await exportHtml5Website(page);
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdv-export-'));
+            const zipPath = path.join(tmpDir, download.suggestedFilename());
+            await download.saveAs(zipPath);
+            const zip = unzipSync(fs.readFileSync(zipPath));
+
+            // Sanity-check the export shape so a failure points at the right cause.
+            expect(zip['index.html']).toBeTruthy();
+            expect(Object.keys(zip).some(k => k.startsWith('content/resources/') && k.endsWith('.glb'))).toBe(true);
+
+            // Serve the exact exported bytes from a clean origin (no service
+            // worker, no dev-server caching) and load the offline page.
+            const origin = 'http://tdv-export.local';
+            await page.route(`${origin}/**`, async route => {
+                const url = new URL(route.request().url());
+                let key = decodeURIComponent(url.pathname.replace(/^\//, ''));
+                if (key === '') key = 'index.html';
+                const bytes = zip[key];
+                if (bytes) {
+                    await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+                } else {
+                    await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+                }
+            });
+
+            await page.goto(`${origin}/index.html`);
+
+            // The rendered wrapper carries the empty-state overlay; the runtime
+            // must hide it once the configured model is shown.
+            await page.locator('.three-d-viewer-wrapper [data-empty]').first().waitFor({
+                state: 'attached',
+                timeout: 20000,
+            });
+            await page.waitForFunction(
+                () => {
+                    const e = document.querySelector('.three-d-viewer-wrapper [data-empty]') as HTMLElement | null;
+                    return !!e && e.style.display === 'none';
+                },
+                null,
+                { timeout: 20000 },
+            );
+
+            await page.unroute(`${origin}/**`);
         });
     });
 
