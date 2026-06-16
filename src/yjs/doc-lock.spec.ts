@@ -100,6 +100,57 @@ describe('doc-lock', () => {
 
             release1();
         });
+
+        it('grants mutual exclusion: only one holder at a time under concurrency', async () => {
+            // Regression for the broken mutex that woke ALL waiters on release.
+            let active = 0;
+            let maxActive = 0;
+            const order: number[] = [];
+
+            const worker = async (id: number) => {
+                const release = await acquireLock('uuid-shared');
+                active += 1;
+                maxActive = Math.max(maxActive, active);
+                order.push(id);
+                // Hold briefly so overlaps would be observable.
+                await new Promise(resolve => setTimeout(resolve, 5));
+                active -= 1;
+                release();
+            };
+
+            await Promise.all([worker(1), worker(2), worker(3), worker(4), worker(5)]);
+
+            // At no point may two holders be in the critical section together.
+            expect(maxActive).toBe(1);
+            // All five ran, and the lock is fully released afterwards.
+            expect(order.length).toBe(5);
+            expect(isLocked('uuid-shared')).toBe(false);
+        });
+
+        it('hands the lock to waiters in FIFO order', async () => {
+            const release0 = await acquireLock('uuid-fifo');
+            const order: number[] = [];
+
+            const p1 = acquireLock('uuid-fifo').then(r => {
+                order.push(1);
+                return r;
+            });
+            // Ensure p1 is queued before p2.
+            await new Promise(resolve => setTimeout(resolve, 5));
+            const p2 = acquireLock('uuid-fifo').then(r => {
+                order.push(2);
+                return r;
+            });
+            await new Promise(resolve => setTimeout(resolve, 5));
+
+            release0();
+            const r1 = await p1;
+            r1();
+            const r2 = await p2;
+            r2();
+
+            expect(order).toEqual([1, 2]);
+        });
     });
 
     describe('tryAcquireLock', () => {

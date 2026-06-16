@@ -628,7 +628,9 @@ describe('Yjs Queries', () => {
                 const newState = new Uint8Array([10, 20, 30]);
                 const update = await saveFullState(db, testProjectId, newState, 'client-1');
 
-                expect(update.version).toBe('1');
+                // Version is a monotonic millisecond timestamp, not the old
+                // hardcoded '1' (which got filtered out below newer snapshots).
+                expect(/^\d{10,}$/.test(update.version)).toBe(true);
                 expect(update.update_data).toEqual(newState);
                 expect(update.client_id).toBe('client-1');
 
@@ -641,6 +643,21 @@ describe('Yjs Queries', () => {
                 const update = await saveFullState(db, testProjectId, state);
 
                 expect(update.client_id).toBeNull();
+            });
+
+            it('writes a version newer than an existing snapshot so the update is not filtered out (C6)', async () => {
+                // Simulate a browser save: a snapshot stamped with an earlier timestamp.
+                const snapshotVersion = (Date.now() - 1000).toString();
+                await upsertSnapshot(db, testProjectId, new Uint8Array([9]), snapshotVersion);
+
+                // A REST-API-style full-state save must land AFTER the snapshot.
+                await saveFullState(db, testProjectId, new Uint8Array([10, 20, 30]), 'client-1');
+
+                const { snapshot, updates } = await loadDocumentWithUpdates(db, testProjectId);
+                expect(snapshot?.snapshot_version).toBe(snapshotVersion);
+                // The full-state update must survive the snapshot-version filter.
+                expect(updates.length).toBe(1);
+                expect(parseInt(updates[0].version, 10)).toBeGreaterThan(parseInt(snapshotVersion, 10));
             });
         });
 

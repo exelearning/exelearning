@@ -5,7 +5,20 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
+import * as Y from 'yjs';
 import { createYjsRoutes, type YjsDependencies } from './yjs';
+
+// A real Yjs update used to exercise the snapshot+updates reconstruction path
+// (a project whose server-side state lives only in yjs_updates, e.g. edited via
+// the REST API v1). Building it here keeps the mock query deterministic.
+function buildUpdatesOnlyRows(): Array<{ update_data: Uint8Array; version: string }> {
+    const doc = new Y.Doc();
+    doc.getMap('metadata').set('title', 'From updates only');
+    const update = Y.encodeStateAsUpdate(doc);
+    doc.destroy();
+    return [{ update_data: update, version: Date.now().toString() }];
+}
+const updatesOnlyRows = buildUpdatesOnlyRows();
 
 // Use the same fallback secret that getJwtSecret() returns when no env var is
 // set. We intentionally do NOT mutate process.env here — tests run in the same
@@ -72,6 +85,9 @@ describe('Yjs Document Routes', () => {
                     if (uuid === 'no-snapshot-uuid') {
                         return { ...mockProject, uuid: 'no-snapshot-uuid', id: 2 } as any;
                     }
+                    if (uuid === 'updates-only-uuid') {
+                        return { ...mockProject, uuid: 'updates-only-uuid', id: 3 } as any;
+                    }
                     return undefined;
                 },
                 findSnapshotByProjectId: async (_db: any, projectId: number) => {
@@ -82,6 +98,16 @@ describe('Yjs Document Routes', () => {
                         return mockSnapshot;
                     }
                     return undefined;
+                },
+                loadDocumentWithUpdates: async (_db: any, projectId: number) => {
+                    // Mirror the snapshot mock; project 3 has updates but no snapshot.
+                    const snapshot = savedSnapshots.has(projectId)
+                        ? savedSnapshots.get(projectId)
+                        : projectId === 1
+                          ? mockSnapshot
+                          : undefined;
+                    const updates = projectId === 3 ? updatesOnlyRows : [];
+                    return { snapshot, updates } as any;
                 },
                 upsertSnapshot: async (_db: any, projectId: number, data: Uint8Array, version: string) => {
                     savedSnapshots.set(projectId, {
@@ -260,6 +286,26 @@ describe('Yjs Document Routes', () => {
             const buffer = await res.arrayBuffer();
             const data = new Uint8Array(buffer);
             expect(data).toEqual(mockSnapshot.snapshot_data);
+        });
+
+        it('reconstructs a document that exists only as updates, with no snapshot (H5)', async () => {
+            // Project 3 has no yjs_documents snapshot, only a yjs_updates row.
+            // The old endpoint returned 404; it must now return the merged state.
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/updates-only-uuid/yjs-document', {
+                    headers: { Authorization: `Bearer ${ownerToken}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('application/octet-stream');
+
+            // The returned bytes must apply cleanly and contain the edit.
+            const merged = new Uint8Array(await res.arrayBuffer());
+            const doc = new Y.Doc();
+            Y.applyUpdate(doc, merged);
+            expect(doc.getMap('metadata').get('title')).toBe('From updates only');
+            doc.destroy();
         });
     });
 
