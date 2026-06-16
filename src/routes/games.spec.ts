@@ -6,8 +6,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import * as Y from 'yjs';
-import { gamesRoutes, configureGamesRoutes, resetGamesRoutesDeps, extractIdevicesFromYjsDoc } from './games';
-import { createSessionManager, type SessionManager } from '../services/session-manager';
+import {
+    gamesRoutes,
+    configureGamesRoutes,
+    resetGamesRoutesDeps,
+    extractIdevicesFromYjsDoc,
+    canAccessUnsavedSession,
+} from './games';
+import { createSessionManager, type ProjectSession, type SessionManager } from '../services/session-manager';
 
 // Must match the fallback in getJwtSecret() (API_JWT_SECRET || JWT_SECRET ||
 // 'dev_secret_change_me') so signed tokens verify inside withJwtAuth().
@@ -1069,6 +1075,131 @@ describe('Games Routes', () => {
             expect(checkCalled).toBe(false);
         });
     });
+
+    /**
+     * Unsaved / brand-new projects (in-memory session only).
+     *
+     * The Yjs WebSocket (checkWebSocketProjectAccess) grants access to a
+     * project that lives only in an in-memory session (not yet persisted to
+     * the DB). This endpoint must use the same semantics so game iDevices
+     * (e.g. progress-report) still load in a brand-new project before its
+     * first save — otherwise enforceProjectAccess 404s on the missing DB row.
+     */
+    describe('Access control for unsaved projects (in-memory session)', () => {
+        const NON_OWNER_USER_ID = 99;
+
+        it('should return 200 for the owner of an unsaved project (session not in DB)', async () => {
+            // Project exists only in memory (findProjectByUuid -> undefined).
+            // The session is owned by OWNER_USER_ID, who is the caller.
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-uuid',
+                userId: OWNER_USER_ID,
+                structure: {
+                    pages: [
+                        {
+                            id: 'unsaved-page',
+                            title: 'Unsaved Page',
+                            blocks: [{ id: 'b1', name: 'B', components: [{ id: 'c1', type: 'text' }] }],
+                        },
+                    ],
+                },
+            });
+            let checkCalled = false;
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined, // Not persisted yet
+                checkProjectAccess: async () => {
+                    checkCalled = true;
+                    return { hasAccess: false } as never;
+                },
+            });
+
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-uuid/idevices', ownerToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+            expect(data.data[0].odePageId).toBe('unsaved-page');
+            // The DB access check is irrelevant when the row does not exist;
+            // access is granted purely from the in-memory session ownership.
+            expect(checkCalled).toBe(false);
+        });
+
+        it('should grant an admin access to an unsaved project owned by someone else', async () => {
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-admin-uuid',
+                userId: OWNER_USER_ID, // owned by someone else
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            const adminToken = await signTestToken(NON_OWNER_USER_ID, ['ROLE_USER', 'ROLE_ADMIN']);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-admin-uuid/idevices', adminToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+        });
+
+        it('should return 404 for a non-owner on an unsaved project (no DB row to fall back to)', async () => {
+            // A different authenticated user must NOT read an unsaved project
+            // they do not own. With no DB row, there is nothing to grant access
+            // to, so the endpoint reports 404 (same as enforceProjectAccess).
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-private-uuid',
+                userId: OWNER_USER_ID,
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            const nonOwnerToken = await signTestToken(NON_OWNER_USER_ID);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-private-uuid/idevices', nonOwnerToken),
+            );
+
+            expect(response.status).toBe(404);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+
+        it('should still require authentication for unsaved projects', async () => {
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-anon-uuid',
+                userId: OWNER_USER_ID,
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            // No auth cookie at all.
+            const response = await app.handle(new Request('http://localhost/api/games/unsaved-anon-uuid/idevices'));
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+    });
 });
 
 /**
@@ -1561,5 +1692,39 @@ describe('extractIdevicesFromYjsDoc', () => {
         expect(result[0].componentId).toBeNull();
 
         ydoc.destroy();
+    });
+});
+
+/**
+ * Direct unit tests for canAccessUnsavedSession (pure access decision for
+ * brand-new/unsaved projects that live only in an in-memory session).
+ */
+describe('canAccessUnsavedSession', () => {
+    const makeSession = (userId?: number): ProjectSession => ({
+        sessionId: 's',
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
+
+    it('denies when there is no session', () => {
+        expect(canAccessUnsavedSession(undefined, 42, false)).toBe(false);
+        expect(canAccessUnsavedSession(undefined, 42, true)).toBe(false);
+    });
+
+    it('grants the session owner', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 42, false)).toBe(true);
+    });
+
+    it('denies a non-owner who is not admin', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 99, false)).toBe(false);
+    });
+
+    it('grants an admin even for a non-owned session', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 99, true)).toBe(true);
+    });
+
+    it('denies when the session has no recorded owner (userId undefined)', () => {
+        expect(canAccessUnsavedSession(makeSession(undefined), 42, false)).toBe(false);
     });
 });

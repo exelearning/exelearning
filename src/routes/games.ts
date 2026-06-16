@@ -16,6 +16,7 @@ import {
     findSnapshotByProjectId as findSnapshotByProjectIdDefault,
 } from '../db/queries';
 import { enforceProjectAccess, withJwtAuth } from '../utils/route-auth';
+import { hasRole, requireAuth, ROLES } from '../utils/guards';
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -525,6 +526,41 @@ function extractIdevicesFromYjsDoc(sessionId: string, ydoc: Y.Doc): SessionIdevi
 }
 
 /**
+ * Decide whether an authenticated caller may read a project that exists ONLY
+ * in an in-memory session (i.e. a brand-new/unsaved project with no DB row).
+ *
+ * This mirrors the Yjs WebSocket policy (`checkWebSocketProjectAccess`), which
+ * grants access to a project found only in an in-memory session — otherwise
+ * game iDevices (e.g. progress-report) would fail to load before the first
+ * save, since `enforceProjectAccess` 404s on the missing DB row.
+ *
+ * Scoped to the session owner (or an admin): for an unsaved project there is no
+ * persisted owner/collaborator/share metadata to consult, so the only identity
+ * we can trust is the `userId` recorded on the in-memory session when its owner
+ * created it. A different authenticated user must NOT read someone else's
+ * unsaved project.
+ *
+ * @param session - The in-memory session, or undefined if none exists.
+ * @param callerUserId - The authenticated caller's user id (`jwtPayload.sub`).
+ * @param isAdmin - Whether the caller has the admin role.
+ * @returns true if the caller may read the unsaved project.
+ */
+export function canAccessUnsavedSession(
+    session: ProjectSession | undefined,
+    callerUserId: number,
+    isAdmin: boolean,
+): boolean {
+    if (!session) {
+        return false;
+    }
+    if (isAdmin) {
+        return true;
+    }
+    // Owner-only: the session's userId was set by the owner at creation time.
+    return session.userId !== undefined && session.userId === callerUserId;
+}
+
+/**
  * Games routes - endpoints used by game iDevices
  */
 export const gamesRoutes = new Elysia({ prefix: '/api/games' })
@@ -561,13 +597,31 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
                 },
                 acceptNumericId: false,
             });
-            if ('status' in access) {
-                set.status = access.status;
-                return { success: false, error: access.message };
-            }
 
-            // Get session from memory (using DI)
+            // Get session from memory (using DI). Needed both for the
+            // unsaved-project access fallback below and the data extraction.
             const session = deps.getSession(odeSessionId);
+
+            if ('status' in access) {
+                // `enforceProjectAccess` 404s when the project has no DB row.
+                // A brand-new/unsaved project lives only in an in-memory session
+                // (created by its owner before the first save); the Yjs WebSocket
+                // grants access to it via the same in-memory check, so we mirror
+                // that here. We only reach the session fallback on a 404 (project
+                // genuinely not persisted): a 401/403 is an explicit auth/access
+                // denial that must stand even if a session happens to exist.
+                const callerAuthErr = requireAuth(jwtPayload);
+                const isAdmin = !callerAuthErr && hasRole(jwtPayload?.roles, ROLES.ADMIN);
+                const sessionGranted =
+                    access.status === 404 &&
+                    !callerAuthErr &&
+                    canAccessUnsavedSession(session, Number(jwtPayload?.sub), isAdmin);
+
+                if (!sessionGranted) {
+                    set.status = access.status;
+                    return { success: false, error: access.message };
+                }
+            }
 
             // First try to extract from session.structure (legacy/simplified)
             let data = session ? extractIdevicesFromStructure(odeSessionId, session.structure) : [];
