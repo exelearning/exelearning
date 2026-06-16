@@ -622,3 +622,89 @@ describe('ImsExporter', () => {
         });
     });
 });
+
+// Regression coverage for #1927: the re-editable content.xml must keep exe-node:
+// internal links so they survive an export -> re-import round trip. The exported
+// HTML pages still resolve to static paths at render time.
+const internalLinkPages: ExportPage[] = [
+    {
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [
+            {
+                id: 'block-1',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content:
+                            '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'page-2',
+        title: 'About',
+        parentId: null,
+        order: 1,
+        blocks: [
+            {
+                id: 'block-2',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-2',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+async function exportImsZip(pages: ExportPage[]): Promise<MockZipProvider> {
+    const zip = new MockZipProvider();
+    const exporter = new ImsExporter(
+        new MockDocument({}, pages),
+        new MockResourceProvider(),
+        new MockAssetProvider(),
+        zip,
+    );
+    await exporter.export();
+    return zip;
+}
+
+describe('ImsExporter — internal link round-trip (#1927)', () => {
+    it('keeps exe-node: internal links in content.xml', async () => {
+        const zip = await exportImsZip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        expect(contentXml).toContain('exe-node:page-2');
+        expect(contentXml).toContain('exe-node:page-1');
+        expect(contentXml).toContain('exe-node:page-2#sec');
+        expect(contentXml).not.toContain('html/about.html');
+        expect(contentXml).not.toContain('../index.html');
+    });
+
+    it('still renders the static path in the exported HTML pages', async () => {
+        const zip = await exportImsZip(internalLinkPages);
+        const indexHtml = zip.files.get('index.html') as string;
+        const aboutHtml = zip.files.get('html/about.html') as string;
+
+        expect(indexHtml).toContain('href="html/about.html"');
+        expect(indexHtml).toContain('href="html/about.html#sec"');
+        expect(indexHtml).not.toContain('exe-node:');
+        expect(aboutHtml).toContain('href="../index.html"');
+        expect(aboutHtml).not.toContain('exe-node:');
+    });
+});
