@@ -1246,7 +1246,7 @@ var $exeDevices = {
                     // xAPI: emit a per-iDevice statement whenever the activity has a
                     // score, regardless of SCORM/export format (see exe_xapi.js).
                     if (game.gameStarted || game.gameOver) {
-                        $exeDevices.iDevice.gamification.scorm.track('answered', game);
+                        $exeDevices.iDevice.gamification.track('answered', game);
                     }
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         return;
@@ -1349,38 +1349,44 @@ var $exeDevices = {
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
 
                 },
+            },
 
-                /**
-                 * Transport-agnostic dispatch to the always-on xAPI emitter
-                 * (exe_xapi.js). Runs in EVERY export format, independent of
-                 * SCORM/pipwerks, so a published package is xAPI-compatible out
-                 * of the box. Score math stays single-source (game.scorerp +
-                 * getFinalScore); this only forwards it as an xAPI statement.
-                 * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
-                 *
-                 * @param {string} eventType e.g. 'answered'
-                 * @param {Object} game the iDevice game options (carries score + identity)
-                 */
-                track: function (eventType, game) {
-                    try {
-                        let xapi = $exeDevices.iDevice.xapi;
-                        if (!xapi || typeof xapi.emit !== 'function') return;
-                        if (typeof game !== 'object' || game === null) return;
-                        if (!game.ideviceId && game.mainElement && game.mainElement.closest) {
-                            game.ideviceId = game.mainElement.closest('.idevice_node').attr('id');
-                        }
-                        xapi.emit({
-                            type: eventType,
-                            ideviceId: game.ideviceId,
-                            ideviceType: game.ideviceType,
-                            ideviceNumber: game.ideviceNumber,
-                            title: game.title,
-                            score: parseFloat(game.scorerp),
-                            weighted: game.weighted,
-                        });
-                    } catch (e) {
-                        // Never let tracking break the activity.
+            /**
+             * Transport-agnostic dispatch to the always-on xAPI emitter
+             * (exe_xapi.js). Runs in EVERY export format, independent of
+             * SCORM/pipwerks, so a published package is xAPI-compatible out
+             * of the box (it is therefore a sibling of `scorm`, not nested in
+             * it). Score math stays single-source (game.scorerp +
+             * getFinalScore); this only forwards it as an xAPI statement.
+             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
+             *
+             * @param {string} eventType e.g. 'answered'
+             * @param {Object} game the iDevice game options (carries score + identity)
+             */
+            track: function (eventType, game) {
+                try {
+                    let xapi = $exeDevices.iDevice.xapi;
+                    if (!xapi || typeof xapi.emit !== 'function') return;
+                    if (typeof game !== 'object' || game === null) return;
+                    if (!game.ideviceId && game.mainElement && game.mainElement.closest) {
+                        game.ideviceId = game.mainElement.closest('.idevice_node').attr('id');
                     }
+                    xapi.emit({
+                        type: eventType,
+                        ideviceId: game.ideviceId,
+                        // The iDevice type/class name lives on game.idevice (see the
+                        // gamification-evaluation-saved emitter, which uses
+                        // `ideviceType: game.idevice`). game.ideviceType is never
+                        // populated by the real callers, so prefer it only when a
+                        // caller explicitly sets it and fall back to game.idevice.
+                        ideviceType: game.ideviceType || game.idevice,
+                        ideviceNumber: game.ideviceNumber,
+                        title: game.title,
+                        score: parseFloat(game.scorerp),
+                        weighted: game.weighted,
+                    });
+                } catch (e) {
+                    // Never let tracking break the activity.
                 }
             },
 

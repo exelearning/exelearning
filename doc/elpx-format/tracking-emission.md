@@ -86,6 +86,24 @@ The exporter injects, before the emitter script:
 <script src="libs/xapi/exe_xapi.js"> </script>
 ```
 
+The serialized config is **HTML-safe**: `PageRenderer.serializeForScript()` escapes
+`<` (→ `<`) plus U+2028/U+2029 before embedding, so a package title containing
+`</script>` cannot break out of the inline `<script>` (no XSS).
+
+The config shape is a single source of truth: the TypeScript type `XapiConfig`
+(`src/shared/export/interfaces.ts`) declares **exactly** the keys the emitter reads
+in `exe_xapi.js#_resolveConfig`. It has two groups of keys:
+
+- **Identity keys** — `odeId`, `baseIri`, `activityId`, `packageTitle`, `language`.
+  Populated by `Html5Exporter` / `PageExporter` from `meta` on every export.
+- **Delivery keys** — `parentOrigin`, `actor`, `registration`. These are **opt-in
+  and NOT populated by the default export pipeline**. Origin-restricted postMessage
+  delivery (`parentOrigin`), a pre-resolved learner `actor`, and an attempt
+  `registration` require runtime context the static exporter does not have (the
+  embedding origin / LMS-provided learner). They are supplied at runtime by the
+  embedding bridge (or by xAPI launch URL params; see §2.4) rather than baked into
+  the export. When absent, the emitter broadcasts to `'*'` with an anonymous actor.
+
 ### 2.2 Identifiers (IRIs)
 
 Stable, derived from the package `odeId` and per-iDevice `odeIdeviceId`

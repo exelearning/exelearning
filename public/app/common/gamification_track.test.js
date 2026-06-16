@@ -2,9 +2,10 @@ import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 require('./common.js');
 
-const scorm = global.$exeDevices.iDevice.gamification.scorm;
+const gamification = global.$exeDevices.iDevice.gamification;
+const scorm = gamification.scorm;
 
-describe('gamification.scorm.track (xAPI dispatch)', () => {
+describe('gamification.track (xAPI dispatch)', () => {
     let originalXapi;
 
     beforeEach(() => {
@@ -16,11 +17,17 @@ describe('gamification.scorm.track (xAPI dispatch)', () => {
         vi.restoreAllMocks();
     });
 
+    it('exposes track as a sibling of scorm (gamification.track), not nested in scorm', () => {
+        // The emitter is SCORM-independent, so it lives at gamification.track.
+        expect(typeof gamification.track).toBe('function');
+        expect(gamification.scorm.track).toBeUndefined();
+    });
+
     it('forwards a normalised event to xapi.emit', () => {
         const emit = vi.fn();
         global.$exeDevices.iDevice.xapi = { emit };
 
-        scorm.track('answered', {
+        gamification.track('answered', {
             ideviceId: 'idevice-1',
             ideviceType: 'trueorfalse',
             ideviceNumber: 2,
@@ -41,6 +48,39 @@ describe('gamification.scorm.track (xAPI dispatch)', () => {
         });
     });
 
+    it('forwards game.idevice as ideviceType when ideviceType is absent (real caller shape)', () => {
+        const emit = vi.fn();
+        global.$exeDevices.iDevice.xapi = { emit };
+
+        // Real callers populate game.idevice (the iDevice type/class name) and never
+        // game.ideviceType. The emitted statement must still carry the iDevice type.
+        gamification.track('answered', {
+            ideviceId: 'idevice-7',
+            idevice: 'trueorfalse',
+            ideviceNumber: 2,
+            title: 'Q',
+            scorerp: '7.5',
+            weighted: 3,
+        });
+
+        expect(emit).toHaveBeenCalledTimes(1);
+        expect(emit.mock.calls[0][0].ideviceType).toBe('trueorfalse');
+    });
+
+    it('prefers an explicit ideviceType over game.idevice when both are present', () => {
+        const emit = vi.fn();
+        global.$exeDevices.iDevice.xapi = { emit };
+
+        gamification.track('answered', {
+            ideviceId: 'idevice-8',
+            ideviceType: 'explicit-type',
+            idevice: 'fallback-type',
+            scorerp: 1,
+        });
+
+        expect(emit.mock.calls[0][0].ideviceType).toBe('explicit-type');
+    });
+
     it('resolves the iDevice id from the DOM node when not preset', () => {
         const emit = vi.fn();
         global.$exeDevices.iDevice.xapi = { emit };
@@ -50,7 +90,7 @@ describe('gamification.scorm.track (xAPI dispatch)', () => {
             mainElement: { closest: () => ({ attr: () => 'idevice-from-dom' }) },
         };
 
-        scorm.track('answered', game);
+        gamification.track('answered', game);
 
         expect(emit.mock.calls[0][0].ideviceId).toBe('idevice-from-dom');
         expect(game.ideviceId).toBe('idevice-from-dom');
@@ -58,12 +98,12 @@ describe('gamification.scorm.track (xAPI dispatch)', () => {
 
     it('is a no-op (no throw) when the xapi emitter is absent', () => {
         global.$exeDevices.iDevice.xapi = undefined;
-        expect(() => scorm.track('answered', { scorerp: 5, ideviceId: 'x' })).not.toThrow();
+        expect(() => gamification.track('answered', { scorerp: 5, ideviceId: 'x' })).not.toThrow();
     });
 
     it('is a no-op (no throw) for an invalid game', () => {
         global.$exeDevices.iDevice.xapi = { emit: vi.fn() };
-        expect(() => scorm.track('answered', null)).not.toThrow();
+        expect(() => gamification.track('answered', null)).not.toThrow();
         expect(global.$exeDevices.iDevice.xapi.emit).not.toHaveBeenCalled();
     });
 
