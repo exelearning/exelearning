@@ -138,6 +138,20 @@ export class ElpxImporter {
      * guarantees the offending bytes are never materialised in memory, so a
      * zip bomb cannot OOM the process.
      *
+     * KNOWN LIMITATION (intentional, documented): `originalSize` is the
+     * *declared* uncompressed size in the central directory, i.e. it is
+     * attacker-controlled metadata, not a measured value. A crafted archive can
+     * understate `originalSize` so an entry passes the pre-inflation filter and
+     * then inflates to more bytes than declared. fflate decompresses
+     * synchronously and does not stream/abort mid-inflation through this filter,
+     * so we cannot enforce the cap against the *actual* inflated length here. We
+     * accept this trade-off: the declared-size check stops the common
+     * over-declared zip bomb cheaply and without inflation, and a single
+     * entry's actual overrun is bounded in practice by available memory; full
+     * defence would require a streaming inflater that aborts on byte count.
+     * `maxEntryBytes` therefore caps *declared* per-entry size, not guaranteed
+     * inflated size.
+     *
      * @param buffer - Raw ZIP bytes
      * @param label - Human-readable archive label for error messages
      * @returns Map of entry path -> decompressed bytes
@@ -154,6 +168,10 @@ export class ElpxImporter {
                     throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
                 }
 
+                // NOTE: `originalSize` is the attacker-declared uncompressed
+                // size from the central directory, not a measured value (see the
+                // KNOWN LIMITATION in this method's doc comment). It is checked
+                // before inflation as a cheap zip-bomb guard.
                 const entrySize = file.originalSize;
                 if (entrySize > maxEntryBytes) {
                     throw new ZipLimitError(

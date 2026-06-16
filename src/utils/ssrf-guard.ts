@@ -130,12 +130,30 @@ export interface SafeFetchOptions extends RequestInit {
  * Fetch a URL with SSRF protection. Validates the initial URL and every
  * redirect hop against {@link isBlockedAddress}; redirects are followed
  * manually so the host of each hop is checked before the next request.
+ *
+ * KNOWN LIMITATION (intentional, documented): DNS TOCTOU / rebinding.
+ * {@link assertUrlAllowed} resolves the host and checks the returned addresses,
+ * but the subsequent `fetchImpl(currentUrl, ...)` performs its OWN, independent
+ * DNS resolution. An attacker who controls an authoritative DNS server can
+ * answer the guard's lookup with a public IP and then answer the fetch's lookup
+ * (a few milliseconds later, e.g. with a 0-TTL record) with a private/loopback
+ * IP — a classic DNS-rebinding bypass. We do NOT pin the validated IP into the
+ * actual connection here, so the check is best-effort against the common cases
+ * (literal internal IPs, hosts that statically resolve internal, redirects to
+ * internal hosts) rather than a hard guarantee. Full protection requires
+ * connecting to the exact address that was validated (e.g. a custom
+ * agent/dispatcher that pins the resolved IP, or an outbound egress proxy /
+ * network policy). Treat `safeFetch` as defence-in-depth, not a complete egress
+ * firewall.
  */
 export async function safeFetch(urlStr: string, options: SafeFetchOptions = {}): Promise<Response> {
     const { maxRedirects = 5, lookupFn, fetchImpl = fetch, ...init } = options;
     let currentUrl = urlStr;
 
     for (let hop = 0; hop <= maxRedirects; hop++) {
+        // NOTE: this validates the host's currently-resolved addresses; the
+        // fetch below resolves DNS again independently (see DNS TOCTOU /
+        // rebinding limitation in this function's doc comment).
         await assertUrlAllowed(currentUrl, { lookupFn });
         const response = await fetchImpl(currentUrl, { ...init, redirect: 'manual' });
 
