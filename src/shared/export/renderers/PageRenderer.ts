@@ -26,6 +26,13 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+
+// Matches an opening <a> tag that is a *named anchor* (has id or name) and is NOT a link
+// (no href). Used by single-page export to namespace anchor ids so they don't collide when
+// every page is merged into one document.
+const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
+const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
+
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -126,14 +133,23 @@ export class PageRenderer {
         const originalContent = this.collectPageContent(page);
         const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
 
-        // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
-            author: options.author,
-            description: options.description,
-            license: options.license,
-            language: options.language,
-            translatedLicense: options.navLabels?.license,
-        });
+        // Render page content (includes exe-package:elp → onclick transformation and,
+        // because allPages is provided, the render-time exe-node: → static path rewrite)
+        const pageContent = this.renderPageContent(
+            page,
+            basePath,
+            projectTitle,
+            assetExportPathMap,
+            {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: options.navLabels?.license,
+            },
+            allPages,
+            options.pageFilenameMap,
+        );
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -643,6 +659,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        allPages?: ExportPage[],
+        pageFilenameMap?: Map<string, string>,
     ): string {
         let html = '';
 
@@ -658,6 +676,16 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
         if (projectTitle) {
             html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
+        // Rewrite exe-node: internal links to their static export paths. Like the
+        // exe-package:elp transform above, this happens at render time (not during
+        // preprocessing) so the re-editable content.xml keeps the original exe-node:
+        // references and survives an export → re-import round trip (#1927).
+        // Only applies for multi-page exports, which pass allPages; the single-page
+        // export handles its own anchor-based rewrite in renderSinglePage().
+        if (allPages && allPages.length > 0) {
+            html = this.replaceInternalLinks(html, allPages, basePath, pageFilenameMap);
         }
 
         // Sync project properties for download-source-file and similar iDevices
@@ -757,6 +785,100 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
 
         return result;
+    }
+
+    /**
+     * Rewrite exe-node: internal links to their static export paths at render time.
+     *
+     * Reuses getPageLink() — the same helper that builds navigation links — so internal
+     * links and nav links stay consistent (single source of truth). basePath already
+     * encodes from-subpage relativity ('' on index, '../' on subpages). The #anchor
+     * fragment, if any, is preserved. Unknown targets are left untouched (external link
+     * or stale reference) so nothing is silently dropped.
+     *
+     * Kept out of preprocessPagesForExport so the source HTML that feeds content.xml
+     * keeps the exe-node: protocol and survives an export → re-import round trip (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to resolve the target and its filename)
+     * @param basePath - Base path of the current page ('' for index, '../' for subpages)
+     * @param pageFilenameMap - Collision-safe page id → filename map
+     * @returns HTML with exe-node: links replaced by static export paths
+     */
+    replaceInternalLinks(
+        content: string,
+        allPages: ExportPage[],
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
+            const target = allPages.find(p => p.id === pageId);
+            if (!target) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            const url = this.getPageLink(target, allPages, basePath, pageFilenameMap);
+            return `href="${url}${anchorFragment}"`;
+        });
+    }
+
+    /**
+     * Prefix id/name attributes on named anchors (<a> without href) with the page id.
+     * Single-page export merges every page into one document, so anchor ids like "intro"
+     * on different pages would collide; e.g. <a id="intro"> on page "page-2" becomes
+     * <a id="page-2--intro">. Applied at render time so content.xml keeps the raw ids.
+     *
+     * @param content - Rendered page HTML
+     * @param pageId - Id of the page the content belongs to
+     * @returns HTML with named-anchor ids/names namespaced
+     */
+    namespaceSinglePageAnchors(content: string, pageId: string): string {
+        if (!content) return content;
+        return content.replace(NAMED_ANCHOR_RE, match =>
+            match.replace(ID_NAME_ATTR_RE, (_, attr, value) => `${attr}="${pageId}--${value}"`),
+        );
+    }
+
+    /**
+     * Rewrite exe-node: internal links to in-page anchors for single-page export.
+     * A link carrying its own anchor (exe-node:pageId#anchor) resolves to the namespaced
+     * anchor (#pageId--anchor, matching namespaceSinglePageAnchors); without an anchor it
+     * resolves to the page section (#section-pageId). Unknown targets are left untouched.
+     * Applied at render time so content.xml keeps the raw exe-node: references (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to validate the target id)
+     * @returns HTML with exe-node: links replaced by in-page anchors
+     */
+    replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        const pageIds = new Set(allPages.map(p => p.id));
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchor = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx + 1) : '';
+
+            if (!pageIds.has(pageId)) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            // With an anchor: jump to the namespaced anchor; without: jump to the section.
+            return anchor ? `href="#${pageId}--${anchor}"` : `href="#section-${pageId}"`;
+        });
     }
 
     /**
@@ -1053,6 +1175,20 @@ ${userFooterHtml}</div></footer>`;
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
+            // Render the section content WITHOUT allPages so the multi-page exe-node:
+            // rewrite is skipped; single-page uses its own anchor-based rewrite instead.
+            let sectionContent = this.renderPageContent(page, '', projectTitle, undefined, {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: navLabels?.license,
+            });
+            // Namespace this page's named anchors, then resolve exe-node: links to in-page
+            // anchors — both at render time so content.xml keeps the raw source (#1927).
+            sectionContent = this.namespaceSinglePageAnchors(sectionContent, page.id);
+            sectionContent = this.replaceSinglePageInternalLinks(sectionContent, allPages);
+
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section id="section-${page.id}">
 <header class="main-header">
@@ -1061,13 +1197,7 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-    language: options.language,
-    translatedLicense: navLabels?.license,
-})}
+${sectionContent}
 </div>
 </section>\n`;
         }
