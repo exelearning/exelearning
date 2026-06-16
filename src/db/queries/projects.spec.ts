@@ -37,6 +37,7 @@ import {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    findUnsavedProjectsOlderThan,
 } from './projects';
 import { createUser } from './users';
 
@@ -1031,6 +1032,50 @@ describe('Project Queries', () => {
 
             const found = await findProjectByUuid(db, uuid);
             expect(found?.updated_at).not.toBe(originalUpdatedAt);
+        });
+    });
+
+    describe('findUnsavedProjectsOlderThan (cleanup safety guards, #1932)', () => {
+        // Negative maxAge => cutoff is in the future, so the age filter matches
+        // freshly-created rows; lets us assert the other guards in isolation.
+        const ALL_AGES = -1_000_000;
+
+        it('returns a private, unsaved project past the age cutoff', async () => {
+            const p = await createProject(db, { title: 'Draft', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).toContain(p.id);
+        });
+
+        it('excludes saved projects (saved_once = 1)', async () => {
+            const p = await createProject(db, { title: 'Saved', owner_id: testUser.id });
+            await markProjectAsSaved(db, p.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('excludes recent projects (within the age window)', async () => {
+            const p = await createProject(db, { title: 'Recent', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, 60 * 60 * 1000);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes shared (non-private) projects, even unsaved and old', async () => {
+            const p = await createProject(db, { title: 'Public Draft', owner_id: testUser.id });
+            await updateProjectVisibility(db, p.id, 'public');
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes projects with collaborators, even private/unsaved/old', async () => {
+            const p = await createProject(db, { title: 'Collab Draft', owner_id: testUser.id });
+            const collaborator = await createUser(db, {
+                email: 'collab@example.com',
+                user_id: 'collab-user',
+                password: 'hashed',
+            });
+            await addCollaborator(db, p.id, collaborator.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
         });
     });
 });

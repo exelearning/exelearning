@@ -633,18 +633,39 @@ export async function updateProjectVisibilityByUuid(
  * Find unsaved projects older than specified age
  * Used for cleanup of abandoned projects that were never saved
  *
+ * Safety guard (#1932): a project is only eligible for auto-deletion when it is
+ * private AND has no collaborators. A shared/public project — or one with
+ * collaborators — can hold real collaborative work even while `saved_once = 0`
+ * (the flag is flipped by a best-effort, client-driven save when collaboration
+ * starts, which may not complete), so such projects are never returned here.
+ *
  * @param db - Kysely database instance
  * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
- * @returns Array of projects with saved_once = 0 older than maxAgeMs
+ * @returns Array of private, collaborator-free projects with saved_once = 0 older than maxAgeMs
  */
 export async function findUnsavedProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
     const cutoffTime = now() - maxAgeMs;
-    return db
-        .selectFrom('projects')
-        .selectAll()
-        .where('saved_once', '=', 0)
-        .where('created_at', '<', cutoffTime)
-        .execute();
+    return (
+        db
+            .selectFrom('projects')
+            .selectAll()
+            .where('saved_once', '=', 0)
+            .where('created_at', '<', cutoffTime)
+            // Never auto-delete shared work: only private projects are eligible.
+            .where('visibility', '=', 'private')
+            // ...and only when nobody else has been granted access.
+            .where(eb =>
+                eb.not(
+                    eb.exists(
+                        eb
+                            .selectFrom('project_collaborators')
+                            .select('project_collaborators.project_id')
+                            .whereRef('project_collaborators.project_id', '=', 'projects.id'),
+                    ),
+                ),
+            )
+            .execute()
+    );
 }
 
 /**
