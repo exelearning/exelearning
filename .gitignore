@@ -137,6 +137,7 @@ public/libs/fflate/fflate.umd.js
 public/libs/abcjs/abcjs-basic-min.js
 public/files/perm/idevices/base/progress-report/export/html2canvas.js
 public/files/perm/idevices/base/checklist/export/html2canvas.js
+public/files/perm/idevices/base/rubric/export/html2canvas.js
 public/app/common/edicuatex/js/DOMPurify/purify.min.js
 public/libs/interact/interact.min.js
 public/libs/interact/interact.min.js.map
