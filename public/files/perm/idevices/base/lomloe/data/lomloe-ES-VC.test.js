@@ -75,10 +75,84 @@ describe('LOMLOE ES-VC Batxillerat modality subjects', () => {
     }
 
     it('splits criteris between the two courses (Grec I vs Grec II differ)', () => {
-        const ce1 = (course) =>
+        const ce1 = course =>
             dataset.Batxillerat[course].GI.competencias_especificas[
                 `ES-VC-${course.startsWith('1r') ? 'BAT1' : 'BAT2'}-GI-CE01`
-            ].criterios_evaluacion.map((c) => c.descripcion);
+            ].criterios_evaluacion.map(c => c.descripcion);
         expect(ce1('1r de Batxillerat')).not.toEqual(ce1('2n de Batxillerat'));
+    });
+});
+
+// The same modality subject (e.g. GREC) is offered in both Batxillerat courses.
+// The editor builds a per-selection ID from the etapa/nivel plus the data codes
+// (competencia + criterio for criteris, bloc + saber code for saberes). If the
+// codes did not embed the BAT1/BAT2 year tag, the "same" criterio/saber in both
+// courses would collapse to a single selection ID and a teacher could not tag
+// both years independently. This guard mirrors the ID composition in
+// edition/lomloe.js (SEP = unit separator \x1F) and asserts the codes carry the
+// year tag so selection IDs stay distinct across the two courses.
+describe('LOMLOE ES-VC Batxillerat selection-id uniqueness across courses', () => {
+    const SEP = '\x1F'; // keep in sync with edition/lomloe.js
+    const etapa = 'Batxillerat';
+    const COURSE_TAG = { '1r de Batxillerat': 'BAT1', '2n de Batxillerat': 'BAT2' };
+
+    const saberSelId = (nivel, codArea, bloque, nombre) => ['saber', etapa, nivel, codArea, bloque, nombre].join(SEP);
+    const criterioSelId = (nivel, codArea, codigoComp, codigoCriterio) =>
+        ['criterio', etapa, nivel, codArea, codigoComp, codigoCriterio].join(SEP);
+
+    function selectionIdsFor(nivel) {
+        const ids = [];
+        const subjects = dataset.Batxillerat[nivel];
+        for (const [codArea, area] of Object.entries(subjects)) {
+            for (const [codigoComp, comp] of Object.entries(area.competencias_especificas)) {
+                for (const crit of comp.criterios_evaluacion) {
+                    ids.push(criterioSelId(nivel, codArea, codigoComp, crit.codigo));
+                }
+            }
+            for (const [bloque, items] of Object.entries(area.saberes_basicos.bloques)) {
+                for (const item of items) {
+                    ids.push(saberSelId(nivel, codArea, bloque, item.nombre));
+                }
+            }
+        }
+        return ids;
+    }
+
+    it('every data code carries the BAT1/BAT2 tag of its course', () => {
+        for (const [nivel, tag] of Object.entries(COURSE_TAG)) {
+            const subjects = dataset.Batxillerat[nivel];
+            expect(Object.keys(subjects).length).toBeGreaterThan(0);
+            for (const area of Object.values(subjects)) {
+                for (const [codigoComp, comp] of Object.entries(area.competencias_especificas)) {
+                    expect(codigoComp).toContain(`-${tag}-`);
+                    for (const crit of comp.criterios_evaluacion) {
+                        expect(crit.codigo).toContain(`-${tag}-`);
+                    }
+                }
+                for (const items of Object.values(area.saberes_basicos.bloques)) {
+                    for (const item of items) {
+                        expect(item.nombre).toContain(`-${tag}-`);
+                    }
+                }
+            }
+        }
+    });
+
+    it('selection IDs are unique within and across both Batxillerat courses', () => {
+        const ids1 = selectionIdsFor('1r de Batxillerat');
+        const ids2 = selectionIdsFor('2n de Batxillerat');
+        expect(ids1.length).toBeGreaterThan(0);
+        expect(ids2.length).toBeGreaterThan(0);
+
+        const all = [...ids1, ...ids2];
+        const unique = new Set(all);
+        // No collision within a course, and none across the two courses: the
+        // BAT1/BAT2 tag in the codes keeps the same subject's selections distinct.
+        expect(unique.size).toBe(all.length);
+
+        // Cross-course intersection must be empty for the shared subjects.
+        const set1 = new Set(ids1);
+        const collisions = ids2.filter(id => set1.has(id));
+        expect(collisions).toEqual([]);
     });
 });
