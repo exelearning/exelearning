@@ -108,21 +108,12 @@ const EXPORT_FORMATS: Record<
 
 async function checkProjectAccess(
     uuid: string,
-    auth: AuthenticatedUser | null,
-    allowPublic: boolean = false,
+    auth: AuthenticatedUser,
 ): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
         return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (allowPublic && project.visibility === 'public') {
-        return { project };
-    }
-
-    if (!auth) {
-        return { project: null, error: errorResponse('UNAUTHORIZED', 'Authentication required') };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {

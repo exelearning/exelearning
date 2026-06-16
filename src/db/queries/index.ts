@@ -104,6 +104,7 @@ export {
     deleteAllUpdates,
     deleteUpdatesBefore,
     getLatestVersion,
+    getDocumentVersion,
     countUpdates,
     documentExists,
     saveFullState,

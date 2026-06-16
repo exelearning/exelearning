@@ -83,6 +83,7 @@ describe('getPublicViewFile', () => {
 
     it('serves a file from the export with the right content type', async () => {
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => ({
                 success: true,
                 data: makeZip({ 'index.html': '<h1>hi</h1>' }),
@@ -97,6 +98,7 @@ describe('getPublicViewFile', () => {
 
     it('serves nested files and resolves css/js/images content types', async () => {
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => ({
                 success: true,
                 data: makeZip({
@@ -119,6 +121,7 @@ describe('getPublicViewFile', () => {
 
     it('returns null for a missing file', async () => {
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => ({
                 success: true,
                 data: makeZip({ 'index.html': 'x' }),
@@ -143,35 +146,70 @@ describe('getPublicViewFile', () => {
 
     it('returns null when the export fails to build', async () => {
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => ({ success: false, error: 'boom' }),
         });
 
         expect(await getPublicViewFile(makeProject(), 'index.html')).toBeNull();
     });
 
-    it('caches the unzipped export and rebuilds when updated_at changes', async () => {
+    it('caches the unzipped export and rebuilds when the Yjs document version changes', async () => {
+        // Regression: the cache must key on the persisted Yjs document version,
+        // NOT on projects.updated_at. A Yjs edit bumps the document version but
+        // never touches projects.updated_at, so keying on updated_at would serve
+        // a stale public view after every edit.
         let built = 0;
+        let docVersion = '1000';
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => docVersion,
             buildExport: async (): Promise<ExportResult> => {
                 built++;
                 return { success: true, data: makeZip({ 'index.html': 'v' + built }) };
             },
         });
 
-        const p1 = makeProject({ updated_at: 1000 });
-        await getPublicViewFile(p1, 'index.html');
-        await getPublicViewFile(p1, 'index.html');
+        // updated_at is intentionally held constant across edits to prove the
+        // cache no longer depends on it.
+        const project = makeProject({ updated_at: 1000 });
+        await getPublicViewFile(project, 'index.html');
+        await getPublicViewFile(project, 'index.html');
         expect(built).toBe(1); // second call served from cache
 
-        const p2 = makeProject({ updated_at: 2000 });
-        const file = await getPublicViewFile(p2, 'index.html');
-        expect(built).toBe(2); // updated_at changed → rebuilt
+        // Simulate a persisted Yjs edit: the document version advances while
+        // updated_at stays the same.
+        docVersion = '2000';
+        const file = await getPublicViewFile(makeProject({ updated_at: 1000 }), 'index.html');
+        expect(built).toBe(2); // document version changed → rebuilt (fresh bytes)
         expect(new TextDecoder().decode(file!.content)).toBe('v2');
+    });
+
+    it('serves stale-free bytes after a persisted edit even when updated_at is unchanged', async () => {
+        // End-to-end of the staleness fix: an edit changes the served bytes.
+        let docVersion = '100';
+        let html = '<h1>original</h1>';
+        configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => docVersion,
+            buildExport: async (): Promise<ExportResult> => ({
+                success: true,
+                data: makeZip({ 'index.html': html }),
+            }),
+        });
+
+        const before = await getPublicViewFile(makeProject({ updated_at: 555 }), 'index.html');
+        expect(new TextDecoder().decode(before!.content)).toBe('<h1>original</h1>');
+
+        // Persist an edit: content + document version change, updated_at does not.
+        html = '<h1>edited</h1>';
+        docVersion = '200';
+
+        const after = await getPublicViewFile(makeProject({ updated_at: 555 }), 'index.html');
+        expect(new TextDecoder().decode(after!.content)).toBe('<h1>edited</h1>');
     });
 
     it('coalesces concurrent builds for the same project into one', async () => {
         let built = 0;
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => {
                 built++;
                 // Defer so both callers reach the builder before it resolves.
@@ -197,9 +235,29 @@ describe('getPublicViewFile', () => {
             tooMany[`f${i}.txt`] = 'x';
         }
         configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
             buildExport: async (): Promise<ExportResult> => ({ success: true, data: makeZip(tooMany) }),
         });
 
         await expect(getPublicViewFile(makeProject(), 'index.html')).rejects.toThrow(/too large/);
+    });
+
+    it('resolves an unknown/extension-less file to application/octet-stream', async () => {
+        configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
+            buildExport: async (): Promise<ExportResult> => ({
+                success: true,
+                data: makeZip({
+                    // No extension at all.
+                    LICENSE: 'do-what-you-want',
+                    // Unknown/binary-ish extension not in the MIME table.
+                    'data.bin': 'binary',
+                }),
+            }),
+        });
+
+        const project = makeProject();
+        expect((await getPublicViewFile(project, 'LICENSE'))!.contentType).toBe('application/octet-stream');
+        expect((await getPublicViewFile(project, 'data.bin'))!.contentType).toBe('application/octet-stream');
     });
 });

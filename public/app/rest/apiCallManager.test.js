@@ -1406,6 +1406,123 @@ describe('ApiCallManager', () => {
       expect(result.detail).toBe('offline');
     });
 
+    describe('_resolveAuthToken (shared token resolution)', () => {
+      it('prefers the Yjs bridge token over all other sources', () => {
+        eXeLearning.app.project = { _yjsBridge: { authToken: 'bridge-token' } };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('bridge-token');
+      });
+
+      it('falls back to the auth service token when no bridge token', () => {
+        eXeLearning.app.project = { _yjsBridge: {} };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('auth-token');
+      });
+
+      it('falls back to localStorage when no bridge or auth token', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('ls-token');
+      });
+
+      it('returns null when no token is available anywhere', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+
+        expect(apiManager._resolveAuthToken()).toBeNull();
+      });
+    });
+
+    describe('_jsonRequest (shared fetch wrapper)', () => {
+      it('sends a JSON body and an Authorization header when a token exists', async () => {
+        localStorage.setItem('authToken', 'tok-123');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', {
+          method: 'PATCH',
+          body: { enabled: true },
+          label: 'test',
+        });
+
+        const [url, options] = global.fetch.mock.calls[0];
+        expect(url).toBe('http://x/y');
+        expect(options.method).toBe('PATCH');
+        expect(options.credentials).toBe('include');
+        expect(options.headers['Content-Type']).toBe('application/json');
+        expect(options.headers.Authorization).toBe('Bearer tok-123');
+        expect(JSON.parse(options.body)).toEqual({ enabled: true });
+        expect(result).toEqual({ ok: 1 });
+      });
+
+      it('omits the body and the Authorization header when there is no body or token', async () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        await apiManager._jsonRequest('http://x/y', { method: 'POST' });
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('POST');
+        expect(options.body).toBeUndefined();
+        expect('Authorization' in options.headers).toBe(false);
+      });
+
+      it('defaults to a GET request', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({}),
+        });
+
+        await apiManager._jsonRequest('http://x/y');
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('GET');
+      });
+
+      it('returns an error envelope with the server message on a non-ok response', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 403,
+          json: vi.fn().mockResolvedValue({ message: 'denied' }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'denied' });
+      });
+
+      it('falls back to the HTTP status when the error body cannot be parsed', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: vi.fn().mockRejectedValue(new Error('no body')),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'HTTP 500' });
+      });
+
+      it('returns an error envelope on a network error', async () => {
+        global.fetch = vi.fn().mockRejectedValue(new Error('boom'));
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'boom' });
+      });
+    });
+
     it('should map collaborator errors', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({

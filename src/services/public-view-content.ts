@@ -4,8 +4,14 @@
  * Builds the multi-page HTML5 export for a publicly shared project and serves its
  * individual files so they can be rendered inside an opaque-origin sandboxed
  * iframe (see {@link ../shared/security/publicViewSandbox}). The export is built
- * once and cached in memory keyed by the project's `updated_at`, so editing the
- * project naturally invalidates the cache.
+ * once and cached in memory keyed by the project's persisted Yjs document
+ * version, so editing the project naturally invalidates the cache.
+ *
+ * The cache key intentionally does NOT use `projects.updated_at`: Yjs
+ * persistence (full-state replace, incremental updates, snapshot upsert) writes
+ * only to the `yjs_*` tables and never bumps `projects.updated_at`, so an edit
+ * would otherwise serve a stale public view. The Yjs document version
+ * ({@link getDocumentVersion}) increments on every persisted edit.
  *
  * `buildHtml5PreviewExport` lives here (rather than in the API route module) so
  * it is the single source of truth shared by the public viewer and the external
@@ -15,6 +21,7 @@ import * as path from 'path';
 import { unzipSync } from 'fflate';
 import type { Project } from '../db/types';
 import { db } from '../db/client';
+import { getDocumentVersion } from '../db/queries';
 import { reconstructDocument } from '../websocket/yjs-persistence';
 import { getFilesDir } from './file-helper';
 import { getMimeType } from '../utils/mime-types';
@@ -42,6 +49,9 @@ export interface PublicViewFile {
 }
 
 type ExportBuilder = (project: Project) => Promise<ExportResult>;
+
+/** Resolves the persisted Yjs document version used to key the export cache. */
+type VersionResolver = (project: Project) => Promise<string>;
 
 /**
  * Build an HTML5 preview export (multi-page) for a project as a ZIP.
@@ -107,22 +117,38 @@ const cache = new Map<string, CacheEntry>();
 // (a full reconstructDocument + export is expensive).
 const inFlight = new Map<string, Promise<Map<string, Uint8Array> | null>>();
 
-// Dependency injection for tests: the export builder can be swapped so unit
-// tests do not run the full exporter pipeline.
-let buildExport: ExportBuilder = buildHtml5PreviewExport;
+/**
+ * Default version resolver: the effective persisted Yjs document version.
+ *
+ * Keying the cache on this (rather than `projects.updated_at`) ensures the
+ * public export is rebuilt whenever the document content actually changes, since
+ * Yjs persistence does not touch `projects.updated_at`.
+ */
+const defaultResolveVersion: VersionResolver = project => getDocumentVersion(db, project.id);
 
-export function configurePublicViewContent(deps: { buildExport?: ExportBuilder }): void {
+// Dependency injection for tests: the export builder and version resolver can be
+// swapped so unit tests do not run the full exporter pipeline or hit the DB.
+let buildExport: ExportBuilder = buildHtml5PreviewExport;
+let resolveVersion: VersionResolver = defaultResolveVersion;
+
+export function configurePublicViewContent(deps: {
+    buildExport?: ExportBuilder;
+    resolveVersion?: VersionResolver;
+}): void {
     if (deps.buildExport) buildExport = deps.buildExport;
+    if (deps.resolveVersion) resolveVersion = deps.resolveVersion;
 }
 
 export function resetPublicViewContent(): void {
     buildExport = buildHtml5PreviewExport;
+    resolveVersion = defaultResolveVersion;
     cache.clear();
     inFlight.clear();
 }
 
-function cacheKeyFor(project: Project): string {
-    return `${project.public_view_id ?? ''}:${project.updated_at ?? 0}`;
+async function cacheKeyFor(project: Project): Promise<string> {
+    const version = await resolveVersion(project);
+    return `${project.public_view_id ?? ''}:${version}`;
 }
 
 /**
@@ -181,7 +207,7 @@ async function buildFiles(project: Project): Promise<Map<string, Uint8Array> | n
 
 async function getFiles(project: Project): Promise<Map<string, Uint8Array> | null> {
     const id = project.public_view_id ?? '';
-    const key = cacheKeyFor(project);
+    const key = await cacheKeyFor(project);
     const cached = cache.get(id);
     if (cached && cached.key === key) {
         return cached.files;

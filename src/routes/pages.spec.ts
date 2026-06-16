@@ -3340,6 +3340,9 @@ describe('Pages Routes', () => {
             });
 
             configurePublicViewContent({
+                // Inject a deterministic version so the content service does not
+                // query the (unmocked) yjs_documents table in this route test.
+                resolveVersion: async (): Promise<string> => '1',
                 buildExport: async (): Promise<ExportResult> => ({
                     success: true,
                     data: zipSync({

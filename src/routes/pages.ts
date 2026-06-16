@@ -586,8 +586,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             })
 
             // =====================================================
-            // Workarea Page
+            // Public viewer loader (opaque-origin sandbox host page)
             // =====================================================
+            // Renders the shell page that hosts the untrusted author content in a
+            // sandboxed iframe. The actual content bytes are served separately by
+            // the isolated `/view/:publicViewId/_/*` content route below.
             .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
                 const { publicViewId } = params;
 

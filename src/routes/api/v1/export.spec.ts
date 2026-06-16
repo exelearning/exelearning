@@ -227,6 +227,57 @@ describe('Export API v1', () => {
             expect(response.status).toBe(403);
         });
 
+        it('should still require auth for a publicly-visible project (no public bypass)', async () => {
+            // A project marked public for editing AND with the public read-only
+            // link enabled must NOT be exportable without auth via this endpoint.
+            // The export API is for authenticated external integrations only.
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'public-export-project',
+                    title: 'Public Project',
+                    owner_id: adminId,
+                    visibility: 'public',
+                    public_view_enabled: 1,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/public-export-project/export/html5'),
+            );
+            expect(response.status).toBe(401);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.success).toBe(false);
+            expect(data.error.code).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for an authenticated non-owner even on a public project', async () => {
+            // Public edit visibility does not grant export access to other users;
+            // only the owner (or an admin) may export.
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'public-export-project-2',
+                    title: 'Public Project 2',
+                    owner_id: adminId,
+                    visibility: 'public',
+                    public_view_enabled: 1,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/public-export-project-2/export/html5', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.success).toBe(false);
+            expect(data.error.code).toBe('FORBIDDEN');
+        });
+
         it('should return 422 for invalid export format (schema validation)', async () => {
             // Create a project owned by the user
             await db

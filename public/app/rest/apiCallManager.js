@@ -2312,6 +2312,64 @@ export default class ApiCallManager {
     }
 
     /**
+     * Resolve the auth token from the available sources, in priority order:
+     * the Yjs bridge token, the auth service token, then localStorage.
+     * Single source of truth for token resolution across project sharing calls.
+     *
+     * @returns {string|null} The bearer token, or null if none is available
+     */
+    _resolveAuthToken() {
+        return (
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken') ||
+            null
+        );
+    }
+
+    /**
+     * Perform a JSON request against an authenticated project endpoint and
+     * normalize the result into the shape the project-sharing callers expect:
+     * the parsed JSON body on success, or `{ responseMessage: 'ERROR', detail }`
+     * on a non-ok response or a network error.
+     *
+     * @param {string} url - The request URL
+     * @param {Object} [options] - Request options
+     * @param {string} [options.method='GET'] - HTTP method
+     * @param {Object} [options.body] - JSON body (serialized automatically)
+     * @param {string} [options.label] - Label used in error logging
+     * @returns {Promise<Object>} Parsed JSON, or an error envelope
+     */
+    async _jsonRequest(url, { method = 'GET', body, label = 'request' } = {}) {
+        const authToken = this._resolveAuthToken();
+
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`[API] ${label} error:`, error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
      * Get project sharing information (owner, collaborators, visibility)
      * Accepts both numeric ID and UUID
      *
@@ -2411,36 +2469,11 @@ export default class ApiCallManager {
      */
     async updatePublicViewAccess(projectId, enabled) {
         const url = this._buildProjectUrl(projectId, '/public-view');
-
-        const authToken =
-            eXeLearning?.app?.project?._yjsBridge?.authToken ||
-            eXeLearning?.app?.auth?.getToken?.() ||
-            localStorage.getItem('authToken');
-
-        try {
-            const response = await fetch(url, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-                },
-                credentials: 'include',
-                body: JSON.stringify({ enabled }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                return {
-                    responseMessage: 'ERROR',
-                    detail: errorData.message || `HTTP ${response.status}`,
-                };
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('[API] updatePublicViewAccess error:', error);
-            return { responseMessage: 'ERROR', detail: error.message };
-        }
+        return this._jsonRequest(url, {
+            method: 'PATCH',
+            body: { enabled },
+            label: 'updatePublicViewAccess',
+        });
     }
 
     /**
@@ -2452,35 +2485,10 @@ export default class ApiCallManager {
      */
     async regeneratePublicViewId(projectId) {
         const url = this._buildProjectUrl(projectId, '/public-view/regenerate');
-
-        const authToken =
-            eXeLearning?.app?.project?._yjsBridge?.authToken ||
-            eXeLearning?.app?.auth?.getToken?.() ||
-            localStorage.getItem('authToken');
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-                },
-                credentials: 'include',
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                return {
-                    responseMessage: 'ERROR',
-                    detail: errorData.message || `HTTP ${response.status}`,
-                };
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('[API] regeneratePublicViewId error:', error);
-            return { responseMessage: 'ERROR', detail: error.message };
-        }
+        return this._jsonRequest(url, {
+            method: 'POST',
+            label: 'regeneratePublicViewId',
+        });
     }
 
     /**
