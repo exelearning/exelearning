@@ -3256,8 +3256,13 @@ export default class ModalFilemanager extends Modal {
                     // Create a File object with the correct name
                     const file = new File([fileBlob], basename, { type: mimeType });
 
-                    // Upload to asset manager with folder path
-                    await this.assetManager.insertImage(file, { folderPath });
+                    // Upload to asset manager with folder path.
+                    // forceNewId opts out of content-hash dedup: files extracted
+                    // from a ZIP belong to a folder-sensitive bundle (e.g. a
+                    // Tumult Hype export), where byte-identical files in different
+                    // relative paths must stay separate assets so each bundle's
+                    // relative links keep resolving. See #1951.
+                    await this.assetManager.insertImage(file, { folderPath, forceNewId: true });
                     extractedCount++;
                     Logger.log(`[MediaLibrary] Extracted: ${folderPath}/${basename}`);
                 } catch (err) {

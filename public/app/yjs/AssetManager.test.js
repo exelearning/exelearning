@@ -822,6 +822,68 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('insertImage — folder-sensitive bundles keep duplicates (#1951)', () => {
+    // Self-contained HTML bundles (e.g. Tumult Hype exports) reference their
+    // runtime by relative path from each bundle folder. Two byte-identical
+    // runtime files in different folders MUST stay as separate assets, or
+    // collapsing them by content hash breaks one bundle's relative links.
+    const sameHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    const makeFile = () => ({
+      name: 'HYPE-runtime.js',
+      type: 'text/javascript',
+      size: 3,
+      arrayBuffer: mock(() => undefined).mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    });
+
+    it('keeps byte-identical files at different paths as separate assets with forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'];
+      const originalRandomUUID = global.crypto.randomUUID;
+      let next = 0;
+      global.crypto.randomUUID = mock(() => ids[next++]);
+
+      try {
+        const urlA = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-a/index.hyperesources',
+          forceNewId: true,
+        });
+        const urlB = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-b/index.hyperesources',
+          forceNewId: true,
+        });
+
+        const idA = assetManager.extractAssetId(urlA);
+        const idB = assetManager.extractAssetId(urlB);
+
+        // Distinct asset IDs even though the content (hash) is identical
+        expect(idA).not.toBe(idB);
+
+        const metaA = assetManager.getAssetMetadata(idA);
+        const metaB = assetManager.getAssetMetadata(idB);
+        expect(metaA).toBeTruthy();
+        expect(metaB).toBeTruthy();
+        // Both metadata entries exist with their own distinct folderPath
+        expect(metaA.folderPath).toBe('bundle-a/index.hyperesources');
+        expect(metaB.folderPath).toBe('bundle-b/index.hyperesources');
+        // Content hash is identical, but the asset IDs are different
+        expect(metaA.hash).toBe(metaB.hash);
+      } finally {
+        global.crypto.randomUUID = originalRandomUUID;
+      }
+    });
+
+    it('still deduplicates identical content by hash without forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const urlA = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+      const urlB = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+
+      // Ordinary uploads still collapse to a single content-addressed asset
+      expect(assetManager.extractAssetId(urlA)).toBe(assetManager.extractAssetId(urlB));
+    });
+  });
+
   describe('extractAssetId', () => {
     it('extracts ID from asset:// URL', () => {
       const id = assetManager.extractAssetId('asset://abc123');

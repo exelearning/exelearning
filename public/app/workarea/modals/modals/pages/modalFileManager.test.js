@@ -1437,6 +1437,46 @@ it('should filter by accept=3d for 3D models', () => {
       await modal.extractZipAsset();
       expect(warnSpy).not.toHaveBeenCalledWith('[MediaLibrary] Selected file is not a ZIP');
     });
+
+    it('forces new asset IDs so byte-identical bundle files are not collapsed (#1951)', async () => {
+      // Two self-contained HTML bundles (e.g. Tumult Hype exports) whose
+      // runtime files are byte-identical but live at different relative paths.
+      const runtime = new Uint8Array([72, 89, 80, 69]); // "HYPE"
+      const markup = new Uint8Array([60, 104, 116, 109, 108]); // "<html"
+      window.fflate = {
+        unzipSync: vi.fn().mockReturnValue({
+          'bundle-a/index.html': markup,
+          'bundle-a/index.hyperesources/HYPE-runtime.js': runtime,
+          'bundle-b/index.html': markup,
+          'bundle-b/index.hyperesources/HYPE-runtime.js': runtime,
+        }),
+      };
+
+      modal.selectedAsset = { id: 'zip-1', filename: 'hype.zip', mime: 'application/zip', blob: new Blob(['zipdata']) };
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(''); // extract at root
+      modal.assetManager.insertImage = vi.fn().mockResolvedValue({ id: 'new-id' });
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+      await modal.extractZipAsset();
+
+      // Every extracted entry must opt out of content-hash dedup so duplicate
+      // bytes in different bundle folders survive as separate assets.
+      expect(modal.assetManager.insertImage).toHaveBeenCalledTimes(4);
+      for (const call of modal.assetManager.insertImage.mock.calls) {
+        expect(call[1]).toEqual(expect.objectContaining({ forceNewId: true }));
+      }
+
+      // The two identical runtime files keep their distinct bundle folder paths.
+      const runtimeCalls = modal.assetManager.insertImage.mock.calls.filter(
+        ([file]) => file.name === 'HYPE-runtime.js'
+      );
+      expect(runtimeCalls).toHaveLength(2);
+      const folderPaths = runtimeCalls.map(([, opts]) => opts.folderPath).sort();
+      expect(folderPaths).toEqual([
+        'bundle-a/index.hyperesources',
+        'bundle-b/index.hyperesources',
+      ]);
+    });
   });
 
   describe('getMimeTypeFromFilename', () => {
