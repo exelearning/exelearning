@@ -11,6 +11,8 @@ import {
     getPlatformIntegrationParams,
     getExportTypeFromPkgType,
     validateProviderConfiguration,
+    warnIfProviderUrlsMissing,
+    resetProviderUrlWarning,
     type PlatformJWTPayload,
 } from './platform-jwt';
 
@@ -433,6 +435,84 @@ describe('Platform JWT Utilities', () => {
 
             const errors = validateProviderConfiguration();
             expect(errors).toContain('Duplicate provider IDs found');
+        });
+    });
+
+    describe('warnIfProviderUrlsMissing', () => {
+        // isAllowedProviderUrl fails closed when PROVIDER_URLS is empty. If an
+        // operator wires up platform integration (PROVIDER_TOKENS / PROVIDER_IDS)
+        // but forgets PROVIDER_URLS, every callback is silently rejected. Emit a
+        // one-time startup warning so the misconfiguration is visible.
+        let originalWarn: typeof console.warn;
+        let warnings: string[];
+
+        beforeEach(() => {
+            resetProviderUrlWarning();
+            originalWarn = console.warn;
+            warnings = [];
+            console.warn = (...args: unknown[]) => {
+                warnings.push(args.map(String).join(' '));
+            };
+        });
+
+        afterEach(() => {
+            console.warn = originalWarn;
+        });
+
+        it('warns when integration is configured (tokens) but PROVIDER_URLS is empty', () => {
+            delete process.env.PROVIDER_URLS;
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(true);
+            expect(warnings.length).toBe(1);
+            expect(warnings[0]).toContain('PROVIDER_URLS');
+        });
+
+        it('warns when only PROVIDER_IDS is set but PROVIDER_URLS is empty', () => {
+            delete process.env.PROVIDER_URLS;
+            delete process.env.PROVIDER_TOKENS;
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(true);
+            expect(warnings.length).toBe(1);
+        });
+
+        it('only warns once across repeated calls (one-time startup warning)', () => {
+            delete process.env.PROVIDER_URLS;
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            expect(warnIfProviderUrlsMissing()).toBe(true);
+            expect(warnIfProviderUrlsMissing()).toBe(false);
+            expect(warnIfProviderUrlsMissing()).toBe(false);
+            expect(warnings.length).toBe(1);
+        });
+
+        it('does not warn when PROVIDER_URLS is configured alongside integration', () => {
+            process.env.PROVIDER_URLS = 'https://a.com';
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(false);
+            expect(warnings.length).toBe(0);
+        });
+
+        it('does not warn when no platform integration is configured at all', () => {
+            delete process.env.PROVIDER_URLS;
+            delete process.env.PROVIDER_TOKENS;
+            delete process.env.PROVIDER_IDS;
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(false);
+            expect(warnings.length).toBe(0);
         });
     });
 

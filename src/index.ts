@@ -47,6 +47,7 @@ import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
+import { warnIfProviderUrlsMissing } from './utils/platform-jwt';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
 import {
@@ -820,6 +821,11 @@ async function bootstrap() {
     // expired upload sessions so neither disk nor memory grows unbounded.
     startChunkUploadSweeper();
     startUploadSessionCleanup();
+
+    // 7c. Surface a common platform-integration misconfiguration: tokens/ids set
+    // but PROVIDER_URLS empty (isAllowedProviderUrl fails closed, so callbacks
+    // would be silently rejected). Logged once at startup.
+    warnIfProviderUrlsMissing();
 
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);

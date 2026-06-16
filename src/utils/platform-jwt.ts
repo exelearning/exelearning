@@ -337,6 +337,53 @@ export function getExportTypeFromPkgType(pkgtype: string): 'scorm12' | 'html5' {
     }
 }
 
+// Tracks whether the "PROVIDER_URLS empty" startup warning has been emitted, so
+// it is logged at most once per process (avoids spamming on every callback).
+let providerUrlWarningEmitted = false;
+
+/**
+ * Reset the one-time PROVIDER_URLS warning flag. Exposed for tests so each case
+ * can assert the warn path in isolation. Not used in production code.
+ */
+export function resetProviderUrlWarning(): void {
+    providerUrlWarningEmitted = false;
+}
+
+/**
+ * Emit a one-time startup warning when platform integration is *intended*
+ * (PROVIDER_TOKENS or PROVIDER_IDS are set) but PROVIDER_URLS is empty.
+ *
+ * Since {@link isAllowedProviderUrl} now fails CLOSED on an empty allow-list,
+ * an operator who configures provider tokens/ids but forgets PROVIDER_URLS will
+ * have every platform callback silently rejected with no obvious cause. This
+ * surfaces that misconfiguration loudly at startup. Call it once during server
+ * bootstrap (see `src/index.ts`).
+ *
+ * @returns true if a warning was emitted on this call, false otherwise (already
+ *          warned, or configuration does not match the misconfigured shape).
+ */
+export function warnIfProviderUrlsMissing(): boolean {
+    if (providerUrlWarningEmitted) {
+        return false;
+    }
+
+    const config = getProviderConfig();
+    const integrationConfigured = config.tokens.length > 0 || config.ids.length > 0;
+
+    if (integrationConfigured && config.urls.length === 0) {
+        providerUrlWarningEmitted = true;
+        console.warn(
+            '[PlatformJWT] Platform integration is configured (PROVIDER_TOKENS/PROVIDER_IDS set) ' +
+                'but PROVIDER_URLS is empty. isAllowedProviderUrl now fails closed, so every ' +
+                'platform callback will be rejected. Set PROVIDER_URLS to an explicit allow-list ' +
+                'of provider base URLs to enable platform integration.',
+        );
+        return true;
+    }
+
+    return false;
+}
+
 /**
  * Validate provider configuration consistency
  * @returns Array of error messages, empty if configuration is valid
