@@ -146,9 +146,15 @@ export default class WebMCPPermissions {
             }
         } else {
             // PER_ACTION
-            allowed = this._prompt(
-                this._t(`Allow MCP action "${toolName}" to modify this project?`),
+            // Use a static, translatable template so it matches a catalog key,
+            // then substitute the tool name into the (possibly localised) result.
+            // Interpolating the tool name before _() would produce a unique
+            // string per tool that no catalog entry could ever match.
+            const message = this._t('Allow MCP action "%s" to modify this project?').replace(
+                '%s',
+                toolName,
             );
+            allowed = this._prompt(message);
             reason = allowed ? 'per-action:approved' : 'per-action:denied';
         }
 

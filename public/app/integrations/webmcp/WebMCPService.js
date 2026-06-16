@@ -45,6 +45,7 @@ import {
     requireAssetUuidUrl,
 } from './validators.js';
 import { escapeCssAttributeValue } from './webmcpDomUtils.js';
+import { sanitizeRichHtml } from './webmcpSanitize.js';
 
 const WEBMCP_DOCS_URL =
     'https://github.com/exelearning/exelearning/blob/main/doc/webmcp.md';
@@ -1743,7 +1744,8 @@ export default class WebMCPService {
     async setComponentHtml(args) {
         const binding = this.getStructureBinding();
         const componentId = requireString(args.componentId, 'componentId');
-        const html = requireString(args.html, 'html');
+        // Agent-supplied HTML is untrusted; sanitise before it reaches the Y.Doc.
+        const html = sanitizeRichHtml(requireString(args.html, 'html'));
 
         const component = binding.getComponent(componentId);
         if (!component) {
@@ -1765,7 +1767,8 @@ export default class WebMCPService {
 
     async setTextIdeviceRichHtml(args) {
         const componentId = requireString(args.componentId, 'componentId');
-        const html = requireString(args.html, 'html');
+        // Agent-supplied HTML is untrusted; sanitise before it reaches the Y.Doc.
+        const html = sanitizeRichHtml(requireString(args.html, 'html'));
 
         await this.updateTextIdeviceContent(componentId, html);
         return {
@@ -1777,7 +1780,9 @@ export default class WebMCPService {
 
     async appendTextIdeviceRichHtml(args) {
         const componentId = requireString(args.componentId, 'componentId');
-        const fragment = requireString(args.html, 'html');
+        // Agent-supplied HTML is untrusted; sanitise the fragment before merging
+        // it into the existing (already-stored) content.
+        const fragment = sanitizeRichHtml(requireString(args.html, 'html'));
         const position = normalizeInsertPosition(args.position);
 
         const component = this.requireTextIdeviceComponent(componentId);
@@ -1863,31 +1868,11 @@ export default class WebMCPService {
         const allowExternalFallback = optionalBoolean(args.allowExternalFallback, true);
 
         try {
-            const response = await fetch(imageUrl, {
-                credentials: 'omit',
-                referrerPolicy: 'no-referrer',
-                mode: 'cors',
-                redirect: 'follow',
+            const assetData = await this.fetchImageAsAsset(imageUrl, {
+                filename: optionalString(args.filename),
+                mimeType: optionalString(args.mimeType),
+                folderPath,
             });
-
-            if (!response.ok) {
-                throw new Error(
-                    `Could not fetch image URL (${response.status} ${response.statusText})`
-                );
-            }
-
-            const blob = await response.blob();
-            if (!blob || blob.size <= 0) {
-                throw new Error('Downloaded image is empty');
-            }
-
-            const filename =
-                optionalString(args.filename) ||
-                filenameFromImageUrl(imageUrl, blob.type);
-            const mimeType =
-                optionalString(args.mimeType) || blob.type || detectMimeType(filename);
-            const file = createFileFromBlob(blob, filename, mimeType);
-            const assetData = await this.insertAssetFromFile(file, folderPath);
             const imageHtml = this.buildTextImageHtml({
                 assetUrl: assetData.assetUrl,
                 alt: optionalString(args.alt),
@@ -2002,32 +1987,11 @@ export default class WebMCPService {
             picsumHeight: args.picsumHeight,
             allowTextAsPicsumSeed: true,
         });
-        const folderPath = optionalString(args.folderPath) || '';
-        const response = await fetch(imageUrl, {
-            credentials: 'omit',
-            referrerPolicy: 'no-referrer',
-            mode: 'cors',
-            redirect: 'follow',
+        const asset = await this.fetchImageAsAsset(imageUrl, {
+            filename: optionalString(args.filename),
+            mimeType: optionalString(args.mimeType),
+            folderPath: optionalString(args.folderPath) || '',
         });
-
-        if (!response.ok) {
-            throw new Error(
-                `Could not fetch image URL (${response.status} ${response.statusText})`,
-            );
-        }
-
-        const blob = await response.blob();
-        if (!blob || blob.size <= 0) {
-            throw new Error('Downloaded image is empty');
-        }
-
-        const filename =
-            optionalString(args.filename) ||
-            filenameFromImageUrl(imageUrl, blob.type);
-        const mimeType =
-            optionalString(args.mimeType) || blob.type || detectMimeType(filename);
-        const file = createFileFromBlob(blob, filename, mimeType);
-        const asset = await this.insertAssetFromFile(file, folderPath);
 
         return {
             imageUrl,
@@ -2096,6 +2060,43 @@ export default class WebMCPService {
             insertedHtml: imageHtml,
             update,
         };
+    }
+
+    /**
+     * Downloads an image from a (pre-resolved) http/https URL and stores it as a
+     * project asset. Shared by insertTextIdeviceImageFromUrl and
+     * importAssetFromUrl so the fetch options, validation and filename/mimeType
+     * resolution stay in a single place.
+     *
+     * @param {string} imageUrl  Pre-resolved http/https URL.
+     * @param {{ filename?: string, mimeType?: string, folderPath?: string }} [options]
+     * @returns {Promise<object>} The inserted asset descriptor.
+     */
+    async fetchImageAsAsset(imageUrl, options = {}) {
+        const response = await fetch(imageUrl, {
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+            mode: 'cors',
+            redirect: 'follow',
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Could not fetch image URL (${response.status} ${response.statusText})`,
+            );
+        }
+
+        const blob = await response.blob();
+        if (!blob || blob.size <= 0) {
+            throw new Error('Downloaded image is empty');
+        }
+
+        const filename =
+            optionalString(options.filename) || filenameFromImageUrl(imageUrl, blob.type);
+        const mimeType =
+            optionalString(options.mimeType) || blob.type || detectMimeType(filename);
+        const file = createFileFromBlob(blob, filename, mimeType);
+        return this.insertAssetFromFile(file, optionalString(options.folderPath) || '');
     }
 
     async insertAssetFromFile(file, folderPath = '') {

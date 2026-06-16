@@ -213,8 +213,69 @@ export function parseArrayValue(value, fieldName) {
 // URLs and images
 
 /**
+ * Determines whether a URL hostname points at a loopback, private, link-local
+ * or otherwise internal address. Such hosts must never be fetched on behalf of
+ * an MCP agent (SSRF protection: e.g. the cloud-metadata endpoint at
+ * 169.254.169.254, or services bound to localhost / a private LAN).
+ *
+ * Note: `URL.hostname` is already lowercased; IPv6 literals are returned wrapped
+ * in brackets (e.g. "[::1]"), which we strip before inspection.
+ *
+ * @param {string} hostname
+ * @returns {boolean}
+ */
+export function isBlockedImageHost(hostname) {
+    if (!hostname) {
+        return true;
+    }
+    // Strip IPv6 brackets: URL.hostname returns "[::1]" for ipv6 literals.
+    const host = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '');
+
+    // localhost and internal-only TLDs / bare (dot-less) hostnames.
+    if (host === 'localhost' || host.endsWith('.localhost')) {
+        return true;
+    }
+    if (host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.intranet')) {
+        return true;
+    }
+
+    // IPv4 literals.
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+        const parts = host.split('.').map((p) => Number(p));
+        const [a, b] = parts;
+        if (a === 127) return true; // loopback 127.0.0.0/8
+        if (a === 10) return true; // private 10.0.0.0/8
+        if (a === 169 && b === 254) return true; // link-local 169.254.0.0/16
+        if (a === 192 && b === 168) return true; // private 192.168.0.0/16
+        if (a === 172 && b >= 16 && b <= 31) return true; // private 172.16.0.0/12
+        if (a === 0) return true; // 0.0.0.0/8 (unspecified)
+        return false;
+    }
+
+    // IPv6 literals (brackets already stripped by URL parsing).
+    if (host.includes(':')) {
+        if (host === '::1' || host === '::') return true; // loopback / unspecified
+        if (host.startsWith('fe80:') || host.startsWith('fe80::')) return true; // link-local
+        // Unique-local fc00::/7 → first hextet starts with fc or fd.
+        if (/^f[cd][0-9a-f]*:/.test(host)) return true;
+        // IPv4-mapped loopback, e.g. ::ffff:127.0.0.1
+        if (host.includes('127.0.0.1')) return true;
+        return false;
+    }
+
+    // A registered hostname with at least one dot (e.g. example.com) is allowed;
+    // a bare hostname with no dot (e.g. "intranet") is treated as internal.
+    if (!host.includes('.')) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Parses a URL string and returns it as a string when it uses http or https.
- * Returns null for any other protocol or invalid URLs.
+ * Returns null for any other protocol, invalid URLs, or hosts that resolve to
+ * internal / loopback / private addresses (SSRF protection).
  *
  * @param {unknown} value
  * @returns {string|null}
@@ -224,6 +285,9 @@ export function tryParseHttpImageUrl(value) {
         const parsed = new URL(String(value));
         const protocol = parsed.protocol.toLowerCase();
         if (protocol !== 'http:' && protocol !== 'https:') {
+            return null;
+        }
+        if (isBlockedImageHost(parsed.hostname)) {
             return null;
         }
         return parsed.toString();

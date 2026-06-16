@@ -124,6 +124,28 @@ describe('WebMCPAudit', () => {
             audit.clearHistory();
             expect(audit.getHistory().length).toBe(0);
         });
+
+        it('returns a defensive copy: mutating the no-filter result does not corrupt internal history', () => {
+            audit.emit(AUDIT_EVENTS.SESSION_STARTED, {});
+            audit.emit(AUDIT_EVENTS.TOOL_INVOKED, {});
+
+            const history = audit.getHistory();
+            expect(history.length).toBe(2);
+
+            // Mutate the returned array aggressively.
+            history.push({ eventType: 'spoofed' });
+            history.length = 0;
+
+            // Internal history must be untouched.
+            const fresh = audit.getHistory();
+            expect(fresh.length).toBe(2);
+            expect(fresh.some((e) => e.eventType === 'spoofed')).toBe(false);
+        });
+
+        it('returns a distinct array reference on the no-filter path', () => {
+            audit.emit(AUDIT_EVENTS.SESSION_STARTED, {});
+            expect(audit.getHistory()).not.toBe(audit.getHistory());
+        });
     });
 
     describe('getHistory filtering', () => {

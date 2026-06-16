@@ -58,7 +58,9 @@ export default class WebMCPAudit {
     }
 
     getHistory(options = {}) {
-        let result = this._history;
+        // Return a defensive copy so callers cannot mutate the internal history
+        // array (e.g. via push/splice/length) and corrupt the audit log.
+        let result = this._history.slice();
         if (options.eventType) {
             result = result.filter((e) => e.eventType === options.eventType);
         }

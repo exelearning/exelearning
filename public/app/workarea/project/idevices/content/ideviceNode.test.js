@@ -270,6 +270,23 @@ describe('IdeviceNode', () => {
             expect(idevice.jsonProperties).toEqual({});
         });
 
+        it('only routes object-shaped fields through parseParamValue (justifies returning {} for arrays)', () => {
+            // Guard rail for parseParamValue's array→{} normalisation: the only
+            // field parsed is `jsonProperties`, an object map whose default is
+            // '{}'. If a future change adds an array-valued field to parseParams,
+            // this assertion fails and forces parseParamValue to be revisited so
+            // legitimate arrays are not silently dropped.
+            expect(idevice.parseParams).toEqual(['jsonProperties']);
+            expect(idevice.default.jsonProperties).toBe('{}');
+        });
+
+        it('parseParamValue returns an array value as {} (jsonProperties is never array-shaped)', () => {
+            const parsed = idevice.parseParamValue('jsonProperties', ['x', 'y'], {
+                odeIdeviceId: 'idevice-id-1',
+            });
+            expect(parsed).toEqual({});
+        });
+
         it('falls back to empty object when jsonProperties is a non-string primitive', () => {
             expect(() => {
                 idevice.setParams({ jsonProperties: 42 });

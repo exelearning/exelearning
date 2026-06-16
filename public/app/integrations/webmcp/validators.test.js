@@ -30,6 +30,7 @@ import {
     parseArrayValue,
     parseJsonObject,
     parseOptionalNumberArray,
+    isBlockedImageHost,
     requireAssetUuidUrl,
     requireDataUrl,
     requireHttpImageUrl,
@@ -278,6 +279,42 @@ describe('escapeHtml', () => {
 });
 
 // ---------------------------------------------------------------------------
+// isBlockedImageHost
+// ---------------------------------------------------------------------------
+
+describe('isBlockedImageHost', () => {
+    it('blocks empty / falsy hostnames', () => {
+        expect(isBlockedImageHost('')).toBe(true);
+        expect(isBlockedImageHost(null)).toBe(true);
+        expect(isBlockedImageHost(undefined)).toBe(true);
+    });
+
+    it('blocks localhost and *.localhost', () => {
+        expect(isBlockedImageHost('localhost')).toBe(true);
+        expect(isBlockedImageHost('app.localhost')).toBe(true);
+    });
+
+    it('blocks 0.0.0.0/8 (unspecified) and 127.0.0.0/8 (loopback)', () => {
+        expect(isBlockedImageHost('0.0.0.0')).toBe(true);
+        expect(isBlockedImageHost('127.0.0.1')).toBe(true);
+    });
+
+    it('blocks IPv6 unspecified and IPv4-mapped loopback', () => {
+        expect(isBlockedImageHost('::')).toBe(true);
+        expect(isBlockedImageHost('[::1]')).toBe(true);
+        expect(isBlockedImageHost('::ffff:127.0.0.1')).toBe(true);
+        expect(isBlockedImageHost('fd00:1234::1')).toBe(true);
+    });
+
+    it('allows ordinary public hostnames and public IPs', () => {
+        expect(isBlockedImageHost('example.com')).toBe(false);
+        expect(isBlockedImageHost('cdn.images.example.org')).toBe(false);
+        expect(isBlockedImageHost('8.8.8.8')).toBe(false);
+        expect(isBlockedImageHost('2606:4700:4700::1111')).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // tryParseHttpImageUrl
 // ---------------------------------------------------------------------------
 
@@ -313,6 +350,57 @@ describe('tryParseHttpImageUrl', () => {
     it('rejects null / non-string values', () => {
         expect(tryParseHttpImageUrl(null)).toBeNull();
         expect(tryParseHttpImageUrl(undefined)).toBeNull();
+    });
+
+    // SSRF guard: agent-supplied URLs must not be able to target internal hosts.
+    it('rejects localhost', () => {
+        expect(tryParseHttpImageUrl('http://localhost/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://localhost:8080/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('https://LOCALHOST/img.png')).toBeNull();
+    });
+
+    it('rejects IPv4 loopback addresses (127.0.0.0/8)', () => {
+        expect(tryParseHttpImageUrl('http://127.0.0.1/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://127.1.2.3/img.png')).toBeNull();
+    });
+
+    it('rejects link-local addresses (169.254.0.0/16)', () => {
+        expect(tryParseHttpImageUrl('http://169.254.169.254/latest/meta-data')).toBeNull();
+        expect(tryParseHttpImageUrl('http://169.254.0.1/x')).toBeNull();
+    });
+
+    it('rejects RFC1918 private IPv4 ranges', () => {
+        expect(tryParseHttpImageUrl('http://10.0.0.1/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://192.168.1.1/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://172.16.0.1/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://172.31.255.255/img.png')).toBeNull();
+    });
+
+    it('still accepts a public IPv4 in the 172 range outside 172.16-31', () => {
+        expect(tryParseHttpImageUrl('http://172.15.0.1/img.png')).toBe('http://172.15.0.1/img.png');
+        expect(tryParseHttpImageUrl('http://172.32.0.1/img.png')).toBe('http://172.32.0.1/img.png');
+    });
+
+    it('rejects IPv6 loopback and link-local / unique-local addresses', () => {
+        expect(tryParseHttpImageUrl('http://[::1]/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://[fe80::1]/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://[fc00::1]/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://[fd12:3456::1]/img.png')).toBeNull();
+    });
+
+    it('rejects internal-only hostnames (.local / .internal / bare host)', () => {
+        expect(tryParseHttpImageUrl('http://intranet/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://printer.local/img.png')).toBeNull();
+        expect(tryParseHttpImageUrl('http://db.internal/img.png')).toBeNull();
+    });
+
+    it('still accepts ordinary public hostnames', () => {
+        expect(tryParseHttpImageUrl('https://images.example.com/a.png')).toBe(
+            'https://images.example.com/a.png',
+        );
+        expect(tryParseHttpImageUrl('https://picsum.photos/seed/x/800/600')).toBe(
+            'https://picsum.photos/seed/x/800/600',
+        );
     });
 });
 
@@ -619,6 +707,24 @@ describe('requireHttpImageUrl', () => {
     it('throws for null', () => {
         expect(() => requireHttpImageUrl(null)).toThrow('imageUrl must be a valid absolute URL (http/https)');
     });
+
+    it('throws for internal / loopback / private hosts (SSRF guard)', () => {
+        expect(() => requireHttpImageUrl('http://localhost/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => requireHttpImageUrl('http://127.0.0.1/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => requireHttpImageUrl('http://169.254.169.254/latest/meta-data')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => requireHttpImageUrl('http://192.168.0.1/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => requireHttpImageUrl('http://[::1]/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -648,6 +754,28 @@ describe('resolveImageUrlFromInput', () => {
 
     it('throws when value is absent and no picsumSeed provided', () => {
         expect(() => resolveImageUrlFromInput(null, {})).toThrow('imageUrl is required');
+    });
+
+    it('throws for internal / loopback / private hosts when not allowing picsum seeds (SSRF guard)', () => {
+        expect(() => resolveImageUrlFromInput('http://localhost/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => resolveImageUrlFromInput('http://127.0.0.1/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+        expect(() => resolveImageUrlFromInput('http://10.0.0.1/x')).toThrow(
+            'imageUrl must be a valid absolute URL (http/https)',
+        );
+    });
+
+    it('does not fetch internal hosts even with allowTextAsPicsumSeed: a rejected URL becomes a picsum seed', () => {
+        // The internal URL is rejected as a fetchable URL, so it can only be
+        // (safely) reinterpreted as a picsum.photos seed — never fetched directly.
+        const result = resolveImageUrlFromInput('http://169.254.169.254/x', {
+            allowTextAsPicsumSeed: true,
+        });
+        expect(result).toMatch(/^https:\/\/picsum\.photos\/seed\//);
+        expect(result).not.toContain('169.254.169.254/x');
     });
 
     it('respects picsumWidth and picsumHeight options', () => {

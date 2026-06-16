@@ -175,6 +175,12 @@ export default class IdeviceNode {
     }
 
     parseParamValue(paramName, value, data = {}) {
+        // The only field routed through parseParamValue is `jsonProperties`
+        // (see `parseParams`), and `jsonProperties` is always an object map
+        // (default '{}'); downstream consumers read it with Object.keys()/
+        // property assignment, never as an array. A value that parses to an
+        // array is therefore malformed, so we normalise it to {} rather than
+        // returning the array.
         if (value === null || value === undefined || value === '') {
             return {};
         }

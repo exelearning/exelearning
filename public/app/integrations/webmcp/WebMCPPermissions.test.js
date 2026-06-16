@@ -201,6 +201,51 @@ describe('WebMCPPermissions', () => {
             );
         });
 
+        it('passes a static, catalog-matchable template to the translator (not an interpolated string)', () => {
+            window.confirm.mockReturnValue(true);
+
+            // Spy on the global translator. The string handed to _() must be the
+            // static template so it can match a translation catalog key; the tool
+            // name is substituted afterwards. If the tool name were interpolated
+            // before _(), every distinct tool name would produce a unique,
+            // never-translated string.
+            const originalTranslator = globalThis._;
+            const translatorSpy = vi.fn((key) => key);
+            globalThis._ = translatorSpy;
+            try {
+                const p = new WebMCPPermissions({ policy: 'per_action' });
+                p.checkPermission('blocks.delete', { writes: true });
+
+                expect(translatorSpy).toHaveBeenCalledWith(
+                    'Allow MCP action "%s" to modify this project?',
+                );
+                // And the user still sees the substituted message.
+                expect(window.confirm).toHaveBeenCalledWith(
+                    'Allow MCP action "blocks.delete" to modify this project?',
+                );
+            } finally {
+                globalThis._ = originalTranslator;
+            }
+        });
+
+        it('substitutes the tool name even when the translation contains a translated template', () => {
+            window.confirm.mockReturnValue(true);
+
+            const originalTranslator = globalThis._;
+            // Simulate a localised catalog entry that keeps the %s placeholder.
+            globalThis._ = vi.fn(() => 'Autoriser l’action MCP « %s » ?');
+            try {
+                const p = new WebMCPPermissions({ policy: 'per_action' });
+                p.checkPermission('assets.import', { writes: true });
+
+                expect(window.confirm).toHaveBeenCalledWith(
+                    'Autoriser l’action MCP « assets.import » ?',
+                );
+            } finally {
+                globalThis._ = originalTranslator;
+            }
+        });
+
         it('returns denied when user cancels', () => {
             window.confirm.mockReturnValue(false);
             const p = new WebMCPPermissions({ policy: 'per_action' });

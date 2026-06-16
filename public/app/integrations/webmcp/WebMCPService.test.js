@@ -816,6 +816,80 @@ describe('WebMCPService', () => {
         expect(result.assetId).toBe('asset-1');
     });
 
+    describe('fetchImageAsAsset (shared image-fetch helper)', () => {
+        function makeAssetService() {
+            const insertImage = vi.fn(async () => 'asset://shared-1.png');
+            const bridge = {
+                structureBinding: { getPages: vi.fn(() => []) },
+                assetManager: {
+                    insertImage,
+                    extractAssetId: vi.fn(() => 'shared-1'),
+                },
+            };
+            const svc = new WebMCPService({ project: { _yjsBridge: bridge } });
+            return { svc, insertImage };
+        }
+
+        it('fetches with safe options, builds the file and inserts the asset', async () => {
+            const { svc, insertImage } = makeAssetService();
+            const blob = new Blob([new Uint8Array([9, 9, 9])], { type: 'image/png' });
+            global.fetch = vi.fn().mockResolvedValue({ ok: true, blob: async () => blob });
+
+            const asset = await svc.fetchImageAsAsset('https://example.com/pic.png', {
+                folderPath: 'imagenes',
+            });
+
+            expect(global.fetch).toHaveBeenCalledWith('https://example.com/pic.png', {
+                credentials: 'omit',
+                referrerPolicy: 'no-referrer',
+                mode: 'cors',
+                redirect: 'follow',
+            });
+            expect(asset.assetUrl).toBe('asset://shared-1.png');
+            expect(asset.assetId).toBe('shared-1');
+            expect(asset.folderPath).toBe('imagenes');
+            // File built from the blob and passed to the asset manager.
+            const fileArg = insertImage.mock.calls[0][0];
+            expect(fileArg.type).toBe('image/png');
+        });
+
+        it('honours an explicit filename and mimeType override', async () => {
+            const { svc, insertImage } = makeAssetService();
+            const blob = new Blob([new Uint8Array([1])], { type: 'image/png' });
+            global.fetch = vi.fn().mockResolvedValue({ ok: true, blob: async () => blob });
+
+            await svc.fetchImageAsAsset('https://example.com/x', {
+                filename: 'custom.webp',
+                mimeType: 'image/webp',
+            });
+
+            const fileArg = insertImage.mock.calls[0][0];
+            expect(fileArg.name).toBe('custom.webp');
+            expect(fileArg.type).toBe('image/webp');
+        });
+
+        it('throws when the response is not ok', async () => {
+            const { svc } = makeAssetService();
+            global.fetch = vi
+                .fn()
+                .mockResolvedValue({ ok: false, status: 404, statusText: 'Not Found', blob: async () => null });
+
+            await expect(svc.fetchImageAsAsset('https://example.com/missing.png', {})).rejects.toThrow(
+                /Could not fetch image URL/,
+            );
+        });
+
+        it('throws when the downloaded image is empty', async () => {
+            const { svc } = makeAssetService();
+            const empty = new Blob([], { type: 'image/png' });
+            global.fetch = vi.fn().mockResolvedValue({ ok: true, blob: async () => empty });
+
+            await expect(svc.fetchImageAsAsset('https://example.com/empty.png', {})).rejects.toThrow(
+                /empty/,
+            );
+        });
+    });
+
     it('lists assets from file manager', async () => {
         const bridge = {
             structureBinding: {
@@ -1310,6 +1384,103 @@ describe('WebMCPService', () => {
         vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
         await svc.setComponentHtml({ componentId: 'comp-2', html: '<div>X</div>' });
         expect(binding.updateComponent).toHaveBeenCalledWith('comp-2', { htmlContent: '<div>X</div>' });
+    });
+
+    // ---------------------------------------------------------------------
+    // Security: agent-supplied HTML must be sanitised before persistence.
+    // Without sanitisation an MCP client could push <script> or event-handler
+    // payloads straight into the Y.Doc and have them rendered later.
+    // ---------------------------------------------------------------------
+    describe('rich-HTML sanitisation', () => {
+        beforeEach(() => {
+            // Force the DOM-fallback sanitiser path (no DOMPurify global in tests).
+            if (typeof window !== 'undefined') {
+                delete window.DOMPurify;
+            }
+            delete globalThis.DOMPurify;
+        });
+
+        it('setTextIdeviceRichHtml strips <script> and event handlers before persisting', async () => {
+            const { svc, binding } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.setTextIdeviceRichHtml({
+                componentId: 'comp-1',
+                html: '<p>Safe</p><img src=x onerror=alert(1)><script>evil()</script>',
+            });
+
+            const payload = binding.updateComponent.mock.calls[0][1];
+            expect(payload.htmlContent).toContain('Safe');
+            expect(payload.htmlContent).not.toContain('<script');
+            expect(payload.htmlContent).not.toContain('evil()');
+            expect(payload.htmlContent.toLowerCase()).not.toContain('onerror');
+            expect(payload.htmlContent).not.toContain('alert(1)');
+            // The sync'd JSON copy must also be sanitised.
+            const json = JSON.parse(payload.jsonProperties);
+            expect(json.textTextarea).not.toContain('<script');
+            expect(json.textTextarea.toLowerCase()).not.toContain('onerror');
+        });
+
+        it('setComponentHtml sanitises HTML for non-text components too', async () => {
+            const component = { id: 'comp-2', ideviceType: 'image-gallery', htmlContent: '' };
+            const binding = {
+                getPages: vi.fn(() => []),
+                getComponent: vi.fn(() => component),
+                updateComponent: vi.fn(),
+            };
+            const bridge = {
+                structureBinding: binding,
+                getMetadata: vi.fn(() => ({ title: 'P', author: 'A', description: 'D' })),
+            };
+            const svc = new WebMCPService({ project: { _yjsBridge: bridge } });
+            vi.spyOn(svc, 'refreshStructure').mockResolvedValue(undefined);
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.setComponentHtml({
+                componentId: 'comp-2',
+                html: '<div onclick="steal()">X</div><script>nope()</script>',
+            });
+
+            const payload = binding.updateComponent.mock.calls[0][1];
+            expect(payload.htmlContent).toContain('X');
+            expect(payload.htmlContent).not.toContain('<script');
+            expect(payload.htmlContent).not.toContain('nope()');
+            expect(payload.htmlContent.toLowerCase()).not.toContain('onclick');
+            expect(payload.htmlContent).not.toContain('steal()');
+        });
+
+        it('appendTextIdeviceRichHtml sanitises the appended fragment', async () => {
+            const { svc, binding } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.appendTextIdeviceRichHtml({
+                componentId: 'comp-1',
+                html: '<p>More</p><img src=x onerror="fetch(`/steal`)">',
+                position: 'append',
+            });
+
+            const payload = binding.updateComponent.mock.calls[0][1];
+            expect(payload.htmlContent).toContain('More');
+            // The pre-existing safe content survives the merge.
+            expect(payload.htmlContent).toContain('Hi');
+            expect(payload.htmlContent.toLowerCase()).not.toContain('onerror');
+            expect(payload.htmlContent).not.toContain('fetch(`/steal`)');
+        });
+
+        it('keeps legitimate rich HTML intact through setTextIdeviceRichHtml', async () => {
+            const { svc, binding } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.setTextIdeviceRichHtml({
+                componentId: 'comp-1',
+                html: '<p>A <strong>bold</strong> <em>idea</em></p><ul><li>x</li></ul>',
+            });
+
+            const payload = binding.updateComponent.mock.calls[0][1];
+            expect(payload.htmlContent).toContain('<strong>bold</strong>');
+            expect(payload.htmlContent).toContain('<em>idea</em>');
+            expect(payload.htmlContent).toContain('<li>x</li>');
+        });
     });
 
     it('deleteComponent calls bridge.deleteComponent and returns { componentId, deleted }', async () => {
