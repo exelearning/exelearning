@@ -96,7 +96,16 @@ interface CacheEntry {
 /** Max number of distinct public projects kept unzipped in memory at once. */
 const MAX_CACHE_ENTRIES = 32;
 
+/** Upper bounds on a single export kept in memory (cost / DoS protection). */
+const MAX_EXPORT_BYTES = 100 * 1024 * 1024; // 100 MB total unzipped
+const MAX_EXPORT_FILES = 5000;
+
 const cache = new Map<string, CacheEntry>();
+
+// Deduplicate concurrent builds: while an export for a given cache key is being
+// built, parallel requests await the same promise instead of each rebuilding it
+// (a full reconstructDocument + export is expensive).
+const inFlight = new Map<string, Promise<Map<string, Uint8Array> | null>>();
 
 // Dependency injection for tests: the export builder can be swapped so unit
 // tests do not run the full exporter pipeline.
@@ -109,6 +118,7 @@ export function configurePublicViewContent(deps: { buildExport?: ExportBuilder }
 export function resetPublicViewContent(): void {
     buildExport = buildHtml5PreviewExport;
     cache.clear();
+    inFlight.clear();
 }
 
 function cacheKeyFor(project: Project): string {
@@ -140,6 +150,35 @@ export function normalizePublicViewPath(relPath: string): string | null {
     return norm;
 }
 
+/**
+ * Build and unzip a project's export into a path→bytes map.
+ *
+ * Throws if the unzipped export exceeds the size/file-count bounds (cost / DoS
+ * protection); returns `null` if the export could not be built.
+ */
+async function buildFiles(project: Project): Promise<Map<string, Uint8Array> | null> {
+    const result = await buildExport(project);
+    if (!result.success || !result.data) {
+        return null;
+    }
+
+    const unzipped = unzipSync(result.data);
+    const files = new Map<string, Uint8Array>();
+    let totalBytes = 0;
+    for (const [entryPath, data] of Object.entries(unzipped)) {
+        // Skip directory entries
+        if (entryPath.endsWith('/')) continue;
+        totalBytes += data.length;
+        if (files.size + 1 > MAX_EXPORT_FILES || totalBytes > MAX_EXPORT_BYTES) {
+            throw new Error(
+                `Public export too large (> ${MAX_EXPORT_FILES} files or ${MAX_EXPORT_BYTES} bytes): ${project.public_view_id}`,
+            );
+        }
+        files.set(entryPath, data);
+    }
+    return files;
+}
+
 async function getFiles(project: Project): Promise<Map<string, Uint8Array> | null> {
     const id = project.public_view_id ?? '';
     const key = cacheKeyFor(project);
@@ -148,28 +187,30 @@ async function getFiles(project: Project): Promise<Map<string, Uint8Array> | nul
         return cached.files;
     }
 
-    const result = await buildExport(project);
-    if (!result.success || !result.data) {
-        return null;
-    }
+    // Coalesce concurrent builds for the same key onto a single promise.
+    const pending = inFlight.get(key);
+    if (pending) return pending;
 
-    const unzipped = unzipSync(result.data);
-    const files = new Map<string, Uint8Array>();
-    for (const [entryPath, data] of Object.entries(unzipped)) {
-        // Skip directory entries
-        if (!entryPath.endsWith('/')) {
-            files.set(entryPath, data);
+    const build = (async () => {
+        const files = await buildFiles(project);
+        if (files) {
+            // Evict the oldest entry if we are adding a brand new project and the
+            // cache is full (entries for the same project are replaced in place).
+            if (!cache.has(id) && cache.size >= MAX_CACHE_ENTRIES) {
+                const oldest = cache.keys().next().value;
+                if (oldest !== undefined) cache.delete(oldest);
+            }
+            cache.set(id, { key, files });
         }
-    }
+        return files;
+    })();
 
-    // Evict the oldest entry if we are adding a brand new project and the cache
-    // is full (entries for the same project are replaced in place).
-    if (!cache.has(id) && cache.size >= MAX_CACHE_ENTRIES) {
-        const oldest = cache.keys().next().value;
-        if (oldest !== undefined) cache.delete(oldest);
+    inFlight.set(key, build);
+    try {
+        return await build;
+    } finally {
+        inFlight.delete(key);
     }
-    cache.set(id, { key, files });
-    return files;
 }
 
 function contentTypeFor(relPath: string): string {

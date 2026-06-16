@@ -48,13 +48,53 @@ export const PUBLIC_VIEW_SANDBOX =
     'allow-scripts allow-popups allow-forms allow-downloads allow-popups-to-escape-sandbox';
 
 /**
- * Build the Content-Security-Policy header value for public-view content
- * responses. Includes the `sandbox` directive (R3) followed by the restrictive
- * resource directives of the compatible profile (R4).
+ * CSP profile for public-view content responses.
+ *
+ * - `compatible` (default): the opaque origin already protects the session, so
+ *   external `https:` assets (CDN, MathJax, external images, YouTube/Vimeo) are
+ *   still allowed to avoid breaking legitimate content.
+ * - `strict`: also cuts data exfiltration — no open `https:`, `connect-src
+ *   'none'`, and `'unsafe-eval'` dropped. May break content relying on external
+ *   resources/CDN; intended as an admin opt-in for sensitive deployments
+ *   (study §6.3).
  */
-export function publicViewCspHeader(): string {
+export type PublicViewCspProfile = 'compatible' | 'strict';
+
+/**
+ * Resolve the active CSP profile from the environment. Any value other than
+ * `strict` (case-insensitive) falls back to the compatible profile.
+ */
+export function resolvePublicViewCspProfile(env: NodeJS.ProcessEnv = process.env): PublicViewCspProfile {
+    return (env.PUBLIC_VIEW_CSP_PROFILE ?? '').trim().toLowerCase() === 'strict' ? 'strict' : 'compatible';
+}
+
+/**
+ * Build the Content-Security-Policy header value for public-view content
+ * responses. Always starts with the `sandbox` directive (R3) followed by the
+ * restrictive resource directives of the selected profile (R4).
+ */
+export function publicViewCspHeader(profile: PublicViewCspProfile = 'compatible'): string {
+    const sandbox = `sandbox ${PUBLIC_VIEW_SANDBOX}`;
+    const shared = ["object-src 'none'", "base-uri 'none'", "frame-ancestors 'self'"];
+
+    if (profile === 'strict') {
+        return [
+            sandbox,
+            "default-src 'self'",
+            "img-src 'self' data: blob:",
+            "media-src 'self' data: blob:",
+            "font-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline'",
+            "connect-src 'none'",
+            "frame-src 'self'",
+            "child-src 'self'",
+            ...shared,
+        ].join('; ');
+    }
+
     return [
-        `sandbox ${PUBLIC_VIEW_SANDBOX}`,
+        sandbox,
         "default-src 'self' data: blob: https:",
         "img-src 'self' data: blob: https:",
         "media-src 'self' data: blob: https:",
@@ -64,9 +104,7 @@ export function publicViewCspHeader(): string {
         "connect-src 'self' https:",
         "frame-src 'self' https:",
         "child-src 'self' https:",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "frame-ancestors 'self'",
+        ...shared,
     ].join('; ');
 }
 

@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
-import { findProjectByUuid, findProjectByPublicViewId } from '../../../db/queries';
+import { findProjectByUuid } from '../../../db/queries';
 import { getFilesDir } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
@@ -29,7 +29,6 @@ import {
     ServerLatexPreRenderer,
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
-import { buildHtml5PreviewExport } from '../../../services/public-view-content';
 import {
     authenticateRequest,
     errorResponse,
@@ -133,9 +132,6 @@ async function checkProjectAccess(
     return { project };
 }
 
-// `buildHtml5PreviewExport` lives in the public-view content service so it is the
-// single source of truth shared by the public viewer and this export API.
-
 // ============================================================================
 // ROUTES
 // ============================================================================
@@ -161,51 +157,11 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
             },
         },
     )
-    // Public viewer preview export.
-    // Looks up projects strictly by the opaque public_view_id (never the
-    // internal UUID) and only serves them while the public read-only link is
-    // enabled (independent of edit visibility). Requires no authentication and
-    // returns 404 for missing/disabled projects so it does not leak whether a
-    // private project exists.
-    .group('/public', app =>
-        app.get(
-            '/:publicViewId/preview',
-            async ({ params, set }) => {
-                const project = await findProjectByPublicViewId(db, params.publicViewId);
-                if (!project || !project.public_view_enabled) {
-                    set.status = 404;
-                    return errorResponse('NOT_FOUND', 'Project not found');
-                }
-
-                try {
-                    const result = await buildHtml5PreviewExport(project);
-                    if (!result.success || !result.data) {
-                        set.status = 500;
-                        return errorResponse('EXPORT_FAILED', result.error || 'Export failed');
-                    }
-
-                    return new Response(result.data, {
-                        headers: {
-                            'Content-Type': 'application/zip',
-                            'Content-Length': result.data.length.toString(),
-                        },
-                    });
-                } catch (err) {
-                    console.error('[Export API Public Preview] Error:', err);
-                    set.status = 500;
-                    return errorResponse('EXPORT_ERROR', err instanceof Error ? err.message : 'Export failed');
-                }
-            },
-            {
-                detail: {
-                    summary: 'Public Project Preview Export',
-                    description:
-                        'Get an HTML5 zip export of a public project for the read-only viewer, addressed by its public view id. No authentication required.',
-                    tags: ['Export'],
-                },
-            },
-        ),
-    )
+    // NOTE: There is intentionally no unauthenticated public ZIP endpoint here.
+    // The public read-only viewer serves the rendered export files (not a bulk
+    // ZIP) from an opaque-origin sandbox at `/view/:publicViewId/_/*`
+    // (src/routes/pages.ts). A public bulk download, if ever needed, must be a
+    // deliberate feature with explicit opt-in, auth and limits.
     // Register under /projects prefix for project-specific exports
     .group('/projects', app =>
         app.get(

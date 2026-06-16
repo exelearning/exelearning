@@ -168,4 +168,38 @@ describe('getPublicViewFile', () => {
         expect(built).toBe(2); // updated_at changed → rebuilt
         expect(new TextDecoder().decode(file!.content)).toBe('v2');
     });
+
+    it('coalesces concurrent builds for the same project into one', async () => {
+        let built = 0;
+        configurePublicViewContent({
+            buildExport: async (): Promise<ExportResult> => {
+                built++;
+                // Defer so both callers reach the builder before it resolves.
+                await new Promise(resolve => setTimeout(resolve, 10));
+                return { success: true, data: makeZip({ 'index.html': 'x' }) };
+            },
+        });
+
+        const project = makeProject();
+        const [a, b] = await Promise.all([
+            getPublicViewFile(project, 'index.html'),
+            getPublicViewFile(project, 'index.html'),
+        ]);
+
+        expect(built).toBe(1); // single build shared by both concurrent callers
+        expect(a).not.toBeNull();
+        expect(b).not.toBeNull();
+    });
+
+    it('throws when the export exceeds the file-count limit', async () => {
+        const tooMany: Record<string, string> = {};
+        for (let i = 0; i < 5001; i++) {
+            tooMany[`f${i}.txt`] = 'x';
+        }
+        configurePublicViewContent({
+            buildExport: async (): Promise<ExportResult> => ({ success: true, data: makeZip(tooMany) }),
+        });
+
+        await expect(getPublicViewFile(makeProject(), 'index.html')).rejects.toThrow(/too large/);
+    });
 });

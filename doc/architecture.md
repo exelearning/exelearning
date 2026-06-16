@@ -564,11 +564,19 @@ With the opaque origin, untrusted content **cannot**: reach `window.parent`/`top
 (SecurityError), read or send the `auth` cookie (cross-site → `SameSite=lax` not
 sent), call `/api/...` as the viewer, or open the app's IndexedDB / Cache API.
 
-**CSP profile.** The default is the "compatible" profile: the opaque origin already
-protects the session, so resource directives still allow external `https:` assets
-(CDN, MathJax, external images, YouTube/Vimeo embeds) to avoid breaking legitimate
-content. A stricter `connect-src 'self'` profile that also cuts exfiltration is left
-as a future admin opt-in (study §6.3).
+**CSP profile.** Selectable via the `PUBLIC_VIEW_CSP_PROFILE` env var. The default
+`compatible` profile relies on the opaque origin to protect the session and still
+allows external `https:` assets (CDN, MathJax, external images, YouTube/Vimeo embeds)
+to avoid breaking legitimate content. Setting it to `strict` additionally cuts data
+exfiltration (`connect-src 'none'`, no open `https:`, `'unsafe-eval'` dropped) for
+sensitive deployments, at the cost of breaking content that depends on external
+resources (study §6.3).
+
+**Cost protection.** The export for a public view is built once and the unzipped
+result cached in memory (LRU-capped). Concurrent first-time requests for the same
+project are **coalesced onto a single in-flight build** (no thundering herd), and an
+export exceeding the size/file-count bounds is rejected. Per-IP rate limiting is left
+to the reverse proxy / a dedicated middleware.
 
 | Component | File | Purpose |
 |-----------|------|---------|

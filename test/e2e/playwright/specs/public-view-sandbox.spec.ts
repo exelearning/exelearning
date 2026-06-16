@@ -63,6 +63,8 @@ test.describe('Public view isolation (opaque-origin sandbox)', () => {
         const sandboxAttr = await iframeEl.getAttribute('sandbox');
         expect(sandboxAttr).toContain('allow-scripts');
         expect(sandboxAttr).not.toContain('allow-same-origin');
+        // Do not leak the public URL as Referer to external resources.
+        expect(await iframeEl.getAttribute('referrerpolicy')).toBe('no-referrer');
 
         // Probe isolation from INSIDE the content frame.
         await expect(iframeEl).toBeVisible();

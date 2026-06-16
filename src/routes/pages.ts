@@ -32,6 +32,7 @@ import {
     PUBLIC_VIEW_SANDBOX,
     publicViewCspHeader,
     publicViewPermissionsPolicy,
+    resolvePublicViewCspProfile,
 } from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
@@ -676,7 +677,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 return new Response(file.content, {
                     headers: {
                         'Content-Type': file.contentType,
-                        'Content-Security-Policy': publicViewCspHeader(),
+                        'Content-Security-Policy': publicViewCspHeader(resolvePublicViewCspProfile()),
                         'Permissions-Policy': publicViewPermissionsPolicy(),
                         'X-Content-Type-Options': 'nosniff',
                         'Cache-Control': 'no-store',

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'bun:test';
-import { PUBLIC_VIEW_SANDBOX, publicViewCspHeader, publicViewPermissionsPolicy } from './publicViewSandbox';
+import {
+    PUBLIC_VIEW_SANDBOX,
+    publicViewCspHeader,
+    publicViewPermissionsPolicy,
+    resolvePublicViewCspProfile,
+} from './publicViewSandbox';
 
 describe('PUBLIC_VIEW_SANDBOX', () => {
     it('grants scripts but never allow-same-origin (opaque origin)', () => {
@@ -22,9 +27,32 @@ describe('publicViewCspHeader', () => {
         expect(csp).toContain("frame-ancestors 'self'");
     });
 
-    it('keeps the compatible profile (external https resources allowed)', () => {
+    it('keeps the compatible profile by default (external https resources allowed)', () => {
         expect(csp).toContain("default-src 'self' data: blob: https:");
         expect(csp).toContain("connect-src 'self' https:");
+    });
+
+    it('strict profile cuts external resources and exfiltration', () => {
+        const strict = publicViewCspHeader('strict');
+        expect(strict).toContain(`sandbox ${PUBLIC_VIEW_SANDBOX}`);
+        expect(strict).toContain("connect-src 'none'");
+        expect(strict).toContain("default-src 'self'");
+        expect(strict).not.toContain('https:');
+        expect(strict).not.toContain("'unsafe-eval'");
+        expect(strict).toContain("object-src 'none'");
+        expect(strict).toContain("frame-ancestors 'self'");
+    });
+});
+
+describe('resolvePublicViewCspProfile', () => {
+    it('defaults to compatible when unset or unknown', () => {
+        expect(resolvePublicViewCspProfile({})).toBe('compatible');
+        expect(resolvePublicViewCspProfile({ PUBLIC_VIEW_CSP_PROFILE: 'whatever' })).toBe('compatible');
+    });
+
+    it('selects strict (case-insensitive, trimmed)', () => {
+        expect(resolvePublicViewCspProfile({ PUBLIC_VIEW_CSP_PROFILE: 'strict' })).toBe('strict');
+        expect(resolvePublicViewCspProfile({ PUBLIC_VIEW_CSP_PROFILE: '  STRICT  ' })).toBe('strict');
     });
 });
 

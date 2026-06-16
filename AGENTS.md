@@ -257,6 +257,7 @@ Configure via `.env` file (use `.env.dist` as template).
 | `APP_SECRET` | JWT secret | (required) |
 | `BASE_PATH` | URL prefix for subdirectory install | (empty) |
 | `APP_AUTH_METHODS` | Auth methods | `password` |
+| `PUBLIC_VIEW_CSP_PROFILE` | Public view CSP: `compatible` (allows external `https:` assets) or `strict` (`connect-src 'none'`, no external resources) | `compatible` |
 
 ## 9. Profiling
 
