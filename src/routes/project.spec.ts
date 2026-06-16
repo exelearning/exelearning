@@ -4080,9 +4080,34 @@ describe('Project Routes', () => {
     describe('Link Validation Extended Coverage', () => {
         // Brokenlinks endpoint now requires authentication (bug H1); supply a token to each request.
         let authToken: string;
+        // Hermetic DNS + fetch injected into the brokenlinks route so external-link
+        // validation never performs real DNS/HTTP. A real lookup of a non-existent
+        // external host can hang past the 5s test timeout and flake CI — the
+        // 'protocol-relative URLs' case did exactly that. The resolver returns a
+        // fixed public IP (so the SSRF guard allows the host) and the fetch fails
+        // fast, exercising validateLink's broken-link branch deterministically.
+        const HERMETIC_FETCH_ERROR = 'mocked fetch failure (hermetic test: no real network)';
+        let dnsLookups: string[];
 
         beforeEach(async () => {
             authToken = await createAuthToken(1);
+            dnsLookups = [];
+            const hermeticLookup = async (hostname: string) => {
+                dnsLookups.push(hostname);
+                return [{ address: '93.184.216.34' }]; // public IP — SSRF guard allows it; never actually contacted
+            };
+            const hermeticFetch = (async () => {
+                throw new Error(HERMETIC_FETCH_ERROR);
+            }) as unknown as typeof fetch;
+            // Rebuild the app injecting the hermetic resolver + fetch into the
+            // (symfony-compat) brokenlinks route. createProjectRoutes has no link
+            // validation, so it keeps the shared mockDeps untouched.
+            app = new Elysia().use(createProjectRoutes(mockDeps)).use(
+                createSymfonyCompatProjectRoutes({
+                    ...mockDeps,
+                    linkValidation: { lookupFn: hermeticLookup, fetchImpl: hermeticFetch },
+                }),
+            );
         });
 
         it('should return null (valid) for existing internal files/', async () => {
@@ -4162,7 +4187,7 @@ describe('Project Routes', () => {
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: '<a href="//example.invalid-domain-xyz.com/path">Protocol Relative</a>',
+                                html: '<a href="//nonexistent-host.invalid/path">Protocol Relative</a>',
                                 pageName: 'Page 1',
                             },
                         ],
@@ -4171,7 +4196,13 @@ describe('Project Routes', () => {
             );
 
             expect(res.status).toBe(200);
-            // Should try to validate and likely fail (network error)
+            // Regression guard for the flaky 5s-timeout: the route must forward the
+            // injected resolver + fetch (no real DNS/HTTP) and normalize the
+            // protocol-relative '//host' to 'https://host' before validating, so the
+            // host reaches the resolver and the link is reported broken.
+            expect(dnsLookups).toContain('nonexistent-host.invalid');
+            const body = await res.json();
+            expect(body.brokenLinks[0].brokenLinksError).toBe(HERMETIC_FETCH_ERROR);
         });
 
         it('should handle absolute URLs to unreachable hosts', async () => {

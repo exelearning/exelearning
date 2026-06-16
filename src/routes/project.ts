@@ -44,6 +44,7 @@ import {
     type ExtractedLink,
     type IdeviceContent,
 } from '../services/link-validator';
+import type { LookupFn } from '../utils/ssrf-guard';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getPreferenceValue } from '../db/queries/preferences';
@@ -224,6 +225,20 @@ export interface AccessNotifierDeps {
 }
 
 /**
+ * Link-validation overrides forwarded to the SSRF-hardened validateLink().
+ *
+ * Production leaves these undefined (real DNS + fetch). Tests inject a hermetic
+ * DNS resolver / fetch so the brokenlinks endpoint never performs real network
+ * I/O — otherwise a real lookup of a non-existent external host can hang past the
+ * test timeout and flake CI.
+ */
+export interface LinkValidationDeps {
+    lookupFn?: LookupFn;
+    fetchImpl?: typeof fetch;
+    timeout?: number;
+}
+
+/**
  * All dependencies for project routes
  */
 export interface ProjectDependencies {
@@ -235,6 +250,7 @@ export interface ProjectDependencies {
     queries?: QueriesDeps;
     utils?: UtilsDeps;
     accessNotifier?: AccessNotifierDeps;
+    linkValidation?: LinkValidationDeps;
 }
 
 // Default dependencies
@@ -764,6 +780,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
     // File helper functions
     const { getOdeSessionTempDir, getFilesDir, getProjectAssetsDir } = deps.fileHelper ?? defaultFileHelper;
+
+    // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
+    const linkValidation = deps.linkValidation ?? {};
 
     // Query functions
     const {
@@ -1864,7 +1883,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const allBrokenLinks: BrokenLinkInfo[] = [];
 
                 for (const link of links) {
-                    const validationError = await validateLink(link.url, { filesDir });
+                    const validationError = await validateLink(link.url, { filesDir, ...linkValidation });
                     if (validationError) {
                         allBrokenLinks.push(toBrokenLinkInfo(link, validationError));
                     }
@@ -1927,7 +1946,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     const filesDir = getFilesDir();
 
                     // Stream validation results as SSE events
-                    for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                    for await (const result of validateLinksStream(links, {
+                        filesDir,
+                        batchSize: 5,
+                        ...linkValidation,
+                    })) {
                         yield {
                             event: 'link-validated',
                             data: JSON.stringify(result),
