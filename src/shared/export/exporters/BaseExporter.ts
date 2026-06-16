@@ -49,6 +49,12 @@ export abstract class BaseExporter {
     // Cache for asset export path lookups (folderPath-based)
     protected assetExportPathMap: Map<string, string> | null = null;
 
+    // UUID-format asset references that could not be resolved to a bundled file.
+    // These produce a dangling `content/resources/<uuid>` URL with no binary behind
+    // it (the collaborative image-loss bug). Collected so the save/export flow can
+    // surface the loss instead of degrading silently.
+    protected unresolvedAssetRefs: Set<string> = new Set();
+
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
         this.resources = resources;
@@ -767,6 +773,7 @@ export abstract class BaseExporter {
             console.warn(
                 `[BaseExporter] Unresolved asset reference in HTML; falling back to literal UUID URL: asset://${uuid}${ext || ''}`,
             );
+            this.unresolvedAssetRefs.add(uuid);
             return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
 
@@ -802,6 +809,15 @@ export abstract class BaseExporter {
         result = result.replace(/content\/resources\/([^/"]+)\/\1(?=["'\s>])/g, 'content/resources/$1');
 
         return result;
+    }
+
+    /**
+     * UUID-format asset references encountered during export that could not be
+     * resolved to a bundled file. A non-empty result means the package ships
+     * dangling image/resource URLs (data loss) and callers should surface it.
+     */
+    getUnresolvedAssetRefs(): string[] {
+        return [...this.unresolvedAssetRefs];
     }
 
     /**

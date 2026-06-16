@@ -301,6 +301,78 @@ describe('AssetManager', () => {
     });
   });
 
+  // Regression (#1941): collaborative image loss caused by corrupted asset UUIDs.
+  // In a non-secure context (HTTP on an IP / some desktop contexts) crypto.subtle
+  // is unavailable and calculateHash() falls back to a JS FNV expansion. One term,
+  // `(hash ^ sizeHash)`, was NOT forced unsigned, so a 32-bit value with bit 31 set
+  // becomes a NEGATIVE Int32 whose .toString(16) emits a leading '-'. That '-' lands
+  // in the 4th UUID group (hashToUUID uses substring(16,20)), producing ids like
+  // `…-7ede--7a4-…`. Those malformed ids no longer match the stored blobs, the export
+  // cannot resolve them, and the images silently vanish from the package.
+  // The fallback is now a pure-JS SHA-256 (which never emits '-'); these tests guard
+  // against any future fallback reintroducing the corruption. "exe-0" forced the old bug.
+  describe('calculateHash — non-secure fallback hash is clean (no sign chars)', () => {
+    const TRIGGER_BYTES = new Uint8Array([101, 120, 101, 45, 48]); // "exe-0"
+
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    beforeEach(() => {
+      // Remove crypto.subtle so calculateHash() takes the non-secure fallback branch.
+      global.crypto = { randomUUID: mockCrypto.randomUUID };
+    });
+
+    it('returns exactly 64 lowercase hex chars with no sign character', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      expect(hash).not.toContain('-');
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives a well-formed asset UUID (no double dash) from the fallback hash', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      const uuid = assetManager.hashToUUID(hash);
+      expect(uuid).not.toContain('--');
+      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    });
+  });
+
+  // The asset id is content-derived. If it depends on whether crypto.subtle is
+  // available (secure SHA-256 vs a different fallback), the SAME image gets a
+  // DIFFERENT id across desktop/online clients, so references diverge and assets
+  // are lost on collaborative/desktop round-trips (#1941). The fallback must be a
+  // real, context-independent SHA-256.
+  describe('calculateHash — context-independent id (#1941)', () => {
+    const bytesFor = (s) => new TextEncoder().encode(s);
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    it('produces real SHA-256 in the non-secure fallback (known vector "abc")', async () => {
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // no subtle -> fallback
+      const hash = await assetManager.calculateHash(makeBlob(bytesFor('abc')));
+      expect(hash).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+    });
+
+    it('yields the SAME hash with and without crypto.subtle', async () => {
+      const bytes = bytesFor('collab-image-payload');
+      global.crypto = require('crypto').webcrypto; // real secure context
+      const secure = await assetManager.calculateHash(makeBlob(bytes));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure fallback
+      const fallback = await assetManager.calculateHash(makeBlob(bytes));
+      expect(fallback).toBe(secure);
+      expect(fallback).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives the SAME asset id across contexts → no duplicate on re-open', async () => {
+      const bytes = bytesFor('same-image-bytes');
+      global.crypto = require('crypto').webcrypto; // secure (desktop / HTTPS)
+      const secureId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure (cloud over IP)
+      const fallbackId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      // Same content-addressed id in every context, so the existing dedup
+      // (insertImage -> getAsset(id)) reuses it and never creates a duplicate
+      // when a project moves between desktop/HTTPS and a non-secure HTTP-on-IP cloud.
+      expect(fallbackId).toBe(secureId);
+    });
+  });
+
   describe('putAsset', () => {
     it('stores asset metadata in Yjs and blob in memory', async () => {
       const testBlob = new Blob(['test data']);
