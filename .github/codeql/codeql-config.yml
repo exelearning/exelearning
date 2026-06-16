@@ -23,6 +23,11 @@ paths-ignore:
   # Vendored/generated math editor assets.
   - public/app/common/fMath/**
   # Test code and fixtures are never shipped to users.
+  # Deliberate trade-off: excluding test/** also removes any future test
+  # helpers that perform real I/O (filesystem, network, child processes) from
+  # CodeQL's scope, so genuine issues in such helpers will not be flagged here.
+  # This is accepted because test code is never shipped to end users; review
+  # test helpers manually if they touch untrusted input.
   - "**/*.test.js"
   - "**/*.spec.ts"
   - test/**
