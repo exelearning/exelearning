@@ -741,8 +741,8 @@ it('should filter by accept=3d for 3D models', () => {
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
       // Now uploads to current folder (empty = root by default).
-      // #1951: forceNewId so byte-identical files at different paths stay distinct assets.
-      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: '', forceNewId: true });
+      // #1951: at ROOT, dedup stays on (forceNewId false) so cross-project content reuse works.
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: '', forceNewId: false });
       expect(loadSpy).toHaveBeenCalled();
     });
 

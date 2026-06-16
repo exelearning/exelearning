@@ -2086,15 +2086,16 @@ export default class ModalFilemanager extends Modal {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder.
-                // #1951: the file manager is a filesystem-like view where distinct paths are
-                // distinct files. forceNewId opts out of content-hash dedup so byte-identical
-                // files dropped into different folders keep their own folderPath instead of one
-                // collapsing onto the other and overwriting its folderPath (which broke
-                // self-contained HTML bundles, e.g. Hype exports). Mirrors extractZipAsset
-                // and duplicateSelectedAsset, which already use forceNewId.
+                // #1951: a byte-identical file dropped into a DIFFERENT folder must keep its
+                // own folderPath instead of collapsing onto an existing asset and overwriting
+                // its folderPath (which broke self-contained HTML bundles, e.g. Hype exports).
+                // That overwrite only happens for non-root uploads (at root the folderPath is
+                // empty, so insertImage never rewrites it), so opt out of content-hash dedup
+                // ONLY for subfolder uploads. Root uploads keep dedup so cross-project content
+                // reuse (the same image shared across projects) still resolves to one asset.
                 const url = await this.assetManager.insertImage(file, {
                     folderPath: this.currentPath,
-                    forceNewId: true,
+                    forceNewId: Boolean(this.currentPath),
                 });
                 uploadedCount++;
                 lastUploadedUrl = url;
