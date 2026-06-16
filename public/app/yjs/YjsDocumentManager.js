@@ -503,34 +503,54 @@ class YjsDocumentManager {
    */
   async _waitForFullSync() {
     const fullSyncTimeout = this.config.fullSyncTimeout;
+    const provider = this.wsProvider;
 
     return new Promise((resolve) => {
-      // If already synced, resolve immediately
-      if (this.wsProvider?.synced) {
+      // No provider, or already synced: nothing to wait for.
+      if (!provider || provider.synced) {
         resolve();
         return;
       }
 
-      // Set timeout
-      const timeout = setTimeout(() => {
-        Logger.log(
-          `[YjsDocumentManager] Full sync timeout (${fullSyncTimeout}ms), proceeding`
-        );
-        resolve();
-      }, fullSyncTimeout);
+      let settled = false;
+      let timeout = null;
 
-      // Wait for sync event
-      if (this.wsProvider) {
-        this.wsProvider.once('sync', (isSynced) => {
-          if (isSynced) {
-            clearTimeout(timeout);
-            Logger.log('[YjsDocumentManager] WebSocket synced with other clients');
-            resolve();
-          }
-        });
-      } else {
-        clearTimeout(timeout);
+      const finish = (reason) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        // Always detach so a later sync/disconnect can't invoke a stale handler.
+        if (typeof provider.off === 'function') {
+          provider.off('sync', onSync);
+        }
+        Logger.log(`[YjsDocumentManager] Full sync wait resolved (${reason})`);
         resolve();
+      };
+
+      // Use a PERSISTENT listener (not once): y-websocket emits sync(false) on a
+      // reconnect/handshake blip, and `once` would consume that and then wait out
+      // the whole timeout even though a real sync(true) follows. We keep listening
+      // until the first sync(true) or the timeout, whichever comes first.
+      const onSync = (isSynced) => {
+        if (isSynced) {
+          finish('sync-event');
+        }
+      };
+
+      timeout = setTimeout(() => finish('timeout'), fullSyncTimeout);
+
+      if (typeof provider.on === 'function') {
+        provider.on('sync', onSync);
+      }
+
+      // Close the race window: sync may have completed between the early check
+      // above and attaching the listener.
+      if (provider.synced) {
+        finish('already-synced');
       }
     });
   }
