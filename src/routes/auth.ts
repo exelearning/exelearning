@@ -56,19 +56,22 @@ export function shouldAutoCreateUsers(): boolean {
  * discovery document is unavailable. See `services/oidc-discovery.ts`.
  */
 export async function getResolvedOidcConfig(db: Kysely<Database>): Promise<ResolvedOidcEndpoints> {
-    const [issuer, authorizationEndpoint, tokenEndpoint, userinfoEndpoint, endSessionEndpoint] = await Promise.all([
-        getSettingString(db, 'OIDC_ISSUER', process.env.OIDC_ISSUER || ''),
-        getSettingString(db, 'OIDC_AUTHORIZATION_ENDPOINT', process.env.OIDC_AUTHORIZATION_ENDPOINT || ''),
-        getSettingString(db, 'OIDC_TOKEN_ENDPOINT', process.env.OIDC_TOKEN_ENDPOINT || ''),
-        getSettingString(db, 'OIDC_USERINFO_ENDPOINT', process.env.OIDC_USERINFO_ENDPOINT || ''),
-        getSettingString(db, 'OIDC_END_SESSION_ENDPOINT', process.env.OIDC_END_SESSION_ENDPOINT || ''),
-    ]);
+    const [issuer, authorizationEndpoint, tokenEndpoint, userinfoEndpoint, endSessionEndpoint, jwksUri] =
+        await Promise.all([
+            getSettingString(db, 'OIDC_ISSUER', process.env.OIDC_ISSUER || ''),
+            getSettingString(db, 'OIDC_AUTHORIZATION_ENDPOINT', process.env.OIDC_AUTHORIZATION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_TOKEN_ENDPOINT', process.env.OIDC_TOKEN_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_USERINFO_ENDPOINT', process.env.OIDC_USERINFO_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_END_SESSION_ENDPOINT', process.env.OIDC_END_SESSION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || ''),
+        ]);
     return resolveOidcEndpoints({
         issuer,
         authorizationEndpoint,
         tokenEndpoint,
         userinfoEndpoint,
         endSessionEndpoint,
+        jwksUri,
     });
 }
 
@@ -864,7 +867,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
                 }
 
-                const { tokenEndpoint, userinfoEndpoint } = await getResolvedOidcConfig(db);
+                const { tokenEndpoint, userinfoEndpoint, jwksUri } = await getResolvedOidcConfig(db);
                 if (!tokenEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -904,9 +907,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                     // Decode ID token to get user info.
                     //
-                    // Security: when OIDC_JWKS_URI is configured we verify the
+                    // Security: when a JWKS URI is available we verify the
                     // signature against the provider's published JWKS, which
-                    // is the only way to trust the claims. Without JWKS we
+                    // is the only way to trust the claims. The JWKS URI is
+                    // taken from the explicit OIDC_JWKS_URI setting and, when
+                    // that is blank, from the issuer's discovery document
+                    // (jwks_uri) — so a minimal OIDC_ISSUER-only config still
+                    // verifies signatures. Only when neither is available do we
                     // fall back to decoding (preserves legacy behaviour) but
                     // log a loud warning so the operator notices. The nonce
                     // claim, when our authorize request set one, is always
@@ -916,7 +923,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     let idTokenPayload: Record<string, unknown> | undefined;
 
                     if (idToken) {
-                        const jwksUri = await getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || '');
                         if (jwksUri) {
                             try {
                                 const { jwtVerify, createRemoteJWKSet } = await import('jose');
@@ -935,8 +941,10 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             }
                         } else {
                             console.warn(
-                                '[auth/openid] OIDC_JWKS_URI is not configured; id_token signature is NOT verified. ' +
-                                    'Set OIDC_JWKS_URI to enable signature verification in production.',
+                                '[auth/openid] No JWKS URI is available (neither OIDC_JWKS_URI nor a discovered ' +
+                                    'jwks_uri); id_token signature is NOT verified. Set OIDC_JWKS_URI or configure ' +
+                                    'OIDC_ISSUER so discovery can supply jwks_uri to enable signature verification ' +
+                                    'in production.',
                             );
                             try {
                                 const [, payloadB64] = idToken.split('.');

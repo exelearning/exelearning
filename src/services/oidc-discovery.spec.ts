@@ -7,12 +7,13 @@
  * values that were not configured explicitly. Explicit configuration always
  * wins; discovery never overrides it.
  */
-import { describe, it, expect, beforeEach, mock, spyOn } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from 'bun:test';
 import {
     discoverOidcMetadata,
     resolveOidcEndpoints,
     resetOidcDiscoveryCache,
     normalizeIssuer,
+    setOidcDiscoveryCacheTtlForTesting,
     type OidcDiscoveryMetadata,
 } from './oidc-discovery';
 
@@ -25,6 +26,7 @@ function metadataDoc(overrides: Partial<OidcDiscoveryMetadata> = {}): OidcDiscov
         token_endpoint: `${ISSUER}/token`,
         userinfo_endpoint: `${ISSUER}/userinfo`,
         end_session_endpoint: `${ISSUER}/logout`,
+        jwks_uri: `${ISSUER}/jwks`,
         ...overrides,
     };
 }
@@ -178,6 +180,45 @@ describe('discoverOidcMetadata', () => {
         await expect(discoverOidcMetadata('not-a-valid-url', { fetch: fetchMock })).rejects.toThrow(/https/i);
         expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it('exposes the discovered jwks_uri', async () => {
+        const fetchMock = jsonFetch(metadataDoc());
+        const meta = await discoverOidcMetadata(ISSUER, { fetch: fetchMock });
+        expect(meta.jwks_uri).toBe(`${ISSUER}/jwks`);
+    });
+
+    it('rejects when the injected fetch rejects (timeout / network error)', async () => {
+        const fetchMock = mock(async () => {
+            throw new Error('network timeout');
+        }) as unknown as typeof fetch;
+        await expect(discoverOidcMetadata(ISSUER, { fetch: fetchMock })).rejects.toThrow(/network timeout/i);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('discoverOidcMetadata cache TTL', () => {
+    beforeEach(() => resetOidcDiscoveryCache());
+    afterEach(() => setOidcDiscoveryCacheTtlForTesting(undefined));
+
+    it('re-fetches once the cached entry has expired (rotated endpoints)', async () => {
+        setOidcDiscoveryCacheTtlForTesting(1);
+        const fetchMock = jsonFetch(metadataDoc());
+        await discoverOidcMetadata(ISSUER, { fetch: fetchMock });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        // Wait for the (very short) TTL to elapse, then call again.
+        await new Promise(resolve => setTimeout(resolve, 5));
+        await discoverOidcMetadata(ISSUER, { fetch: fetchMock });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('still serves from cache within the TTL window', async () => {
+        setOidcDiscoveryCacheTtlForTesting(60_000);
+        const fetchMock = jsonFetch(metadataDoc());
+        await discoverOidcMetadata(ISSUER, { fetch: fetchMock });
+        await discoverOidcMetadata(ISSUER, { fetch: fetchMock });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('resolveOidcEndpoints', () => {
@@ -209,6 +250,7 @@ describe('resolveOidcEndpoints', () => {
                 tokenEndpoint: 'https://explicit/token',
                 userinfoEndpoint: 'https://explicit/userinfo',
                 endSessionEndpoint: 'https://explicit/logout',
+                jwksUri: 'https://explicit/jwks',
             },
             { fetch: fetchMock },
         );
@@ -317,6 +359,7 @@ describe('resolveOidcEndpoints', () => {
                 tokenEndpoint: 'https://explicit/token',
                 userinfoEndpoint: 'https://explicit/userinfo',
                 endSessionEndpoint: 'https://explicit/logout',
+                jwksUri: 'https://explicit/jwks',
             },
             { fetch: fetchMock },
         );
@@ -340,5 +383,99 @@ describe('resolveOidcEndpoints', () => {
         );
         expect(resolved.authorizationEndpoint).toBe(`${ISSUER}/authorize`);
         expect(resolved.endSessionEndpoint).toBe('');
+    });
+
+    it('fills jwksUri from discovery when not configured explicitly', async () => {
+        const fetchMock = jsonFetch(metadataDoc());
+        const resolved = await resolveOidcEndpoints(
+            {
+                issuer: ISSUER,
+                authorizationEndpoint: '',
+                tokenEndpoint: '',
+                userinfoEndpoint: '',
+                endSessionEndpoint: '',
+                jwksUri: '',
+            },
+            { fetch: fetchMock },
+        );
+        expect(resolved.jwksUri).toBe(`${ISSUER}/jwks`);
+    });
+
+    it('never lets discovery override an explicit jwksUri', async () => {
+        const fetchMock = jsonFetch(metadataDoc());
+        const resolved = await resolveOidcEndpoints(
+            {
+                issuer: ISSUER,
+                authorizationEndpoint: '',
+                tokenEndpoint: '',
+                userinfoEndpoint: '',
+                endSessionEndpoint: '',
+                jwksUri: 'https://explicit/jwks',
+            },
+            { fetch: fetchMock },
+        );
+        expect(resolved.jwksUri).toBe('https://explicit/jwks');
+    });
+
+    it('does NOT trigger discovery when only the optional end_session_endpoint is blank', async () => {
+        const fetchMock = jsonFetch(metadataDoc());
+        const resolved = await resolveOidcEndpoints(
+            {
+                issuer: ISSUER,
+                authorizationEndpoint: 'https://explicit/auth',
+                tokenEndpoint: 'https://explicit/token',
+                userinfoEndpoint: 'https://explicit/userinfo',
+                endSessionEndpoint: '',
+                jwksUri: 'https://explicit/jwks',
+            },
+            { fetch: fetchMock },
+        );
+        // end_session_endpoint is optional; its absence alone must not cost a discovery round-trip.
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(resolved.endSessionEndpoint).toBe('');
+    });
+
+    it('still triggers discovery when a required endpoint (jwksUri) is blank even if end_session is the only other gap', async () => {
+        const fetchMock = jsonFetch(metadataDoc());
+        const resolved = await resolveOidcEndpoints(
+            {
+                issuer: ISSUER,
+                authorizationEndpoint: 'https://explicit/auth',
+                tokenEndpoint: 'https://explicit/token',
+                userinfoEndpoint: 'https://explicit/userinfo',
+                endSessionEndpoint: '',
+                jwksUri: '',
+            },
+            { fetch: fetchMock },
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(resolved.jwksUri).toBe(`${ISSUER}/jwks`);
+        expect(resolved.endSessionEndpoint).toBe(`${ISSUER}/logout`);
+    });
+
+    it('swallows a rejecting fetch (timeout / network), warns, and falls back to explicit endpoints', async () => {
+        const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+        const fetchMock = mock(async () => {
+            throw new Error('network down');
+        }) as unknown as typeof fetch;
+        const resolved = await resolveOidcEndpoints(
+            {
+                issuer: ISSUER,
+                authorizationEndpoint: 'https://explicit/auth',
+                tokenEndpoint: 'https://explicit/token',
+                userinfoEndpoint: 'https://explicit/userinfo',
+                endSessionEndpoint: '',
+                jwksUri: '',
+            },
+            { fetch: fetchMock },
+        );
+        // resolveOidcEndpoints must not reject — it degrades gracefully.
+        expect(resolved.authorizationEndpoint).toBe('https://explicit/auth');
+        expect(resolved.tokenEndpoint).toBe('https://explicit/token');
+        // The endpoints that could only come from discovery stay empty.
+        expect(resolved.jwksUri).toBe('');
+        expect(resolved.endSessionEndpoint).toBe('');
+        expect(warnSpy).toHaveBeenCalled();
+        warnSpy.mockRestore();
     });
 });

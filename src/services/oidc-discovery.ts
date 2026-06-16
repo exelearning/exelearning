@@ -31,6 +31,11 @@ export interface OidcDiscoveryMetadata {
     token_endpoint?: string;
     userinfo_endpoint?: string;
     end_session_endpoint?: string;
+    /**
+     * URL of the provider's JSON Web Key Set. Used to verify the id_token
+     * signature without operators having to configure `OIDC_JWKS_URI` by hand.
+     */
+    jwks_uri?: string;
 }
 
 /** Explicitly configured OIDC endpoints (already resolved from settings/env). */
@@ -40,6 +45,8 @@ export interface OidcEndpointConfig {
     tokenEndpoint: string;
     userinfoEndpoint: string;
     endSessionEndpoint: string;
+    /** Explicit JWKS URI (`OIDC_JWKS_URI`); discovery fills it when blank. */
+    jwksUri?: string;
 }
 
 /** Effective OIDC endpoints after merging explicit config with discovery. */
@@ -48,6 +55,8 @@ export interface ResolvedOidcEndpoints {
     tokenEndpoint: string;
     userinfoEndpoint: string;
     endSessionEndpoint: string;
+    /** JWKS URI used to verify id_token signatures (explicit or discovered). */
+    jwksUri: string;
 }
 
 export interface OidcDiscoveryOptions {
@@ -60,12 +69,36 @@ export interface OidcDiscoveryOptions {
 /** Short timeout so discovery never stalls authentication startup or login. */
 const DEFAULT_TIMEOUT_MS = 5000;
 
+/**
+ * Default time-to-live for cached discovery metadata. Endpoints and signing
+ * keys rotate over time, so a cached document must eventually be re-fetched.
+ * One hour balances avoiding a per-login round-trip against picking up rotated
+ * endpoints in a reasonable window.
+ */
+const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000;
+
+let cacheTtlMs = DEFAULT_CACHE_TTL_MS;
+
+interface CacheEntry {
+    metadata: OidcDiscoveryMetadata;
+    /** Epoch milliseconds after which this entry must be re-fetched. */
+    expiresAt: number;
+}
+
 /** In-memory cache of validated discovery metadata, keyed by normalized issuer. */
-const metadataCache = new Map<string, OidcDiscoveryMetadata>();
+const metadataCache = new Map<string, CacheEntry>();
 
 /** Clear the discovery cache. Primarily for tests. */
 export function resetOidcDiscoveryCache(): void {
     metadataCache.clear();
+}
+
+/**
+ * Override the discovery cache TTL. Intended for tests so expiry can be
+ * exercised without waiting an hour. Passing `undefined` restores the default.
+ */
+export function setOidcDiscoveryCacheTtlForTesting(ttlMs: number | undefined): void {
+    cacheTtlMs = ttlMs ?? DEFAULT_CACHE_TTL_MS;
 }
 
 /** Trim whitespace and strip trailing slashes so issuers compare consistently. */
@@ -106,7 +139,8 @@ export async function discoverOidcMetadata(
     }
 
     const cached = metadataCache.get(normalized);
-    if (cached) return cached;
+    if (cached && cached.expiresAt > Date.now()) return cached.metadata;
+    if (cached) metadataCache.delete(normalized);
 
     if (!isHttpsOrLocalhost(normalized)) {
         throw new Error(
@@ -146,7 +180,7 @@ export async function discoverOidcMetadata(
         throw new Error(`OIDC discovery document for "${issuer}" is missing "token_endpoint".`);
     }
 
-    metadataCache.set(normalized, doc);
+    metadataCache.set(normalized, { metadata: doc, expiresAt: Date.now() + cacheTtlMs });
     return doc;
 }
 
@@ -165,16 +199,17 @@ export async function resolveOidcEndpoints(
         tokenEndpoint: config.tokenEndpoint,
         userinfoEndpoint: config.userinfoEndpoint,
         endSessionEndpoint: config.endSessionEndpoint,
+        jwksUri: config.jwksUri ?? '',
     };
 
     const issuer = normalizeIssuer(config.issuer);
     if (!issuer) return resolved;
 
+    // `end_session_endpoint` is optional in OIDC (e.g. Google does not publish
+    // it). Its absence alone must NOT cost a discovery round-trip on every
+    // login — only a genuinely required endpoint left blank justifies one.
     const needsDiscovery =
-        !resolved.authorizationEndpoint ||
-        !resolved.tokenEndpoint ||
-        !resolved.userinfoEndpoint ||
-        !resolved.endSessionEndpoint;
+        !resolved.authorizationEndpoint || !resolved.tokenEndpoint || !resolved.userinfoEndpoint || !resolved.jwksUri;
     if (!needsDiscovery) return resolved;
 
     try {
@@ -190,6 +225,9 @@ export async function resolveOidcEndpoints(
         }
         if (!resolved.endSessionEndpoint && meta.end_session_endpoint) {
             resolved.endSessionEndpoint = meta.end_session_endpoint;
+        }
+        if (!resolved.jwksUri && meta.jwks_uri) {
+            resolved.jwksUri = meta.jwks_uri;
         }
     } catch (error) {
         console.warn(

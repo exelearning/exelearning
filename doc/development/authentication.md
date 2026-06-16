@@ -74,7 +74,7 @@ Notes
 
 ## OIDC endpoint resolution (Discovery)
 
-eXeLearning resolves the four OIDC endpoints — `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, and `end_session_endpoint` — by combining your explicit configuration with **OpenID Connect Discovery**.
+eXeLearning resolves the OIDC endpoints — `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, `end_session_endpoint`, and `jwks_uri` — by combining your explicit configuration with **OpenID Connect Discovery**.
 
 ### Minimal configuration (discovery)
 
@@ -87,7 +87,7 @@ OIDC_CLIENT_SECRET=your-client-secret
 OIDC_SCOPE="openid email"
 ```
 
-On the first login the backend fetches `${OIDC_ISSUER}/.well-known/openid-configuration` and derives the endpoints it needs.
+On the first login the backend fetches `${OIDC_ISSUER}/.well-known/openid-configuration` and derives the endpoints it needs. This includes the `jwks_uri`, so **id_token signatures are verified out of the box** without configuring `OIDC_JWKS_URI` by hand.
 
 ### Explicit configuration (manual override)
 
@@ -98,6 +98,7 @@ OIDC_AUTHORIZATION_ENDPOINT=https://idp.example.com/connect/authorize
 OIDC_TOKEN_ENDPOINT=https://idp.example.com/connect/token
 OIDC_USERINFO_ENDPOINT=https://idp.example.com/connect/userinfo
 OIDC_END_SESSION_ENDPOINT=https://idp.example.com/connect/endsession
+OIDC_JWKS_URI=https://idp.example.com/.well-known/jwks.json
 ```
 
 ### Precedence rules
@@ -112,11 +113,15 @@ OIDC_END_SESSION_ENDPOINT=https://idp.example.com/connect/endsession
 - If discovery **fails** (issuer unreachable, non-200, malformed/incomplete metadata, or issuer mismatch) the app falls back to whatever endpoints are configured explicitly. Logins still work if those cover the required endpoints; otherwise the route returns a clear "OpenID Connect is misconfigured" error.
 - The discovered `issuer` must match `OIDC_ISSUER` (a trailing-slash difference is tolerated). A mismatched issuer is rejected to prevent metadata substitution.
 - Discovery requires **HTTPS**, except for local development issuers (`http://localhost`, `http://127.0.0.1`, `http://[::1]`).
-- Discovery uses a short timeout and the result is **cached in memory per issuer**, so it does not run on every login.
+- Discovery uses a short timeout and the result is **cached in memory per issuer with a TTL** (one hour), so it does not run on every login but rotated endpoints and signing keys are eventually re-fetched.
 
 ### Optional logout endpoint
 
-`end_session_endpoint` is optional. When present in the discovery document it is used for OIDC logout unless `OIDC_END_SESSION_ENDPOINT` is set explicitly (explicit wins). Providers that do not publish it (e.g. Google) fall back to access-token revocation.
+`end_session_endpoint` is optional. When present in the discovery document it is used for OIDC logout unless `OIDC_END_SESSION_ENDPOINT` is set explicitly (explicit wins). Providers that do not publish it (e.g. Google) fall back to access-token revocation. Because it is optional, a blank `end_session_endpoint` alone does **not** trigger a discovery request — discovery runs only when a required endpoint (authorization, token, userinfo, or jwks_uri) is missing.
+
+### id_token signature verification (JWKS)
+
+The id_token returned from the token endpoint is verified against the provider's published JSON Web Key Set. The JWKS URI is resolved like the other endpoints: an explicit `OIDC_JWKS_URI` wins, otherwise the `jwks_uri` from the discovery document is used. When neither is available the signature **cannot** be verified — the app falls back to decoding the token unverified and logs a loud warning. Configure `OIDC_ISSUER` (so discovery supplies `jwks_uri`) or set `OIDC_JWKS_URI` explicitly to enable verification in production.
 
 ## OpenID Connect: Provider Setup
 

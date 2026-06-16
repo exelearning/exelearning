@@ -1906,6 +1906,95 @@ describe('Auth Routes', () => {
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('oidc_id_token=');
         });
+
+        it('discovers jwks_uri from the issuer and verifies the id_token signature against it', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevIssuer = process.env.OIDC_ISSUER;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            const prevJwks = process.env.OIDC_JWKS_URI;
+            const prevClientId = process.env.OIDC_CLIENT_ID;
+
+            const issuer = 'https://idp.jwks-discovery.example.com';
+            const jwksUri = `${issuer}/jwks`;
+
+            // Minimal config: ONLY the issuer is set. No explicit endpoints, no
+            // explicit OIDC_JWKS_URI. Discovery must supply both the token
+            // endpoint and the jwks_uri.
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_TOKEN_ENDPOINT;
+            delete process.env.OIDC_JWKS_URI;
+            process.env.OIDC_CLIENT_ID = 'jwks-client';
+
+            resetOidcDiscoveryCache();
+
+            // Mock id_token with a structurally valid (RS256) header so the JWKS
+            // verifier proceeds to resolve the signing key from the discovered
+            // jwks_uri. The signature is bogus, so verification must reject it.
+            // (If the unverified base64 fallback were used instead, this token
+            // would be accepted and the request would succeed with a 302.)
+            const idTokenHeader = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'test-kid', typ: 'JWT' })).toString(
+                'base64url',
+            );
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({ sub: 'jwks-user', email: 'jwks@example.com' }),
+            ).toString('base64url');
+            const mockIdToken = `${idTokenHeader}.${idTokenPayload}.unverifiable-signature`;
+
+            let jwksFetched = false;
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                const href = url.toString();
+                if (href.endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            jwks_uri: jwksUri,
+                        }),
+                    } as unknown as Response;
+                }
+                if (href === jwksUri) {
+                    jwksFetched = true;
+                    // Empty key set so signature verification cannot succeed.
+                    return new Response(JSON.stringify({ keys: [] }), {
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                }
+                if (href.endsWith('/token')) {
+                    return new Response(JSON.stringify({ access_token: 'access-token-jwks', id_token: mockIdToken }));
+                }
+                throw new Error(`Unexpected fetch in jwks discovery test: ${href}`);
+            }) as unknown as typeof fetch;
+
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=jwks-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevIssuer !== undefined) process.env.OIDC_ISSUER = prevIssuer;
+            else delete process.env.OIDC_ISSUER;
+            if (prevTokenEndpoint !== undefined) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevJwks !== undefined) process.env.OIDC_JWKS_URI = prevJwks;
+            if (prevClientId !== undefined) process.env.OIDC_CLIENT_ID = prevClientId;
+            else delete process.env.OIDC_CLIENT_ID;
+            resetOidcDiscoveryCache();
+
+            // The discovered jwks_uri was used for verification...
+            expect(jwksFetched).toBe(true);
+            // ...and because the token is not actually signed by that JWKS, the
+            // signature verification rejected it (instead of silently trusting
+            // an unverified base64-decoded payload).
+            expect(response.status).toBe(401);
+            // The user must NOT have been created from an unverified token.
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'jwks@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
+        });
     });
 
     // =========================================================================
