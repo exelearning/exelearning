@@ -200,12 +200,32 @@ describe('exe_xapi emitter', () => {
         expect(s.actor.account.homePage).toBe('https://exelearning.net/xapi/PKG1');
     });
 
-    it('honours an injected actor', () => {
+    it('honours an injected actor when posting to a configured parentOrigin', () => {
+        window.exeXapi = {
+            odeId: 'PKG1',
+            actor: { mbox: 'mailto:a@b.c', objectType: 'Agent' },
+            parentOrigin: 'https://moodle.test',
+        };
+        const spy = installFakeParent();
+        xapi.init();
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 1 });
+        const answered = statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/answered')[0];
+        expect(answered.actor.mbox).toBe('mailto:a@b.c'); // delivered intact to the intended host
+    });
+
+    it('anonymizes the actor when broadcasting to an unrestricted origin (no parentOrigin)', () => {
+        // Security (#1867): with no parentOrigin the statement is posted to '*'
+        // (any origin); a configured learner identity must NOT leak there.
         window.exeXapi = { odeId: 'PKG1', actor: { mbox: 'mailto:a@b.c', objectType: 'Agent' } };
         const spy = installFakeParent();
         xapi.init();
         xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 1 });
-        expect(lastStatement(spy).actor.mbox).toBe('mailto:a@b.c');
+        const answeredCall = spy.mock.calls.find(
+            (c) => c[0].statement.verb.id === 'http://adlnet.gov/expapi/verbs/answered'
+        );
+        expect(answeredCall[1]).toBe('*'); // broadcast to any origin
+        expect(answeredCall[0].statement.actor.mbox).toBeUndefined(); // real identity stripped
+        expect(answeredCall[0].statement.actor.account.name).toBe('anonymous');
     });
 
     it('honours an injected baseIri override and parentOrigin', () => {
@@ -252,7 +272,10 @@ describe('exe_xapi emitter', () => {
         });
         const spy = installFakeParent();
         try {
-            window.exeXapi = { odeId: 'PKG1' };
+            // parentOrigin set so the parsed launch actor is delivered to the
+            // concrete host (without it, broadcasting to '*' anonymizes it; see
+            // the dedicated anonymization test above).
+            window.exeXapi = { odeId: 'PKG1', parentOrigin: 'https://h' };
             xapi.init();
             xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 1 });
             expect(lastStatement(spy).actor.mbox).toBe('mailto:l@x.y');

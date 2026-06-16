@@ -437,10 +437,22 @@
         _actor: function () {
             if (this.config && this.config.actor) return this.config.actor;
             if (this.launch && this.launch.actor) return this.launch.actor;
+            return this._anonymousActor();
+        },
+
+        /**
+         * Build the anonymous fallback actor (carries no personal data). Shared
+         * by _actor() and by _postToParent() when broadcasting to an
+         * unrestricted target origin so a configured learner identity is never
+         * exposed to arbitrary embedders.
+         *
+         * @returns {object} anonymous xAPI Agent
+         */
+        _anonymousActor: function () {
             return {
                 objectType: 'Agent',
                 account: {
-                    homePage: this.config.baseIri || 'https://exelearning.net/xapi',
+                    homePage: (this.config && this.config.baseIri) || 'https://exelearning.net/xapi',
                     name: 'anonymous',
                 },
             };
@@ -461,11 +473,20 @@
             try {
                 if (root && root.parent && root.parent !== root && typeof root.parent.postMessage === 'function') {
                     // Prefer the configured target origin so the statement is
-                    // only delivered to the intended host. Fall back to '*' only
-                    // when no parentOrigin was configured (best-effort delivery);
-                    // statements carry no PII, so the fallback is safe by design.
-                    var target = (this.config && this.config.parentOrigin) || '*';
-                    root.parent.postMessage({ type: 'exe-xapi-statement', statement: statement }, target);
+                    // only delivered to the intended host.
+                    var parentOrigin = (this.config && this.config.parentOrigin) || '';
+                    var target = parentOrigin || '*';
+                    // Without a configured parentOrigin we broadcast to '*' (any
+                    // origin) as best-effort delivery. In that case strip a
+                    // possibly-real actor (config/launch may carry the learner's
+                    // identity) down to its anonymous form, so no PII leaks to an
+                    // arbitrary embedding page. The real actor still reaches a
+                    // configured LRS via _postToLrs().
+                    var payload = statement;
+                    if (!parentOrigin) {
+                        payload = Object.assign({}, statement, { actor: this._anonymousActor() });
+                    }
+                    root.parent.postMessage({ type: 'exe-xapi-statement', statement: payload }, target);
                 }
             } catch (e) { /* no-op */ }
         },
