@@ -9,6 +9,7 @@ import {
     findProjectByUuid,
     upsertSnapshot,
     findSnapshotByProjectId,
+    loadDocumentWithUpdates,
     updateProjectTitle,
     updateProjectTitleAndSave,
     checkProjectAccess,
@@ -26,6 +27,7 @@ import type { Database } from '../db/types';
 export interface YjsQueries {
     findProjectByUuid: typeof findProjectByUuid;
     findSnapshotByProjectId: typeof findSnapshotByProjectId;
+    loadDocumentWithUpdates: typeof loadDocumentWithUpdates;
     upsertSnapshot: typeof upsertSnapshot;
     updateProjectTitle: typeof updateProjectTitle;
     updateProjectTitleAndSave: typeof updateProjectTitleAndSave;
@@ -48,6 +50,7 @@ const defaultDependencies: YjsDependencies = {
     queries: {
         findProjectByUuid,
         findSnapshotByProjectId,
+        loadDocumentWithUpdates,
         upsertSnapshot,
         updateProjectTitle,
         updateProjectTitleAndSave,
@@ -119,20 +122,40 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     }
                 }
 
-                const snapshot = await queries.findSnapshotByProjectId(database, project.id);
-                if (!snapshot) {
+                // Read the canonical snapshot AND any incremental updates. The
+                // previous code returned only the snapshot, so a project whose
+                // server-side state lives in yjs_updates (e.g. edited via REST
+                // API v1) loaded as empty / 404 even though content existed (H5).
+                const { snapshot, updates } = await queries.loadDocumentWithUpdates(database, project.id);
+                if (!snapshot && updates.length === 0) {
                     return new Response(JSON.stringify({ error: 'Not Found', message: 'No document saved' }), {
                         status: 404,
                         headers: { 'Content-Type': 'application/json' },
                     });
                 }
 
-                // Convert database data to Uint8Array
-                // MySQL with Bun.SQL stores as base64, SQLite/PostgreSQL as binary
-                const binaryData = fromBinaryData(snapshot.snapshot_data);
+                // Fast path: a snapshot with no newer updates is returned as-is
+                // (avoids decoding the Y.Doc on the common browser-save case).
+                if (snapshot && updates.length === 0) {
+                    return new Response(fromBinaryData(snapshot.snapshot_data), {
+                        status: 200,
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                    });
+                }
 
-                // Return raw binary response - using Response object ensures proper binary handling
-                return new Response(binaryData, {
+                // Otherwise merge snapshot + updates into a single state vector.
+                const Y = await import('yjs');
+                const ydoc = new Y.Doc();
+                if (snapshot) {
+                    Y.applyUpdate(ydoc, fromBinaryData(snapshot.snapshot_data));
+                }
+                for (const update of updates) {
+                    Y.applyUpdate(ydoc, fromBinaryData(update.update_data));
+                }
+                const mergedState = Y.encodeStateAsUpdate(ydoc);
+                ydoc.destroy();
+
+                return new Response(mergedState, {
                     status: 200,
                     headers: { 'Content-Type': 'application/octet-stream' },
                 });
