@@ -151,4 +151,98 @@ test.describe('Centralized image caption', () => {
         await expect(caption).toContainText('Ada Lovelace');
         await expect(caption.locator('a.license[rel*="license"]')).toHaveCount(1);
     });
+
+    // Regression for @mnunezcedec's report: editing the per-instance Caption (Encabezado)
+    // and Notes (Observaciones) of an existing image must update the rendered caption, and
+    // the "Hide image caption" checkbox must persist (round-trip) and actually hide it.
+    test('editing caption heading/notes updates the figure, and Hide caption persists', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Image caption — edit + hide');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdevice(page);
+        await enterTextIdeviceEditMode(page);
+        await openFileManagerViaImageButton(page);
+        await uploadFixtureFile(page, 'test/fixtures/sample-2.jpg');
+        await page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first().click();
+        await page.waitForSelector('#modalFileManager .media-library-edit-metadata', {
+            state: 'visible',
+            timeout: 5000,
+        });
+        await page.locator('#modalFileManager .media-library-meta-title').fill('Sunset');
+        await page.locator('#modalFileManager .media-library-meta-title').blur();
+        await page.waitForTimeout(1500);
+        await insertFileIntoEditor(page, 'sample-2.jpg');
+
+        const frame = page.frameLocator('iframe.tox-edit-area__iframe').first();
+        const figure = frame.locator('figure.exe-figure[data-asset-id]').first();
+        await expect(figure).toHaveCount(1, { timeout: 10000 });
+
+        // Re-open the inserted image's dialog and fill Heading + Notes.
+        const reopenDialog = async (): Promise<void> => {
+            await figure.locator('img').first().click();
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await imageBtn.click();
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+        };
+        const labelledInput = (re: RegExp) =>
+            page
+                .locator('.tox-dialog label.tox-label', { hasText: re })
+                .first()
+                .locator('xpath=following::*[self::input or self::textarea][1]');
+        const saveDialog = async (): Promise<void> => {
+            await page
+                .locator('.tox-dialog .tox-button:has-text("Save"), .tox-dialog .tox-button:has-text("Guardar")')
+                .first()
+                .click();
+            // Dismiss the no-alt-text confirmation if it appears.
+            const yes = page.locator('.tox-dialog .tox-button:has-text("Yes"), .tox-dialog .tox-button:has-text("Sí")');
+            if (
+                await yes
+                    .first()
+                    .isVisible()
+                    .catch(() => false)
+            ) {
+                await yes.first().click();
+            }
+            await page.waitForSelector('.tox-dialog', { state: 'detached', timeout: 10000 }).catch(() => {});
+        };
+
+        await reopenDialog();
+        await labelledInput(/header|encabezado/i).fill('Figure 1');
+        await labelledInput(/notes|notas|observaciones/i).fill('Cropped for clarity');
+        await saveDialog();
+
+        // The caption now reflects the edited heading + notes (the bug: it did not).
+        await expect(figure.locator('.figcaption.header')).toContainText('Figure 1');
+        await expect(figure.locator('figcaption.figcaption')).toContainText('Cropped for clarity');
+
+        // Now hide the caption: the figcaption disappears but the figure (and the hidden
+        // state) must persist so it round-trips.
+        await reopenDialog();
+        await page
+            .locator('.tox-dialog .tox-checkbox')
+            .filter({ hasText: /hide image caption|ocultar/i })
+            .click();
+        await saveDialog();
+
+        await expect(figure).toHaveCount(1);
+        await expect(figure.locator('figcaption.figcaption')).toHaveCount(0);
+        expect(await figure.getAttribute('data-caption-hidden')).toBe('true');
+
+        // Re-opening shows the checkbox checked (the bug: it was unchecked).
+        await reopenDialog();
+        await expect(
+            page
+                .locator('.tox-dialog .tox-checkbox')
+                .filter({ hasText: /hide image caption|ocultar/i })
+                .locator('input'),
+        ).toBeChecked();
+    });
 });
