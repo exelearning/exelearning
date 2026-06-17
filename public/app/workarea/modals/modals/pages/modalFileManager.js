@@ -1566,12 +1566,17 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
-     * Whether an asset is a molecular-structure file accepted by the 3Dmol
-     * iDevice. Keep this list aligned with 3Dmol's local model parser:
-     * pdb, sdf, mol2, xyz, cif, mmcif, plus compressed containers it unpacks
-     * (zip, tgz, gz). Extension detection is required because uploaded
-     * molecule files often carry a generic MIME type (text/plain,
-     * application/octet-stream) instead of a chemical MIME type.
+     * Whether an asset is intrinsically a molecular-structure file: a chemical
+     * MIME type or a molecular extension (pdb, sdf, mol2, xyz, cif, mmcif).
+     * Extension detection is required because uploaded molecule files often
+     * carry a generic MIME type (text/plain, application/octet-stream) instead
+     * of a chemical MIME type.
+     *
+     * This drives library-wide classification (getAssetTypeCategory,
+     * getFileTypeLabel), so it must NOT include compressed containers
+     * (zip/tgz/gz) — a generic backup.zip is not a molecule. The 3Dmol picker
+     * additionally offers compressed containers via passesAcceptFilter +
+     * isCompressedContainer, because the iDevice can unpack and parse them.
      *
      * @param {string} mime - MIME type
      * @param {string} filename - Filename with extension
@@ -1591,11 +1596,22 @@ export default class ModalFilemanager extends Modal {
             return true;
         }
         const name = filename || '';
+        return /\.(pdb|sdf|mol2|xyz|cif|mmcif)$/i.test(name);
+    }
+
+    /**
+     * Whether a filename is a compressed container the 3Dmol picker can unpack
+     * (zip, tgz, gz), excluding tar.gz which the iDevice does not handle. This
+     * is only relevant inside the molecule accept filter — it must not affect
+     * library-wide classification (see isMoleculeAsset).
+     *
+     * @param {string} filename - Filename with extension
+     * @returns {boolean}
+     */
+    isCompressedContainer(filename) {
+        const name = filename || '';
         if (/\.tar\.gz$/i.test(name)) return false;
-        return (
-            /\.(pdb|sdf|mol2|xyz|cif|mmcif)$/i.test(name) ||
-            /\.(zip|tgz|gz)$/i.test(name)
-        );
+        return /\.(zip|tgz|gz)$/i.test(name);
     }
 
     /**
@@ -1622,7 +1638,9 @@ export default class ModalFilemanager extends Modal {
             case '3d':
                 return mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
             case 'molecule':
-                return this.isMoleculeAsset(mime, filename);
+                // The 3Dmol picker accepts genuine molecules plus compressed
+                // containers it can unpack (the latter only inside this filter).
+                return this.isMoleculeAsset(mime, filename) || this.isCompressedContainer(filename);
             default:
                 return true;
         }

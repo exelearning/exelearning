@@ -1229,6 +1229,15 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.getAssetTypeCategory('application/octet-stream', 'a.mmcif')).toBe('molecule');
     });
 
+    it('classifies generic compressed containers as other, not molecule', () => {
+      // Regression: zip/gz/tgz must not be mislabeled as molecules in the
+      // general media library (only offered inside the 3Dmol picker).
+      expect(modal.getAssetTypeCategory('application/zip', 'backup.zip')).toBe('other');
+      expect(modal.getAssetTypeCategory('application/gzip', 'archive.gz')).toBe('other');
+      expect(modal.getAssetTypeCategory('application/x-tar', 'data.tgz')).toBe('other');
+      expect(modal.getAssetTypeCategory('application/gzip', 'big.pdb.gz')).toBe('other');
+    });
+
     it('should return model for mesh 3D file extensions when mime is generic', () => {
       expect(modal.getAssetTypeCategory('application/octet-stream', 'model.glb')).toBe('model');
       expect(modal.getAssetTypeCategory('application/octet-stream', 'model.gltf')).toBe('model');
@@ -1277,6 +1286,17 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.passesAcceptFilter({ mime: 'text/plain', filename: 'm.sdf' })).toBe(true);
       expect(modal.passesAcceptFilter({ mime: 'model/gltf-binary', filename: 'm.glb' })).toBe(false);
     });
+
+    it('accepts compressed containers only under the molecule filter', () => {
+      modal.acceptFilter = 'molecule';
+      expect(modal.passesAcceptFilter({ mime: 'application/zip', filename: 'bundle.zip' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'application/gzip', filename: 'big.pdb.gz' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'application/x-tar', filename: 'bundle.tgz' })).toBe(true);
+      expect(modal.passesAcceptFilter({ mime: 'application/gzip', filename: 'archive.tar.gz' })).toBe(false);
+      // Compressed containers are not offered under the mesh (3d) filter.
+      modal.acceptFilter = '3d';
+      expect(modal.passesAcceptFilter({ mime: 'application/zip', filename: 'bundle.zip' })).toBe(false);
+    });
   });
 
   describe('isMoleculeAsset', () => {
@@ -1299,10 +1319,13 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.isMoleculeAsset('application/octet-stream', 'M.PDB')).toBe(true);
     });
 
-    it('detects compressed molecule containers', () => {
-      expect(modal.isMoleculeAsset('application/gzip', 'big.pdb.gz')).toBe(true);
-      expect(modal.isMoleculeAsset('application/zip', 'bundle.zip')).toBe(true);
-      expect(modal.isMoleculeAsset('application/x-tar', 'bundle.tgz')).toBe(true);
+    it('does not classify compressed containers as molecules (library-wide)', () => {
+      // Compressed containers are only offered inside the 3Dmol picker
+      // (passesAcceptFilter + isCompressedContainer), never classified as
+      // molecules across the media library — a backup.zip is not a molecule.
+      expect(modal.isMoleculeAsset('application/gzip', 'big.pdb.gz')).toBe(false);
+      expect(modal.isMoleculeAsset('application/zip', 'bundle.zip')).toBe(false);
+      expect(modal.isMoleculeAsset('application/x-tar', 'bundle.tgz')).toBe(false);
       expect(modal.isMoleculeAsset('application/gzip', 'bundle.tar.gz')).toBe(false);
     });
 
@@ -1320,6 +1343,19 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.isMoleculeAsset('', '')).toBe(false);
       expect(modal.isMoleculeAsset(null, null)).toBe(false);
       expect(modal.isMoleculeAsset(undefined, undefined)).toBe(false);
+    });
+  });
+
+  describe('isCompressedContainer', () => {
+    it('detects zip/tgz/gz containers, excluding tar.gz', () => {
+      expect(modal.isCompressedContainer('bundle.zip')).toBe(true);
+      expect(modal.isCompressedContainer('big.pdb.gz')).toBe(true);
+      expect(modal.isCompressedContainer('bundle.tgz')).toBe(true);
+      expect(modal.isCompressedContainer('archive.tar.gz')).toBe(false);
+      expect(modal.isCompressedContainer('notes.txt')).toBe(false);
+      expect(modal.isCompressedContainer('')).toBe(false);
+      expect(modal.isCompressedContainer(null)).toBe(false);
+      expect(modal.isCompressedContainer(undefined)).toBe(false);
     });
   });
 
@@ -3311,6 +3347,14 @@ describe('getMimeTypeFromFilename', () => {
     it('should return File for other mime types', () => {
       expect(modal.getFileTypeLabel('application/zip')).toBe('File');
       expect(modal.getFileTypeLabel('text/plain')).toBe('File');
+    });
+
+    it('labels generic compressed archives as File, not 3D Molecule', () => {
+      // Regression: a named .zip/.gz must not be labeled "3D Molecule" in the
+      // media library type column.
+      expect(modal.getFileTypeLabel('application/zip', 'backup.zip')).toBe('File');
+      expect(modal.getFileTypeLabel('application/gzip', 'archive.gz')).toBe('File');
+      expect(modal.getFileTypeLabel('application/x-tar', 'data.tgz')).toBe('File');
     });
 
     it('should return Unknown for undefined mime', () => {
