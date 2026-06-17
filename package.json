@@ -99,7 +99,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.0",
+    "@babel/preset-env": "^8.0.1",
     "@biomejs/biome": "^2.4.5",
     "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.1",
