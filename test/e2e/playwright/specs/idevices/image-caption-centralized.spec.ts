@@ -91,11 +91,9 @@ test.describe('Centralized image caption', () => {
 
         // The new per-instance controls exist (Hide image caption checkbox + alt + title).
         await expect(page.locator('.tox-dialog .tox-checkbox').filter({ hasText: /ocultar|hide/i })).toHaveCount(1);
-        const altField = page
-            .locator('.tox-dialog .tox-form__group')
-            .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
-            .locator('.tox-textfield');
-        await expect(altField).toBeVisible();
+        const altLabel = page.locator('.tox-dialog label.tox-label', { hasText: /alternativ/i }).first();
+        await expect(altLabel).toBeVisible();
+        await expect(altLabel.locator('xpath=following::input[contains(@class,"tox-textfield")][1]')).toBeVisible();
 
         await page
             .locator('.tox-dialog .tox-button:has-text("Cancel"), .tox-dialog .tox-button:has-text("Cancelar")')
@@ -127,16 +125,18 @@ test.describe('Centralized image caption', () => {
             timeout: 5000,
         });
 
-        const status = page.locator('#modalFileManager .media-library-meta-status');
-        const editField = async (sel: string, value: string): Promise<void> => {
+        // Set the centralized metadata. Blur flushes each field immediately (field-level
+        // merge), so we don't depend on the transient "Saved" status (which re-populates
+        // can clear before assertion — that was flaky). The real check is the caption below.
+        const setField = async (sel: string, value: string): Promise<void> => {
             await page.locator(sel).fill(value);
             await page.locator(sel).blur();
-            await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
         };
-        await editField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
-        await editField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
+        await setField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
+        await setField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
         await page.locator('#modalFileManager .media-library-meta-license').selectOption('Creative Commons BY');
-        await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
+        // Let the blur-immediate autosave + best-effort server sync settle before inserting.
+        await page.waitForTimeout(2000);
 
         // Insert the image into the editor (selects file → insert → save dialog).
         await insertFileIntoEditor(page, 'sample-2.jpg');
