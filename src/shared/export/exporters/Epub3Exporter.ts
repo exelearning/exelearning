@@ -26,8 +26,9 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT, PRERENDERED_LATEX_CSS } from '../constants';
 import { VOID_ELEMENTS } from '../../utils/html-constants';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 /**
  * EPUB3 XML namespaces
@@ -128,6 +129,11 @@ export class Epub3Exporter extends BaseExporter {
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
+            // Set of internal page filenames (lowercased basenames) that the exporter itself
+            // generated. Used to rewrite ONLY internal .html links to .xhtml, never external
+            // URLs or prose text mentioning ".html".
+            const internalPageTargets = this.buildInternalPageTargets(pageFilenameMap);
+
             // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes and detect favicon
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
@@ -160,10 +166,17 @@ export class Epub3Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     navLabels,
+                    internalPageTargets,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX
+                //
+                // NOTE: Unlike the HTML5/SCORM/IMS/ELPX exporters, EPUB3 does NOT bundle
+                // MathJax for the runtime-JSON iDevices (adaptative-quiz, form, trueorfalse,
+                // scrambled-list). This is intentional: EPUB readers do not execute
+                // JavaScript, so those interactive iDevices never render their LaTeX at
+                // runtime here. EPUB3 always pre-renders visible LaTeX to SVG+MathML instead.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
@@ -622,6 +635,7 @@ export class Epub3Exporter extends BaseExporter {
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param faviconInfo - Favicon info for theme or default
+     * @param internalPageTargets - Set of internal page filenames (.html basenames) to rewrite to .xhtml
      */
     private generatePageXhtml(
         page: ExportPage,
@@ -632,6 +646,7 @@ export class Epub3Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         navLabels?: { license?: string },
+        internalPageTargets?: Set<string>,
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -691,67 +706,163 @@ export class Epub3Exporter extends BaseExporter {
         });
 
         // Convert HTML to XHTML
-        return this.htmlToXhtml(pageHtml, lang);
+        return this.htmlToXhtml(pageHtml, lang, internalPageTargets);
     }
 
     /**
-     * Convert HTML to XHTML
+     * Build the set of internal page filenames (lowercased `.html` basenames) that the
+     * exporter itself generated for this project.
+     *
+     * Only links resolving to one of these targets are rewritten from `.html` to `.xhtml`;
+     * external URLs and prose mentioning ".html" are never touched. The map stores the
+     * canonical `index.html` and `{sanitized-title}.html` filenames produced by
+     * {@link BaseExporter.buildPageFilenameMap}.
      */
-    private htmlToXhtml(html: string, lang: string): string {
-        let xhtml = html;
+    private buildInternalPageTargets(pageFilenameMap: Map<string, string>): Set<string> {
+        const targets = new Set<string>();
+        for (const filename of pageFilenameMap.values()) {
+            targets.add(filename.toLowerCase());
+        }
+        return targets;
+    }
 
-        // Add XML declaration if not present
-        if (!xhtml.startsWith('<?xml')) {
-            xhtml = `<?xml version="1.0" encoding="UTF-8"?>\n${xhtml}`;
+    /**
+     * Rewrite an internal page link attribute (`href`/`src`) from `.html` to `.xhtml`.
+     *
+     * Only rewrites when the attribute resolves to a known internal page filename
+     * (from {@link buildInternalPageTargets}). Leaves external URLs (any value with a
+     * URI scheme such as `http:`, `https:`, `mailto:`, `data:`) and non-page links
+     * untouched. Preserves any `?query` and `#fragment` suffixes.
+     */
+    private rewriteInternalLinkAttribute(value: string, internalPageTargets: Set<string>): string {
+        // Split off fragment (#...) and query (?...) — these may legitimately contain ".html".
+        const hashIndex = value.indexOf('#');
+        const fragment = hashIndex !== -1 ? value.slice(hashIndex) : '';
+        const beforeHash = hashIndex !== -1 ? value.slice(0, hashIndex) : value;
+
+        const queryIndex = beforeHash.indexOf('?');
+        const query = queryIndex !== -1 ? beforeHash.slice(queryIndex) : '';
+        const pathPart = queryIndex !== -1 ? beforeHash.slice(0, queryIndex) : beforeHash;
+
+        // Never rewrite values that carry a URI scheme (external/absolute links).
+        if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(pathPart)) {
+            return value;
+        }
+        if (!pathPart.toLowerCase().endsWith('.html')) {
+            return value;
         }
 
-        // Add DOCTYPE if not present
-        if (!xhtml.includes('<!DOCTYPE')) {
-            xhtml = xhtml.replace(
+        // Only rewrite links whose basename is a page the exporter generated.
+        const basename = pathPart.split('/').pop() || '';
+        if (!internalPageTargets.has(basename.toLowerCase())) {
+            return value;
+        }
+
+        const newPath = `${pathPart.slice(0, -'.html'.length)}.xhtml`;
+        return `${newPath}${query}${fragment}`;
+    }
+
+    /**
+     * Convert HTML to XHTML for EPUB3.
+     *
+     * Parses the page with `@xmldom/xmldom` (the cross-runtime DOM implementation already
+     * used by the import pipeline; works in both the browser and Bun) and re-serializes it
+     * as XHTML. This correctly self-closes void elements even when their attributes contain
+     * `>` (e.g. `<input value="a > b">`), escapes attribute values, and preserves
+     * `<script>`/`<style>` contents without mangling.
+     *
+     * Internal page links (`.html` references the exporter generated) are rewritten to
+     * `.xhtml` on the parsed DOM, so external URLs and prose mentioning ".html" are never
+     * altered.
+     *
+     * If the document cannot be parsed (only on truly malformed, non-recoverable input),
+     * falls back to a conservative regex-based conversion that still scopes link rewriting
+     * to internal targets.
+     */
+    private htmlToXhtml(html: string, lang: string, internalPageTargets?: Set<string>): string {
+        const targets = internalPageTargets ?? new Set<string>();
+
+        // Normalize the document head: ensure the XML declaration, DOCTYPE, and XHTML
+        // namespace are present and the html element carries a single lang/xml:lang pair.
+        let prepared = html;
+        if (!prepared.startsWith('<?xml')) {
+            prepared = `<?xml version="1.0" encoding="UTF-8"?>\n${prepared}`;
+        }
+        if (!prepared.includes('<!DOCTYPE')) {
+            prepared = prepared.replace(
                 '<?xml version="1.0" encoding="UTF-8"?>',
                 '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>',
             );
         }
-
-        // Add XHTML namespace to html element
-        // First, remove any existing lang/xml:lang attributes to avoid duplication
-        xhtml = xhtml.replace(/<html([^>]*)>/i, (match, attrs) => {
-            // Remove existing lang and xml:lang attributes
+        prepared = prepared.replace(/<html([^>]*)>/i, (_match, attrs) => {
             const cleanAttrs = attrs
                 .replace(/\s+xml:lang=["'][^"']*["']/gi, '')
                 .replace(/\s+lang=["'][^"']*["']/gi, '');
             return `<html xmlns="${EPUB3_NAMESPACES.XHTML}" xml:lang="${lang}" lang="${lang}"${cleanAttrs}>`;
         });
 
-        // Self-close void elements (use word boundary \b to avoid matching substrings like col matching colgroup)
-        for (const element of VOID_ELEMENTS) {
-            // Match <element ...> (without closing slash) - word boundary ensures exact element match
-            const regex = new RegExp(`<(${element})\\b([^>]*[^/])>`, 'gi');
-            xhtml = xhtml.replace(regex, '<$1$2/>');
+        try {
+            // Parse leniently: recover from non-fatal HTML quirks (unescaped ampersands,
+            // unquoted attributes) but rethrow genuinely unrecoverable input so we can fall
+            // back. The onError handler suppresses noisy warning/error logging.
+            const parser = new DOMParser({
+                onError: (level, message) => {
+                    if (level === 'fatalError') {
+                        throw new Error(message);
+                    }
+                },
+            });
+            const doc = parser.parseFromString(prepared, 'text/html');
 
-            // Also handle <element> (no attributes)
-            const simpleRegex = new RegExp(`<(${element})>`, 'gi');
-            xhtml = xhtml.replace(simpleRegex, '<$1/>');
+            // Rewrite internal .html links to .xhtml on the DOM (href + src attributes).
+            for (const element of Array.from(doc.getElementsByTagName('*'))) {
+                for (const attr of ['href', 'src']) {
+                    const value = element.getAttribute(attr);
+                    if (value) {
+                        const rewritten = this.rewriteInternalLinkAttribute(value, targets);
+                        if (rewritten !== value) {
+                            element.setAttribute(attr, rewritten);
+                        }
+                    }
+                }
+            }
+
+            let xhtml = new XMLSerializer().serializeToString(doc);
+
+            // The serializer keeps empty style attributes; drop them for cleanliness.
+            xhtml = xhtml.replace(/\s+style=["']\s*["']/g, '');
+
+            return xhtml;
+        } catch {
+            // Conservative fallback for non-recoverable input: never touch external URLs or
+            // prose, and only rewrite internal links via the same scoped helper.
+            return this.htmlToXhtmlFallback(prepared, targets);
         }
+    }
 
-        // Escape unescaped ampersands in attribute values (for URLs with query params like &download=false)
-        // Match & not followed by a valid entity name and semicolon
-        xhtml = xhtml.replace(/&(?!(?:amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
+    /**
+     * Conservative regex-based HTML→XHTML conversion used only when DOM parsing fails on
+     * unrecoverable input. Self-closes void elements (tolerating quoted attributes that
+     * contain `>`) and rewrites only internal page links.
+     */
+    private htmlToXhtmlFallback(html: string, internalPageTargets: Set<string>): string {
+        let xhtml = html;
 
-        // Fix unquoted boolean attributes like scorm=false → scorm="false"
-        // Match attribute=value where value has no quotes and is alphanumeric
-        xhtml = xhtml.replace(/(\s)([a-zA-Z][a-zA-Z0-9-]*)=(true|false|[a-zA-Z0-9_-]+)(?=[\s>/])/g, '$1$2="$3"');
+        // Self-close void elements, scanning attributes safely so a `>` inside a quoted
+        // attribute value does not prematurely end the tag.
+        const voidPattern = new RegExp(`<(${VOID_ELEMENTS.join('|')})\\b((?:"[^"]*"|'[^']*'|[^>"'])*?)\\s*/?>`, 'gi');
+        xhtml = xhtml.replace(voidPattern, (_match, tag, attrs) => `<${tag}${attrs.replace(/\s+$/, '')} />`);
 
-        // Fix malformed attributes like class=""value> → class="value">
-        // This handles case where opening has double-quote and closing quote is missing before >
-        // Exclude /> to avoid breaking self-closed void elements like alt=""/>
-        xhtml = xhtml.replace(/(\s[a-zA-Z][a-zA-Z0-9-]*)=""([^"<>/]+)>/g, '$1="$2">');
+        // Rewrite only internal page links (href/src) from .html to .xhtml.
+        const linkPattern = /\b(href|src)=("([^"]*)"|'([^']*)')/gi;
+        xhtml = xhtml.replace(linkPattern, (match, attr, _quoted, dq, sq) => {
+            const quote = dq !== undefined ? '"' : "'";
+            const value = dq !== undefined ? dq : sq;
+            const rewritten = this.rewriteInternalLinkAttribute(value, internalPageTargets);
+            return rewritten === value ? match : `${attr}=${quote}${rewritten}${quote}`;
+        });
 
-        // Convert .html references to .xhtml
-        xhtml = xhtml.replace(/\.html(['"#\s])/g, '.xhtml$1');
-        xhtml = xhtml.replace(/\.html$/g, '.xhtml');
-
-        // Remove empty style attributes
+        // Remove empty style attributes.
         xhtml = xhtml.replace(/\s+style=["']\s*["']/g, '');
 
         return xhtml;
@@ -905,15 +1016,7 @@ td, th {
      * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
      */
     protected getPreRenderedLatexCss(): string {
-        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
-.exe-math-rendered { display: inline-block; vertical-align: middle; }
-.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
-.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
-/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
-.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
-.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
-/* Hide MathML visually but keep accessible for screen readers */
-.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+        return PRERENDERED_LATEX_CSS;
     }
 
     /**

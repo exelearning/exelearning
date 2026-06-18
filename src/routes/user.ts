@@ -3,6 +3,7 @@
  * Handles user preferences and settings
  */
 import { Elysia } from 'elysia';
+import { getJwtSecret } from './auth';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
@@ -23,11 +24,6 @@ import type { JwtPayload, UserPreferencesRequest } from './types/request-payload
 interface PreferenceValue {
     value: string | number | boolean;
 }
-
-// Get JWT secret (same as auth.ts)
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
 
 /**
  * Default user preferences with structure expected by frontend

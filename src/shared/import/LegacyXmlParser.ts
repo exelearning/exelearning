@@ -108,6 +108,12 @@ export class LegacyXmlParser {
     private xmlContent: string = '';
     private xmlDoc: Document | null = null;
     private parentRefMap: Map<string, string | null> = new Map();
+    /**
+     * Maps an `instance` element's `reference` attribute value to the element itself.
+     * Built once per parsed document to avoid O(N²) full-document scans when resolving
+     * `<reference key="..."/>` lookups (see {@link getInstanceByReference}).
+     */
+    private instanceByReferenceMap: Map<string, Element> = new Map();
     private projectLanguage: string = '';
     private logger: Logger;
 
@@ -416,6 +422,9 @@ export class LegacyXmlParser {
         // Build parent reference map
         this.buildParentReferenceMap();
 
+        // Build instance-by-reference map once (avoids O(N²) per-reference document scans)
+        this.buildInstanceReferenceMap();
+
         // Find all Node instances (pages)
         const nodes = this.findAllNodes();
         this.logger.log(`[LegacyXmlParser] Found ${nodes.length} legacy nodes`);
@@ -461,6 +470,53 @@ export class LegacyXmlParser {
         }
 
         this.logger.log(`[LegacyXmlParser] Built parent map with ${this.parentRefMap.size} entries`);
+    }
+
+    /**
+     * Build a `reference` -> `instance` element map once for the current document.
+     *
+     * Legacy XML uses `<reference key="N"/>` placeholders that point back to the first
+     * `<instance reference="N">` declared in document order. Previously each placeholder
+     * was resolved with a full-document `getElementsByTagName('instance')` scan, which is
+     * O(N²) across the whole document and could pin the event loop for tens of seconds on
+     * large legacy ELP files with thousands of cross-referencing instances.
+     *
+     * This precomputes the lookup in a single O(N) pass. To preserve the previous
+     * first-match semantics (`getElementsByAttribute(...)[0]`), only the first `instance`
+     * encountered for a given `reference` value is stored.
+     */
+    private buildInstanceReferenceMap(): void {
+        // Rebuild from scratch so the map always reflects the current document, even if
+        // the same parser instance is reused across multiple parse() calls.
+        this.instanceByReferenceMap.clear();
+        if (!this.xmlDoc) return;
+
+        // getElementsByTagName returns elements in document order, matching the order the
+        // previous filter-based lookup relied on for first-match resolution.
+        const instances = this.getElementsByTagName(this.xmlDoc, 'instance');
+        for (const inst of instances) {
+            const ref = inst.getAttribute('reference');
+            if (!ref) continue;
+            if (!this.instanceByReferenceMap.has(ref)) {
+                this.instanceByReferenceMap.set(ref, inst);
+            }
+        }
+
+        this.logger.log(
+            `[LegacyXmlParser] Built instance reference map with ${this.instanceByReferenceMap.size} entries`,
+        );
+    }
+
+    /**
+     * Resolve a `<reference key="..."/>` placeholder to its target `instance` element.
+     *
+     * O(1) replacement for the former
+     * `getElementsByAttribute(this.xmlDoc, 'instance', 'reference', refKey)[0]` scans.
+     * Returns `undefined` when no matching instance exists, mirroring the previous
+     * `[0]`-on-empty-array behavior so callers' missing-reference handling is unchanged.
+     */
+    private getInstanceByReference(refKey: string): Element | undefined {
+        return this.instanceByReferenceMap.get(refKey);
     }
 
     /**
@@ -1211,12 +1267,7 @@ export class LegacyXmlParser {
             } else if (child.tagName === 'reference') {
                 const refKey = child.getAttribute('key');
                 if (refKey && this.xmlDoc) {
-                    const referencedInstance = this.getElementsByAttribute(
-                        this.xmlDoc,
-                        'instance',
-                        'reference',
-                        refKey,
-                    )[0];
+                    const referencedInstance = this.getInstanceByReference(refKey);
                     if (referencedInstance) {
                         this.logger.log(`[LegacyXmlParser] Resolved reference key=${refKey} to instance`);
                         instancesToProcess.push(referencedInstance);
@@ -2044,12 +2095,7 @@ export class LegacyXmlParser {
                         } else if (fieldChild.tagName === 'reference') {
                             const refKey = fieldChild.getAttribute('key');
                             if (refKey && this.xmlDoc) {
-                                const referencedInstance = this.getElementsByAttribute(
-                                    this.xmlDoc,
-                                    'instance',
-                                    'reference',
-                                    refKey,
-                                )[0];
+                                const referencedInstance = this.getInstanceByReference(refKey);
                                 if (referencedInstance) {
                                     this.logger.log(`[LegacyXmlParser] Resolved field reference key=${refKey}`);
                                     fieldInstances.push(referencedInstance);
@@ -2200,12 +2246,7 @@ export class LegacyXmlParser {
                 if (valueEl.tagName === 'reference') {
                     const refKey = valueEl.getAttribute('key');
                     if (refKey && this.xmlDoc) {
-                        const referencedInstance = this.getElementsByAttribute(
-                            this.xmlDoc,
-                            'instance',
-                            'reference',
-                            refKey,
-                        )[0];
+                        const referencedInstance = this.getInstanceByReference(refKey);
                         if (referencedInstance) {
                             const refClass = referencedInstance.getAttribute('class') || '';
                             if (refClass.includes('TextAreaField') || refClass.includes('TextField')) {
