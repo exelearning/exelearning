@@ -680,6 +680,15 @@ describe('Html5Exporter', () => {
             expect(css).toContain('svg');
             expect(css).toContain('math');
         });
+
+        it('should NOT force vertical-align on the math wrapper (baseline regression, issue #1919)', () => {
+            // The wrapper must keep the surrounding text baseline so the SVG's own inline
+            // `vertical-align: -X.XXXex` (set by MathJax) governs alignment. `vertical-align: middle`
+            // here centres the box on the line and misaligns fractions, sub/superscripts and radicals.
+            const css = exporter['getPreRenderedLatexCss']();
+
+            expect(css).not.toContain('vertical-align: middle');
+        });
     });
 
     describe('Asset Inclusion', () => {

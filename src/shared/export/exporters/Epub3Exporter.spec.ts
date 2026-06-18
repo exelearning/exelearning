@@ -262,6 +262,15 @@ describe('Epub3Exporter', () => {
         it('should return correct file suffix', () => {
             expect(exporter.getFileSuffix()).toBe('');
         });
+
+        it('should share the pre-rendered LaTeX CSS without forcing vertical-align (issue #1919)', () => {
+            const css = (exporter as unknown as { getPreRenderedLatexCss(): string }).getPreRenderedLatexCss();
+
+            expect(css).toContain('.exe-math-rendered');
+            expect(css).toContain('display: inline-block');
+            // Baseline alignment relies on the SVG's own inline vertical-align, never `middle`.
+            expect(css).not.toContain('vertical-align: middle');
+        });
     });
 
     describe('Export Process', () => {
