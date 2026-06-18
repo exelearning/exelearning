@@ -340,6 +340,34 @@ describe('LOMLOE ES-VC ESO first-cycle criteris span the whole 1r cicle (1r-3r)'
         });
     }
 
+    it('every ESO àrea carries sabers bàsics in at least one course', () => {
+        const ESO = dataset[ETAPA];
+        const areas = new Set();
+        for (const course of Object.values(ESO)) {
+            for (const code of Object.keys(course)) areas.add(code);
+        }
+        for (const code of areas) {
+            const total = COURSES.reduce((n, course) => {
+                const a = ESO[course]?.[code];
+                if (!a) return n;
+                return n + Object.values(a.saberes_basicos.bloques).reduce((m, items) => m + items.length, 0);
+            }, 0);
+            expect(total, `${code} has no sabers bàsics in any ESO course`).toBeGreaterThan(0);
+        }
+    });
+
+    it('exposes Valencià: Llengua i Literatura (VLL) in Primària and ESO', () => {
+        for (const course of COURSES) {
+            const a = dataset[ETAPA][course]?.VLL;
+            expect(a, `VLL missing in ${course}`).toBeDefined();
+            expect(a.denominacion).toBe('VALENCIÀ: LLENGUA I LITERATURA');
+            expect(Object.keys(a.competencias_especificas).length).toBeGreaterThan(0);
+        }
+        for (const year of ["1r d'Educació Primària", "6é d'Educació Primària"]) {
+            expect(dataset['Educació Primària'][year]?.VLL, `VLL missing in ${year}`).toBeDefined();
+        }
+    });
+
     // Course-pair subjects (taught in two specific courses, Decret 107/2022
     // art. 10.4) must NOT be over-expanded: their two columns are the real
     // courses, and the untaught years stay empty.
