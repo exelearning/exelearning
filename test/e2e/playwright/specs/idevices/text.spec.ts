@@ -917,6 +917,110 @@ test.describe('Text iDevice', () => {
                 // Library exclusion optimization may vary by export type.
             }
         });
+
+        test('should preserve unrelated inline styles when updating max-size', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Mermaid Style Survival Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ state: 'visible', timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            const toggleToolbarsButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
+                .first();
+            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
+                await toggleToolbarsButton.click();
+                await page.waitForTimeout(500);
+            }
+
+            const mermaidButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Mermaid"], .tox-tbtn[aria-label*="mermaid"], .tox-tbtn[title*="Mermaid"]',
+                )
+                .first();
+            await expect(mermaidButton).toBeVisible({ timeout: 10000 });
+
+            // Insert initial diagram with no max-size
+            await mermaidButton.click();
+            const dialog = page.locator('.tox-dialog');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+            await dialog.locator('textarea').fill('graph LR\n    A[Style Test] --> B[Node]');
+            await dialog
+                .locator('button')
+                .filter({ hasText: /Save|Guardar/i })
+                .click();
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+            // Wait for the <pre class="mermaid"> to exist in the editor body, then inject
+            // an unrelated inline style that must survive the upcoming max-size update.
+            await page.waitForFunction(
+                () => (window as any).tinymce?.activeEditor?.getBody()?.querySelector('pre.mermaid') != null,
+                undefined,
+                { timeout: 5000 },
+            );
+            await page.evaluate(() => {
+                const editor = (window as any).tinymce.activeEditor;
+                const pre = editor.getBody().querySelector('pre.mermaid');
+                editor.dom.setStyle(pre, 'color', 'red');
+            });
+
+            // Select the mermaid node so the plugin enters the update branch
+            const tinyMceFrame = block.locator('iframe.tox-edit-area__iframe').first();
+            const frameEl = await tinyMceFrame.elementHandle();
+            const frame = await frameEl?.contentFrame();
+            if (frame) {
+                await frame.click('pre.mermaid');
+                await page.waitForTimeout(300);
+            }
+
+            // Re-open the dialog and set max-width — this exercises the update branch.
+            // TinyMCE 5 does not emit HTML name= attributes; max-width is the first <input>.
+            await mermaidButton.click();
+            const updateDialog = page.locator('.tox-dialog');
+            await expect(updateDialog).toBeVisible({ timeout: 10000 });
+            await updateDialog.locator('input').first().fill('600px');
+            await updateDialog
+                .locator('button')
+                .filter({ hasText: /Save|Guardar/i })
+                .click();
+            await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
+
+            // Both the newly set max-width and the pre-existing color must be present
+            const styles = await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                const pre = editor?.getBody()?.querySelector('pre.mermaid');
+                if (!pre) return null;
+                return { color: pre.style.color, maxWidth: pre.style.maxWidth };
+            });
+
+            expect(styles).not.toBeNull();
+            expect(styles!.color).toBe('red');
+            expect(styles!.maxWidth).toBe('600px');
+        });
     });
 
     test.describe('TinyMCE Audio Recorder (exeaudio)', () => {

@@ -51,8 +51,46 @@ import {
     MAX_BATCH_BYTES,
     MAX_BATCH_FILES,
 } from '../services/upload-session-manager';
+import { isSafePathSegment } from '../utils/safe-path';
 
 const DEBUG = process.env.APP_DEBUG === '1';
+
+/**
+ * Resource limits for client-supplied awareness data (DoS hardening).
+ *
+ * `handleAwarenessUpdate` ingests an attacker-controlled `availableAssets`
+ * array and the asset coordinator keeps a per-project Set of distinct asset ids
+ * (each referencing one or more client ids) plus a `pendingRequests` map. Without
+ * caps, a single authenticated client could announce an unbounded number of
+ * distinct ids — or absurdly long ids — and drive the server heap arbitrarily
+ * high (OOM for every project on the instance). These bounds keep per-project
+ * memory bounded by a known, generous ceiling while comfortably covering any
+ * realistic collaborative project.
+ */
+
+/** Maximum asset ids processed from a single awareness-update message. */
+const MAX_ASSETS_PER_AWARENESS = 5000;
+
+/**
+ * Maximum length of an individual asset id. Asset ids are client-generated
+ * UUIDs (36 chars); 256 leaves ample headroom for prefixed/legacy ids while
+ * rejecting megabyte-sized strings crafted to inflate heap usage.
+ */
+const MAX_ASSET_ID_LENGTH = 256;
+
+/**
+ * Maximum number of distinct asset ids tracked per project across all clients.
+ * Once reached, further new ids from awareness updates are ignored (existing
+ * ids still accept new client references). A real project has far fewer assets.
+ */
+const MAX_ASSETS_PER_PROJECT = 50000;
+
+/**
+ * Maximum number of distinct pending-request keys tracked per project. Pending
+ * requests accumulate when an asset is requested before any peer has it; this
+ * bounds that queue so it cannot be used as an unbounded-growth vector.
+ */
+const MAX_PENDING_REQUESTS_PER_PROJECT = 5000;
 
 /**
  * Asset message prefix byte (0xFF)
@@ -139,6 +177,56 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
      */
     function isAssetMessage(type: string): boolean {
         return ASSET_MESSAGE_TYPES.includes(type as AssetMessageType);
+    }
+
+    /**
+     * Validate a single asset id supplied by a client.
+     * Rejects non-strings, over-long ids, and ids containing path separators,
+     * control characters or traversal tokens (asset ids are embedded in asset
+     * URLs, so the same safe-segment rules apply). Reuses the shared
+     * `isSafePathSegment` guard to keep validation logic in one place.
+     */
+    function isValidAssetId(assetId: unknown): assetId is string {
+        return isSafePathSegment(assetId, { allowDots: true, maxLength: MAX_ASSET_ID_LENGTH });
+    }
+
+    /**
+     * Count the number of distinct pending-request keys belonging to a project.
+     */
+    function countPendingForProject(projectUuid: string): number {
+        const prefix = `${projectUuid}:`;
+        let count = 0;
+        pendingRequests.forEach((_value, key) => {
+            if (key.startsWith(prefix)) {
+                count++;
+            }
+        });
+        return count;
+    }
+
+    /**
+     * Queue a pending asset request, enforcing the per-project cap. Single source
+     * of truth for the two call sites that add pending requests so the bound can
+     * never be bypassed. Appending to an existing key is always allowed; only a
+     * brand-new key counts against the cap. Returns false when the request was
+     * dropped because the project is already at its pending-request ceiling.
+     */
+    function addPendingRequest(projectUuid: string, assetId: string, request: PendingRequest): boolean {
+        const key = `${projectUuid}:${assetId}`;
+        const existing = pendingRequests.get(key);
+        if (existing) {
+            existing.push(request);
+            return true;
+        }
+        if (countPendingForProject(projectUuid) >= MAX_PENDING_REQUESTS_PER_PROJECT) {
+            console.warn(
+                `[AssetCoordinator] Project ${projectUuid} reached ${MAX_PENDING_REQUESTS_PER_PROJECT} ` +
+                    `pending requests; dropping new request from ${request.clientId}`,
+            );
+            return false;
+        }
+        pendingRequests.set(key, [request]);
+        return true;
     }
 
     /**
@@ -324,12 +412,8 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 );
             }
 
-            // Add to pending requests
-            const key = `${projectUuid}:${assetId}`;
-            if (!pendingRequests.has(key)) {
-                pendingRequests.set(key, []);
-            }
-            pendingRequests.get(key)!.push({
+            // Add to pending requests (bounded per project)
+            addPendingRequest(projectUuid, assetId, {
                 clientId: requestedBy,
                 timestamp: Date.now(),
                 priority: priority >= PRIORITY.HIGH ? 'high' : 'low',
@@ -407,6 +491,21 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
         const { availableAssets, totalAssets = availableAssets.length } = data;
 
+        // Cap the number of ids processed from a single message. Beyond the cap
+        // the extra entries are ignored (not an error): a legitimate client never
+        // announces this many assets, and an oversized array is the DoS vector.
+        const cappedAssets =
+            availableAssets.length > MAX_ASSETS_PER_AWARENESS
+                ? availableAssets.slice(0, MAX_ASSETS_PER_AWARENESS)
+                : availableAssets;
+
+        if (availableAssets.length > MAX_ASSETS_PER_AWARENESS) {
+            console.warn(
+                `[AssetCoordinator] Awareness update from ${clientId} exceeded ` +
+                    `${MAX_ASSETS_PER_AWARENESS} assets (got ${availableAssets.length}); truncating`,
+            );
+        }
+
         if (DEBUG) {
             console.log(
                 `[AssetCoordinator] Client ${clientId} has ${availableAssets.length}/${totalAssets} assets for project ${projectUuid}`,
@@ -420,16 +519,36 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
         const projectAssets = assetAvailability.get(projectUuid)!;
 
-        // Update availability map
-        availableAssets.forEach(assetId => {
-            if (!projectAssets.has(assetId)) {
-                projectAssets.set(assetId, new Set());
+        // Update availability map. Validate each id and bound the total number of
+        // distinct ids kept per project so a single client cannot grow server
+        // heap without limit. Adding a client reference to an already-tracked id
+        // is always allowed; only brand-new ids count against the project cap.
+        const acceptedAssets: string[] = [];
+        for (const assetId of cappedAssets) {
+            if (!isValidAssetId(assetId)) {
+                if (DEBUG) {
+                    console.warn(`[AssetCoordinator] Rejected invalid asset id from ${clientId}`);
+                }
+                continue;
             }
-            projectAssets.get(assetId)!.add(clientId);
-        });
+
+            const existing = projectAssets.get(assetId);
+            if (existing) {
+                existing.add(clientId);
+                acceptedAssets.push(assetId);
+            } else if (projectAssets.size < MAX_ASSETS_PER_PROJECT) {
+                projectAssets.set(assetId, new Set([clientId]));
+                acceptedAssets.push(assetId);
+            } else if (DEBUG) {
+                console.warn(
+                    `[AssetCoordinator] Project ${projectUuid} reached ${MAX_ASSETS_PER_PROJECT} ` +
+                        `tracked assets; ignoring new id from ${clientId}`,
+                );
+            }
+        }
 
         // Check if any pending requests can now be fulfilled
-        await checkPendingRequests(projectUuid, availableAssets);
+        await checkPendingRequests(projectUuid, acceptedAssets);
     }
 
     /**
@@ -446,6 +565,11 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         }
 
         const { assetId, priority = 'low', reason = 'render' } = data;
+
+        if (!isValidAssetId(assetId)) {
+            console.warn(`[AssetCoordinator] Rejected asset request with invalid asset id from ${clientId}`);
+            return;
+        }
 
         if (DEBUG) {
             console.log(`[AssetCoordinator] Client ${clientId} requested asset ${assetId} (${priority}, ${reason})`);
@@ -494,12 +618,8 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             // No one has it yet
             console.warn(`[AssetCoordinator] Asset ${assetId} not found in DB and no peer has it`);
 
-            // Add to pending queue
-            const key = `${projectUuid}:${assetId}`;
-            if (!pendingRequests.has(key)) {
-                pendingRequests.set(key, []);
-            }
-            pendingRequests.get(key)!.push({
+            // Add to pending queue (bounded per project)
+            addPendingRequest(projectUuid, assetId, {
                 clientId,
                 timestamp: Date.now(),
                 priority,
@@ -971,12 +1091,24 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             projectSocketsMap.delete(clientId);
         }
 
-        // Remove from availability tracking
+        // Remove from availability tracking and prune asset-id keys that no longer
+        // have any referencing client. Without this, a single lingering socket
+        // would pin every distinct id it ever announced until cleanupProject runs
+        // (only 30s after the LAST client leaves), letting one client keep
+        // unbounded state alive. We reclaim eagerly instead.
         const projectAssets = assetAvailability.get(projectUuid);
         if (projectAssets) {
-            projectAssets.forEach(clients => {
+            const orphanedAssetIds: string[] = [];
+            projectAssets.forEach((clients, assetId) => {
                 clients.delete(clientId);
+                if (clients.size === 0) {
+                    orphanedAssetIds.push(assetId);
+                }
             });
+            orphanedAssetIds.forEach(assetId => projectAssets.delete(assetId));
+            if (projectAssets.size === 0) {
+                assetAvailability.delete(projectUuid);
+            }
         }
 
         if (DEBUG) {

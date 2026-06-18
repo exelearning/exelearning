@@ -13,7 +13,7 @@ import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
-import type { JwtPayload } from './auth';
+import { getJwtSecret, type JwtPayload } from './auth';
 import {
     findUserById as findUserByIdDefault,
     findUsersByIds as findUsersByIdsDefault,
@@ -151,11 +151,6 @@ const defaultDependencies: AdminDependencies = {
     },
     fileHelper: createFileHelper(),
     getConnectedClientsDetail: getConnectedClientsDetail,
-};
-
-// Get JWT secret (same as auth.ts)
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
 };
 
 // ============================================================================

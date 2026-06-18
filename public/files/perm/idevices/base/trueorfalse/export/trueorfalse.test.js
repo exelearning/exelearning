@@ -125,6 +125,53 @@ describe('trueorfalse iDevice export', () => {
     });
   });
 
+  describe('updateLatexInView', () => {
+    const math = () => $exeDevices.iDevice.gamification.math;
+
+    beforeEach(() => {
+      math().hasLatex.mockClear();
+      math().updateLatex.mockClear();
+    });
+
+    it('typesets the whole container, instructions included', () => {
+      document.body.innerHTML = `
+        <div class="exe-trueorfalse-container">
+          <div class="TOFP-instructions">Resuelve \\(x^2 = 1\\)</div>
+          <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1"></div>
+          <div class="TOFP-After"></div>
+        </div>
+      `;
+
+      $trueorfalse.updateLatexInView('tof-1');
+
+      expect(math().updateLatex).toHaveBeenCalledTimes(1);
+      const target = math().updateLatex.mock.calls[0][0];
+      expect(target).toBe(document.querySelector('.exe-trueorfalse-container'));
+      // The instructions live inside the typeset target.
+      expect(target.querySelector('.TOFP-instructions')).not.toBeNull();
+    });
+
+    it('does not typeset when there is no LaTeX', () => {
+      document.body.innerHTML = `
+        <div class="exe-trueorfalse-container">
+          <div class="TOFP-instructions">Sin fórmulas</div>
+          <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1"></div>
+        </div>
+      `;
+
+      $trueorfalse.updateLatexInView('tof-1');
+
+      expect(math().updateLatex).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the container is missing', () => {
+      document.body.innerHTML = '';
+
+      expect(() => $trueorfalse.updateLatexInView('missing')).not.toThrow();
+      expect(math().updateLatex).not.toHaveBeenCalled();
+    });
+  });
+
   describe('addEvents', () => {
     it('targets the trueorfalse iDevice body for report icons', () => {
       const previousReport = $exeDevices.iDevice.gamification.report;
