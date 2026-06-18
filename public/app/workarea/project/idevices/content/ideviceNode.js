@@ -3515,18 +3515,23 @@ export default class IdeviceNode {
                 let isImage = e.classList.contains('exe-image-picker');
                 let css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                // Determine accept filter based on class and id
-                let accept = null;
-                if (isImage) {
-                    accept = 'image';
-                } else if (id.toLowerCase().includes('audio')) {
-                    accept = 'audio';
-                } else if (id.toLowerCase().includes('video')) {
-                    accept = 'video';
-                } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
-                    accept = '3d';
+                // Determine accept filter. An explicit data-filemanager-accept
+                // on the input wins, so an iDevice can opt into a specific
+                // filter (e.g. 3Dmol -> 'molecule') without relying on the id
+                // heuristic below.
+                let accept = e.dataset.filemanagerAccept || null;
+                if (!accept) {
+                    if (isImage) {
+                        accept = 'image';
+                    } else if (id.toLowerCase().includes('audio')) {
+                        accept = 'audio';
+                    } else if (id.toLowerCase().includes('video')) {
+                        accept = 'video';
+                    } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
+                        accept = '3d';
+                    }
+                    // If generic exe-file-picker, accept = null (show all files)
                 }
-                // If generic exe-file-picker, accept = null (show all files)
 
                 // Input button element
                 let buttonElement = document.createElement('input');
