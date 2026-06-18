@@ -2,7 +2,8 @@
  * ElpxExporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ElpxExporter } from './ElpxExporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -229,12 +230,132 @@ describe('ElpxExporter', () => {
     let zip: MockZipProvider;
     let exporter: ElpxExporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
+    // adaptative-quiz keeps pre-rendered math through runtime escaping, so it must
+    // be pre-rendered to SVG at export (never bundles MathJax).
+    const recursiveJsonLatexPages = (): ExportPage[] => [
+        {
+            id: 'page-recursive-json',
+            title: 'Recursive JSON',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-recursive-json',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-recursive-json',
+                            type: 'adaptative-quiz',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new ElpxExporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax in the embedded HTML export', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new ElpxExporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+
+            await exporter.export();
+
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders LaTeX and skips MathJax for recursive JSON iDevices (adaptative-quiz)', async () => {
+            document = new MockDocument({ addMathJax: false }, recursiveJsonLatexPages());
+            exporter = new ElpxExporter(document, resources, assets, zip);
+            let mathJaxRequested = false;
+            resources.fetchLibraryFiles = async files => {
+                if (files.some(file => file.includes('exe_math'))) mathJaxRequested = true;
+                return new Map();
+            };
+
+            // The hook stands in for the real LaTeX pre-renderer: it bakes the SVG
+            // marker into the page HTML so we can assert the exporter applies it.
+            let hookCalled = false;
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: `${html}<span class="exe-math-rendered">x^2</span>`,
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(hookCalled).toBe(true);
+            // MathJax engine is never bundled for these iDevices.
+            expect(mathJaxRequested).toBe(false);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(false);
+            // The baked SVG and its supporting CSS are present in the export.
+            expect(zip.files.get('index.html') as string).toContain('exe-math-rendered');
+            const baseCss = zip.files.get('content/css/base.css');
+            const baseCssText = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(baseCssText).toContain('.exe-math-rendered');
+        });
     });
 
     describe('Basic Properties', () => {
@@ -1203,5 +1324,101 @@ describe('ElpxExporter', () => {
             expect(result.success).toBe(true);
             expect(zip.files.has('screenshot.png')).toBe(false);
         });
+    });
+});
+
+// Regression coverage for #1927: the re-editable content.xml must keep exe-node:
+// internal links so they survive an export -> re-import round trip. The exported
+// HTML pages still resolve to static paths at render time.
+const internalLinkPages: ExportPage[] = [
+    {
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [
+            {
+                id: 'block-1',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content:
+                            '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'page-2',
+        title: 'About',
+        parentId: null,
+        order: 1,
+        blocks: [
+            {
+                id: 'block-2',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-2',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+async function exportElpxZip(pages: ExportPage[]): Promise<MockZipProvider> {
+    const zip = new MockZipProvider();
+    const exporter = new ElpxExporter(
+        new MockDocument({}, pages),
+        new MockResourceProvider(),
+        new MockAssetProvider(),
+        zip,
+    );
+    await exporter.export();
+    return zip;
+}
+
+describe('ElpxExporter — internal link round-trip (#1927)', () => {
+    it('keeps exe-node: internal links in content.xml', async () => {
+        const zip = await exportElpxZip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        // The re-editable XML must retain the original protocol...
+        expect(contentXml).toContain('exe-node:page-2');
+        expect(contentXml).toContain('exe-node:page-1');
+        // ...and must NOT leak the static export path into the persisted XML.
+        expect(contentXml).not.toContain('html/about.html');
+        expect(contentXml).not.toContain('../index.html');
+    });
+
+    it('preserves the anchor fragment on exe-node links in content.xml', async () => {
+        const zip = await exportElpxZip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        expect(contentXml).toContain('exe-node:page-2#sec');
+    });
+
+    it('still renders the static path in the exported HTML pages', async () => {
+        const zip = await exportElpxZip(internalLinkPages);
+        const indexHtml = zip.files.get('index.html') as string;
+        const aboutHtml = zip.files.get('html/about.html') as string;
+
+        // Index page links down into html/ ...
+        expect(indexHtml).toContain('href="html/about.html"');
+        expect(indexHtml).toContain('href="html/about.html#sec"');
+        expect(indexHtml).not.toContain('exe-node:');
+        // ...subpage links back up to the index.
+        expect(aboutHtml).toContain('href="../index.html"');
+        expect(aboutHtml).not.toContain('exe-node:');
     });
 });
