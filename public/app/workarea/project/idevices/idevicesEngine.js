@@ -6,6 +6,7 @@
 import IdeviceNode from './content/ideviceNode.js';
 import IdeviceBlockNode from './content/blockNode.js';
 import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
+import { sanitizeCollaborativeHtml } from '../../../utils/sanitizeHtml.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -1534,7 +1535,11 @@ export default class IdevicesEngine {
             // This preserves existing behavior and unit-test expectations while
             // loadInitScriptIdevice('export') performs full iDevice re-render.
             if (componentData.htmlContent !== undefined) {
-                ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
+                // SECURITY: this HTML originates from a REMOTE collaborator over
+                // Yjs and is attacker-controlled. Sanitize before injecting via
+                // innerHTML to prevent stored DOM-XSS. Legitimate interactivity
+                // is re-attached below by loadInitScriptIdevice('export').
+                ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(componentData.htmlContent);
             }
             await ideviceNode.loadInitScriptIdevice('export');
         }
