@@ -243,3 +243,78 @@ describe('LOMLOE ES-VC Primària first-cicle is sabers-only (faithful to Decret 
         });
     }
 });
+
+// ESO criteris d'avaluació in Decret 107/2022 are published as a FIRST-CYCLE
+// block (cursos 1r-3r) + a separate 4t block (RD 217/2022 arts. 8-9; Decret
+// 107/2022 arts. 10 & 12), NOT per individual course. A subject taught every
+// year (Matemàtiques, Llengua Castellana, Geografia i Història, Llengua
+// Estrangera, Educació Física) names its first-cycle column with a single
+// representative course ("2n d'ESO", "3r ESO", "SEGON CURS"…) and its 4t column
+// with 4t; the first-cycle criteris therefore apply to 1r, 2n AND 3r. They
+// previously landed only on the representative course, leaving the other
+// first-cycle years empty. This guard keeps the full-stage subjects present in
+// all four courses with identical first-cycle content.
+describe('LOMLOE ES-VC ESO first-cycle criteris span the whole 1r cicle (1r-3r)', () => {
+    const ETAPA = 'Educació Secundària Obligatòria';
+    const COURSES = ["1r d'ESO", "2n d'ESO", "3r d'ESO", "4t d'ESO"];
+    // Subjects taught every ESO year (Decret 107/2022 arts. 10.2 & 12.1).
+    const FULL_STAGE = ['M', 'LCL', 'LE', 'EF', 'GH'];
+
+    const critShape = area =>
+        Object.values(area.competencias_especificas).map(comp => ({
+            descripcion: comp.descripcion,
+            criterios: comp.criterios_evaluacion.map(c => c.descripcion),
+        }));
+
+    for (const codArea of FULL_STAGE) {
+        describe(codArea, () => {
+            it('carries criteris in all four ESO courses', () => {
+                for (const course of COURSES) {
+                    const area = dataset[ETAPA][course]?.[codArea];
+                    expect(area, `${codArea} missing in ${course}`).toBeDefined();
+                    expect(
+                        Object.keys(area.competencias_especificas).length,
+                        `${codArea}/${course} has no criteris`,
+                    ).toBeGreaterThan(0);
+                }
+            });
+
+            it('shares identical first-cycle criteris across 1r, 2n and 3r', () => {
+                const s1 = critShape(dataset[ETAPA]["1r d'ESO"][codArea]);
+                const s2 = critShape(dataset[ETAPA]["2n d'ESO"][codArea]);
+                const s3 = critShape(dataset[ETAPA]["3r d'ESO"][codArea]);
+                expect(s1).toEqual(s2);
+                expect(s2).toEqual(s3);
+            });
+
+            it('embeds the per-course ESO tag in every code', () => {
+                for (const course of COURSES) {
+                    const tag = `ESO${course[0]}`;
+                    for (const [code, comp] of Object.entries(
+                        dataset[ETAPA][course][codArea].competencias_especificas,
+                    )) {
+                        expect(code).toContain(`-${tag}-`);
+                        expect(code.split('-')[3]).toBe(codArea);
+                        for (const crit of comp.criterios_evaluacion) {
+                            expect(crit.codigo).toContain(`-${tag}-`);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Course-pair subjects (taught in two specific courses, Decret 107/2022
+    // art. 10.4) must NOT be over-expanded: their two columns are the real
+    // courses, and the untaught years stay empty.
+    it('does not over-expand course-pair subjects (Biologia 1r/3r, Música 1r/2n)', () => {
+        const present = codArea =>
+            COURSES.filter(c => dataset[ETAPA][c]?.[codArea]?.competencias_especificas
+                && Object.keys(dataset[ETAPA][c][codArea].competencias_especificas).length > 0)
+                .map(c => c.slice(0, 2));
+        // Biologia i Geologia: 1r and 3r only (not 2n, not 4t common table)
+        expect(present('BG')).toEqual(['1r', '3r']);
+        // Música: 1r and 2n only
+        expect(present('M2')).toEqual(['1r', '2n']);
+    });
+});
