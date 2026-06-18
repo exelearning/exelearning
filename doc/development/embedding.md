@@ -347,6 +347,35 @@ The editor preview works in two modes:
 
 The fallback is automatic and requires no configuration.
 
+## Teacher Mode
+
+Content that an author marks as **Teacher only** (the `teacher-only` CSS class on blocks and
+iDevices) is **hidden by default** in every exported package and in the preview. Revealing it
+is opt-in and driven entirely by a URL parameter, so host plugins switch between the student
+and teacher views by changing the content URL only — **no injected CSS or JavaScript**.
+
+| View | URL |
+|------|-----|
+| Student (default) | `index.html` |
+| Teacher | `index.html?exe-teacher=1` |
+
+```javascript
+// The parent only changes the iframe src — nothing else.
+iframe.src = base + '/index.html' + (isTeacher ? '?exe-teacher=1' : '');
+```
+
+- Accepted truthy values: `?exe-teacher=1`, `?exe-teacher=true`, `?exe-teacher=yes`
+  (the generic alias `?teacher-mode=1` is also accepted).
+- `?exe-teacher=0` forces the student view (overriding any stored preference).
+- `?exe-teacher-toggler=1` additionally shows the in-page self-serve toggle (hidden by default).
+- The reveal is applied in an early `<head>` script (before first paint), so there is no flicker.
+- The parameter is propagated onto in-package navigation links, so the chosen view survives
+  navigation between pages of a multi-page export (works in same-origin and opaque-origin iframes).
+
+> **This is a presentation mode, not access control.** `?exe-teacher=1` only changes what is
+> displayed; it is not authentication and is not a security boundary. Truly sensitive answer
+> keys must be protected by a separate authenticated/password-gated feature, not by this flag.
+
 ## Example: WordPress Integration
 
 ```javascript

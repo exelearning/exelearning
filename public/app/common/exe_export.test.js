@@ -673,6 +673,23 @@ describe('exe_export.js', () => {
   });
 
   describe('teacherMode', () => {
+    // Replace window.URLSearchParams with a stub returning controlled values per key.
+    // Returns a restore function. (Matches the pattern used by the print test above.)
+    function mockSearchParams(map) {
+      const original = window.URLSearchParams;
+      window.URLSearchParams = function () {
+        this.get = (key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null);
+      };
+      return () => {
+        window.URLSearchParams = original;
+      };
+    }
+
+    afterEach(() => {
+      // mode-teacher lives on <html>, which is not reset between tests.
+      document.documentElement.classList.remove('mode-teacher');
+    });
+
     it('returns early if localStorage is not available', () => {
       const originalLocalStorage = window.localStorage;
       delete window.localStorage;
@@ -713,7 +730,23 @@ describe('exe_export.js', () => {
       document.body.classList.remove('exe-epub');
     });
 
-    it('creates toggler for single-page mode', () => {
+    it('does NOT create the toggle by default (toggle is opt-in)', () => {
+      const box = document.createElement('div');
+      box.className = 'box teacher-only';
+      document.body.appendChild(box);
+
+      const header = document.createElement('header');
+      header.className = 'page-header';
+      document.body.appendChild(header);
+
+      // _showToggler defaults to false (no ?exe-teacher-toggler=1)
+      window.$exeExport.teacherMode.init();
+
+      expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(false);
+      expect(document.getElementById('teacher-mode-toggler-wrapper')).toBeNull();
+    });
+
+    it('creates toggler for single-page mode when opted in', () => {
       document.body.classList.add('exe-single-page');
       const box = document.createElement('div');
       box.className = 'box teacher-only';
@@ -723,6 +756,7 @@ describe('exe_export.js', () => {
       header.className = 'package-header';
       document.body.appendChild(header);
 
+      window.$exeExport.teacherMode._showToggler = true;
       window.$exeExport.teacherMode.init();
 
       expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
@@ -743,6 +777,7 @@ describe('exe_export.js', () => {
       mainHeader.appendChild(packageHeader);
       document.body.appendChild(mainHeader);
 
+      window.$exeExport.teacherMode._showToggler = true;
       window.$exeExport.teacherMode.init();
 
       expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
@@ -752,7 +787,7 @@ describe('exe_export.js', () => {
       document.body.classList.remove('exe-single-page');
     });
 
-    it('creates toggler for multi-page mode', () => {
+    it('creates toggler for multi-page mode when opted in', () => {
       const idevice = document.createElement('div');
       idevice.className = 'idevice_node teacher-only';
       document.body.appendChild(idevice);
@@ -761,6 +796,7 @@ describe('exe_export.js', () => {
       header.className = 'page-header';
       document.body.appendChild(header);
 
+      window.$exeExport.teacherMode._showToggler = true;
       window.$exeExport.teacherMode.init();
 
       expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
@@ -779,6 +815,7 @@ describe('exe_export.js', () => {
       mainHeader.appendChild(pageHeader);
       document.body.appendChild(mainHeader);
 
+      window.$exeExport.teacherMode._showToggler = true;
       window.$exeExport.teacherMode.init();
 
       expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
@@ -787,20 +824,146 @@ describe('exe_export.js', () => {
       expect(toggler).not.toBeNull();
     });
 
-    it('enables teacher mode if previously enabled', () => {
-      window.localStorage.setItem('exeTeacherMode', '1');
-
-      const box = document.createElement('div');
-      box.className = 'box teacher-only';
-      document.body.appendChild(box);
-
+    it('still builds the toggle when content is already revealed', () => {
+      document.documentElement.classList.add('mode-teacher');
+      const idevice = document.createElement('div');
+      idevice.className = 'idevice_node teacher-only';
+      document.body.appendChild(idevice);
       const header = document.createElement('header');
       header.className = 'page-header';
       document.body.appendChild(header);
 
+      window.$exeExport.teacherMode._showToggler = true;
       window.$exeExport.teacherMode.init();
 
-      expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+      // The revealed branch ran (toggler created and its checked state synced).
+      expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
+      expect(document.getElementById('teacher-mode-toggler')).not.toBeNull();
+    });
+
+    describe('bootstrap (URL parameter reveal)', () => {
+      it('reveals teacher content with ?exe-teacher=1', () => {
+        const restore = mockSearchParams({ 'exe-teacher': '1' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        restore();
+      });
+
+      it.each(['1', 'true', 'yes'])('accepts the truthy value %s', (value) => {
+        const restore = mockSearchParams({ 'exe-teacher': value });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        restore();
+      });
+
+      it('accepts the ?teacher-mode alias', () => {
+        const restore = mockSearchParams({ 'teacher-mode': 'yes' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        restore();
+      });
+
+      it('does not reveal for a falsy value and ignores a stored preference', () => {
+        window.localStorage.setItem('exeTeacherMode', '1');
+        const restore = mockSearchParams({ 'exe-teacher': '0' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
+        restore();
+      });
+
+      it('falls back to the stored preference when no parameter is present', () => {
+        window.localStorage.setItem('exeTeacherMode', '1');
+        const restore = mockSearchParams({});
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        restore();
+      });
+
+      it('does not reveal when neither parameter nor stored preference is set', () => {
+        const restore = mockSearchParams({});
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
+        restore();
+      });
+
+      it('opts the toggle in with ?exe-teacher-toggler=1', () => {
+        const restore = mockSearchParams({ 'exe-teacher-toggler': 'true' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(window.$exeExport.teacherMode._showToggler).toBe(true);
+        expect(window.$exeExport.teacherMode._navParams).toContain('exe-teacher-toggler=1');
+        restore();
+      });
+
+      it('records exe-teacher in the nav params when revealed', () => {
+        const restore = mockSearchParams({ 'exe-teacher': '1' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(window.$exeExport.teacherMode._navParams).toContain('exe-teacher=1');
+        restore();
+      });
+    });
+
+    describe('withTeacherParams', () => {
+      it('appends the active params to a relative same-package link', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('html/page.html')).toBe('html/page.html?exe-teacher=1');
+        expect(tm.withTeacherParams('../index.html')).toBe('../index.html?exe-teacher=1');
+      });
+
+      it('preserves an existing query string and hash', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('page.html?foo=bar#sec')).toBe('page.html?foo=bar&exe-teacher=1#sec');
+        expect(tm.withTeacherParams('page.html#sec')).toBe('page.html?exe-teacher=1#sec');
+      });
+
+      it('leaves external, scheme, protocol-relative and fragment links untouched', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('https://example.com/x')).toBe('https://example.com/x');
+        expect(tm.withTeacherParams('mailto:a@b.c')).toBe('mailto:a@b.c');
+        expect(tm.withTeacherParams('//cdn.example.com/x')).toBe('//cdn.example.com/x');
+        expect(tm.withTeacherParams('#anchor')).toBe('#anchor');
+      });
+
+      it('does not double-append when the href already carries the param', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('page.html?exe-teacher=1')).toBe('page.html?exe-teacher=1');
+      });
+
+      it('returns the href unchanged when there are no active params', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = '';
+        expect(tm.withTeacherParams('html/page.html')).toBe('html/page.html');
+      });
+    });
+
+    describe('propagateNavParams', () => {
+      it('rewrites menu and prev/next links to carry the active params', () => {
+        document.body.innerHTML =
+          '<nav id="siteNav"><a href="html/a.html">A</a><a href="../index.html">Home</a></nav>' +
+          '<div class="nav-buttons"><a href="html/b.html">Next</a></div>' +
+          '<main><a href="https://ext.example/x">External</a></main>';
+
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        tm.propagateNavParams();
+
+        expect(document.querySelector('#siteNav a').getAttribute('href')).toBe('html/a.html?exe-teacher=1');
+        expect(document.querySelectorAll('#siteNav a')[1].getAttribute('href')).toBe('../index.html?exe-teacher=1');
+        expect(document.querySelector('.nav-buttons a').getAttribute('href')).toBe('html/b.html?exe-teacher=1');
+        // Content links outside the nav chrome are untouched.
+        expect(document.querySelector('main a').getAttribute('href')).toBe('https://ext.example/x');
+      });
+
+      it('does nothing when there are no active params', () => {
+        document.body.innerHTML = '<nav id="siteNav"><a href="html/a.html">A</a></nav>';
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = '';
+        tm.propagateNavParams();
+        expect(document.querySelector('#siteNav a').getAttribute('href')).toBe('html/a.html');
+      });
     });
 
     it('isEnabled returns true when storage has value', () => {
