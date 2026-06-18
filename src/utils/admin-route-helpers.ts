@@ -3,6 +3,7 @@
  * Shared utilities for admin CRUD routes
  */
 import * as fs from 'fs-extra';
+import { getJwtSecret as canonicalJwtSecret } from '../routes/auth';
 
 // ============================================================================
 // HTTP STATUS HELPERS
@@ -89,8 +90,15 @@ export function getFilesDir(): string {
 }
 
 /**
- * Get the JWT secret from environment variables
+ * Get the JWT secret from environment variables.
+ *
+ * Delegates to the single canonical resolver in routes/auth so the secret used
+ * to VERIFY admin/theme/template tokens always matches the one used to SIGN
+ * them. Previously this resolved `JWT_SECRET || APP_SECRET || <public default>`,
+ * which diverged from the signing secret (`API_JWT_SECRET || JWT_SECRET || ...`)
+ * and could either lock admins out or — if APP_SECRET was unset — fall back to a
+ * public in-repo constant, enabling token forgery (H3).
  */
 export function getJwtSecret(): string {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
+    return canonicalJwtSecret();
 }

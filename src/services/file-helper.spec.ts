@@ -192,6 +192,18 @@ describe('File Helper Service', () => {
             expect(fileHelper.isPathSafe('/base', '/base/subdir')).toBe(true);
             expect(fileHelper.isPathSafe('/base', '/other/path')).toBe(false);
         });
+
+        it('should not treat a sibling sharing a name prefix as inside the base', () => {
+            // Regression: a naive startsWith(resolvedBase) check would accept
+            // `/base-evil` as inside `/base`. The separator-aware check rejects it.
+            expect(fileHelper.isPathSafe('/base', '../base-evil/secret')).toBe(false);
+            expect(fileHelper.isPathSafe('/data/assets', '../assets-evil/x')).toBe(false);
+        });
+
+        it('should accept the base path itself', () => {
+            expect(fileHelper.isPathSafe('/base', '.')).toBe(true);
+            expect(fileHelper.isPathSafe('/base', '/base')).toBe(true);
+        });
     });
 
     describe('getContentXmlPath', () => {
