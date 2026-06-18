@@ -321,3 +321,136 @@ describe('ExeImage Plugin - centralized caption contract', () => {
     expect('data-caption-hidden' in attrs).toBe(false);
   });
 });
+
+describe('ExeImage Plugin - non-editable auto-derived caption (PR #1868)', () => {
+  // Mirrors the caption-locking helpers added to the plugin. The exe-figure caption
+  // (header div + figcaption) is auto-derived from the centralized File Manager metadata,
+  // so it must be contenteditable="false" inside the editor (typing would be discarded on
+  // save) and the attribute must be stripped on serialize so the stored markup stays clean.
+
+  // Mirror of isExeFigureNode().
+  function isExeFigureNode(node) {
+    const className = node.attr('class');
+    return !!className && /\bexe-figure\b/.test(className);
+  }
+
+  // Mirror of isExeCaptionNode() — matches both `div.figcaption.header` and `figcaption.figcaption`.
+  function isExeCaptionNode(node) {
+    const className = node.attr('class');
+    return !!className && /\bfigcaption\b/.test(className);
+  }
+
+  // Minimal TinyMCE AST node mock: attr(name[, value]) get/set and getAll(tag).
+  function makeNode(tag, className, children = []) {
+    const attrs = className == null ? {} : { class: className };
+    return {
+      tag,
+      children,
+      attr(name, value) {
+        if (arguments.length > 1) {
+          if (value === null) delete attrs[name];
+          else attrs[name] = value;
+          return undefined;
+        }
+        return attrs[name] !== undefined ? attrs[name] : null;
+      },
+      getAll(t) {
+        return children.filter(c => c.tag === t);
+      },
+    };
+  }
+
+  // Mirror of toggleExeCaptionEditableState().
+  function toggleExeCaptionEditableState(inEditor) {
+    return function (nodes) {
+      let i = nodes.length;
+      const lockCaption = function (node) {
+        if (isExeCaptionNode(node)) {
+          node.attr('contenteditable', inEditor ? 'false' : null);
+        }
+      };
+      while (i--) {
+        const figure = nodes[i];
+        if (!isExeFigureNode(figure)) continue;
+        figure.getAll('figcaption').forEach(lockCaption);
+        figure.getAll('div').forEach(lockCaption);
+      }
+    };
+  }
+
+  // Mirror of exeLockCaptionEditable() (DOM path used right after figure creation).
+  function exeLockCaptionEditable(figureEl) {
+    if (!figureEl || typeof figureEl.querySelectorAll !== 'function') return;
+    figureEl.querySelectorAll('.figcaption.header, figcaption.figcaption').forEach(function (node) {
+      node.setAttribute('contenteditable', 'false');
+    });
+  }
+
+  it('recognizes exe-figure and caption nodes by class', () => {
+    expect(isExeFigureNode(makeNode('figure', 'exe-figure position-center'))).toBe(true);
+    expect(isExeFigureNode(makeNode('figure', 'image'))).toBe(false);
+    expect(isExeFigureNode(makeNode('figure', null))).toBe(false);
+    expect(isExeCaptionNode(makeNode('div', 'figcaption header'))).toBe(true);
+    expect(isExeCaptionNode(makeNode('figcaption', 'figcaption'))).toBe(true);
+    expect(isExeCaptionNode(makeNode('img', null))).toBe(false);
+  });
+
+  it('locks the caption nodes (header + figcaption) non-editable inside the editor', () => {
+    const header = makeNode('div', 'figcaption header');
+    const footer = makeNode('figcaption', 'figcaption');
+    const img = makeNode('img', null);
+    const figure = makeNode('figure', 'exe-figure', [header, img, footer]);
+
+    toggleExeCaptionEditableState(true)([figure]);
+
+    expect(header.attr('contenteditable')).toBe('false');
+    expect(footer.attr('contenteditable')).toBe('false');
+    expect(img.attr('contenteditable')).toBe(null); // image stays as-is
+  });
+
+  it('strips contenteditable from caption nodes on serialize', () => {
+    const header = makeNode('div', 'figcaption header');
+    const footer = makeNode('figcaption', 'figcaption');
+    const figure = makeNode('figure', 'exe-figure', [header, footer]);
+    toggleExeCaptionEditableState(true)([figure]);
+
+    toggleExeCaptionEditableState(false)([figure]);
+
+    expect(header.attr('contenteditable')).toBe(null);
+    expect(footer.attr('contenteditable')).toBe(null);
+  });
+
+  it('ignores non-exe figures (legacy upstream figure.image is untouched)', () => {
+    const footer = makeNode('figcaption', 'figcaption');
+    const legacyFigure = makeNode('figure', 'image', [footer]);
+
+    toggleExeCaptionEditableState(true)([legacyFigure]);
+
+    expect(footer.attr('contenteditable')).toBe(null);
+  });
+
+  it('locks the caption in the DOM right after figure creation', () => {
+    const calls = [];
+    const makeEl = () => ({ setAttribute: (k, v) => calls.push([k, v]) });
+    const header = makeEl();
+    const footer = makeEl();
+    const figureEl = {
+      querySelectorAll: sel => {
+        expect(sel).toBe('.figcaption.header, figcaption.figcaption');
+        return [header, footer];
+      },
+    };
+
+    exeLockCaptionEditable(figureEl);
+
+    expect(calls).toEqual([
+      ['contenteditable', 'false'],
+      ['contenteditable', 'false'],
+    ]);
+  });
+
+  it('is a no-op for missing or non-element figures', () => {
+    expect(() => exeLockCaptionEditable(null)).not.toThrow();
+    expect(() => exeLockCaptionEditable({})).not.toThrow();
+  });
+});

@@ -245,4 +245,68 @@ test.describe('Centralized image caption', () => {
                 .locator('input'),
         ).toBeChecked();
     });
+
+    // Regression for @cristinavaldera's report: the caption (header + footer) is
+    // auto-derived from the centralized metadata + the dialog, so it must NOT be editable
+    // inline in TinyMCE. Editing it there used to be allowed but the changes were silently
+    // discarded on save. The caption nodes must carry contenteditable="false".
+    test('the auto-derived caption is not editable inline in TinyMCE', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Image caption — not editable');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdevice(page);
+        await enterTextIdeviceEditMode(page);
+        await openFileManagerViaImageButton(page);
+        await uploadFixtureFile(page, 'test/fixtures/sample-2.jpg');
+        await page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first().click();
+        await page.waitForSelector('#modalFileManager .media-library-edit-metadata', {
+            state: 'visible',
+            timeout: 5000,
+        });
+        await page.locator('#modalFileManager .media-library-meta-title').fill('Sunset');
+        await page.locator('#modalFileManager .media-library-meta-title').blur();
+        await page.locator('#modalFileManager .media-library-meta-author').fill('Ada Lovelace');
+        await page.locator('#modalFileManager .media-library-meta-author').blur();
+        await page.waitForTimeout(1500);
+        await insertFileIntoEditor(page, 'sample-2.jpg');
+
+        const frame = page.frameLocator('iframe.tox-edit-area__iframe').first();
+        const figure = frame.locator('figure.exe-figure[data-asset-id]').first();
+        await expect(figure).toHaveCount(1, { timeout: 10000 });
+
+        // Add a heading so the header div is rendered too, then assert both caption nodes
+        // are locked. Re-open the dialog and fill the heading.
+        await figure.locator('img').first().click();
+        await page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first().click();
+        await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+        await page
+            .locator('.tox-dialog label.tox-label', { hasText: /header|encabezado/i })
+            .first()
+            .locator('xpath=following::*[self::input or self::textarea][1]')
+            .fill('Figure 1');
+        await page
+            .locator('.tox-dialog .tox-button:has-text("Save"), .tox-dialog .tox-button:has-text("Guardar")')
+            .first()
+            .click();
+        const yes = page.locator('.tox-dialog .tox-button:has-text("Yes"), .tox-dialog .tox-button:has-text("Sí")');
+        if (
+            await yes
+                .first()
+                .isVisible()
+                .catch(() => false)
+        ) {
+            await yes.first().click();
+        }
+        await page.waitForSelector('.tox-dialog', { state: 'detached', timeout: 10000 }).catch(() => {});
+
+        // Both the header and the figcaption are present and non-editable.
+        const header = figure.locator('.figcaption.header');
+        const footer = figure.locator('figcaption.figcaption');
+        await expect(header).toContainText('Figure 1');
+        await expect(footer).toContainText('Sunset');
+        await expect(header).toHaveAttribute('contenteditable', 'false');
+        await expect(footer).toHaveAttribute('contenteditable', 'false');
+    });
 });
