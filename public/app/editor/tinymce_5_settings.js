@@ -737,42 +737,27 @@ var $exeTinyMCE = {
         var checkboxLabel = hasT ? _('Open in a floating window') : 'Open in a floating window';
         var helpLabel = hasT ? _('Help') : 'Help';
 
-        // Render the whole option as ONE htmlpanel: TinyMCE body containers (bar/grid) do not
-        // reliably render a checkbox child, so we use a native inline checkbox + label with a
-        // small teal "i" info button right beside it (tooltip via the native title attribute,
-        // mirroring the export-options info icons). The checkbox state is read from the DOM on
-        // submit, since it is not a TinyMCE form field.
-        var noteAttr = $exeTinyMCE._escapeAttr(noteText);
-        var helpHtml =
-            '<button type="button" class="exe-media-help-button" title="' +
-            noteAttr +
-            '" aria-label="' +
-            $exeTinyMCE._escapeAttr(helpLabel + ': ' + noteText) +
-            '" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;' +
-            'border-radius:50%;border:none;background:var(--brand-primary-600,#0BA1A1);color:#fff;cursor:help;' +
-            "font-style:italic;font-weight:bold;line-height:1;padding:0;font-size:12px;font-family:Georgia,'Times New Roman',serif;flex:0 0 auto;\">i</button>";
+        // Use a NATIVE TinyMCE checkbox so it lines up with the dialog's other options and is
+        // fully interactive (read via getData). The teal "i" help icon + Bootstrap tooltip are
+        // added beside the label after the dialog renders (see _enhanceMediaDialog).
+        $exeTinyMCE._injectDialogItems(spec.body, [
+            { type: 'checkbox', name: 'exeMediaFloating', label: checkboxLabel },
+        ]);
 
-        var optionHtml =
-            '<div class="exe-media-floating" style="display:flex;align-items:center;gap:8px;margin:4px 0;">' +
-            '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:normal;">' +
-            '<input type="checkbox" class="exe-media-floating-cb" checked />' +
-            '<span>' +
-            $exeTinyMCE._escapeAttr(checkboxLabel) +
-            '</span></label>' +
-            helpHtml +
-            '</div>';
-
-        $exeTinyMCE._injectDialogItems(spec.body, [{ type: 'htmlpanel', html: optionHtml }]);
+        spec.initialData = initial;
+        if (typeof spec.initialData.exeMediaFloating === 'undefined') {
+            spec.initialData.exeMediaFloating = true;
+        }
 
         var origSubmit = spec.onSubmit;
         spec.onSubmit = function (api) {
-            var floating = $exeTinyMCE._readFloatingChoice();
             var data = {};
             try {
                 data = api && typeof api.getData === 'function' ? api.getData() : {};
             } catch (e) {
                 data = {};
             }
+            var floating = data.exeMediaFloating !== false;
             var finalSource = data.source;
             var finalUrl =
                 (typeof finalSource === 'string' ? finalSource : finalSource && finalSource.value) || url;
@@ -784,17 +769,60 @@ var $exeTinyMCE = {
             }
         };
 
+        if (typeof deps.onDecorated === 'function') {
+            deps.onDecorated({ checkboxLabel: checkboxLabel, noteText: noteText, helpLabel: helpLabel });
+        }
         return true;
     },
 
     /**
-     * Read the "open in a floating window" choice from the dialog's checkbox in the DOM.
-     * Defaults to true (protect by default) when the checkbox is not present.
+     * After the media dialog renders, place a teal "i" help icon next to the floating-window
+     * checkbox label and attach a Bootstrap tooltip carrying the explanation. Idempotent and
+     * defensive: a missing label, missing Bootstrap, or any DOM hiccup is a silent no-op.
      */
-    _readFloatingChoice: function () {
-        if (typeof document === 'undefined') return true;
-        var cb = document.querySelector('.exe-media-floating-cb');
-        return cb ? !!cb.checked : true;
+    _enhanceMediaDialog: function (payload) {
+        try {
+            if (typeof document === 'undefined' || !payload || !payload.checkboxLabel) return false;
+            var label = payload.checkboxLabel;
+            var labelEl = null;
+            var candidates = document.querySelectorAll('.tox-checkbox__label, .tox-dialog label, label');
+            for (var i = 0; i < candidates.length; i++) {
+                if ((candidates[i].textContent || '').trim() === label) {
+                    labelEl = candidates[i];
+                    break;
+                }
+            }
+            if (!labelEl) return false;
+            var host = labelEl.parentNode || labelEl;
+            if (host.querySelector && host.querySelector('.exe-media-help-button')) return true; // already added
+
+            var icon = document.createElement('button');
+            icon.type = 'button';
+            icon.className = 'exe-media-help-button';
+            icon.textContent = 'i';
+            icon.setAttribute('aria-label', (payload.helpLabel || 'Help') + ': ' + payload.noteText);
+            icon.setAttribute('title', payload.noteText);
+            icon.setAttribute('data-bs-toggle', 'tooltip');
+            icon.setAttribute('data-bs-placement', 'right');
+            icon.style.cssText =
+                'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;' +
+                'margin-left:8px;vertical-align:middle;border-radius:50%;border:none;cursor:help;' +
+                'background:var(--brand-primary-600,#0BA1A1);color:#fff;font-style:italic;font-weight:bold;' +
+                "line-height:1;padding:0;font-size:12px;font-family:Georgia,'Times New Roman',serif;";
+            labelEl.insertAdjacentElement('afterend', icon);
+
+            var bs = typeof window !== 'undefined' ? window.bootstrap : null;
+            if (bs && bs.Tooltip) {
+                bs.Tooltip.getOrCreateInstance(icon, {
+                    title: payload.noteText,
+                    placement: 'right',
+                    container: document.body,
+                });
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
     },
 
     /**
@@ -904,6 +932,13 @@ var $exeTinyMCE = {
             $exeTinyMCE.decorateMediaDialogSpec(spec, {
                 onResolveFloating: function (floating, url) {
                     $exeTinyMCE._onMediaFloatingResolved(ed, floating, url);
+                },
+                onDecorated: function (payload) {
+                    // Enhance after the dialog has rendered (runs regardless of which return
+                    // path the asset logic below takes).
+                    setTimeout(function () {
+                        $exeTinyMCE._enhanceMediaDialog(payload);
+                    }, 0);
                 },
             });
 
