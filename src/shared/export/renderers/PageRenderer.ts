@@ -14,7 +14,7 @@
  * This is a TypeScript port of public/app/yjs/exporters/renderers/PageHtmlRenderer.js
  */
 
-import type { ExportPage, PageRenderOptions } from '../interfaces';
+import type { ExportPage, PageRenderOptions, XapiConfig } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import {
     LIBRARY_PATTERNS,
@@ -138,6 +138,8 @@ export class PageRenderer {
             assetExportPathMap,
             // Application version for generator meta tag
             version,
+            // xAPI runtime config (always-on emitter)
+            xapi,
         } = options;
 
         const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
@@ -208,7 +210,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version, xapi })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -248,6 +250,7 @@ ${madeWithExeHtml}
         faviconPath?: string;
         faviconType?: string;
         version?: string;
+        xapi?: XapiConfig;
         isEpub?: boolean;
     }): string {
         const {
@@ -268,6 +271,7 @@ ${madeWithExeHtml}
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             version,
+            xapi,
             isEpub = false,
         } = options;
 
@@ -299,6 +303,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
+
+        // Always-on xAPI emitter: identity config + emitter library. Present in
+        // every export format so the package is xAPI-compatible out of the box.
+        if (xapi) {
+            head += `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>`;
+        }
+        head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;
 
         // Search index script (loads before exe_export.js initializes)
         if (addSearchBox) {
@@ -1222,6 +1233,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
             version?: string;
+            xapi?: XapiConfig;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
@@ -1241,6 +1253,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink = true,
             userFooterContent = '',
             version,
+            xapi,
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
@@ -1311,6 +1324,7 @@ ${sectionContent}
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
+${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n` : ''}<script src="libs/xapi/exe_xapi.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
@@ -1471,6 +1485,26 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
     escapeAttr(str: string): string {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Serialize a value to JSON for safe embedding inside an inline `<script>` element.
+     *
+     * `JSON.stringify` alone does NOT escape `</script>` (or `<!--`), so a value such as
+     * `</script><script>alert(1)</script>` would close the inline script and inject markup
+     * (XSS). It also leaves the U+2028 / U+2029 line separators raw, which are valid JSON
+     * but illegal in a JavaScript string literal and break parsing. We neutralize all of
+     * them by escaping `<` as `<` and the line separators as `\u2028` / `\u2029`. The
+     * result is still valid JSON (and valid JS) but can never break out of the script tag.
+     *
+     * @param value - Value to serialize (typically the xAPI config object)
+     * @returns A JSON string safe to embed verbatim inside `<script>...</script>`
+     */
+    serializeForScript(value: unknown): string {
+        return JSON.stringify(value)
+            .replace(/</g, '\\u003c')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029');
     }
 
     /**
