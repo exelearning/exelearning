@@ -13,6 +13,7 @@ import {
     emitBatchComplete,
     deleteSession,
     MAX_BATCH_FILES,
+    MAX_BATCH_BYTES,
 } from '../services/upload-session-manager';
 import type { Database } from '../db/types';
 import type { Kysely } from 'kysely';
@@ -705,6 +706,305 @@ describe('Upload Session Routes - Edge Cases', () => {
         );
 
         expect(response.status).toBe(200);
+    });
+});
+
+describe('Upload Session Routes - Path Traversal Security (C1)', () => {
+    let app: Elysia;
+    let sessionToken: string;
+    let mockQueries: ReturnType<typeof createMockQueries>;
+    const projectUuid = 'traversal-security-project';
+    const assetsDir = path.join(TEST_DIR, 'assets', projectUuid);
+
+    beforeEach(async () => {
+        await fs.ensureDir(TEST_DIR);
+        await fs.emptyDir(TEST_DIR);
+        process.env.ELYSIA_FILES_DIR = TEST_DIR;
+
+        mockQueries = {
+            createAssets: mock((_db: Kysely<Database>, assets: Array<{ client_id: string }>) =>
+                Promise.resolve(assets.map((a, i) => ({ id: i + 1000, client_id: a.client_id }))),
+            ),
+            findAssetsByClientIds: mock(() => Promise.resolve([])),
+            bulkUpdateAssets: mock(() => Promise.resolve()),
+            findProjectByUuid: mock(() => Promise.resolve({ id: 55, uuid: projectUuid, user_id: 1 })),
+        };
+
+        const result = await testSessionManager.createSession({
+            projectId: projectUuid,
+            projectIdNum: 55,
+            userId: 1,
+            clientId: 'traversal-security-client',
+            totalFiles: 5,
+            totalBytes: 5000,
+        });
+        sessionToken = result.sessionToken;
+
+        const routes = createUploadSessionRoutes({
+            db: createMockDb(),
+            queries: mockQueries as unknown as UploadSessionDependencies['queries'],
+        });
+        app = new Elysia().use(routes);
+
+        await fs.ensureDir(assetsDir);
+    });
+
+    afterEach(async () => {
+        await fs.remove(TEST_DIR);
+    });
+
+    it('should reject a batch whose clientId attempts path traversal and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([{ clientId: '../../../../tmp/evil', filename: 'pwn.txt', mimeType: 'text/plain' }]),
+        );
+        formData.append('files', new Blob(['malicious content'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        // Nothing should have been written to disk and no DB inserts attempted.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+        expect(mockQueries.bulkUpdateAssets).not.toHaveBeenCalled();
+    });
+
+    it('should reject a batch when ANY clientId is unsafe (mixed with a valid one) and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'safe-asset', filename: 'ok.txt', mimeType: 'text/plain' },
+                { clientId: 'a/../../escape', filename: 'pwn.txt', mimeType: 'text/plain' },
+            ]),
+        );
+        formData.append('files', new Blob(['ok content'], { type: 'text/plain' }));
+        formData.append('files', new Blob(['evil content'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        // The whole batch is rejected before any write, so even the "safe" file is not written.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+    });
+
+    it('should reject an absolute-path clientId and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([{ clientId: '/etc/cron.d/evil', filename: 'job', mimeType: 'text/plain' }]),
+        );
+        formData.append('files', new Blob(['cron payload'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+    });
+
+    it('should still accept a normal batch with safe clientIds and write the files', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'safe-asset-1', filename: 'a.txt', mimeType: 'text/plain' },
+                { clientId: 'safe_asset-2', filename: 'b.png', mimeType: 'image/png' },
+            ]),
+        );
+        formData.append('files', new Blob(['content one'], { type: 'text/plain' }));
+        formData.append('files', new Blob(['content two'], { type: 'image/png' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        expect(data.success).toBe(true);
+        expect(data.uploaded).toBe(2);
+        expect(data.failed).toBe(0);
+
+        // Files are written inside the project assets dir using the clientId + sanitized extension.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles).toContain('safe-asset-1.txt');
+        expect(assetFiles).toContain('safe_asset-2.png');
+    });
+});
+
+describe('Upload Session Routes - Batch Size Limit (L1, memory DoS)', () => {
+    let app: Elysia;
+    let sessionToken: string;
+    let mockQueries: ReturnType<typeof createMockQueries>;
+    const projectUuid = 'batch-size-limit-project';
+    const assetsDir = path.join(TEST_DIR, 'assets', projectUuid);
+
+    beforeEach(async () => {
+        await fs.ensureDir(TEST_DIR);
+        await fs.emptyDir(TEST_DIR);
+        process.env.ELYSIA_FILES_DIR = TEST_DIR;
+
+        mockQueries = createMockQueries();
+
+        const result = await testSessionManager.createSession({
+            projectId: projectUuid,
+            projectIdNum: 88,
+            userId: 1,
+            clientId: 'batch-size-limit-client',
+            totalFiles: 5,
+            totalBytes: 5000,
+        });
+        sessionToken = result.sessionToken;
+
+        const routes = createUploadSessionRoutes({
+            db: createMockDb(),
+            queries: mockQueries as unknown as UploadSessionDependencies['queries'],
+        });
+        app = new Elysia().use(routes);
+
+        await fs.ensureDir(assetsDir);
+    });
+
+    afterEach(async () => {
+        await fs.remove(TEST_DIR);
+    });
+
+    it('rejects a batch whose declared total exceeds MAX_BATCH_BYTES before buffering or writing', async () => {
+        // Two Blobs whose declared `.size` sum to well over the cap. The early declared-size check
+        // must reject the batch before any file is buffered into memory or written to disk.
+        const halfPlus = Math.ceil(MAX_BATCH_BYTES / 2) + 1024 * 1024; // each just over half the cap
+        const chunk = Buffer.alloc(halfPlus, 'x');
+
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'big-1', filename: 'big1.bin', mimeType: 'application/octet-stream' },
+                { clientId: 'big-2', filename: 'big2.bin', mimeType: 'application/octet-stream' },
+            ]),
+        );
+        formData.append('files', new Blob([chunk], { type: 'application/octet-stream' }));
+        formData.append('files', new Blob([chunk], { type: 'application/octet-stream' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toContain('Batch too large');
+        expect(data.error).toContain('100MB');
+
+        // Nothing was buffered to disk and no asset records were created/updated: the cap was
+        // enforced before the buffering and persistence phases.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+        expect(mockQueries.bulkUpdateAssets).not.toHaveBeenCalled();
+    });
+
+    it('rejects a batch where the declared total first exceeds the cap on a later file', async () => {
+        // The running declared total only crosses the cap on the last file. The handler must still
+        // reject the whole batch and persist nothing.
+        const small = Buffer.alloc(1024, 'a'); // 1KB
+        const huge = Buffer.alloc(MAX_BATCH_BYTES, 'b'); // exactly the cap, so total > cap
+
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'small-1', filename: 'small.txt', mimeType: 'text/plain' },
+                { clientId: 'huge-1', filename: 'huge.bin', mimeType: 'application/octet-stream' },
+            ]),
+        );
+        formData.append('files', new Blob([small], { type: 'text/plain' }));
+        formData.append('files', new Blob([huge], { type: 'application/octet-stream' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toContain('Batch too large');
+
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+    });
+
+    it('accepts a batch that is comfortably within MAX_BATCH_BYTES', async () => {
+        // A legitimate batch under the cap must still succeed exactly as before.
+        const content = Buffer.alloc(2 * 1024 * 1024, 'z'); // 2MB total, well under 100MB
+
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'within-1', filename: 'a.bin', mimeType: 'application/octet-stream' },
+                { clientId: 'within-2', filename: 'b.bin', mimeType: 'application/octet-stream' },
+            ]),
+        );
+        formData.append('files', new Blob([content], { type: 'application/octet-stream' }));
+        formData.append('files', new Blob([content], { type: 'application/octet-stream' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        expect(data.success).toBe(true);
+        expect(data.uploaded).toBe(2);
+        expect(data.failed).toBe(0);
+
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles).toContain('within-1.bin');
+        expect(assetFiles).toContain('within-2.bin');
     });
 });
 

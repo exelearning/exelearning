@@ -151,11 +151,16 @@ const createMockDeps = (
     getConnectedClientsDetail: getConnectedClientsDetailOverride,
 });
 
+// Sign tokens with the same value the canonical resolver (auth.ts:getJwtSecret)
+// returns at verify time. beforeEach sets API_JWT_SECRET to this value, which the
+// resolver prefers over JWT_SECRET, so signing and verification stay aligned (H3).
+const TEST_JWT_SECRET = 'test-secret';
+
 // Helper to generate admin JWT token
 async function generateAdminToken(): Promise<string> {
     const jwtInstance = jwt({
         name: 'jwt',
-        secret: process.env.JWT_SECRET || 'test-secret',
+        secret: TEST_JWT_SECRET,
     });
     const tempApp = new Elysia().use(jwtInstance);
 
@@ -171,7 +176,7 @@ async function generateAdminToken(): Promise<string> {
 async function generateUserToken(): Promise<string> {
     const jwtInstance = jwt({
         name: 'jwt',
-        secret: process.env.JWT_SECRET || 'test-secret',
+        secret: TEST_JWT_SECRET,
     });
     const tempApp = new Elysia().use(jwtInstance);
 
@@ -191,7 +196,11 @@ describe('Admin Routes', () => {
     const originalEnv = { ...process.env };
 
     beforeEach(() => {
-        process.env.JWT_SECRET = 'test-secret';
+        // Resolver prefers API_JWT_SECRET, so set it (not just JWT_SECRET) to the
+        // value tokens are signed with. Routes are created inside each test, after
+        // this hook runs, so the secret is resolved from this value.
+        process.env.API_JWT_SECRET = TEST_JWT_SECRET;
+        process.env.JWT_SECRET = TEST_JWT_SECRET;
     });
 
     afterEach(() => {
