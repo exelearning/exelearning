@@ -33,9 +33,12 @@ window.UnsavedChangesHelper = UnsavedChangesHelper;
 import BlobPasteGuard from './common/blobPasteGuard.js';
 // Drag-and-drop to open project files
 import FileDropHandler from './common/fileDropHandler.js';
+// Mermaid max-size utilities — exposed on window.eXeLearning for TinyMCE plugins
+import * as mermaidMaxSize from './common/mermaidMaxSize.js';
 
 export default class App {
     constructor(eXeLearning) {
+        eXeLearning.mermaidMaxSize = mermaidMaxSize;
         this.eXeLearning = eXeLearning;
         this.parseExelearningConfig();
 

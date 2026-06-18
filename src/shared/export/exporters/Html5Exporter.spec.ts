@@ -2,7 +2,8 @@
  * Html5Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -679,6 +680,15 @@ describe('Html5Exporter', () => {
             expect(css).toContain('svg');
             expect(css).toContain('math');
         });
+
+        it('should NOT force vertical-align on the math wrapper (baseline regression, issue #1919)', () => {
+            // The wrapper must keep the surrounding text baseline so the SVG's own inline
+            // `vertical-align: -X.XXXex` (set by MathJax) governs alignment. `vertical-align: middle`
+            // here centres the box on the line and misaligns fractions, sub/superscripts and radicals.
+            const css = exporter['getPreRenderedLatexCss']();
+
+            expect(css).not.toContain('vertical-align: middle');
+        });
     });
 
     describe('Asset Inclusion', () => {
@@ -1024,6 +1034,192 @@ describe('Html5Exporter', () => {
 
             const indexHtml = files.get('index.html');
             const indexHtmlText = decodePreviewFile(indexHtml);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    });
+
+    describe('MathJax for runtime JSON iDevices', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        const propsWithLatex = {
+            questionsGame: [{ question: 'Solve \\(x^2 + 1 = 0\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
+        };
+        const propsWithoutLatex = {
+            questionsGame: [{ question: 'Capital of France?', options: [{ text: 'Paris' }, { text: 'Rome' }] }],
+        };
+
+        function pageWithIdevice(type: string, properties: Record<string, unknown>): ExportPage[] {
+            return [
+                {
+                    id: 'page-runtime-json',
+                    title: 'Runtime JSON',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-runtime-json',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-runtime-json',
+                                    type,
+                                    order: 0,
+                                    content: '',
+                                    properties,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+        }
+
+        function captureRequestedLibs(): { get: () => string[] } {
+            let requested: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requested = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+            return { get: () => requested };
+        }
+
+        it('pre-renders form LaTeX on export and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            // form now pre-renders its nested JSON LaTeX to SVG (graded by index /
+            // plain <u> blanks), so the MathJax engine is never bundled.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('pre-renders form LaTeX on preview and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.generateForPreview({
+                preRenderLatex: async html => ({ html, hasLatex: true, latexRendered: true, count: 1 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math when allowed JSON iDevices have no LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithoutLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for JSON iDevices outside the allow-list', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('image-gallery', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for non-JSON iDevices with LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('3dmol', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('pre-renders trueorfalse LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('trueorfalse', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // trueorfalse JSON LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders adaptative-quiz LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // adaptative-quiz escapes author text but keeps pre-rendered math spans,
+            // so its LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders scrambled-list LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('scrambled-list', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // scrambled-list scores answers by a stable index, so its option LaTeX is
+            // pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
@@ -2618,5 +2814,91 @@ describe('Html5Exporter', () => {
             expect(files.has('content/resources/known.png')).toBe(true);
             expect(files.has('content/resources/orphan.txt')).toBe(false);
         });
+    });
+});
+
+// Regression coverage for #1927: the re-editable content.xml must keep exe-node:
+// internal links so they survive an export -> re-import round trip. The exported
+// HTML pages still resolve to static paths at render time.
+const internalLinkPages: ExportPage[] = [
+    {
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [
+            {
+                id: 'block-1',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content:
+                            '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'page-2',
+        title: 'About',
+        parentId: null,
+        order: 1,
+        blocks: [
+            {
+                id: 'block-2',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-2',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+async function exportHtml5Zip(pages: ExportPage[]): Promise<MockZipProvider> {
+    const zip = new MockZipProvider();
+    const exporter = new Html5Exporter(
+        new MockDocument({}, pages),
+        new MockResourceProvider(),
+        new MockAssetProvider(),
+        zip,
+    );
+    await exporter.export();
+    return zip;
+}
+
+describe('Html5Exporter — internal link round-trip (#1927)', () => {
+    it('keeps exe-node: internal links in content.xml', async () => {
+        const zip = await exportHtml5Zip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        expect(contentXml).toContain('exe-node:page-2');
+        expect(contentXml).toContain('exe-node:page-1');
+        expect(contentXml).toContain('exe-node:page-2#sec');
+        expect(contentXml).not.toContain('html/about.html');
+        expect(contentXml).not.toContain('../index.html');
+    });
+
+    it('still renders the static path in the exported HTML pages', async () => {
+        const zip = await exportHtml5Zip(internalLinkPages);
+        const indexHtml = zip.files.get('index.html') as string;
+        const aboutHtml = zip.files.get('html/about.html') as string;
+
+        expect(indexHtml).toContain('href="html/about.html"');
+        expect(indexHtml).toContain('href="html/about.html#sec"');
+        expect(indexHtml).not.toContain('exe-node:');
+        expect(aboutHtml).toContain('href="../index.html"');
+        expect(aboutHtml).not.toContain('exe-node:');
     });
 });

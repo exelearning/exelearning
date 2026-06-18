@@ -64,10 +64,12 @@ describe('AssetManager', () => {
     // Create mock IndexedDB store (now only stores blobs)
     const storedBlobs = new Map();
 
-    // The mock below is vestigial — AssetManager uses in-memory + Cache API now.
-    // Requests must still fire onsuccess asynchronously so the IndexedDB fallback
-    // introduced in #1710 resolves cleanly when tests simulate a missing Cache API
-    // (via `delete global.caches`). Without `queueMicrotask`, fallback awaits hang.
+    // Functional in-memory IndexedDB stand-in for the #1710 fallback. The real
+    // _putToIdb stores records keyed by the compound `key` (`${projectId}:${assetId}`)
+    // and _getFromIdb reads them back by that same key, so the mock keys on
+    // `blobRecord.key` (not `.id`) to faithfully support the fallback path the
+    // Cache API error handling now relies on (#H7). Requests still fire
+    // onsuccess asynchronously so awaits resolve cleanly.
     const fireRequestAsync = (request) => {
       queueMicrotask(() => {
         if (request.onsuccess) request.onsuccess({ target: request });
@@ -76,15 +78,15 @@ describe('AssetManager', () => {
     };
     mockStore = {
       put: mock((blobRecord) => {
-        storedBlobs.set(blobRecord.id, blobRecord);
+        storedBlobs.set(blobRecord.key, blobRecord);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
-      get: mock((id) => {
-        const result = storedBlobs.get(id) || null;
+      get: mock((key) => {
+        const result = storedBlobs.get(key) || null;
         return fireRequestAsync({ result, error: null, onsuccess: null, onerror: null });
       }),
-      delete: mock((id) => {
-        storedBlobs.delete(id);
+      delete: mock((key) => {
+        storedBlobs.delete(key);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
       index: mock(() => ({
@@ -301,6 +303,78 @@ describe('AssetManager', () => {
     });
   });
 
+  // Regression (#1941): collaborative image loss caused by corrupted asset UUIDs.
+  // In a non-secure context (HTTP on an IP / some desktop contexts) crypto.subtle
+  // is unavailable and calculateHash() falls back to a JS FNV expansion. One term,
+  // `(hash ^ sizeHash)`, was NOT forced unsigned, so a 32-bit value with bit 31 set
+  // becomes a NEGATIVE Int32 whose .toString(16) emits a leading '-'. That '-' lands
+  // in the 4th UUID group (hashToUUID uses substring(16,20)), producing ids like
+  // `…-7ede--7a4-…`. Those malformed ids no longer match the stored blobs, the export
+  // cannot resolve them, and the images silently vanish from the package.
+  // The fallback is now a pure-JS SHA-256 (which never emits '-'); these tests guard
+  // against any future fallback reintroducing the corruption. "exe-0" forced the old bug.
+  describe('calculateHash — non-secure fallback hash is clean (no sign chars)', () => {
+    const TRIGGER_BYTES = new Uint8Array([101, 120, 101, 45, 48]); // "exe-0"
+
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    beforeEach(() => {
+      // Remove crypto.subtle so calculateHash() takes the non-secure fallback branch.
+      global.crypto = { randomUUID: mockCrypto.randomUUID };
+    });
+
+    it('returns exactly 64 lowercase hex chars with no sign character', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      expect(hash).not.toContain('-');
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives a well-formed asset UUID (no double dash) from the fallback hash', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      const uuid = assetManager.hashToUUID(hash);
+      expect(uuid).not.toContain('--');
+      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    });
+  });
+
+  // The asset id is content-derived. If it depends on whether crypto.subtle is
+  // available (secure SHA-256 vs a different fallback), the SAME image gets a
+  // DIFFERENT id across desktop/online clients, so references diverge and assets
+  // are lost on collaborative/desktop round-trips (#1941). The fallback must be a
+  // real, context-independent SHA-256.
+  describe('calculateHash — context-independent id (#1941)', () => {
+    const bytesFor = (s) => new TextEncoder().encode(s);
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    it('produces real SHA-256 in the non-secure fallback (known vector "abc")', async () => {
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // no subtle -> fallback
+      const hash = await assetManager.calculateHash(makeBlob(bytesFor('abc')));
+      expect(hash).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+    });
+
+    it('yields the SAME hash with and without crypto.subtle', async () => {
+      const bytes = bytesFor('collab-image-payload');
+      global.crypto = require('crypto').webcrypto; // real secure context
+      const secure = await assetManager.calculateHash(makeBlob(bytes));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure fallback
+      const fallback = await assetManager.calculateHash(makeBlob(bytes));
+      expect(fallback).toBe(secure);
+      expect(fallback).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives the SAME asset id across contexts → no duplicate on re-open', async () => {
+      const bytes = bytesFor('same-image-bytes');
+      global.crypto = require('crypto').webcrypto; // secure (desktop / HTTPS)
+      const secureId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure (cloud over IP)
+      const fallbackId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      // Same content-addressed id in every context, so the existing dedup
+      // (insertImage -> getAsset(id)) reuses it and never creates a duplicate
+      // when a project moves between desktop/HTTPS and a non-secure HTTP-on-IP cloud.
+      expect(fallbackId).toBe(secureId);
+    });
+  });
+
   describe('putAsset', () => {
     it('stores asset metadata in Yjs and blob in memory', async () => {
       const testBlob = new Blob(['test data']);
@@ -323,6 +397,176 @@ describe('AssetManager', () => {
 
       // Check blob was stored in memory (blobCache Map)
       expect(assetManager.blobCache.get('asset-1')).toBe(testBlob);
+    });
+  });
+
+  describe('putAsset type recovery (extension-less / octet-stream assets)', () => {
+    // %PDF-1.4 header bytes
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('recovers MIME, blob type and extension for an octet-stream PDF without extension', async () => {
+      const blob = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'pdf-1',
+        filename: 'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+        folderPath: '',
+        mime: 'application/octet-stream',
+        size: PDF_BYTES.length,
+        hash: 'h1',
+        uploaded: false,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-1');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+      expect(assetManager.blobCache.get('pdf-1').type).toBe('application/pdf');
+    });
+
+    it('recovers when mime is missing entirely', async () => {
+      const blob = new Blob([PDF_BYTES]); // no type
+      await assetManager.putAsset({
+        id: 'pdf-2',
+        filename: 'document',
+        mime: '',
+        size: PDF_BYTES.length,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-2');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('document.pdf');
+    });
+
+    it('appends the correct extension when MIME is already known but filename has none', async () => {
+      const blob = new Blob(['x'], { type: 'image/png' });
+      await assetManager.putAsset({
+        id: 'png-1',
+        filename: 'logo',
+        mime: 'image/png',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('png-1');
+      expect(meta.filename).toBe('logo.png');
+      expect(meta.mime).toBe('image/png');
+    });
+
+    it('leaves well-formed assets untouched (no blob re-wrap)', async () => {
+      const blob = new Blob(['x'], { type: 'image/jpeg' });
+      await assetManager.putAsset({
+        id: 'jpg-ok',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('jpg-ok');
+      expect(meta.filename).toBe('photo.jpg');
+      expect(meta.mime).toBe('image/jpeg');
+      // Same blob reference: untouched when already valid.
+      expect(assetManager.blobCache.get('jpg-ok')).toBe(blob);
+    });
+
+    it('leaves unknown binary content as octet-stream (no false positives)', async () => {
+      const blob = new Blob([new Uint8Array([0x01, 0x02, 0x03, 0x04])], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'bin-1',
+        filename: 'asset-xyz',
+        mime: 'application/octet-stream',
+        size: 4,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('bin-1');
+      expect(meta.mime).toBe('application/octet-stream');
+      expect(meta.filename).toBe('asset-xyz');
+    });
+  });
+
+  describe('putBlob type normalization', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('aligns a received blob to the known metadata MIME', async () => {
+      mockYjsBridge._assetsMap.set('x', { filename: 'asset-x.pdf', mime: 'application/pdf', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('x', received);
+
+      expect(assetManager.blobCache.get('x').type).toBe('application/pdf');
+    });
+
+    it('sniffs and fixes metadata when the metadata MIME is unknown', async () => {
+      mockYjsBridge._assetsMap.set('y', { filename: 'asset-y', mime: 'application/octet-stream', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('y', received);
+
+      const meta = mockYjsBridge._assetsMap.get('y');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-y.pdf');
+      expect(assetManager.blobCache.get('y').type).toBe('application/pdf');
+    });
+
+    it('does not throw when there is no metadata for the id', async () => {
+      const received = new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'application/octet-stream' });
+      await assetManager.putBlob('orphan', received);
+      expect(assetManager.blobCache.get('orphan')).toBeDefined();
+    });
+  });
+
+  describe('repairAssetsWithoutType (self-heal on open)', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    beforeEach(() => {
+      // a) PDF stored as octet-stream without extension (the bug)
+      mockYjsBridge._assetsMap.set('a', { filename: 'asset-uuid-a', mime: 'application/octet-stream', size: 9 });
+      assetManager.blobCache.set('a', new Blob([PDF_BYTES], { type: 'application/octet-stream' }));
+      // b) well-formed asset — must stay untouched
+      const okBlob = new Blob(['x'], { type: 'image/jpeg' });
+      mockYjsBridge._assetsMap.set('b', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+      assetManager.blobCache.set('b', okBlob);
+      assetManager._okBlobRef = okBlob;
+      // c) known MIME but missing extension — only the filename needs fixing
+      mockYjsBridge._assetsMap.set('c', { filename: 'pic', mime: 'image/png', size: 1 });
+      assetManager.blobCache.set('c', new Blob(['x'], { type: 'image/png' }));
+    });
+
+    it('repairs only the assets that lost their type/extension', async () => {
+      const repaired = await assetManager.repairAssetsWithoutType();
+
+      expect(repaired).toBe(2);
+
+      const a = mockYjsBridge._assetsMap.get('a');
+      expect(a.mime).toBe('application/pdf');
+      expect(a.filename).toBe('asset-uuid-a.pdf');
+      expect(assetManager.blobCache.get('a').type).toBe('application/pdf');
+
+      const b = mockYjsBridge._assetsMap.get('b');
+      expect(b.mime).toBe('image/jpeg');
+      expect(b.filename).toBe('photo.jpg');
+      expect(assetManager.blobCache.get('b')).toBe(assetManager._okBlobRef);
+
+      const c = mockYjsBridge._assetsMap.get('c');
+      expect(c.filename).toBe('pic.png');
+      expect(c.mime).toBe('image/png');
+    });
+
+    it('is idempotent (a second pass repairs nothing)', async () => {
+      await assetManager.repairAssetsWithoutType();
+      const repairedAgain = await assetManager.repairAssetsWithoutType();
+      expect(repairedAgain).toBe(0);
+    });
+
+    it('skips assets whose blob is not available', async () => {
+      mockYjsBridge._assetsMap.set('missing-blob', { filename: 'asset-mb', mime: 'application/octet-stream', size: 9 });
+      // no blob in cache for 'missing-blob'
+      const repaired = await assetManager.repairAssetsWithoutType();
+      // a + c repaired; missing-blob skipped (no blob to sniff)
+      expect(repaired).toBe(2);
+      expect(mockYjsBridge._assetsMap.get('missing-blob').mime).toBe('application/octet-stream');
     });
   });
 
@@ -8636,6 +8880,7 @@ describe('AssetManager - getAssetForUpload (line 4090)', () => {
 describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
   let assetManager;
   let mockYjsBridge;
+  let savedWindow;
 
   beforeEach(() => {
     global.Logger = { log: vi.fn() };
@@ -8644,7 +8889,26 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
       value: { randomUUID: vi.fn(() => 'uuid'), subtle: { digest: vi.fn(async () => new Uint8Array(32).buffer) } },
       writable: true, configurable: true,
     });
-    global.caches = { open: vi.fn(), delete: vi.fn() };
+    // Earlier tests may have run `delete global.window`; _getCacheRequestUrl()
+    // reads window.location.protocol, so ensure a window object is present.
+    savedWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
+    // Functional Cache API so _putToCache resolves via a real persistent write
+    // (storeAssetFromServer awaits _putToCache, which after #H7 must not resolve
+    // unless a persistent copy actually exists).
+    const cacheStorage = new Map();
+    global.caches = {
+      open: vi.fn(async (name) => {
+        if (!cacheStorage.has(name)) cacheStorage.set(name, new Map());
+        const cache = cacheStorage.get(name);
+        return {
+          put: async (url, response) => { cache.set(url, response); },
+          match: async (url) => cache.get(url),
+          delete: async (url) => cache.delete(url),
+        };
+      }),
+      delete: vi.fn(async (name) => cacheStorage.delete(name)),
+    };
     spyOn(console, 'warn').mockImplementation(() => {});
 
     mockYjsBridge = (() => {
@@ -8667,6 +8931,11 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
     delete global.Logger;
     delete global.URL;
     delete global.caches;
+    if (savedWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = savedWindow;
+    }
   });
 
   it('stores blob for existing asset without blob (lines 4119-4143)', async () => {
@@ -14512,6 +14781,7 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
   let originalIDBKeyRange;
   let originalCaches;
   let originalLogger;
+  let originalWindow;
   let fakeIdb;
 
   /**
@@ -14688,6 +14958,31 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     };
   };
 
+  // Cache API that opens fine but rejects writes with a real QuotaExceededError
+  // (message "Quota exceeded.", name "QuotaExceededError"). This is the exact
+  // shape the browser throws when storage is full — it matches NONE of the
+  // scheme/unsupported patterns, so before #H7 _putToCache swallowed it and
+  // resolved as success, letting putAsset/putBlob evict the only in-memory copy.
+  const installQuotaExceededCacheApi = () => {
+    global.caches = {
+      open: mock(async () => ({
+        put: mock(async () => {
+          throw Object.assign(new Error('Quota exceeded.'), { name: 'QuotaExceededError' });
+        }),
+        match: mock(async () => undefined),
+        delete: mock(async () => false),
+      })),
+      delete: mock(async () => true),
+    };
+  };
+
+  // Remove IndexedDB entirely so the Cache→IDB fallback has nowhere to land.
+  // Used to prove that when NO persistent store accepts the blob, _putToCache
+  // rejects (and callers keep the blob in memory) instead of silently losing it.
+  const disableIndexedDb = () => {
+    global.indexedDB = undefined;
+  };
+
   const installWorkingCacheApi = () => {
     const storage = new Map();
     global.caches = {
@@ -14710,6 +15005,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     originalIDBKeyRange = global.IDBKeyRange;
     originalCaches = global.caches;
     originalLogger = global.Logger;
+    // Earlier tests in this file run `delete global.window`, and happy-dom does
+    // not recreate `window` per test. _getCacheRequestUrl() reads
+    // window.location.protocol, so guarantee a window object exists here.
+    originalWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
     global.Logger = { log: () => {} };
     fakeIdb = installFakeIndexedDB();
     spyOn(console, 'log').mockImplementation(() => {});
@@ -14722,6 +15022,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     global.IDBKeyRange = originalIDBKeyRange;
     global.caches = originalCaches;
     global.Logger = originalLogger;
+    if (originalWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = originalWindow;
+    }
     fakeIdb = null;
   });
 
@@ -14801,5 +15106,96 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     expect(global.caches.open).toHaveBeenCalledWith('exe-assets-project-secure');
     expect(mgr.cachePersistenceDisabled).toBe(false);
     expect(fakeIdb.entriesForProject('project-secure')).toEqual([]);
+  });
+
+  // =========================================================================
+  // QuotaExceededError handling — bug #H7
+  // =========================================================================
+  // When the Cache API rejects a write with QuotaExceededError (storage full),
+  // its message ("Quota exceeded.") and name ("QuotaExceededError") match none
+  // of the scheme/unsupported patterns the old catch checked. The old code
+  // therefore swallowed the error and let _putToCache resolve as success, so
+  // putAsset/putBlob evicted the only in-memory copy in their .then() — leaving
+  // the blob in no store at all (lost on save and on reload). The fix routes
+  // ANY Cache write failure through IndexedDB and only resolves once a
+  // persistent copy exists; otherwise it rejects so callers keep memory.
+  describe('QuotaExceededError on Cache API write (#H7)', () => {
+    it('falls back to IndexedDB when cache.put throws QuotaExceededError', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota');
+
+      const blob = new Blob(['quota-fallback'], { type: 'image/png' });
+      // Must resolve (a persistent copy exists in IDB) — not reject, not lose data.
+      await mgr._putToCache('asset-quota', blob);
+
+      // Blob was routed to IndexedDB instead of being silently dropped.
+      const idbEntries = fakeIdb.entriesForProject('project-quota');
+      expect(idbEntries.length).toBe(1);
+      expect(idbEntries[0].blob).toBeInstanceOf(Blob);
+
+      // And it is retrievable again (the real failure mode: getBlob returning null).
+      const retrieved = await mgr.getBlob('asset-quota');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('quota-fallback');
+    });
+
+    it('putAsset keeps the blob retrievable after a QuotaExceededError (no total loss)', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota-asset');
+      mgr.setYjsBridge(createMockYjsBridge());
+
+      const blob = new Blob(['must-survive-quota'], { type: 'image/png' });
+      await mgr.putAsset({
+        id: 'asset-pa',
+        filename: 'pic.png',
+        folderPath: '',
+        mime: 'image/png',
+        size: blob.size,
+        hash: 'h-pa',
+        blob,
+      });
+
+      // putAsset fires _putToCache asynchronously, then evicts memory on success.
+      // Eviction is legitimate here ONLY because the blob landed in IndexedDB.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // The blob must still be retrievable — from memory or from the IDB fallback.
+      const retrieved = await mgr.getBlob('asset-pa');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('must-survive-quota');
+
+      // Confirm it actually persisted (not merely lingering in memory).
+      expect(fakeIdb.entriesForProject('project-quota-asset').length).toBe(1);
+    });
+
+    it('rejects (and caller keeps memory) when BOTH Cache API and IndexedDB fail', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-no-store');
+
+      const blob = new Blob(['nowhere-to-persist'], { type: 'image/png' });
+
+      // No persistent store accepted the blob → _putToCache must reject so the
+      // caller's .catch() can retain the in-memory copy.
+      await expect(mgr._putToCache('asset-orphan', blob)).rejects.toThrow();
+    });
+
+    it('putBlob retains the blob in memory when neither Cache API nor IndexedDB persist', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-keep-mem');
+
+      const blob = new Blob(['keep-me-in-ram'], { type: 'image/png' });
+      await mgr.putBlob('asset-keep', blob);
+
+      // Wait for the async _putToCache().catch() path to settle.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // _putToCache rejected → the blob must NOT have been evicted from memory.
+      expect(mgr.blobCache.has('asset-keep')).toBe(true);
+      const retrieved = await mgr.getBlob('asset-keep');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('keep-me-in-ram');
+    });
   });
 });

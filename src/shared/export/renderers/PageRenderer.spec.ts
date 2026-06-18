@@ -379,6 +379,88 @@ describe('PageRenderer', () => {
             // First page gets main-node class too
             expect(html).toContain('class="active main-node daddy"');
         });
+
+        it('should mark ancestors of the current page with current-page-parent', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'section', title: 'Section', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'leaf', title: 'Leaf', parentId: 'section', order: 2 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'leaf', '');
+
+            // The middle ancestor is highlighted; the deep current page is active.
+            expect(html).toContain('class="current-page-parent"');
+            expect(html).toContain('class="active"');
+            expect(html).toContain('Leaf');
+        });
+
+        it('should exclude a hidden subtree and its descendants from navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden-parent',
+                    title: 'HiddenParent',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+                createTestPage({ id: 'hidden-child', title: 'HiddenChild', parentId: 'hidden-parent', order: 2 }),
+                createTestPage({ id: 'visible', title: 'VisiblePage', parentId: 'root', order: 3 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'root', '');
+
+            expect(html).toContain('VisiblePage');
+            // Both the hidden page and its (otherwise visible) child are dropped.
+            expect(html).not.toContain('HiddenParent');
+            expect(html).not.toContain('HiddenChild');
+        });
+
+        it('should produce identical output across repeated renders (memoization is stateless per call)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'a', title: 'A', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'b', title: 'B', parentId: 'a', order: 2 }),
+                createTestPage({ id: 'c', title: 'C', parentId: 'root', order: 3 }),
+            ];
+
+            const first = renderer.renderNavigation(pages, 'b', '');
+            const second = renderer.renderNavigation(pages, 'b', '');
+
+            expect(first).toBe(second);
+        });
+    });
+
+    describe('renderNavItem (public entry point)', () => {
+        it('should render a single item with its visible children', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'parent', title: 'Parent', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'child', title: 'Child', parentId: 'parent', order: 2 }),
+            ];
+
+            const html = renderer.renderNavItem(pages[1], pages, 'child', '');
+
+            expect(html).toContain('Parent');
+            expect(html).toContain('Child');
+            expect(html).toContain('class="other-section"');
+        });
+
+        it('should return empty string for a hidden page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden',
+                    title: 'Hidden',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+            ];
+
+            expect(renderer.renderNavItem(pages[1], pages, 'root', '')).toBe('');
+        });
     });
 
     describe('renderNavButtons', () => {
@@ -1841,6 +1923,125 @@ describe('PageRenderer', () => {
             // Both icons should be resolved
             expect(html).toContain('theme/icons/info.svg');
             expect(html).toContain('theme/icons/warning.png');
+        });
+    });
+
+    // Render-time internal-link rewrites for #1927. These run on the rendered HTML so the
+    // source feeding content.xml keeps the original exe-node: references.
+    describe('replaceInternalLinks (multi-page)', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves exe-node to html/<file> from the index', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html">About</a>');
+        });
+
+        it('resolves exe-node to the index from a subpage (basePath ../)', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-1">Home</a>', allPages, '../');
+            expect(out).toBe('<a href="../index.html">Home</a>');
+        });
+
+        it('preserves the #anchor fragment', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2#sec">Sec</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html#sec">Sec</a>');
+        });
+
+        it('uses the collision-safe filename from pageFilenameMap', () => {
+            const map = new Map([['page-2', 'about-2.html']]);
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '', map);
+            expect(out).toBe('<a href="html/about-2.html">About</a>');
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-999">X</a>', allPages, '');
+            expect(out).toBe('<a href="exe-node:page-999">X</a>');
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const content = '<a href="https://example.com">Ext</a>';
+            expect(renderer.replaceInternalLinks(content, allPages, '')).toBe(content);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceInternalLinks('', allPages, '')).toBe('');
+        });
+
+        it('replaces multiple links in a single pass', () => {
+            const out = renderer.replaceInternalLinks(
+                '<a href="exe-node:page-2">A</a> <a href="exe-node:page-1">H</a>',
+                allPages,
+                '',
+            );
+            expect(out).toBe('<a href="html/about.html">A</a> <a href="index.html">H</a>');
+        });
+    });
+
+    describe('namespaceSinglePageAnchors', () => {
+        it('prefixes id on named anchors (a without href)', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a id="intro">I</a></p>', 'page-2')).toBe(
+                '<p><a id="page-2--intro">I</a></p>',
+            );
+        });
+
+        it('prefixes name on named anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a name="s1">S</a></p>', 'page-2')).toBe(
+                '<p><a name="page-2--s1">S</a></p>',
+            );
+        });
+
+        it('does not touch anchors that have href (regular links)', () => {
+            const c = '<a href="https://example.com" id="link1">E</a>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('does not touch non-anchor elements with id', () => {
+            const c = '<div id="mydiv">C</div>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('handles empty and null content', () => {
+            expect(renderer.namespaceSinglePageAnchors('', 'page-1')).toBe('');
+            expect((renderer as any).namespaceSinglePageAnchors(null, 'page-1')).toBe(null);
+        });
+
+        it('handles content without anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p>Just text</p>', 'page-1')).toBe('<p>Just text</p>');
+        });
+    });
+
+    describe('replaceSinglePageInternalLinks', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves a plain exe-node link to the page section', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2">A</a>', allPages)).toBe(
+                '<a href="#section-page-2">A</a>',
+            );
+        });
+
+        it('resolves an anchored exe-node link to the namespaced anchor', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2#intro">A</a>', allPages)).toBe(
+                '<a href="#page-2--intro">A</a>',
+            );
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const c = '<a href="exe-node:nope">X</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const c = '<a href="https://example.com">E</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
         });
     });
 });

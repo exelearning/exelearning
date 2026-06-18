@@ -33,6 +33,10 @@ describe('adaptative-quiz export', () => {
         if (global.eXe && global.eXe.app && !global.eXe.app.isInExe) {
             global.eXe.app.isInExe = () => false;
         }
+        // Restore the real $exeDevices (with the gamification.math helper) before
+        // every test. Some blocks delete it in their afterEach, and the runtime
+        // always exposes it, so question/feedback rendering can rely on it.
+        global.$exeDevices = realExeDevices;
         adq = loadExport();
     });
 
@@ -308,6 +312,179 @@ describe('adaptative-quiz export', () => {
                 solutionOrder: [1, 2],
             });
             expect(html).toContain(`aria-labelledby="adaptativeQuizQuestionText-${id}"`);
+        });
+    });
+
+    describe('LaTeX rendering', () => {
+        let updateLatexSpy;
+
+        beforeEach(() => {
+            // The iDevice reads the global $exeDevices loaded from common.js. It
+            // loads MathJax on demand and then typesets. Spy on updateLatex so
+            // we can assert the iDevice requests the expected target, while
+            // keeping the real hasLatex regex.
+            const math = global.$exeDevices.iDevice.gamification.math;
+            updateLatexSpy = vi.spyOn(math, 'updateLatex').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            updateLatexSpy.mockRestore();
+        });
+
+        function renderQuestion(id, question) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <div id="adaptativeQuizRound-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [question],
+                currentQuestionIndex: 0,
+                shuffle: false,
+                roundCount: 0,
+                numRound: 1,
+                currentLevel: 1,
+                maxLevel: 3,
+                msgs: adq.msgs,
+            };
+            adq.renderCurrentQuestion(id);
+        }
+
+        it('typesets the export template when its instructions contain LaTeX', () => {
+            const data = {
+                eXeFormInstructions: 'Intro \\(z\\)',
+                questionsGame: [
+                    {
+                        type: 0,
+                        typeSelect: 0,
+                        question: 'Solve \\(x + 1 = 2\\)',
+                        options: [{ text: '1' }, { text: '2' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+            };
+            const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+
+            document.body.innerHTML = adq.renderView(data, false, template, 'latex-template');
+            expect(document.querySelector('.exe-adaptative-quiz-template')).not.toBeNull();
+            adq.renderBehaviour(data, false, 'latex-template');
+
+            expect(updateLatexSpy).toHaveBeenCalledWith('.exe-adaptative-quiz-template');
+        });
+
+        it('does NOT typeset the template when it has no unrendered LaTeX', () => {
+            const data = {
+                eXeFormInstructions: 'Plain intro, no math',
+                questionsGame: [
+                    { type: 0, typeSelect: 0, question: 'Plain', options: [{ text: '1' }], solutionMulti: [0] },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+            };
+            const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+
+            document.body.innerHTML = adq.renderView(data, false, template, 'plain-template');
+            adq.renderBehaviour(data, false, 'plain-template');
+
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('keeps pre-rendered math spans (no MathJax) but escapes author text in options', () => {
+            renderQuestion('prerendered-opt', {
+                typeSelect: 0,
+                question: 'Stem',
+                options: [
+                    {
+                        text: '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>',
+                    },
+                    { text: '<b>plain</b>' },
+                ],
+                solutionMulti: [0],
+            });
+            const container = document.getElementById('adaptativeQuizQuestionContainer-prerendered-opt');
+            // The trusted pre-rendered SVG survives intact...
+            expect(container.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            // ...while plain author markup is still escaped.
+            expect(container.innerHTML).toContain('&lt;b&gt;plain&lt;/b&gt;');
+            // No MathJax needed: nothing unrendered to typeset.
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('escapeHtmlButKeepRenderedMath neutralises a forged math span (XSS boundary)', () => {
+            const forged = '<span class="exe-math-rendered" data-latex=""><svg onload="alert(1)"></svg></span>';
+            const out = adq.escapeHtmlButKeepRenderedMath('Pick ' + forged);
+            // The script-bearing span is escaped, not kept raw.
+            expect(out).not.toContain('<svg onload');
+            expect(out).toContain('&lt;svg onload');
+        });
+
+        it('typesets the question container when the stem contains LaTeX', () => {
+            renderQuestion('latex-stem', {
+                typeSelect: 0,
+                question: 'Solve \\(x^2 + 1 = 0\\)',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizQuestionContainer-latex-stem');
+        });
+
+        it('typesets the question container when an answer option contains LaTeX', () => {
+            renderQuestion('latex-option', {
+                typeSelect: 0,
+                question: 'Pick the identity',
+                options: [{ text: '\\(\\sin^2\\theta + \\cos^2\\theta = 1\\)' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizQuestionContainer-latex-option');
+        });
+
+        it('does not typeset when the question has no LaTeX', () => {
+            renderQuestion('latex-none', {
+                typeSelect: 0,
+                question: 'Plain question with no math',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('typesets the feedback message when it contains LaTeX', () => {
+            const id = 'latex-msg';
+            document.body.innerHTML = `<div id="adaptativeQuizMessages-${id}"></div>`;
+            adq.setMessage(id, 'Correct, because \\(2 + 2 = 4\\)', 'success', true);
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizMessages-' + id);
+        });
+
+        it('does not typeset a plain feedback message', () => {
+            const id = 'plain-msg';
+            document.body.innerHTML = `<div id="adaptativeQuizMessages-${id}"></div>`;
+            adq.setMessage(id, 'Well done', 'success', true);
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('typesets the final report when a report message contains LaTeX', () => {
+            const id = 'latex-report';
+            document.body.innerHTML = `<div id="adaptativeQuizReport-${id}"></div>`;
+            adq.options[id] = {
+                id,
+                hits: 1,
+                errors: 0,
+                roundCount: 1,
+                numRound: 1,
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                levelNames: ['Easy', 'Medium', 'Hard'],
+                msgs: { ...adq.msgs, msgReportTitle: 'Final score \\(\\alpha\\)' },
+            };
+            adq.renderFinalReport(id);
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizReport-' + id);
         });
     });
 
@@ -1108,6 +1285,63 @@ describe('adaptative-quiz export', () => {
         });
     });
 
+    describe('code access message rendering', () => {
+        function setupCodeAccessGame(id, messageCodeAccess) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizCubierta-${id}">
+                    <a id="adaptativeQuizCodeAccessButton-${id}">
+                        <img src="exequextreply.svg" class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
+                    </a>
+                </div>
+                <div id="adaptativeQuizMainContainer-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" />
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <button id="adaptativeQuizBtnStart-${id}"></button>
+            `;
+            adq.options[id] = {
+                id,
+                idevicePath: '/exe/idevices/adaptative-quiz/export/',
+                itinerary: { showCodeAccess: true, messageCodeAccess },
+                questions: [],
+                isScorm: 0,
+                evaluation: false,
+            };
+        }
+
+        it('keeps pre-rendered math in the access-code message while escaping author HTML', () => {
+            const id = 'access-message-prerendered';
+            const renderedMath =
+                '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>';
+            setupCodeAccessGame(id, `Use <b>bold</b> ${renderedMath}`);
+
+            adq.addEvents(id);
+
+            const message = document.getElementById(`adaptativeQuizMessageCodeAccess-${id}`);
+            expect(message.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            expect(message.querySelector('b')).toBeNull();
+            expect(message.innerHTML).toContain('&lt;b&gt;bold&lt;/b&gt;');
+            expect(message.textContent).not.toContain('<span');
+        });
+
+        it('requests MathJax for unrendered LaTeX in the access-code message', () => {
+            const id = 'access-message-latex';
+            const updateLatexSpy = vi
+                .spyOn(global.$exeDevices.iDevice.gamification.math, 'updateLatex')
+                .mockImplementation(() => {});
+            setupCodeAccessGame(id, 'Solve \\(x + 1 = 2\\)');
+
+            try {
+                adq.addEvents(id);
+                expect(updateLatexSpy).toHaveBeenCalledWith(`#adaptativeQuizMessageCodeAccess-${id}`);
+            } finally {
+                updateLatexSpy.mockRestore();
+            }
+        });
+    });
+
     describe('SCORM auto-save per answer (integration with real helper)', () => {
         let store;
 
@@ -1197,6 +1431,7 @@ describe('adaptative-quiz export', () => {
                     gamification: {
                         scorm: { sendScoreNew: vi.fn() },
                         report: { saveEvaluation: vi.fn() },
+                        math: { hasLatex: vi.fn(() => false), updateLatex: vi.fn() },
                     },
                 },
             };

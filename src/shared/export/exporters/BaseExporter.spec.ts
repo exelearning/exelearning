@@ -743,6 +743,24 @@ describe('BaseExporter', () => {
             expect(result).toBe('<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012">');
         });
 
+        // Defense-in-depth (#1941): an unresolved asset reference means the ZIP will ship a
+        // dangling URL with no binary behind it (the collaborative image-loss bug:
+        // exported `content/resources/<uuid>` with no file). The exporter must RECORD
+        // these so the save/export flow can surface them instead of losing data silently.
+        it('records unresolved asset references so silent data loss is detectable', async () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012">';
+            await exporter.addFilenamesToAssetUrls(content);
+
+            expect(exporter.getUnresolvedAssetRefs()).toContain('12345678-1234-1234-1234-123456789012');
+        });
+
+        it('does not record resolved asset references', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+            await exporter.addFilenamesToAssetUrls('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">');
+
+            expect(exporter.getUnresolvedAssetRefs()).toHaveLength(0);
+        });
+
         it('should return empty string for empty content', async () => {
             const result = await exporter.addFilenamesToAssetUrls('');
             expect(result).toBe('');
@@ -817,6 +835,53 @@ describe('BaseExporter', () => {
 
                 expect(result).toContain('asset-c3d4e5f6.pdf');
                 expect(result).not.toContain('unknown');
+            });
+        });
+
+        describe('extension-less filename handling', () => {
+            it('appends the MIME extension when a stored filename has none (prevents lossy PDF export)', async () => {
+                // Reproduces the real bug: a PDF stored as `asset-<uuid>` with no extension.
+                assets.addAsset(
+                    'e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<iframe src="asset://e9e79be2-7b98-3e8c-0143-91e790c196f8"></iframe>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+            });
+
+            it('does not append .bin for an unknown MIME (leaves the name unchanged)', async () => {
+                assets.addAsset(
+                    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'application/octet-stream',
+                    Buffer.from([1, 2, 3]),
+                );
+
+                const content = '<a href="asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee">x</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"');
+                expect(result).not.toContain('.bin');
+            });
+
+            it('leaves a well-formed filename untouched', async () => {
+                assets.addAsset(
+                    'ffffffff-1111-2222-3333-444444444444',
+                    'report.pdf',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<a href="asset://ffffffff-1111-2222-3333-444444444444.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/report.pdf');
+                expect(result).not.toContain('report.pdf.pdf');
             });
         });
 
@@ -1405,154 +1470,6 @@ describe('BaseExporter', () => {
         });
     });
 
-    describe('Internal Link Handling', () => {
-        describe('buildPageUrlMap', () => {
-            it('should map first page to index.html', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'About', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-1')).toEqual({
-                    url: 'index.html',
-                    urlFromSubpage: '../index.html',
-                });
-            });
-
-            it('should map other pages to html/ directory', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'About Us', blocks: [] },
-                    { id: 'page-3', title: 'Contact', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-2')).toEqual({
-                    url: 'html/about-us.html',
-                    urlFromSubpage: 'about-us.html',
-                });
-                expect(map.get('page-3')).toEqual({
-                    url: 'html/contact.html',
-                    urlFromSubpage: 'contact.html',
-                });
-            });
-
-            it('should sanitize page titles with special characters', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'Capítulo 1: Introducción', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-2')).toEqual({
-                    url: 'html/capitulo-1-introduccion.html',
-                    urlFromSubpage: 'capitulo-1-introduccion.html',
-                });
-            });
-        });
-
-        describe('replaceInternalLinks', () => {
-            it('should replace exe-node links with page URLs from index', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-2">Go to About</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">Go to About</a>');
-            });
-
-            it('should replace exe-node links with relative URLs from subpage', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-1">Go to Home</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
-
-                expect(result).toBe('<a href="../index.html">Go to Home</a>');
-            });
-
-            it('should handle multiple links in content', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                    ['page-3', { url: 'html/contact.html', urlFromSubpage: 'contact.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-2">About</a> and <a href="exe-node:page-3">Contact</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">About</a> and <a href="html/contact.html">Contact</a>');
-            });
-
-            it('should leave non-matching links unchanged', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:unknown-page">Unknown</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="exe-node:unknown-page">Unknown</a>');
-            });
-
-            it('should handle content without exe-node links', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="https://example.com">External</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="https://example.com">External</a>');
-            });
-
-            it('should handle empty content', () => {
-                const pageUrlMap = new Map();
-                const result = (exporter as any).replaceInternalLinks('', pageUrlMap, true);
-
-                expect(result).toBe('');
-            });
-
-            it('should handle links with single quotes', () => {
-                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
-
-                const content = "<a href='exe-node:page-2'>About</a>";
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">About</a>');
-            });
-
-            it('should preserve anchor fragment from index page', () => {
-                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
-
-                const content = '<a href="exe-node:page-2#section1">About Section 1</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html#section1">About Section 1</a>');
-            });
-
-            it('should preserve anchor fragment from subpage', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
-
-                expect(result).toBe('<a href="../index.html#intro">Go to Intro</a>');
-            });
-
-            it('should leave anchor fragment link unchanged when page not found', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:unknown-page#section">Unknown</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="exe-node:unknown-page#section">Unknown</a>');
-            });
-        });
-    });
-
     describe('buildPageFilenameMap', () => {
         it('should map first page to index.html', () => {
             const pages: ExportPage[] = [
@@ -1661,35 +1578,27 @@ describe('BaseExporter', () => {
             expect(map.get('page-2')).toBe('nueva-pagina.html');
         });
 
-        it('should work correctly with buildPageUrlMap integration', () => {
+        it('should produce collision-safe filenames for duplicate titles', () => {
             const pages: ExportPage[] = [
                 { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
                 { id: 'page-2', title: 'Test', parentId: null, order: 1, blocks: [] },
                 { id: 'page-3', title: 'Test', parentId: null, order: 2, blocks: [] },
             ];
 
-            // buildPageUrlMap internally uses buildPageFilenameMap
-            const urlMap = (exporter as any).buildPageUrlMap(pages);
+            const map = exporter.testBuildPageFilenameMap(pages);
 
-            expect(urlMap.get('page-1')).toEqual({
-                url: 'index.html',
-                urlFromSubpage: '../index.html',
-            });
-            expect(urlMap.get('page-2')).toEqual({
-                url: 'html/test.html',
-                urlFromSubpage: 'test.html',
-            });
-            expect(urlMap.get('page-3')).toEqual({
-                url: 'html/test-2.html',
-                urlFromSubpage: 'test-2.html',
-            });
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('test.html');
+            expect(map.get('page-3')).toBe('test-2.html');
         });
 
-        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
-            // Create 23 pages: 1 index + 22 pages all titled "Test"
+        it('should give every page a unique filename beyond 20 duplicates (no overwrite)', () => {
+            // Create 31 pages: 1 index + 30 pages all titled "Test". Past the old
+            // 20-attempt cap, distinct pages used to collapse onto a single
+            // filename, silently overwriting each other in the export ZIP.
             const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
 
-            for (let i = 1; i <= 22; i++) {
+            for (let i = 1; i <= 30; i++) {
                 pages.push({
                     id: `page-${i}`,
                     title: 'Test',
@@ -1701,20 +1610,38 @@ describe('BaseExporter', () => {
 
             const map = exporter.testBuildPageFilenameMap(pages);
 
-            // First page is index.html
+            // First page is index.html, first "Test" page gets test.html (no suffix).
             expect(map.get('page-0')).toBe('index.html');
-
-            // First "Test" page gets test.html (no suffix)
             expect(map.get('page-1')).toBe('test.html');
 
-            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
-            for (let i = 2; i <= 21; i++) {
+            // Every subsequent duplicate gets a deterministic, incrementing name
+            // with no cap: test-2.html … test-30.html.
+            for (let i = 2; i <= 30; i++) {
                 expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
             }
 
-            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
-            // This is intentional - after 20 attempts, the algorithm gives up
-            expect(map.get('page-22')).toBe('test-21.html');
+            // Crucially, every page maps to a distinct filename (one ZIP entry
+            // per page — no silent drops).
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
+        });
+
+        it('should give non-Latin-script titles unique filenames (no empty-name collisions)', () => {
+            // CJK/Arabic/etc. titles sanitize to an empty base; they must still
+            // each receive a distinct filename rather than all collapsing.
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+            for (let i = 1; i <= 25; i++) {
+                pages.push({ id: `page-${i}`, title: '中文页面', parentId: null, order: i, blocks: [] });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('page.html');
+            expect(map.get('page-2')).toBe('page-2.html');
+            expect(map.get('page-25')).toBe('page-25.html');
+
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
         });
 
         it('should increment trailing numbers in filename on collision', () => {
