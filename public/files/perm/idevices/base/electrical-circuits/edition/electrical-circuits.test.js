@@ -128,7 +128,7 @@ describe('electrical-circuits iDevice edition', () => {
             amsmath: '',
             amssymb: '',
         });
-        expect(script.dataset.showConsole).toBe('true');
+        expect(script.dataset.showConsole).toBe('false');
         expect(script.textContent).not.toContain('\n');
         expect(script.textContent).toBe(
             '\\begin{document}\\begin{circuitikz} \\draw (0,0) to[R, l=$R_1$] (3,0); \\end{circuitikz}\\end{document}'
@@ -460,5 +460,60 @@ describe('electrical-circuits iDevice edition', () => {
         global.fetch = vi.fn().mockResolvedValue({ ok: false });
         $exeDevice.tikzFontCache = {};
         expect(await $exeDevice.loadTikzFont('cmmi10')).toBeNull();
+    });
+
+    it('parseTikzFont returns null when a required table is missing', () => {
+        // Valid length (>= 12 bytes) and a well-formed header, but zero tables,
+        // so head/maxp/loca/glyf/cmap are all absent.
+        const view = new DataView(new ArrayBuffer(12));
+        view.setUint16(4, 0); // numTables = 0
+
+        expect($exeDevice.parseTikzFont(view.buffer)).toBeNull();
+    });
+
+    it('parseTikzCmap returns null without a Windows Unicode format-4 subtable', () => {
+        // A (platform 3, encoding 1) subtable that is not format 4.
+        const wrongFormat = new DataView(new ArrayBuffer(16));
+        wrongFormat.setUint16(2, 1); // one subtable
+        wrongFormat.setUint16(4, 3); // platform 3 (Windows)
+        wrongFormat.setUint16(6, 1); // encoding 1 (Unicode BMP)
+        wrongFormat.setUint32(8, 12); // subtable offset
+        wrongFormat.setUint16(12, 0); // format 0 (unsupported)
+        expect($exeDevice.parseTikzCmap(wrongFormat, 0)).toBeNull();
+
+        // No matching (platform 3, encoding 1) subtable at all.
+        const noSubtable = new DataView(new ArrayBuffer(4));
+        expect($exeDevice.parseTikzCmap(noSubtable, 0)).toBeNull();
+    });
+
+    it('convertTikzTextToPaths leaves <text> when the glyph yields no outline', async () => {
+        const font = loadFont('cmr10');
+        vi.spyOn($exeDevice, 'loadTikzFont').mockResolvedValue(font);
+        // The snowman is not in the Computer Modern cmap, so the font loads but
+        // produces no path data — the <text> must be left untouched.
+        const svg = makeTikzSvg('☃');
+
+        await $exeDevice.convertTikzTextToPaths(svg);
+
+        expect(svg.querySelector('text')).not.toBeNull();
+        expect(svg.querySelector('path')).toBeNull();
+    });
+
+    it('convertTikzTextToPaths defaults missing geometry and omits an absent fill', async () => {
+        const font = loadFont('cmr10');
+        vi.spyOn($exeDevice, 'loadTikzFont').mockResolvedValue(font);
+        const ns = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(ns, 'svg');
+        const text = document.createElementNS(ns, 'text');
+        text.setAttribute('font-family', 'cmr10'); // no x/y/font-size/fill
+        text.textContent = '¬';
+        svg.appendChild(text);
+
+        await $exeDevice.convertTikzTextToPaths(svg);
+
+        const path = svg.querySelector('path');
+        expect(path).not.toBeNull();
+        expect(path.hasAttribute('fill')).toBe(false);
+        expect(path.getAttribute('d').startsWith('M')).toBe(true);
     });
 });

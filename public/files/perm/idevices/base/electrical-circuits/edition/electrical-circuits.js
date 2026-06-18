@@ -1052,7 +1052,9 @@ var $exeDevice = {
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
         tikzScript.dataset.texPackages = JSON.stringify({'circuitikz': '', 'amsmath': '', 'amssymb': ''});
-        tikzScript.dataset.showConsole = 'true';
+        // Keep TikZJax quiet in production: 'true' makes it console.log the raw
+        // TikZ source on every render, which is debug noise for end users.
+        tikzScript.dataset.showConsole = 'false';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
 
         // While compiling, TikZJax inserts a loading-spinner <svg> placeholder

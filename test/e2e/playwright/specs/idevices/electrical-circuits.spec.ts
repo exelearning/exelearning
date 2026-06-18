@@ -1,0 +1,124 @@
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice } from '../../helpers/workarea-helpers';
+import type { Page } from '@playwright/test';
+
+/**
+ * E2E Tests for the Electrical Circuits iDevice — AI question generation flow.
+ *
+ * Reproduces and guards the regression from issue #1964: AI-generated questions
+ * (pasted into the "Questions" tab of the AI helper) were not loaded into the
+ * editor. The same insertion path also normalizes bare circuit symbols
+ * (Ω → \Omega) so the stored TikZ compiles under TikZJax.
+ *
+ * The tests drive the real user-facing flow rather than the (hidden) in-app
+ * generator: external AI prompt → paste generated text → Save → questions
+ * loaded into the editor → circuit preview rendered as vector paths.
+ */
+
+const IDEVICE = 'electrical-circuits';
+const NODE = `#node-content article .idevice_node.${IDEVICE}`;
+
+// Canned "AI-generated" output in the electric-circuits format
+// (Description#TikZ#Solution#Question#Options...). The first circuit uses a bare
+// ohm sign to exercise the Ω → \Omega normalization the insertion path performs.
+const GENERATED_QUESTIONS = [
+    'Simple resistor#\\begin{circuitikz}\\draw (0,0) to[R=10 Ω] (3,0);\\end{circuitikz}#A#What component is shown?#Resistor#Capacitor#Inductor#Battery',
+    'Battery source#\\begin{circuitikz}\\draw (0,0) to[battery1] (0,3);\\end{circuitikz}#B#Which source is shown?#Resistor#Battery#Lamp',
+].join('\n');
+
+async function openQuestionsTab(page: Page): Promise<void> {
+    // Reveal the outer "AI" form tab, then its inner "Questions" sub-tab.
+    const aiTab = page
+        .locator(`${NODE} .exe-form-tabs a`)
+        .filter({ hasText: /^\s*(AI|IA)\s*$/ })
+        .first();
+    await aiTab.click();
+
+    await page.locator('#eXeETabQuestions').click();
+    await page.locator('#eXeEQuestionsArea').waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/** Dismiss the success/info modal the Save button raises. */
+async function closeAlertModals(page: Page): Promise<void> {
+    const modal = page.locator('#modalAlert[data-open="true"]');
+    if ((await modal.count()) > 0) {
+        const okBtn = modal.locator('button:has-text("OK"), button:has-text("Aceptar"), .btn-primary').first();
+        if ((await okBtn.count()) > 0) {
+            await okBtn.click();
+            await page.waitForTimeout(300);
+        }
+    }
+}
+
+test.describe('Electrical Circuits iDevice — AI generation flow', () => {
+    test('loads AI-generated questions into the editor and normalizes Ω', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Electrical Circuits AI E2E');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addIdevice(page, IDEVICE);
+        await page.locator('#elceTikzCode').waitFor({ state: 'attached', timeout: 15000 });
+
+        await openQuestionsTab(page);
+
+        // Paste the "AI-generated" questions and save them.
+        await page.locator('#eXeEQuestionsArea').fill(GENERATED_QUESTIONS);
+        await page.locator('#eXeESaveButton').click();
+        await closeAlertModals(page);
+
+        // The questions must be loaded into the editor — this is the regression.
+        await expect
+            .poll(async () => parseInt((await page.locator('#elceNumQuestions').textContent()) || '0', 10), {
+                timeout: 10000,
+            })
+            .toBeGreaterThanOrEqual(2);
+
+        // Assert against the editor model so the check is independent of which
+        // question is currently active: both the generated question text and the
+        // normalized ohm sign (\Omega) must be present in the loaded questions.
+        const model = await page.evaluate(() => {
+            const game = (window as unknown as { $exeDevice?: { selectsGame?: Array<Record<string, unknown>> } })
+                .$exeDevice;
+            const questions = game?.selectsGame ?? [];
+            return {
+                count: questions.length,
+                tikz: questions.map(q => String(q.tikzCode ?? '')).join('\n'),
+                texts: questions.map(q => String(q.quextion ?? '')).join('\n'),
+            };
+        });
+
+        expect(model.count).toBeGreaterThanOrEqual(2);
+        expect(model.texts).toContain('What component is shown?');
+        expect(model.tikz).toContain('circuitikz');
+        expect(model.tikz).toContain('\\Omega');
+    });
+
+    test('renders a circuit with an ohm label as vector paths in the preview', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Electrical Circuits Preview E2E');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addIdevice(page, IDEVICE);
+        const tikzCode = page.locator('#elceTikzCode');
+        await tikzCode.waitFor({ state: 'visible', timeout: 15000 });
+
+        // Drive the renderer directly with an ohm-labelled circuit.
+        await tikzCode.fill('\\begin{circuitikz}\\draw (0,0) to[R,l={$10\\,\\Omega$}] (3,0);\\end{circuitikz}');
+        await page.locator('#elcePreviewTikz').click();
+
+        // TikZJax compiles the circuit and the iDevice converts the glyphs to
+        // <path>s so the ohm sign renders without the Computer Modern web fonts.
+        await page.locator('#elceTikzPreview svg').first().waitFor({ state: 'attached', timeout: 60000 });
+        await expect(page.locator('#elceTikzPreview svg path').first()).toBeAttached({ timeout: 60000 });
+    });
+});
