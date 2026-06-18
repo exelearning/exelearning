@@ -82,6 +82,41 @@ async function waitForFocusInactive(page): Promise<void> {
     });
 }
 
+/**
+ * Add a single text iDevice, give it (short) content and save it. Returns the
+ * saved iDevice id. Mirrors the proven single-iDevice save flow used by the
+ * other tests in this file to avoid empty-save / unsaved-changes flakiness.
+ */
+async function addSavedTextIdevice(page): Promise<string> {
+    await addTextIdevice(page);
+    const id = await getTextIdeviceId(page);
+    await ensureEditing(page, id);
+    await waitForFocusActive(page);
+    await fillActiveEditor(page, 'Saved content');
+    await saveIdevice(page, id);
+    await waitForFocusInactive(page);
+    return id;
+}
+
+/**
+ * Reproduce the exact DOM residue that saving an iDevice from TinyMCE fullscreen
+ * left behind: a `tox-fullscreen` class stuck on <html>/<body> (the editor was
+ * destroyed before fullscreen's own teardown ran). This is what historically
+ * scroll-locked the document and broke the *next* iDevice edit, and reproducing
+ * it directly is deterministic — unlike toggling the real fullscreen plugin in
+ * headless. Returns whether both classes were applied.
+ */
+async function injectLeftoverFullscreenState(page): Promise<boolean> {
+    return page.evaluate(() => {
+        document.documentElement.classList.add('tox-fullscreen');
+        document.body.classList.add('tox-fullscreen');
+        return (
+            document.documentElement.classList.contains('tox-fullscreen') &&
+            document.body.classList.contains('tox-fullscreen')
+        );
+    });
+}
+
 test.describe('Focused iDevice edit mode (experiment)', () => {
     test('entering edit mode applies focused state and disables global controls', async ({
         authenticatedPage,
@@ -202,6 +237,53 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await page.waitForFunction(id => !document.getElementById(id), ideviceId, { timeout: 10000 });
 
         await waitForFocusInactive(page);
+    });
+
+    test('recovers from leftover TinyMCE fullscreen state so the next edit stays usable', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        // Regression for #1871 (pabloamayab). Saving an iDevice from TinyMCE
+        // fullscreen used to leave a `tox-fullscreen` class on <html>/<body> (the
+        // editor was destroyed before fullscreen teardown). That scroll-locked the
+        // document and, via the `.tox-fullscreen` CSS guard, suspended the focus
+        // layout for the NEXT edit — the editor looked blank and "an iDevice is
+        // already being edited" blocked every other action. Entering edit mode
+        // must strip the stale class and lay the overlay out on-screen.
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Focused Edit - leftover state recovery');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const id = await addSavedTextIdevice(page);
+
+        // Reproduce the residue a save-from-fullscreen leaves behind.
+        expect(await injectLeftoverFullscreenState(page)).toBe(true);
+
+        await editIdevice(page, id);
+        await waitForFocusActive(page);
+
+        const state = await page.evaluate(ideviceId => {
+            const box = document.getElementById(ideviceId)?.closest('.box');
+            const rect = box?.getBoundingClientRect();
+            return {
+                htmlFullscreen: document.documentElement.classList.contains('tox-fullscreen'),
+                bodyFullscreen: document.body.classList.contains('tox-fullscreen'),
+                boxTop: rect ? Math.round(rect.top) : null,
+                boxHeight: rect ? Math.round(rect.height) : 0,
+                viewportH: window.innerHeight,
+            };
+        }, id);
+
+        // Stale fullscreen residue cleared (document scroll no longer locked).
+        expect(state.htmlFullscreen).toBe(false);
+        expect(state.bodyFullscreen).toBe(false);
+        // The focus overlay is laid out on-screen and visible (not suspended by
+        // the leftover `.tox-fullscreen` guard, which would have made it static).
+        expect(state.boxTop).not.toBeNull();
+        expect(state.boxTop as number).toBeGreaterThanOrEqual(0);
+        expect(state.boxTop as number).toBeLessThan(state.viewportH);
+        expect(state.boxHeight).toBeGreaterThan(0);
     });
 
     test('locks the outer workarea scroll while editing', async ({ authenticatedPage, createProject }) => {

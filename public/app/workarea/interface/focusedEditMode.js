@@ -117,6 +117,23 @@ export default class FocusedEditMode {
         this.savedScrollTop = this.nodeContentContainer ? this.nodeContentContainer.scrollTop : 0;
         this.previousFocus = document.activeElement;
 
+        // A previous iDevice saved from TinyMCE fullscreen can leave a stale
+        // `tox-fullscreen` class on <html>/<body> (the editor is destroyed before
+        // fullscreen's own teardown runs). That keeps the document scroll-locked
+        // and, via the defensive CSS guard, suspends this focus layout. Clear it
+        // before laying out the new editor so each iDevice starts from a clean
+        // state. See _clearStaleTinymceFullscreen().
+        this._clearStaleTinymceFullscreen();
+
+        // The focused box is `position:absolute; inset:0` inside
+        // #node-content-container, so it only aligns with the visible viewport
+        // when the container is not scrolled. Any residual scroll (e.g. the user
+        // scrolled down to a lower iDevice, or the engine scrolled to a just-saved
+        // one) would otherwise render the overlay off-screen above the fold,
+        // making the editor invisible while it is still in edition. Pin the
+        // container to the top; savedScrollTop is restored on exit. (Refs #1871.)
+        if (this.nodeContentContainer) this.nodeContentContainer.scrollTop = 0;
+
         document.body.classList.add(BODY_CLASS);
         node.classList.add(NODE_CLASS);
         this._setGlobalControlsDisabled(true);
@@ -141,6 +158,11 @@ export default class FocusedEditMode {
         }
         this._setGlobalControlsDisabled(false);
         this._announce(_('Finished editing the iDevice.'));
+
+        // The iDevice leaving edition tears down its editor; if it was in TinyMCE
+        // fullscreen, the `tox-fullscreen` class can outlive the editor and keep
+        // the document scroll-locked. Clear any such stale state on exit too.
+        this._clearStaleTinymceFullscreen();
 
         const previousFocus = this.previousFocus;
         const savedScrollTop = this.savedScrollTop;
@@ -197,6 +219,27 @@ export default class FocusedEditMode {
                 }
             }
         });
+    }
+
+    /**
+     * Remove a stale TinyMCE `tox-fullscreen` class from `<html>`/`<body>`.
+     *
+     * TinyMCE's fullscreen plugin toggles `tox-fullscreen` on the editor element
+     * *and* on `<html>`/`<body>` (which adds `overflow:hidden`, locking document
+     * scroll). When an iDevice is saved/discarded while TinyMCE is in fullscreen,
+     * the editor is destroyed before the plugin's own teardown runs, so the
+     * document-level class is never removed. The next iDevice then opens with the
+     * page scroll-locked and — via the `.tox-fullscreen` CSS guard in
+     * _idevice-focus.scss — its focus layout suspended, so it renders off-screen.
+     *
+     * A *live* fullscreen editor always keeps `tox-fullscreen` on its own
+     * `.tox-tinymce` element, so we only strip the document-level class when no
+     * such element exists — never interfering with a genuinely active fullscreen.
+     */
+    _clearStaleTinymceFullscreen() {
+        if (document.querySelector('.tox-tinymce.tox-fullscreen')) return;
+        document.documentElement.classList.remove('tox-fullscreen');
+        document.body.classList.remove('tox-fullscreen');
     }
 
     /**

@@ -131,6 +131,22 @@ describe('FocusedEditMode', () => {
             expect(mode.savedScrollTop).toBe(250);
         });
 
+        it('pins the container to the top so the inset:0 overlay stays on-screen', () => {
+            const container = document.getElementById('node-content-container');
+            let scrollTop = 1500;
+            Object.defineProperty(container, 'scrollTop', {
+                get: () => scrollTop,
+                set: (v) => {
+                    scrollTop = v;
+                },
+            });
+            mode.enter(document.getElementById('idevice-1'));
+            // Saved for restore-on-exit, then reset to 0: a residual scroll would
+            // otherwise push the absolutely-positioned focus overlay off-screen.
+            expect(mode.savedScrollTop).toBe(1500);
+            expect(scrollTop).toBe(0);
+        });
+
         it('does not steal focus on enter (the editor manages its own focus)', () => {
             const editButton = document.getElementById('editIdevice-1');
             editButton.focus();
@@ -195,6 +211,48 @@ describe('FocusedEditMode', () => {
             scrollTop = 0; // engine reset; module restores when still 0
             mode.exit(document.getElementById('idevice-1'));
             expect(scrollTop).toBe(300);
+        });
+    });
+
+    describe('stale TinyMCE fullscreen cleanup', () => {
+        beforeEach(() => mode.init());
+
+        afterEach(() => {
+            document.documentElement.classList.remove('tox-fullscreen');
+            document.body.classList.remove('tox-fullscreen');
+        });
+
+        it('strips a stale tox-fullscreen class from <html>/<body> on enter', () => {
+            // Saving an iDevice from TinyMCE fullscreen destroys the editor before
+            // its fullscreen teardown runs, leaving the document-level class behind.
+            document.documentElement.classList.add('tox-fullscreen');
+            document.body.classList.add('tox-fullscreen');
+            mode.enter(document.getElementById('idevice-1'));
+            expect(document.documentElement.classList.contains('tox-fullscreen')).toBe(false);
+            expect(document.body.classList.contains('tox-fullscreen')).toBe(false);
+        });
+
+        it('strips a stale tox-fullscreen class on exit', () => {
+            mode.enter(document.getElementById('idevice-1'));
+            document.documentElement.classList.add('tox-fullscreen');
+            document.body.classList.add('tox-fullscreen');
+            mode.exit(document.getElementById('idevice-1'));
+            expect(document.documentElement.classList.contains('tox-fullscreen')).toBe(false);
+            expect(document.body.classList.contains('tox-fullscreen')).toBe(false);
+        });
+
+        it('never strips the class while an editor is genuinely in fullscreen', () => {
+            // A live fullscreen editor keeps tox-fullscreen on its own .tox-tinymce
+            // element; that is the signal we must not interfere with.
+            const editor = document.createElement('div');
+            editor.className = 'tox tox-tinymce tox-fullscreen';
+            document.body.appendChild(editor);
+            document.documentElement.classList.add('tox-fullscreen');
+            document.body.classList.add('tox-fullscreen');
+            mode.enter(document.getElementById('idevice-1'));
+            expect(document.documentElement.classList.contains('tox-fullscreen')).toBe(true);
+            expect(document.body.classList.contains('tox-fullscreen')).toBe(true);
+            editor.remove();
         });
     });
 
