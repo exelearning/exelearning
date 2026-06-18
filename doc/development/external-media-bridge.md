@@ -103,11 +103,21 @@ fall back immediately. The content never silently shows a blank frame.
 
 ## Author control (TinyMCE media dialog)
 
-When an author inserts a YouTube/Vimeo URL via the media dialog, an explanatory note and an
-auto-checked **"Open in a floating window"** checkbox appear. Unchecking writes
-`data-exe-media-floating="false"` on the embed, and the runtime then **leaves that iframe untouched** —
-the author is warned (via the note) that it may not work in a secure embedded view. Absent attribute or
-`"true"` means the runtime protects the embed by default in secure mode.
+When an author inserts a YouTube/Vimeo URL via the media dialog, an auto-checked **"Open in a floating
+window"** checkbox appears (with a help "i" icon + tooltip). The choice is stamped onto the embed as
+`data-exe-media-floating`:
+
+- **`"true"` (checked, default):** the exported video **always opens in a floating window**. In normal
+  (non-sandboxed) rendering it opens in a **self-contained lightbox** in the export document
+  (`exeMediaBridge.openLightbox`); in an opaque sandboxed iframe it opens in the trusted parent modal.
+  The inline iframe is replaced by an accessible click-to-open placeholder.
+- **`"false"` (unchecked):** the runtime **leaves the raw iframe inline** and does not intervene (the
+  author is warned via the tooltip that it may not work in a secure embedded view).
+- **Absent** (existing content): inline in normal rendering; protected (placeholder + bridge) only in
+  opaque mode.
+
+So `scanAndReplace` swaps an embed in normal mode **only** when `data-exe-media-floating="true"`, and in
+opaque mode for every recognized embed except an explicit `"false"`.
 
 ## How to integrate a host plugin
 
