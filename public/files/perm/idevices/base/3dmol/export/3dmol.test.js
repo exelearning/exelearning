@@ -60,6 +60,7 @@ describe('3dmol iDevice export', () => {
         });
 
         it('returns empty string for unknown or extension-less names', () => {
+            expect(dmol.getModelFormatByName('model.tar.gz')).toBe('');
             expect(dmol.getModelFormatByName('model.txt')).toBe('');
             expect(dmol.getModelFormatByName('noextension')).toBe('');
             expect(dmol.getModelFormatByName('')).toBe('');
