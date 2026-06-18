@@ -43,6 +43,7 @@ import {
 import { getSession as getSessionDefault } from '../services/session-manager';
 import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
 import type { AssetUploadRequest } from './types/request-payloads';
+import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 
 /**
  * File with optional name property (for Blob/File uploads)
@@ -164,19 +165,122 @@ const defaultDependencies: AssetsDependencies = {
     priorityQueue: defaultPriorityQueue,
 };
 
+/**
+ * Tracked state for a single in-progress chunked upload.
+ */
+interface ChunkUploadEntry {
+    projectId: string;
+    filename: string;
+    totalChunks: number;
+    uploadedChunks: Set<number>;
+    chunkDir: string;
+    createdAt: Date;
+    initialized: boolean; // Flag to track if directory has been created
+}
+
 // In-memory storage for chunked uploads
-const chunkUploads = new Map<
-    string,
-    {
-        projectId: string;
-        filename: string;
-        totalChunks: number;
-        uploadedChunks: Set<number>;
-        chunkDir: string;
-        createdAt: Date;
-        initialized: boolean; // Flag to track if directory has been created
+const chunkUploads = new Map<string, ChunkUploadEntry>();
+
+// =====================================================
+// Chunked upload limits & abandoned-upload sweeper (BUG H9)
+// =====================================================
+
+/**
+ * Maximum accepted size for a single uploaded chunk (20 MB).
+ * Prevents an attacker from writing arbitrarily large files via one chunk.
+ */
+export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Maximum number of chunks a single upload may declare (10000).
+ * Prevents an attacker from declaring an enormous chunk count that would
+ * never complete while keeping the Map entry and on-disk directory alive.
+ */
+export const MAX_TOTAL_CHUNKS = 10_000;
+
+/**
+ * Time-to-live for an in-progress chunked upload (1 hour). Uploads that are
+ * neither finalized nor explicitly cancelled within this window are considered
+ * abandoned and are reaped by the sweeper, freeing both the Map entry and the
+ * on-disk chunk directory.
+ */
+export const CHUNK_UPLOAD_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How often the background sweeper runs (15 minutes).
+ */
+export const CHUNK_UPLOAD_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+
+/**
+ * Module-level handle for the background sweeper interval, if running.
+ */
+let chunkUploadSweeperHandle: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Remove abandoned chunked uploads whose `createdAt` is older than `ttlMs`.
+ * Deletes both the in-memory Map entry and the on-disk chunk directory.
+ * Pure-ish and directly callable so it can be unit tested without timers.
+ *
+ * @param now - Reference timestamp in ms (defaults to Date.now()).
+ * @param ttlMs - Maximum age before an upload is considered abandoned.
+ * @returns Number of upload entries swept.
+ */
+export function sweepStaleChunkUploads(now: number = Date.now(), ttlMs: number = CHUNK_UPLOAD_TTL_MS): number {
+    let swept = 0;
+    for (const [uploadKey, upload] of chunkUploads) {
+        const age = now - upload.createdAt.getTime();
+        if (age <= ttlMs) {
+            continue;
+        }
+        chunkUploads.delete(uploadKey);
+        swept += 1;
+        // Best-effort on-disk cleanup; ignore errors (dir may already be gone).
+        void fs.remove(upload.chunkDir).catch(() => {});
     }
->();
+    return swept;
+}
+
+/**
+ * Start the background sweeper that periodically reaps abandoned chunked
+ * uploads. Idempotent: a second call while running is a no-op. The interval is
+ * `unref()`'d (when available) so it never keeps the process alive on its own.
+ * The orchestrator (src/index.ts) is responsible for calling this on startup.
+ *
+ * @param intervalMs - Sweep cadence in ms (defaults to CHUNK_UPLOAD_SWEEP_INTERVAL_MS).
+ */
+export function startChunkUploadSweeper(intervalMs: number = CHUNK_UPLOAD_SWEEP_INTERVAL_MS): void {
+    if (chunkUploadSweeperHandle !== null) {
+        return;
+    }
+    chunkUploadSweeperHandle = setInterval(() => {
+        sweepStaleChunkUploads();
+    }, intervalMs);
+    // Avoid keeping the event loop (and the process) alive solely for sweeping.
+    if (typeof chunkUploadSweeperHandle.unref === 'function') {
+        chunkUploadSweeperHandle.unref();
+    }
+}
+
+/**
+ * Stop the background sweeper if it is running. Idempotent. The orchestrator
+ * (src/index.ts) is responsible for calling this on shutdown.
+ */
+export function stopChunkUploadSweeper(): void {
+    if (chunkUploadSweeperHandle === null) {
+        return;
+    }
+    clearInterval(chunkUploadSweeperHandle);
+    chunkUploadSweeperHandle = null;
+}
+
+/**
+ * Test-only accessor for the module-level chunkUploads Map. Lets specs seed
+ * entries, backdate `createdAt`, and assert on sweep behaviour without coupling
+ * to the HTTP layer. Not part of the public/runtime API surface.
+ */
+export function __getChunkUploadsForTest(): Map<string, ChunkUploadEntry> {
+    return chunkUploads;
+}
 
 /**
  * Factory function to create assets routes with injected dependencies
@@ -269,6 +373,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     // Support clientId from form body OR query parameter (bulk upload uses query param)
                     const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const folderPath = sanitizeFolderPath(data.folderPath);
 
                     // Get file data
@@ -296,9 +405,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(baseStoragePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
+                    const ext = sanitizeFileExtension(filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    const filePath = safeJoin(baseStoragePath, flatFilename);
 
                     // Write file using Bun.write for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
@@ -394,6 +503,37 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         return { success: false, error: 'Missing required parameters' };
                     }
 
+                    // identifier is used to build the on-disk chunk directory; reject traversal.
+                    if (!isSafePathSegment(identifier)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid identifier' };
+                    }
+
+                    // Reject an absurd / non-numeric declared chunk count up front. An attacker
+                    // could otherwise declare an enormous totalChunks so the upload can never be
+                    // finalized, leaving the Map entry and on-disk chunks around indefinitely.
+                    if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_TOTAL_CHUNKS) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid resumableTotalChunks' };
+                    }
+
+                    // Resolve the chunk buffer early so we can enforce the per-chunk size cap
+                    // BEFORE creating any tracking state or touching disk.
+                    let chunkBuffer: Buffer;
+                    if (chunk instanceof Blob) {
+                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
+                    } else if (Buffer.isBuffer(chunk)) {
+                        chunkBuffer = chunk;
+                    } else {
+                        chunkBuffer = Buffer.from(chunk as ArrayBuffer | Uint8Array);
+                    }
+
+                    // Cap the size of an individual chunk to bound disk/memory usage.
+                    if (chunkBuffer.length > MAX_CHUNK_BYTES) {
+                        set.status = 413;
+                        return { success: false, error: 'Chunk exceeds maximum allowed size' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
 
                     // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
@@ -401,7 +541,8 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // BEFORE any async operation, otherwise multiple chunks enter the if block
                     // and overwrite each other's uploadedChunks Set
                     if (!chunkUploads.has(uploadKey)) {
-                        const chunkDir = path.join(process.cwd(), 'data', 'chunks', projectId, identifier);
+                        const chunksRoot = path.join(process.cwd(), 'data', 'chunks');
+                        const chunkDir = safeJoin(chunksRoot, projectId, identifier);
                         chunkUploads.set(uploadKey, {
                             projectId,
                             filename,
@@ -419,16 +560,6 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     if (!upload.initialized) {
                         await fs.ensureDir(upload.chunkDir);
                         upload.initialized = true;
-                    }
-
-                    // Get chunk buffer
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else {
-                        chunkBuffer = Buffer.from(chunk);
                     }
 
                     // Write chunk to disk using Bun.write for optimal performance
@@ -468,6 +599,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     const clientId = data.clientId || uuidv4();
 
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
                     const upload = chunkUploads.get(uploadKey);
 
@@ -497,9 +634,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(storagePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(upload.filename).toLowerCase();
+                    const ext = sanitizeFileExtension(upload.filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const finalPath = path.join(storagePath, flatFilename);
+                    const finalPath = safeJoin(storagePath, flatFilename);
 
                     // Write combined file with parallel chunk reads
                     const writeStream = fs.createWriteStream(finalPath);
@@ -707,6 +844,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // GET /:assetId/metadata - Get asset metadata
             .get('/:assetId/metadata', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -714,8 +852,17 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; the asset must belong to the
+                // project named in the URL or this leaks other tenants' metadata.
+                if (!asset || asset.project_id !== projectIdNum) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
@@ -782,6 +929,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -789,8 +937,19 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; without scoping the asset to
+                // the URL project, any authenticated user could delete another
+                // tenant's asset (file + DB row) by numeric ID. Mirror the
+                // ownership guard used by GET '/:assetId'.
+                if (!asset || asset.project_id !== projectIdNum) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
@@ -867,6 +1026,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         metadata = data.metadata;
                     }
 
+                    // Each clientId becomes an on-disk filename; reject traversal/separators up front.
+                    for (const meta of metadata) {
+                        if (!isSafePathSegment(meta?.clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId in metadata' };
+                        }
+                    }
+
                     // Get files from FormData
                     let files: (Blob | Buffer)[] = [];
                     if (data.files) {
@@ -902,9 +1069,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         // folderPath is only stored in database for UI/export, not on disk
 
                         // Use clientId as filename with original extension
-                        const ext = path.extname(filename).toLowerCase();
+                        const ext = sanitizeFileExtension(filename);
                         const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const filePath = path.join(baseStoragePath, flatFilename);
+                        const filePath = safeJoin(baseStoragePath, flatFilename);
 
                         return {
                             clientId: fileMeta.clientId,
@@ -1074,6 +1241,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     }
 
                     const clientId = request.headers.get('x-client-id') || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const filename = request.headers.get('x-filename') || 'uploaded_file';
                     const priority = parseInt(request.headers.get('x-priority') || '0', 10);
                     const contentType = request.headers.get('content-type') || 'application/octet-stream';
@@ -1099,9 +1271,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(baseStoragePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
+                    const ext = sanitizeFileExtension(filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    const filePath = safeJoin(baseStoragePath, flatFilename);
 
                     // Stream body directly to disk
                     const body = request.body;

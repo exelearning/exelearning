@@ -4,12 +4,15 @@ import {
     getProviderSecret,
     isValidProvider,
     isAllowedProviderUrl,
+    isSafeReturnUrl,
     extractProviderId,
     decodePlatformJWT,
     buildIntegrationUrl,
     getPlatformIntegrationParams,
     getExportTypeFromPkgType,
     validateProviderConfiguration,
+    warnIfProviderUrlsMissing,
+    resetProviderUrlWarning,
     type PlatformJWTPayload,
 } from './platform-jwt';
 
@@ -146,10 +149,14 @@ describe('Platform JWT Utilities', () => {
     });
 
     describe('isAllowedProviderUrl', () => {
-        it('should return true when no providers configured', () => {
+        // SECURITY (bug M3): this is an allow-list and now FAILS CLOSED. Previously
+        // an empty PROVIDER_URLS (the shipped default) returned true for any URL,
+        // which enabled SSRF via the JWT returnurl. With no providers configured
+        // nothing is allowed, so platform integration requires an explicit list.
+        it('should return false when no providers configured (fail closed)', () => {
             delete process.env.PROVIDER_URLS;
 
-            expect(isAllowedProviderUrl('https://any-domain.com/path')).toBe(true);
+            expect(isAllowedProviderUrl('https://any-domain.com/path')).toBe(false);
         });
 
         it('should return true for URL matching a configured provider', () => {
@@ -169,6 +176,41 @@ describe('Platform JWT Utilities', () => {
             process.env.PROVIDER_URLS = 'https://moodle.example.com';
 
             expect(isAllowedProviderUrl('')).toBe(false);
+        });
+    });
+
+    describe('isSafeReturnUrl', () => {
+        it('should allow public http(s) hostnames', () => {
+            expect(isSafeReturnUrl('https://moodle.example.com/mod/exescorm/view.php?id=1')).toBe(true);
+            expect(isSafeReturnUrl('http://moodle.example.com/mod/exeweb/view.php')).toBe(true);
+        });
+
+        it('should allow a public IP literal host', () => {
+            expect(isSafeReturnUrl('https://8.8.8.8/mod/exescorm/view.php')).toBe(true);
+        });
+
+        it('should reject empty and unparseable URLs', () => {
+            expect(isSafeReturnUrl('')).toBe(false);
+            expect(isSafeReturnUrl('not a url')).toBe(false);
+        });
+
+        it('should reject non-http(s) schemes', () => {
+            expect(isSafeReturnUrl('file:///etc/passwd')).toBe(false);
+            expect(isSafeReturnUrl('ftp://moodle.example.com/x')).toBe(false);
+            expect(isSafeReturnUrl('gopher://moodle.example.com/x')).toBe(false);
+        });
+
+        it('should reject internal IPv4 literal hosts (SSRF guard)', () => {
+            expect(isSafeReturnUrl('http://127.0.0.1/mod/exescorm/view.php')).toBe(false);
+            expect(isSafeReturnUrl('http://10.0.0.5/mod/exescorm/view.php')).toBe(false);
+            expect(isSafeReturnUrl('http://192.168.1.10/mod/exescorm/view.php')).toBe(false);
+            // Cloud metadata endpoint (link-local).
+            expect(isSafeReturnUrl('http://169.254.169.254/latest/meta-data/')).toBe(false);
+        });
+
+        it('should reject internal IPv6 literal hosts (SSRF guard)', () => {
+            expect(isSafeReturnUrl('http://[::1]/mod/exescorm/view.php')).toBe(false);
+            expect(isSafeReturnUrl('http://[fe80::1]/mod/exescorm/view.php')).toBe(false);
         });
     });
 
@@ -396,6 +438,84 @@ describe('Platform JWT Utilities', () => {
         });
     });
 
+    describe('warnIfProviderUrlsMissing', () => {
+        // isAllowedProviderUrl fails closed when PROVIDER_URLS is empty. If an
+        // operator wires up platform integration (PROVIDER_TOKENS / PROVIDER_IDS)
+        // but forgets PROVIDER_URLS, every callback is silently rejected. Emit a
+        // one-time startup warning so the misconfiguration is visible.
+        let originalWarn: typeof console.warn;
+        let warnings: string[];
+
+        beforeEach(() => {
+            resetProviderUrlWarning();
+            originalWarn = console.warn;
+            warnings = [];
+            console.warn = (...args: unknown[]) => {
+                warnings.push(args.map(String).join(' '));
+            };
+        });
+
+        afterEach(() => {
+            console.warn = originalWarn;
+        });
+
+        it('warns when integration is configured (tokens) but PROVIDER_URLS is empty', () => {
+            delete process.env.PROVIDER_URLS;
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(true);
+            expect(warnings.length).toBe(1);
+            expect(warnings[0]).toContain('PROVIDER_URLS');
+        });
+
+        it('warns when only PROVIDER_IDS is set but PROVIDER_URLS is empty', () => {
+            delete process.env.PROVIDER_URLS;
+            delete process.env.PROVIDER_TOKENS;
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(true);
+            expect(warnings.length).toBe(1);
+        });
+
+        it('only warns once across repeated calls (one-time startup warning)', () => {
+            delete process.env.PROVIDER_URLS;
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            expect(warnIfProviderUrlsMissing()).toBe(true);
+            expect(warnIfProviderUrlsMissing()).toBe(false);
+            expect(warnIfProviderUrlsMissing()).toBe(false);
+            expect(warnings.length).toBe(1);
+        });
+
+        it('does not warn when PROVIDER_URLS is configured alongside integration', () => {
+            process.env.PROVIDER_URLS = 'https://a.com';
+            process.env.PROVIDER_TOKENS = 'token-a';
+            process.env.PROVIDER_IDS = 'id-a';
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(false);
+            expect(warnings.length).toBe(0);
+        });
+
+        it('does not warn when no platform integration is configured at all', () => {
+            delete process.env.PROVIDER_URLS;
+            delete process.env.PROVIDER_TOKENS;
+            delete process.env.PROVIDER_IDS;
+
+            const warned = warnIfProviderUrlsMissing();
+
+            expect(warned).toBe(false);
+            expect(warnings.length).toBe(0);
+        });
+    });
+
     describe('getPlatformIntegrationParams', () => {
         const createValidToken = async (payload: Partial<PlatformJWTPayload>) => {
             const fullPayload = {
@@ -416,7 +536,10 @@ describe('Platform JWT Utilities', () => {
         beforeEach(() => {
             process.env.APP_SECRET = 'test-secret';
             delete process.env.PROVIDER_IDS;
-            delete process.env.PROVIDER_URLS;
+            // SECURITY (bug M3): isAllowedProviderUrl now fails closed, so the
+            // legitimate success path requires an explicit allow-list that
+            // matches the token's returnurl host (https://moodle.com).
+            process.env.PROVIDER_URLS = 'https://moodle.com';
         });
 
         it('should return params with platformIntegrationUrl for set operation', async () => {
@@ -460,6 +583,44 @@ describe('Platform JWT Utilities', () => {
 
             const token = await createValidToken({
                 returnurl: 'https://other-moodle.com/mod/exescorm/view.php',
+            });
+
+            const params = await getPlatformIntegrationParams(token, 'set');
+            expect(params).toBeNull();
+        });
+
+        // SECURITY (bug M3): with no PROVIDER_URLS configured the allow-list is
+        // empty and must deny — previously this returned params for any URL.
+        it('should return null when PROVIDER_URLS is empty (fail closed)', async () => {
+            delete process.env.PROVIDER_URLS;
+
+            const token = await createValidToken({
+                returnurl: 'https://moodle.com/mod/exescorm/view.php?id=1',
+            });
+
+            const params = await getPlatformIntegrationParams(token, 'set');
+            expect(params).toBeNull();
+        });
+
+        // SECURITY (bug M3): an internal IP-literal returnurl must be rejected as
+        // a request target even if an allow-list prefix would otherwise match.
+        it('should return null for a returnurl pointing at an internal IP', async () => {
+            process.env.PROVIDER_URLS = 'http://169.254.169.254';
+
+            const token = await createValidToken({
+                returnurl: 'http://169.254.169.254/mod/exescorm/view.php',
+            });
+
+            const params = await getPlatformIntegrationParams(token, 'set');
+            expect(params).toBeNull();
+        });
+
+        // SECURITY (bug M3): a non-http(s) scheme returnurl must be rejected.
+        it('should return null for a returnurl with a non-http(s) scheme', async () => {
+            process.env.PROVIDER_URLS = 'file://';
+
+            const token = await createValidToken({
+                returnurl: 'file:///mod/exescorm/etc/passwd',
             });
 
             const params = await getPlatformIntegrationParams(token, 'set');

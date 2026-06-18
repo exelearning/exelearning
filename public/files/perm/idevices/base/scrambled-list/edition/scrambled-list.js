@@ -28,7 +28,10 @@ var $exeDevice = {
     init: function (element, previousData, path) {
         //** eXeLearning idevice engine data ***************************
         this.ideviceBody = element;
-        this.idevicePreviousData = previousData;
+        this.idevicePreviousData = this.normalizePreviousData(
+            previousData,
+            element
+        );
         this.idevicePath = path;
         //**************************************************************
         this.refreshTranslations();
@@ -74,6 +77,57 @@ var $exeDevice = {
             msgRetryAttempts: c_(
                 'You made %s errors. You have %s attempts left. Do you want to try again?'
             ),
+        };
+    },
+
+    normalizePreviousData: function (previousData, element) {
+        if (previousData && Object.keys(previousData).length > 0) {
+            return previousData;
+        }
+        return this.extractLegacyDataFromHtml(element?.innerHTML || '') || previousData;
+    },
+
+    extractLegacyDataFromHtml: function (html) {
+        if (!html || !html.includes('exe-sortableList')) return null;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const activity = wrapper.querySelector('.exe-sortableList');
+        const options = Array.from(
+            activity?.querySelectorAll('.exe-sortableList-list > li') || []
+        )
+            .map((item) => item.innerHTML.trim() || item.textContent.trim())
+            .filter((option) => option !== '');
+        if (options.length === 0) return null;
+
+        const textAfter =
+            activity
+                ?.querySelector('.exe-sortableList-textAfter')
+                ?.innerHTML.trim() || '';
+
+        return {
+            instructions:
+                activity
+                    ?.querySelector('.exe-sortableList-instructions')
+                    ?.innerHTML.trim() || '',
+            options,
+            buttonText:
+                activity
+                    ?.querySelector('.exe-sortableList-buttonText')
+                    ?.textContent.trim() || c_('Check'),
+            rightText:
+                activity
+                    ?.querySelector('.exe-sortableList-rightText')
+                    ?.textContent.trim() || c_('Right!'),
+            wrongText:
+                activity
+                    ?.querySelector('.exe-sortableList-wrongText')
+                    ?.textContent.trim() ||
+                c_("Sorry, that's incorrect... The right answer is:"),
+            textAfter,
+            afterElement: textAfter
+                ? `<div class="exe-sortableList-textAfter">${textAfter}</div>`
+                : '',
         };
     },
 
@@ -485,11 +539,13 @@ var $exeDevice = {
         // Set form values
         let data = this.idevicePreviousData;
         if (!data || Object.keys(data).length === 0) return;
-        if (data.options) {
-            for (let i = 0; i < data.options.length; i++) {
-                this.ideviceBody.querySelector(
+        const options = this.normalizeOptions(data.options);
+        if (options.length > 0) {
+            for (let i = 0; i < options.length && i < this.items_no; i++) {
+                const input = this.ideviceBody.querySelector(
                     '#sortableListFormList' + i
-                ).value = data.options[i];
+                );
+                if (input) input.value = options[i];
             }
         }
 
@@ -538,6 +594,52 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs
         );
+    },
+
+    normalizeOptions: function (options) {
+        if (!Array.isArray(options)) return [];
+        return options
+            .map((option) => this.normalizeOptionItem(option))
+            .filter((option) => option !== '');
+    },
+
+    normalizeOptionItem: function (option) {
+        if (option === null || typeof option === 'undefined') return '';
+        if (typeof option === 'string' || typeof option === 'number') {
+            return String(option).trim();
+        }
+        if (Array.isArray(option)) {
+            for (let i = 0; i < option.length; i++) {
+                const value = this.normalizeOptionItem(option[i]);
+                if (value !== '') return value;
+            }
+            return '';
+        }
+        if (typeof option !== 'object') return '';
+
+        const preferredKeys = [
+            'text',
+            'option',
+            'content',
+            'html',
+            'value',
+            'label',
+            'title',
+            'name',
+        ];
+        for (let i = 0; i < preferredKeys.length; i++) {
+            const key = preferredKeys[i];
+            if (Object.prototype.hasOwnProperty.call(option, key)) {
+                const value = this.normalizeOptionItem(option[key]);
+                if (value !== '') return value;
+            }
+        }
+        for (const key in option) {
+            if (!Object.prototype.hasOwnProperty.call(option, key)) continue;
+            const value = this.normalizeOptionItem(option[key]);
+            if (value !== '') return value;
+        }
+        return '';
     },
 
     getBoundedIntValue: function (value, min, max, fallback) {
