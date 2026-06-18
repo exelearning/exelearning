@@ -52,6 +52,8 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const includeMathJax = meta.addMathJax === true;
+            let latexWasRendered = false;
 
             // 4. Fetch and add theme
             const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
@@ -103,7 +105,15 @@ export class PageExporter extends Html5Exporter {
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate single-page HTML with all content
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo, [], false, navLabels);
+            const html = this.generateSinglePageHtml(
+                pages,
+                meta,
+                usedIdevices,
+                faviconInfo,
+                [],
+                includeMathJax,
+                navLabels,
+            );
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -147,7 +157,7 @@ export class PageExporter extends Html5Exporter {
             // This is crucial for things like MathJax, Tooltips, etc.
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
+                includeMathJax,
             });
 
             try {
@@ -173,16 +183,36 @@ export class PageExporter extends Html5Exporter {
             // PageRenderer.renderSinglePage calls ideviceRenderer.renderBlock which handles structure.
 
             // 7. Generate single page HTML
-            const singlePageHtml = await this.generateSinglePageHtml(
+            let singlePageHtml = await this.generateSinglePageHtml(
                 pages,
                 meta,
                 usedIdevices,
                 faviconInfo,
                 patterns.map(p => p.name),
-                meta.addMathJax === true,
+                includeMathJax,
                 navLabels,
             );
+
+            // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
+            // adaptative-quiz / trueorfalse keep their math through runtime escaping.
+            // The whole document is one HTML here, so we render it in a single pass
+            // (mirrors the per-page HTML5 export; see RECURSIVE_JSON_LATEX_IDEVICES).
+            if (!includeMathJax) {
+                const latexResult = await this.preRenderHtmlLatex(singlePageHtml, options);
+                singlePageHtml = latexResult.html;
+                latexWasRendered = latexResult.latexRendered;
+            }
             this.zip.addFile(options?.filename || 'index.html', singlePageHtml);
+
+            // Append the pre-rendered LaTeX CSS to base.css (overwrites the earlier
+            // entry) so the baked SVG renders correctly without the MathJax engine.
+            // The single-page template only links content/css/base.css.
+            if (latexWasRendered) {
+                const decoder = new TextDecoder();
+                const encoder = new TextEncoder();
+                const baseCssText = decoder.decode(baseCss) + '\n' + this.getPreRenderedLatexCss();
+                this.zip.addFile('content/css/base.css', encoder.encode(baseCssText));
+            }
 
             // 8. Generate CSS files
             const cssFiles = await this.resources.fetchContentCss();
@@ -241,6 +271,8 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
+            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,

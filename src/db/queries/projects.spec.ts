@@ -513,6 +513,84 @@ describe('Project Queries', () => {
             expect(collaborators.some(c => c.id === testUser.id)).toBe(true);
             expect(collaborators.some(c => c.id === otherCollab.id)).toBe(true);
         });
+
+        it('should roll back all writes atomically when a mid-sequence step fails', async () => {
+            const newOwner = await createUser(db, {
+                email: 'rollback-owner@example.com',
+                user_id: 'rollback-owner',
+                password: 'h',
+            });
+
+            const project = await createProject(db, {
+                title: 'Rollback Test',
+                owner_id: testUser.id,
+            });
+
+            // New owner must be a collaborator so the pre-checks pass and the
+            // function proceeds to the write phase (removeCollaborator ->
+            // addCollaborator -> UPDATE owner_id).
+            await addCollaborator(db, project.id, newOwner.id);
+
+            // Wrap db so the transaction callback runs against a trx proxy whose
+            // final `updateTable('projects')` step throws. This simulates a
+            // mid-sequence failure AFTER the collaborator writes have executed
+            // inside the transaction, exercising a real SQLite rollback.
+            // Kysely methods access private fields (this.#props), so any
+            // delegated method MUST be bound back to its real target — otherwise
+            // `this` becomes the proxy and private-field access throws.
+            const bindToTarget = <O extends object>(target: O, prop: string | symbol, receiver: unknown): unknown => {
+                const value = Reflect.get(target, prop, receiver);
+                return typeof value === 'function' ? value.bind(target) : value;
+            };
+
+            const failingDb = new Proxy(db, {
+                get(target, prop, receiver) {
+                    if (prop === 'transaction') {
+                        return () => {
+                            const builder = target.transaction();
+                            return {
+                                execute<T>(cb: (trx: typeof db) => Promise<T>): Promise<T> {
+                                    return builder.execute(realTrx => {
+                                        const trxProxy = new Proxy(realTrx, {
+                                            get(trxTarget, trxProp, trxReceiver) {
+                                                if (trxProp === 'updateTable') {
+                                                    return () => {
+                                                        throw new Error('Injected write failure');
+                                                    };
+                                                }
+                                                return bindToTarget(trxTarget, trxProp, trxReceiver);
+                                            },
+                                        });
+                                        return cb(trxProxy as typeof db);
+                                    });
+                                },
+                            };
+                        };
+                    }
+                    return bindToTarget(target, prop, receiver);
+                },
+            });
+
+            await expect(transferOwnership(failingDb, project.id, newOwner.id)).rejects.toThrow(
+                'Injected write failure',
+            );
+
+            // Ownership must be unchanged (UPDATE rolled back).
+            const found = await findProjectById(db, project.id);
+            expect(found?.owner_id).toBe(testUser.id);
+
+            // New owner must still be a collaborator (removeCollaborator rolled back).
+            expect(await isCollaborator(db, project.id, newOwner.id)).toBe(true);
+
+            // Previous owner must NOT have been added as a collaborator
+            // (addCollaborator rolled back).
+            expect(await isCollaborator(db, project.id, testUser.id)).toBe(false);
+
+            // Collaborator set is exactly what it was before the failed transfer.
+            const collaborators = await getProjectCollaborators(db, project.id);
+            expect(collaborators.length).toBe(1);
+            expect(collaborators[0].id).toBe(newOwner.id);
+        });
     });
 
     // ============================================================================
