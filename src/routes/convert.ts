@@ -196,13 +196,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     ): Promise<ExportResult & { filename?: string }> {
         let ydoc: Y.Doc | null = null;
         let wrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
+        let extractDir: string | null = null;
 
         try {
             // Read ELP file
             const elpBuffer = await fs.readFile(elpFilePath);
 
             // Create extraction directory for assets
-            const extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
+            extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
             await fs.ensureDir(extractDir);
 
             // Import ELP to Y.Doc using unified import system
@@ -260,6 +261,13 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             // Cleanup Y.Doc
             if (wrapper) {
                 wrapper.destroy();
+            }
+            // Remove the per-conversion extraction directory. The route-level
+            // finally only removes the upload dir (convert-*), so without this
+            // every convert/export call would permanently leak an extract-*
+            // directory full of extracted assets under FILES_DIR/tmp.
+            if (extractDir) {
+                await fs.remove(extractDir).catch(() => {});
             }
         }
     }

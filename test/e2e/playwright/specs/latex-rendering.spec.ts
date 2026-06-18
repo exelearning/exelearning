@@ -825,6 +825,85 @@ test.describe('LaTeX Rendering', () => {
         });
     });
 
+    test.describe('Pre-rendered Export Baseline Alignment (issue #1919)', () => {
+        // When MathJax is NOT bundled, inline math must sit on the text baseline like the
+        // runtime MathJax render. That requires (a) the export CSS to NOT force
+        // `vertical-align: middle` on the wrapper, and (b) the SVG to keep its own inline
+        // `vertical-align: -X.XXXex` produced by MathJax through the whole export pipeline.
+        test('keeps the SVG inline vertical-align and ships no vertical-align:middle CSS', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Baseline Align Export');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Keep default addMathJax=false so LaTeX is pre-rendered to SVG+MathML.
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            // Inline math with depth below the baseline (fraction, subscript, radical) -
+            // exactly the cases that the old `vertical-align: middle` wrapper misaligned.
+            const contentWithInlineMath = `
+                <p>Let \\(\\frac{a}{b}\\) be the quotient, with \\(x_i\\) and \\(\\sqrt{y}\\) inline.</p>
+            `;
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(content);
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            }, contentWithInlineMath);
+
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            await saveProject(page);
+
+            const download = await exportHtml5Website(page);
+            const tmpDir = path.join('/tmp', `latex-baseline-export-${Date.now()}`);
+            fs.mkdirSync(tmpDir, { recursive: true });
+            const exportPath = path.join(tmpDir, download.suggestedFilename());
+            await download.saveAs(exportPath);
+            expect(fs.existsSync(exportPath)).toBe(true);
+
+            const zipMap = unzipSync(fs.readFileSync(exportPath));
+
+            // Inline math must have been pre-rendered to wrappers.
+            const htmlFiles = Object.keys(zipMap).filter(f => f.endsWith('.html') || f.endsWith('.xhtml'));
+            const decodedHtml = htmlFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
+            expect(decodedHtml).toContain('class="exe-math-rendered"');
+
+            // The SVG must keep its own inline vertical-align (negative ex offset) from MathJax.
+            const svgHasVerticalAlign = /<svg[^>]*style="[^"]*vertical-align:\s*-?[\d.]+ex/i.test(decodedHtml);
+            expect(svgHasVerticalAlign).toBe(true);
+
+            // The shipped CSS must define the wrapper with the fixed baseline rule and must NOT
+            // force vertical-align:middle on the wrapper/svg. (We assert the specific math rules,
+            // not a blanket vertical-align:middle, because theme/bootstrap CSS use it elsewhere.)
+            const cssFiles = Object.keys(zipMap).filter(f => f.endsWith('.css'));
+            const decodedCss = cssFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
+            expect(decodedCss).toContain('.exe-math-rendered { display: inline-block; line-height: 0; }');
+            expect(decodedCss).not.toContain('.exe-math-rendered { display: inline-block; vertical-align: middle');
+            expect(decodedCss).not.toContain('.exe-math-rendered svg { vertical-align: middle');
+        });
+    });
+
     test.describe('MathJax Runtime Option (addMathJax)', () => {
         test('should include MathJax script in preview when addMathJax option is enabled via UI', async ({
             authenticatedPage,

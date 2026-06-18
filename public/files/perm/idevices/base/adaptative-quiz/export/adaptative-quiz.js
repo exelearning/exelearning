@@ -128,6 +128,13 @@ var $adaptativequiz = {
         }
 
         this.addEvents(ldata.id);
+        // Only invoke MathJax when there is unrendered LaTeX: pre-rendered exports
+        // ship no MathJax engine, so an unconditional call would 404. hasLatex
+        // ignores already-rendered math (see common.js).
+        const templateHtml = $('.exe-adaptative-quiz-template').html() || '';
+        if ($exeDevices.iDevice.gamification.math.hasLatex(templateHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('.exe-adaptative-quiz-template');
+        }
 
         return true;
     },
@@ -402,6 +409,41 @@ var $adaptativequiz = {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;'),
 
+    /**
+     * Escape author-provided text while keeping pre-rendered math intact.
+     *
+     * Question/option/definition text is authored as PLAIN TEXT, so it is
+     * escaped to prevent HTML/script injection. During export, LaTeX in these
+     * fields is pre-rendered to <span class="exe-math-rendered">SVG</span>; this
+     * helper escapes everything EXCEPT those spans, so the math shows as SVG
+     * without bundling MathJax.
+     *
+     * Security: only spans matching our exact pre-renderer output AND carrying
+     * no script-bearing markup are kept raw. A forged span typed into a
+     * plain-text field (e.g. with an onerror handler) fails the strict pattern
+     * or the denylist and is escaped, preserving the XSS boundary.
+     *
+     * @param {String} str
+     * @returns {String}
+     */
+    escapeHtmlButKeepRenderedMath: function (str) {
+        const text = String(str ?? '');
+        const RENDERED_MATH =
+            /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
+        const UNSAFE = /<script|<foreignobject|<iframe|<animate|<set\b|javascript:|\son\w+\s*=/i;
+        let out = '';
+        let last = 0;
+        let match;
+        RENDERED_MATH.lastIndex = 0;
+        while ((match = RENDERED_MATH.exec(text)) !== null) {
+            out += this.escapeHtml(text.slice(last, match.index));
+            out += UNSAFE.test(match[0]) ? this.escapeHtml(match[0]) : match[0];
+            last = match.index + match[0].length;
+        }
+        out += this.escapeHtml(text.slice(last));
+        return out;
+    },
+
     escapeAttr: str =>
         String(str ?? '')
             .replace(/&/g, '&amp;')
@@ -593,6 +635,9 @@ var $adaptativequiz = {
         if (isHtml) $msg.html(content);
         else $msg.text(content);
         $msg.stop(true, true).show();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(content)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizMessages-' + id)
+         }
     },
 
     /**
@@ -812,7 +857,7 @@ var $adaptativequiz = {
             // Non-word types show the question stem above the answers.
             // Word-type renders its own (centered) layout below: hint cells,
             // definition, then input.
-            html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText" id="adaptativeQuizQuestionText-${id}">${this.escapeHtml(question.question)}</div></div>`;
+            html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText" id="adaptativeQuizQuestionText-${id}">${this.escapeHtmlButKeepRenderedMath(question.question)}</div></div>`;
         }
 
         if (tSel === 2) {
@@ -829,7 +874,7 @@ var $adaptativequiz = {
             if (hintMarkup) {
                 html += `<div class="ADAPTATIVEQUIZ-WordHint" aria-hidden="true">${hintMarkup}</div>`;
             }
-            html += `<div class="ADAPTATIVEQUIZ-WordDefinition">${stemAudio}<div class="ADAPTATIVEQUIZ-WordDefinitionText">${this.escapeHtml(question.solutionWord || '')}</div></div>`;
+            html += `<div class="ADAPTATIVEQUIZ-WordDefinition">${stemAudio}<div class="ADAPTATIVEQUIZ-WordDefinitionText">${this.escapeHtmlButKeepRenderedMath(question.solutionWord || '')}</div></div>`;
             html += `<label for="${inputId}" class="sr-av">${this.escapeHtml((opts.msgs || {}).msgAnswer || 'Answer')}</label><input type="text" class="ADAPTATIVEQUIZ-WordInput form-control" id="${inputId}" autocomplete="off" /></div>`;
         } else if (tSel === 1) {
             // Sort: drag-and-drop reorderable list. Each item shows a live
@@ -857,7 +902,7 @@ var $adaptativequiz = {
                         <span class="ADAPTATIVEQUIZ-SortHandle" aria-hidden="true">☰</span>
                         <span class="ADAPTATIVEQUIZ-SortRank" aria-hidden="true" hidden></span>
                         <span class="ADAPTATIVEQUIZ-OptionBody">
-                            <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtml(optText)}</span>
+                            <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtmlButKeepRenderedMath(optText)}</span>
                         </span>
                         ${audioBtn}
                     </li>
@@ -890,7 +935,7 @@ var $adaptativequiz = {
                     <label class="ADAPTATIVEQUIZ-Option${audioCls}" data-orig-index="${origIndex}" for="${inputId}">
                         ${inputHtml}
                         <span class="ADAPTATIVEQUIZ-OptionBody">
-                            <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtml(optText)}</span>
+                            <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtmlButKeepRenderedMath(optText)}</span>
                         </span>
                         ${audioBtn}
                     </label>
@@ -937,6 +982,10 @@ var $adaptativequiz = {
             .show();
         $('#adaptativeQuizRound-' + id).text(opts.roundCount + 1 + ' / ' + opts.numRound);
         this.updateLevelDisplay(id, opts);
+        const lhtml = $('#adaptativeQuizQuestionContainer-' + id).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(lhtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizQuestionContainer-' + id);
+        }
     },
 
     startGame: function (id) {
@@ -1261,7 +1310,12 @@ var $adaptativequiz = {
         if (delta === 1) pieces.push('↑ ' + (msgs.msgLevelUp || 'Level up!'));
         if (delta === -1) pieces.push('↓ ' + (msgs.msgLevelDown || 'Level down'));
         const audioHtml = feedbackAudio ? this.renderMedia(opts, feedbackAudio, 'audio') : '';
-        this.setMessage(id, this.escapeHtml(pieces.join(' ')) + audioHtml, isCorrect ? 'success' : 'error', true);
+        this.setMessage(
+            id,
+            this.escapeHtmlButKeepRenderedMath(pieces.join(' ')) + audioHtml,
+            isCorrect ? 'success' : 'error',
+            true,
+        );
 
         opts.answeredIndexes.push(opts.currentQuestionIndex);
         opts.roundCount++;
@@ -1343,7 +1397,7 @@ var $adaptativequiz = {
         if (!this.shouldRevealClue(opts)) return;
         opts.obtainedClue = true;
         const clueText = String((opts.itinerary || {}).clueGame || '');
-        $('#adaptativeQuizShowClueText-' + id).text(clueText);
+        $('#adaptativeQuizShowClueText-' + id).html(this.escapeHtmlButKeepRenderedMath(clueText));
         $('#adaptativeQuizShowClue-' + id).show();
     },
 
@@ -1400,6 +1454,9 @@ var $adaptativequiz = {
         $('#adaptativeQuizReport-' + id)
             .html(html)
             .show();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
+                $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizReport-' + id)
+        }
     },
 
     endGame: function (id) {
@@ -1552,7 +1609,11 @@ var $adaptativequiz = {
         const inScormPackage = this.isWaitingForScorm(opts);
         if (inScormPackage) opts.scormReady = false;
         if (itinerary.showCodeAccess) {
-            $('#adaptativeQuizMessageCodeAccess-' + id).text(itinerary.messageCodeAccess || '');
+            const messageCodeAccess = this.escapeHtmlButKeepRenderedMath(itinerary.messageCodeAccess || '');
+            $('#adaptativeQuizMessageCodeAccess-' + id).html(messageCodeAccess);
+            if ($exeDevices.iDevice.gamification.math.hasLatex(messageCodeAccess)) {
+                $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizMessageCodeAccess-' + id);
+            }
             $('#adaptativeQuizCubierta-' + id).show();
             $('#adaptativeQuizCodeAccessDiv-' + id).show();
         } else if (!opts.gameStarted && opts.questions.length > 0 && !inScormPackage) {
