@@ -737,22 +737,34 @@ var $exeTinyMCE = {
         var checkboxLabel = hasT ? _('Open in a floating window') : 'Open in a floating window';
         var helpLabel = hasT ? _('Help') : 'Help';
 
-        // The explanation is presented as a small "?" help button (tooltip via the native
-        // title attribute), mirroring the help affordances in the export options, instead
-        // of a large inline paragraph.
+        // The explanation is presented as a small teal "i" info button to the RIGHT of the
+        // checkbox (tooltip via the native title attribute), mirroring the info icons in the
+        // export options, instead of a large inline paragraph. A TinyMCE `bar` lays the
+        // checkbox and the icon out horizontally.
         var noteAttr = $exeTinyMCE._escapeAttr(noteText);
         var helpHtml =
             '<button type="button" class="exe-media-help-button" title="' +
             noteAttr +
             '" aria-label="' +
             $exeTinyMCE._escapeAttr(helpLabel + ': ' + noteText) +
-            '" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;' +
-            'border-radius:50%;border:1px solid currentColor;background:transparent;cursor:help;' +
-            'font-weight:bold;line-height:1;padding:0;">?</button>';
+            '" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;' +
+            'border-radius:50%;border:none;background:var(--brand-primary-600,#0BA1A1);color:#fff;cursor:help;' +
+            "font-style:italic;font-weight:bold;line-height:1;padding:0;font-size:12px;font-family:Georgia,'Times New Roman',serif;\">i</button>";
 
         $exeTinyMCE._injectDialogItems(spec.body, [
-            { type: 'checkbox', name: 'exeMediaFloating', label: checkboxLabel },
-            { type: 'htmlpanel', html: '<div class="exe-media-dialog-help">' + helpHtml + '</div>' },
+            {
+                type: 'bar',
+                items: [
+                    { type: 'checkbox', name: 'exeMediaFloating', label: checkboxLabel },
+                    {
+                        type: 'htmlpanel',
+                        html:
+                            '<span class="exe-media-dialog-help" style="display:inline-flex;align-items:center;height:100%;">' +
+                            helpHtml +
+                            '</span>',
+                    },
+                ],
+            },
         ]);
 
         spec.initialData = initial;

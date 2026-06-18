@@ -15357,50 +15357,6 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Genera l'anteprima del circuito prima di salvare</target>
       </trans-unit>
-      <trans-unit id="3b31chf" resname="Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.">
-        <source>Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="jb96wzx" resname="Open in a floating window">
-        <source>Open in a floating window</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="zz2tzhd" resname="...">
-        <source>...</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="905aj02" resname="3D Molecule">
-        <source>3D Molecule</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="l3nt9fs" resname="3D Molecules">
-        <source>3D Molecules</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="w4qnhpi" resname="Max. width (optional)">
-        <source>Max. width (optional)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="wgeva0t" resname="Max. height (optional)">
-        <source>Max. height (optional)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="qz394zb" resname="e.g. 800px, 50%, 40em, 30rem">
-        <source>e.g. 800px, 50%, 40em, 30rem</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="gl57itm" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
-        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="fntf09u" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
-        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="oa9r11y" resname="Sorry, that&apos;s incorrect... The right answer is:">
-        <source>Sorry, that's incorrect... The right answer is:</source>
-        <target></target>
-      </trans-unit>
     </body>
   </file>
 </xliff>
