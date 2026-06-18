@@ -575,7 +575,24 @@ var $exeDevice = {
                 (_match, value) =>
                     `to[C,l={$${formatNumber(value)}\\,\\mu\\mathrm{F}$}]`
             )
-            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,');
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,')
+            // Brace any math label that still holds a *bare* comma so TikZ's
+            // `to[...]` parser stops reading it as an option separator
+            // (e.g. l=$9,V$ -> l={$9\,V$}; otherwise it errors with an unknown
+            // key like '/tikz/V$'). The \, thin space is left alone; a
+            // digit,digit comma stays a {,} thousands separator and any other
+            // bare comma becomes a thin space.
+            .replace(/=\s*\$([^$]*)\$/g, (match, content) => {
+                if (!/(^|[^\\]),/.test(content)) return match;
+                const fixed = content.replace(/\s*,\s*/g, (comma, offset, str) => {
+                    const prev = str[offset - 1];
+                    const next = str[offset + comma.length];
+                    if (prev === '\\') return comma;
+                    if (prev === '{' && next === '}') return comma;
+                    return /\d/.test(prev) && /\d/.test(next) ? '{,}' : '\\,';
+                });
+                return `={$${fixed}$}`;
+            });
     },
 
     normalizeTikzCode: function (code) {

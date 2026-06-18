@@ -112,12 +112,17 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
         const tikzCode = page.locator('#elceTikzCode');
         await tikzCode.waitFor({ state: 'visible', timeout: 15000 });
 
-        // Drive the renderer directly with an ohm-labelled circuit.
-        await tikzCode.fill('\\begin{circuitikz}\\draw (0,0) to[R,l={$10\\,\\Omega$}] (3,0);\\end{circuitikz}');
+        // Drive the renderer with the malformed AI-style labels that used to
+        // crash TikZJax: bare commas inside `$...$` (l=$9,V$, R=$1,k\Omega$) that
+        // split the to[...] option list. normalizeTikzCode/sanitizeTikzRendererSyntax
+        // must brace them so the circuit compiles.
+        await tikzCode.fill(
+            '\\begin{circuitikz}\\draw (0,0) to[battery1,l=$9,V$] (0,2) to[R=$1,k\\Omega$] (3,2) to[C=$100\\,\\mu F$] (3,0) -- (0,0);\\end{circuitikz}',
+        );
         await page.locator('#elcePreviewTikz').click();
 
-        // TikZJax compiles the circuit and the iDevice converts the glyphs to
-        // <path>s so the ohm sign renders without the Computer Modern web fonts.
+        // TikZJax compiles the (now repaired) circuit and the iDevice converts
+        // the glyphs to <path>s so the ohm sign renders without web fonts.
         await page.locator('#elceTikzPreview svg').first().waitFor({ state: 'attached', timeout: 60000 });
         await expect(page.locator('#elceTikzPreview svg path').first()).toBeAttached({ timeout: 60000 });
     });

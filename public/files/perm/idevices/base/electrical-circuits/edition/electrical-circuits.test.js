@@ -245,6 +245,23 @@ describe('electrical-circuits iDevice edition', () => {
         );
     });
 
+    it('sanitizeTikzRendererSyntax braces math labels with a bare comma that would split to[...]', () => {
+        const code = String.raw`\begin{circuitikz}\draw (0,0) to[battery1,l=$9,V$] (0,2) to[R=$1,k\Omega$] (3,2) to[C=$100\,\mu F$] (3,0) -- (0,0);\end{circuitikz}`;
+
+        expect($exeDevice.sanitizeTikzRendererSyntax(code)).toBe(
+            String.raw`\begin{circuitikz}\draw (0,0) to[battery1,l={$9\,V$}] (0,2) to[R={$1\,k\Omega$}] (3,2) to[C=$100\,\mu F$] (3,0) -- (0,0);\end{circuitikz}`
+        );
+    });
+
+    it('sanitizeTikzRendererSyntax preserves thousands separators and is idempotent when bracing comma labels', () => {
+        // A comma-free label is left exactly as it is.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[C=$100\\,\\mu F$]')).toBe('to[C=$100\\,\\mu F$]');
+        // digit,digit stays a {,} thousands separator; the other comma is a thin space.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[V=$1,000,V$]')).toBe('to[V={$1{,}000\\,V$}]');
+        // The now-braced label is not wrapped again on a second pass.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[R={$1\\,k\\Omega$}]')).toBe('to[R={$1\\,k\\Omega$}]');
+    });
+
     it('normalizeTikzCode collapses whitespace and sanitizes Unicode together', () => {
         expect(
             $exeDevice.normalizeTikzCode(
