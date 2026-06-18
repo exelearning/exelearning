@@ -763,6 +763,63 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
 
+        it('should extract scrambled-list properties from legacy htmlView', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-4',
+                    title: 'Root',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'scrambled-list',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-2',
+                                    type: 'scrambled-list',
+                                    title: 'Scrambled',
+                                    icon: 'scrambled-list',
+                                    position: 0,
+                                    htmlView:
+                                        '<div class="exe-sortableList">' +
+                                        '<div class="exe-sortableList-instructions"><p>Order items</p></div>' +
+                                        '<ul class="exe-sortableList-list">' +
+                                        '<li>One</li><li><strong>Two</strong></li><li>Three</li>' +
+                                        '</ul>' +
+                                        '<p class="exe-sortableList-buttonText">Check legacy</p>' +
+                                        '<p class="exe-sortableList-rightText"><em>Right</em></p>' +
+                                        '<p class="exe-sortableList-wrongText">Wrong</p>' +
+                                        '</div>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+            const component = pageStructures[0].blocks[0].components[0];
+
+            expect(component.properties.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+            expect(component.properties.instructions).toBe('<p>Order items</p>');
+            expect(component.properties.buttonText).toBe('Check legacy');
+            expect(component.properties.rightText).toBe('Right');
+            expect(component.properties.showSolutions).toBe(true);
+            expect(component.properties.attemptsNumber).toBe(1);
+
+            ydoc.destroy();
+        });
+
         it('should remap exe-node: internal links in legacy import htmlView', () => {
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger);

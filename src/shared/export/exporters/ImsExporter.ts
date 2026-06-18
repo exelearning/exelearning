@@ -127,7 +127,7 @@ export class ImsExporter extends Html5Exporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
@@ -439,6 +439,7 @@ export class ImsExporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addMathJax: meta.addMathJax === true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,
