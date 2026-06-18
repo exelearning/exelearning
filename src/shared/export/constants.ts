@@ -343,6 +343,9 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
+    // External-media bridge (opaque-iframe YouTube/Vimeo support); policy loads first
+    'exe_media_bridge/exe_media_policy.js',
+    'exe_media_bridge/exe_media_bridge.js',
     // Always-on xAPI emitter (every export is xAPI-compatible out of the box)
     'xapi/exe_xapi.js',
     // Bootstrap (JS bundle includes Popper)

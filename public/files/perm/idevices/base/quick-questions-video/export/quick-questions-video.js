@@ -139,8 +139,37 @@ var $quickquestionsvideo = {
         if ($quickquestionsvideo.hasVideo) $quickquestionsvideo.loadApiPlayer();
     },
 
+    // True when instance `i` is a YouTube video rendered inside an opaque-origin
+    // sandboxed iframe, where the nested player cannot run and must be relayed to the
+    // trusted parent through the external-media bridge.
+    bridgeEligible: function (instance) {
+        var mOptions = $quickquestionsvideo.options[instance];
+        if (!mOptions || mOptions.videoType > 0) return false; // local/mediateca excluded
+        var b = typeof window !== 'undefined' && window.exeMediaBridge;
+        return !!(b && typeof b.shouldUseBridge === 'function' && b.shouldUseBridge());
+    },
+
+    anyBridgeEligible: function () {
+        return $quickquestionsvideo.options.some(function (_option, i) {
+            return $quickquestionsvideo.bridgeEligible(i);
+        });
+    },
+
+    // Mirror of onPlayerReady's effect for bridge instances (reveal the start button).
+    onPlayerReadyBridge: function (instance) {
+        $(`#vquextStartGame-${instance}`).show();
+        $quickquestionsvideo.showMessage(1, '', instance);
+    },
+
     loadApiPlayer: function () {
         if (!this.hasVideo) return;
+
+        if ($quickquestionsvideo.anyBridgeEligible()) {
+            // Opaque-iframe mode: the YouTube IFrame API cannot run in a sandboxed
+            // frame, so skip loading it and set players up via the parent bridge.
+            this.activatePlayer();
+            return;
+        }
 
         $exeDevices.iDevice.gamification.media.YouTubeAPILoader.load()
             .then(() => this.activatePlayer())
@@ -150,6 +179,15 @@ var $quickquestionsvideo = {
     activatePlayer: function () {
         $quickquestionsvideo.options.forEach((option, i) => {
             if ($quickquestionsvideo.hasVideo && option.player === null) {
+                if ($quickquestionsvideo.bridgeEligible(i)) {
+                    // Bridge mode: the player lives in the trusted parent modal. Mark
+                    // the instance and reveal the start button; the modal opens when the
+                    // user starts the video (startVideo → openMedia).
+                    option.useBridge = true;
+                    option.player = false; // not null → not re-activated; not a YT.Player
+                    $quickquestionsvideo.onPlayerReadyBridge(i);
+                    return;
+                }
                 option.player = new YT.Player(`vquextVideo-${i}`, {
                     width: '100%',
                     height: '100%',
@@ -598,6 +636,10 @@ var $quickquestionsvideo = {
             mOptions.localPlayer.play();
             return;
         }
+        if (mOptions.useBridge) {
+            $quickquestionsvideo.startBridgeVideo(instance, mstart);
+            return;
+        }
         if (
             mOptions.player &&
             typeof mOptions.player.loadVideoById == 'function'
@@ -610,8 +652,50 @@ var $quickquestionsvideo = {
         }
     },
 
+    // Open (or resume) the YouTube video in the trusted parent modal and relay events.
+    startBridgeVideo: function (instance, start) {
+        const mOptions = $quickquestionsvideo.options[instance];
+        if (mOptions.mediaController) {
+            mOptions.mediaController.seek(start);
+            mOptions.mediaController.show();
+            mOptions.mediaController.play();
+            return;
+        }
+        window.exeMediaBridge
+            .openMedia({
+                provider: 'youtube',
+                videoId: mOptions.idVideoQuExt,
+                start: start,
+            })
+            .then(function (controller) {
+                mOptions.mediaController = controller;
+                mOptions.bridgeCurrentTime = start || 0;
+                controller.on('timeupdate', function (e) {
+                    mOptions.bridgeCurrentTime = e.currentTime;
+                });
+                controller.on('ended', function () {
+                    mOptions.stateReproduction = -1;
+                    $quickquestionsvideo.gameOver(0, instance);
+                });
+                controller.on('error', function () {
+                    $quickquestionsvideo.showStartedButton();
+                });
+                controller.show();
+                controller.play();
+            })
+            .catch(function () {
+                // No parent bridge → graceful fallback (visible start button + notice).
+                $quickquestionsvideo.showStartedButton();
+            });
+    },
+
     playVideo: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
+        if (mOptions.mediaController) {
+            mOptions.mediaController.show();
+            mOptions.mediaController.play();
+            return;
+        }
         if (mOptions.videoType > 0 && mOptions.localPlayer) {
             mOptions.localPlayer.play();
             return;
@@ -623,6 +707,13 @@ var $quickquestionsvideo = {
 
     stopVideo: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
+        if (mOptions.mediaController) {
+            // Pause and hide the parent modal so the question (rendered in this opaque
+            // iframe) becomes visible.
+            mOptions.mediaController.pause();
+            mOptions.mediaController.hide();
+            return;
+        }
         if (mOptions.videoType > 0 && mOptions.localPlayer) {
             mOptions.localPlayer.pause();
             return;
@@ -637,6 +728,11 @@ var $quickquestionsvideo = {
 
     endVideoYoutube: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
+        if (mOptions.mediaController) {
+            mOptions.mediaController.close();
+            mOptions.mediaController = null;
+            return;
+        }
         if (mOptions.player && typeof mOptions.player.stopVideo == 'function') {
             mOptions.player.stopVideo();
         }
@@ -1029,6 +1125,9 @@ var $quickquestionsvideo = {
         if (mOptions.videoType > 0) {
             mOptions.localPlayer.currentTime = parseFloat(time);
             $('#vquextVideoLocal-' + instance).show();
+        } else if (mOptions.mediaController) {
+            mOptions.mediaController.seek(parseFloat(time));
+            $('#vquextVideo-' + instance).show();
         } else {
             mOptions.player.seekTo(time);
             $('#vquextVideo-' + instance).show();
@@ -1131,12 +1230,16 @@ var $quickquestionsvideo = {
         if (time) {
             if (mOptions.videoType > 0) {
                 mOptions.localPlayer.currentTime = parseFloat(time);
+            } else if (mOptions.mediaController) {
+                mOptions.mediaController.seek(parseFloat(time));
             } else {
                 mOptions.player.seekTo(time);
             }
         } else {
             if (mOptions.videoType > 0) {
                 mOptions.localPlayer.currentTime = parseFloat(pointVideo + 1);
+            } else if (mOptions.mediaController) {
+                mOptions.mediaController.seek(pointVideo + 1);
             } else {
                 mOptions.player.seekTo(pointVideo + 1);
             }
@@ -1437,6 +1540,10 @@ var $quickquestionsvideo = {
                         if (mOptions.localPlayer) {
                             timeVideo = mOptions.localPlayer.currentTime;
                         }
+                    } else if (mOptions.useBridge) {
+                        // Bridge mode: getCurrentTime() is async, so read the latest
+                        // value pushed by the parent via timeupdate events.
+                        timeVideo = mOptions.bridgeCurrentTime || 0;
                     } else {
                         if (
                             mOptions.player &&

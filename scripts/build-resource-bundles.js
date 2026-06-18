@@ -52,6 +52,9 @@ const BASE_LIBS = [
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
+  // External-media bridge (opaque-iframe YouTube/Vimeo support); policy loads first
+  { src: 'app/common/exe_media_bridge/exe_media_policy.js', dest: 'exe_media_bridge/exe_media_policy.js' },
+  { src: 'app/common/exe_media_bridge/exe_media_bridge.js', dest: 'exe_media_bridge/exe_media_bridge.js' },
   // Favicon (from public/ root)
   { src: 'favicon.ico', dest: 'favicon.ico' },
 ];

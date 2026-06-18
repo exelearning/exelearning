@@ -274,6 +274,17 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
                 srcPath: path.join(COMMON_PATH, 'exe_export.js'),
                 url: `${basePath}/${version}/app/common/exe_export.js`,
             },
+            // External-media bridge (opaque-iframe YouTube/Vimeo support); policy loads first
+            {
+                path: 'exe_media_bridge/exe_media_policy.js',
+                srcPath: path.join(COMMON_PATH, 'exe_media_bridge/exe_media_policy.js'),
+                url: `${basePath}/${version}/app/common/exe_media_bridge/exe_media_policy.js`,
+            },
+            {
+                path: 'exe_media_bridge/exe_media_bridge.js',
+                srcPath: path.join(COMMON_PATH, 'exe_media_bridge/exe_media_bridge.js'),
+                url: `${basePath}/${version}/app/common/exe_media_bridge/exe_media_bridge.js`,
+            },
             // Favicon (public/)
             {
                 path: 'favicon.ico',

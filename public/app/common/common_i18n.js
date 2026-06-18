@@ -2,6 +2,8 @@
 $exe_i18n = {
     "previous": c_("Previous"),
     "next": c_("Next"),
+    "exeMediaPlay": c_("Play video"),
+    "exeMediaOpenNewTab": c_("Open in a new tab"),
     "menu": c_("Menu"),
     "show": c_("Show"),
     "hide": c_("Hide"),

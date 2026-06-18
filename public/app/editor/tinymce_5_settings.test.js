@@ -2664,4 +2664,227 @@ describe('TinyMCE 5 Settings', () => {
       expect(document.getElementById('editor-toggler')).toBeNull();
     });
   });
+
+  describe('external-media dialog decoration', () => {
+    const fakeParse = (url) => {
+      if (typeof url !== 'string') return null;
+      if (url.includes('youtube') || url.includes('youtu.be')) {
+        return { provider: 'youtube', providerVideoId: 'dQw4w9WgXcQ' };
+      }
+      if (url.includes('vimeo')) return { provider: 'vimeo', providerVideoId: '76979871' };
+      return null;
+    };
+
+    it('leaves a non-provider media dialog untouched and returns false', () => {
+      const spec = { initialData: { source: { value: 'https://example.com/clip.mp4' } }, body: { items: [] } };
+      const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
+      expect(result).toBe(false);
+      expect(spec.initialData.exeMediaFloating).toBeUndefined();
+      expect(spec.body.items).toEqual([]);
+    });
+
+    it('returns false when there is no source url', () => {
+      const spec = { initialData: {}, body: { items: [] } };
+      expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse })).toBe(false);
+    });
+
+    it('adds an auto-checked floating checkbox + note for a YouTube source (tabpanel body)', () => {
+      const spec = {
+        initialData: { source: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+        body: { type: 'tabpanel', tabs: [{ title: 'General', items: [{ type: 'input', name: 'source' }] }] },
+      };
+      const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
+      expect(result).toBe(true);
+      expect(spec.initialData.exeMediaFloating).toBe(true);
+      const names = spec.body.tabs[0].items.map((i) => i.name || i.type);
+      expect(names).toContain('exeMediaFloating');
+      expect(names).toContain('htmlpanel');
+    });
+
+    it('injects into a plain panel body (items)', () => {
+      const spec = {
+        initialData: { source: { value: 'https://vimeo.com/76979871' } },
+        body: { type: 'panel', items: [] },
+      };
+      globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
+      expect(spec.body.items.some((i) => i.name === 'exeMediaFloating')).toBe(true);
+    });
+
+    it('shows the checkbox on a fresh media dialog (empty source)', () => {
+      const spec = {
+        initialData: { source: '' },
+        body: { type: 'tabpanel', tabs: [{ items: [{ type: 'urlinput', name: 'source' }] }] },
+      };
+      const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
+      expect(result).toBe(true);
+      expect(spec.initialData.exeMediaFloating).toBe(true);
+      expect(spec.body.tabs[0].items.some((i) => i.name === 'exeMediaFloating')).toBe(true);
+    });
+
+    it('detects the media dialog by a source field even when initialData has no source key', () => {
+      const spec = { initialData: {}, body: { type: 'panel', items: [{ name: 'source' }] } };
+      expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse })).toBe(true);
+    });
+
+    it('does NOT stamp when a non-provider URL is submitted from a fresh dialog', () => {
+      const calls = [];
+      const spec = { initialData: { source: '' }, body: { items: [{ name: 'source' }] }, onSubmit: () => {} };
+      globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, {
+        parse: fakeParse,
+        onResolveFloating: (...a) => calls.push(a),
+      });
+      spec.onSubmit({ getData: () => ({ source: 'https://example.com/x.mp4', exeMediaFloating: true }) });
+      expect(calls).toEqual([]);
+    });
+
+    it('stamps when a YouTube URL is typed into a fresh dialog', () => {
+      const calls = [];
+      const spec = { initialData: { source: '' }, body: { items: [{ name: 'source' }] }, onSubmit: () => {} };
+      globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, {
+        parse: fakeParse,
+        onResolveFloating: (...a) => calls.push(a),
+      });
+      spec.onSubmit({ getData: () => ({ source: 'https://youtu.be/dQw4w9WgXcQ', exeMediaFloating: false }) });
+      expect(calls).toEqual([[false, 'https://youtu.be/dQw4w9WgXcQ']]);
+    });
+
+    it('leaves a concrete non-provider source dialog alone (no checkbox)', () => {
+      const spec = { initialData: { source: 'https://example.com/clip.mp4' }, body: { items: [{ name: 'source' }] } };
+      expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse })).toBe(false);
+    });
+
+    it('_dialogHasField finds a nested source control', () => {
+      const T = globalThis.$exeTinyMCE;
+      expect(T._dialogHasField({ body: { type: 'tabpanel', tabs: [{ items: [{ name: 'source' }] }] } }, 'source')).toBe(
+        true,
+      );
+      expect(T._dialogHasField({ body: { items: [{ name: 'other' }] } }, 'source')).toBe(false);
+      expect(T._dialogHasField({}, 'source')).toBe(false);
+    });
+
+    it('renders the explanation as a "?" help button (tooltip), not inline text', () => {
+      const spec = {
+        initialData: { source: 'https://youtu.be/dQw4w9WgXcQ' },
+        body: { type: 'panel', items: [{ name: 'source' }] },
+      };
+      globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
+      const panel = spec.body.items.find((i) => i.type === 'htmlpanel');
+      expect(panel).toBeTruthy();
+      expect(panel.html).toContain('exe-media-help-button');
+      expect(panel.html).toContain('<button');
+      expect(panel.html.toLowerCase()).toContain('title=');
+      expect(panel.html).not.toContain('<p');
+    });
+
+    it('_escapeAttr neutralizes quotes and angle brackets', () => {
+      expect(globalThis.$exeTinyMCE._escapeAttr('a "b" <c> & d')).toBe('a &quot;b&quot; &lt;c&gt; &amp; d');
+      expect(globalThis.$exeTinyMCE._escapeAttr(null)).toBe('');
+    });
+
+    it('wraps onSubmit to run the original then resolve the floating choice', () => {
+      const calls = [];
+      const spec = {
+        initialData: { source: 'https://youtu.be/dQw4w9WgXcQ' },
+        body: { items: [] },
+        onSubmit: () => calls.push('orig'),
+      };
+      globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, {
+        parse: fakeParse,
+        onResolveFloating: (floating, url) => calls.push(['resolve', floating, url]),
+      });
+      spec.onSubmit({ getData: () => ({ exeMediaFloating: false }) });
+      expect(calls).toEqual(['orig', ['resolve', false, 'https://youtu.be/dQw4w9WgXcQ']]);
+    });
+
+    it('_injectDialogItems handles tabpanel, panel, and unknown bodies', () => {
+      const T = globalThis.$exeTinyMCE;
+      const tab = { type: 'tabpanel', tabs: [{ items: [] }] };
+      expect(T._injectDialogItems(tab, [{ name: 'x' }])).toBe(true);
+      expect(tab.tabs[0].items).toHaveLength(1);
+      const panel = { type: 'panel', items: [] };
+      expect(T._injectDialogItems(panel, [{ name: 'y' }])).toBe(true);
+      expect(T._injectDialogItems({ type: 'mystery' }, [{ name: 'z' }])).toBe(false);
+      expect(T._injectDialogItems(null, [])).toBe(false);
+    });
+
+    it('uses window.exeMediaPolicy + window._ by default (no injected deps)', () => {
+      const prevPolicy = globalThis.window.exeMediaPolicy;
+      const prevUnderscore = globalThis.window._;
+      globalThis.window.exeMediaPolicy = { parseExternalMedia: fakeParse };
+      globalThis.window._ = (s) => `T:${s}`;
+      try {
+        const spec = {
+          initialData: { source: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+          body: { type: 'panel', items: [] },
+        };
+        expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec)).toBe(true);
+        const checkbox = spec.body.items.find((i) => i.name === 'exeMediaFloating');
+        expect(checkbox.label).toBe('T:Open in a floating window');
+      } finally {
+        globalThis.window.exeMediaPolicy = prevPolicy;
+        globalThis.window._ = prevUnderscore;
+      }
+    });
+
+    it('returns false when no policy/parse is available', () => {
+      const prevPolicy = globalThis.window.exeMediaPolicy;
+      delete globalThis.window.exeMediaPolicy;
+      try {
+        const spec = { initialData: { source: 'https://youtu.be/dQw4w9WgXcQ' }, body: { items: [] } };
+        expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec)).toBe(false);
+      } finally {
+        globalThis.window.exeMediaPolicy = prevPolicy;
+      }
+    });
+
+    it('_onMediaFloatingResolved registers a one-shot CloseWindow handler that stamps', () => {
+      vi.useFakeTimers();
+      const prevPolicy = globalThis.window.exeMediaPolicy;
+      globalThis.window.exeMediaPolicy = {
+        parseExternalMedia: (input) => fakeParse(typeof input === 'string' ? input : input.getAttribute('src')),
+      };
+      try {
+        const handlers = {};
+        const container = document.createElement('div');
+        container.innerHTML = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>';
+        const ed = {
+          getBody: () => container,
+          on: (evt, cb) => { handlers[evt] = cb; },
+          off: (evt) => { delete handlers[evt]; },
+        };
+        globalThis.$exeTinyMCE._onMediaFloatingResolved(ed, true, 'https://youtu.be/dQw4w9WgXcQ');
+        expect(typeof handlers.CloseWindow).toBe('function');
+        handlers.CloseWindow(); // simulate dialog close
+        expect(handlers.CloseWindow).toBeUndefined(); // one-shot: removed
+        vi.advanceTimersByTime(60);
+        expect(container.querySelector('iframe').getAttribute('data-exe-media-floating')).toBe('true');
+      } finally {
+        globalThis.window.exeMediaPolicy = prevPolicy;
+        vi.useRealTimers();
+      }
+    });
+
+    it('_stampFloatingAttribute stamps the matching inserted iframe', () => {
+      const prevPolicy = globalThis.window.exeMediaPolicy;
+      globalThis.window.exeMediaPolicy = {
+        parseExternalMedia: (input) => {
+          const url = typeof input === 'string' ? input : input.getAttribute('src');
+          return fakeParse(url);
+        },
+      };
+      try {
+        const container = document.createElement('div');
+        container.innerHTML =
+          '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>' +
+          '<iframe src="https://example.com/other"></iframe>';
+        const ed = { getBody: () => container };
+        const stamped = globalThis.$exeTinyMCE._stampFloatingAttribute(ed, 'https://youtu.be/dQw4w9WgXcQ', false);
+        expect(stamped).toBe(true);
+        expect(container.querySelector('iframe').getAttribute('data-exe-media-floating')).toBe('false');
+        expect(container.querySelectorAll('iframe')[1].getAttribute('data-exe-media-floating')).toBeNull();
+      } finally {
+        globalThis.window.exeMediaPolicy = prevPolicy;
+      }
+    });
+  });
 });

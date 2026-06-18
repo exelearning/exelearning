@@ -690,6 +690,191 @@ var $exeTinyMCE = {
     },
 
     /**
+     * Add an explanatory note + an auto-checked "Open in a floating window" checkbox to
+     * the media (exemedia) dialog. Shown whenever the dialog has a source field and its
+     * current value is empty OR a YouTube/Vimeo URL — so it is visible when inserting a
+     * NEW video, not only when editing an existing embed. A concrete non-provider source
+     * (local video/audio/PDF) is left alone. In a secure embedded LMS (opaque-origin
+     * iframe) those providers cannot play inline, so eXeLearning opens them in a floating
+     * window via the host. Unchecking writes data-exe-media-floating="false" and the
+     * runtime then leaves the raw iframe alone; only YouTube/Vimeo embeds are stamped.
+     *
+     * Pure + testable: deps.parse defaults to window.exeMediaPolicy.parseExternalMedia;
+     * deps.onResolveFloating(floating, url) performs the DOM stamping in the real editor.
+     * Returns true when the dialog was decorated.
+     */
+    decorateMediaDialogSpec: function (spec, deps) {
+        deps = deps || {};
+        if (!spec || typeof spec !== 'object') return false;
+        var parse =
+            deps.parse ||
+            (typeof window !== 'undefined' &&
+                window.exeMediaPolicy &&
+                window.exeMediaPolicy.parseExternalMedia);
+        if (typeof parse !== 'function') return false;
+
+        var initial = spec.initialData || {};
+        // Only the media dialog (which has a "source" field) — never the image dialog.
+        if (!('source' in initial) && !$exeTinyMCE._dialogHasField(spec, 'source')) return false;
+
+        var rawSource = initial.source;
+        var url = typeof rawSource === 'string' ? rawSource : (rawSource && rawSource.value) || '';
+
+        // A concrete non-provider source is left untouched; empty or provider → decorate.
+        if (url) {
+            var descriptor = parse(url);
+            if (!descriptor || (descriptor.provider !== 'youtube' && descriptor.provider !== 'vimeo')) {
+                return false;
+            }
+        }
+
+        var hasT = typeof _ === 'function';
+        var noteText = hasT
+            ? _(
+                  'Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.',
+              )
+            : 'Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.';
+        var checkboxLabel = hasT ? _('Open in a floating window') : 'Open in a floating window';
+        var helpLabel = hasT ? _('Help') : 'Help';
+
+        // The explanation is presented as a small "?" help button (tooltip via the native
+        // title attribute), mirroring the help affordances in the export options, instead
+        // of a large inline paragraph.
+        var noteAttr = $exeTinyMCE._escapeAttr(noteText);
+        var helpHtml =
+            '<button type="button" class="exe-media-help-button" title="' +
+            noteAttr +
+            '" aria-label="' +
+            $exeTinyMCE._escapeAttr(helpLabel + ': ' + noteText) +
+            '" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;' +
+            'border-radius:50%;border:1px solid currentColor;background:transparent;cursor:help;' +
+            'font-weight:bold;line-height:1;padding:0;">?</button>';
+
+        $exeTinyMCE._injectDialogItems(spec.body, [
+            { type: 'checkbox', name: 'exeMediaFloating', label: checkboxLabel },
+            { type: 'htmlpanel', html: '<div class="exe-media-dialog-help">' + helpHtml + '</div>' },
+        ]);
+
+        spec.initialData = initial;
+        if (typeof spec.initialData.exeMediaFloating === 'undefined') {
+            spec.initialData.exeMediaFloating = true;
+        }
+
+        var origSubmit = spec.onSubmit;
+        spec.onSubmit = function (api) {
+            var data = {};
+            try {
+                data = api && typeof api.getData === 'function' ? api.getData() : {};
+            } catch (e) {
+                data = {};
+            }
+            var floating = data.exeMediaFloating !== false;
+            var finalSource = data.source;
+            var finalUrl =
+                (typeof finalSource === 'string' ? finalSource : finalSource && finalSource.value) || url;
+            if (typeof origSubmit === 'function') origSubmit.call(this, api);
+            // Stamp only real YouTube/Vimeo embeds, even if the checkbox was shown for an
+            // initially-empty source.
+            if (finalUrl && parse(finalUrl) && typeof deps.onResolveFloating === 'function') {
+                deps.onResolveFloating(floating, finalUrl);
+            }
+        };
+
+        return true;
+    },
+
+    /**
+     * Escape a string for safe use inside a double-quoted HTML attribute.
+     */
+    _escapeAttr: function (s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /**
+     * Recursively check whether a TinyMCE dialog spec contains a control with the given
+     * name (handles tabpanel tabs and nested panel items).
+     */
+    _dialogHasField: function (spec, name) {
+        function scan(node) {
+            if (!node || typeof node !== 'object') return false;
+            if (node.name === name) return true;
+            var groups = [node.items, node.tabs];
+            for (var g = 0; g < groups.length; g++) {
+                var arr = groups[g];
+                if (Array.isArray(arr)) {
+                    for (var i = 0; i < arr.length; i++) {
+                        if (scan(arr[i])) return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return !!(spec && scan(spec.body));
+    },
+
+    /**
+     * Append items to a TinyMCE dialog body, handling both tabpanel and panel shapes.
+     * Best-effort: returns true when the items were placed.
+     */
+    _injectDialogItems: function (body, items) {
+        if (!body || typeof body !== 'object') return false;
+        if (body.type === 'tabpanel' && Array.isArray(body.tabs) && body.tabs.length) {
+            var tab = body.tabs[0];
+            tab.items = (Array.isArray(tab.items) ? tab.items : []).concat(items);
+            return true;
+        }
+        if (Array.isArray(body.items)) {
+            body.items = body.items.concat(items);
+            return true;
+        }
+        return false;
+    },
+
+    /**
+     * After the media dialog closes, stamp the floating choice onto the inserted iframe.
+     * Deferred to CloseWindow + a short tick so TinyMCE has inserted the embed markup.
+     */
+    _onMediaFloatingResolved: function (ed, floating, url) {
+        var stampHandler = function () {
+            ed.off('CloseWindow', stampHandler);
+            setTimeout(function () {
+                $exeTinyMCE._stampFloatingAttribute(ed, url, floating);
+            }, 50);
+        };
+        ed.on('CloseWindow', stampHandler);
+    },
+
+    /**
+     * Stamp data-exe-media-floating onto the just-inserted YouTube/Vimeo iframe so the
+     * export runtime knows whether to route it through the floating-window bridge.
+     */
+    _stampFloatingAttribute: function (ed, url, floating) {
+        try {
+            var body = ed && typeof ed.getBody === 'function' ? ed.getBody() : null;
+            var policy = typeof window !== 'undefined' ? window.exeMediaPolicy : null;
+            if (!body || !policy) return false;
+            var target = policy.parseExternalMedia(url);
+            if (!target) return false;
+            var iframes = body.querySelectorAll('iframe');
+            var stamped = false;
+            for (var i = 0; i < iframes.length; i++) {
+                var d = policy.parseExternalMedia(iframes[i]);
+                if (d && d.provider === target.provider && d.providerVideoId === target.providerVideoId) {
+                    iframes[i].setAttribute('data-exe-media-floating', floating ? 'true' : 'false');
+                    stamped = true;
+                }
+            }
+            return stamped;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    /**
      * Patch TinyMCE's windowManager so the image dialog shows asset:// URLs
      * instead of ephemeral blob:// URLs. On submit, waits for dialog close then
      * re-resolves asset:// → blob:// via resolveAssetUrlsInEditor.
@@ -699,6 +884,15 @@ var $exeTinyMCE = {
         ed.windowManager._assetPatched = true;
         var origOpen = ed.windowManager.open;
         ed.windowManager.open = function (spec) {
+            // Add the external-media "open in a floating window" option to the media
+            // dialog when its source is a YouTube/Vimeo URL. Runs regardless of the
+            // asset manager, and stamps the author's choice onto the inserted iframe.
+            $exeTinyMCE.decorateMediaDialogSpec(spec, {
+                onResolveFloating: function (floating, url) {
+                    $exeTinyMCE._onMediaFloatingResolved(ed, floating, url);
+                },
+            });
+
             var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
             if (!assetManager) return origOpen.apply(this, arguments);
 
