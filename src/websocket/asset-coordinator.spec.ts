@@ -1326,4 +1326,420 @@ describe('Asset Coordinator Service (DI)', () => {
             coordinator.cleanupProject('non-existent-project');
         });
     });
+
+    // =========================================================================
+    // DoS hardening — bounded awareness/pending state (BUG H8)
+    // =========================================================================
+    describe('DoS hardening - awareness update bounds', () => {
+        // Mirror of MAX_ASSETS_PER_AWARENESS in asset-coordinator.ts.
+        const MAX_ASSETS_PER_AWARENESS = 5000;
+        // Mirror of MAX_ASSET_ID_LENGTH in asset-coordinator.ts.
+        const MAX_ASSET_ID_LENGTH = 256;
+
+        it('should cap the number of assets ingested from a single awareness update', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            // Announce far more distinct assets than the per-message cap allows.
+            const flood = Array.from({ length: MAX_ASSETS_PER_AWARENESS + 10000 }, (_, i) => `flood-asset-${i}`);
+            await coordinator.handleMessage('dos-project', 'flooder', {
+                type: 'awareness-update',
+                data: { availableAssets: flood },
+            });
+
+            // Tracked assets must be bounded by the per-message cap, not the
+            // size of the attacker-supplied array.
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(MAX_ASSETS_PER_AWARENESS);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should bound distinct assets per project across repeated awareness updates', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            // Send several full-cap batches with disjoint id ranges. Each batch is
+            // at the per-message cap, so distinct project assets grow, but the
+            // per-project ceiling (MAX_ASSETS_PER_PROJECT, 50000) bounds the total
+            // and a few batches stay well under it while still proving growth is
+            // accounted, not unbounded per message.
+            for (let batch = 0; batch < 3; batch++) {
+                const ids = Array.from({ length: MAX_ASSETS_PER_AWARENESS }, (_, i) => `b${batch}-asset-${i}`);
+                await coordinator.handleMessage('dos-project', 'flooder', {
+                    type: 'awareness-update',
+                    data: { availableAssets: ids },
+                });
+            }
+
+            const stats = coordinator.getStats();
+            // 3 disjoint batches of the per-message cap = 15000 distinct ids,
+            // which is under the 50000 per-project ceiling.
+            expect(stats.totalAssets).toBe(3 * MAX_ASSETS_PER_AWARENESS);
+            expect(stats.totalAssets).toBeLessThanOrEqual(50000);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should reject over-long and non-string asset ids', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            const overLongId = 'x'.repeat(MAX_ASSET_ID_LENGTH + 1);
+            await coordinator.handleMessage('dos-project', 'flooder', {
+                type: 'awareness-update',
+                data: {
+                    // Mix of invalid ids (over-long, non-string, traversal, separators)
+                    // and one valid id. Only the valid id must be tracked.
+                    availableAssets: [
+                        overLongId,
+                        42 as unknown as string,
+                        null as unknown as string,
+                        '../escape',
+                        'has/slash',
+                        'valid-asset-1',
+                    ],
+                },
+            });
+
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(1);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should accept an exactly max-length asset id', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'client-1', socket);
+
+            const maxId = 'a'.repeat(MAX_ASSET_ID_LENGTH);
+            await coordinator.handleMessage('dos-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: [maxId] },
+            });
+
+            expect(coordinator.getStats().totalAssets).toBe(1);
+
+            coordinator.cleanupProject('dos-project');
+        });
+    });
+
+    describe('DoS hardening - unregisterClient prunes orphaned assets', () => {
+        it('should remove asset-id keys with no remaining referencing client', async () => {
+            const socket1 = createMockSocket();
+            const socket2 = createMockSocket();
+            coordinator.registerClient('prune-project', 'client-1', socket1);
+            coordinator.registerClient('prune-project', 'client-2', socket2);
+
+            // client-1 exclusively holds 3 assets; client-2 shares one.
+            await coordinator.handleMessage('prune-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset', 'solo-asset-1', 'solo-asset-2'] },
+            });
+            await coordinator.handleMessage('prune-project', 'client-2', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset'] },
+            });
+
+            expect(coordinator.getStats().totalAssets).toBe(3);
+
+            // client-1 leaves: its two solo assets must be reclaimed immediately,
+            // while the shared asset survives because client-2 still references it.
+            coordinator.unregisterClient('prune-project', 'client-1');
+
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(1);
+
+            coordinator.cleanupProject('prune-project');
+        });
+
+        it('should drop the project entry entirely when the last client leaves', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('prune-project', 'only-client', socket);
+
+            await coordinator.handleMessage('prune-project', 'only-client', {
+                type: 'awareness-update',
+                data: { availableAssets: ['a', 'b', 'c'] },
+            });
+            expect(coordinator.getStats().totalAssets).toBe(3);
+
+            coordinator.unregisterClient('prune-project', 'only-client');
+
+            // No lingering asset state pinned by the departed client.
+            expect(coordinator.getStats().totalAssets).toBe(0);
+
+            coordinator.cleanupProject('prune-project');
+        });
+    });
+
+    // =========================================================================
+    // DoS hardening — bounded pending-request queue (BUG H8)
+    // =========================================================================
+    describe('DoS hardening - pending-request bounds', () => {
+        // Mirror of MAX_PENDING_REQUESTS_PER_PROJECT in asset-coordinator.ts.
+        const MAX_PENDING_REQUESTS_PER_PROJECT = 5000;
+
+        it('should append additional requests for the same missing asset under one key', async () => {
+            const socket1 = createMockSocket();
+            const socket2 = createMockSocket();
+            coordinator.registerClient('test-project', 'client-1', socket1);
+            coordinator.registerClient('test-project', 'client-2', socket2);
+
+            // Two distinct clients request the SAME missing asset. The second
+            // request must append to the existing pending key rather than create
+            // a new one, so the project's distinct pending-key count stays at 1.
+            await coordinator.handleMessage('test-project', 'client-1', {
+                type: 'request-asset',
+                data: { assetId: 'shared-missing', priority: 'low' },
+            });
+            await coordinator.handleMessage('test-project', 'client-2', {
+                type: 'request-asset',
+                data: { assetId: 'shared-missing', priority: 'high' },
+            });
+
+            // Both requesters received an asset-not-found response.
+            expect(socket1.messages.length).toBeGreaterThan(0);
+            expect(socket2.messages.length).toBeGreaterThan(0);
+
+            // getStats reports the number of distinct pending-request keys; the
+            // two requests for the same asset collapse into one key.
+            expect(coordinator.getStats().pendingRequests).toBe(1);
+
+            coordinator.cleanupProject('test-project');
+        });
+
+        it('should drop new pending requests once the per-project cap is reached', async () => {
+            const socket = createMockSocket();
+            // Use the known project (resolves via mock) so requests reach the
+            // pending-queue path: project exists, asset is absent from DB, and no
+            // peer announced it.
+            coordinator.registerClient('test-project', 'client-1', socket);
+
+            // Queue exactly the cap number of distinct missing-asset requests.
+            for (let i = 0; i < MAX_PENDING_REQUESTS_PER_PROJECT; i++) {
+                await coordinator.handleMessage('test-project', 'client-1', {
+                    type: 'request-asset',
+                    data: { assetId: `pending-${i}`, priority: 'low' },
+                });
+            }
+            expect(coordinator.getStats().pendingRequests).toBe(MAX_PENDING_REQUESTS_PER_PROJECT);
+
+            // One more distinct id must be dropped (cap enforced), keeping the
+            // distinct pending-key count pinned at the ceiling.
+            await coordinator.handleMessage('test-project', 'client-1', {
+                type: 'request-asset',
+                data: { assetId: 'one-too-many', priority: 'low' },
+            });
+            expect(coordinator.getStats().pendingRequests).toBe(MAX_PENDING_REQUESTS_PER_PROJECT);
+
+            coordinator.cleanupProject('test-project');
+        });
+    });
+
+    // =========================================================================
+    // Asset-id validation on request-asset (BUG H8)
+    // =========================================================================
+    describe('request-asset id validation', () => {
+        it('should reject a request whose asset id contains traversal/separators', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('test-project', 'client-1', socket);
+
+            // An id with a path separator must be rejected before any DB lookup,
+            // pending-queue insert, or peer routing — no response is emitted and
+            // no pending request is tracked.
+            await coordinator.handleMessage('test-project', 'client-1', {
+                type: 'request-asset',
+                data: { assetId: '../escape', priority: 'high' },
+            });
+
+            expect(socket.messages.length).toBe(0);
+            expect(coordinator.getStats().pendingRequests).toBe(0);
+
+            coordinator.cleanupProject('test-project');
+        });
+    });
+
+    // =========================================================================
+    // Upload session — callback wiring and error handling
+    // =========================================================================
+    describe('Upload session — callback wiring and failures', () => {
+        // Builds a coordinator with a fully controllable uploadSessionManager so
+        // we can drive the validateSession-fails path, the progress/batch
+        // callback bodies, and the catch-all error handler deterministically.
+        function buildCoordinator(
+            uploadSessionManager: any,
+            project: any = { id: 7, uuid: 'session-project', user_id: 3 },
+        ): AssetCoordinator {
+            return createAssetCoordinator({
+                ...mockDeps,
+                findProjectByUuid: async (_db: any, uuid: string) => (uuid === 'session-project' ? project : undefined),
+                uploadSessionManager,
+            });
+        }
+
+        const validData = {
+            projectId: 'session-project',
+            totalFiles: 3,
+            totalBytes: 1024,
+            manifest: [],
+        };
+
+        it('should register progress + batch callbacks and forward their events to the client', async () => {
+            let progressCb: ((p: any) => void) | undefined;
+            let batchCb: ((r: any) => void) | undefined;
+
+            const usm = {
+                createSession: async () => ({ sessionToken: 'tok-123', expiresAt: Date.now() + 60_000 }),
+                validateSession: async () => ({ sessionId: 'sess-1', projectId: 'session-project', userId: 3 }),
+                onProgress: (_sessionId: string, cb: (p: any) => void) => {
+                    progressCb = cb;
+                },
+                onBatchComplete: (_sessionId: string, cb: (r: any) => void) => {
+                    batchCb = cb;
+                },
+            };
+
+            const c = buildCoordinator(usm);
+            const socket = createMockSocket();
+            c.registerClient('session-project', 'client-1', socket);
+
+            await c.handleMessage('session-project', 'client-1', {
+                type: 'upload-session-create',
+                data: validData,
+            });
+
+            // Session-ready response must have been sent with the issued token.
+            const decode = (m: any) => JSON.parse(new TextDecoder().decode(m.slice(1)));
+            const ready = socket.messages.map(decode).find((d: any) => d.type === 'upload-session-ready');
+            expect(ready).toBeDefined();
+            expect(ready.data.sessionToken).toBe('tok-123');
+
+            // Both callbacks must have been registered.
+            expect(typeof progressCb).toBe('function');
+            expect(typeof batchCb).toBe('function');
+
+            const before = socket.messages.length;
+
+            // Firing the progress callback must forward an upload-file-progress
+            // message to the originating client.
+            progressCb!({ clientId: 'client-1', bytesWritten: 10, totalBytes: 100, status: 'writing' });
+            const progressMsg = decode(socket.messages[socket.messages.length - 1]);
+            expect(progressMsg.type).toBe('upload-file-progress');
+            expect(progressMsg.data.bytesWritten).toBe(10);
+
+            // Firing the batch-complete callback must forward an
+            // upload-batch-complete message.
+            batchCb!({ uploaded: 3, failed: 0, results: [] });
+            const batchMsg = decode(socket.messages[socket.messages.length - 1]);
+            expect(batchMsg.type).toBe('upload-batch-complete');
+            expect(batchMsg.data.uploaded).toBe(3);
+
+            expect(socket.messages.length).toBe(before + 2);
+
+            c.cleanupProject('session-project');
+        });
+
+        it('should abort silently when the freshly created session token fails validation', async () => {
+            let progressRegistered = false;
+            const usm = {
+                createSession: async () => ({ sessionToken: 'bad-token', expiresAt: Date.now() + 60_000 }),
+                // Simulate a token that cannot be validated.
+                validateSession: async () => null,
+                onProgress: () => {
+                    progressRegistered = true;
+                },
+                onBatchComplete: () => {},
+            };
+
+            const c = buildCoordinator(usm);
+            const socket = createMockSocket();
+            c.registerClient('session-project', 'client-1', socket);
+
+            await c.handleMessage('session-project', 'client-1', {
+                type: 'upload-session-create',
+                data: validData,
+            });
+
+            // No session-ready message and no callback registration: the handler
+            // returns early after logging the validation failure.
+            const hasReady = socket.messages.some(m => {
+                try {
+                    return JSON.parse(new TextDecoder().decode(m.slice(1))).type === 'upload-session-ready';
+                } catch {
+                    return false;
+                }
+            });
+            expect(hasReady).toBe(false);
+            expect(progressRegistered).toBe(false);
+
+            c.cleanupProject('session-project');
+        });
+
+        it('should send an error session-ready response when session creation throws', async () => {
+            const usm = {
+                createSession: async () => {
+                    throw new Error('boom: session storage offline');
+                },
+                validateSession: async () => null,
+                onProgress: () => {},
+                onBatchComplete: () => {},
+            };
+
+            const c = buildCoordinator(usm);
+            const socket = createMockSocket();
+            c.registerClient('session-project', 'client-1', socket);
+
+            await c.handleMessage('session-project', 'client-1', {
+                type: 'upload-session-create',
+                data: validData,
+            });
+
+            // The catch block must send an upload-session-ready carrying the
+            // error message back to the client.
+            const decoded = socket.messages
+                .map(m => {
+                    try {
+                        return JSON.parse(new TextDecoder().decode(m.slice(1)));
+                    } catch {
+                        return null;
+                    }
+                })
+                .find((d: any) => d && d.type === 'upload-session-ready');
+            expect(decoded).toBeDefined();
+            expect(decoded.data.error).toContain('boom');
+            expect(decoded.data.sessionToken).toBe('');
+
+            c.cleanupProject('session-project');
+        });
+
+        it('should not throw when the error-path response also fails to send', async () => {
+            const usm = {
+                createSession: async () => {
+                    throw new Error('primary failure');
+                },
+                validateSession: async () => null,
+                onProgress: () => {},
+                onBatchComplete: () => {},
+            };
+
+            const c = buildCoordinator(usm);
+            const socket = createMockSocket();
+            // The socket throws on send, so even the catch-block's error response
+            // fails; the handler must still not propagate.
+            socket.send = () => {
+                throw new Error('socket dead');
+            };
+            c.registerClient('session-project', 'client-1', socket);
+
+            await c.handleMessage('session-project', 'client-1', {
+                type: 'upload-session-create',
+                data: validData,
+            });
+
+            // Reaching here without throwing is the assertion.
+            expect(true).toBe(true);
+
+            c.cleanupProject('session-project');
+        });
+    });
 });

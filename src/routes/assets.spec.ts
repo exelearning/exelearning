@@ -9,6 +9,13 @@ import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import {
     createAssetsRoutes,
+    sweepStaleChunkUploads,
+    startChunkUploadSweeper,
+    stopChunkUploadSweeper,
+    __getChunkUploadsForTest,
+    CHUNK_UPLOAD_TTL_MS,
+    MAX_TOTAL_CHUNKS,
+    MAX_CHUNK_BYTES,
     type AssetsDependencies,
     type AssetsFileHelperDeps,
     type AssetsSessionManagerDeps,
@@ -378,6 +385,106 @@ describe('Assets Routes', () => {
         });
     });
 
+    describe('path traversal protection (clientId / resumableIdentifier as on-disk names)', () => {
+        const TRAVERSAL = '../../../../tmp/pwned';
+
+        it('rejects a traversal clientId on simple upload with 400', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['x'], { type: 'text/plain' }), 'test.txt');
+            formData.append('clientId', TRAVERSAL);
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid clientId');
+            // Nothing should have been written/created.
+            expect(mockAssets.size).toBe(0);
+        });
+
+        it('rejects a traversal resumableIdentifier on chunk upload with 400', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['chunk'], { type: 'application/octet-stream' }));
+            formData.append('resumableIdentifier', TRAVERSAL);
+            formData.append('resumableChunkNumber', '1');
+            formData.append('resumableTotalChunks', '1');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid identifier');
+        });
+
+        it('rejects a traversal clientId on chunk finalize with 400', async () => {
+            const formData = new FormData();
+            formData.append('resumableIdentifier', 'some-id');
+            formData.append('clientId', TRAVERSAL);
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk/finalize`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('rejects a traversal clientId inside /sync metadata with 400', async () => {
+            const formData = new FormData();
+            formData.append('files', new Blob(['x'], { type: 'text/plain' }), 'a.txt');
+            formData.append(
+                'metadata',
+                JSON.stringify([{ clientId: TRAVERSAL, filename: 'a.txt', mimeType: 'text/plain' }]),
+            );
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/sync`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('rejects a traversal x-client-id header on /stream with 400', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/stream`, {
+                    method: 'POST',
+                    headers: { 'x-client-id': TRAVERSAL, 'content-type': 'application/octet-stream' },
+                    body: 'streamed-bytes',
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('still accepts a normal UUID-style clientId', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['ok'], { type: 'text/plain' }), 'ok.txt');
+            formData.append('clientId', '550e8400-e29b-41d4-a716-446655440000');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+    });
+
     describe('GET /api/projects/:projectId/assets - List Assets', () => {
         it('should return empty array for project with no assets', async () => {
             const res = await handle(new Request(`http://localhost/api/projects/1/assets`));
@@ -643,6 +750,22 @@ describe('Assets Routes', () => {
 
             expect(res.status).toBe(404);
         });
+
+        it('should not leak metadata of an asset owned by another project', async () => {
+            // Asset belongs to project 2, but is requested via project 1's URL.
+            mockAssets.set(7, {
+                id: 7,
+                project_id: 2,
+                filename: 'secret.png',
+                mime_type: 'image/png',
+                file_size: '2048',
+                client_id: 'client-secret',
+            });
+
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets/7/metadata`));
+
+            expect(res.status).toBe(404);
+        });
     });
 
     describe('DELETE /api/projects/:projectId/assets/:assetId', () => {
@@ -677,6 +800,31 @@ describe('Assets Routes', () => {
             );
 
             expect(res.status).toBe(404);
+        });
+
+        it('should not delete an asset owned by another project (cross-tenant IDOR)', async () => {
+            const filePath = path.join(testDir, 'other-tenant.txt');
+            await fs.writeFile(filePath, 'Belongs to project 2');
+
+            // Asset belongs to project 2; attacker owns project 1 and targets it
+            // via /api/projects/1/assets/9 with the global numeric id.
+            mockAssets.set(9, {
+                id: 9,
+                project_id: 2,
+                filename: 'other-tenant.txt',
+                storage_path: filePath,
+            });
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/9`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            // The asset row and its file must survive.
+            expect(mockAssets.has(9)).toBe(true);
+            expect(await fs.pathExists(filePath)).toBe(true);
         });
     });
 
@@ -1507,5 +1655,292 @@ describe('Assets Routes', () => {
             );
             expect(res.status).toBe(403);
         });
+    });
+});
+
+// =====================================================
+// BUG H9: abandoned chunked-upload leak + size caps
+// =====================================================
+describe('Chunked upload leak/limit fix (BUG H9)', () => {
+    const chunkUploads = __getChunkUploadsForTest();
+
+    beforeEach(() => {
+        chunkUploads.clear();
+        stopChunkUploadSweeper();
+    });
+
+    afterEach(() => {
+        chunkUploads.clear();
+        stopChunkUploadSweeper();
+    });
+
+    describe('sweepStaleChunkUploads', () => {
+        it('removes entries older than the TTL and leaves fresh ones', () => {
+            const now = Date.now();
+
+            // Stale entry: createdAt well beyond the TTL.
+            chunkUploads.set('proj:stale', {
+                projectId: 'proj',
+                filename: 'stale.zip',
+                totalChunks: 2,
+                uploadedChunks: new Set([1]),
+                chunkDir: path.join(testDir, 'chunks', 'proj', 'stale'),
+                createdAt: new Date(now - CHUNK_UPLOAD_TTL_MS - 60_000),
+                initialized: false,
+            });
+
+            // Fresh entry: created just now.
+            chunkUploads.set('proj:fresh', {
+                projectId: 'proj',
+                filename: 'fresh.zip',
+                totalChunks: 2,
+                uploadedChunks: new Set([1]),
+                chunkDir: path.join(testDir, 'chunks', 'proj', 'fresh'),
+                createdAt: new Date(now),
+                initialized: false,
+            });
+
+            const swept = sweepStaleChunkUploads(now, CHUNK_UPLOAD_TTL_MS);
+
+            expect(swept).toBe(1);
+            expect(chunkUploads.has('proj:stale')).toBe(false);
+            expect(chunkUploads.has('proj:fresh')).toBe(true);
+        });
+
+        it('deletes the on-disk chunk directory of swept entries', async () => {
+            const now = Date.now();
+            const chunkDir = path.join(testDir, 'chunks', 'proj', 'stale-disk');
+            await fs.ensureDir(chunkDir);
+            await fs.writeFile(path.join(chunkDir, 'chunk_1'), 'data');
+            expect(await fs.pathExists(chunkDir)).toBe(true);
+
+            chunkUploads.set('proj:stale-disk', {
+                projectId: 'proj',
+                filename: 'stale.zip',
+                totalChunks: 1,
+                uploadedChunks: new Set([1]),
+                chunkDir,
+                createdAt: new Date(now - CHUNK_UPLOAD_TTL_MS - 1),
+                initialized: true,
+            });
+
+            const swept = sweepStaleChunkUploads(now, CHUNK_UPLOAD_TTL_MS);
+            expect(swept).toBe(1);
+
+            // fs.remove runs async; wait until the directory is gone.
+            await new Promise<void>((resolve, reject) => {
+                let attempts = 0;
+                const tick = async () => {
+                    if (!(await fs.pathExists(chunkDir))) return resolve();
+                    if (++attempts > 50) return reject(new Error('chunk dir was not removed'));
+                    setTimeout(tick, 10);
+                };
+                void tick();
+            });
+
+            expect(await fs.pathExists(chunkDir)).toBe(false);
+        });
+
+        it('returns 0 when nothing is stale', () => {
+            chunkUploads.set('proj:fresh', {
+                projectId: 'proj',
+                filename: 'fresh.zip',
+                totalChunks: 1,
+                uploadedChunks: new Set([1]),
+                chunkDir: path.join(testDir, 'chunks', 'proj', 'fresh'),
+                createdAt: new Date(),
+                initialized: false,
+            });
+
+            expect(sweepStaleChunkUploads(Date.now(), CHUNK_UPLOAD_TTL_MS)).toBe(0);
+            expect(chunkUploads.has('proj:fresh')).toBe(true);
+        });
+    });
+
+    describe('startChunkUploadSweeper / stopChunkUploadSweeper', () => {
+        it('runs the sweep on its interval and stops cleanly', async () => {
+            const now = Date.now();
+            chunkUploads.set('proj:stale', {
+                projectId: 'proj',
+                filename: 'stale.zip',
+                totalChunks: 1,
+                uploadedChunks: new Set([1]),
+                chunkDir: path.join(testDir, 'chunks', 'proj', 'interval-stale'),
+                createdAt: new Date(now - CHUNK_UPLOAD_TTL_MS - 60_000),
+                initialized: false,
+            });
+
+            // Tiny interval so the timer fires quickly under test.
+            startChunkUploadSweeper(5);
+            // Starting twice is a no-op (idempotent) and must not throw.
+            startChunkUploadSweeper(5);
+
+            await new Promise<void>((resolve, reject) => {
+                let attempts = 0;
+                const tick = () => {
+                    if (!chunkUploads.has('proj:stale')) return resolve();
+                    if (++attempts > 100) return reject(new Error('sweeper did not run'));
+                    setTimeout(tick, 5);
+                };
+                tick();
+            });
+
+            expect(chunkUploads.has('proj:stale')).toBe(false);
+
+            // stop is idempotent and must not throw.
+            stopChunkUploadSweeper();
+            stopChunkUploadSweeper();
+        });
+    });
+});
+
+// =====================================================
+// BUG H9: chunk size caps enforced by the upload route
+// =====================================================
+describe('Chunked upload size caps (BUG H9)', () => {
+    let app: Elysia;
+    let mockAssets: Map<number, any>;
+    let mockProjects: Map<string, any>;
+    let assetIdCounter: number;
+    let ownerToken: string;
+
+    function buildDeps(): AssetsDependencies {
+        return {
+            db: {} as any,
+            queries: {
+                createAsset: async (_db: any, data: any) => {
+                    const id = assetIdCounter++;
+                    const asset = { id, ...data, created_at: '', updated_at: '' };
+                    mockAssets.set(id, asset);
+                    return asset;
+                },
+                createAssets: async (_db: any, arr: any[]) => arr.map(d => ({ id: assetIdCounter++, ...d })),
+                findAssetById: async (_db: any, id: number) => mockAssets.get(id),
+                findAllAssetsForProject: async () => [],
+                findAssetByClientId: async () => undefined,
+                findAssetsByClientIds: async () => [],
+                deleteAsset: async () => {},
+                updateAsset: async () => undefined,
+                bulkUpdateAssets: async () => {},
+                findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
+                findProjectById: async (_db: any, id: number) => {
+                    for (const p of mockProjects.values()) if (p.id === id) return p;
+                    return undefined;
+                },
+                checkProjectAccess: async (_db: any, project: any, userId?: number) => {
+                    if (!project) return { hasAccess: false, reason: 'PROJECT_NOT_FOUND' };
+                    if (project.owner_id === userId) return { hasAccess: true };
+                    return { hasAccess: false, reason: 'ACCESS_DENIED' };
+                },
+            },
+            fileHelper: createMockFileHelper(),
+            sessionManager: createMockSessionManager(),
+            priorityQueue: createMockPriorityQueue(),
+        };
+    }
+
+    beforeAll(async () => {
+        ownerToken = await signTestToken(OWNER_USER_ID);
+    });
+
+    beforeEach(async () => {
+        mockAssets = new Map();
+        mockProjects = new Map();
+        mockSessions = new Map();
+        assetIdCounter = 1;
+        mockProjects.set(testProjectId, {
+            id: 1,
+            uuid: testProjectId,
+            owner_id: OWNER_USER_ID,
+            visibility: 'private',
+            status: 'active',
+        });
+        app = new Elysia().use(createAssetsRoutes(buildDeps()));
+        __getChunkUploadsForTest().clear();
+        await fs.ensureDir(path.join(testDir, 'assets', testProjectId));
+    });
+
+    afterEach(async () => {
+        __getChunkUploadsForTest().clear();
+        if (await fs.pathExists(testDir)) {
+            await fs.remove(testDir);
+        }
+    });
+
+    async function authPost(url: string, body: FormData): Promise<Response> {
+        return app.handle(
+            new Request(url, {
+                method: 'POST',
+                body,
+                headers: { Authorization: `Bearer ${ownerToken}` },
+            }),
+        );
+    }
+
+    it('rejects a chunk larger than MAX_CHUNK_BYTES with 413', async () => {
+        const tooBig = new Uint8Array(MAX_CHUNK_BYTES + 1);
+        const formData = new FormData();
+        formData.append('file', new Blob([tooBig], { type: 'application/octet-stream' }));
+        formData.append('resumableIdentifier', 'oversize-upload');
+        formData.append('resumableChunkNumber', '1');
+        formData.append('resumableTotalChunks', '1');
+        formData.append('resumableFilename', 'huge.bin');
+
+        const res = await authPost('http://localhost/api/projects/1/assets/upload-chunk', formData);
+
+        expect(res.status).toBe(413);
+        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.error).toContain('maximum allowed size');
+        // No tracking state should have been created.
+        expect(__getChunkUploadsForTest().has('1:oversize-upload')).toBe(false);
+    });
+
+    it('rejects an absurd resumableTotalChunks above MAX_TOTAL_CHUNKS with 400', async () => {
+        const formData = new FormData();
+        formData.append('file', new Blob(['small'], { type: 'application/octet-stream' }));
+        formData.append('resumableIdentifier', 'absurd-total');
+        formData.append('resumableChunkNumber', '1');
+        formData.append('resumableTotalChunks', String(MAX_TOTAL_CHUNKS + 1));
+        formData.append('resumableFilename', 'evil.bin');
+
+        const res = await authPost('http://localhost/api/projects/1/assets/upload-chunk', formData);
+
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.error).toContain('Invalid resumableTotalChunks');
+        expect(__getChunkUploadsForTest().has('1:absurd-total')).toBe(false);
+    });
+
+    it('rejects a non-numeric resumableTotalChunks with 400', async () => {
+        const formData = new FormData();
+        formData.append('file', new Blob(['small'], { type: 'application/octet-stream' }));
+        formData.append('resumableIdentifier', 'nan-total');
+        formData.append('resumableChunkNumber', '1');
+        formData.append('resumableTotalChunks', 'not-a-number');
+        formData.append('resumableFilename', 'evil.bin');
+
+        const res = await authPost('http://localhost/api/projects/1/assets/upload-chunk', formData);
+
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toContain('Invalid resumableTotalChunks');
+    });
+
+    it('accepts a normal small chunk within the caps', async () => {
+        const formData = new FormData();
+        formData.append('file', new Blob(['ok chunk'], { type: 'application/octet-stream' }));
+        formData.append('resumableIdentifier', 'normal-upload');
+        formData.append('resumableChunkNumber', '1');
+        formData.append('resumableTotalChunks', '2');
+        formData.append('resumableFilename', 'fine.bin');
+
+        const res = await authPost('http://localhost/api/projects/1/assets/upload-chunk', formData);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(__getChunkUploadsForTest().has('1:normal-upload')).toBe(true);
     });
 });

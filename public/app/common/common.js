@@ -1708,7 +1708,15 @@ var $exeDevices = {
                 },
 
                 hasLatex: function (text) {
-                    return /\\\(|\\\[|\\begin\{|\$\$/.test(text);
+                    if (!text) return false;
+                    // Ignore already pre-rendered math: its data-latex attribute keeps the
+                    // original delimiters (e.g. \begin{...}) which would otherwise re-trigger
+                    // a MathJax load in exports that ship no MathJax engine (404).
+                    var stripped = String(text).replace(
+                        /<span[^>]*\bexe-math-rendered\b[^>]*>[\s\S]*?<\/span>/g,
+                        ''
+                    );
+                    return /\\\(|\\\[|\\begin\{|\$\$/.test(stripped);
                 },
 
                 updateLatex: function (target, opts) {

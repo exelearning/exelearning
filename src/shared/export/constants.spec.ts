@@ -26,6 +26,7 @@ import {
     LICENSE_REGISTRY,
     shouldShowLicenseFooter,
     formatShortLicenseText,
+    PRERENDERED_LATEX_CSS,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -924,6 +925,25 @@ describe('Constants', () => {
             it('should return true for unknown licenses', () => {
                 expect(shouldShowLicenseFooter('some random license')).toBe(true);
             });
+        });
+    });
+
+    describe('PRERENDERED_LATEX_CSS', () => {
+        it('should style the rendered math wrapper and assistive MathML', () => {
+            expect(PRERENDERED_LATEX_CSS).toContain('.exe-math-rendered');
+            expect(PRERENDERED_LATEX_CSS).toContain('display: inline-block');
+            expect(PRERENDERED_LATEX_CSS).toContain('[data-display="block"]');
+            // Assistive MathML must be removed from layout so it never shifts the baseline.
+            expect(PRERENDERED_LATEX_CSS).toContain('.exe-math-rendered math');
+            expect(PRERENDERED_LATEX_CSS).toContain('position: absolute');
+        });
+
+        it('should NOT force vertical-align on the wrapper or svg (issue #1919)', () => {
+            // Baseline alignment is driven by the SVG's own inline `vertical-align: -X.XXXex`.
+            // Forcing `vertical-align: middle` centres the box on the line and breaks the baseline
+            // for fractions, sub/superscripts and radicals.
+            expect(PRERENDERED_LATEX_CSS).not.toContain('vertical-align: middle');
+            expect(PRERENDERED_LATEX_CSS).not.toContain('vertical-align');
         });
     });
 });

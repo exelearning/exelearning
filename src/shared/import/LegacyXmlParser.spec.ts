@@ -1585,4 +1585,340 @@ describe('LegacyXmlParser', () => {
             expect(page!.blocks[0].name).toBe('');
         });
     });
+
+    describe('instance-by-reference resolution (H13 O(N^2) fix)', () => {
+        it('resolves a <reference key="..."/> iDevice to the originally declared instance', () => {
+            // The FreeTextIdevice (reference="3") is declared inline on the first page and
+            // re-used on the second page through a <reference key="3"/> placeholder.
+            // The referenced instance must resolve to the same iDevice content.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="20">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page With Inline iDevice"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+                  <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                      <instance class="exe.engine.field.TextAreaField" reference="4">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"/>
+                          <unicode value="&lt;p&gt;Shared iDevice Content&lt;/p&gt;"/>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="children"/>
+              <list/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="21">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page With Referenced iDevice"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <reference key="3"/>
+              </list>
+              <string role="key" value="children"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const inlinePage = result.pages.find(p => p.title === 'Page With Inline iDevice');
+            const referencedPage = result.pages.find(p => p.title === 'Page With Referenced iDevice');
+
+            expect(inlinePage).toBeDefined();
+            expect(referencedPage).toBeDefined();
+
+            // The inline page owns the real iDevice with its content.
+            const inlineHtml = inlinePage!.blocks[0].idevices[0].htmlView;
+            expect(inlineHtml).toContain('Shared iDevice Content');
+
+            // The referenced page must resolve <reference key="3"/> to the SAME instance,
+            // producing identical iDevice content (first-match semantics preserved).
+            expect(referencedPage!.blocks.length).toBeGreaterThan(0);
+            const referencedHtml = referencedPage!.blocks[0].idevices[0].htmlView;
+            expect(referencedHtml).toContain('Shared iDevice Content');
+            expect(referencedHtml).toBe(inlineHtml);
+        });
+
+        it('resolves field-level <reference key="..."/> to the first matching instance', () => {
+            // A TextAreaField (reference="100") is declared inline in the first iDevice's
+            // fields list and re-used via <reference key="100"/> in the second iDevice.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="10">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="100">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Reused Field Content&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="11">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <reference key="100"/>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const page = result.pages.find(p => p.title === 'Root');
+            expect(page).toBeDefined();
+
+            const ideviceHtmls = page!.blocks.flatMap(b => b.idevices.map(d => d.htmlView));
+            const matching = ideviceHtmls.filter(html => html.includes('Reused Field Content'));
+            // Both the inline and the referenced iDevice must carry the same field content.
+            expect(matching.length).toBe(2);
+        });
+
+        it('leaves output unchanged when a reference points to a missing instance', () => {
+            // <reference key="999"/> has no matching instance; it must be skipped silently
+            // (mirrors the previous [0]-on-empty-array undefined behavior).
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <reference key="999"/>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Present iDevice&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const page = result.pages.find(p => p.title === 'Root');
+            expect(page).toBeDefined();
+
+            const ideviceHtmls = page!.blocks.flatMap(b => b.idevices.map(d => d.htmlView));
+            // Only the real iDevice survives; the dangling reference is dropped.
+            expect(ideviceHtmls.some(html => html.includes('Present iDevice'))).toBe(true);
+            expect(ideviceHtmls.length).toBe(1);
+        });
+
+        it('resolves the FIRST matching instance for duplicate reference values', () => {
+            // Two instances share reference="50". Document order must win (first match),
+            // matching the former getElementsByAttribute(...)[0] behavior.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="50">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="60">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;FIRST instance&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="50">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="61">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;SECOND instance&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+          <reference key="50"/>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const page = result.pages.find(p => p.title === 'Root');
+            expect(page).toBeDefined();
+
+            const ideviceHtmls = page!.blocks.flatMap(b => b.idevices.map(d => d.htmlView));
+            // The <reference key="50"/> must resolve to the FIRST instance's content.
+            const resolvedFromReference = ideviceHtmls.filter(html => html.includes('FIRST instance'));
+            expect(resolvedFromReference.length).toBe(2); // inline first + referenced (same first instance)
+            expect(ideviceHtmls.some(html => html.includes('SECOND instance'))).toBe(true);
+        });
+
+        it('scales to many cross-referencing instances without per-reference full scans', () => {
+            // Build a document with one inline iDevice per page plus one back-reference per
+            // page. With the previous O(N^2) full-document scan this pinned the event loop
+            // for tens of seconds; the precomputed map makes it complete near-instantly.
+            const pageCount = 4000;
+            const pieces: string[] = [];
+            pieces.push('<?xml version="1.0" encoding="utf-8"?>');
+            pieces.push('<instance class="exe.engine.package.Package" reference="1">');
+            pieces.push('  <dictionary>');
+            pieces.push('    <string role="key" value="_title"/>');
+            pieces.push('    <unicode value="Big Project"/>');
+            pieces.push('    <string role="key" value="_root"/>');
+            pieces.push('    <instance class="exe.engine.node.Node" reference="2">');
+            pieces.push('      <dictionary>');
+            pieces.push('        <string role="key" value="_title"/>');
+            pieces.push('        <unicode value="Root"/>');
+            pieces.push('        <string role="key" value="parent"/>');
+            pieces.push('        <none/>');
+            pieces.push('        <string role="key" value="children"/>');
+            pieces.push('        <list>');
+
+            for (let i = 0; i < pageCount; i++) {
+                const nodeRef = 1000 + i * 3;
+                const ideviceRef = nodeRef + 1;
+                const fieldRef = nodeRef + 2;
+                pieces.push(`          <instance class="exe.engine.node.Node" reference="${nodeRef}">`);
+                pieces.push('            <dictionary>');
+                pieces.push('              <string role="key" value="_title"/>');
+                pieces.push(`              <unicode value="Page ${i}"/>`);
+                pieces.push('              <string role="key" value="parent"/>');
+                pieces.push('              <reference key="2"/>');
+                pieces.push('              <string role="key" value="idevices"/>');
+                pieces.push('              <list>');
+                // Inline iDevice declared on the first page that owns this reference.
+                pieces.push(
+                    `                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="${ideviceRef}">`,
+                );
+                pieces.push('                  <dictionary>');
+                pieces.push('                    <string role="key" value="fields"/>');
+                pieces.push('                    <list>');
+                pieces.push(
+                    `                      <instance class="exe.engine.field.TextAreaField" reference="${fieldRef}">`,
+                );
+                pieces.push('                        <dictionary>');
+                pieces.push('                          <string role="key" value="content_w_resourcePaths"/>');
+                pieces.push(`                          <unicode value="&lt;p&gt;Content ${i}&lt;/p&gt;"/>`);
+                pieces.push('                        </dictionary>');
+                pieces.push('                      </instance>');
+                pieces.push('                    </list>');
+                pieces.push('                  </dictionary>');
+                pieces.push('                </instance>');
+                // Back-reference to the iDevice declared on the very first generated page,
+                // forcing a reference resolution on every page.
+                pieces.push('                <reference key="1001"/>');
+                pieces.push('              </list>');
+                pieces.push('              <string role="key" value="children"/>');
+                pieces.push('              <list/>');
+                pieces.push('            </dictionary>');
+                pieces.push('          </instance>');
+            }
+
+            pieces.push('        </list>');
+            pieces.push('        <string role="key" value="idevices"/>');
+            pieces.push('        <list/>');
+            pieces.push('      </dictionary>');
+            pieces.push('    </instance>');
+            pieces.push('  </dictionary>');
+            pieces.push('</instance>');
+
+            const legacyXml = pieces.join('\n');
+
+            const start = Date.now();
+            const result = parser.parse(legacyXml);
+            const elapsed = Date.now() - start;
+
+            // Correctness: every page resolves, and the back-reference resolves to the
+            // first iDevice's content ("Content 0") on every page.
+            expect(result.pages.length).toBeGreaterThanOrEqual(pageCount);
+            const allHtml = result.pages.flatMap(p => p.blocks.flatMap(b => b.idevices.map(d => d.htmlView)));
+            expect(allHtml.filter(html => html.includes('Content 0')).length).toBeGreaterThanOrEqual(pageCount);
+
+            // Generous time bound. The previous full-scan implementation took ~21.8s for
+            // ~10k lookups on a 1.2MB document; with the O(1) map this stays well under 8s.
+            expect(elapsed).toBeLessThan(8000);
+        });
+    });
 });
