@@ -156,3 +156,90 @@ describe('LOMLOE ES-VC Batxillerat selection-id uniqueness across courses', () =
         expect(collisions).toEqual([]);
     });
 });
+
+// Primària criteris d'avaluació are defined PER CICLE in Decret 106/2022, so the
+// two years of a cycle must carry IDENTICAL criteris. The official annex labels
+// each criteris column either by its cycle ("2n cicle (4t curs)") or only by the
+// cycle's reference year ("4t primària", "4t de primària", "4t curs EP"); the
+// latter variant previously collapsed onto the terminal year alone, leaving the
+// first year of the cycle (3r, 5é) with no criteris for EPV / LCL / M while the
+// terminal year (4t, 6é) had them. This guard keeps both years of every cycle in
+// lock-step so that regression cannot return.
+describe('LOMLOE ES-VC Primària per-cicle criteris parity', () => {
+    const ETAPA = 'Educació Primària';
+    const CYCLES = [
+        ["3r d'Educació Primària", "4t d'Educació Primària"],
+        ["5é d'Educació Primària", "6é d'Educació Primària"],
+    ];
+    // The areas that exposed the bug (column header printed without "cicle").
+    const PREVIOUSLY_BROKEN = ['EPV', 'LCL', 'M'];
+
+    // Comparable, code-independent view of an area's criteris: the competence
+    // statement plus each criterio's descripcion, in document order.
+    const criterisShape = area =>
+        Object.values(area.competencias_especificas).map(comp => ({
+            descripcion: comp.descripcion,
+            criterios: comp.criterios_evaluacion.map(c => c.descripcion),
+        }));
+
+    for (const [firstYear, secondYear] of CYCLES) {
+        describe(`${firstYear} ↔ ${secondYear}`, () => {
+            const first = dataset[ETAPA][firstYear];
+            const second = dataset[ETAPA][secondYear];
+
+            it('both years exist with the same set of àrees', () => {
+                expect(first).toBeDefined();
+                expect(second).toBeDefined();
+                expect(Object.keys(first).sort()).toEqual(Object.keys(second).sort());
+            });
+
+            it('every àrea carries identical criteris content in both cycle years', () => {
+                for (const codArea of Object.keys(second)) {
+                    expect(criterisShape(first[codArea]), codArea).toEqual(criterisShape(second[codArea]));
+                }
+            });
+
+            it('the previously-broken àrees now carry criteris in the first cycle year', () => {
+                for (const codArea of PREVIOUSLY_BROKEN) {
+                    const comps = first[codArea].competencias_especificas;
+                    expect(Object.keys(comps).length, codArea).toBeGreaterThan(0);
+                    for (const [code, comp] of Object.entries(comps)) {
+                        // codes carry this concrete year's niveltag (PRI3 / PRI5)
+                        expect(code.split('-')[3]).toBe(codArea);
+                        expect(comp.criterios_evaluacion.length).toBeGreaterThan(0);
+                    }
+                }
+            });
+        });
+    }
+});
+
+// The currently in-force Decret 106/2022 deliberately omits criteris d'avaluació
+// for the FIRST cicle (1r i 2n); its Annex III tables only publish columns for
+// "2n cicle (4t curs)" and "3r cicle (6é curs)" (the state RD 157/2022 does have
+// them, and a 2026 draft modification adds them, but they are not in the
+// published decree). Sabers bàsics, by contrast, ARE published for the 1r cicle.
+// This guard records that gap as intentional so the empty criteris tab on 1r/2n
+// is never mistaken for an extraction regression.
+describe('LOMLOE ES-VC Primària first-cicle is sabers-only (faithful to Decret 106/2022)', () => {
+    const ETAPA = 'Educació Primària';
+    const FIRST_CICLE = ["1r d'Educació Primària", "2n d'Educació Primària"];
+
+    for (const year of FIRST_CICLE) {
+        it(`${year}: every àrea has sabers bàsics but no criteris d'avaluació`, () => {
+            const nivel = dataset[ETAPA][year];
+            expect(Object.keys(nivel).length).toBeGreaterThan(0);
+            for (const [codArea, area] of Object.entries(nivel)) {
+                expect(
+                    Object.keys(area.competencias_especificas).length,
+                    `${year}/${codArea} should have no criteris d'avaluació`,
+                ).toBe(0);
+                const saberItems = Object.values(area.saberes_basicos.bloques).reduce(
+                    (n, items) => n + items.length,
+                    0,
+                );
+                expect(saberItems, `${year}/${codArea} should carry sabers bàsics`).toBeGreaterThan(0);
+            }
+        });
+    }
+});

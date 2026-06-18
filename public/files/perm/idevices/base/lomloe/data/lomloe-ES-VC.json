@@ -4873,7 +4873,139 @@
    },
    "EPV": {
     "denominacion": "EDUCACIÓ PLÀSTICA I VISUAL",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI3-EPV-CE01": {
+      "descripcion": "Explorar propostes artístiques de l’entorn patrimonial i de la cultura visual i audiovisual per mitjà de diferents canals i contextos, desenvolupant hàbits de percepció activa.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE01-CR01",
+        "descripcion": "Mostrar interés, curiositat i respecte cap a diferents propostes artístiques de l’entorn patrimonial i de la cultura visual i audiovisual present en els diferents contextos en els quals es duu a terme l’experiència d’apreciació.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE01-CR02",
+        "descripcion": "Classificar les diferents propostes artístiques tenint en compte els diferents canals per mitjà dels quals les percebem.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE01-CR03",
+        "descripcion": "Identificar elements bàsics de contingut en propostes artístiques mitjançant l’apreciació de l’entorn patrimonial pròxim i de la cultura visual i audiovisual.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-EPV-CE02": {
+      "descripcion": "Reconéixer i valorar les característiques fonamentals de la contemporaneïtat artística mitjançant la percepció de diferents obres i l’experimentació directa.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE02-CR01",
+        "descripcion": "Apreciar la diversitat i heterogeneïtat de propostes artístiques contemporànies mostrant una actitud de respecte per a superar prejudicis.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE02-CR02",
+        "descripcion": "Incorporar l’ús d’alguns formats i materials propis de la contemporaneïtat artística en les seues pròpies creacions.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE02-CR03",
+        "descripcion": "Reconéixer les diferents temàtiques en les obres artístiques contemporànies a partir del fet d’establir relacions senzilles amb els reptes i circumstàncies del present.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-EPV-CE03": {
+      "descripcion": "Emprar de manera adequada la terminologia específica de l’àrea relativa a elements configuratius, formats, tècniques i materials en l’expressió de les experiències d’apreciació i creació artística.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE03-CR01",
+        "descripcion": "Participar activament en els diferents moments d’expressió en l’experiència d’apreciació i creació artística, utilitzant un vocabulari adequat i respectuós.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE03-CR02",
+        "descripcion": "Emprar el vocabulari bàsic de l’àrea per a identificar elements configuratius, formats, tècniques i materials en diferents propostes artístiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE03-CR03",
+        "descripcion": "Mostrar una actitud respectuosa amb les diferents opinions emeses sobre produccions artístiques.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-EPV-CE04": {
+      "descripcion": "Experimentar amb els elements bàsics del llenguatge visual i audiovisual, així com amb diferents tècniques i materials, expressant idees, sentiments i emocions en l’elaboració de produccions artístiques individuals o col·lectives.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE04-CR01",
+        "descripcion": "Fer un ús adequat dels materials, eines i espais de treball en el procés d’elaboració de propostes artístiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE04-CR02",
+        "descripcion": "Emprar diferents tècniques i materials per a experimentar amb les seues qualitats expressives en produccions artístiques creatives senzilles.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE04-CR03",
+        "descripcion": "Desenvolupar hàbits de constància i esforç en els processos de treball per a finalitzar les propostes artístiques iniciades.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-EPV-CE05": {
+      "descripcion": "Utilitzar de manera guiada recursos digitals aplicats a la cerca d’informació i a la creació artística, i fer-ne un ús responsable d’acord amb la normativa vigent.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE05-CR01",
+        "descripcion": "Buscar, de manera guiada i responsable, informació i recursos artístics en mitjans digitals, respectant la normativa vigent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE05-CR02",
+        "descripcion": "Respectar les indicacions a l’hora de buscar informació o crear propostes artístiques digitals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE05-CR03",
+        "descripcion": "Iniciar-se en l’ús de recursos digitals bàsics per a desenvolupar creacions artístiques visuals o audiovisuals senzilles.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-EPV-CE06": {
+      "descripcion": "Participar en les diferents fases d’un procés creatiu col·laboratiu amb actitud inclusiva, assumint diferents rols en el desenvolupament de produccions visuals i audiovisuals senzilles.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE06-CR01",
+        "descripcion": "Assumir sense prejudicis diferents rols en el desenvolupament de produccions artístiques col·laboratives i mostrar interés i respecte per les diferents funcions a exercir.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE06-CR02",
+        "descripcion": "Col·laborar de manera guiada en el desenvolupament d’un producte artístic final satisfactori que complisca amb els objectius mínims establits.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE06-CR03",
+        "descripcion": "Expressar inquietuds, dubtes i incerteses emprant estratègies comunicatives bàsiques, de manera assertiva i respectuosa, durant el procés de desenvolupament de les diferents produccions artístiques visuals o audiovisuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-EPV-CE06-CR04",
+        "descripcion": "Desenvolupar de manera guiada propostes creatives, registrant els processos de treball i compartint el resultat.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. Percepció i anàlisi": [
@@ -5532,7 +5664,242 @@
    },
    "LCL": {
     "denominacion": "LLENGUA CASTELLANA Y LITERATURA",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI3-LCL-CE01": {
+      "descripcion": "Reconéixer la diversitat lingüística i cultural de la Comunitat Valenciana, d’Espanya i del món, a través del contacte amb les llengües de l’alumnat i de l’entorn; evitar prejudicis lingüístics, i valorar aquesta diversitat com una riquesa cultural.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE01-CR01",
+        "descripcion": "Identificar les varietats lingüístiques de l’entorn.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE01-CR02",
+        "descripcion": "Mostrar interés per l’ús del valencià en situacions comunicatives habituals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE01-CR03",
+        "descripcion": "Mostrar interés i respecte per les varietats lingüístiques del seu entorn immediat, i identificar algunes expressions d’ús habitual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE01-CR04",
+        "descripcion": "Identificar en contextos senzills, amb ajuda del docent, prejudicis i estereotips lingüístics freqüents, i reconéixer la pluralitat lingüística del seu entorn com una font de riquesa cultural.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE01-CR05",
+        "descripcion": "Amb l’ajuda del docent, reflexionar sobre aspectes bàsics del funcionament de la llengua, a partir de l’observació i la comparació de paraules i oracions de diferents llengües pròximes a l’alumnat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE02": {
+      "descripcion": "Comprendre, interpretar i valorar, de manera guiada, textos orals i multimodals propis dels àmbits personal, social i educatiu, a través de l’escolta activa, l’aplicació d’estratègies de comprensió oral i la reflexió sobre el contingut i la forma.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE02-CR01",
+        "descripcion": "Escoltar de manera activa i interpretar, amb l’ajuda del docent, textos orals senzills dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE02-CR02",
+        "descripcion": "Interpretar el sentit global i les idees principals de textos orals senzills sobre coneixements pròxims a l’alumnat, reconéixer la informació explícita i algunes informacions implícites senzilles, i progressar, de manera guiada, en la valoració crítica del contingut i dels elements no verbals elementals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE02-CR03",
+        "descripcion": "Escoltar de manera activa i interpretar, amb l’ajuda del docent, textos multimodals senzills en mitjans digitals, dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE02-CR04",
+        "descripcion": "Interpretar el sentit global i les idees principals de textos multimodals senzills sobre coneixements pròxims a l’alumnat, reconeixent la informació explícita i algunes informacions implícites senzilles, i progressar, de manera guiada, en la valoració crítica del contingut i dels elements no verbals elementals.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE03": {
+      "descripcion": "Comprendre, interpretar i valorar, de manera guiada, textos escrits i multimodals propis dels àmbits personal, social i educatiu, a través de la lectura de textos, l’aplicació d’estratègies de comprensió lectora i la reflexió sobre el contingut i la forma.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE03-CR01",
+        "descripcion": "Llegir amb bona fluïdesa, de manera silenciosa i en veu alta, i interpretar, amb ajuda del docent, textos escrits i multimodals senzills dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE03-CR02",
+        "descripcion": "Aplicar, de manera guiada, diferents estratègies per a comprendre el sentit global i la informació específica, distingir les idees principals de les secundàries, inferir significats no explícits i fer algunes valoracions personals de textos escrits sobre coneixements pròxims a l’alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE03-CR03",
+        "descripcion": "Identificar el tipus de text i l’estructura principal dels textos, i valorar, de manera guiada, el contingut i els aspectes formals i no verbals elementals dels textos escrits i multimodals, i iniciar-se en l’avaluació de la seua fiabilitat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE03-CR04",
+        "descripcion": "Localitzar, seleccionar i contrastar informació senzilla procedent d’una o dues fonts, dels àmbits personal, social i educatiu, i avaluar-ne la utilitat en funció dels objectius de lectura en diferents textos multimodals senzills en mitjans digitals, amb l’ajuda del docent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE03-CR05",
+        "descripcion": "Aplicar, amb ajuda del docent, diferents estratègies per a la cerca, la selecció i la gestió de la informació en diferents textos multimodals, per a ampliar coneixements de manera responsable i reconéixer que pot no ser fiable, iniciar-se en el contrast de la informació i utilitzar-la citant les referències bibliogràfiques.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE04": {
+      "descripcion": "Produir, de manera guiada, missatges orals senzills amb coherència, cohesió i adequació a través de situacions de comunicació dels àmbits familiar, social i educatiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE04-CR01",
+        "descripcion": "Produir, amb ajuda del docent, discursos orals senzills, amb sentit, sobre coneixements pròxims a l’alumne, de tipologia diversa i ajustats a situacions comunicatives habituals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE04-CR02",
+        "descripcion": "Produir discursos orals amb una pronunciació clara, un volum adequat i una postura corporal correcta, i iniciar-se en l’ús de suports audiovisuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE04-CR03",
+        "descripcion": "Realitzar produccions orals utilitzant un llenguatge no discriminatori, adaptat a la situació de comunicació i a l’interlocutor, amb un vocabulari bàsic i unes estructures morfosintàctiques senzilles.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE04-CR04",
+        "descripcion": "Localitzar i seleccionar informació en una o dues fonts, de manera acompanyada, i compartir oralment els resultats citant-ne les fonts.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE05": {
+      "descripcion": "Produir, de manera guiada, textos escrits i multimodals adequats i coherents amb un vocabulari apropiat, utilitzant estratègies bàsiques de planificació, textualització, revisió i edició.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE05-CR01",
+        "descripcion": "Produir, a partir d’exemples bàsics i amb ajuda del professorat, textos escrits i multimodals senzills que responguen a les característiques plantejades, amb una estructura coherent i utilitzant vocabulari no discriminatori bàsic d’ús freqüent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE05-CR02",
+        "descripcion": "Utilitzar, amb suport i ajuda del professorat, els coneixements elementals d’ortografia i gramàtica necessaris en la situació d’aprenentatge.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE05-CR03",
+        "descripcion": "Planificar i revisar, de manera dialogada i acompanyada pel professorat, mitjançant instruments i estratègies elementals, com a part explícita del procés d’escriptura.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE05-CR04",
+        "descripcion": "Localitzar, seleccionar i gestionar, de manera acompanyada, la informació d’una o dues fonts i incloure les seues referències en compartir-la.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE06": {
+      "descripcion": "Interactuar de manera oral, escrita i multimodal, a través de textos senzills dels àmbits personal, social i educatiu, utilitzant un llenguatge respectuós i estratègies bàsiques de comprensió, expressió i resolució dialogada de conflictes, de manera síncrona i asíncrona.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE06-CR01",
+        "descripcion": "Interactuar oralment, amb l’acompanyament del docent, en situacions comunicatives habituals, utilitzant un vocabulari bàsic i no discriminatori, un ritme pausat i el llenguatge no verbal, emprant estratègies d’escolta amb la finalitat de mantindre el tema i respectar les convencions establides.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE06-CR02",
+        "descripcion": "Utilitzar, de manera acompanyada, estratègies bàsiques per a la comunicació assertiva per a progressar en la gestió dialogada de conflictes.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE06-CR03",
+        "descripcion": "Identificar i rebutjar, de manera acompanyada, els usos lingüístics discriminatoris a través de la reflexió conjunta.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE06-CR04",
+        "descripcion": "Interactuar en textos escrits i multimodals, de manera asíncrona i guiada, mostrant empatia i respecte, utilitzant estratègies per a expressar missatges senzills estructurats amb un vocabulari bàsic d’ús freqüent i no discriminatori.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE07": {
+      "descripcion": "Mediar entre interlocutors utilitzant estratègies d’adaptació i de simplificació del llenguatge per a processar i transmetre informació bàsica i senzilla, en situacions comunicatives predictibles dels àmbits personal, social i educatiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE07-CR01",
+        "descripcion": "Mostrar interés per participar en la solució de problemes de comprensió recíproca entre parlants de llengües o varietats lingüístiques diferents sobre assumptes quotidians.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE07-CR02",
+        "descripcion": "Interpretar un missatge breu i senzill en L2 (valencià o castellà) i transmetre la informació bàsica o explicar conceptes en la seua L1 (valencià o castellà o una altra llengua), oralment, de manera guiada, per a facilitar la comprensió entre interlocutors sobre assumptes quotidians en el seu entorn més pròxim.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE07-CR03",
+        "descripcion": "Identificar i utilitzar, de manera acompanyada i molt bàsica, estratègies que faciliten la comprensió i l’expressió orals d’informació en diferents llengües del seu repertori (L1-L1, L2-L1), com ara l’ús del llenguatge no verbal, o simplificar o adaptar el missatge.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE08": {
+      "descripcion": "Llegir de manera autònoma obres i textos de caràcter divers, seleccionats atenent els seus gustos i interessos i compartir les experiències de lectura.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE08-CR01",
+        "descripcion": "Llegir de manera autònoma o guiada obres diverses adequades a la seua edat i textos escrits i multimodals dels àmbits personal, social i educatiu seleccionar amb autonomia creixent els que millor s’ajusten als seus gustos i interessos i iniciar-se, així, en la construcció de la seua identitat lectora.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE08-CR02",
+        "descripcion": "Compartir les experiències de lectura, en suports diversos, participant en comunitats lectores en l’àmbit educatiu.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-LCL-CE09": {
+      "descripcion": "Llegir i produir textos amb intenció literària, senzills, amb llenguatge pròxim a l’alumne, contextualitzats en la cultura i la tradició, com a font de plaer i de coneixement.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE09-CR01",
+        "descripcion": "Llegir i escoltar textos literaris senzills, propis de la tradició literària, adequats a l’edat i amb ajuda del docent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE09-CR02",
+        "descripcion": "Interpretar textos senzills de la tradició popular oral, literària, dins d’un context sociocultural pròxim.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE09-CR03",
+        "descripcion": "Expressar l’opinió sobre textos de tradició literària, amb paraules pròpies de l’alumne i amb ajuda del docent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE09-CR04",
+        "descripcion": "Crear versions de textos literaris senzills i breus (contes, poemes, cançons, dramatitzacions), individualment i col·lectiva.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-LCL-CE09-CR05",
+        "descripcion": "Participar en manifestacions literàries, recitals, representacions teatrals, partint de models i amb ajuda del docent.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. Llengua i ús": [
@@ -6091,7 +6458,196 @@
    },
    "M": {
     "denominacion": "MATEMÀTIQUES",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI3-M-CE01": {
+      "descripcion": "Resoldre problemes relacionats amb situacions reals de l'entorn personal, social i educatiu utilitzant estratègies informals, representacions i conceptes concrets.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE01-CR01",
+        "descripcion": "Identificar la informació rellevant i irrellevant d'un problema o situació problemàtica de l'entorn personal i social de l'alumnat que permeta el seu abordatge i resolució.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE01-CR02",
+        "descripcion": "Desenvolupar estratègies informals per a obtindre la solució correcta en un problema o situació problemàtica i sistematitzar procediments informals de resolució a nivell inicial.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE01-CR03",
+        "descripcion": "Comprovar si la solució obtinguda en un problema compleix les condicions o exigències de l'enunciat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE01-CR04",
+        "descripcion": "Extraure conseqüències de la situació problemàtica plantejada i obtindre eines o estratègies aplicables en l'àmbit personal o educatiu.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE02": {
+      "descripcion": "Observar, formular, explorar i comprovar conjectures senzilles sobre propietats i relacions matemàtiques concretes, reconeixent i connectant procediments, patrons, regularitats i estructures.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE02-CR01",
+        "descripcion": "Comprovar conjectures sobre relacions matemàtiques que permeten desenvolupar de manera intuïtiva nou contingut matemàtic de naturalesa numèrica, mètrica, espacial, geomètrica o estocàstica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE02-CR02",
+        "descripcion": "Comprovar relacions matemàtiques en – i mitjançant– els procediments de raonament matemàtic intuïtiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE02-CR03",
+        "descripcion": "Reconéixer patrons o regularitats, construint intuïtivament contingut matemàtic de naturalesa numèrica, mètrica, espacial, geomètrica o estocàstica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE02-CR04",
+        "descripcion": "Comparar diferents procediments matemàtics relatius al càlcul, la mesura, el sentit espacial i geomètric, el tractament de dades o els processos aleatoris, i utilitzar-los de manera flexible.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE03": {
+      "descripcion": "Construir models matemàtics concrets i utilitzar conceptes i procediments matemàtics senzills per a abordar i interpretar situacions, fenòmens i problemes rellevants en l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE03-CR01",
+        "descripcion": "Identificar el contingut i les eines matemàtiques senzilles que permeten abordar situacions reals pròximes i rellevants, i així possibilitar la construcció de models matemàtics bàsics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE03-CR02",
+        "descripcion": "Usar models matemàtics bàsics que permeten interpretar una situació real senzilla, i extraure’n conclusions.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE03-CR03",
+        "descripcion": "Comparar models matemàtics corresponents a situacions reals en contextos similars.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE04": {
+      "descripcion": "Construir i aplicar algorismes senzills per a afrontar situacions i resoldre problemes rellevants de l'àmbit personal, educatiu o social, organitzant dades, descomponent un problema en parts, reconeixent patrons i utilitzant eines TIC.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE04-CR01",
+        "descripcion": "Identificar regularitats en una seqüència de dades i predir resultats mitjançant el reconeixement de patrons senzills.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE04-CR02",
+        "descripcion": "Interpretar i reproduir algorismes senzills mitjançant codis visuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE04-CR03",
+        "descripcion": "Aplicar algorismes senzills mitjançant codis visuals i/o eines tecnològiques bàsiques per a resoldre situacions problemàtiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE04-CR04",
+        "descripcion": "Analitzar situacions senzilles per a definir i aconseguir estratègies guanyadores en jocs de lògica o jocs de tauler.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE05": {
+      "descripcion": "Utilitzar amb correcció el simbolisme matemàtic, fent transformacions i algunes conversions entre representacions iconicomanipulatives numèriques, geomètriques i gràfiques, per a descriure i analitzar situacions rellevants de l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE05-CR01",
+        "descripcion": "Utilitzar correctament les representacions iconicomanipulatives d'objectes i processos matemàtics en situacions pròximes a l'alumnat, respectant les regles bàsiques que els regeixen.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE05-CR02",
+        "descripcion": "Reconéixer representacions numèriques, geomètriques i gràfiques que descriuen objectes matemàtics elementals en contextos pròxims a l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE05-CR03",
+        "descripcion": "Usar representacions numèriques, geomètriques i gràfiques d'objectes matemàtics elementals en situacions pròximes a l'alumnat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE06": {
+      "descripcion": "Comprendre i produir missatges orals i escrits concrets de manera informal, utilitzant un llenguatge matemàtic senzill per a comunicar i argumentar sobre característiques, conceptes, procediments i resultats relacionats amb situacions de l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE06-CR01",
+        "descripcion": "Reconéixer i comprendre missatges orals i escrits senzills que continguen llenguatge matemàtic bàsic.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE06-CR02",
+        "descripcion": "Comunicar de manera informal aspectes relacionats amb conceptes i procediments matemàtics senzills presents en contextos pròxims a l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE06-CR03",
+        "descripcion": "Justificar adequadament la validesa dels resultats provinents de situacions problemàtiques de l'entorn personal o educatiu de l'alumnat, a través de comunicacions orals o escrites informals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE06-CR04",
+        "descripcion": "Utilitzar un llenguatge matemàtic adequat per a defensar els raonaments de forma argumentada.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE07": {
+      "descripcion": "Identificar fenòmens i problemes importants des del punt de vista cultural i social en els quals el coneixement matemàtic té un paper decisiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE07-CR01",
+        "descripcion": "Reconéixer el contingut matemàtic present en jocs, activitats socials i productes culturals pròxims a l'experiència de l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE07-CR02",
+        "descripcion": "Valorar la importància de les matemàtiques per a resoldre problemes de la vida quotidiana que involucren aspectes com el càlcul aritmètic, la incertesa, el raonament lògic, el pensament computacional, l'ús i interpretació de dades o el sentit geomètric i espacial.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE07-CR03",
+        "descripcion": "Apreciar el caràcter polivalent de les matemàtiques, tant per la seua utilitat per a la resolució de problemes en diferents àrees (instrumentalitat), com per a afavorir el desenvolupament intel·lectual, creatiu i cultural de les persones.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI3-M-CE08": {
+      "descripcion": "Gestionar les emocions i actituds implicades en els processos matemàtics, acceptant la incertesa, les dificultats i els errors que aquests processos comporten, i controlant l'atenció per a aconseguir un aprenentatge significatiu i adaptable a diferents situacions.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI3-M-CE08-CR01",
+        "descripcion": "Identificar i verbalitzar emocions i actituds en la resolució de problemes o en situacions d'aprenentatge relacionades amb les matemàtiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE08-CR02",
+        "descripcion": "Mostrar una actitud positiva i perseverant en el treball matemàtic, tant individual com col·laboratiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI3-M-CE08-CR03",
+        "descripcion": "Mostrar una disposició favorable a la superació i millora personal i del treball en equip en la realització de tasques i activitats relacionades amb les matemàtiques.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. NOMBRES NATURALS": [
@@ -10570,7 +11126,139 @@
    },
    "EPV": {
     "denominacion": "EDUCACIÓ PLÀSTICA I VISUAL",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI5-EPV-CE01": {
+      "descripcion": "Explorar propostes artístiques de l’entorn patrimonial i de la cultura visual i audiovisual per mitjà de diferents canals i contextos, desenvolupant hàbits de percepció activa.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE01-CR01",
+        "descripcion": "Distingir diferents propostes artístiques de l’entorn per mitjà dels elements bàsics del llenguatge visual i audiovisual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE01-CR02",
+        "descripcion": "Interpretar diferents propostes artístiques del patrimoni i de la cultura visual i audiovisual, tenint en compte els diferents contextos en els quals es generen.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE01-CR03",
+        "descripcion": "Relacionar els elements característics de la cultura local amb altres formes culturals, mostrant una actitud oberta i respectuosa, i valorar la diversitat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-EPV-CE02": {
+      "descripcion": "Reconéixer i valorar les característiques fonamentals de la contemporaneïtat artística mitjançant la percepció de diferents obres i l’experimentació directa.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE02-CR01",
+        "descripcion": "Identificar els formats i materials propis de la contemporaneïtat artística en propostes creatives pròpies i alienes, des d’una perspectiva multicultural i integradora.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE02-CR02",
+        "descripcion": "Experimentar amb les possibilitats comunicatives dels llenguatges contemporanis en propostes artístiques creatives senzilles en les quals s’establisquen relacions significatives entre idees, materials i formats.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE02-CR03",
+        "descripcion": "Valorar la labor de les creadores i creadors en la seua contribució a la societat actual, a partir del fet de relacionar el seu treball i els missatges de la creació artística contemporània amb els reptes i circumstàncies del present.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-EPV-CE03": {
+      "descripcion": "Emprar de manera adequada la terminologia específica de l’àrea relativa a elements configuratius, formats, tècniques i materials en l’expressió de les experiències d’apreciació i creació artística.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE03-CR01",
+        "descripcion": "Descriure les diferents obres i imatges emprant correctament el vocabulari específic de l’àrea en l’experiència d’apreciació artística i incorporant mitjans orals, textuals i estratègies de pensament visual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE03-CR02",
+        "descripcion": "Aplicar la terminologia adequada per a descriure les pròpies creacions artístiques i argumentar les decisions adoptades en relació a formats, tècniques i materials.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE03-CR03",
+        "descripcion": "Expressar de manera assertiva i respectuosa opinions derivades de les experiències d’apreciació i creació artística.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-EPV-CE04": {
+      "descripcion": "Experimentar amb els elements bàsics del llenguatge visual i audiovisual, així com amb diferents tècniques i materials, expressant idees, sentiments i emocions en l’elaboració de produccions artístiques individuals o col·lectives.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE04-CR01",
+        "descripcion": "Incorporar els coneixements derivats dels referents explorats com a estímul en les pròpies produccions creatives.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE04-CR02",
+        "descripcion": "Seleccionar les tècniques, materials i elements de contingut més adequats per a l’expressió d’idees, sentiments i emocions en les diferents produccions artístiques creatives.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE04-CR03",
+        "descripcion": "Utilitzar materials no convencionals en la creació artística i buscar-ne els més adequats per al que es pretén transmetre, tot incorporant-hi criteris de sostenibilitat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-EPV-CE05": {
+      "descripcion": "Utilitzar de manera guiada recursos digitals aplicats a la cerca d’informació i a la creació artística, i fer-ne un ús responsable d’acord amb la normativa vigent.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE05-CR01",
+        "descripcion": "Aplicar les normes bàsiques de protecció de dades, d’autoria i llicències d’ús en la cerca d’informació i en els processos de creació artística digitals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE05-CR02",
+        "descripcion": "Contrastar les diferents informacions trobades durant el procés de cerca sobre qüestions artístiques, i seleccionar-ne les més rellevants i més fidels a la realitat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE05-CR03",
+        "descripcion": "Emprar de manera guiada diferents recursos digitals bàsics de producció gràfica i audiovisual, i adequar-se a la intencionalitat representativa i als objectius de l’activitat artística plantejada.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-EPV-CE06": {
+      "descripcion": "Participar en les diferents fases d’un procés creatiu col·laboratiu amb actitud inclusiva, assumint diferents rols en el desenvolupament de produccions visuals i audiovisuals senzilles.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE06-CR01",
+        "descripcion": "Cooperar en la planificació d’una producció artística col·lectiva proposant objectius, fases, rols, necessitats materials i tècniques i espais de treball.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE06-CR02",
+        "descripcion": "Contribuir de manera eficaç a la consecució d’un producte creatiu comprenent i integrant les funcions assignades i participant en l’objectiu comú.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE06-CR03",
+        "descripcion": "Comprometre’s en el mateix grau amb les diferents fases del procés creatiu, des de la idea inicial fins a la consecució i difusió d’un producte visual o audiovisual satisfactori.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-EPV-CE06-CR04",
+        "descripcion": "Desenvolupar propostes creatives, registrant els processos de treball de manera textual, gràfica i/o audiovisual i compartint el resultat.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. Percepció i anàlisi": [
@@ -11349,7 +12037,247 @@
    },
    "LCL": {
     "denominacion": "LLENGUA CASTELLANA Y LITERATURA",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI5-LCL-CE01": {
+      "descripcion": "Reconéixer la diversitat lingüística i cultural de la Comunitat Valenciana, d’Espanya i del món, a través del contacte amb les llengües de l’alumnat i de l’entorn; evitar prejudicis lingüístics, i valorar aquesta diversitat com una riquesa cultural.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE01-CR01",
+        "descripcion": "Identificar i valorar les varietats lingüístiques de la Comunitat Valenciana, de l’Estat espanyol i del món.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE01-CR02",
+        "descripcion": "Mostrar interés per l’ús del valencià en les diferents situacions comunicatives dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE01-CR03",
+        "descripcion": "Mostrar interés i respecte per les varietats lingüístiques del seu entorn, i identificar-ne les característiques bàsiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE01-CR04",
+        "descripcion": "Detectar en contextos pròxims, de manera guiada, prejudicis i estereotips lingüístics freqüents, i valorar la pluralitat lingüística del món com una font de riquesa cultural.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE01-CR05",
+        "descripcion": "Reflexionar i buscar exemples, de manera guiada, sobre aspectes del funcionament de la llengua, a partir de l’observació, la comparació i la manipulació de paraules, oracions i textos, de diferents llengües.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE02": {
+      "descripcion": "Comprendre, interpretar i valorar, de manera guiada, textos orals i multimodals propis dels àmbits personal, social i educatiu, a través de l’escolta activa, l’aplicació d’estratègies de comprensió oral i la reflexió sobre el contingut i la forma.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE02-CR01",
+        "descripcion": "Escoltar de manera activa, interpretar i valorar, de manera guiada, textos orals senzills dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE02-CR02",
+        "descripcion": "Interpretar el sentit global i les idees principals i secundàries de textos orals senzills de coneixements diversos, extraure informació explícita i implícita en el text, fer deduccions, valorar el contingut i els elements no verbals elementals i, de manera guiada, alguns elements formals elementals, i donar una opinió raonada sobre el que ha escoltat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE02-CR03",
+        "descripcion": "Escoltar de manera activa, interpretar i valorar diferents textos multimodals senzills en mitjans digitals, de manera guiada, dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE02-CR04",
+        "descripcion": "Interpretar el sentit global i les idees principals i secundàries de textos multimodals senzills de coneixements diversos, extraure informació explícita i implícita en el text, fer deduccions, valorar el contingut i els elements no verbals elementals i, de manera guiada, alguns aspectes formals elementals, i donar una opinió raonada.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE03": {
+      "descripcion": "Comprendre, interpretar i valorar, de manera guiada, textos escrits i multimodals propis dels àmbits personal, social i educatiu, a través de la lectura de textos, l’aplicació d’estratègies de comprensió lectora i la reflexió sobre el contingut i la forma.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE03-CR01",
+        "descripcion": "Llegir amb bona fluïdesa, de manera silenciosa i en veu alta, interpretar i valorar, de manera guiada, textos escrits i multimodals senzills dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE03-CR02",
+        "descripcion": "Aplicar, de manera guiada, tot tipus d’estratègies per a comprendre el sentit global i la informació específica, distingir les idees principals de les secundàries, inferir significats no explícits i fer algunes valoracions personals argumentades de diferents textos sobre coneixements diversos.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE03-CR03",
+        "descripcion": "Identificar el tipus i l’estructura dels textos i valorar, de manera guiada, el contingut i els aspectes formals i no verbals elementals dels textos escrits i multimodals, avaluar-ne la qualitat, la fiabilitat, la idoneïtat en funció de l’objectiu de la lectura, així com algunes de les característiques lingüístiques específiques de cada tipus de text.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE03-CR04",
+        "descripcion": "Localitzar, seleccionar i contrastar informació senzilla procedent de dues o més fonts, dels àmbits personal, social i educatiu, i avaluar-ne la utilitat en funció dels objectius de lectura en diferents textos multimodals en mitjans digitals, de manera guiada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE03-CR05",
+        "descripcion": "Aplicar, de manera guiada, tot tipus d’estratègies per a la cerca, la selecció i la gestió de la informació, en diferents textos multimodals, per a ampliar coneixements de manera responsable, contrastar la informació i utilitzar-la citant les referències bibliogràfiques.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE04": {
+      "descripcion": "Produir, de manera guiada, missatges orals senzills amb coherència, cohesió i adequació a través de situacions de comunicació dels àmbits familiar, social i educatiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE04-CR01",
+        "descripcion": "Produir, de manera guiada, discursos orals estructurats, sobre coneixements diversos, ajustats a la situació comunicativa i als gèneres discursius dels àmbits personal, social i educatiu, utilitzant connectors bàsics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE04-CR02",
+        "descripcion": "Produir discursos orals amb una pronunciació clara, i amb un ritme i entonació adequats, i incorporar recursos no verbals bàsics que reforcen el discurs i fent ús de suports audiovisuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE04-CR03",
+        "descripcion": "Realitzar produccions orals utilitzant un llenguatge no discriminatori, adaptat a la situació de comunicació i a l’interlocutor, amb un vocabulari adequat, sense expressions col·loquials, i amb varietat d’estructures morfosintàctiques, amb una reflexió progressiva en l’ús de la llengua.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE04-CR04",
+        "descripcion": "Localitzar, seleccionar i contrastar informació en dues o més fonts, analògiques i digitals, de manera guiada, i compartir oralment els resultats adoptant un punt de vista personal i citant-ne les fonts.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE05": {
+      "descripcion": "Produir, de manera guiada, textos escrits i multimodals adequats i coherents amb un vocabulari apropiat, utilitzant estratègies bàsiques de planificació, textualització, revisió i edició.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE05-CR01",
+        "descripcion": "Produir, a partir d’exemples i de manera guiada, textos escrits i multimodals de gèneres discursius dels àmbits personal, social i educatiu adequats i coherents, amb vocabulari no discriminatori apropiat i estratègies bàsiques de cohesió.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE05-CR02",
+        "descripcion": "Utilitzar, de manera acompanyada puntualment i amb reflexió progressiva, els coneixements lingüístics i discursius bàsics necessaris en la situació d’aprenentatge i la terminologia elemental corresponent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE05-CR03",
+        "descripcion": "Planificar, textualitzar, revisar i editar, de manera guiada, mitjançant instruments i estratègies bàsiques, com a part explícita del procés d’escriptura.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE05-CR04",
+        "descripcion": "Localitzar, seleccionar, gestionar i integrar en el text, de manera puntualment acompanyada, la informació de dues o més fonts i incloure les seues referències en compartir-la.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE06": {
+      "descripcion": "Interactuar de manera oral, escrita i multimodal, a través de textos senzills dels àmbits personal, social i educatiu, utilitzant un llenguatge respectuós i estratègies bàsiques de comprensió, expressió i resolució dialogada de conflictes, de manera síncrona i asíncrona.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE06-CR01",
+        "descripcion": "Interactuar oralment, de manera pautada, sobre coneixements que s’ajusten a la situació comunicativa, a través de diferents suports, utilitzant un vocabulari apropiat i ètic i recursos com la cortesia lingüística, l’etiqueta digital, l’entonació, el ritme pausat, o el llenguatge no verbal, emprant estratègies d’escolta activa per a la construcció d’un discurs comú.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE06-CR02",
+        "descripcion": "Utilitzar, amb l’ajuda de pautes, estratègies bàsiques per a la deliberació argumentada, el consens i la gestió dialogada de conflictes.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE06-CR03",
+        "descripcion": "Identificar i rebutjar, de manera progressivament autònoma, els usos lingüístics discriminatoris a través de la reflexió conjunta.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE06-CR04",
+        "descripcion": "Interactuar en textos escrits, de manera asíncrona i síncrona amb ajuda, mostrant empatia i respecte per les diferents necessitats, idees i motivacions dels interlocutors, utilitzant estratègies per a expressar missatges adequats amb un vocabulari apropiat i ètic.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE06-CR05",
+        "descripcion": "Interactuar en textos multimodals, de manera asíncrona i guiada, mostrant empatia i respecte per les diferents necessitats, idees i motivacions dels interlocutors.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE07": {
+      "descripcion": "Mediar entre interlocutors utilitzant estratègies d’adaptació i de simplificació del llenguatge per a processar i transmetre informació bàsica i senzilla, en situacions comunicatives predictibles dels àmbits personal, social i educatiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE07-CR01",
+        "descripcion": "Mostrar interés per participar en la solució de problemes de comprensió recíproca entre parlants de llengües o varietats lingüístiques diferents, en situacions habituals dels àmbits personal, social i educatiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE07-CR02",
+        "descripcion": "Comprendre un missatge breu i senzill, i comunicar-ne la informació o explicar-ne els conceptes, de manera oral o escrita entre llengües del seu repertori (L1-L1, L2-L1, L1-L2); tot això en textos sobre assumptes diversos que incloguen vocabulari freqüent.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE07-CR03",
+        "descripcion": "Seleccionar i utilitzar, de manera guiada, estratègies que faciliten la comprensió i l’expressió orals i escrites d’informació en diferents llengües del seu repertori (L1-L1, L2-L1, L1-L2), com ara l’ús del llenguatge no verbal, o simplificar o adaptar el missatge.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE08": {
+      "descripcion": "Llegir de manera autònoma obres i textos de caràcter divers, seleccionats atenent els seus gustos i interessos i compartir les experiències de lectura.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE08-CR01",
+        "descripcion": "Llegir de manera autònoma obres diverses adequades a la seua edat i textos escrits i multimodals dels àmbits personal, social i educatiu ser conscient dels seus gustos i seleccionar les lectures amb criteri propi i amb autonomia progressiva.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE08-CR02",
+        "descripcion": "Compartir les experiències de lectura, en suports diversos, participant en comunitats lectores en els àmbits educatiu i social.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-LCL-CE09": {
+      "descripcion": "Llegir i produir textos amb intenció literària, senzills, amb llenguatge pròxim a l’alumne, contextualitzats en la cultura i la tradició, com a font de plaer i de coneixement.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE09-CR01",
+        "descripcion": "Llegir i escoltar fragments literaris senzills i obres completes, pròxims als interessos de l’alumne, i de manera guiada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE09-CR02",
+        "descripcion": "Interpretar i relacionar textos literaris senzills de la literatura popular i d’autoria coneguda, en el marc de la tradició literària i del context sociocultural pròxim.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE09-CR03",
+        "descripcion": "Expressar opinió sobre textos i obres literàries, utilitzant alguns recursos retòrics bàsics dels gèneres, de manera guiada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE09-CR04",
+        "descripcion": "Crear versions de textos literaris senzills (contes, poemes, cançons, dramatitzacions), individualment i col·lectiva.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-LCL-CE09-CR05",
+        "descripcion": "Participar en manifestacions literàries, recitals, representacions teatrals, partint de models i de manera guiada.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. Llengua i ús": [
@@ -11923,7 +12851,206 @@
    },
    "M": {
     "denominacion": "MATEMÀTIQUES",
-    "competencias_especificas": {},
+    "competencias_especificas": {
+     "ES-VC-PRI5-M-CE01": {
+      "descripcion": "Resoldre problemes relacionats amb situacions reals de l'entorn personal, social i educatiu utilitzant estratègies informals, representacions i conceptes concrets.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE01-CR01",
+        "descripcion": "Identificar la informació de l'enunciat d'un problema o situació plantejada, relacionant-la amb altres situacions anàlogues del seu entorn pròxim i amb els coneixements i procediments adquirits.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE01-CR02",
+        "descripcion": "Utilitzar i aplicar estratègies formals bàsiques aplicant els conceptes i procediments que li permeten obtindre la solució correcta en un problema o situació problemàtica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE01-CR03",
+        "descripcion": "Reflexionar sobre la coherència i l'adequació de la solució obtinguda al problema plantejat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE01-CR04",
+        "descripcion": "Connectar la situació problemàtica amb el seu entorn personal, educatiu i social, i extraure conclusions que li permeten plantejar problemes, tant del mateix com d'altres contextos.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE02": {
+      "descripcion": "Observar, formular, explorar i comprovar conjectures senzilles sobre propietats i relacions matemàtiques concretes, reconeixent i connectant procediments, patrons, regularitats i estructures.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE02-CR01",
+        "descripcion": "Realitzar conjectures matemàtiques a partir de l’observació o experimentació de casos concrets, i formalitzar els conceptes i procediments implicats.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE02-CR02",
+        "descripcion": "Connectar conceptes i relacions matemàtiques en –i mitjançant– els procediments de raonament matemàtic.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE02-CR03",
+        "descripcion": "Analitzar i justificar patrons o regularitats, construint contingut matemàtic de naturalesa numèrica, mètrica, espacial, geomètrica o estocàstica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE02-CR04",
+        "descripcion": "Utilitzar i comparar amb fluïdesa i de manera flexible diferents procediments matemàtics relatius al càlcul, la mesura, el sentit espacial i geomètric, el tractament de dades o els processos aleatoris.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE03": {
+      "descripcion": "Construir models matemàtics concrets i utilitzar conceptes i procediments matemàtics senzills per a abordar i interpretar situacions, fenòmens i problemes rellevants en l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE03-CR01",
+        "descripcion": "Identificar el contingut i les eines matemàtiques senzilles que permeten abordar situacions reals de l'àmbit personal, educatiu i social, i així possibilitar la construcció de models matemàtics concrets.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE03-CR02",
+        "descripcion": "Treballar matemàticament sobre un model concret amb la finalitat d'obtindre solucions que permeten descriure, interpretar i extraure conclusions sobre una situació real.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE03-CR03",
+        "descripcion": "Identificar i justificar diferències i similituds entre models matemàtics corresponents a situacions reals en contextos similars.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE03-CR04",
+        "descripcion": "Validar la solució obtinguda a partir d'un model matemàtic i detectar errors bàsics en contrastar-la amb la situació real.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE04": {
+      "descripcion": "Construir i aplicar algorismes senzills per a afrontar situacions i resoldre problemes rellevants de l'àmbit personal, educatiu o social, organitzant dades, descomponent un problema en parts, reconeixent patrons i utilitzant eines TIC.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE04-CR01",
+        "descripcion": "Dissenyar i aplicar algorismes senzills mitjançant codis visuals i/o eines tecnològiques bàsiques per a resoldre situacions problemàtiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE04-CR02",
+        "descripcion": "Descompondre patrons d'una certa complexitat en uns altres de més senzills utilitzant programació per blocs.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE04-CR03",
+        "descripcion": "Utilitzar la simbologia bàsica de la programació per blocs per a resoldre problemes.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE04-CR04",
+        "descripcion": "Analitzar situacions d'una certa dificultat, valorant diferents possibilitats i combinacions, per a definir i aconseguir estratègies guanyadores en jocs de lògica o jocs de tauler.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE05": {
+      "descripcion": "Utilitzar amb correcció el simbolisme matemàtic, fent transformacions i algunes conversions entre representacions iconicomanipulatives numèriques, geomètriques i gràfiques, per a descriure i analitzar situacions rellevants de l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE05-CR01",
+        "descripcion": "Manejar les representacions iconicomanipulatives, numèriques, geomètriques i gràfiques d'objectes matemàtics en situacions reals de l'àmbit personal, educatiu i social, respectant les regles que els regeixen.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE05-CR02",
+        "descripcion": "Realitzar conversions entre les representacions iconicomanipulatives, numèriques, geomètriques i gràfiques d'objectes matemàtics en situacions reals de l'àmbit personal, educatiu i social.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE05-CR03",
+        "descripcion": "Seleccionar el simbolisme matemàtic adequat per a descriure matemàticament situacions corresponents a l'àmbit personal, educatiu i social.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE06": {
+      "descripcion": "Comprendre i produir missatges orals i escrits concrets de manera informal, utilitzant un llenguatge matemàtic senzill per a comunicar i argumentar sobre característiques, conceptes, procediments i resultats relacionats amb situacions de l'àmbit personal, educatiu o social.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE06-CR01",
+        "descripcion": "Interpretar correctament missatges orals i escrits que incloguen contingut matemàtic.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE06-CR02",
+        "descripcion": "Comunicar aspectes relacionats amb conceptes i procediments matemàtics, emprant alguns elements formals bàsics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE06-CR03",
+        "descripcion": "Explicar i donar significat matemàtic a resultats provinents de situacions problemàtiques de l'àmbit personal, educatiu o social.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE06-CR04",
+        "descripcion": "Argumentar i debatre, contrastant amb els seus companys i les seues companyes, els propis raonaments, secundant-se en el llenguatge matemàtic.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE07": {
+      "descripcion": "Identificar fenòmens i problemes importants des del punt de vista cultural i social en els quals el coneixement matemàtic té un paper decisiu.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE07-CR01",
+        "descripcion": "Reconéixer la importància de les matemàtiques per a la comprensió i el tractament d'algunes situacions o qüestions rellevants en la vida quotidiana de l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE07-CR02",
+        "descripcion": "Reconéixer el contingut matemàtic de caràcter numèric, geomètric o espacial present en obres pictòriques, dibuixos animats, còmics, elements arquitectònics, escultures i altres manifestacions artístiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE07-CR03",
+        "descripcion": "Reconéixer i valorar la importància de la creació de conceptes, idees i eines matemàtiques, com a elements necessaris per a l'avanç social i cultural.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-PRI5-M-CE08": {
+      "descripcion": "Gestionar les emocions i actituds implicades en els processos matemàtics, acceptant la incertesa, les dificultats i els errors que aquests processos comporten, i controlant l'atenció per a aconseguir un aprenentatge significatiu i adaptable a diferents situacions.",
+      "explicacion_bloque_competencial": "",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-PRI5-M-CE08-CR01",
+        "descripcion": "Assumir els errors com a part del procés d'aprenentatge, sense cedir a la frustració i expressant emocions i actituds positives i adequades per a la seua superació.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE08-CR02",
+        "descripcion": "Identificar els factors rellevants que intervenen en l'atenció i la comprensió, afavorint-les o dificultant-les, tant en el treball individual com en el col·laboratiu.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE08-CR03",
+        "descripcion": "Gestionar els recursos cognitius i emocionals per a reconduir el procés d'aprenentatge en moments de dificultat o incertesa, així com en les situacions de conflicte derivades del treball en equip.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-PRI5-M-CE08-CR04",
+        "descripcion": "Assumir reptes i enfrontar-se a situacions problemàtiques des d'una perspectiva oberta, superant els prejudicis.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
     "saberes_basicos": {
      "bloques": {
       "B1. NOMBRES NATURALS": [
