@@ -2675,8 +2675,8 @@ describe('TinyMCE 5 Settings', () => {
       return null;
     };
 
-    // The decoration nests the checkbox + help icon inside a horizontal `bar`, so flatten
-    // all items (tabs/panels/bars) to assert against the injected fields.
+    // The decoration injects a single htmlpanel (checkbox + label + help icon as inline HTML),
+    // possibly nested in a tab; flatten to find it and read its html.
     const flattenItems = (body) => {
       const out = [];
       const visit = (n) => {
@@ -2691,12 +2691,28 @@ describe('TinyMCE 5 Settings', () => {
       }
       return out;
     };
+    const optionHtml = (body) => {
+      const panel = flattenItems(body).find((i) => i.type === 'htmlpanel');
+      return panel ? panel.html : '';
+    };
+    // Put a floating checkbox into the DOM so onSubmit's _readFloatingChoice can read it.
+    const setDomCheckbox = (checked) => {
+      document.querySelectorAll('.exe-media-floating-cb').forEach((el) => el.remove());
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'exe-media-floating-cb';
+      cb.checked = checked;
+      document.body.appendChild(cb);
+      return cb;
+    };
+    afterEach(() => {
+      document.querySelectorAll('.exe-media-floating-cb').forEach((el) => el.remove());
+    });
 
     it('leaves a non-provider media dialog untouched and returns false', () => {
       const spec = { initialData: { source: { value: 'https://example.com/clip.mp4' } }, body: { items: [] } };
       const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
       expect(result).toBe(false);
-      expect(spec.initialData.exeMediaFloating).toBeUndefined();
       expect(spec.body.items).toEqual([]);
     });
 
@@ -2705,17 +2721,17 @@ describe('TinyMCE 5 Settings', () => {
       expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse })).toBe(false);
     });
 
-    it('adds an auto-checked floating checkbox + note for a YouTube source (tabpanel body)', () => {
+    it('adds an auto-checked floating checkbox + help icon for a YouTube source (tabpanel body)', () => {
       const spec = {
         initialData: { source: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
         body: { type: 'tabpanel', tabs: [{ title: 'General', items: [{ type: 'input', name: 'source' }] }] },
       };
       const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
       expect(result).toBe(true);
-      expect(spec.initialData.exeMediaFloating).toBe(true);
-      const names = flattenItems(spec.body).map((i) => i.name || i.type);
-      expect(names).toContain('exeMediaFloating');
-      expect(names).toContain('htmlpanel');
+      const html = optionHtml(spec.body);
+      expect(html).toContain('exe-media-floating-cb');
+      expect(html).toContain('checked'); // auto-checked by default
+      expect(html).toContain('exe-media-help-button'); // help icon beside it
     });
 
     it('injects into a plain panel body (items)', () => {
@@ -2724,7 +2740,7 @@ describe('TinyMCE 5 Settings', () => {
         body: { type: 'panel', items: [] },
       };
       globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
-      expect(flattenItems(spec.body).some((i) => i.name === 'exeMediaFloating')).toBe(true);
+      expect(optionHtml(spec.body)).toContain('exe-media-floating-cb');
     });
 
     it('shows the checkbox on a fresh media dialog (empty source)', () => {
@@ -2734,17 +2750,26 @@ describe('TinyMCE 5 Settings', () => {
       };
       const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
       expect(result).toBe(true);
-      expect(spec.initialData.exeMediaFloating).toBe(true);
-      expect(flattenItems(spec.body).some((i) => i.name === 'exeMediaFloating')).toBe(true);
+      expect(optionHtml(spec.body)).toContain('exe-media-floating-cb');
     });
 
-    it('lays out the checkbox and help icon together in a horizontal bar', () => {
+    it('renders the checkbox and the help icon together in one htmlpanel (icon beside the checkbox)', () => {
       const spec = { initialData: { source: 'https://youtu.be/dQw4w9WgXcQ' }, body: { items: [{ name: 'source' }] } };
       globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
-      const bar = spec.body.items.find((i) => i.type === 'bar');
-      expect(bar).toBeTruthy();
-      const inner = bar.items.map((i) => i.name || i.type);
-      expect(inner).toEqual(['exeMediaFloating', 'htmlpanel']);
+      const panels = flattenItems(spec.body).filter((i) => i.type === 'htmlpanel');
+      expect(panels).toHaveLength(1);
+      const html = panels[0].html;
+      // checkbox input comes before the help button in the markup → icon is to the right.
+      expect(html.indexOf('exe-media-floating-cb')).toBeLessThan(html.indexOf('exe-media-help-button'));
+    });
+
+    it('reads the floating choice from the DOM checkbox', () => {
+      setDomCheckbox(false);
+      expect(globalThis.$exeTinyMCE._readFloatingChoice()).toBe(false);
+      setDomCheckbox(true);
+      expect(globalThis.$exeTinyMCE._readFloatingChoice()).toBe(true);
+      document.querySelectorAll('.exe-media-floating-cb').forEach((el) => el.remove());
+      expect(globalThis.$exeTinyMCE._readFloatingChoice()).toBe(true); // default protect
     });
 
     it('detects the media dialog by a source field even when initialData has no source key', () => {
@@ -2763,14 +2788,15 @@ describe('TinyMCE 5 Settings', () => {
       expect(calls).toEqual([]);
     });
 
-    it('stamps when a YouTube URL is typed into a fresh dialog', () => {
+    it('stamps the author choice (from the DOM checkbox) when a YouTube URL is submitted', () => {
       const calls = [];
       const spec = { initialData: { source: '' }, body: { items: [{ name: 'source' }] }, onSubmit: () => {} };
       globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, {
         parse: fakeParse,
         onResolveFloating: (...a) => calls.push(a),
       });
-      spec.onSubmit({ getData: () => ({ source: 'https://youtu.be/dQw4w9WgXcQ', exeMediaFloating: false }) });
+      setDomCheckbox(false); // author opted out
+      spec.onSubmit({ getData: () => ({ source: 'https://youtu.be/dQw4w9WgXcQ' }) });
       expect(calls).toEqual([[false, 'https://youtu.be/dQw4w9WgXcQ']]);
     });
 
@@ -2818,7 +2844,8 @@ describe('TinyMCE 5 Settings', () => {
         parse: fakeParse,
         onResolveFloating: (floating, url) => calls.push(['resolve', floating, url]),
       });
-      spec.onSubmit({ getData: () => ({ exeMediaFloating: false }) });
+      setDomCheckbox(false);
+      spec.onSubmit({ getData: () => ({}) });
       expect(calls).toEqual(['orig', ['resolve', false, 'https://youtu.be/dQw4w9WgXcQ']]);
     });
 
@@ -2844,8 +2871,7 @@ describe('TinyMCE 5 Settings', () => {
           body: { type: 'panel', items: [] },
         };
         expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec)).toBe(true);
-        const checkbox = flattenItems(spec.body).find((i) => i.name === 'exeMediaFloating');
-        expect(checkbox.label).toBe('T:Open in a floating window');
+        expect(optionHtml(spec.body)).toContain('T:Open in a floating window');
       } finally {
         globalThis.window.exeMediaPolicy = prevPolicy;
         globalThis.window._ = prevUnderscore;

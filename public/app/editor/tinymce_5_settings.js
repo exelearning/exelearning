@@ -737,10 +737,11 @@ var $exeTinyMCE = {
         var checkboxLabel = hasT ? _('Open in a floating window') : 'Open in a floating window';
         var helpLabel = hasT ? _('Help') : 'Help';
 
-        // The explanation is presented as a small teal "i" info button to the RIGHT of the
-        // checkbox (tooltip via the native title attribute), mirroring the info icons in the
-        // export options, instead of a large inline paragraph. A TinyMCE `bar` lays the
-        // checkbox and the icon out horizontally.
+        // Render the whole option as ONE htmlpanel: TinyMCE body containers (bar/grid) do not
+        // reliably render a checkbox child, so we use a native inline checkbox + label with a
+        // small teal "i" info button right beside it (tooltip via the native title attribute,
+        // mirroring the export-options info icons). The checkbox state is read from the DOM on
+        // submit, since it is not a TinyMCE form field.
         var noteAttr = $exeTinyMCE._escapeAttr(noteText);
         var helpHtml =
             '<button type="button" class="exe-media-help-button" title="' +
@@ -749,43 +750,34 @@ var $exeTinyMCE = {
             $exeTinyMCE._escapeAttr(helpLabel + ': ' + noteText) +
             '" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;' +
             'border-radius:50%;border:none;background:var(--brand-primary-600,#0BA1A1);color:#fff;cursor:help;' +
-            "font-style:italic;font-weight:bold;line-height:1;padding:0;font-size:12px;font-family:Georgia,'Times New Roman',serif;\">i</button>";
+            "font-style:italic;font-weight:bold;line-height:1;padding:0;font-size:12px;font-family:Georgia,'Times New Roman',serif;flex:0 0 auto;\">i</button>";
 
-        $exeTinyMCE._injectDialogItems(spec.body, [
-            {
-                type: 'bar',
-                items: [
-                    { type: 'checkbox', name: 'exeMediaFloating', label: checkboxLabel },
-                    {
-                        type: 'htmlpanel',
-                        html:
-                            '<span class="exe-media-dialog-help" style="display:inline-flex;align-items:center;height:100%;">' +
-                            helpHtml +
-                            '</span>',
-                    },
-                ],
-            },
-        ]);
+        var optionHtml =
+            '<div class="exe-media-floating" style="display:flex;align-items:center;gap:8px;margin:4px 0;">' +
+            '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:normal;">' +
+            '<input type="checkbox" class="exe-media-floating-cb" checked />' +
+            '<span>' +
+            $exeTinyMCE._escapeAttr(checkboxLabel) +
+            '</span></label>' +
+            helpHtml +
+            '</div>';
 
-        spec.initialData = initial;
-        if (typeof spec.initialData.exeMediaFloating === 'undefined') {
-            spec.initialData.exeMediaFloating = true;
-        }
+        $exeTinyMCE._injectDialogItems(spec.body, [{ type: 'htmlpanel', html: optionHtml }]);
 
         var origSubmit = spec.onSubmit;
         spec.onSubmit = function (api) {
+            var floating = $exeTinyMCE._readFloatingChoice();
             var data = {};
             try {
                 data = api && typeof api.getData === 'function' ? api.getData() : {};
             } catch (e) {
                 data = {};
             }
-            var floating = data.exeMediaFloating !== false;
             var finalSource = data.source;
             var finalUrl =
                 (typeof finalSource === 'string' ? finalSource : finalSource && finalSource.value) || url;
             if (typeof origSubmit === 'function') origSubmit.call(this, api);
-            // Stamp only real YouTube/Vimeo embeds, even if the checkbox was shown for an
+            // Stamp only real YouTube/Vimeo embeds, even if the option was shown for an
             // initially-empty source.
             if (finalUrl && parse(finalUrl) && typeof deps.onResolveFloating === 'function') {
                 deps.onResolveFloating(floating, finalUrl);
@@ -793,6 +785,16 @@ var $exeTinyMCE = {
         };
 
         return true;
+    },
+
+    /**
+     * Read the "open in a floating window" choice from the dialog's checkbox in the DOM.
+     * Defaults to true (protect by default) when the checkbox is not present.
+     */
+    _readFloatingChoice: function () {
+        if (typeof document === 'undefined') return true;
+        var cb = document.querySelector('.exe-media-floating-cb');
+        return cb ? !!cb.checked : true;
     },
 
     /**
