@@ -126,4 +126,30 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
         await page.locator('#elceTikzPreview svg').first().waitFor({ state: 'attached', timeout: 60000 });
         await expect(page.locator('#elceTikzPreview svg path').first()).toBeAttached({ timeout: 60000 });
     });
+
+    test('renders an AI logic-gate circuit after the sanitizer rewrites it to circuitikz ports', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Electrical Circuits Gate E2E');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addIdevice(page, IDEVICE);
+        const tikzCode = page.locator('#elceTikzCode');
+        await tikzCode.waitFor({ state: 'visible', timeout: 15000 });
+
+        // pgf logic-gate syntax (node[and gate], .input/.output) that TikZJax
+        // cannot compile; sanitizeTikzRendererSyntax must rewrite it to the
+        // circuitikz `and port` shape with .in/.out anchors so it renders.
+        await tikzCode.fill(
+            '\\begin{circuitikz}\\draw (0,0) node[and gate] (g) {}; \\draw (g.input 1) -- (-2,0.3); \\draw (g.input 2) -- (-2,-0.3); \\draw (g.output) -- (2,0);\\end{circuitikz}',
+        );
+        await page.locator('#elcePreviewTikz').click();
+
+        await page.locator('#elceTikzPreview svg').first().waitFor({ state: 'attached', timeout: 60000 });
+        await expect(page.locator('#elceTikzPreview svg path').first()).toBeAttached({ timeout: 60000 });
+    });
 });

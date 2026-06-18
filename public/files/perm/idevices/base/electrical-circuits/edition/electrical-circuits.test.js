@@ -262,6 +262,30 @@ describe('electrical-circuits iDevice edition', () => {
         expect($exeDevice.sanitizeTikzRendererSyntax('to[R={$1\\,k\\Omega$}]')).toBe('to[R={$1\\,k\\Omega$}]');
     });
 
+    it('sanitizeTikzRendererSyntax rewrites pgf logic-gate shapes and anchors to circuitikz ports', () => {
+        const code = String.raw`\begin{circuitikz}\draw (0,0) node[and gate] (g) {}; \draw (g.input 1) -- (-2,0.3); \draw (g.input 2) -- (-2,-0.3); \draw (g.output) -- (2,0);\end{circuitikz}`;
+
+        expect($exeDevice.sanitizeTikzRendererSyntax(code)).toBe(
+            String.raw`\begin{circuitikz}\draw (0,0) node[and port] (g) {}; \draw (g.in 1) -- (-2,0.3); \draw (g.in 2) -- (-2,-0.3); \draw (g.out) -- (2,0);\end{circuitikz}`
+        );
+    });
+
+    it('sanitizeTikzRendererSyntax rewrites a single-input not gate and is idempotent', () => {
+        const broken = String.raw`\draw (0,0) node[not gate] (g) {}; \draw (g.input) -- (-2,0); \draw (g.output) -- (2,0);`;
+        const fixed = String.raw`\draw (0,0) node[not port] (g) {}; \draw (g.in) -- (-2,0); \draw (g.out) -- (2,0);`;
+
+        expect($exeDevice.sanitizeTikzRendererSyntax(broken)).toBe(fixed);
+        expect($exeDevice.sanitizeTikzRendererSyntax(fixed)).toBe(fixed);
+    });
+
+    it('sanitizeTikzRendererSyntax leaves gate/input/output in labels and transistor anchors untouched', () => {
+        // "and gate" inside a {label}, the transistor .gate anchor and a node
+        // named "input" must all survive — only [...] shapes and (...) anchors change.
+        const code = String.raw`\draw (0,0) node[npn] (q) {}; \draw (q.G) -- (input) node[left] {an and gate output};`;
+
+        expect($exeDevice.sanitizeTikzRendererSyntax(code)).toBe(code);
+    });
+
     it('normalizeTikzCode collapses whitespace and sanitizes Unicode together', () => {
         expect(
             $exeDevice.normalizeTikzCode(

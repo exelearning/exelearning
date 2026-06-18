@@ -592,7 +592,24 @@ var $exeDevice = {
                     return /\d/.test(prev) && /\d/.test(next) ? '{,}' : '\\,';
                 });
                 return `={$${fixed}$}`;
-            });
+            })
+            // Repair logic-gate syntax: the AI emits pgf's shapes.gates.logic
+            // names (node[and gate], anchors .input/.output) from a library that
+            // is not loaded here, while circuitikz uses `... port` shapes with
+            // .in/.out anchors. Rewrite the shape only inside [...] and the
+            // anchors only inside (...), so node labels ({...}), transistor .gate
+            // anchors and any other code are left untouched.
+            .replace(/\[([^\]]*)\]/g, (_match, options) =>
+                '[' +
+                options.replace(
+                    /\b(and|or|not|nand|nor|xnor|xor|buffer)\s+gate\b/g,
+                    '$1 port'
+                ) +
+                ']'
+            )
+            .replace(/\(([^)]*)\)/g, (_match, reference) =>
+                '(' + reference.replace(/\.input\b/g, '.in').replace(/\.output\b/g, '.out') + ')'
+            );
     },
 
     normalizeTikzCode: function (code) {
