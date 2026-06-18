@@ -4,7 +4,7 @@
  * Single source of truth for navigation entity IDs — see issue
  * exelearning/exelearning#1782.
  */
-import { describe, it, expect } from 'bun:test';
+import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { generateId } from './ids';
 
 describe('generateId', () => {
@@ -38,5 +38,25 @@ describe('generateId', () => {
     it('throws on a missing prefix argument', () => {
         // Defensive: the runtime guard catches `undefined` too, not only ''.
         expect(() => generateId(undefined as unknown as string)).toThrow();
+    });
+
+    describe('random suffix is always exactly 9 chars (#1782)', () => {
+        afterEach(() => {
+            mock.restore();
+        });
+
+        // `Math.random().toString(36)` yields a variable-length tail: a value
+        // whose base36 expansion is short (or has dropped trailing chars) leaves
+        // fewer than 9 chars after the "0." prefix. Before padding, the suffix
+        // was occasionally 8 chars and the {9} assertions above flaked ~1/36.
+        for (const value of [0.5, 0.123, 0.000001, 0.9999999999]) {
+            it(`pads a short tail from Math.random()=${value} to 9 chars`, () => {
+                spyOn(Math, 'random').mockReturnValue(value);
+                const id = generateId('page');
+                const suffix = id.split('-')[2];
+                expect(suffix).toHaveLength(9);
+                expect(id).toMatch(/^page-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+            });
+        }
     });
 });
