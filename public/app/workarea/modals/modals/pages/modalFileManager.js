@@ -1386,7 +1386,7 @@ export default class ModalFilemanager extends Modal {
         if (this.showRefCount) {
             const usageCount = this.getAssetUsageCount(asset.id);
             const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            nameCell.innerHTML = `<span class="filename">${asset.filename || _('Unknown')}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
+            nameCell.innerHTML = `<span class="filename">${this.escapeHtml(asset.filename || _('Unknown'))}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
         } else {
             nameCell.textContent = asset.filename || _('Unknown');
         }

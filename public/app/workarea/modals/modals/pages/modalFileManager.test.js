@@ -536,6 +536,64 @@ it('should filter by accept=3d for 3D models', () => {
     });
   });
 
+  describe('createListRow - XSS in reference-count branch (H12)', () => {
+    beforeEach(() => {
+      // Enable the reference-count badge branch and force a deterministic
+      // usage count so getAssetUsageCount() does not depend on the document.
+      modal.showRefCount = true;
+      modal.assetUsageCounts = new Map();
+    });
+
+    it('escapes a malicious filename instead of executing it as HTML', () => {
+      modal.assetUsageCounts.set('evil', 3);
+      const asset = {
+        id: 'evil',
+        filename: '<img src=x onerror="window.__xss=1">.png',
+        mime: 'image/png',
+        blob: new Blob(['x']),
+      };
+
+      window.__xss = undefined;
+      const row = modal.createListRow(asset);
+      const nameCell = row.querySelector('.col-name');
+
+      // No live <img> element must be created from the untrusted filename.
+      expect(nameCell.querySelector('img')).toBeNull();
+      // The onerror payload never executes.
+      expect(window.__xss).toBeUndefined();
+      // The filename is rendered verbatim as text inside the filename span.
+      const filenameSpan = nameCell.querySelector('.filename');
+      expect(filenameSpan).not.toBeNull();
+      expect(filenameSpan.textContent).toBe('<img src=x onerror="window.__xss=1">.png');
+      // The static badge still renders the usage count.
+      const badge = nameCell.querySelector('.badge');
+      expect(badge).not.toBeNull();
+      expect(badge.textContent).toBe('3');
+      expect(badge.classList.contains('bg-primary')).toBe(true);
+    });
+
+    it('renders a benign filename unchanged in the reference-count branch', () => {
+      modal.assetUsageCounts.set('ok', 0);
+      const asset = {
+        id: 'ok',
+        filename: 'photo.png',
+        mime: 'image/png',
+        blob: new Blob(['x']),
+      };
+
+      const row = modal.createListRow(asset);
+      const nameCell = row.querySelector('.col-name');
+      const filenameSpan = nameCell.querySelector('.filename');
+
+      expect(filenameSpan).not.toBeNull();
+      expect(filenameSpan.textContent).toBe('photo.png');
+      const badge = nameCell.querySelector('.badge');
+      expect(badge.textContent).toBe('0');
+      // Zero references => danger badge variant.
+      expect(badge.classList.contains('bg-danger')).toBe(true);
+    });
+  });
+
   describe('showSearchIndicator', () => {
     it('should show location column header when entering search mode', () => {
       // Setup: add location column header to mock DOM

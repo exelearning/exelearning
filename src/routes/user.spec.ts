@@ -7,15 +7,17 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { createUserRoutes, type UserDependencies } from './user';
 
-// Test JWT secret (must match what user.ts uses)
-const TEST_JWT_SECRET = process.env.APP_SECRET || 'test-secret-for-user-routes-testing';
+// Test JWT secret (must match what user.ts verifies with).
+const TEST_JWT_SECRET = 'test-secret-for-user-routes-testing';
 
-// Override APP_SECRET for tests
+// Save originals so each test restores them and never leaks the test secret to
+// other suites in the same Bun process.
 const originalAppSecret = process.env.APP_SECRET;
-// user.ts:getJwtSecret() prefers JWT_SECRET over APP_SECRET. Other specs in the
-// same Bun process (auth.spec.ts, admin.spec.ts, api/v1/*.spec.ts, ...) set
-// process.env.JWT_SECRET and don't clean it up, which would make jwt.verify()
-// use a different secret than the one this test signs with, breaking auth.
+// The canonical resolver (auth.ts:getJwtSecret) prefers API_JWT_SECRET over
+// JWT_SECRET over the public default. The test env sets API_JWT_SECRET via .env,
+// so we must override API_JWT_SECRET (not just JWT_SECRET/APP_SECRET) to the value
+// this spec signs with, otherwise jwt.verify() uses a different secret and auth fails.
+const originalApiJwtSecret = process.env.API_JWT_SECRET;
 const originalJwtSecret = process.env.JWT_SECRET;
 
 describe('User Routes', () => {
@@ -72,8 +74,10 @@ describe('User Routes', () => {
     }
 
     beforeEach(async () => {
-        // Set test secret on both vars so getJwtSecret() (JWT_SECRET || APP_SECRET)
-        // always resolves to the same value this spec signs with.
+        // Set all three vars so the canonical resolver (API_JWT_SECRET || JWT_SECRET
+        // || default) always resolves to the value this spec signs with. Routes are
+        // created below in this hook, after the env is set.
+        process.env.API_JWT_SECRET = TEST_JWT_SECRET;
         process.env.APP_SECRET = TEST_JWT_SECRET;
         process.env.JWT_SECRET = TEST_JWT_SECRET;
 
@@ -114,8 +118,13 @@ describe('User Routes', () => {
     });
 
     afterEach(() => {
-        // Restore original APP_SECRET / JWT_SECRET
-        if (originalAppSecret) {
+        // Restore original API_JWT_SECRET / APP_SECRET / JWT_SECRET
+        if (originalApiJwtSecret !== undefined) {
+            process.env.API_JWT_SECRET = originalApiJwtSecret;
+        } else {
+            delete process.env.API_JWT_SECRET;
+        }
+        if (originalAppSecret !== undefined) {
             process.env.APP_SECRET = originalAppSecret;
         } else {
             delete process.env.APP_SECRET;

@@ -7,7 +7,6 @@
  * Changes are automatically broadcast to WebSocket clients.
  */
 import { Elysia, t } from 'elysia';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs-extra';
 
@@ -25,6 +24,7 @@ import {
 } from '../../../db/queries';
 import type { Asset } from '../../../db/types';
 import { getProjectAssetsDir, fileExists, readFile, remove } from '../../../services/file-helper';
+import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
 import {
     authenticateRequest,
@@ -182,6 +182,11 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
 
             const file = data.file;
             const clientId = data.clientId || uuidv4();
+            // clientId becomes the on-disk filename; reject traversal/separators.
+            if (!isSafePathSegment(clientId)) {
+                set.status = 400;
+                return errorResponse('BAD_REQUEST', 'Invalid clientId');
+            }
             const folderPath = sanitizeFolderPath(data.folderPath);
 
             // Get file data
@@ -206,9 +211,9 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             const baseStoragePath = getProjectAssetsDir(params.uuid);
             await fs.ensureDir(baseStoragePath);
 
-            const ext = path.extname(filename).toLowerCase();
+            const ext = sanitizeFileExtension(filename);
             const flatFilename = `${clientId}${ext}`;
-            const filePath = path.join(baseStoragePath, flatFilename);
+            const filePath = safeJoin(baseStoragePath, flatFilename);
 
             // Write file
             if (typeof Bun !== 'undefined' && Bun.write) {
