@@ -214,34 +214,70 @@ describe('LOMLOE ES-VC Primària per-cicle criteris parity', () => {
     }
 });
 
-// The currently in-force Decret 106/2022 deliberately omits criteris d'avaluació
-// for the FIRST cicle (1r i 2n); its Annex III tables only publish columns for
-// "2n cicle (4t curs)" and "3r cicle (6é curs)" (the state RD 157/2022 does have
-// them, and a 2026 draft modification adds them, but they are not in the
-// published decree). Sabers bàsics, by contrast, ARE published for the 1r cicle.
-// This guard records that gap as intentional so the empty criteris tab on 1r/2n
-// is never mistaken for an extraction regression.
-describe('LOMLOE ES-VC Primària first-cicle is sabers-only (faithful to Decret 106/2022)', () => {
+// The in-force Decret 106/2022 does not publish criteris d'avaluació for the 1r
+// cicle (1r i 2n) — its Annex III only has 2n/3r cicle columns. The 1r-cicle
+// criteris come from the 2026 PROJECTE de modificació of Decret 106/2022, which
+// re-publishes apartat 6 of each àrea with a 1r-cicle column. We add only that
+// 1r-cicle column (the in-force 2n/3r criteris in 3r-6é are unchanged); both
+// years of the first cicle carry identical criteris, alongside the sabers bàsics
+// the in-force decree already publishes for the 1r cicle.
+describe('LOMLOE ES-VC Primària 1r cicle criteris (from the 2026 modification)', () => {
     const ETAPA = 'Educació Primària';
     const FIRST_CICLE = ["1r d'Educació Primària", "2n d'Educació Primària"];
+    // Standard àrees whose 1r-cicle criteris the modification graduates.
+    const CORE = ['CMNSC', 'MD', 'EPV', 'EF', 'LCL', 'LE', 'M'];
 
-    for (const year of FIRST_CICLE) {
-        it(`${year}: every àrea has sabers bàsics but no criteris d'avaluació`, () => {
+    it('1r and 2n carry both criteris and sabers bàsics for the core àrees', () => {
+        for (const year of FIRST_CICLE) {
             const nivel = dataset[ETAPA][year];
-            expect(Object.keys(nivel).length).toBeGreaterThan(0);
-            for (const [codArea, area] of Object.entries(nivel)) {
+            for (const area of CORE) {
+                const a = nivel[area];
+                expect(a, `${year}/${area} missing`).toBeDefined();
                 expect(
-                    Object.keys(area.competencias_especificas).length,
-                    `${year}/${codArea} should have no criteris d'avaluació`,
-                ).toBe(0);
-                const saberItems = Object.values(area.saberes_basicos.bloques).reduce(
+                    Object.keys(a.competencias_especificas).length,
+                    `${year}/${area} should carry 1r-cicle criteris`,
+                ).toBeGreaterThan(0);
+                const saberItems = Object.values(a.saberes_basicos.bloques).reduce(
                     (n, items) => n + items.length,
                     0,
                 );
-                expect(saberItems, `${year}/${codArea} should carry sabers bàsics`).toBeGreaterThan(0);
+                expect(saberItems, `${year}/${area} should carry sabers bàsics`).toBeGreaterThan(0);
             }
-        });
-    }
+        }
+    });
+
+    it('1r and 2n share identical criteris (cicle-1 duplication)', () => {
+        const shape = area =>
+            Object.values(area.competencias_especificas).map(c => ({
+                descripcion: c.descripcion,
+                criterios: c.criterios_evaluacion.map(x => x.descripcion),
+            }));
+        for (const area of CORE) {
+            expect(shape(dataset[ETAPA]["1r d'Educació Primària"][area]), area).toEqual(
+                shape(dataset[ETAPA]["2n d'Educació Primària"][area]),
+            );
+        }
+    });
+
+    it('codes use the PRI1/PRI2 niveltag with split[3] equal to the àrea code', () => {
+        for (const [year, tag] of [
+            ["1r d'Educació Primària", 'PRI1'],
+            ["2n d'Educació Primària", 'PRI2'],
+        ]) {
+            for (const area of CORE) {
+                for (const [code, comp] of Object.entries(
+                    dataset[ETAPA][year][area].competencias_especificas,
+                )) {
+                    expect(code).toContain(`-${tag}-`);
+                    expect(code.split('-')[3]).toBe(area);
+                    expect(comp.criterios_evaluacion.length).toBeGreaterThan(0);
+                    for (const cr of comp.criterios_evaluacion) {
+                        expect(cr.codigo).toContain(`-${tag}-`);
+                    }
+                }
+            }
+        }
+    });
 });
 
 // ESO criteris d'avaluació in Decret 107/2022 are published as a FIRST-CYCLE
