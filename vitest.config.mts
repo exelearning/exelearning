@@ -14,6 +14,23 @@ export default defineConfig({
         // Use happy-dom for all frontend tests (provides window, document, etc.)
         environment: 'happy-dom',
 
+        // Prevent happy-dom from fetching external resources referenced by the
+        // HTML that tests parse/inject (e.g. `<link rel="stylesheet">`). Those
+        // fetches are fire-and-forget async tasks; when a worker tears down its
+        // frame before they settle, the rejection escapes as an "Unhandled
+        // Rejection" and fails the whole run even though every test passed.
+        // Disabling file loading removes the async task entirely and resolves
+        // the element as a successful (no-op) load. See HTMLLinkElement.#loadStyleSheet.
+        environmentOptions: {
+            happyDOM: {
+                settings: {
+                    disableCSSFileLoading: true,
+                    disableJavaScriptFileLoading: true,
+                    handleDisabledFileLoadingAsSuccess: true,
+                },
+            },
+        },
+
         // Setup file for mocks
         setupFiles: ['./public/vitest.setup.js'],
 

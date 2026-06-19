@@ -12,14 +12,26 @@ import type { Theme } from '../db/types';
 const TEST_JWT_SECRET = 'test-secret-for-admin-themes';
 
 // Store original env
+let originalApiJwtSecret: string | undefined;
 let originalJwtSecret: string | undefined;
 
 beforeAll(() => {
+    // The canonical resolver (auth.ts:getJwtSecret) prefers API_JWT_SECRET over
+    // JWT_SECRET, and the test env sets API_JWT_SECRET via .env, so we must override
+    // API_JWT_SECRET to the value tokens are signed with. beforeAll runs before any
+    // beforeEach (where routes are created), so the secret resolves from this value.
+    originalApiJwtSecret = process.env.API_JWT_SECRET;
     originalJwtSecret = process.env.JWT_SECRET;
+    process.env.API_JWT_SECRET = TEST_JWT_SECRET;
     process.env.JWT_SECRET = TEST_JWT_SECRET;
 });
 
 afterAll(() => {
+    if (originalApiJwtSecret === undefined) {
+        delete process.env.API_JWT_SECRET;
+    } else {
+        process.env.API_JWT_SECRET = originalApiJwtSecret;
+    }
     if (originalJwtSecret === undefined) {
         delete process.env.JWT_SECRET;
     } else {

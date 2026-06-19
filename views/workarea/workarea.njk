@@ -23,6 +23,8 @@
     <script class="exe" src="{{ '/libs/multi-dropdown.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/interact/interact.min.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/showdown/showdown.min.js' | asset }}" defer></script>
+    {# DOMPurify - sanitizes untrusted (remote collaborator) HTML before innerHTML #}
+    <script class="exe" src="{{ '/libs/dompurify/purify.min.js' | asset }}" defer></script>
     {# Asset URL Resolver - intercepts asset:// URLs and resolves them to blob URLs #}
     <script class="exe" src="{{ '/app/common/asset_url_resolver.js' | asset }}" defer></script>
     {# eXeLearning common legacy objects #}

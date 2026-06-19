@@ -208,6 +208,61 @@ describe('iDevices Routes', () => {
             expect(body.apiVersion).toBeDefined();
             expect(body.componentType).toBeDefined();
         });
+
+        // Regression tests for path traversal (security audit H14): the raw
+        // `:ideviceId` param was joined into a filesystem path and the matching
+        // `config.xml` was read/parsed with no validation, enabling
+        // unauthenticated arbitrary file read and a filesystem existence oracle.
+        // A traversal id must be rejected with the route's normal 404 shape and
+        // must never read a file outside the iDevices base directories.
+        describe('path traversal hardening (H14)', () => {
+            // Encoded so the segment survives the HTTP layer; Elysia decodes
+            // `%2F` back into `/` before the handler sees the param.
+            const traversalIds = [
+                '..%2F..%2F..%2Fetc%2Fpasswd',
+                '..%2F..%2Fconfig%2Fsecrets',
+                '%2Fetc%2Fpasswd',
+                '..%2F..%2F..%2F..%2Fpackage',
+            ];
+
+            for (const encodedId of traversalIds) {
+                it(`should reject traversal id "${encodedId}" with 404 and read nothing outside base`, async () => {
+                    const res = await handle(new Request(`http://localhost/api/idevices/installed/${encodedId}`));
+
+                    expect(res.status).toBe(404);
+                    const body = await res.json();
+                    expect(body.error).toBe('Not Found');
+                    // Must not leak a parsed config from an out-of-base file.
+                    expect(body.id).toBeUndefined();
+                });
+            }
+
+            it('should reject ids containing a dot segment with 404', async () => {
+                // iDevice ids are slugs (alphanumeric/_/-); dotted values are not
+                // valid ids and must not reach the filesystem.
+                const res = await handle(new Request('http://localhost/api/idevices/installed/some.thing'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+
+            it('should still resolve a normal slug id after hardening', async () => {
+                const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
+                const listBody = await listRes.json();
+                // Prefer a hyphenated id to confirm hyphens still pass validation.
+                const hyphenated = listBody.idevices.find((i: any) => i.id.includes('-'))?.id;
+                const ideviceId = hyphenated || listBody.idevices[0]?.id;
+
+                if (!ideviceId) return;
+
+                const res = await handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.id).toBe(ideviceId);
+            });
+        });
     });
 
     describe('GET /api/idevices/download-file-resources', () => {
@@ -663,6 +718,63 @@ describe('iDevices Routes', () => {
             // Should be either 403 (path traversal blocked) or 404 (file not found)
             expect([403, 404]).toContain(res.status);
         });
+
+        it('should reject traversal in odeIdeviceId on base64 upload', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: '../../../../../../tmp/evil',
+                        file: 'data:text/plain;base64,SGVsbG8=',
+                        filename: 'evil.txt',
+                        odeSessionId: 'trav-session',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
+
+        it('should reject traversal in odeSessionId on base64 upload', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: 'valid-idevice',
+                        file: 'data:text/plain;base64,SGVsbG8=',
+                        filename: 'evil.txt',
+                        odeSessionId: '../../../../etc',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
+
+        it('should reject traversal in odeIdeviceId on large upload', async () => {
+            const form = new FormData();
+            form.append('odeIdeviceId', '../../../../../../tmp/evil');
+            form.append('odeSessionId', 'trav-session');
+            form.append('filename', 'evil.txt');
+            form.append('file', new Blob(['evil'], { type: 'text/plain' }), 'evil.txt');
+
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/large/file/resources', {
+                    method: 'POST',
+                    body: form,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toContain('invalid identifier');
+        });
     });
 
     describe('CSS URL rewriting', () => {
@@ -904,6 +1016,142 @@ describe('iDevices Routes', () => {
                 expect(typeof idevice.exportObject).toBe('string');
                 expect(idevice.exportObject.startsWith('$')).toBe(true);
             }
+        });
+    });
+
+    // Targeted coverage for the rewriteCSSUrls() helper: a CSS file containing
+    // relative url(...) references must have those rewritten to the download
+    // API endpoint, while absolute/data/http URLs are left untouched.
+    describe('CSS URL rewriting (relative references)', () => {
+        it('should rewrite relative url() references to the download API endpoint', async () => {
+            // beforeafter.css references images via relative `url(quextIEHit.png)`,
+            // which exercises every branch of the url() replace callback.
+            const resourcePath = 'perm/idevices/base/beforeafter/edition/beforeafter.css';
+            const res = await handle(
+                new Request(`http://localhost/api/idevices/download-file-resources?resource=${resourcePath}`),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('text/css');
+
+            const content = await res.text();
+            // Relative references must be rewritten to the API endpoint with the
+            // resolved (normalized) resource path encoded as a query parameter.
+            expect(content).toContain('/api/idevices/download-file-resources?resource=');
+            expect(content).toContain(encodeURIComponent('perm/idevices/base/beforeafter/edition/quextIEHit.png'));
+            // The raw relative reference must no longer be present.
+            expect(content).not.toContain('url(quextIEHit.png)');
+        });
+    });
+
+    // Targeted coverage for the duplicate-filename de-duplication loop in both
+    // upload handlers: uploading the same filename to the same session twice
+    // must produce distinct stored filenames (file, file_1, ...).
+    describe('duplicate filename handling', () => {
+        it('should generate a unique filename when a base64 upload collides', async () => {
+            // Unique session per run so the target directory is always empty,
+            // making the first/second collision deterministic regardless of any
+            // files left behind by previous test runs.
+            const session = `dup-base64-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const payload = (n: number) => ({
+                odeIdeviceId: 'dup-base64-idevice',
+                file: 'data:text/plain;base64,SGVsbG8=',
+                filename: 'collide.txt',
+                odeSessionId: session,
+                tag: n,
+            });
+
+            const first = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload(1)),
+                }),
+            );
+            const second = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload(2)),
+                }),
+            );
+
+            expect(first.status).toBe(200);
+            expect(second.status).toBe(200);
+            const firstBody = await first.json();
+            const secondBody = await second.json();
+
+            expect(firstBody.savedFilename).toBe('collide.txt');
+            // Collision must be resolved by suffixing a counter before the extension.
+            expect(secondBody.savedFilename).not.toBe(firstBody.savedFilename);
+            expect(secondBody.savedFilename).toBe('collide_1.txt');
+        });
+
+        it('should generate a unique filename when a large upload collides', async () => {
+            // Unique session per run for deterministic collision ordering.
+            const session = `dup-large-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const payload = (n: number) => ({
+                odeIdeviceId: 'dup-large-idevice',
+                file: `content-${n}`,
+                filename: 'big.txt',
+                odeSessionId: session,
+            });
+
+            const first = await handle(
+                new Request('http://localhost/api/idevices/upload/large/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload(1)),
+                }),
+            );
+            const second = await handle(
+                new Request('http://localhost/api/idevices/upload/large/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload(2)),
+                }),
+            );
+
+            expect(first.status).toBe(200);
+            expect(second.status).toBe(200);
+            const firstBody = await first.json();
+            const secondBody = await second.json();
+
+            expect(firstBody.savedFilename).toBe('big.txt');
+            expect(secondBody.savedFilename).toBe('big_1.txt');
+        });
+    });
+
+    // Targeted coverage for the GET /:ideviceId handler success path returning a
+    // fully-parsed config, plus regression coverage that a normal slug still
+    // resolves after the path-traversal hardening.
+    describe('GET /api/idevices/installed/:ideviceId (resolved config)', () => {
+        it('should return the full parsed config for a real base iDevice', async () => {
+            const res = await handle(new Request('http://localhost/api/idevices/installed/text'));
+
+            // `text` is a core base iDevice and must always resolve.
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.id).toBe('text');
+            // The single-iDevice handler returns the raw config (no `name` alias),
+            // including the file arrays and template fields produced by parsing.
+            expect(Array.isArray(body.editionJs)).toBe(true);
+            expect(Array.isArray(body.exportJs)).toBe(true);
+            expect(typeof body.exportObject).toBe('string');
+            expect(body.exportObject.startsWith('$')).toBe(true);
+            // url points at the parsed base directory for this iDevice.
+            expect(body.url).toContain('idevices/base/text');
+        });
+
+        it('should return 404 for a syntactically valid but unknown slug', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/installed/totally_unknown-idevice-2025'),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toBe('Not Found');
+            expect(body.id).toBeUndefined();
         });
     });
 });
