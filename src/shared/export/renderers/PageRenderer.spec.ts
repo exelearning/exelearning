@@ -379,6 +379,88 @@ describe('PageRenderer', () => {
             // First page gets main-node class too
             expect(html).toContain('class="active main-node daddy"');
         });
+
+        it('should mark ancestors of the current page with current-page-parent', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'section', title: 'Section', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'leaf', title: 'Leaf', parentId: 'section', order: 2 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'leaf', '');
+
+            // The middle ancestor is highlighted; the deep current page is active.
+            expect(html).toContain('class="current-page-parent"');
+            expect(html).toContain('class="active"');
+            expect(html).toContain('Leaf');
+        });
+
+        it('should exclude a hidden subtree and its descendants from navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden-parent',
+                    title: 'HiddenParent',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+                createTestPage({ id: 'hidden-child', title: 'HiddenChild', parentId: 'hidden-parent', order: 2 }),
+                createTestPage({ id: 'visible', title: 'VisiblePage', parentId: 'root', order: 3 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'root', '');
+
+            expect(html).toContain('VisiblePage');
+            // Both the hidden page and its (otherwise visible) child are dropped.
+            expect(html).not.toContain('HiddenParent');
+            expect(html).not.toContain('HiddenChild');
+        });
+
+        it('should produce identical output across repeated renders (memoization is stateless per call)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'a', title: 'A', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'b', title: 'B', parentId: 'a', order: 2 }),
+                createTestPage({ id: 'c', title: 'C', parentId: 'root', order: 3 }),
+            ];
+
+            const first = renderer.renderNavigation(pages, 'b', '');
+            const second = renderer.renderNavigation(pages, 'b', '');
+
+            expect(first).toBe(second);
+        });
+    });
+
+    describe('renderNavItem (public entry point)', () => {
+        it('should render a single item with its visible children', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'parent', title: 'Parent', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'child', title: 'Child', parentId: 'parent', order: 2 }),
+            ];
+
+            const html = renderer.renderNavItem(pages[1], pages, 'child', '');
+
+            expect(html).toContain('Parent');
+            expect(html).toContain('Child');
+            expect(html).toContain('class="other-section"');
+        });
+
+        it('should return empty string for a hidden page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden',
+                    title: 'Hidden',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+            ];
+
+            expect(renderer.renderNavItem(pages[1], pages, 'root', '')).toBe('');
+        });
     });
 
     describe('renderNavButtons', () => {
@@ -1960,6 +2042,76 @@ describe('PageRenderer', () => {
 
         it('handles empty content', () => {
             expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
+        });
+    });
+
+    describe('xAPI config script injection (XSS hardening)', () => {
+        // A title that, with a naive JSON.stringify, would close the inline <script> and
+        // inject an executable <script>alert(1)</script> into the exported page.
+        const maliciousTitle = '</script><script>alert(1)</script>';
+
+        function expectNeutralized(html: string): void {
+            // The emitted markup must NOT contain a literal breakout sequence that would
+            // escape the xAPI config <script> tag.
+            expect(html).not.toContain('</script><script>alert(1)</script>');
+            // The '<' of the payload must be escaped as a JS unicode escape inside the JSON.
+            expect(html).toContain('\\u003c/script>\\u003cscript>alert(1)\\u003c/script>');
+            // The xAPI config must still be present and the emitter script must follow it.
+            expect(html).toContain('window.exeXapi=');
+            expect(html).toContain('libs/xapi/exe_xapi.js');
+        }
+
+        it('neutralizes </script> breakout in renderHead (multi-page head)', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                xapi: {
+                    odeId: 'ode-1',
+                    baseIri: 'https://exe.test/',
+                    activityId: 'https://exe.test/act',
+                    packageTitle: maliciousTitle,
+                    language: 'en',
+                },
+            });
+            expectNeutralized(head);
+        });
+
+        it('neutralizes </script> breakout in renderSinglePage (single-page head)', () => {
+            const pages: ExportPage[] = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                projectTitle: 'Test',
+                xapi: {
+                    odeId: 'ode-1',
+                    baseIri: 'https://exe.test/',
+                    activityId: 'https://exe.test/act',
+                    packageTitle: maliciousTitle,
+                    language: 'en',
+                },
+            });
+            expectNeutralized(html);
+        });
+
+        it('escapes U+2028 / U+2029 line separators so the JS string literal stays valid', () => {
+            const ls = '\u2028';
+            const ps = '\u2029';
+            const result = renderer.serializeForScript({ packageTitle: `a${ls}b${ps}c` });
+            // The raw separators (illegal in a JS string literal) must not survive verbatim.
+            expect(result).not.toContain(ls);
+            expect(result).not.toContain(ps);
+            expect(result).toContain('\\u2028');
+            expect(result).toContain('\\u2029');
+        });
+
+        it('round-trips back to the original value via JSON.parse', () => {
+            const value = {
+                packageTitle: maliciousTitle,
+                baseIri: `https://exe.test/x${'\u2028'}y`,
+            };
+            const serialized = renderer.serializeForScript(value);
+            // The escaped less-than, U+2028 and U+2029 are valid JSON escapes, so
+            // JSON.parse must recover the exact original object.
+            expect(JSON.parse(serialized)).toEqual(value);
         });
     });
 });

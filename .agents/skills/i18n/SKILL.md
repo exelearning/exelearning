@@ -52,6 +52,7 @@ make fix                                 # Lint
 
 ## Gotchas
 
+- **Never author or edit translated values under `translations/`.** Agents add translation _keys_ only (by wrapping strings in `_()` / `c_()` / `| trans` and running `make translations`), and must leave every target/translated value blank. Do not hand-write, copy, or machine-translate target strings in a PR — the translation team owns `translations/**` and fills in the actual translations later. This mirrors AGENTS.md section 7.4.
 - **Never hardcode English strings** in UI code — even "OK" or "Cancel" must use `_()`.
 - **`_()` vs `c_()` confusion** — using the wrong function means the string is translated in the wrong context. GUI strings → `_()`, content strings → `c_()`.
 - **Forgetting `| trans` in Nunjucks** — raw English strings will appear in the UI for non-English users.
@@ -62,5 +63,6 @@ make fix                                 # Lint
 
 - [ ] All user-facing strings use `_()` / `c_()` / `| trans`
 - [ ] `make translations` run to extract new keys
+- [ ] No translated/target values authored or edited under `translations/` (keys only; values left blank for the translation team)
 - [ ] No hardcoded English in UI
 - [ ] `make fix` passes clean

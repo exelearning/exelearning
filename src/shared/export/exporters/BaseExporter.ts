@@ -483,13 +483,18 @@ export abstract class BaseExporter {
      */
     sanitizePageFilename(title: string | null | undefined): string {
         if (!title) return 'page';
-        return title
+        const sanitized = title
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '') // Remove accents
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .substring(0, 50);
+        // Titles written entirely in non-Latin scripts (CJK, Arabic, Cyrillic,
+        // Greek, Hebrew, \u2026) strip down to an empty string. Fall back to 'page'
+        // so every page still gets a usable base name and uniqueness handling
+        // below can disambiguate them.
+        return sanitized || 'page';
     }
 
     /**
@@ -1001,7 +1006,6 @@ export abstract class BaseExporter {
     protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
         const filenameMap = new Map<string, string>();
         const usedFilenames = new Set<string>();
-        const maxAttempts = 20;
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
@@ -1026,21 +1030,26 @@ export abstract class BaseExporter {
                     const startNum = parseInt(match[2], 10);
                     let counter = startNum + 1;
 
-                    while (counter <= startNum + maxAttempts) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${base}${counter}.html`;
-                        if (!usedFilenames.has(filename)) break;
                         counter++;
                     }
                 } else {
                     // No trailing number: append -2, -3, etc. (first page is implicitly "1")
                     let counter = 2;
-                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${baseFilename}-${counter}.html`;
                         counter++;
                     }
                 }
             }
 
+            // Uniqueness is guaranteed by construction: the loops above keep
+            // incrementing until a free name is found, and the page count is
+            // finite. Never cap the attempts — a duplicate filename here would
+            // make distinct pages overwrite each other in the export ZIP
+            // (FflateZipProvider.addFile is a silent Map.set), silently dropping
+            // every page beyond the collision.
             usedFilenames.add(filename);
             filenameMap.set(page.id, filename);
         }

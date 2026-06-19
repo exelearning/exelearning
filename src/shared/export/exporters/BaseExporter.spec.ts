@@ -1592,11 +1592,13 @@ describe('BaseExporter', () => {
             expect(map.get('page-3')).toBe('test-2.html');
         });
 
-        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
-            // Create 23 pages: 1 index + 22 pages all titled "Test"
+        it('should give every page a unique filename beyond 20 duplicates (no overwrite)', () => {
+            // Create 31 pages: 1 index + 30 pages all titled "Test". Past the old
+            // 20-attempt cap, distinct pages used to collapse onto a single
+            // filename, silently overwriting each other in the export ZIP.
             const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
 
-            for (let i = 1; i <= 22; i++) {
+            for (let i = 1; i <= 30; i++) {
                 pages.push({
                     id: `page-${i}`,
                     title: 'Test',
@@ -1608,20 +1610,38 @@ describe('BaseExporter', () => {
 
             const map = exporter.testBuildPageFilenameMap(pages);
 
-            // First page is index.html
+            // First page is index.html, first "Test" page gets test.html (no suffix).
             expect(map.get('page-0')).toBe('index.html');
-
-            // First "Test" page gets test.html (no suffix)
             expect(map.get('page-1')).toBe('test.html');
 
-            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
-            for (let i = 2; i <= 21; i++) {
+            // Every subsequent duplicate gets a deterministic, incrementing name
+            // with no cap: test-2.html … test-30.html.
+            for (let i = 2; i <= 30; i++) {
                 expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
             }
 
-            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
-            // This is intentional - after 20 attempts, the algorithm gives up
-            expect(map.get('page-22')).toBe('test-21.html');
+            // Crucially, every page maps to a distinct filename (one ZIP entry
+            // per page — no silent drops).
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
+        });
+
+        it('should give non-Latin-script titles unique filenames (no empty-name collisions)', () => {
+            // CJK/Arabic/etc. titles sanitize to an empty base; they must still
+            // each receive a distinct filename rather than all collapsing.
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+            for (let i = 1; i <= 25; i++) {
+                pages.push({ id: `page-${i}`, title: '中文页面', parentId: null, order: i, blocks: [] });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('page.html');
+            expect(map.get('page-2')).toBe('page-2.html');
+            expect(map.get('page-25')).toBe('page-25.html');
+
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
         });
 
         it('should increment trailing numbers in filename on collision', () => {

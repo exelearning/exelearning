@@ -8,7 +8,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
-import { ElpxImporter } from './ElpxImporter';
+import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
 
@@ -515,6 +515,173 @@ describe('ElpxImporter', () => {
         });
     });
 
+    describe('ZIP-bomb decompression limits', () => {
+        // Build a valid eXeLearning archive (content.xml + a controllable payload entry)
+        // so we exercise the real importer decode path, not a generic failure.
+        const minimalContentXml = '<?xml version="1.0" encoding="UTF-8"?><odeProperties></odeProperties>';
+
+        it('exposes generous, overridable defaults above realistic .elp sizes', () => {
+            // Largest shipped fixtures decompress to ~42 MB / ~1440 entries / ~3.4 MB max entry.
+            // Defaults must comfortably exceed those so legitimate imports never trip the guard.
+            expect(DEFAULT_ZIP_LIMITS.maxTotalBytes).toBeGreaterThanOrEqual(100 * 1024 * 1024);
+            expect(DEFAULT_ZIP_LIMITS.maxEntryBytes).toBeGreaterThanOrEqual(50 * 1024 * 1024);
+            expect(DEFAULT_ZIP_LIMITS.maxEntries).toBeGreaterThanOrEqual(2000);
+        });
+
+        it('rejects a per-entry decompression bomb without inflating it', async () => {
+            const fflate = await import('fflate');
+
+            // 200 MB of zeros compresses to ~200 KB (a ~1000:1 bomb). With a 5 MB
+            // per-entry cap the importer must refuse it BEFORE inflation. fflate
+            // reads originalSize from the central directory in the filter callback,
+            // so the 200 MB is never materialised.
+            const bombPayload = new Uint8Array(200 * 1024 * 1024);
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'bomb.bin': bombPayload,
+                },
+                { level: 6 },
+            );
+            // Sanity: the crafted archive really is tiny on disk (the DoS vector).
+            expect(zip.length).toBeLessThan(2 * 1024 * 1024);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 5 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/too large when decompressed/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects when the cumulative decompressed size exceeds the cap', async () => {
+            const fflate = await import('fflate');
+
+            // Several individually-acceptable entries that together blow the total cap.
+            const chunk = new Uint8Array(2 * 1024 * 1024); // 2 MB each (compresses small)
+            const entries: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+            };
+            for (let i = 0; i < 10; i++) {
+                entries[`pad-${i}.bin`] = chunk;
+            }
+            const zip = fflate.zipSync(entries, { level: 6 });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 5 * 1024 * 1024, // each entry passes
+                maxTotalBytes: 8 * 1024 * 1024, // but the sum does not
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/maximum total decompressed size/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects when the archive exceeds the maximum entry count', async () => {
+            const fflate = await import('fflate');
+
+            const entries: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+            };
+            for (let i = 0; i < 20; i++) {
+                entries[`tiny-${i}.txt`] = new Uint8Array([0]);
+            }
+            const zip = fflate.zipSync(entries, { level: 6 });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntries: 5,
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/maximum allowed number of entries/);
+
+            ydoc.destroy();
+        });
+
+        it('applies the same guard to the nested-ELP decompression path', async () => {
+            const fflate = await import('fflate');
+
+            // Inner ELP carries the bomb; the outer ZIP wraps it as a single .elp entry,
+            // exercising the nested-ELP branch in importFromBuffer.
+            const innerBomb = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'bomb.bin': new Uint8Array(200 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+            const outerZip = fflate.zipSync({ 'project.elp': innerBomb }, { level: 6 });
+            expect(outerZip.length).toBeLessThan(2 * 1024 * 1024);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 5 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(/nested ELP file/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects oversized pre-extracted contents in importFromZipContents', async () => {
+            const zipContents: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+                'huge.bin': new Uint8Array(8 * 1024 * 1024),
+            };
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 4 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromZipContents(zipContents)).rejects.toThrow(ZipLimitError);
+
+            ydoc.destroy();
+        });
+
+        it('still imports a normal small ELP under default limits', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            // Default limits (no override) — the legitimate fixture must import cleanly.
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            ydoc.destroy();
+        });
+
+        it('lets a generous custom cap admit a legitimately large fixture', async () => {
+            // todos-los-idevices.elp decompresses to ~42 MB / ~1437 entries. With caps
+            // set just above those real figures it must still import, proving the guard
+            // does not penalise large-but-legitimate packages.
+            const elpPath = path.join(process.cwd(), 'test/fixtures/todos-los-idevices.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxTotalBytes: 100 * 1024 * 1024,
+                maxEntryBytes: 20 * 1024 * 1024,
+                maxEntries: 5000,
+            });
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+
+            ydoc.destroy();
+        });
+    });
+
     describe('legacy ID remapping', () => {
         it('should remap legacy page IDs and preserve hierarchy mapping', () => {
             const ydoc = new Y.Doc();
@@ -592,6 +759,63 @@ describe('ElpxImporter', () => {
             expect(block.blockId).toBe(block.id);
             expect(component.id).not.toBe('idevice-2');
             expect(component.ideviceId).toBe(component.id);
+
+            ydoc.destroy();
+        });
+
+        it('should extract scrambled-list properties from legacy htmlView', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-4',
+                    title: 'Root',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'scrambled-list',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-2',
+                                    type: 'scrambled-list',
+                                    title: 'Scrambled',
+                                    icon: 'scrambled-list',
+                                    position: 0,
+                                    htmlView:
+                                        '<div class="exe-sortableList">' +
+                                        '<div class="exe-sortableList-instructions"><p>Order items</p></div>' +
+                                        '<ul class="exe-sortableList-list">' +
+                                        '<li>One</li><li><strong>Two</strong></li><li>Three</li>' +
+                                        '</ul>' +
+                                        '<p class="exe-sortableList-buttonText">Check legacy</p>' +
+                                        '<p class="exe-sortableList-rightText"><em>Right</em></p>' +
+                                        '<p class="exe-sortableList-wrongText">Wrong</p>' +
+                                        '</div>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+            const component = pageStructures[0].blocks[0].components[0];
+
+            expect(component.properties.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+            expect(component.properties.instructions).toBe('<p>Order items</p>');
+            expect(component.properties.buttonText).toBe('Check legacy');
+            expect(component.properties.rightText).toBe('Right');
+            expect(component.properties.showSolutions).toBe(true);
+            expect(component.properties.attemptsNumber).toBe(1);
 
             ydoc.destroy();
         });

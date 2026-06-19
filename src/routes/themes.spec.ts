@@ -1245,4 +1245,138 @@ describe('Themes Routes', () => {
             expect(themeWithIcons.url).not.toContain('/exe//');
         });
     });
+
+    describe('path traversal protection (security audit C3 / H14)', () => {
+        // Theme ids/names are slugs ([a-z0-9_-]). Every endpoint that joins the
+        // route param onto a base directory must reject traversal segments BEFORE
+        // touching the filesystem, otherwise an attacker can escape the themes
+        // base (Elysia decodes `%2F` to a real separator) and read arbitrary
+        // files such as .env or the database.
+        //
+        // These are the dangerous forms that survive WHATWG URL parsing and
+        // actually reach the handler with separators intact (a bare `..`
+        // segment, by contrast, is collapsed by the URL parser before routing —
+        // see the dedicated test below).
+        const TRAVERSAL_NAMES = [
+            '..%2F..%2F..%2F..%2Fetc%2Fpasswd', // encoded slashes -> real separators
+            '..%2F..%2Fsecret',
+            '%2E%2E%2Fsecret', // fully-encoded ../secret
+            '%2Eetc', // encoded dot prefix; not a valid slug (would be an existence oracle)
+            'foo%2Fbar', // separator hidden inside an otherwise valid-looking name
+        ];
+
+        // Endpoints that take a theme name/id route param and build a path from it.
+        const ENDPOINTS = [
+            (name: string) => `http://localhost/api/themes/installed/${name}`,
+            (name: string) => `http://localhost/api/resources/theme/${name}/bundle`,
+            (name: string) => `http://localhost/api/themes/${name}/download`,
+        ];
+
+        /**
+         * Wraps the real fs with spies that record every absolute path the route
+         * touches, so a test can assert the handler never reached outside the base.
+         */
+        function spyFs(): {
+            touched: string[];
+        } {
+            const touched: string[] = [];
+            const record = (p: unknown): void => {
+                if (typeof p === 'string') {
+                    touched.push(p);
+                }
+            };
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        record(p);
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: ((p: string, encoding?: BufferEncoding) => {
+                        record(p);
+                        return fs.readFileSync(p, encoding);
+                    }) as typeof fs.readFileSync,
+                    readdirSync: ((p: string, options?: { withFileTypes: boolean }) => {
+                        record(p);
+                        return fs.readdirSync(p, options);
+                    }) as typeof fs.readdirSync,
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+            return { touched };
+        }
+
+        for (const makeUrl of ENDPOINTS) {
+            for (const name of TRAVERSAL_NAMES) {
+                it(`returns 404 and reads nothing outside the base for ${makeUrl('<name>')} = ${name}`, async () => {
+                    const { touched } = spyFs();
+
+                    const res = await app.handle(new Request(makeUrl(name)));
+
+                    expect(res.status).toBe(404);
+                    const body = await res.json();
+                    expect(body.error).toBe('Not Found');
+
+                    // Validation must short-circuit BEFORE any filesystem access.
+                    expect(touched).toHaveLength(0);
+
+                    resetDependencies();
+                });
+            }
+        }
+
+        it('never reaches the handler for a bare ".." segment (collapsed before routing)', async () => {
+            // A literal `..` in the URL path is normalized away by the WHATWG URL
+            // parser before Elysia routes the request, so the vulnerable handler is
+            // never invoked. We assert the filesystem stays untouched for every
+            // affected endpoint to document this defence-in-depth layer.
+            const { touched } = spyFs();
+
+            for (const makeUrl of ENDPOINTS) {
+                const res = await app.handle(new Request(makeUrl('..')));
+                expect(res.status).toBe(404);
+            }
+
+            expect(touched).toHaveLength(0);
+
+            resetDependencies();
+        });
+
+        it('still resolves a legitimate slug theme name (no false positives)', async () => {
+            // The "base" theme is bundled and must keep working after hardening.
+            const metaRes = await app.handle(new Request('http://localhost/api/themes/installed/base'));
+            expect(metaRes.status).toBe(200);
+            const meta = await metaRes.json();
+            expect(meta.dirName).toBe('base');
+
+            const bundleRes = await app.handle(new Request('http://localhost/api/resources/theme/base/bundle'));
+            expect(bundleRes.status).toBe(200);
+            const bundle = await bundleRes.json();
+            expect(bundle.themeName).toBe('base');
+            expect(Object.keys(bundle.files).length).toBeGreaterThan(0);
+
+            const downloadRes = await app.handle(new Request('http://localhost/api/themes/base/download'));
+            expect(downloadRes.status).toBe(200);
+            const download = await downloadRes.json();
+            expect(download.zipFileName).toBe('base.zip');
+        });
+
+        it('accepts names with hyphens and underscores (valid slug charset)', async () => {
+            // A site theme dir_name like "my_cool-theme" is a valid slug; the guard
+            // must not reject it. It does not exist on disk, so the handler reaches
+            // the filesystem and returns the normal not-found response.
+            const { touched } = spyFs();
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/my_cool-theme'));
+
+            expect(res.status).toBe(404);
+            // The guard let it through, so the filesystem WAS consulted.
+            expect(touched.length).toBeGreaterThan(0);
+            // Every consulted path stays inside an expected themes base directory.
+            for (const p of touched) {
+                expect(p.includes('themes/base') || p.includes('themes/site')).toBe(true);
+            }
+
+            resetDependencies();
+        });
+    });
 });
