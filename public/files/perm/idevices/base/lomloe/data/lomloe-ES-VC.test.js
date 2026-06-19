@@ -382,3 +382,68 @@ describe('LOMLOE ES-VC ESO first-cycle criteris span the whole 1r cicle (1r-3r)'
         expect(present('M2')).toEqual(['1r', '2n']);
     });
 });
+
+// The Comunitat Valenciana publishes the descriptors del perfil d'eixida in
+// Valencian. The dataset carries its own `descriptors` catalog (code -> text)
+// under a reserved top-level key; the iDevice uses it instead of the shared
+// Castilian default. These guards keep that catalog complete and well-formed.
+describe('LOMLOE ES-VC descriptors del perfil d\'eixida (Valencian catalog)', () => {
+    const ETAPAS = [
+        'Educació Infantil',
+        'Educació Primària',
+        'Educació Secundària Obligatòria',
+        'Batxillerat',
+    ];
+    const CODE_RE = /^(CCL|CP|STEM|CMCT|CD|CPSAA|CC|CE|CCEC)(\d+(\.\d+)?)?$/;
+
+    function usedCodes() {
+        const used = new Set();
+        for (const [etapa, niveles] of Object.entries(dataset)) {
+            if (etapa === 'descriptors') continue;
+            for (const areas of Object.values(niveles)) {
+                for (const area of Object.values(areas)) {
+                    for (const comp of Object.values(area.competencias_especificas)) {
+                        for (const cr of comp.criterios_evaluacion) {
+                            for (const cc of cr.competencias_clave || []) used.add(cc);
+                        }
+                    }
+                }
+            }
+        }
+        return used;
+    }
+
+    it('exposes a non-empty `descriptors` catalog with well-formed entries', () => {
+        const cat = dataset.descriptors;
+        expect(cat && typeof cat === 'object' && !Array.isArray(cat)).toBe(true);
+        const keys = Object.keys(cat);
+        expect(keys.length).toBeGreaterThan(0);
+        for (const k of keys) {
+            expect(k, `bad descriptor code ${k}`).toMatch(CODE_RE);
+            expect(typeof cat[k]).toBe('string');
+            expect(cat[k].trim().length).toBeGreaterThan(0);
+        }
+    });
+
+    it('covers every competència-clau code used anywhere in the dataset', () => {
+        const cat = dataset.descriptors || {};
+        const missing = [...usedCodes()].filter(c => !(c in cat)).sort();
+        expect(missing, `codes used but missing from catalog: ${missing.join(', ')}`).toEqual([]);
+    });
+
+    it('includes CMCT (the VC family code with no Castilian fallback)', () => {
+        expect(dataset.descriptors && dataset.descriptors.CMCT).toBeTruthy();
+    });
+
+    it('uses Valencian wording (accented characters) in the family entries', () => {
+        const fams = ['CCL', 'CP', 'STEM', 'CMCT', 'CD', 'CPSAA', 'CC', 'CE', 'CCEC'];
+        const blob = fams.map(f => dataset.descriptors[f] || '').join(' ');
+        expect(blob).toMatch(/[àèòïçéíóúü·]/);
+    });
+
+    it('`descriptors` is a reserved top-level key, not counted as an etapa', () => {
+        const top = Object.keys(dataset);
+        expect(top).toContain('descriptors');
+        expect(top.filter(k => k !== 'descriptors').sort()).toEqual([...ETAPAS].sort());
+    });
+});

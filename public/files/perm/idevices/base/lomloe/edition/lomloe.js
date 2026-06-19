@@ -212,6 +212,9 @@ var $exeDevice = (function () {
         'STEM3':  'STEM3 — Plantea proyectos de diseño, creando prototipos o modelos para resolver problemas',
         'STEM4':  'STEM4 — Interpreta y transmite elementos relevantes de investigaciones de forma clara y precisa',
         'STEM5':  'STEM5 — Desarrolla proyectos de diseño de forma creativa, evaluando su sostenibilidad e impacto',
+        // Competencia matemática y competencias básicas en ciencia y tecnología
+        // (LOMCE-era family code still used by the Comunitat Valenciana dataset)
+        'CMCT':   'Competencia matemática y competencias básicas en ciencia y tecnología',
         // Competencia digital
         'CD':     'Competencia digital',
         'CD1':    'CD1 — Realiza búsquedas en internet y contrasta información de forma crítica',
@@ -253,6 +256,35 @@ var $exeDevice = (function () {
         'CCEC4.1': 'CCEC4.1 — Conoce y aplica los derechos de autoría y respeta la propiedad intelectual',
         'CCEC4.2': 'CCEC4.2 — Participa de forma comprometida y creativa en proyectos culturales y artísticos'
     };
+
+    /**
+     * Resolves a competencia-clave / descriptor code to its display text.
+     * A dataset may ship its own catalog under the reserved top-level
+     * `descriptors` key (e.g. the Comunitat Valenciana publishes the perfil
+     * d'eixida descriptors in Valencian); when present it overrides the shared
+     * Castilian CC_DESCRIPTIONS default, falling back per-code.
+     */
+    function descriptorText(code) {
+        var ov = rawData && rawData.descriptors;
+        return (ov && ov[code]) || CC_DESCRIPTIONS[code] || code;
+    }
+
+    /**
+     * Denormalizes the active dataset's descriptor overrides for the codes
+     * actually used by the current selections; stored on save so the standalone
+     * export renders the right tooltips even through its fallback path.
+     */
+    function collectUsedDescriptors() {
+        var ov = rawData && rawData.descriptors;
+        if (!ov) return {};
+        var used = {};
+        selections.forEach(function (sel) {
+            (sel.competenciasClave || []).forEach(function (cc) {
+                if (ov[cc] != null) used[cc] = ov[cc];
+            });
+        });
+        return used;
+    }
 
     // ════════════════════════════════════════════════════════════════
     // STATE  (one instance per iDevice node on the page)
@@ -419,9 +451,15 @@ var $exeDevice = (function () {
 
     var ETAPA_ORDER = ['infantil', 'primaria', 'eso', 'bachillerato'];
 
+    // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
+    // per-dataset `descriptors` override catalog). Keep in sync with the same
+    // list in edition/lomloe.test.js (walkAreas).
+    var RESERVED_DATASET_KEYS = ['descriptors'];
+    function isEtapaKey(k) { return RESERVED_DATASET_KEYS.indexOf(k) === -1; }
+
     function getEtapas() {
         if (!rawData) return [];
-        return Object.keys(rawData).sort(function (a, b) {
+        return Object.keys(rawData).filter(isEtapaKey).sort(function (a, b) {
             var al = a.toLowerCase();
             var bl = b.toLowerCase();
             var ai = ETAPA_ORDER.length;
@@ -1232,7 +1270,7 @@ var $exeDevice = (function () {
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
                 var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
-                    var title = CC_DESCRIPTIONS[cc] || cc;
+                    var title = descriptorText(cc);
                     return '<span class="lomloe-cc-tag" title="' + esc(title) + '">' + esc(cc) + '</span>';
                 }).join('');
                 return [
@@ -1325,7 +1363,7 @@ var $exeDevice = (function () {
         if (!options.length) return '';
         var chosen = sel.competenciasClave || [];
         var boxes = options.map(function (cc) {
-            var title = CC_DESCRIPTIONS[cc] || cc;
+            var title = descriptorText(cc);
             var checked = chosen.indexOf(cc) !== -1 ? ' checked' : '';
             return [
                 '<label class="lomloe-desc-cb-label"' + tipAttr(title) + '>',
@@ -1479,7 +1517,7 @@ var $exeDevice = (function () {
                     criterioCell += '</td>';
                     var ccCell = '<td>';
                     (sel.competenciasClave || []).forEach(function (cc) {
-                        var ccTitle = CC_DESCRIPTIONS[cc] || cc;
+                        var ccTitle = descriptorText(cc);
                         ccCell += '<span class="lomloe-cc-badge"' + tipAttr(ccTitle) + '>' + esc(cc) + '</span>';
                     });
                     ccCell += '</td>';
@@ -1644,6 +1682,7 @@ var $exeDevice = (function () {
                 lomloeSelectedNivel:    selectedNivel,
                 lomloeSelectedMateria:  selectedMateria,
                 lomloeSelections:       Array.from(selections.values()),
+                lomloeDescriptors:      collectUsedDescriptors(),
                 lomloeSummaryHtml:      generateSummaryHtml()
             };
         }

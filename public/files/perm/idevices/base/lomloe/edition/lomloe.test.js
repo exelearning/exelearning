@@ -1050,6 +1050,121 @@ describe('Tooltip popover controller', () => {
     });
 });
 
+// ════════════════════════════════════════════════════════════════
+// A dataset may carry its own descriptor catalog (e.g. the Comunitat
+// Valenciana publishes the perfil-d'eixida descriptors in Valencian) under a
+// reserved top-level `descriptors` key; when present it overrides the shared
+// Castilian CC_DESCRIPTIONS, per-code, and must not be treated as an etapa.
+describe('LOMLOE per-dataset descriptor override', () => {
+    let el;
+
+    function fixtureWithDescriptors(descriptors) {
+        const ds = {
+            'Educació Primària': {
+                "1r d'Educació Primària": {
+                    MAT: {
+                        denominacion: 'Matemàtiques',
+                        saberes_basicos: { bloques: {} },
+                        competencias_especificas: {
+                            C1: {
+                                descripcion: 'Comp 1',
+                                explicacion_bloque_competencial: '',
+                                criterios_evaluacion: [
+                                    { codigo: 'C1.1', descripcion: 'Crit 1', competencias_clave: ['CCL2', 'STEM1'] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        if (descriptors) ds.descriptors = descriptors;
+        return ds;
+    }
+
+    function mockFetch(ds) {
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ds) }));
+    }
+
+    function seededPrev() {
+        return {
+            lomloeDataset: 'ES-VC',
+            lomloeSelectedEtapa: 'Educació Primària',
+            lomloeSelectedNivel: "1r d'Educació Primària",
+            lomloeSelectedMateria: { codArea: 'MAT', denominacion: 'Matemàtiques' },
+            lomloeSelections: [{
+                id: makeCriterioSelId('Educació Primària', "1r d'Educació Primària", 'MAT', 'C1', 'C1.1'),
+                type: 'criterio',
+                dataset: 'ES-VC',
+                etapa: 'Educació Primària',
+                nivel: "1r d'Educació Primària",
+                codArea: 'MAT',
+                denominacion: 'Matemàtiques',
+                codigoComp: 'C1',
+                descripcionComp: 'Comp 1',
+                codigoCriterio: 'C1.1',
+                descripcionCriterio: 'Crit 1',
+                competenciasClave: ['CCL2', 'STEM1']
+            }]
+        };
+    }
+
+    // Re-instantiate per test so the module-level dataCache is fresh (each test
+    // loads the ES-VC id with a different fixture).
+    let dev;
+    beforeEach(async () => {
+        el = buildMockElement();
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
+            globalThis, globalThis._, globalThis.CSS
+        );
+    });
+    afterEach(() => { el && el.remove(); vi.restoreAllMocks(); });
+
+    it('uses the dataset override text for a code that has one', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — text en valencià' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const html = dev.save().lomloeSummaryHtml;
+        expect(html).toContain('CCL2 — text en valencià');
+        expect(html).not.toContain('Comprende e interpreta con sentido crítico'); // Castilian default gone
+    });
+
+    it('falls back per-code to CC_DESCRIPTIONS for codes the override lacks', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — text en valencià' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const html = dev.save().lomloeSummaryHtml;
+        expect(html).toContain('STEM1 — Utiliza conceptos y razonamientos'); // STEM1 not overridden
+    });
+
+    it('uses CC_DESCRIPTIONS and empty lomloeDescriptors when no descriptors key', async () => {
+        mockFetch(fixtureWithDescriptors(null));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const saved = dev.save();
+        expect(saved.lomloeSummaryHtml).toContain('CCL2 — Comprende e interpreta');
+        expect(saved.lomloeDescriptors).toEqual({});
+    });
+
+    it('save() denormalizes only the used codes that have an override', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — VAL', CD1: 'CD1 — unused VAL' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        // selection uses CCL2 (overridden) + STEM1 (not overridden); CD1 is unused
+        expect(dev.save().lomloeDescriptors).toEqual({ CCL2: 'CCL2 — VAL' });
+    });
+
+    it('does not render the reserved `descriptors` key as an etapa tab', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'x' }));
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const tabs = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.getAttribute('data-etapa'));
+        expect(tabs).toContain('Educació Primària');
+        expect(tabs).not.toContain('descriptors');
+    });
+});
+
 // ── Bundled state-level datasets (lomloe-ES.json + lomloe-ES-EFP.json) ──────
 
 import { readFileSync } from 'node:fs';
@@ -1064,9 +1179,15 @@ function loadDataset(name) {
     return JSON.parse(readFileSync(join(dataDir, name), 'utf-8'));
 }
 
+// Reserved top-level keys in a dataset JSON that are NOT etapes (e.g. a
+// per-dataset `descriptors` override catalog). Keep in sync with the same list
+// in edition/lomloe.js.
+const RESERVED_DATASET_KEYS = ['descriptors'];
+
 function walkAreas(dataset) {
     const out = [];
     for (const [etapa, niveles] of Object.entries(dataset)) {
+        if (RESERVED_DATASET_KEYS.includes(etapa)) continue;
         for (const [nivel, areas] of Object.entries(niveles)) {
             for (const [codArea, area] of Object.entries(areas)) {
                 out.push({ etapa, nivel, codArea, area });
