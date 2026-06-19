@@ -46,7 +46,7 @@ var $exeDevice = (function () {
      *   ES-MD   = Madrid              ES-MC = Murcia         ES-NC = Navarra
      *   ES-PV   = País Vasco          ES-RI = La Rioja       ES-VC = C. Valenciana
      */
-    var DATASETS = [
+var DATASETS = [
         {
             id: 'ES',
             isoCode: 'ES',
@@ -95,13 +95,14 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Galicia',
             file: '../data/lomloe-ES-GA.json',
-            available: true
+            available: true,
+            descriptorsPerCriterion: true
         },
         {
             id: 'ES-CN',
             isoCode: 'ES-CN',
             label: 'LOMLOE — Islas Canarias',
-            labelEn: 'LOMLOE — Canary Islands',
+            labelEn: 'LOMLOE — Canary Islands', 
             framework: 'LOMLOE',
             community: 'Islas Canarias',
             file: '../data/lomloe-ES-CN.json',
@@ -244,6 +245,7 @@ var $exeDevice = (function () {
 
     var currentDataset = DEFAULT_DATASET;
     var rawData        = null;  // parsed JSON from active dataset
+    var doData         = null;
     var dataCache      = {};    // { datasetId: parsedJSON }
     var dataPromises   = {};    // in-flight fetch promises
 
@@ -854,6 +856,7 @@ var $exeDevice = (function () {
         if (notice) notice.hidden = true;
         currentDataset = id;
         rawData = null;
+        doData = null;
         selectedEtapa = null;
         selectedNivel = null;
         selectedMateria = null;
@@ -1213,7 +1216,7 @@ var $exeDevice = (function () {
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
                 var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
-                    var title = CC_DESCRIPTIONS[cc] || cc;
+                    var title = doData[cc] || cc;
                     return '<span class="lomloe-cc-tag" title="' + esc(title) + '">' + esc(cc) + '</span>';
                 }).join('');
                 return [
@@ -1306,7 +1309,7 @@ var $exeDevice = (function () {
         if (!options.length) return '';
         var chosen = sel.competenciasClave || [];
         var boxes = options.map(function (cc) {
-            var title = CC_DESCRIPTIONS[cc] || cc;
+            var title = doData[cc] || cc;
             var checked = chosen.indexOf(cc) !== -1 ? ' checked' : '';
             return [
                 '<label class="lomloe-desc-cb-label"' + tipAttr(title) + '>',
@@ -1460,7 +1463,7 @@ var $exeDevice = (function () {
                     criterioCell += '</td>';
                     var ccCell = '<td>';
                     (sel.competenciasClave || []).forEach(function (cc) {
-                        var ccTitle = CC_DESCRIPTIONS[cc] || cc;
+                        var ccTitle = doData[cc] || cc;
                         ccCell += '<span class="lomloe-cc-badge"' + tipAttr(ccTitle) + '>' + esc(cc) + '</span>';
                     });
                     ccCell += '</td>';
@@ -1536,7 +1539,10 @@ var $exeDevice = (function () {
 
     function loadAndRender() {
         loadData(currentDataset).then(function (data) {
-            rawData = data;
+            var { Config, ...curriculumData } = data;
+            rawData = curriculumData;
+            doData = Config && Config.CC_DESCRIPTIONS;
+             if (!doData) doData=CC_DESCRIPTIONS;
             showBrowserBody();
             // Pick first etapa and nivel automatically
             var etapas = getEtapas();
@@ -1572,6 +1578,7 @@ var $exeDevice = (function () {
             instanceId     = element.getAttribute('idevice-id') || String(Date.now());
             currentDataset = DEFAULT_DATASET;
             rawData        = null;
+            doData = null;
             selectedEtapa  = null;
             selectedNivel  = null;
             selectedMateria = null;
