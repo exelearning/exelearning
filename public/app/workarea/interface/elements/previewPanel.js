@@ -1317,10 +1317,14 @@ export default class PreviewPanelManager {
 
         // Get base path for the viewer URL
         const basePath = eXeLearning.app?.getBasePath?.() || '';
-        const viewerUrl = `${basePath}/viewer/index.html`;
+        // The authoring preview reveals Teacher Mode content by default: the author is the
+        // teacher and expects to see everything while editing, so the preview opts in via
+        // ?exe-teacher=1. Exported packages stay hidden by default; only this in-app preview
+        // appends the parameter.
+        const viewerUrl = `${basePath}/viewer/index.html?exe-teacher=1`;
 
         // Force reload by clearing src first if it's the same URL
-        if (targetIframe.src.endsWith('/viewer/index.html')) {
+        if (targetIframe.src.includes('/viewer/index.html')) {
             targetIframe.src = 'about:blank';
             // Use setTimeout to ensure the blank page loads first
             setTimeout(() => {
@@ -1356,7 +1360,9 @@ export default class PreviewPanelManager {
             // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
             // Also remove any trailing slash to avoid double slashes
             const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
-            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
+            // Preview reveals Teacher Mode by default (the author is the teacher); see
+            // loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
+            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');

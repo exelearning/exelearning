@@ -2,21 +2,20 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
- * E2E: Teacher Mode is revealed in the rendered package only via the ?exe-teacher=1 URL
- * parameter — with no host-injected CSS/JS.
+ * E2E: Teacher Mode visibility is driven entirely by the ?exe-teacher URL parameter on the
+ * rendered package — no host-injected CSS/JS.
  *
- * Exercises the real browser/preview path (Service-Worker-served viewer), which loads the
- * same base.css + exe_export.js runtime as the HTML5/SCORM/IMS exports. The runtime applies
- * the `mode-teacher` class on <html> early (in <head>); base.css hides `.teacher-only`
- * content unless that class is present.
+ * eXeLearning's own authoring preview reveals Teacher Mode BY DEFAULT (the author is the
+ * teacher), so the preview panel appends ?exe-teacher=1 to the viewer URL. The parameter
+ * still controls visibility: ?exe-teacher=0 forces the student view. Exported packages stay
+ * hidden by default (covered by test/integration/teacher-mode-toggle.spec.ts and the Vitest
+ * bootstrap tests).
  *
- * The `.teacher-only` markup + hide rule are covered by
- * test/integration/teacher-mode-toggle.spec.ts; the bootstrap logic by
- * public/app/common/exe_export.test.js. This spec verifies the end-to-end browser wiring:
- * the URL parameter (and only the URL parameter) toggles `mode-teacher` on the viewer root.
+ * The runtime applies the `mode-teacher` class on <html> early (in <head>); base.css hides
+ * `.teacher-only` content unless that class is present.
  */
 test.describe('Teacher Mode URL parameter (preview/export runtime)', () => {
-    test('toggles mode-teacher on the viewer only via the URL parameter', async ({
+    test('preview reveals Teacher Mode by default and the URL parameter controls it', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -36,21 +35,21 @@ test.describe('Teacher Mode URL parameter (preview/export runtime)', () => {
 
         // Meaningful "viewer has loaded" signal: the early <head> script tags <html> with `js`.
         await expect(html).toHaveClass(/\bjs\b/, { timeout: 15000 });
-        // Default = student view: not in teacher mode.
-        await expect(html).not.toHaveClass(/\bmode-teacher\b/);
-
-        // Reveal: the host only appends ?exe-teacher=1 to the iframe URL — no injected CSS/JS.
-        await page.evaluate(() => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            iframe.contentWindow!.location.search = '?exe-teacher=1';
-        });
+        // The authoring preview reveals Teacher Mode by default (panel appends ?exe-teacher=1).
         await expect(html).toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
 
-        // ?exe-teacher=0 forces the student view again.
+        // ?exe-teacher=0 forces the student view (the parameter controls visibility).
         await page.evaluate(() => {
             const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
             iframe.contentWindow!.location.search = '?exe-teacher=0';
         });
         await expect(html).not.toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
+
+        // Re-revealing via the parameter restores the teacher view — no injected CSS/JS.
+        await page.evaluate(() => {
+            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+            iframe.contentWindow!.location.search = '?exe-teacher=1';
+        });
+        await expect(html).toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
     });
 });

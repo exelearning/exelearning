@@ -350,7 +350,9 @@ The fallback is automatic and requires no configuration.
 ## Teacher Mode
 
 Content that an author marks as **Teacher only** (the `teacher-only` CSS class on blocks and
-iDevices) is **hidden by default** in every exported package and in the preview. Revealing it
+iDevices) is **hidden by default** in every exported package. (eXeLearning's own authoring
+preview reveals it by default — the author is the teacher — by loading the viewer with
+`?exe-teacher=1`.) Revealing it
 is opt-in and driven entirely by a URL parameter, so host plugins switch between the student
 and teacher views by changing the content URL only — **no injected CSS or JavaScript**.
 
