@@ -5,6 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { getJwtSecret } from './auth';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
@@ -227,11 +228,6 @@ const defaultDependencies: PagesDependencies = {
 };
 
 const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
 
 // ============================================================================
 // Factory Function

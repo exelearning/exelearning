@@ -190,9 +190,13 @@ describe('Pages Routes', () => {
         mockPreferences = new Map();
         sessionIdCounter = 0;
 
-        // Reset env
+        // Reset env. The canonical resolver (auth.ts:getJwtSecret) prefers
+        // API_JWT_SECRET over JWT_SECRET, and the test env sets API_JWT_SECRET via
+        // .env, so we override API_JWT_SECRET to the value tokens are signed with.
+        // Routes are created below in this hook, after the env is set.
         process.env.APP_ONLINE_MODE = '1';
         process.env.APP_AUTH_METHODS = 'form,guest';
+        process.env.API_JWT_SECRET = 'test-secret-for-testing-only';
         process.env.JWT_SECRET = 'test-secret-for-testing-only';
 
         // Create test user

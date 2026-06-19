@@ -43,8 +43,11 @@ var $scrambledlist = {
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = $scrambledlist.updateConfig(data, ideviceId);
         let optionsText = '';
-        ldata.options.forEach((option) => {
-            optionsText += `<li>${option}</li>`;
+        ldata.options.forEach((option, index) => {
+            // data-orig-index encodes the correct position so the runtime can
+            // score the ordering by index instead of comparing rendered HTML
+            // (which breaks with pre-rendered LaTeX <span> markup).
+            optionsText += `<li data-orig-index="${index}">${option}</li>`;
         });
         let html = template;
         if (
@@ -75,12 +78,21 @@ var $scrambledlist = {
                 this.removeTags(ldata.buttonText)
             );
         }
-        html = html.replace('{rightText}', this.removeTags(ldata.rightText));
+        // rightText/wrongText may carry pre-rendered LaTeX (<span exe-math-rendered>):
+        // escape author text but keep the math markup intact (instead of removeTags,
+        // which would strip the SVG). buttonText stays plain (used as an <input value>).
+        html = html.replace(
+            '{rightText}',
+            this.escapeHtmlButKeepRenderedMath(ldata.rightText)
+        );
         html = html.replace(
             '{scormMessage}',
             $scrambledlist.getScormHtml(ldata)
         );
-        html = html.replace('{wrongText}', this.removeTags(ldata.wrongText));
+        html = html.replace(
+            '{wrongText}',
+            this.escapeHtmlButKeepRenderedMath(ldata.wrongText)
+        );
         html = html.replace('{afterElement}', ldata.afterElement);
         html = html.replace('{evaluationID}', ldata.evaluationID);
         html = html.replace('{ideviceID}', ideviceId);
@@ -141,6 +153,7 @@ var $scrambledlist = {
         data.ideviceNumber = index;
         data.title = title;
         data.gameStarted = true;
+        data.options = this.normalizeOptions(data.options);
         data.scorerp = 0;
         data.main = 'sl' + data.id;
 
@@ -298,8 +311,18 @@ var $scrambledlist = {
             lists.css('visibility', 'hidden');
             lists.each(function () {
                 var lis = [];
-                $('li', this).each(function () {
-                    lis.push(this.innerHTML);
+                $('li', this).each(function (index) {
+                    const origIndex = $scrambledlist.getOriginalIndexValue(
+                        this,
+                        index
+                    );
+                    this.setAttribute('data-orig-index', origIndex);
+                    // Keep the correct-position index with the content so the
+                    // shuffled playable list can still be scored by index.
+                    lis.push({
+                        origIndex,
+                        html: this.innerHTML,
+                    });
                 });
                 lis = $scrambledlist.randomizeArray(lis);
                 $scrambledlist.getListHTML(activity, lis, this, instance);
@@ -309,7 +332,7 @@ var $scrambledlist = {
 
     getLinksHTML: function (i, listOrder) {
         return (
-            '<span> <a href="#" class="up exe-sortableList-sorter exe-sortableList-sort-' +
+            '<span class="exe-sortableList-controls"> <a href="#" class="up exe-sortableList-sorter exe-sortableList-sort-' +
             i +
             '_' +
             (i - 1) +
@@ -336,7 +359,9 @@ var $scrambledlist = {
     getListLinks: function (listOrder) {
         var ul = $('#exe-sortableList-' + listOrder);
         var lis = $('li', ul);
-        $('span', ul).remove();
+        // Remove only the sorter controls, never the pre-rendered math spans
+        // (<span class="exe-math-rendered">) that may live inside each item.
+        $('span.exe-sortableList-controls', ul).remove();
         lis.each(function (i) {
             this.className = '';
             if (i == 0) this.className = 'first';
@@ -365,39 +390,24 @@ var $scrambledlist = {
     },
 
     sortList: function (e, a, b, listOrder) {
-        // LI - FROM - TO
+        // LI - FROM - TO (adjacent move triggered by the up/down arrows)
         var list = $('#exe-sortableList-' + listOrder);
         list.sortable('destroy');
         var lis = $('li', list);
-        if (b < 0 || b > lis.length - 1) return false;
-        var newList = [];
-        var li, prev, current, next;
-        for (var i = 0; i < lis.length; i++) {
-            li = lis[i].innerHTML.split('<span>')[0].split('<span>')[0];
-            newList.push(li);
-            if (i == a - 1) prev = li;
-            else if (i == a) current = li;
-            else if (i == a + 1) next = li;
+        if (b < 0 || b > lis.length - 1) {
+            list.sortable();
+            return false;
         }
-        newList[b] = current;
+        // Move the whole <li> node (keeping its data-orig-index and any
+        // pre-rendered math) instead of rebuilding it from serialized HTML.
+        var moving = lis.eq(a);
+        var target = lis.eq(b);
         if (b < a) {
-            // Up
-            newList[a] = prev;
+            target.before(moving);
         } else {
-            // Down
-            newList[a] = next;
+            target.after(moving);
         }
-        list.html($scrambledlist.getULhtml(newList, listOrder)).sortable();
-    },
-
-    getULhtml: function (lis, listOrder) {
-        html = '';
-        for (var i = 0; i < lis.length; i++) {
-            html += '<li>' + lis[i] + '</li>';
-        }
-        $('#exe-sortableList-' + listOrder)
-            .html(html)
-            .sortable();
+        list.sortable();
         $scrambledlist.getListLinks(listOrder);
     },
 
@@ -414,7 +424,9 @@ var $scrambledlist = {
     },
 
     getListHTML: function (activity, lis, list, listOrder) {
-        const listItems = lis.map((item) => `<li>${item}</li>`).join('');
+        const listItems = lis
+            .map((item) => `<li data-orig-index="${item.origIndex}">${item.html}</li>`)
+            .join('');
         const html = `
           <ul class="exe-sortableList-options" id="exe-sortableList-${listOrder}">
             ${listItems}
@@ -453,32 +465,25 @@ var $scrambledlist = {
         $('a', list).hide();
         $scrambledlist.removeTouchDrag(listOrder);
         list.sortable('destroy');
-        // Check the answers
+        // Check the answers by stable original index, not by rendered HTML, so the
+        // pre-rendered LaTeX <span> markup never affects correctness.
         var activity = $(e).parents('.exe-sortableList');
-        var right = true;
         var userList = $('#exe-sortableList-' + listOrder);
         var rightAnswers = $('#exe-sortableListResults-' + listOrder);
-        var rightAnswersLis = $('li', rightAnswers);
-        let nRightAnswers = 0;
+        var origIndices = [];
         $('li', userList).each(function (i) {
-            var currentText = $(this)
-                .html()
-                .split('<span>')[0]
-                .split('<span>')[0];
-            if (currentText != rightAnswersLis.eq(i).html()) {
-                right = false;
-                $(this).css({
-                    'background-color': $scrambledlist.borderColors.red,
-                    'font-weight': 600,
-                });
-            } else {
-                $(this).css({
-                    'background-color': $scrambledlist.borderColors.green,
-                    'font-weight': 600,
-                });
-                nRightAnswers++;
-            }
+            var origIndex = $scrambledlist.getOriginalIndexNumber(this, i);
+            origIndices.push(origIndex);
+            $(this).css({
+                'background-color':
+                    origIndex === i
+                        ? $scrambledlist.borderColors.green
+                        : $scrambledlist.borderColors.red,
+                'font-weight': 600,
+            });
         });
+        var nRightAnswers = $scrambledlist.countRightAnswers(origIndices);
+        var right = nRightAnswers === origIndices.length;
         var feedback = $('#exe-sortableList-' + listOrder + '-feedback');
 
         var data = $(e).closest('.idevice_node').attr('data-idevice-json-data');
@@ -557,7 +562,7 @@ var $scrambledlist = {
             feedback
                 .html(
                     '<p>' +
-                        $('.exe-sortableList-rightText', activity).text() +
+                        $('.exe-sortableList-rightText', activity).html() +
                         '</p>'
                 )
                 .hide()
@@ -578,7 +583,7 @@ var $scrambledlist = {
         feedback
             .html(
                 '<p>' +
-                    $('.exe-sortableList-wrongText', activity).text() +
+                    $('.exe-sortableList-wrongText', activity).html() +
                     '</p><ul>' +
                     rightAnswers.html() +
                     '</ul>'
@@ -669,14 +674,20 @@ var $scrambledlist = {
         const $retry = $('#exe-sortableList-' + listOrder + '-retry');
 
         const baseList = [];
-        $('li', $rightAnswers).each(function () {
-            baseList.push($(this).html());
+        $('li', $rightAnswers).each(function (index) {
+            // Carry the correct-position index so the reshuffled retry list
+            // stays scorable by index (and keeps any pre-rendered math).
+            baseList.push({
+                origIndex: $scrambledlist.getOriginalIndexValue(this, index),
+                html: this.innerHTML,
+            });
         });
 
         const randomizedList = this.randomizeArray(baseList.slice());
         let listHtml = '';
         randomizedList.forEach((item) => {
-            listHtml += '<li>' + item + '</li>';
+            listHtml +=
+                '<li data-orig-index="' + item.origIndex + '">' + item.html + '</li>';
         });
 
         $userList
@@ -719,6 +730,119 @@ var $scrambledlist = {
         const parsed = parseInt(value, 10);
         if (Number.isNaN(parsed)) return fallback;
         return Math.min(Math.max(parsed, min), max);
+    },
+
+    /**
+     * Count how many items sit in their correct position.
+     *
+     * @param {Array<number>} origIndices - data-orig-index of each <li> in display order
+     * @returns {number}
+     */
+    countRightAnswers: function (origIndices) {
+        return origIndices.reduce(
+            (n, origIndex, position) => n + (origIndex === position ? 1 : 0),
+            0
+        );
+    },
+
+    getOriginalIndexValue: function (element, fallback) {
+        const origIndex = element.getAttribute('data-orig-index');
+        return origIndex === null || origIndex === ''
+            ? String(fallback)
+            : origIndex;
+    },
+
+    getOriginalIndexNumber: function (element, fallback) {
+        const origIndex = parseInt(element.getAttribute('data-orig-index'), 10);
+        return Number.isNaN(origIndex) ? fallback : origIndex;
+    },
+
+    normalizeOptions: function (options) {
+        if (!Array.isArray(options)) return [];
+        return options
+            .map((option) => this.normalizeOptionItem(option))
+            .filter((option) => option !== '');
+    },
+
+    normalizeOptionItem: function (option) {
+        if (option === null || typeof option === 'undefined') return '';
+        if (typeof option === 'string' || typeof option === 'number') {
+            return String(option).trim();
+        }
+        if (Array.isArray(option)) {
+            for (let i = 0; i < option.length; i++) {
+                const value = this.normalizeOptionItem(option[i]);
+                if (value !== '') return value;
+            }
+            return '';
+        }
+        if (typeof option !== 'object') return '';
+
+        const preferredKeys = [
+            'text',
+            'option',
+            'content',
+            'html',
+            'value',
+            'label',
+            'title',
+            'name',
+        ];
+        for (let i = 0; i < preferredKeys.length; i++) {
+            const key = preferredKeys[i];
+            if (Object.prototype.hasOwnProperty.call(option, key)) {
+                const value = this.normalizeOptionItem(option[key]);
+                if (value !== '') return value;
+            }
+        }
+        for (const key in option) {
+            if (!Object.prototype.hasOwnProperty.call(option, key)) continue;
+            const value = this.normalizeOptionItem(option[key]);
+            if (value !== '') return value;
+        }
+        return '';
+    },
+
+    /**
+     * Escape HTML special characters.
+     *
+     * @param {*} str
+     * @returns {string}
+     */
+    escapeHtml: function (str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /**
+     * Escape author-provided text while keeping pre-rendered math intact.
+     *
+     * The export pre-renderer turns LaTeX into <span class="exe-math-rendered">…
+     * <svg>…</svg><math>…</math></span>. This keeps those (safe) spans verbatim
+     * while HTML-escaping everything else, so feedback text shows the baked SVG
+     * without the MathJax engine. Mirrors adaptative-quiz.escapeHtmlButKeepRenderedMath.
+     *
+     * @param {String} str
+     * @returns {String}
+     */
+    escapeHtmlButKeepRenderedMath: function (str) {
+        const text = String(str ?? '');
+        const RENDERED_MATH =
+            /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
+        const UNSAFE = /<script|<foreignobject|<iframe|<animate|<set\b|javascript:|\son\w+\s*=/i;
+        let out = '';
+        let last = 0;
+        let match;
+        RENDERED_MATH.lastIndex = 0;
+        while ((match = RENDERED_MATH.exec(text)) !== null) {
+            out += this.escapeHtml(text.slice(last, match.index));
+            out += UNSAFE.test(match[0]) ? this.escapeHtml(match[0]) : match[0];
+            last = match.index + match[0].length;
+        }
+        out += this.escapeHtml(text.slice(last));
+        return out;
     },
 
     /**

@@ -156,6 +156,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
+            // Always-on xAPI emitter (every export is xAPI-compatible)
+            { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon
             { src: 'favicon.ico', dest: 'favicon.ico' },
             // Note: common_i18n.js is generated dynamically by I18nGenerator per project language

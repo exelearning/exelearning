@@ -151,6 +151,7 @@ export class ElpxExporter extends Html5Exporter {
             // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
+            let latexWasRendered = false;
             this.logElpxExportDebugPhase('exporter:generate-pages:start', {
                 pages: pages.length,
             });
@@ -169,6 +170,17 @@ export class ElpxExporter extends Html5Exporter {
                     undefined,
                     navLabels,
                 );
+
+                // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
+                // adaptative-quiz / trueorfalse keep their math through runtime
+                // escaping (mirrors the multi-page HTML5 export).
+                if (!meta.addMathJax) {
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
+                    }
+                }
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
                 // This eliminates the need for the ~2.7MB Mermaid library in exports
@@ -209,11 +221,16 @@ export class ElpxExporter extends Html5Exporter {
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered Mermaid CSS if diagrams were rendered
-            if (mermaidWasRendered) {
+            // Append pre-rendered LaTeX / Mermaid CSS if either was rendered
+            if (latexWasRendered || mermaidWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
-                baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
             }
@@ -264,6 +281,8 @@ export class ElpxExporter extends Html5Exporter {
             // 1.7 Detect and fetch additional required libraries based on content
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 
             try {
