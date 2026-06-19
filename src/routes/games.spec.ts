@@ -4,22 +4,66 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
+import { SignJWT } from 'jose';
 import * as Y from 'yjs';
-import { gamesRoutes, configureGamesRoutes, resetGamesRoutesDeps, extractIdevicesFromYjsDoc } from './games';
-import { createSessionManager, type SessionManager } from '../services/session-manager';
+import {
+    gamesRoutes,
+    configureGamesRoutes,
+    resetGamesRoutesDeps,
+    extractIdevicesFromYjsDoc,
+    canAccessUnsavedSession,
+} from './games';
+import { createSessionManager, type ProjectSession, type SessionManager } from '../services/session-manager';
+
+// Must match the fallback in getJwtSecret() (API_JWT_SECRET || JWT_SECRET ||
+// 'dev_secret_change_me') so signed tokens verify inside withJwtAuth().
+const TEST_JWT_SECRET = 'dev_secret_change_me';
+const OWNER_USER_ID = 42;
+
+/**
+ * Sign a JWT the way the real auth flow does, so withJwtAuth().verify() accepts
+ * it. Returned token is passed via the `auth` cookie (same-origin path used by
+ * the editor/preview) so the access guard sees an authenticated caller.
+ */
+async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
+    const secret = new TextEncoder().encode(TEST_JWT_SECRET);
+    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .sign(secret);
+}
+
+/** Build an authenticated GET Request carrying the signed token in the auth cookie. */
+function authedRequest(url: string, token: string): Request {
+    return new Request(url, { headers: { Cookie: `auth=${token}` } });
+}
 
 describe('Games Routes', () => {
     let app: any;
     let mockSessionManager: SessionManager;
+    let ownerToken: string;
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        // Deterministic secret for signing/verification in this spec.
+        process.env.JWT_SECRET = TEST_JWT_SECRET;
+
         // Create isolated session manager for tests
         mockSessionManager = createSessionManager();
 
-        // Configure DI to use mock session manager
+        // Configure DI to use mock session manager. Access-control mocks grant
+        // access by default (project found + owner) so the data-extraction
+        // tests below exercise the response shape, not the auth gate. Tests
+        // that assert 401/403/404 override these via configureGamesRoutes().
         configureGamesRoutes({
             getSession: mockSessionManager.getSession,
+            findProjectByUuid: async () =>
+                ({ id: 1, uuid: 'any', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+            findProjectById: async () => undefined as never,
+            checkProjectAccess: async () => ({ hasAccess: true }) as never,
         });
+
+        ownerToken = await signTestToken(OWNER_USER_ID);
 
         // Create test app with routes
         app = new Elysia().use(gamesRoutes);
@@ -33,7 +77,9 @@ describe('Games Routes', () => {
 
     describe('GET /api/games/:odeSessionId/idevices', () => {
         it('should return empty array for non-existent session', async () => {
-            const response = await app.handle(new Request('http://localhost/api/games/non-existent-session/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/non-existent-session/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -46,7 +92,9 @@ describe('Games Routes', () => {
                 sessionId: 'test-session-1',
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-1/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-1/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -99,7 +147,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-2/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-2/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -145,7 +195,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-3/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-3/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -174,7 +226,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-4/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-4/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -222,7 +276,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-5/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-5/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -258,7 +314,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/my-session-id/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/my-session-id/idevices', ownerToken),
+            );
 
             const data = await response.json();
             expect(data.data[0].ode_session_id).toBe('my-session-id');
@@ -284,7 +342,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-session-single/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-session-single/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -326,7 +386,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-blocks-no-components/idevices'),
+                authedRequest('http://localhost/api/games/test-blocks-no-components/idevices', ownerToken),
             );
 
             expect(response.status).toBe(200);
@@ -364,7 +424,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-simplified-blocks-no-components/idevices'),
+                authedRequest('http://localhost/api/games/test-simplified-blocks-no-components/idevices', ownerToken),
             );
 
             expect(response.status).toBe(200);
@@ -407,7 +467,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-parent-id/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-parent-id/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -458,7 +520,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-isactive-undefined/idevices'),
+                authedRequest('http://localhost/api/games/test-isactive-undefined/idevices', ownerToken),
             );
 
             expect(response.status).toBe(200);
@@ -506,7 +568,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-json-object/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-json-object/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -552,7 +616,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-html-object/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-html-object/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -649,7 +715,9 @@ describe('Games Routes', () => {
 
             // For a session without structure, it should try Yjs fallback
             // (which won't find anything in test environment)
-            const response = await app.handle(new Request('http://localhost/api/games/yjs-test-session/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/yjs-test-session/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -679,7 +747,9 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-prefer-structure/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-prefer-structure/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -697,7 +767,9 @@ describe('Games Routes', () => {
                 // No structure property
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/test-empty-structure/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/test-empty-structure/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -709,7 +781,7 @@ describe('Games Routes', () => {
             // For non-existent session, Yjs fallback is tried but finds nothing
             // Should still return success:true with empty data
             const response = await app.handle(
-                new Request('http://localhost/api/games/completely-unknown-session/idevices'),
+                authedRequest('http://localhost/api/games/completely-unknown-session/idevices', ownerToken),
             );
 
             expect(response.status).toBe(200);
@@ -757,14 +829,18 @@ describe('Games Routes', () => {
             configureGamesRoutes({
                 getSession: () => undefined, // No session in memory
                 getDb: () => mockDb as never,
-                findProjectByUuid: async () => ({ id: 123, uuid: 'db-session-id' }) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 123, uuid: 'db-session-id', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
                 findSnapshotByProjectId: async () =>
                     ({
                         snapshot_data: Buffer.from(snapshotData),
                     }) as never,
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/db-session-id/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/db-session-id/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -778,31 +854,41 @@ describe('Games Routes', () => {
             expect(data.data[0].htmlViewer).toBe('<div>Quiz content</div>');
         });
 
-        it('should return empty array when project not found in database', async () => {
+        it('should return 404 when project not found (access gate runs first)', async () => {
+            // Access control resolves the project before any data loading, so an
+            // unknown UUID is rejected with 404 rather than leaking a 200/empty
+            // response that would let callers probe which UUIDs exist.
             configureGamesRoutes({
                 getSession: () => undefined,
                 getDb: () => ({}) as never,
                 findProjectByUuid: async () => undefined, // Project not found
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
                 findSnapshotByProjectId: async () => undefined,
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/unknown-project-id/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unknown-project-id/idevices', ownerToken),
+            );
 
-            expect(response.status).toBe(200);
+            expect(response.status).toBe(404);
             const data = await response.json();
-            expect(data.success).toBe(true);
-            expect(data.data).toEqual([]);
+            expect(data.success).toBe(false);
+            expect(data.error).toBe('Project not found');
         });
 
         it('should return empty array when snapshot has no data', async () => {
             configureGamesRoutes({
                 getSession: () => undefined,
                 getDb: () => ({}) as never,
-                findProjectByUuid: async () => ({ id: 123, uuid: 'project-id' }) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 123, uuid: 'project-id', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
                 findSnapshotByProjectId: async () => undefined, // No snapshot
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/project-id/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/project-id/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -810,40 +896,308 @@ describe('Games Routes', () => {
             expect(data.data).toEqual([]);
         });
 
-        it('should handle database errors gracefully', async () => {
-            configureGamesRoutes({
-                getSession: () => undefined,
-                getDb: () => {
-                    throw new Error('Database connection failed');
-                },
-                findProjectByUuid: async () => undefined,
-                findSnapshotByProjectId: async () => undefined,
-            });
-
-            const response = await app.handle(new Request('http://localhost/api/games/error-session/idevices'));
-
-            expect(response.status).toBe(200);
-            const data = await response.json();
-            expect(data.success).toBe(true);
-            expect(data.data).toEqual([]);
-        });
-
-        it('should handle findProjectByUuid errors gracefully', async () => {
+        it('should handle snapshot-loading errors gracefully after access is granted', async () => {
+            // Access control passes, then the data-loading fallback hits a DB
+            // error while reading the Yjs snapshot. That error is swallowed and
+            // an empty data set is returned (graceful degradation), since the
+            // caller is already authorized.
             configureGamesRoutes({
                 getSession: () => undefined,
                 getDb: () => ({}) as never,
-                findProjectByUuid: async () => {
-                    throw new Error('Query failed');
+                findProjectByUuid: async () =>
+                    ({ id: 123, uuid: 'error-session', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
+                findSnapshotByProjectId: async () => {
+                    throw new Error('Snapshot query failed');
                 },
-                findSnapshotByProjectId: async () => undefined,
             });
 
-            const response = await app.handle(new Request('http://localhost/api/games/query-error-session/idevices'));
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/error-session/idevices', ownerToken),
+            );
 
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.success).toBe(true);
             expect(data.data).toEqual([]);
+        });
+    });
+
+    /**
+     * Access control (security gate)
+     *
+     * The endpoint returns the full flattened iDevice structure of a project,
+     * including each component's rendered HTML. It must require authentication
+     * and per-project access so that knowing a project UUID is not enough to
+     * read its contents.
+     */
+    describe('Access control', () => {
+        const NON_OWNER_USER_ID = 99;
+
+        it('should reject unauthenticated requests with 401', async () => {
+            // No auth cookie / Authorization header at all.
+            const response = await app.handle(new Request('http://localhost/api/games/some-project-uuid/idevices'));
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+
+        it('should reject an invalid/expired token with 401', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/api/games/some-project-uuid/idevices', {
+                    headers: { Cookie: 'auth=not-a-valid-jwt' },
+                }),
+            );
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+
+        it('should return 403 for an authenticated non-owner on a PRIVATE project', async () => {
+            // Private project owned by someone else; checkProjectAccess denies.
+            configureGamesRoutes({
+                getSession: () => undefined,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 7, uuid: 'private-uuid', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: false, reason: 'No access to project' }) as never,
+            });
+
+            const nonOwnerToken = await signTestToken(NON_OWNER_USER_ID);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/private-uuid/idevices', nonOwnerToken),
+            );
+
+            expect(response.status).toBe(403);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+            expect(data.error).toBe('Access denied');
+        });
+
+        it('should return 200 for the owner of a private project', async () => {
+            mockSessionManager.createSession({
+                sessionId: 'owner-uuid',
+                structure: {
+                    pages: [
+                        {
+                            id: 'page-1',
+                            title: 'Owner Page',
+                            blocks: [{ id: 'block-1', name: 'Block', components: [{ id: 'comp-1', type: 'text' }] }],
+                        },
+                    ],
+                },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 7, uuid: 'owner-uuid', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
+            });
+
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/owner-uuid/idevices', ownerToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+            expect(data.data[0].odePageId).toBe('page-1');
+        });
+
+        it('should return 200 for an authenticated non-owner on a PUBLIC project', async () => {
+            // Public project: checkProjectAccess grants access to any
+            // authenticated user (same semantics as the Yjs WebSocket).
+            mockSessionManager.createSession({
+                sessionId: 'public-uuid',
+                structure: {
+                    pages: [
+                        {
+                            id: 'pub-page',
+                            title: 'Public Page',
+                            blocks: [{ id: 'b1', name: 'B', components: [{ id: 'c1', type: 'text' }] }],
+                        },
+                    ],
+                },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 8, uuid: 'public-uuid', user_id: OWNER_USER_ID, share_type: 'public' }) as never,
+                checkProjectAccess: async () => ({ hasAccess: true }) as never,
+            });
+
+            const nonOwnerToken = await signTestToken(NON_OWNER_USER_ID);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/public-uuid/idevices', nonOwnerToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+            expect(data.data[0].odePageId).toBe('pub-page');
+        });
+
+        it('should grant access to an admin without checking project access', async () => {
+            let checkCalled = false;
+            mockSessionManager.createSession({
+                sessionId: 'admin-uuid',
+                structure: {
+                    pages: [{ id: 'a-page', title: 'Admin Page', blocks: [] }],
+                },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () =>
+                    ({ id: 9, uuid: 'admin-uuid', user_id: OWNER_USER_ID, share_type: 'private' }) as never,
+                checkProjectAccess: async () => {
+                    checkCalled = true;
+                    return { hasAccess: false } as never;
+                },
+            });
+
+            const adminToken = await signTestToken(NON_OWNER_USER_ID, ['ROLE_USER', 'ROLE_ADMIN']);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/admin-uuid/idevices', adminToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+            // Admin short-circuits before checkProjectAccess.
+            expect(checkCalled).toBe(false);
+        });
+    });
+
+    /**
+     * Unsaved / brand-new projects (in-memory session only).
+     *
+     * The Yjs WebSocket (checkWebSocketProjectAccess) grants access to a
+     * project that lives only in an in-memory session (not yet persisted to
+     * the DB). This endpoint must use the same semantics so game iDevices
+     * (e.g. progress-report) still load in a brand-new project before its
+     * first save — otherwise enforceProjectAccess 404s on the missing DB row.
+     */
+    describe('Access control for unsaved projects (in-memory session)', () => {
+        const NON_OWNER_USER_ID = 99;
+
+        it('should return 200 for the owner of an unsaved project (session not in DB)', async () => {
+            // Project exists only in memory (findProjectByUuid -> undefined).
+            // The session is owned by OWNER_USER_ID, who is the caller.
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-uuid',
+                userId: OWNER_USER_ID,
+                structure: {
+                    pages: [
+                        {
+                            id: 'unsaved-page',
+                            title: 'Unsaved Page',
+                            blocks: [{ id: 'b1', name: 'B', components: [{ id: 'c1', type: 'text' }] }],
+                        },
+                    ],
+                },
+            });
+            let checkCalled = false;
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined, // Not persisted yet
+                checkProjectAccess: async () => {
+                    checkCalled = true;
+                    return { hasAccess: false } as never;
+                },
+            });
+
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-uuid/idevices', ownerToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+            expect(data.data[0].odePageId).toBe('unsaved-page');
+            // The DB access check is irrelevant when the row does not exist;
+            // access is granted purely from the in-memory session ownership.
+            expect(checkCalled).toBe(false);
+        });
+
+        it('should grant an admin access to an unsaved project owned by someone else', async () => {
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-admin-uuid',
+                userId: OWNER_USER_ID, // owned by someone else
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            const adminToken = await signTestToken(NON_OWNER_USER_ID, ['ROLE_USER', 'ROLE_ADMIN']);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-admin-uuid/idevices', adminToken),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(data.data.length).toBe(1);
+        });
+
+        it('should return 404 for a non-owner on an unsaved project (no DB row to fall back to)', async () => {
+            // A different authenticated user must NOT read an unsaved project
+            // they do not own. With no DB row, there is nothing to grant access
+            // to, so the endpoint reports 404 (same as enforceProjectAccess).
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-private-uuid',
+                userId: OWNER_USER_ID,
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            const nonOwnerToken = await signTestToken(NON_OWNER_USER_ID);
+            const response = await app.handle(
+                authedRequest('http://localhost/api/games/unsaved-private-uuid/idevices', nonOwnerToken),
+            );
+
+            expect(response.status).toBe(404);
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+
+        it('should still require authentication for unsaved projects', async () => {
+            mockSessionManager.createSession({
+                sessionId: 'unsaved-anon-uuid',
+                userId: OWNER_USER_ID,
+                structure: { pages: [{ id: 'p', title: 'P', blocks: [] }] },
+            });
+            configureGamesRoutes({
+                getSession: mockSessionManager.getSession,
+                getDb: () => ({}) as never,
+                findProjectByUuid: async () => undefined,
+                checkProjectAccess: async () => ({ hasAccess: false }) as never,
+            });
+
+            // No auth cookie at all.
+            const response = await app.handle(new Request('http://localhost/api/games/unsaved-anon-uuid/idevices'));
+
+            expect(response.status).toBe(401);
+            const data = await response.json();
+            expect(data.success).toBe(false);
         });
     });
 });
@@ -1338,5 +1692,39 @@ describe('extractIdevicesFromYjsDoc', () => {
         expect(result[0].componentId).toBeNull();
 
         ydoc.destroy();
+    });
+});
+
+/**
+ * Direct unit tests for canAccessUnsavedSession (pure access decision for
+ * brand-new/unsaved projects that live only in an in-memory session).
+ */
+describe('canAccessUnsavedSession', () => {
+    const makeSession = (userId?: number): ProjectSession => ({
+        sessionId: 's',
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
+
+    it('denies when there is no session', () => {
+        expect(canAccessUnsavedSession(undefined, 42, false)).toBe(false);
+        expect(canAccessUnsavedSession(undefined, 42, true)).toBe(false);
+    });
+
+    it('grants the session owner', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 42, false)).toBe(true);
+    });
+
+    it('denies a non-owner who is not admin', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 99, false)).toBe(false);
+    });
+
+    it('grants an admin even for a non-owned session', () => {
+        expect(canAccessUnsavedSession(makeSession(42), 99, true)).toBe(true);
+    });
+
+    it('denies when the session has no recorded owner (userId undefined)', () => {
+        expect(canAccessUnsavedSession(makeSession(undefined), 42, false)).toBe(false);
     });
 });
