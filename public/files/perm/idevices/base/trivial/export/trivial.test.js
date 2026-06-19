@@ -142,4 +142,49 @@ describe('TriviExt score saving', () => {
 
         expect($eXeTrivial.getScore(mOptions)).toBe(10);
     });
+
+    it('calculates a partial score when not all topics are completed', () => {
+        const $eXeTrivial = loadTrivial();
+        const mOptions = createGameOptions({
+            numeroTemas: 2,
+            gamers: [{ cheeses: [], name: 'Player', quesos: [], score: 11 }],
+        });
+
+        // points * 10 / (numeroTemas * 10 + numeroTemas) = 110 / 22 = 5
+        expect($eXeTrivial.getScore(mOptions)).toBe(5);
+    });
+
+    it('caps the partial score at ten', () => {
+        const $eXeTrivial = loadTrivial();
+        const mOptions = createGameOptions({
+            numeroTemas: 2,
+            gamers: [{ cheeses: [], name: 'Player', quesos: [], score: 300 }],
+        });
+
+        expect($eXeTrivial.getScore(mOptions)).toBe(10);
+    });
+
+    it('persists the per-question score only while the game is not over (saveQuestionScore)', () => {
+        const $eXeTrivial = loadTrivial();
+        $eXeTrivial.options[0] = createGameOptions({ isScorm: 1, gameOver: false });
+        $eXeTrivial.sendScore = vi.fn();
+        $eXeTrivial.saveEvaluation = vi.fn();
+
+        $eXeTrivial.saveQuestionScore(0);
+
+        expect($eXeTrivial.sendScore).toHaveBeenCalledWith(true, 0);
+        expect($eXeTrivial.saveEvaluation).toHaveBeenCalledWith(0);
+    });
+
+    it('does not re-send the per-question score once the game is over', () => {
+        const $eXeTrivial = loadTrivial();
+        $eXeTrivial.options[0] = createGameOptions({ isScorm: 1, gameOver: true });
+        $eXeTrivial.sendScore = vi.fn();
+        $eXeTrivial.saveEvaluation = vi.fn();
+
+        $eXeTrivial.saveQuestionScore(0);
+
+        expect($eXeTrivial.sendScore).not.toHaveBeenCalled();
+        expect($eXeTrivial.saveEvaluation).toHaveBeenCalledWith(0);
+    });
 });

@@ -72,4 +72,65 @@ describe('mathproblems iDevice export', () => {
             expect($eXeMathProblems.saveEvaluation).not.toHaveBeenCalled();
         });
     });
+
+    describe('updateScore', () => {
+        it('persists the SCORM score after a correct answer', () => {
+            $eXeMathProblems.options[0] = {
+                isScorm: 1,
+                scorm: { repeatActivity: true },
+                hits: 0,
+                errors: 0,
+                numberQuestions: 4,
+            };
+            $eXeMathProblems.initialScore = '';
+            $eXeMathProblems.getMessageAnswer = vi.fn(() => '');
+            $eXeMathProblems.sendScore = vi.fn();
+            $eXeMathProblems.saveEvaluation = vi.fn();
+            $eXeMathProblems.checkClue = vi.fn();
+            $eXeMathProblems.updateGameBoard = vi.fn();
+            $eXeMathProblems.showMessage = vi.fn();
+
+            $eXeMathProblems.updateScore(true, 0);
+
+            expect($eXeMathProblems.options[0].hits).toBe(1);
+            expect($eXeMathProblems.options[0].score).toBe(2.5);
+            expect($eXeMathProblems.sendScore).toHaveBeenCalledWith(true, 0);
+            expect($eXeMathProblems.saveEvaluation).toHaveBeenCalledWith(0);
+        });
+    });
+
+    describe('gameOver', () => {
+        it('marks the terminal state and persists the SCORM score', () => {
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        helpers: { shuffleAds: (arr) => arr },
+                    },
+                },
+            };
+            $eXeMathProblems.options[0] = {
+                scorm: { isScorm: 1, repeatActivity: true },
+                hits: 2,
+                numberQuestions: 4,
+                score: 5,
+                optionsRamdon: false,
+                questions: [{}, {}],
+                msgs: { msgEndGameM: 'End: %s' },
+            };
+            $eXeMathProblems.initialScore = '';
+            $eXeMathProblems.uptateTime = vi.fn();
+            $eXeMathProblems.sendScore = vi.fn();
+            $eXeMathProblems.saveEvaluation = vi.fn();
+            $eXeMathProblems.showFeedBack = vi.fn();
+            $eXeMathProblems.showMessage = vi.fn();
+            $eXeMathProblems.loadProblems = vi.fn();
+
+            $eXeMathProblems.gameOver(1, 0);
+
+            expect($eXeMathProblems.options[0].gameStarted).toBe(false);
+            expect($eXeMathProblems.options[0].gameOver).toBe(true);
+            expect($eXeMathProblems.sendScore).toHaveBeenCalledWith(true, 0);
+            expect($eXeMathProblems.saveEvaluation).toHaveBeenCalledWith(0);
+        });
+    });
 });

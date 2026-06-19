@@ -210,4 +210,21 @@ describe('az-quiz-game iDevice export', () => {
       expect($('#roscoRepeatActivity-0').text()).toBe('Score: 5.00');
     });
   });
+
+  describe('getScoreRP', () => {
+    it('returns the score on a 0-10 scale from hits/validWords', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: 6 };
+      expect($azquizgame.getScoreRP(0)).toBe(5);
+    });
+
+    it('returns 0 when validWords is zero (no division by zero)', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: 0 };
+      expect($azquizgame.getScoreRP(0)).toBe(0);
+    });
+
+    it('returns 0 when validWords is not a finite number', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: undefined };
+      expect($azquizgame.getScoreRP(0)).toBe(0);
+    });
+  });
 });

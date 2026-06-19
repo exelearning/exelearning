@@ -242,6 +242,28 @@ describe('select-media-files iDevice export — SCORM score', () => {
             })
         );
     });
+
+    describe('getScore', () => {
+        it('computes (hits * 10) / numberQuestions on a 0-10 scale', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3, numberQuestions: 4 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(7.5);
+        });
+
+        it('returns 0 when numberQuestions is zero (no division by zero)', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3, numberQuestions: 0 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+
+        it('returns 0 when numberQuestions is missing or not numeric', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+
+        it('treats a missing hits count as 0', () => {
+            $eXeSeleccionaMedias.options[0] = { numberQuestions: 4 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+    });
 });
 
 describe('select-media-files iDevice export — audio icon + autoplay gating', () => {

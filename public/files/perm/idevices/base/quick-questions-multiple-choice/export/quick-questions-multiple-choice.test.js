@@ -192,4 +192,41 @@ describe('quick-questions-multiple-choice export', () => {
             expect(question.solution).toBe('');
         });
     });
+
+    describe('getScoreRP', () => {
+        it('computes (scoreGame * 10) / scoreTotal in the default mode', () => {
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: 4,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(7.5);
+        });
+
+        it('uses score / 10 when order == 2', () => {
+            $quickquestionsmultiplechoice.options[0] = { order: 2, score: 75 };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(7.5);
+        });
+
+        it('treats a missing score as 0 when order == 2', () => {
+            $quickquestionsmultiplechoice.options[0] = { order: 2 };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
+        });
+
+        it('returns 0 when scoreTotal is zero or not finite (no division by zero)', () => {
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: 0,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
+
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: undefined,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
+        });
+    });
 });

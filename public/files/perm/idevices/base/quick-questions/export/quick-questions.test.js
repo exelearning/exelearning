@@ -64,4 +64,14 @@ describe('quick-questions export', () => {
         expect(sendScore).toHaveBeenCalledWith(true, 0);
         expect($('#quextRepeatActivity-0').text()).toBe('Score: 5.00');
     });
+
+    it('computes getScoreRP as (10 * scoreGame) / scoreTotal', () => {
+        $quickquestions.options[0] = { scoreGame: 3, scoreTotal: 4 };
+        expect($quickquestions.getScoreRP(0)).toBe(7.5);
+    });
+
+    it('returns 0 from getScoreRP when scoreTotal is not a finite number', () => {
+        $quickquestions.options[0] = { scoreGame: 3, scoreTotal: undefined };
+        expect($quickquestions.getScoreRP(0)).toBe(0);
+    });
 });
