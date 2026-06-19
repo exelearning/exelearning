@@ -5,6 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { getJwtSecret } from './auth';
 import * as fsDefault from 'fs-extra';
 import * as pathDefault from 'path';
 
@@ -36,10 +37,14 @@ import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import {
     extractLinksFromIdevices,
+    validateLink,
     validateLinksStream,
+    toBrokenLinkInfo,
+    type BrokenLinkInfo,
     type ExtractedLink,
     type IdeviceContent,
 } from '../services/link-validator';
+import type { LookupFn } from '../utils/ssrf-guard';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getPreferenceValue } from '../db/queries/preferences';
@@ -94,6 +99,7 @@ export async function resolveDefaultThemeForNewProject(
 }
 import { getAppVersion } from '../utils/version';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { isSafePathSegment, isWithinBase } from '../utils/safe-path';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -223,6 +229,20 @@ export interface AccessNotifierDeps {
 }
 
 /**
+ * Link-validation overrides forwarded to the SSRF-hardened validateLink().
+ *
+ * Production leaves these undefined (real DNS + fetch). Tests inject a hermetic
+ * DNS resolver / fetch so the brokenlinks endpoint never performs real network
+ * I/O — otherwise a real lookup of a non-existent external host can hang past the
+ * test timeout and flake CI.
+ */
+export interface LinkValidationDeps {
+    lookupFn?: LookupFn;
+    fetchImpl?: typeof fetch;
+    timeout?: number;
+}
+
+/**
  * All dependencies for project routes
  */
 export interface ProjectDependencies {
@@ -234,6 +254,7 @@ export interface ProjectDependencies {
     queries?: QueriesDeps;
     utils?: UtilsDeps;
     accessNotifier?: AccessNotifierDeps;
+    linkValidation?: LinkValidationDeps;
 }
 
 // Default dependencies
@@ -374,11 +395,6 @@ function serializeProjectSharing(
     };
 }
 
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
-
 // ============================================================================
 // Factory Functions
 // ============================================================================
@@ -497,7 +513,14 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             // =====================================================
 
             // POST /api/project/upload-chunk - Upload a file chunk
-            .post('/upload-chunk', async ({ body, set }) => {
+            .post('/upload-chunk', async ({ body, set, currentUser }) => {
+                // This fallback upload endpoint writes attacker-controlled bytes
+                // to disk, so it must require authentication like every other
+                // state-changing handler in this group.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'error: authentication required', success: false };
+                }
                 try {
                     const { odeFilePart, odeFileName, odeSessionId } = body as ProjectUploadChunkRequest;
 
@@ -509,12 +532,27 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                         };
                     }
 
+                    // odeSessionId becomes a directory segment; reject anything
+                    // that is not a single safe segment (UUIDs and legacy
+                    // timestamp ids both qualify) so it cannot escape FILES_DIR.
+                    if (!isSafePathSegment(odeSessionId)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeSessionId', success: false };
+                    }
+
                     // Get or create session temp directory
                     const tempDir = getOdeSessionTempDir(odeSessionId);
                     await fs.ensureDir(tempDir);
 
-                    // Build target file path
+                    // Build target file path. odeFileName is a user-chosen name
+                    // (may contain spaces/unicode), so instead of restricting the
+                    // charset we assert the resolved path stays inside tempDir,
+                    // rejecting traversal like '../../etc/cron.d/x'.
                     const targetPath = path.join(tempDir, odeFileName);
+                    if (!isWithinBase(tempDir, targetPath)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeFileName', success: false };
+                    }
 
                     // Get the chunk data
                     let chunkBuffer: Buffer;
@@ -753,6 +791,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     // File helper functions
     const { getOdeSessionTempDir, getFilesDir, getProjectAssetsDir } = deps.fileHelper ?? defaultFileHelper;
 
+    // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
+    const linkValidation = deps.linkValidation ?? {};
+
     // Query functions
     const {
         findProjectById,
@@ -916,10 +957,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
                 }
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication and project access; previously this endpoint was
+                // unauthenticated and enumerable by sequential numeric id (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const project = await findProjectById(db, projectId);
                 if (!project) {
                     set.status = 404;
                     return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!sharingAccess.hasAccess) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1268,16 +1323,17 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .get('/api/projects/uuid/:uuid/sharing', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication before resolving/creating or returning it (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 let project = await findProjectByUuid(db, uuid);
 
                 // If project doesn't exist in DB, create it with current user as owner
                 if (!project) {
-                    // Require authentication to create project
-                    if (!currentUser) {
-                        set.status = 401;
-                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                    }
-
                     // Create the project in DB with current user as owner
                     project = await createProjectWithUuid(db, uuid, {
                         title: 'Untitled',
@@ -1287,6 +1343,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     });
 
                     console.log(`[Project] Created project ${uuid} for user ${currentUser.id} via sharing endpoint`);
+                } else {
+                    // Existing project: caller must have access to see its sharing/PII.
+                    const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                    if (!sharingAccess.hasAccess) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
+                    }
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1538,10 +1601,25 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Require authentication and access to the SOURCE project before
+                // copying its content. Previously any caller (even unauthenticated)
+                // could clone an arbitrary private project into their own account
+                // and then read/export it (IDOR, C4).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                const duplicateAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!duplicateAccess.hasAccess) {
+                    set.status = 403;
+                    return { error: 'Forbidden', message: 'Access denied' };
                 }
 
                 // Generate new UUID for the duplicate
@@ -1936,177 +2014,28 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/brokenlinks - Validate links in content
-            .post('/api/ode-management/odes/session/brokenlinks', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks', async ({ body, set, currentUser }) => {
+                // Server-side link validation issues outbound requests; require
+                // authentication so it cannot be abused unauthenticated (H1). The
+                // shared validateLink() is SSRF-hardened (rejects internal hosts).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
-                const idevices = data.idevices || [];
+                const idevices = (data.idevices || []) as IdeviceContent[];
                 const filesDir = getFilesDir();
 
-                interface BrokenLinkInfo {
-                    brokenLinks: string;
-                    nTimesBrokenLinks: number | null;
-                    brokenLinksError: string | null;
-                    pageNamesBrokenLinks: string;
-                    blockNamesBrokenLinks: string;
-                    typeComponentSyncBrokenLinks: string;
-                    orderComponentSyncBrokenLinks: string;
-                }
-
-                interface ExtractedLink {
-                    url: string;
-                    count: number;
-                }
-
-                // Extract links from HTML
-                const extractLinks = (html: string): ExtractedLink[] => {
-                    if (!html) return [];
-                    const regex = /(href|src)="([^"]*)"/gi;
-                    const links: ExtractedLink[] = [];
-                    let match: RegExpExecArray | null;
-                    while ((match = regex.exec(html)) !== null) {
-                        links.push({ url: match[2], count: 1 });
-                    }
-                    return links;
-                };
-
-                // Clean and count links
-                const cleanAndCountLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const urlCounts = new Map<string, number>();
-                    for (const link of links) {
-                        const cleanUrl = link.url.replace(/"/g, '');
-                        urlCounts.set(cleanUrl, (urlCounts.get(cleanUrl) || 0) + 1);
-                    }
-                    return Array.from(urlCounts.entries()).map(([url, count]) => ({ url, count }));
-                };
-
-                // Remove invalid links
-                const removeInvalidLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    return links.filter(link => {
-                        if (!link.url || link.url.trim() === '') return false;
-                        if (link.url.startsWith('#')) return false;
-                        if (link.url.startsWith('javascript:')) return false;
-                        if (link.url.startsWith('data:')) return false;
-                        return true;
-                    });
-                };
-
-                // Deduplicate links
-                const deduplicateLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const uniqueLinks = new Map<string, ExtractedLink>();
-                    for (const link of links) {
-                        const existing = uniqueLinks.get(link.url);
-                        if (!existing || link.count > existing.count) {
-                            uniqueLinks.set(link.url, link);
-                        }
-                    }
-                    return Array.from(uniqueLinks.values());
-                };
-
-                // Validate a single link
-                const validateLink = async (url: string): Promise<string | null> => {
-                    // Internal page links (exe-node:) - consider valid
-                    if (url.startsWith('exe-node:')) {
-                        return null;
-                    }
-
-                    // Internal file links (files/...)
-                    if (url.startsWith('files/') || url.startsWith('files\\')) {
-                        try {
-                            const relativePath = url.substring(6);
-                            const fullPath = path.join(filesDir, relativePath);
-                            if (await fs.pathExists(fullPath)) {
-                                return null;
-                            }
-                            return '404';
-                        } catch {
-                            return '500';
-                        }
-                    }
-
-                    // Skip relative URLs that aren't files/
-                    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('//')) {
-                        return null;
-                    }
-
-                    // External link validation
-                    try {
-                        let normalizedUrl = url;
-                        if (url.startsWith('//')) {
-                            normalizedUrl = 'https:' + url;
-                        }
-
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                        try {
-                            let response = await fetch(normalizedUrl, {
-                                method: 'HEAD',
-                                signal: controller.signal,
-                                redirect: 'follow',
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                },
-                            });
-
-                            clearTimeout(timeoutId);
-
-                            // If HEAD returns 405, try GET
-                            if (response.status === 405) {
-                                const controller2 = new AbortController();
-                                const timeoutId2 = setTimeout(() => controller2.abort(), 10000);
-                                response = await fetch(normalizedUrl, {
-                                    method: 'GET',
-                                    signal: controller2.signal,
-                                    redirect: 'follow',
-                                    headers: {
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                        Range: 'bytes=0-0',
-                                    },
-                                });
-                                clearTimeout(timeoutId2);
-                            }
-
-                            // 301 is not broken
-                            if (response.status === 301) return null;
-                            if (response.ok) return null;
-                            return String(response.status);
-                        } catch (fetchError: unknown) {
-                            clearTimeout(timeoutId);
-                            const err = fetchError as { name?: string; message?: string; cause?: { code?: string } };
-                            if (err.name === 'AbortError') return 'Timeout';
-                            const cause = err.cause;
-                            if (cause?.code === 'ENOTFOUND') return 'Could not resolve host';
-                            if (cause?.code === 'ECONNREFUSED') return 'Connection refused';
-                            return err.message || 'Network error';
-                        }
-                    } catch {
-                        return 'URL using bad/illegal format';
-                    }
-                };
-
+                // Single source of truth: reuse the shared link-validator service
+                // (extraction + SSRF-safe validation) instead of a duplicated copy.
+                const links = extractLinksFromIdevices(idevices);
                 const allBrokenLinks: BrokenLinkInfo[] = [];
 
-                for (const idevice of idevices) {
-                    if (!idevice.html) continue;
-
-                    let links = extractLinks(idevice.html);
-                    links = cleanAndCountLinks(links);
-                    links = removeInvalidLinks(links);
-                    links = deduplicateLinks(links);
-
-                    for (const link of links) {
-                        const validationError = await validateLink(link.url);
-
-                        if (validationError) {
-                            allBrokenLinks.push({
-                                brokenLinks: link.url,
-                                nTimesBrokenLinks: link.count,
-                                brokenLinksError: validationError,
-                                pageNamesBrokenLinks: idevice.pageName || '',
-                                blockNamesBrokenLinks: idevice.blockName || '',
-                                typeComponentSyncBrokenLinks: idevice.ideviceType || '',
-                                orderComponentSyncBrokenLinks: String(idevice.order ?? ''),
-                            });
-                        }
+                for (const link of links) {
+                    const validationError = await validateLink(link.url, { filesDir, ...linkValidation });
+                    if (validationError) {
+                        allBrokenLinks.push(toBrokenLinkInfo(link, validationError));
                     }
                 }
 
@@ -2135,7 +2064,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/extract - Extract links without validating (fast)
-            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = (data.idevices || []) as IdeviceContent[];
 
@@ -2149,25 +2083,37 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/validate-stream - Validate links via SSE
-            .post('/api/ode-management/odes/session/brokenlinks/validate-stream', async function* ({ body }) {
-                const data = body as { links: ExtractedLink[] };
-                const links = data.links || [];
-                const filesDir = getFilesDir();
+            .post(
+                '/api/ode-management/odes/session/brokenlinks/validate-stream',
+                async function* ({ body, set, currentUser }) {
+                    if (!currentUser) {
+                        set.status = 401;
+                        return;
+                    }
 
-                // Stream validation results as SSE events
-                for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                    const data = body as { links: ExtractedLink[] };
+                    const links = data.links || [];
+                    const filesDir = getFilesDir();
+
+                    // Stream validation results as SSE events
+                    for await (const result of validateLinksStream(links, {
+                        filesDir,
+                        batchSize: 5,
+                        ...linkValidation,
+                    })) {
+                        yield {
+                            event: 'link-validated',
+                            data: JSON.stringify(result),
+                        };
+                    }
+
+                    // Signal completion
                     yield {
-                        event: 'link-validated',
-                        data: JSON.stringify(result),
+                        event: 'done',
+                        data: JSON.stringify({ complete: true, totalValidated: links.length }),
                     };
-                }
-
-                // Signal completion
-                yield {
-                    event: 'done',
-                    data: JSON.stringify({ complete: true, totalValidated: links.length }),
-                };
-            })
+                },
+            )
 
             // =====================================================
             // Utilities: Resources Report (usedfiles)

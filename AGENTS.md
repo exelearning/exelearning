@@ -202,6 +202,7 @@ Key rules:
 ### 7.4 Frontend Patterns
 
 - **i18n:** `_()` for GUI strings, `c_()` for content strings, `| trans` in Nunjucks templates. Avoid hardcoded English. See [i18n skill](.agents/skills/i18n/SKILL.md).
+  - **Never write or edit translated values under `translations/`.** Wrap user-facing strings in `_()` / `c_()` / `| trans`; running `make translations` to register the new (empty) keys is expected, but leave every target/translated value blank. The translation team owns `translations/**` and fills in the actual translations later — do not hand-write, copy, or machine-translate target strings in a PR.
 - **Styles:** Prefer SCSS classes in `assets/styles/` over inline styles. See [doc/development/styles.md](doc/development/styles.md).
 - **No framework:** Vanilla JavaScript in `public/app/`.
 
