@@ -68,6 +68,7 @@ Because the package contains both the editable source and the rendered output, `
 
 - **[export-pipeline.md](elpx-format/export-pipeline.md)** — end-to-end export flow with file:line references to `Html5Exporter` / `ElpxExporter` / `OdeXmlGenerator`.
 - **[import-pipeline.md](elpx-format/import-pipeline.md)** — three-phase import flow, modern vs legacy fallback, ID remapping.
+- **[tracking-emission.md](elpx-format/tracking-emission.md)** — how published packages report scores: SCORM (`cmi.*`) and the always-on xAPI emitter (`exe_xapi.js`, `window.exeXapi`, statement shape, transports).
 
 ### Validation and AI generation
 

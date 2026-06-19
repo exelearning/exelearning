@@ -2834,7 +2834,10 @@ class YjsStructureBinding {
       throw new Error('generateId: prefix is required');
     }
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 11);
+    // Pad to a fixed 9-char suffix: `toString(36)` yields a variable-length
+    // tail, so without this the suffix is occasionally 8 chars. Mirrors
+    // src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+    const random = Math.random().toString(36).substring(2, 11).padEnd(9, '0');
     return `${prefix}-${timestamp}-${random}`;
   }
 

@@ -189,7 +189,9 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     const isPathSafe = (basePath: string, targetPath: string): boolean => {
         const resolvedBase = path.resolve(basePath);
         const resolvedTarget = path.resolve(basePath, targetPath);
-        return resolvedTarget.startsWith(resolvedBase);
+        // Separator-aware containment check. A naive `startsWith(resolvedBase)`
+        // would treat `/data/assets-evil` as inside `/data/assets`.
+        return resolvedTarget === resolvedBase || resolvedTarget.startsWith(resolvedBase + path.sep);
     };
 
     const generateUniqueFilename = (originalName: string): string => {
