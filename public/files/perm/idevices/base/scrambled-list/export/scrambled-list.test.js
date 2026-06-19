@@ -148,6 +148,32 @@ describe('scrambled-list iDevice export', () => {
         eXe.app.isInExe = previousIsInExe;
       }
     });
+
+    it('normalizes legacy option objects before rendering', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Scrambled list</h1></header>
+          <div id="scrambled-1" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>
+      `;
+
+      try {
+        const result = $scrambledlist.updateConfig(
+          {
+            id: 'scrambled-1',
+            options: [{ text: 'One' }, { value: '<strong>Two</strong>' }, ['Three']],
+            msgs: $scrambledlist.getMessages(),
+          },
+          'scrambled-1',
+        );
+
+        expect(result.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
   });
 
   describe('setupTouchDrag', () => {
@@ -302,6 +328,188 @@ describe('scrambled-list iDevice export', () => {
     it('touchend does nothing when no item is being dragged', () => {
       const touchEndHandler = $scrambledlist._touchHandlers[listOrder].touchend;
       expect(() => touchEndHandler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
+    });
+  });
+
+  describe('getOriginalIndexValue / getOriginalIndexNumber (legacy fallback)', () => {
+    const el = (attr) => ({ getAttribute: () => attr });
+
+    it('returns the data-orig-index attribute when present', () => {
+      expect($scrambledlist.getOriginalIndexValue(el('2'), 5)).toBe('2');
+      expect($scrambledlist.getOriginalIndexNumber(el('4'), 9)).toBe(4);
+    });
+
+    it('falls back to the position when the attribute is missing (eXe 2.9 imports)', () => {
+      // Legacy <li> carry no data-orig-index, so the position is the canonical index.
+      expect($scrambledlist.getOriginalIndexValue(el(null), 5)).toBe('5');
+      expect($scrambledlist.getOriginalIndexValue(el(''), 3)).toBe('3');
+      expect($scrambledlist.getOriginalIndexNumber(el(null), 9)).toBe(9);
+      expect($scrambledlist.getOriginalIndexNumber(el('abc'), 7)).toBe(7);
+    });
+  });
+
+  describe('normalizeOptions', () => {
+    it('keeps string options and drops empties', () => {
+      expect($scrambledlist.normalizeOptions(['a', '', '  ', 'b'])).toEqual(['a', 'b']);
+    });
+
+    it('extracts text from object-shaped options and tolerates non-arrays', () => {
+      expect($scrambledlist.normalizeOptions([{ text: 'x' }, { html: 'y' }, 3])).toEqual(['x', 'y', '3']);
+      expect($scrambledlist.normalizeOptions(undefined)).toEqual([]);
+      expect($scrambledlist.normalizeOptions(null)).toEqual([]);
+    });
+  });
+
+  describe('countRightAnswers', () => {
+    it('counts every item that sits in its correct position', () => {
+      expect($scrambledlist.countRightAnswers([0, 1, 2])).toBe(3);
+    });
+
+    it('counts only the items left in place after a swap', () => {
+      // index 2 stays correct; 0 and 1 are swapped
+      expect($scrambledlist.countRightAnswers([1, 0, 2])).toBe(1);
+    });
+
+    it('returns 0 when nothing is in place', () => {
+      expect($scrambledlist.countRightAnswers([2, 0, 1])).toBe(0);
+    });
+
+    it('handles an empty list', () => {
+      expect($scrambledlist.countRightAnswers([])).toBe(0);
+    });
+  });
+
+  describe('escapeHtmlButKeepRenderedMath', () => {
+    const mathSpan =
+      '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg><math></math></span>';
+
+    it('escapes plain HTML', () => {
+      expect($scrambledlist.escapeHtmlButKeepRenderedMath('<b>x</b>')).toBe('&lt;b&gt;x&lt;/b&gt;');
+    });
+
+    it('keeps a valid pre-rendered math span verbatim', () => {
+      const out = $scrambledlist.escapeHtmlButKeepRenderedMath('Pick ' + mathSpan);
+      expect(out).toContain(mathSpan);
+      expect(out.startsWith('Pick ')).toBe(true);
+    });
+
+    it('neutralises a forged math span carrying script (XSS boundary)', () => {
+      const forged = '<span class="exe-math-rendered" data-latex=""><svg onload="alert(1)"></svg></span>';
+      const out = $scrambledlist.escapeHtmlButKeepRenderedMath('Pick ' + forged);
+      expect(out).not.toContain('<svg onload');
+    });
+
+    it('handles null/undefined', () => {
+      expect($scrambledlist.escapeHtmlButKeepRenderedMath(null)).toBe('');
+      expect($scrambledlist.escapeHtmlButKeepRenderedMath(undefined)).toBe('');
+    });
+  });
+
+  describe('getListLinks (math-safe controls)', () => {
+    const mathSpan =
+      '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg><math></math></span>';
+
+    it('adds sorter controls without removing pre-rendered math spans', () => {
+      const listOrder = 10;
+      document.body.innerHTML =
+        `<ul id="exe-sortableList-${listOrder}">` +
+        `<li data-orig-index="0">A ${mathSpan}</li>` +
+        `<li data-orig-index="1">B</li>` +
+        `</ul>`;
+
+      $scrambledlist.getListLinks(listOrder);
+      const ul = document.getElementById('exe-sortableList-' + listOrder);
+
+      // Math span preserved, one sorter-control wrapper added per item.
+      expect(ul.querySelectorAll('span.exe-math-rendered').length).toBe(1);
+      expect(ul.querySelectorAll('span.exe-sortableList-controls').length).toBe(2);
+
+      // Re-running (as on every sortupdate) must not duplicate or destroy math.
+      $scrambledlist.getListLinks(listOrder);
+      expect(ul.querySelectorAll('span.exe-math-rendered').length).toBe(1);
+      expect(ul.querySelectorAll('span.exe-sortableList-controls').length).toBe(2);
+    });
+  });
+
+  describe('enableList legacy htmlView support', () => {
+    it('adds fallback original indexes to legacy list items without data attributes', () => {
+      document.body.innerHTML = `
+        <div class="exe-sortableList">
+          <ul class="exe-sortableList-list">
+            <li>One</li>
+            <li>Two</li>
+            <li>Three</li>
+          </ul>
+          <p class="exe-sortableList-buttonText">Check</p>
+        </div>`;
+      const activity = document.querySelector('.exe-sortableList');
+      const randomize = vi
+        .spyOn($scrambledlist, 'randomizeArray')
+        .mockImplementation((items) => [items[1], items[0], items[2]]);
+
+      try {
+        $scrambledlist.enableList(activity, 12);
+
+        const originalItems = document.querySelectorAll('#exe-sortableListResults-12 li');
+        const playableItems = document.querySelectorAll('#exe-sortableList-12 li');
+        expect(Array.from(originalItems).map((item) => item.getAttribute('data-orig-index'))).toEqual([
+          '0',
+          '1',
+          '2',
+        ]);
+        expect(Array.from(playableItems).map((item) => item.getAttribute('data-orig-index'))).toEqual([
+          '1',
+          '0',
+          '2',
+        ]);
+      } finally {
+        randomize.mockRestore();
+      }
+    });
+  });
+
+  describe('renderView', () => {
+    const template =
+      '<div id="sl{idList}">{instructions}<ul class="exe-sortableList-list">{optionsText}</ul>' +
+      '<p class="exe-sortableList-buttonText">{buttonText}</p>' +
+      '<p class="exe-sortableList-rightText">{rightText}</p>' +
+      '<p class="exe-sortableList-wrongText">{wrongText}</p>' +
+      '{scormMessage}{afterElement}{evaluationID}{ideviceID}{evaluation}{scorm}</div>';
+
+    it('emits data-orig-index per option and keeps rendered math in options and feedback', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article><header><h1 class="box-title">SL</h1></header>
+          <div id="sl-1" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>`;
+      const mathSpan =
+        '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg><math></math></span>';
+
+      try {
+        const html = $scrambledlist.renderView(
+          {
+            id: 'sl-1',
+            options: ['<p>' + mathSpan + '</p>', 'plain'],
+            rightText: 'Great ' + mathSpan,
+            wrongText: 'Nope',
+            buttonText: 'Check',
+            instructions: 'Order them',
+            msgs: $scrambledlist.getMessages(),
+          },
+          0,
+          template,
+          'sl-1',
+        );
+
+        // Each option carries its correct-position index.
+        expect(html).toContain('data-orig-index="0"');
+        expect(html).toContain('data-orig-index="1"');
+        // Rendered math survives in the option AND the feedback text.
+        expect((html.match(/exe-math-rendered/g) || []).length).toBeGreaterThanOrEqual(2);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
     });
   });
 });

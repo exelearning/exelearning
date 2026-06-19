@@ -7,6 +7,8 @@
  */
 
 /* eslint-disable no-undef */
+import '../../../../../../../public/vitest.setup.js';
+
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -63,6 +65,96 @@ describe('scrambled-list iDevice', () => {
   describe('addQuestions', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.addQuestions).toBe('function');
+    });
+  });
+
+  describe('normalizeOptions', () => {
+    it('normalizes legacy object and nested option shapes', () => {
+      expect(
+        $exeDevice.normalizeOptions([
+          { text: ' First ' },
+          { value: '<em>Second</em>' },
+          [' Third ', false],
+          null,
+        ]),
+      ).toEqual(['First', '<em>Second</em>', 'Third']);
+    });
+  });
+
+  describe('normalizePreviousData', () => {
+    it('extracts previous data from legacy htmlView when jsonProperties is empty', () => {
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <div class="exe-sortableList">
+          <div class="exe-sortableList-instructions"><p>Order items</p></div>
+          <ul class="exe-sortableList-list">
+            <li>One</li>
+            <li><strong>Two</strong></li>
+            <li>Three</li>
+          </ul>
+          <p class="exe-sortableList-buttonText">Check legacy</p>
+          <p class="exe-sortableList-rightText"><em>Right</em></p>
+          <p class="exe-sortableList-wrongText">Wrong</p>
+        </div>`;
+
+      const data = $exeDevice.normalizePreviousData({}, element);
+
+      expect(data.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+      expect(data.instructions).toBe('<p>Order items</p>');
+      expect(data.buttonText).toBe('Check legacy');
+      expect(data.rightText).toBe('Right');
+      expect(data.wrongText).toBe('Wrong');
+    });
+  });
+
+  describe('loadPreviousValues', () => {
+    const buildEditorBody = () => {
+      const fields = Array.from({ length: $exeDevice.items_no }, (_, index) => {
+        return `<input id="sortableListFormList${index}" />`;
+      }).join('');
+      document.body.innerHTML = `
+        <div id="editor">
+          <div id="sortableListFormList">${fields}</div>
+          <input id="sortableListButtonText" />
+          <input id="sortableListRightText" />
+          <input id="sortableListWrongText" />
+          <input id="eXeGameInstructions" />
+          <input id="eXeIdeviceTextAfter" />
+          <input id="sortableShowSolutions" type="checkbox" />
+          <input id="sortableAttemptsNumber" />
+        </div>`;
+      return document.getElementById('editor');
+    };
+
+    it('loads legacy option objects into the list inputs', () => {
+      const previousEdition = global.$exeDevicesEdition;
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            progressBar: { setValues: vi.fn() },
+            scorm: { setValues: vi.fn() },
+            common: { setLanguageTabValues: vi.fn() },
+          },
+        },
+      };
+      $exeDevice.ideviceBody = buildEditorBody();
+      $exeDevice.idevicePreviousData = {
+        options: [{ text: 'One' }, { html: '<strong>Two</strong>' }, ['Three']],
+        buttonText: 'Check',
+        rightText: 'Right',
+        wrongText: 'Wrong',
+        instructions: 'Order',
+      };
+
+      try {
+        $exeDevice.loadPreviousValues();
+
+        expect(document.getElementById('sortableListFormList0').value).toBe('One');
+        expect(document.getElementById('sortableListFormList1').value).toBe('<strong>Two</strong>');
+        expect(document.getElementById('sortableListFormList2').value).toBe('Three');
+      } finally {
+        global.$exeDevicesEdition = previousEdition;
+      }
     });
   });
 });

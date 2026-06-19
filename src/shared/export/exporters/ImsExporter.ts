@@ -54,6 +54,14 @@ export class ImsExporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Keep the complete (pre-visibility-filter) page list for the
+            // re-editable content.xml. Hidden pages (drafts / teacher-only) must
+            // survive an IMS export -> re-import round trip; only the rendered
+            // HTML and the imsmanifest organization below exclude them. The
+            // SCORM exporters get this for free via getContentXml(); IMS builds
+            // content.xml from `pages`, so it must retain the full list here.
+            const allPagesForContentXml = pages;
+
             // Filter out hidden pages (visibility: false)
             pages = pages.filter(p => this.isPageVisible(p, pages));
 
@@ -119,7 +127,7 @@ export class ImsExporter extends Html5Exporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
@@ -306,8 +314,10 @@ export class ImsExporter extends Html5Exporter {
             // 8. Add project assets (with tracking for ELPX manifest)
             await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 8b. Add content.xml (ODE format) and content.dtd for re-editing
-            const contentXml = generateOdeXml(meta, pages);
+            // 8b. Add content.xml (ODE format) and content.dtd for re-editing.
+            // Use the full page list (incl. hidden pages) so nothing is lost on
+            // re-import — see allPagesForContentXml above.
+            const contentXml = generateOdeXml(meta, allPagesForContentXml);
             addFile('content.xml', contentXml);
             addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             commonFiles.push('content.xml', ODE_DTD_FILENAME);
@@ -429,6 +439,7 @@ export class ImsExporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addMathJax: meta.addMathJax === true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,

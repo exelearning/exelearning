@@ -82,25 +82,41 @@ var $magnifier = {
 
     changeDirectory(data) {
         const $node = $('#' + data.ideviceId),
-            isInExe = eXe.app.isInExe();
-        if (isInExe || $node.length == 0 || !data.imageResource)
-            return data.imageResource;
+            isInExe = eXe.app.isInExe(),
+            file = data.imageResource;
 
-        // Don't transform blob:, data:, or asset:// URLs - they're already valid or will be resolved
-        if (data.imageResource.startsWith('blob:') ||
-            data.imageResource.startsWith('data:') ||
-            data.imageResource.startsWith('asset://')) {
-            return data.imageResource;
+        if (isInExe || $node.length == 0 || !file) return file;
+
+        // Don't transform blob:, data:, or asset:// URLs - they're already
+        // valid display URLs or will be resolved by the asset resolver.
+        if (
+            file.startsWith('blob:') ||
+            file.startsWith('data:') ||
+            file.startsWith('asset://')
+        ) {
+            return file;
         }
 
-        const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + data.ideviceId + '/'
-            : '../content/resources/' + data.ideviceId + '/';
+        // The exporter already rewrites the stored asset URL to its final
+        // location under content/resources/<filename> (prefixing '../' for
+        // subpages). Preserve that path instead of rebuilding it: inserting the
+        // iDevice id as an intermediate folder points to a directory that does
+        // not exist in the export, breaking the image ("Image not available").
+        // See issue #1953.
+        const basePath = $('html').is('#exe-index') ? '' : '../';
 
-        const parts = data.imageResource.split(/[/\\]/),
-            name = parts.pop(),
-            dir = pathMedia.replace(/[/\\]+$/, '');
-        return dir + '/' + name;
+        if (file.startsWith('content/resources/')) {
+            // Collapse a duplicated "<filename>/<filename>" tail if present and
+            // prepend the page-relative base path.
+            const parts = file.split('/'),
+                name = parts.pop();
+            if (parts[parts.length - 1] === name) parts.pop();
+            return basePath + parts.join('/') + '/' + name;
+        }
+
+        // Already page-relative (e.g. '../content/resources/...') or any other
+        // absolute/remote URL: leave it untouched.
+        return file;
     },
 
     replaceResourceDirectoryPaths(data) {
