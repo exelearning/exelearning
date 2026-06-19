@@ -75,6 +75,38 @@ All dataset JSON files share the same schema:
 }
 ```
 
+### Optional per-dataset descriptor catalogue (`descriptors`)
+
+The codes in `competencias_clave` (the perfil-d'eixida / competence codes — `CCL`,
+`CMCT`, `CCL1`, `STEM2.3`…) are rendered with human-readable **text**. By default
+that text comes from a shared, hardcoded **Castilian** catalogue (`CC_DESCRIPTIONS`,
+defined in both `edition/lomloe.js` and `export/lomloe.js`).
+
+A dataset may **override** that text — e.g. a community with a co-official language
+(the Comunitat Valenciana publishes its descriptors in Valencian) — by adding an
+optional **reserved top-level `descriptors` key**: a flat `{ "code": "text" }` map
+sitting alongside the etapa keys.
+
+```jsonc
+{
+  "descriptors": {                                  // optional, reserved (NOT an etapa)
+    "CCL":  "Competència en comunicació lingüística",
+    "CCL1": "CCL1 — S'expressa de manera oral, escrita…",
+    "CMCT": "Competència matemàtica, científica i tecnològica"
+  },
+  "Educació Primària": { /* …etapes… */ }
+}
+```
+
+Render-time lookup is **per-code with fallback**:
+`descriptorText(code) = dataset.descriptors[code] ?? CC_DESCRIPTIONS[code] ?? code`
+— so a dataset can override only some codes and inherit the rest. The key is
+**reserved**: every top-level walker (`getEtapas()`, the tests' `walkAreas`) skips
+it, so it never becomes an etapa tab; on save the editor denormalizes the used
+codes' override text into `lomloeDescriptors` so standalone **exports** keep the
+overridden wording. Datasets without a `descriptors` key are unaffected and keep
+using `CC_DESCRIPTIONS`. `lomloe-ES-VC.json` is the first to ship one (Valencian).
+
 ## How to add a new autonomous community
 
 Dataset identifiers use **ISO 3166-2:ES** codes (e.g. `ES-MD` for Madrid, `ES-CT` for Catalunya).
@@ -418,7 +450,7 @@ The Valencian curriculum annexes attached to issue **#1883** (provided by commun
 - **ESO *sabers bàsics* — all 27 subjects + Valencià.** The ESO sabers parser handles both source layouts: the X-mark matrix (with `4.N. Bloc M:`, `Bloc N.` or `4.N. <Title>` headers, and per-cycle/per-course mark columns) and the plain bulleted list with no per-course marks (emitted under a `TOTS` label that `build_dataset` maps to every nivel where the àrea has criteris). *Valencià: Llengua i Literatura* (`VLL`) is extracted from the decree section it shares with *Llengua Castellana* (the title is printed directly above it) and added to Primària and ESO.
 - **Descriptors / competències clau (`competencias_clave`)**: extracted from each materia's *Connexions amb les competències clau* matrix (secció 3) that maps every competència específica to its key-competence families. The Valencian DOGV decrees publish only the **family codes** (`CCL`, `CP`, `STEM`/`CMCT`, `CD`, `CPSAA`, `CC`, `CE`, `CCEC`) per competència. Coverage: **Primària 9/9 àrees**, **ESO 26/28** (EE partial, LCA states its links as prose). Genuine source limits (not parse gaps): **Infantil** has no per-CE descriptor model; **Batxillerat**'s "connexions" pages are narrative prose with no per-CE matrix; ESO LCA likewise.
 - **Why there are no *numbered* operatius (`CCL1`, `STEM2.3`…)**: those appear only in the decrees' preamble *catalogue* (definitions), never linked per competència (confirmed by OCR). They cannot be borrowed from the state RDs either, because **the Valencian decrees author their own competències específiques rather than adopting the state ones verbatim** — e.g. ESO *Biologia i Geologia* has **11** competències in Decret 107/2022 vs **6** in RD 217/2022, with different wording and no 1:1 correspondence. Grafting the RD's numbered descriptors onto the renumbered Valencian competències would mis-map curriculum content, so the dataset keeps the DOGV's own per-competència family codes. Numbered operatius would require a hand-curated, expert VC↔RD competència alignment.
-- **Descriptor text in Valencian (per-dataset `descriptors` override)**: the iDevice's descriptor *catalogue* (code → display text) is a shared, hardcoded Castilian map (`CC_DESCRIPTIONS` in `edition/lomloe.js` / `export/lomloe.js`). A dataset may carry its **own** catalogue under a reserved top-level **`descriptors`** key (`{code: text}`); when present the renderer uses it instead, falling back per-code to the shared default (`descriptorText(code) = rawData.descriptors[code] ?? CC_DESCRIPTIONS[code] ?? code`). `lomloe-ES-VC.json` ships this catalogue with the **Valencian** perfil-d'eixida wording (the 8 families + `CMCT` + the full numbered set `CCL1`…`CCEC4.2`, extracted verbatim from the DOGV decree preambles), so a teacher using the Valencian dataset sees Valencian descriptor text. The reserved key is skipped by every top-level walker (`getEtapas`, tests) so it is never treated as an etapa; on save, the used codes' override text is denormalized into `lomloeDescriptors` so standalone exports keep the Valencian text. The shared catalogues also gained a Castilian `CMCT` entry (it was previously missing, leaving ES-VC `CMCT` badges tooltip-less).
+- **Descriptor text in Valencian (`descriptors` catalogue)**: ES-VC ships the optional per-dataset `descriptors` override (see [Optional per-dataset descriptor catalogue](#optional-per-dataset-descriptor-catalogue-descriptors)) with the **Valencian** perfil-d'eixida wording — the 8 families + `CMCT` + the full numbered set `CCL1`…`CCEC4.2`, extracted verbatim from the DOGV decree preambles — so a teacher on the Valencian dataset sees Valencian descriptor text in the editor and exports. The shared Castilian catalogues also gained the previously-missing `CMCT` entry (ES-VC uses `CMCT` 1352× and its badges had no tooltip before).
 - Note: a small number of Valencian clitic line-break hyphens (e.g. `participant-hi`) may be joined during de-hyphenation; affected items remain otherwise verbatim.
 
 ### Nivel labels (Valencian)

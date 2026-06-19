@@ -189,8 +189,15 @@ var $exeDevice = (function () {
     }
 
     /**
-     * Display names for each LOMLOE competencia clave code.
-     * Used as tooltip text (title attribute) on cc-tag and cc-badge spans.
+     * Default (Castilian) display names for each LOMLOE competencia clave /
+     * descriptor code. Used as tooltip text (title attribute) on cc-tag and
+     * cc-badge spans.
+     *
+     * This is the SHARED FALLBACK catalogue. A dataset may override any code's
+     * text via its reserved top-level `descriptors` key (e.g. the Comunitat
+     * Valenciana ships its perfil-d'eixida descriptors in Valencian); the
+     * override is resolved per-code by descriptorText() below. See the iDevice
+     * README, "Optional per-dataset descriptor catalogue".
      */
     var CC_DESCRIPTIONS = {
         // Competencia en comunicación lingüística

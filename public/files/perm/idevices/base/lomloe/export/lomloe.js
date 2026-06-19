@@ -10,7 +10,13 @@
 var $Lomloe = {
     ideviceClass: 'lomloeIdeviceContent',
 
-    /** Display names for each competencia clave code (used as tooltip title). */
+    /**
+     * Default (Castilian) display names for each competencia clave / descriptor
+     * code (tooltip title). Shared fallback: a dataset's own catalogue (the
+     * editor denormalizes the used codes into `lomloeDescriptors` on save) takes
+     * precedence in the fallback renderer below. Keep in sync with the edition
+     * twin (edition/lomloe.js).
+     */
     CC_DESCRIPTIONS: {
         'CCL':    'Competencia en comunicación lingüística',
         'CCL1':   'CCL1 — Expresa e interpreta conceptos, pensamientos, hechos y opiniones de forma oral, escrita o signada',
