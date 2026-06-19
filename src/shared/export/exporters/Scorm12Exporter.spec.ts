@@ -192,6 +192,54 @@ const samplePages: ExportPage[] = [
     },
 ];
 
+// Instantiates the embedded SCO template string in a sandbox so its actual
+// runtime behaviour (event wiring + LMS calls) can be exercised, not just the
+// presence of substrings. The template expects `scorm`, `window` and `document`
+// as externals, so they are injected as Function parameters.
+function instantiateScoTemplate(source: string) {
+    const listeners: Record<string, (event?: { persisted?: boolean }) => void> = {};
+    const sets: Array<[string, unknown]> = [];
+    const store: Record<string, string> = {};
+    const counters = { init: 0, save: 0, quit: 0 };
+    const scorm = {
+        version: '1.2',
+        init: () => {
+            counters.init++;
+            return true;
+        },
+        get: (key: string) => store[key] ?? '',
+        set: (key: string, value: unknown) => {
+            sets.push([key, value]);
+            store[key] = String(value);
+        },
+        save: () => {
+            counters.save++;
+        },
+        quit: () => {
+            counters.quit++;
+        },
+    };
+    const win = {
+        addEventListener: (type: string, cb: (event?: unknown) => void) => {
+            listeners[`win:${type}`] = cb as (event?: { persisted?: boolean }) => void;
+        },
+    };
+    const doc = {
+        visibilityState: 'visible',
+        addEventListener: (type: string, cb: (event?: unknown) => void) => {
+            listeners[`doc:${type}`] = cb as (event?: { persisted?: boolean }) => void;
+        },
+    };
+    const factory = new Function(
+        'scorm',
+        'window',
+        'document',
+        `${source}\n;return { loadPage, unloadPage, commitScormProgress, registerScormLifecycleHandlers };`,
+    );
+    const api = factory(scorm, win, doc);
+    return { api, listeners, sets, store, counters, scorm, win, doc };
+}
+
 describe('Scorm12Exporter', () => {
     let document: MockDocument;
     let resources: MockResourceProvider;
@@ -513,6 +561,65 @@ describe('Scorm12Exporter', () => {
             expect(scoFunctions).toContain('isTerminal');
             expect(scoFunctions).toContain('scormLifecycleState.finalized = true');
             expect(scoFunctions).toMatch(/cmi\.core\.exit["']\s*,\s*isTerminal\s*\?\s*["']{2}\s*:\s*["']suspend["']/);
+        });
+
+        describe('SCO template runtime behaviour', () => {
+            it('wires pagehide/freeze/visibilitychange and never the deprecated unload event', () => {
+                const { listeners } = instantiateScoTemplate(exporter.getScoFunctions());
+
+                expect(typeof listeners['win:pagehide']).toBe('function');
+                expect(typeof listeners['win:freeze']).toBe('function');
+                expect(typeof listeners['doc:visibilitychange']).toBe('function');
+                expect(listeners['win:unload']).toBeUndefined();
+                expect(listeners['win:beforeunload']).toBeUndefined();
+            });
+
+            it('commits without terminating the session when the page enters bfcache', () => {
+                const { listeners, counters } = instantiateScoTemplate(exporter.getScoFunctions());
+
+                listeners['win:pagehide']({ persisted: true });
+
+                expect(counters.save).toBeGreaterThanOrEqual(1);
+                expect(counters.quit).toBe(0);
+            });
+
+            it('finalizes the SCO exactly once on a real pagehide', () => {
+                const { listeners, counters } = instantiateScoTemplate(exporter.getScoFunctions());
+
+                listeners['win:pagehide']({ persisted: false });
+                listeners['win:pagehide']({ persisted: false });
+
+                expect(counters.quit).toBe(1);
+            });
+
+            it('commits progress only when the tab becomes hidden', () => {
+                const sandbox = instantiateScoTemplate(exporter.getScoFunctions());
+                sandbox.doc.visibilityState = 'hidden';
+
+                sandbox.listeners['doc:visibilitychange']();
+
+                expect(sandbox.counters.save).toBeGreaterThanOrEqual(1);
+                expect(sandbox.counters.quit).toBe(0);
+            });
+
+            it('leaves a scored, non-terminal SCO as incomplete + suspend on exit', () => {
+                const { api, listeners, sets } = instantiateScoTemplate(exporter.getScoFunctions());
+                api.registerScormLifecycleHandlers(true); // page carries a scored iDevice
+
+                listeners['win:pagehide']({ persisted: false });
+
+                expect(sets).toContainEqual(['cmi.core.lesson_status', 'incomplete']);
+                expect(sets).toContainEqual(['cmi.core.exit', 'suspend']);
+            });
+
+            it('auto-completes a non-scored page and exits normally (empty exit)', () => {
+                const { listeners, sets } = instantiateScoTemplate(exporter.getScoFunctions());
+
+                listeners['win:pagehide']({ persisted: false });
+
+                expect(sets).toContainEqual(['cmi.core.lesson_status', 'completed']);
+                expect(sets).toContainEqual(['cmi.core.exit', '']);
+            });
         });
     });
 
