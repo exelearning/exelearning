@@ -400,6 +400,81 @@ describe('Export Routes', () => {
         });
     });
 
+    describe('path-traversal hardening (C2)', () => {
+        // A traversal odeSessionId (decoded from %2F by Elysia) must be rejected
+        // with 400 BEFORE any filesystem path is built, so an attacker cannot
+        // coerce getOdeSessionTempDir/getOdeSessionDistDir into escaping FILES_DIR.
+        const traversalId = '..%2F..%2F..%2Ftmp%2Fpwned';
+
+        it('should reject a traversal odeSessionId with 400 (GET) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(new Request(`http://localhost/api/export/${traversalId}/html5/download`));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            // No ZIP was written outside the intended base directory.
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a traversal odeSessionId with 400 (POST) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(
+                new Request(`http://localhost/api/export/${traversalId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a plain (non-encoded) traversal odeSessionId with 400', async () => {
+            const res = await handle(new Request('http://localhost/api/export/..%2Fevil/html5/download'));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+        });
+
+        it('should still accept a legitimate timestamp session id', async () => {
+            // testSessionId ('20250116testexport') is a normal id and must keep working.
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should still accept a legitimate UUID session id', async () => {
+            const uuidSessionId = 'aaa54536-d8d2-4a7b-bf6d-c809321ccc2a';
+            mockSessions.set(uuidSessionId, {
+                id: uuidSessionId,
+                sessionId: uuidSessionId,
+                fileName: 'uuid-project.elp',
+                userId: OWNER_USER_ID,
+                structure: mockParsedStructure,
+            });
+            await fs.ensureDir(path.join(testDir, 'tmp', uuidSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', uuidSessionId));
+            await fs.writeFile(
+                path.join(testDir, 'tmp', uuidSessionId, 'content.xml'),
+                '<?xml version="1.0"?><ode></ode>',
+            );
+
+            const res = await handle(new Request(`http://localhost/api/export/${uuidSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+    });
+
     describe('export type validation', () => {
         // Types fully implemented in unified export system
         // All export types are now implemented in the unified export system

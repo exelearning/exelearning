@@ -5241,6 +5241,41 @@ describe('IdeviceNode', () => {
             // Restore
             global.eXeLearning = originalEXeLearning;
         });
+
+        it('should honour an explicit data-filemanager-accept over the id heuristic', () => {
+            // 3Dmol's input id contains "model" (would map to '3d'), but it
+            // opts into the molecule filter via data-filemanager-accept.
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'dmoleModelFile';
+            input.dataset.filemanagerAccept = 'molecule';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('molecule');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
     });
 
     describe('initExeDeviceEdition', () => {
