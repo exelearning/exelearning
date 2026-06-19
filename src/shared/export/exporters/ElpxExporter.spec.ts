@@ -2,7 +2,8 @@
  * ElpxExporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ElpxExporter } from './ElpxExporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -229,12 +230,132 @@ describe('ElpxExporter', () => {
     let zip: MockZipProvider;
     let exporter: ElpxExporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
+    // adaptative-quiz keeps pre-rendered math through runtime escaping, so it must
+    // be pre-rendered to SVG at export (never bundles MathJax).
+    const recursiveJsonLatexPages = (): ExportPage[] => [
+        {
+            id: 'page-recursive-json',
+            title: 'Recursive JSON',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-recursive-json',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-recursive-json',
+                            type: 'adaptative-quiz',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new ElpxExporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax in the embedded HTML export', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new ElpxExporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+
+            await exporter.export();
+
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders LaTeX and skips MathJax for recursive JSON iDevices (adaptative-quiz)', async () => {
+            document = new MockDocument({ addMathJax: false }, recursiveJsonLatexPages());
+            exporter = new ElpxExporter(document, resources, assets, zip);
+            let mathJaxRequested = false;
+            resources.fetchLibraryFiles = async files => {
+                if (files.some(file => file.includes('exe_math'))) mathJaxRequested = true;
+                return new Map();
+            };
+
+            // The hook stands in for the real LaTeX pre-renderer: it bakes the SVG
+            // marker into the page HTML so we can assert the exporter applies it.
+            let hookCalled = false;
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: `${html}<span class="exe-math-rendered">x^2</span>`,
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(hookCalled).toBe(true);
+            // MathJax engine is never bundled for these iDevices.
+            expect(mathJaxRequested).toBe(false);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(false);
+            // The baked SVG and its supporting CSS are present in the export.
+            expect(zip.files.get('index.html') as string).toContain('exe-math-rendered');
+            const baseCss = zip.files.get('content/css/base.css');
+            const baseCssText = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(baseCssText).toContain('.exe-math-rendered');
+        });
     });
 
     describe('Basic Properties', () => {

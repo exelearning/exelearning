@@ -240,9 +240,33 @@ class AssetManager {
       await cache.put(this._getCacheRequestUrl(id), response);
     } catch (e) {
       console.warn('[AssetManager] Cache API write failed:', e.message);
-      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
-        this._disableCachePersistence(e);
-        await this._putToIdb(id, blob);
+
+      const isQuotaExceeded = !!e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
+      if (isQuotaExceeded) {
+        // Browser Cache API storage is full. Surface a clear operator signal;
+        // the IDB fallback below takes over as the persistence layer.
+        console.warn('[AssetManager] Cache API storage full (QuotaExceededError) — falling back to IndexedDB:', id);
+      }
+
+      // For ANY Cache write failure (unsupported scheme, quota exceeded,
+      // transient, or unknown), the blob is NOT yet persisted. The Cache API has
+      // proven unreliable for this write, so disable it and route persistence to
+      // IndexedDB. Disabling also makes _getFromCache read from IDB, keeping the
+      // write and read paths consistent — otherwise the IDB-persisted blob would
+      // be unreadable (still effectively lost).
+      this._disableCachePersistence(e);
+
+      // Fall back to IndexedDB and verify a persistent copy actually landed
+      // there. _putToCache must never resolve as success without a confirmed
+      // persistent write — otherwise its callers (putAsset/putBlob) evict the
+      // only in-memory copy in their .then(), destroying the blob in every store
+      // at once (#H7).
+      await this._putToIdb(id, blob);
+      const persisted = await this._getFromIdb(id);
+      if (!persisted) {
+        // Neither Cache API nor IndexedDB hold the blob. Re-throw so the
+        // caller's .catch() keeps the blob in memory instead of evicting it.
+        throw e;
       }
     }
   }

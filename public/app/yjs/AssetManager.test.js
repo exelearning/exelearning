@@ -64,10 +64,12 @@ describe('AssetManager', () => {
     // Create mock IndexedDB store (now only stores blobs)
     const storedBlobs = new Map();
 
-    // The mock below is vestigial — AssetManager uses in-memory + Cache API now.
-    // Requests must still fire onsuccess asynchronously so the IndexedDB fallback
-    // introduced in #1710 resolves cleanly when tests simulate a missing Cache API
-    // (via `delete global.caches`). Without `queueMicrotask`, fallback awaits hang.
+    // Functional in-memory IndexedDB stand-in for the #1710 fallback. The real
+    // _putToIdb stores records keyed by the compound `key` (`${projectId}:${assetId}`)
+    // and _getFromIdb reads them back by that same key, so the mock keys on
+    // `blobRecord.key` (not `.id`) to faithfully support the fallback path the
+    // Cache API error handling now relies on (#H7). Requests still fire
+    // onsuccess asynchronously so awaits resolve cleanly.
     const fireRequestAsync = (request) => {
       queueMicrotask(() => {
         if (request.onsuccess) request.onsuccess({ target: request });
@@ -76,15 +78,15 @@ describe('AssetManager', () => {
     };
     mockStore = {
       put: mock((blobRecord) => {
-        storedBlobs.set(blobRecord.id, blobRecord);
+        storedBlobs.set(blobRecord.key, blobRecord);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
-      get: mock((id) => {
-        const result = storedBlobs.get(id) || null;
+      get: mock((key) => {
+        const result = storedBlobs.get(key) || null;
         return fireRequestAsync({ result, error: null, onsuccess: null, onerror: null });
       }),
-      delete: mock((id) => {
-        storedBlobs.delete(id);
+      delete: mock((key) => {
+        storedBlobs.delete(key);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
       index: mock(() => ({
@@ -9292,6 +9294,7 @@ describe('AssetManager - getAssetForUpload (line 4090)', () => {
 describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
   let assetManager;
   let mockYjsBridge;
+  let savedWindow;
 
   beforeEach(() => {
     global.Logger = { log: vi.fn() };
@@ -9300,7 +9303,26 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
       value: { randomUUID: vi.fn(() => 'uuid'), subtle: { digest: vi.fn(async () => new Uint8Array(32).buffer) } },
       writable: true, configurable: true,
     });
-    global.caches = { open: vi.fn(), delete: vi.fn() };
+    // Earlier tests may have run `delete global.window`; _getCacheRequestUrl()
+    // reads window.location.protocol, so ensure a window object is present.
+    savedWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
+    // Functional Cache API so _putToCache resolves via a real persistent write
+    // (storeAssetFromServer awaits _putToCache, which after #H7 must not resolve
+    // unless a persistent copy actually exists).
+    const cacheStorage = new Map();
+    global.caches = {
+      open: vi.fn(async (name) => {
+        if (!cacheStorage.has(name)) cacheStorage.set(name, new Map());
+        const cache = cacheStorage.get(name);
+        return {
+          put: async (url, response) => { cache.set(url, response); },
+          match: async (url) => cache.get(url),
+          delete: async (url) => cache.delete(url),
+        };
+      }),
+      delete: vi.fn(async (name) => cacheStorage.delete(name)),
+    };
     spyOn(console, 'warn').mockImplementation(() => {});
 
     mockYjsBridge = (() => {
@@ -9323,6 +9345,11 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
     delete global.Logger;
     delete global.URL;
     delete global.caches;
+    if (savedWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = savedWindow;
+    }
   });
 
   it('stores blob for existing asset without blob (lines 4119-4143)', async () => {
@@ -15168,6 +15195,7 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
   let originalIDBKeyRange;
   let originalCaches;
   let originalLogger;
+  let originalWindow;
   let fakeIdb;
 
   /**
@@ -15344,6 +15372,31 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     };
   };
 
+  // Cache API that opens fine but rejects writes with a real QuotaExceededError
+  // (message "Quota exceeded.", name "QuotaExceededError"). This is the exact
+  // shape the browser throws when storage is full — it matches NONE of the
+  // scheme/unsupported patterns, so before #H7 _putToCache swallowed it and
+  // resolved as success, letting putAsset/putBlob evict the only in-memory copy.
+  const installQuotaExceededCacheApi = () => {
+    global.caches = {
+      open: mock(async () => ({
+        put: mock(async () => {
+          throw Object.assign(new Error('Quota exceeded.'), { name: 'QuotaExceededError' });
+        }),
+        match: mock(async () => undefined),
+        delete: mock(async () => false),
+      })),
+      delete: mock(async () => true),
+    };
+  };
+
+  // Remove IndexedDB entirely so the Cache→IDB fallback has nowhere to land.
+  // Used to prove that when NO persistent store accepts the blob, _putToCache
+  // rejects (and callers keep the blob in memory) instead of silently losing it.
+  const disableIndexedDb = () => {
+    global.indexedDB = undefined;
+  };
+
   const installWorkingCacheApi = () => {
     const storage = new Map();
     global.caches = {
@@ -15366,6 +15419,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     originalIDBKeyRange = global.IDBKeyRange;
     originalCaches = global.caches;
     originalLogger = global.Logger;
+    // Earlier tests in this file run `delete global.window`, and happy-dom does
+    // not recreate `window` per test. _getCacheRequestUrl() reads
+    // window.location.protocol, so guarantee a window object exists here.
+    originalWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
     global.Logger = { log: () => {} };
     fakeIdb = installFakeIndexedDB();
     spyOn(console, 'log').mockImplementation(() => {});
@@ -15378,6 +15436,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     global.IDBKeyRange = originalIDBKeyRange;
     global.caches = originalCaches;
     global.Logger = originalLogger;
+    if (originalWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = originalWindow;
+    }
     fakeIdb = null;
   });
 
@@ -15457,5 +15520,96 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     expect(global.caches.open).toHaveBeenCalledWith('exe-assets-project-secure');
     expect(mgr.cachePersistenceDisabled).toBe(false);
     expect(fakeIdb.entriesForProject('project-secure')).toEqual([]);
+  });
+
+  // =========================================================================
+  // QuotaExceededError handling — bug #H7
+  // =========================================================================
+  // When the Cache API rejects a write with QuotaExceededError (storage full),
+  // its message ("Quota exceeded.") and name ("QuotaExceededError") match none
+  // of the scheme/unsupported patterns the old catch checked. The old code
+  // therefore swallowed the error and let _putToCache resolve as success, so
+  // putAsset/putBlob evicted the only in-memory copy in their .then() — leaving
+  // the blob in no store at all (lost on save and on reload). The fix routes
+  // ANY Cache write failure through IndexedDB and only resolves once a
+  // persistent copy exists; otherwise it rejects so callers keep memory.
+  describe('QuotaExceededError on Cache API write (#H7)', () => {
+    it('falls back to IndexedDB when cache.put throws QuotaExceededError', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota');
+
+      const blob = new Blob(['quota-fallback'], { type: 'image/png' });
+      // Must resolve (a persistent copy exists in IDB) — not reject, not lose data.
+      await mgr._putToCache('asset-quota', blob);
+
+      // Blob was routed to IndexedDB instead of being silently dropped.
+      const idbEntries = fakeIdb.entriesForProject('project-quota');
+      expect(idbEntries.length).toBe(1);
+      expect(idbEntries[0].blob).toBeInstanceOf(Blob);
+
+      // And it is retrievable again (the real failure mode: getBlob returning null).
+      const retrieved = await mgr.getBlob('asset-quota');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('quota-fallback');
+    });
+
+    it('putAsset keeps the blob retrievable after a QuotaExceededError (no total loss)', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota-asset');
+      mgr.setYjsBridge(createMockYjsBridge());
+
+      const blob = new Blob(['must-survive-quota'], { type: 'image/png' });
+      await mgr.putAsset({
+        id: 'asset-pa',
+        filename: 'pic.png',
+        folderPath: '',
+        mime: 'image/png',
+        size: blob.size,
+        hash: 'h-pa',
+        blob,
+      });
+
+      // putAsset fires _putToCache asynchronously, then evicts memory on success.
+      // Eviction is legitimate here ONLY because the blob landed in IndexedDB.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // The blob must still be retrievable — from memory or from the IDB fallback.
+      const retrieved = await mgr.getBlob('asset-pa');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('must-survive-quota');
+
+      // Confirm it actually persisted (not merely lingering in memory).
+      expect(fakeIdb.entriesForProject('project-quota-asset').length).toBe(1);
+    });
+
+    it('rejects (and caller keeps memory) when BOTH Cache API and IndexedDB fail', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-no-store');
+
+      const blob = new Blob(['nowhere-to-persist'], { type: 'image/png' });
+
+      // No persistent store accepted the blob → _putToCache must reject so the
+      // caller's .catch() can retain the in-memory copy.
+      await expect(mgr._putToCache('asset-orphan', blob)).rejects.toThrow();
+    });
+
+    it('putBlob retains the blob in memory when neither Cache API nor IndexedDB persist', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-keep-mem');
+
+      const blob = new Blob(['keep-me-in-ram'], { type: 'image/png' });
+      await mgr.putBlob('asset-keep', blob);
+
+      // Wait for the async _putToCache().catch() path to settle.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // _putToCache rejected → the blob must NOT have been evicted from memory.
+      expect(mgr.blobCache.has('asset-keep')).toBe(true);
+      const retrieved = await mgr.getBlob('asset-keep');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('keep-me-in-ram');
+    });
   });
 });

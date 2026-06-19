@@ -769,6 +769,31 @@
     }
 
     /**
+     * Decide whether the empty-state overlay ("Select a 3D model to display")
+     * should be shown.
+     *
+     * A model is present when the iDevice has a configured source (single
+     * source of truth, mirroring edition's `[data-empty-state]` logic) OR the
+     * `<model-viewer>` already resolved a `src`. The configured source may be
+     * a relative `content/resources/...` path (static export + the preview
+     * URL-rewrite pipeline), an `asset://` handle (live editor / preview), a
+     * `blob:` URL, or an absolute http(s) URL — all mean "model selected".
+     * The previous blob:/http:/asset:// allowlist missed the relative export
+     * path and left the overlay covering a rendered model (issue #1957).
+     *
+     * @param {string} configSrc - the configured model source
+     * @param {string} viewerSrc - the current `<model-viewer>` src, if any
+     * @returns {'none'|'grid'} CSS display value for the overlay
+     */
+    function computeEmptyStateDisplay(configSrc, viewerSrc) {
+        const hasModel = !!(
+            (configSrc && String(configSrc).trim()) ||
+            (viewerSrc && String(viewerSrc).trim())
+        );
+        return hasModel ? 'none' : 'grid';
+    }
+
+    /**
      * Runtime controller for each wrapper.
      */
     class ThreeDViewerRuntime {
@@ -976,6 +1001,14 @@
                     this._threeJSControls = inst.controls;
                     this._threeJSCamera = inst.camera;
                 }
+
+                // Hide the empty-state overlay now that a model is configured
+                // and the STL renderer has booted. The shared runtime also
+                // clears it after a successful parse (three-d-viewer-runtime.js),
+                // but doing it here makes the result deterministic regardless of
+                // the async parse timing — and keeps STL aligned with the
+                // GLB/GLTF path (issue #1957).
+                this.toggleEmpty();
             } catch (err) {
                 console.error('[3D Viewer] Failed to render STL:', err);
                 this.toggleEmpty();
@@ -1111,13 +1144,8 @@
          */
         toggleEmpty() {
             if (!this.emptyState) return;
-            // Check for any valid src (including blob: URLs from asset resolution)
-            const src = this.modelViewer?.getAttribute('src') || this.modelViewer?.src || '';
-            // Show model if we have a valid src (blob: or http:) or if config has asset:// that will be resolved
-            const hasValidSrc = src && (src.startsWith('blob:') || src.startsWith('http'));
-            const hasConfigSrc = this.config.src && this.config.src.startsWith('asset://');
-            const hasModel = hasValidSrc || hasConfigSrc;
-            this.emptyState.style.display = hasModel ? 'none' : 'grid';
+            const viewerSrc = this.modelViewer?.getAttribute('src') || this.modelViewer?.src || '';
+            this.emptyState.style.display = computeEmptyStateDisplay(this.config.src, viewerSrc);
         }
 
         /**
@@ -1348,4 +1376,6 @@
     globalScope.$threedviewer.__migrateLegacyConfig = migrateLegacyConfig;
     globalScope.$threedviewer.__detectModelTypeFromSrc = detectModelTypeFromSrc;
     globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
+    globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
+    globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;
 })();
