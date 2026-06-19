@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Teacher Mode content is now **hidden by default** in exported packages. Existing packages must be re-exported to pick up the new default. To reveal teacher-only content, open the content with `?exe-teacher=1` (alias `?teacher-mode=1`); host plugins (WordPress, Moodle, Omeka-S) switch between student and teacher views by changing the content URL only, with no injected CSS/JS. The in-app authoring preview reveals teacher content by default (the author is the teacher). The in-page self-serve toggle is now opt-in via `?exe-teacher-toggler=1`. This is a presentation mode, not access control.
+- Teacher Mode content is now **hidden by default** in exported packages. Existing packages must be re-exported to pick up the new default. The in-page self-serve toggle is now opt-in: it appears only when the content is opened with `?exe-teacher=1` (alias `?teacher-mode=1`, or the legacy `?exe-teacher-toggler=1`), and it is OFF by default — the viewer activates it to reveal teacher content. Without the parameter there is no toggle and teacher content stays hidden. Host plugins (WordPress, Moodle, Omeka-S) make the toggle available by changing the content URL only, with no injected CSS/JS. eXeLearning's own authoring preview loads with the parameter, so the toggle is available while editing. This is a presentation mode, not access control.
 
 ## v4.0.1 – 2026-06-09
 

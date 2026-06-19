@@ -2,54 +2,58 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
- * E2E: Teacher Mode visibility is driven entirely by the ?exe-teacher URL parameter on the
- * rendered package — no host-injected CSS/JS.
+ * E2E: Teacher Mode is driven by the ?exe-teacher URL parameter on the rendered package,
+ * with no host-injected CSS/JS.
  *
- * eXeLearning's own authoring preview reveals Teacher Mode BY DEFAULT (the author is the
- * teacher), so the preview panel appends ?exe-teacher=1 to the viewer URL. The parameter
- * still controls visibility: ?exe-teacher=0 forces the student view. Exported packages stay
- * hidden by default (covered by test/integration/teacher-mode-toggle.spec.ts and the Vitest
- * bootstrap tests).
+ * Contract: ?exe-teacher=1 makes the in-page self-serve toggle AVAILABLE (it never reveals
+ * content on its own — the viewer activates the toggle, OFF by default). Without the
+ * parameter there is no toggle and teacher content stays hidden. eXeLearning's own authoring
+ * preview loads the viewer with ?exe-teacher=1, so the toggle is available in the preview.
  *
- * The runtime applies the `mode-teacher` class on <html> early (in <head>); base.css hides
- * `.teacher-only` content unless that class is present.
+ * This spec verifies that real-browser wiring through the SW-served preview: the runtime
+ * reads the parameter and decides whether the toggle is available. The toggle's DOM, its
+ * OFF-by-default state, and reveal-on-click are unit-tested in
+ * public/app/common/exe_export.test.js; `.teacher-only` markup + the hide rule in
+ * test/integration/teacher-mode-toggle.spec.ts.
  */
-test.describe('Teacher Mode URL parameter (preview/export runtime)', () => {
-    test('preview reveals Teacher Mode by default and the URL parameter controls it', async ({
+test.describe('Teacher Mode toggle (preview/export runtime)', () => {
+    test('the preview makes the Teacher Mode toggle available only via ?exe-teacher=1', async ({
         authenticatedPage,
         createProject,
     }) => {
         const page = authenticatedPage;
 
-        const uuid = await createProject(page, 'Teacher Mode URL Param Test');
+        const uuid = await createProject(page, 'Teacher Mode Toggle Test');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
         await waitForServiceWorker(page);
 
-        // Open the preview panel (same pattern as preview-page-updates.spec.ts).
         await page.locator('#head-bottom-preview').click();
         await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
         await expect(page.locator('#preview-iframe')).toBeVisible({ timeout: 10000 });
 
-        const html = page.frameLocator('#preview-iframe').locator('html');
+        // The preview loads the viewer with ?exe-teacher=1, so the runtime makes the
+        // self-serve toggle available (the parameter never reveals content on its own).
+        await page.waitForFunction(
+            () => {
+                const w = (document.querySelector('#preview-iframe') as HTMLIFrameElement)?.contentWindow as any;
+                return w?.$exeExport?.teacherMode?._showToggler === true;
+            },
+            undefined,
+            { timeout: 15000 },
+        );
 
-        // Meaningful "viewer has loaded" signal: the early <head> script tags <html> with `js`.
-        await expect(html).toHaveClass(/\bjs\b/, { timeout: 15000 });
-        // The authoring preview reveals Teacher Mode by default (panel appends ?exe-teacher=1).
-        await expect(html).toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
-
-        // ?exe-teacher=0 forces the student view (the parameter controls visibility).
+        // Loading the same viewer WITHOUT the parameter leaves the toggle unavailable (student view).
         await page.evaluate(() => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            iframe.contentWindow!.location.search = '?exe-teacher=0';
+            (document.querySelector('#preview-iframe') as HTMLIFrameElement).contentWindow!.location.search = '';
         });
-        await expect(html).not.toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
-
-        // Re-revealing via the parameter restores the teacher view — no injected CSS/JS.
-        await page.evaluate(() => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            iframe.contentWindow!.location.search = '?exe-teacher=1';
-        });
-        await expect(html).toHaveClass(/\bmode-teacher\b/, { timeout: 15000 });
+        await page.waitForFunction(
+            () => {
+                const w = (document.querySelector('#preview-iframe') as HTMLIFrameElement)?.contentWindow as any;
+                return w?.$exeExport?.teacherMode?._showToggler === false;
+            },
+            undefined,
+            { timeout: 15000 },
+        );
     });
 });

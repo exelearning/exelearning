@@ -144,11 +144,13 @@ Common functionality found in built-in eXe styles:
 - Remember menu open/closed state between pages.
 - Show/hide the search bar.
 - **Teacher mode** visibility. Content marked *teacher only* is **hidden by default** in
-  exports (the in-app authoring preview reveals it by default so authors can see their own
-  teacher content). It is revealed by adding the `mode-teacher` class to `<html>`, which
-  the runtime does automatically when the page is opened with `?exe-teacher=1` (alias
-  `?teacher-mode=1`). The self-serve toggle button is **opt-in** — it only appears when the
-  page is opened with `?exe-teacher-toggler=1`. See [Teacher Mode in embedding.md](./embedding.md#teacher-mode).
+  exports. The self-serve toggle button is **opt-in**: it only appears when the page is opened
+  with `?exe-teacher=1` (alias `?teacher-mode=1`, or the legacy `?exe-teacher-toggler=1`). The
+  toggle is OFF by default — the viewer activates it to add the `mode-teacher` class to
+  `<html>` and reveal teacher content (its state is remembered in `localStorage`). Without the
+  parameter there is no toggle and teacher content stays hidden. eXeLearning's own preview
+  loads with `?exe-teacher=1`, so the toggle is available there. See
+  [Teacher Mode in embedding.md](./embedding.md#teacher-mode).
   ```js
   // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();

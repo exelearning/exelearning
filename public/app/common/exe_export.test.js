@@ -841,63 +841,72 @@ describe('exe_export.js', () => {
       expect(document.getElementById('teacher-mode-toggler')).not.toBeNull();
     });
 
-    describe('bootstrap (URL parameter reveal)', () => {
-      it('reveals teacher content with ?exe-teacher=1', () => {
+    describe('bootstrap (URL parameter shows the toggle)', () => {
+      it('shows the toggle with ?exe-teacher=1 but does not reveal on its own', () => {
         const restore = mockSearchParams({ 'exe-teacher': '1' });
         window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        expect(window.$exeExport.teacherMode._showToggler).toBe(true);
+        // The parameter alone never reveals content — the toggle (off by default) does.
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
         restore();
       });
 
       it.each(['1', 'true', 'yes'])('accepts the truthy value %s', (value) => {
         const restore = mockSearchParams({ 'exe-teacher': value });
         window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        expect(window.$exeExport.teacherMode._showToggler).toBe(true);
         restore();
       });
 
       it('accepts the ?teacher-mode alias', () => {
         const restore = mockSearchParams({ 'teacher-mode': 'yes' });
         window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        expect(window.$exeExport.teacherMode._showToggler).toBe(true);
         restore();
       });
 
-      it('does not reveal for a falsy value and ignores a stored preference', () => {
-        window.localStorage.setItem('exeTeacherMode', '1');
-        const restore = mockSearchParams({ 'exe-teacher': '0' });
-        window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
-        restore();
-      });
-
-      it('falls back to the stored preference when no parameter is present', () => {
-        window.localStorage.setItem('exeTeacherMode', '1');
-        const restore = mockSearchParams({});
-        window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
-        restore();
-      });
-
-      it('does not reveal when neither parameter nor stored preference is set', () => {
-        const restore = mockSearchParams({});
-        window.$exeExport.teacherMode.bootstrap();
-        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
-        restore();
-      });
-
-      it('opts the toggle in with ?exe-teacher-toggler=1', () => {
+      it('accepts the legacy ?exe-teacher-toggler alias', () => {
         const restore = mockSearchParams({ 'exe-teacher-toggler': 'true' });
         window.$exeExport.teacherMode.bootstrap();
         expect(window.$exeExport.teacherMode._showToggler).toBe(true);
-        expect(window.$exeExport.teacherMode._navParams).toContain('exe-teacher-toggler=1');
         restore();
       });
 
-      it('records exe-teacher in the nav params when revealed', () => {
+      it('does not show the toggle without a parameter', () => {
+        const restore = mockSearchParams({});
+        window.$exeExport.teacherMode.bootstrap();
+        expect(window.$exeExport.teacherMode._showToggler).toBe(false);
+        restore();
+      });
+
+      it('restores the revealed state from localStorage when the toggle is available', () => {
+        window.localStorage.setItem('exeTeacherMode', '1');
+        const restore = mockSearchParams({ 'exe-teacher': '1' });
+        window.$exeExport.teacherMode.bootstrap();
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(true);
+        restore();
+      });
+
+      it('does not reveal from localStorage when there is no parameter', () => {
+        window.localStorage.setItem('exeTeacherMode', '1');
+        const restore = mockSearchParams({});
+        window.$exeExport.teacherMode.bootstrap();
+        expect(window.$exeExport.teacherMode._showToggler).toBe(false);
+        expect(document.documentElement.classList.contains('mode-teacher')).toBe(false);
+        restore();
+      });
+
+      it('records exe-teacher=1 in the nav params when the toggle is shown', () => {
         const restore = mockSearchParams({ 'exe-teacher': '1' });
         window.$exeExport.teacherMode.bootstrap();
         expect(window.$exeExport.teacherMode._navParams).toContain('exe-teacher=1');
+        restore();
+      });
+
+      it('leaves nav params empty without a parameter', () => {
+        const restore = mockSearchParams({});
+        window.$exeExport.teacherMode.bootstrap();
+        expect(window.$exeExport.teacherMode._navParams).toBe('');
         restore();
       });
     });

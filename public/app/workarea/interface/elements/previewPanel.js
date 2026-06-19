@@ -1317,10 +1317,10 @@ export default class PreviewPanelManager {
 
         // Get base path for the viewer URL
         const basePath = eXeLearning.app?.getBasePath?.() || '';
-        // The authoring preview reveals Teacher Mode content by default: the author is the
-        // teacher and expects to see everything while editing, so the preview opts in via
-        // ?exe-teacher=1. Exported packages stay hidden by default; only this in-app preview
-        // appends the parameter.
+        // The authoring preview makes the Teacher Mode toggle available so the author (the
+        // teacher) can reveal their teacher-only content while editing, so the preview opts
+        // in via ?exe-teacher=1. The toggle is still OFF by default; the parameter only makes
+        // it available. Exported packages get no parameter and stay hidden by default.
         const viewerUrl = `${basePath}/viewer/index.html?exe-teacher=1`;
 
         // Force reload by clearing src first if it's the same URL
@@ -1360,8 +1360,8 @@ export default class PreviewPanelManager {
             // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
             // Also remove any trailing slash to avoid double slashes
             const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
-            // Preview reveals Teacher Mode by default (the author is the teacher); see
-            // loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
+            // Preview makes the Teacher Mode toggle available (the author is the teacher);
+            // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
