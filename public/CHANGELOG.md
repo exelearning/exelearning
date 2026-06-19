@@ -1,5 +1,76 @@
 # CHANGELOG
 
+## v4.0.1 – 2026-06-09
+
+### Added
+
+- New Adaptative Quiz iDevice with adaptive assessment, SCORM tracking and AI-assisted question generation
+- New Markdown Text iDevice with advanced Markdown and LaTeX support
+- New 3D Viewer iDevice for interactive 3D model files
+- New 3DMol iDevice for interactive 3D molecular visualisation
+- New Electrical and Electronic Circuits iDevice
+- New LOMLOE Curriculum Concretion iDevice for Spanish curriculum alignment
+- New 360° Panorama Viewer iDevice with multi-scene virtual tour support
+- New Slide iDevice for creating interactive presentations
+- Code highlighter: added support for Arduino, Bash, Batch, C#, Docker, Git, Less, Markdown, Markup Templating, Mermaid, PowerShell, Twig and TypeScript
+- Code highlighter: updated dark mode theme
+- Preview panel: added mobile and desktop viewport toggle
+- Workarea: support for opening .elpx, .elp and .zip files by drag and drop
+- Advanced folder mode for opening and saving .elpx projects as unpacked directories
+- Screenshot selector added to the Project Properties dialog
+- Preferences: personal default style for new projects
+- Admin panel: support for updating styles
+- Exports and static editor bundle size reduced by optimising bundled raster image assets
+- Reviewed and completed Spanish (ES) translation
+- Reviewed existing Basque (EU) translation
+- Added automated placeholder translations for new strings in incomplete translations
+
+### Fixed
+
+- Security improvements in ZIP extraction
+- Security improvements in API authentication and access control
+- Auth: disabled users can no longer log in using password authentication
+- Auth: updated CAS integration demo server URL
+- Export: removed duplicate assets in saved and exported packages
+- Export issues when the assets directory is missing
+- Export: consistent license footer across single-page exports
+- Export: "Made with eXeLearning" link now displayed in the content language instead of always in Spanish
+- BASE_PATH compatibility with workarea assets
+- TinyMCE relative URL resolution issues
+- Legacy .elp import: preserved indentation inside `<pre>` blocks
+- ELPX import: preserved code block content containing escaped HTML-like tags
+- Page, block and iDevice ID consistency across save and export operations
+- Platform export improvements for Moodle ODE packages
+- Downloaded filenames containing non-ASCII characters
+- Desktop: duplicate save dialogs when downloading file assets
+- Preview: ELPX source download handler issues
+- Workarea: page render crashes caused by invalid CSS class values
+- Flux style: improved submenu collapse behaviour and sidebar state
+- Nova style: navigation sidebar improvements and presentation revision
+- Crossword iDevice: auto-layout and mobile readability improvements
+- Relate iDevice: LaTeX rendering on activity restart
+- Select Media Files iDevice: audio speaker icon issue
+- Quick Questions iDevice: shuffle issues in order-type options
+- API v1 updateComponent endpoint issues
+- API v1 project UUID assignment issues
+- CI: improved reliability and diagnostics of Windows installer tests to prevent silent installation failures
+
+### Upgraded
+
+- electron: 41.5.0 → 42.0.0
+- fabric (Slide iDevice): 6.9.1 → 7.4.0
+- http-proxy-middleware: 3.0.5 → 4.0.0
+- kysely: 0.28.17 → 0.29.2
+- pdfjs-dist: 5.6.205 → 5.7.284
+- PrismJS updated to 1.30.0
+
+### Removed
+
+- Dropbox and Google Drive upload integrations
+- Legacy Node.js Docker support
+
+---
+
 ## v4.0.0 – 2026-04-30
 
 eXeLearning 4.0 is a complete rebuild of the application. Every part of the stack has been rethought, from the server runtime to the collaboration engine, the distribution model and the user interface. The following summarises the most significant changes since version 3.

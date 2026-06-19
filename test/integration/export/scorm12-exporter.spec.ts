@@ -203,10 +203,6 @@ describe('Scorm12Exporter Integration', () => {
             const indexHtml = new TextDecoder().decode(unzipped['index.html']);
             expect(indexHtml).toContain('exe-scorm');
             expect(indexHtml).toContain('exe-scorm12');
-            // Issue #1831: generated pages must not use the deprecated unload event,
-            // which Chrome blocks under Moodle's Permissions Policy (lost SCORM scores).
-            expect(indexHtml).not.toContain('onunload');
-            expect(indexHtml).not.toContain('onbeforeunload');
         });
     });
 

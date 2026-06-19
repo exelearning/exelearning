@@ -49,6 +49,12 @@ export abstract class BaseExporter {
     // Cache for asset export path lookups (folderPath-based)
     protected assetExportPathMap: Map<string, string> | null = null;
 
+    // UUID-format asset references that could not be resolved to a bundled file.
+    // These produce a dangling `content/resources/<uuid>` URL with no binary behind
+    // it (the collaborative image-loss bug). Collected so the save/export flow can
+    // surface the loss instead of degrading silently.
+    protected unresolvedAssetRefs: Set<string> = new Set();
+
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
         this.resources = resources;
@@ -154,7 +160,15 @@ export abstract class BaseExporter {
     protected async fetchNavLabels(
         language: string,
         license?: string,
-    ): Promise<{ previous: string; next: string; page: string; license?: string }> {
+    ): Promise<{
+        previous: string;
+        next: string;
+        page: string;
+        license?: string;
+        licenseLabel: string;
+        madeWith: string;
+        newWindow: string;
+    }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         let translatedLicense = license;
 
@@ -168,6 +182,9 @@ export abstract class BaseExporter {
             next: translations.get('Next') || 'Next',
             page: translations.get('Page') || 'Page',
             license: translatedLicense,
+            licenseLabel: translations.get('License') || 'License',
+            madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
+            newWindow: translations.get('New window') || 'New window',
         };
     }
 
@@ -344,13 +361,18 @@ export abstract class BaseExporter {
      */
     sanitizePageFilename(title: string | null | undefined): string {
         if (!title) return 'page';
-        return title
+        const sanitized = title
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '') // Remove accents
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .substring(0, 50);
+        // Titles written entirely in non-Latin scripts (CJK, Arabic, Cyrillic,
+        // Greek, Hebrew, \u2026) strip down to an empty string. Fall back to 'page'
+        // so every page still gets a usable base name and uniqueness handling
+        // below can disambiguate them.
+        return sanitized || 'page';
     }
 
     /**
@@ -652,10 +674,14 @@ export abstract class BaseExporter {
             for (const item of items) {
                 let folderPath = item.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
-                const filename =
+                const rawFilename =
                     item.filename && item.filename !== 'unknown'
                         ? item.filename
                         : this._deriveFilenameFromMime(item.id, item.mime);
+                // Ensure the export name carries an extension. Assets saved as
+                // `asset-<uuid>` (no extension) would otherwise be re-imported as
+                // application/octet-stream and force-downloaded (PDF iframes).
+                const filename = this._ensureFilenameExtension(rawFilename, item.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -703,6 +729,18 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Ensure a filename carries a file extension. When it lacks one, append the
+     * extension derived from the MIME type — but only a meaningful one, never
+     * the generic `.bin` fallback (we leave truly-unknown binaries unchanged).
+     */
+    private _ensureFilenameExtension(filename: string, mime: string): string {
+        if (/\.[a-z0-9]{1,8}$/i.test(filename)) return filename;
+        const ext = getExtensionFromMimeType(mime, true);
+        if (!ext || ext === '.bin') return filename;
+        return `${filename}${ext}`;
+    }
+
+    /**
      * Convert asset:// URLs directly to {{context_path}}/content/resources/ format
      * for XML export. This is the single transformation step.
      *
@@ -740,6 +778,7 @@ export abstract class BaseExporter {
             console.warn(
                 `[BaseExporter] Unresolved asset reference in HTML; falling back to literal UUID URL: asset://${uuid}${ext || ''}`,
             );
+            this.unresolvedAssetRefs.add(uuid);
             return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
 
@@ -778,11 +817,24 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Pre-process pages to add filenames to asset URLs in all component content
-     * And converts internal links (exe-node:) to proper page URLs
+     * UUID-format asset references encountered during export that could not be
+     * resolved to a bundled file. A non-empty result means the package ships
+     * dangling image/resource URLs (data loss) and callers should surface it.
+     */
+    getUnresolvedAssetRefs(): string[] {
+        return [...this.unresolvedAssetRefs];
+    }
+
+    /**
+     * Pre-process pages to add filenames to asset URLs in all component content.
      *
-     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
-     * so the XML content keeps the original protocol for re-import compatibility
+     * This only performs XML-safe rewrites: asset URLs become {{context_path}}/... which
+     * is reversed on import, so the persisted content.xml stays re-importable.
+     *
+     * Note: exe-node: internal links and the exe-package:elp protocol are NOT rewritten
+     * here. Both are transformed at render time (PageRenderer.renderPageContent /
+     * renderSinglePage) so the XML keeps the original references and survives an
+     * export → re-import round trip (#1927).
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
         const componentCount = pages.reduce((total, page) => {
@@ -798,20 +850,12 @@ export abstract class BaseExporter {
         // This ensures multiple exports on the same document work correctly
         const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
-        // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(clonedPages);
-
-        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
-            const page = clonedPages[pageIndex];
-            const isIndex = pageIndex === 0;
-
+        for (const page of clonedPages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
                         // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Convert internal links to proper page URLs
-                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                     // Also process properties (jsonProperties may contain asset URLs)
                     if (component.properties && Object.keys(component.properties).length > 0) {
@@ -840,7 +884,6 @@ export abstract class BaseExporter {
     protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
         const filenameMap = new Map<string, string>();
         const usedFilenames = new Set<string>();
-        const maxAttempts = 20;
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
@@ -865,21 +908,26 @@ export abstract class BaseExporter {
                     const startNum = parseInt(match[2], 10);
                     let counter = startNum + 1;
 
-                    while (counter <= startNum + maxAttempts) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${base}${counter}.html`;
-                        if (!usedFilenames.has(filename)) break;
                         counter++;
                     }
                 } else {
                     // No trailing number: append -2, -3, etc. (first page is implicitly "1")
                     let counter = 2;
-                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${baseFilename}-${counter}.html`;
                         counter++;
                     }
                 }
             }
 
+            // Uniqueness is guaranteed by construction: the loops above keep
+            // incrementing until a free name is found, and the page count is
+            // finite. Never cap the attempts — a duplicate filename here would
+            // make distinct pages overwrite each other in the export ZIP
+            // (FflateZipProvider.addFile is a silent Map.set), silently dropping
+            // every page beyond the collision.
             usedFilenames.add(filename);
             filenameMap.set(page.id, filename);
         }
@@ -887,72 +935,10 @@ export abstract class BaseExporter {
         return filenameMap;
     }
 
-    /**
-     * Build a map of page IDs to their export URLs
-     * Used for internal link (exe-node:) conversion
-     */
-    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
-        const map = new Map<string, { url: string; urlFromSubpage: string }>();
-        const filenameMap = this.buildPageFilenameMap(pages);
-
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            const filename = filenameMap.get(page.id) || 'page.html';
-            const isFirstPage = i === 0;
-
-            if (isFirstPage) {
-                // First page is index.html
-                map.set(page.id, {
-                    url: 'index.html',
-                    urlFromSubpage: '../index.html',
-                });
-            } else {
-                // Other pages are in html/ directory
-                map.set(page.id, {
-                    url: `html/${filename}`,
-                    urlFromSubpage: filename,
-                });
-            }
-        }
-
-        return map;
-    }
-
-    /**
-     * Replace exe-node: internal links with proper page URLs
-     *
-     * @param content - HTML content
-     * @param pageUrlMap - Map of page IDs to their export URLs
-     * @param isFromIndex - Whether the content is from the index page (affects relative paths)
-     * @returns Content with internal links replaced
-     */
-    protected replaceInternalLinks(
-        content: string,
-        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
-        isFromIndex: boolean,
-    ): string {
-        if (!content || !content.includes('exe-node:')) {
-            return content;
-        }
-
-        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
-            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
-            const hashIdx = pageIdWithAnchor.indexOf('#');
-            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
-            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
-
-            const pageUrls = pageUrlMap.get(pageId);
-            if (pageUrls) {
-                // Use the appropriate URL based on whether we're on index or subpage
-                const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}${anchorFragment}"`;
-            }
-            // If page not found, leave the link unchanged (might be an external link or error)
-            console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
-            return match;
-        });
-    }
+    // Note: exe-node: internal links are no longer rewritten here. The rewrite moved to
+    // render time (PageRenderer.replaceInternalLinks / replaceSinglePageInternalLinks), so
+    // the source HTML that feeds content.xml keeps the original exe-node: references and
+    // survives an export → re-import round trip (#1927).
 
     /**
      * Replace exe-package:elp protocol with client-side download handler

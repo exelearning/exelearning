@@ -466,6 +466,40 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
         });
 
+        // Browsers (unlike jsdom) throw on classList.add('') with a SyntaxError.
+        // Make the test element strict so it reproduces the real-browser behaviour.
+        function makeClassListStrict(el) {
+            const realAdd = el.classList.add.bind(el.classList);
+            vi.spyOn(el.classList, 'add').mockImplementation((...tokens) => {
+                for (const token of tokens) {
+                    if (token === '') {
+                        throw new Error(
+                            "Failed to execute 'add' on 'DOMTokenList': The token provided must not be empty."
+                        );
+                    }
+                }
+                return realAdd(...tokens);
+            });
+        }
+
+        it('does not throw and skips empty tokens when cssClass has extra spaces', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value = '  a  b  ';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
+            expect(idevice.ideviceContent.classList.contains('a')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('b')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('')).toBe(false);
+        });
+
+        it('does not throw when cssClass contains a pasted CSS rule', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value =
+                '.lista_de_cotejo {     border: 1px solid #d4d4d4;     border-radius: 6px; }';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
+        });
+
         it('adds exe-teacher-highlight class when teacherOnly is true', () => {
             idevice.properties.teacherOnly = { value: 'true' };
             idevice.setPropertiesClassesToElement();
@@ -5203,6 +5237,41 @@ describe('IdeviceNode', () => {
             expect(browseBtn).toBeTruthy();
             browseBtn.click();
             expect(capturedAccept).toBe('video');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should honour an explicit data-filemanager-accept over the id heuristic', () => {
+            // 3Dmol's input id contains "model" (would map to '3d'), but it
+            // opts into the molecule filter via data-filemanager-accept.
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'dmoleModelFile';
+            input.dataset.filemanagerAccept = 'molecule';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('molecule');
 
             // Restore
             global.eXeLearning = originalEXeLearning;

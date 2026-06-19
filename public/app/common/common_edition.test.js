@@ -1043,6 +1043,230 @@ describe('common_edition.js', () => {
       expect(result.format).toEqual([]);
     });
 
+    describe('adaptative quiz (gameId 10)', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+
+      it('getAllowedFormats(10) defaults to 3 levels and exposes 3 line formats', () => {
+        const result = share().getAllowedFormats(10);
+        // 3 line types: select, sort, word
+        expect(result.format.length).toBe(3);
+        // 4 examples in 3-level mode (select single, select multi, sort, word)
+        expect(result.examples.length).toBe(4);
+        expect(result.explanation).toContain('0 (low)');
+        expect(result.explanation).toContain('2 (high)');
+        expect(result.explanation).not.toContain('expert');
+        expect(result.prompt).toContain('Type 0');
+        expect(result.prompt).toContain('Type 1');
+        expect(result.prompt).toContain('Type 2');
+
+        // Type 0 (select): single-letter solution, multi-letter, empty solution.
+        expect(result.allowRegex.test('0@0#B#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('0@1#AC#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('0@2#ABCD#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('0@2##Q#A#B')).toBe(true);
+        expect(result.allowRegex.test('0@2#a#Q#A#B')).toBe(true);
+        // Type 1 (sort): 3 to 6 items.
+        expect(result.allowRegex.test('1@1#Sort these#One#Two#Three')).toBe(true);
+        expect(result.allowRegex.test('1@2#Sort these#One#Two#Three#Four#Five#Six')).toBe(true);
+        // Type 2 (word).
+        expect(result.allowRegex.test('2@0#Heart#Pumps blood')).toBe(true);
+
+        // Level 3 not allowed in 3-level mode.
+        expect(result.allowRegex.test('0@3#A#Q#A#B')).toBe(false);
+        expect(result.allowRegex.test('1@3#Q#A#B#C')).toBe(false);
+        expect(result.allowRegex.test('2@3#W#D')).toBe(false);
+        // Old letter-prefixed select format no longer valid.
+        expect(result.allowRegex.test('a@0#Q#A#B')).toBe(false);
+        expect(result.allowRegex.test('palabra@0#W#D')).toBe(false);
+        expect(result.allowRegex.test('@1#Sort#One#Two#Three')).toBe(false);
+        // Letter outside A-F.
+        expect(result.allowRegex.test('0@1#G#Q#A#B')).toBe(false);
+        // Sort with too few items (only 2).
+        expect(result.allowRegex.test('1@1#Sort#One#Two')).toBe(false);
+        // Word missing definition.
+        expect(result.allowRegex.test('2@0#OnlyWord')).toBe(false);
+        // Unknown type.
+        expect(result.allowRegex.test('3@0#A#Q#A#B')).toBe(false);
+      });
+
+      it('getAllowedFormats(10, { numLevels: 4 }) extends to 4 levels', () => {
+        const result = share().getAllowedFormats(10, { numLevels: 4 });
+        // Adds one extra example (level 3 select with all four letters).
+        expect(result.examples.length).toBe(5);
+        expect(result.explanation).toContain('3 (expert)');
+        expect(result.prompt).toContain('4 levels');
+        // Level 3 now allowed across all three types.
+        expect(result.allowRegex.test('0@3#ABCD#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('1@3#Sort#One#Two#Three')).toBe(true);
+        expect(result.allowRegex.test('2@3#W#D')).toBe(true);
+        expect(result.allowRegex.test('0@0#A#Q#A#B')).toBe(true);
+        // Level 4 still rejected.
+        expect(result.allowRegex.test('0@4#A#Q#A#B')).toBe(false);
+      });
+
+      it('getAllowedFormats(10, { numLevels: 5 }) extends to 5 levels and adds master example', () => {
+        const result = share().getAllowedFormats(10, { numLevels: 5 });
+        // 4-level mode adds 1 example, 5-level mode adds another (sort/master).
+        expect(result.examples.length).toBe(6);
+        expect(result.explanation).toContain('4 (master)');
+        expect(result.prompt).toContain('5 levels');
+        // Levels 3 (expert) and 4 (master) accepted across all three types.
+        expect(result.allowRegex.test('0@3#ABCD#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('1@4#Sort#One#Two#Three')).toBe(true);
+        expect(result.allowRegex.test('2@4#W#D')).toBe(true);
+        expect(result.allowRegex.test('0@0#A#Q#A#B')).toBe(true);
+        // Level 5 still rejected.
+        expect(result.allowRegex.test('0@5#A#Q#A#B')).toBe(false);
+      });
+
+      it('getAllowedFormats(10) treats unknown numLevels as 3-level mode', () => {
+        const result = share().getAllowedFormats(10, { numLevels: 7 });
+        expect(result.examples.length).toBe(4);
+        expect(result.explanation).not.toContain('expert');
+      });
+
+      it('getAllowedFormats(10) prompt resolves every %placeholder% (no leftover markers)', () => {
+        // The prompt is built from a single static translation key with %placeholders%
+        // (not a c_(`...${}...`) template, which the extractor skips and never translates).
+        // After substitution none of the markers may survive, or the user would see raw
+        // %total% / %distribution% tokens in the AI prompt.
+        const result = share().getAllowedFormats(10);
+        expect(result.prompt).not.toContain('%total%');
+        expect(result.prompt).not.toContain('%distribution%');
+        expect(result.prompt).not.toContain('%ladder%');
+        expect(result.prompt).not.toContain('%perLevel%');
+        // 3-level default: 3 × 20 = 60 questions, 20 per level.
+        expect(result.prompt).toContain('Create 60 mixed adaptative-quiz questions');
+        expect(result.prompt).toContain('around 20 questions per level');
+        // The distribution and difficulty-ladder fragments are interpolated in.
+        expect(result.prompt).toContain('balanced across the 3 levels');
+        expect(result.prompt).toContain('Difficulty must increase with the level');
+      });
+
+      it('buildIAPromptText(10) joins lines with real newlines (no literal \\n)', () => {
+        const text = share().buildIAPromptText(10);
+        expect(text).toContain('Act as a highly experienced teacher.');
+        expect(text).toContain('Formats');
+        expect(text).toContain('Examples');
+        expect(text).toContain('3 levels');
+        expect(text).not.toContain('expert');
+        // Prompt mentions the three supported types
+        expect(text).toContain('Type 0');
+        expect(text).toContain('Type 1');
+        expect(text).toContain('Type 2');
+        // Difficulty must escalate with the level number
+        expect(text).toContain('Difficulty must increase with the level');
+        expect(text).toContain('easiest');
+        // Each level must mix the three question types
+        expect(text).toContain('all three types');
+        expect(text).toContain('select/multiple-choice');
+        expect(text).toContain('sort/order');
+        expect(text).toContain('word/definition');
+        // Must NOT contain a literal backslash-n sequence
+        expect(text.indexOf('\\n')).toBe(-1);
+        // Must split into multiple actual lines
+        expect(text.split('\n').length).toBeGreaterThan(5);
+      });
+
+      it('buildIAPromptText(10, { numLevels: 4 }) reflects 4-level config', () => {
+        const text = share().buildIAPromptText(10, { numLevels: 4 });
+        expect(text).toContain('4 levels');
+        expect(text).toContain('expert');
+        expect(text).toContain('3 (expert)');
+        // Difficulty ladder still emphasized in 4-level mode
+        expect(text).toContain('Difficulty must increase with the level');
+        expect(text).toContain('level 3 (expert) must contain the hardest');
+      });
+
+      it('buildIAPromptText asks for the right number of questions per level', () => {
+        // 3 levels × 20 = 60
+        expect(share().buildIAPromptText(10)).toContain('around 20 questions per level');
+        // 4 levels × 15 = 60
+        expect(share().buildIAPromptText(10, { numLevels: 4 })).toContain('around 15 questions per level');
+        // 5 levels × 12 = 60
+        expect(share().buildIAPromptText(10, { numLevels: 5 })).toContain('around 12 questions per level');
+      });
+
+      it('buildIAPromptText(10, { numLevels: 5 }) reflects 5-level master config', () => {
+        const text = share().buildIAPromptText(10, { numLevels: 5 });
+        expect(text).toContain('5 levels');
+        expect(text).toContain('master');
+        expect(text).toContain('4 (master)');
+        expect(text).toContain('Difficulty must increase with the level');
+        expect(text).toContain('level 4 (master) must contain the hardest');
+      });
+
+      it('refreshIAPrompt writes the current prompt into #eXeEPromptArea and updates on re-call', () => {
+        const $textarea = $('<textarea id="eXeEPromptArea"></textarea>').appendTo('body');
+        try {
+          share().refreshIAPrompt(10, { numLevels: 4 });
+          expect($textarea.val()).toContain('expert');
+          share().refreshIAPrompt(10, { numLevels: 3 });
+          expect($textarea.val()).toContain('3 levels');
+          expect($textarea.val()).not.toContain('expert');
+        } finally {
+          $textarea.remove();
+        }
+      });
+
+      it('refreshIAPrompt is a no-op when the textarea does not exist', () => {
+        expect(() => {
+          share().refreshIAPrompt(10, { numLevels: 3 });
+        }).not.toThrow();
+      });
+
+      it('validateAndSave(10, $area, options) honours the 4-level regex', () => {
+        const textarea = $('<textarea></textarea>')
+          .val('0@3#A#Q4#A#B#C\n0@0#B#Q1#A#B')
+          .appendTo('body');
+        try {
+          // 3-level mode: line with level 3 is invalid
+          const result3 = share().validateAndSave(10, textarea);
+          expect(result3.validLines).toContain('0@0#B#Q1#A#B');
+          expect(result3.invalidLines).toContain('0@3#A#Q4#A#B#C');
+
+          // Refill and try 4-level mode: both should be valid
+          textarea.val('0@3#A#Q4#A#B#C\n0@0#B#Q1#A#B');
+          const result4 = share().validateAndSave(10, textarea, { numLevels: 4 });
+          expect(result4.validLines).toContain('0@0#B#Q1#A#B');
+          expect(result4.validLines).toContain('0@3#A#Q4#A#B#C');
+          expect(result4.invalidLines.length).toBe(0);
+        } finally {
+          textarea.remove();
+        }
+      });
+
+      it('validateQuesionsIA(10, lines, options) accepts the three line types', () => {
+        const lines = [
+          '0@1#AC#Multi correct?#A#B#C#D',
+          '2@0#Heart#Pumps blood',
+          '1@2#Sort these#One#Two#Three#Four',
+          '0@3#A#High level#A#B'
+        ];
+        // 3-level mode: the level-3 line is rejected, the rest pass
+        const result3 = share().validateQuesionsIA(10, lines);
+        expect(result3).toContain('0@1#AC#Multi correct?#A#B#C#D');
+        expect(result3).toContain('2@0#Heart#Pumps blood');
+        expect(result3).toContain('1@2#Sort these#One#Two#Three#Four');
+        expect(result3).not.toContain('0@3#A#High level#A#B');
+        // 4-level mode: all four pass
+        const result4 = share().validateQuesionsIA(10, lines, { numLevels: 4 });
+        expect(result4).toContain('0@3#A#High level#A#B');
+        expect(result4.length).toBe(4);
+      });
+
+      it('legacy callers (no options) keep working for gameId 0..9', () => {
+        for (let i = 0; i <= 9; i++) {
+          const result = share().getAllowedFormats(i);
+          expect(result).toHaveProperty('format');
+          expect(Array.isArray(result.format)).toBe(true);
+        }
+        const text = share().buildIAPromptText(0);
+        expect(text).toContain('Act as a highly experienced teacher.');
+        expect(text.indexOf('\\n')).toBe(-1);
+      });
+    });
+
     it('cleanText removes extra spaces and trims', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.cleanText('  line1  \n  line2  ');
       expect(result).toBe('line1\nline2');

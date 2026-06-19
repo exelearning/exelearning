@@ -190,7 +190,7 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = $exeDevice.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgTypeChoose = _('Please select the correct answer for each option');
+        msgs.msgTypeChoose = _('Please select the correct answer for each question');
         msgs.msgECompleteQuestion = _('Please write the question');
         msgs.msgECompleteAllOptions = _('Please complete all options');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
@@ -377,8 +377,10 @@ var $exeDevice = {
         $('#dmoleModelFormat').val(p.modelFormat || '');
         $('#dmoleModelFileName').text(p.modelName || '');
         $('#dmoleModelFile').val(p.modelPath || '');
-        $('#dmoleModelFile').removeData('blobUrl');
-        $exeDevice.renderModelPreview();
+        $exeDevice.clearModelBlobUrl();
+        $('#dmoleModelAuthor').val(p.author || '');
+        $('#dmoleModelAlt').val(p.alt || '');
+        $exeDevice.ensureModelDataAndRender(p);
 
         // Sync viewer toolbar to current question's settings
         const qStyle = $exeDevice.normalizeModelStyle(p.modelStyle);
@@ -498,6 +500,7 @@ var $exeDevice = {
     getModelFormatByName: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
         if (!name || name.indexOf('.') === -1) return '';
+        if (name.endsWith('.tar.gz')) return '';
         const parts = name.split('.');
         const ext = parts[parts.length - 1];
         const map = $exeDevice.getSupportedModelFormatMap();
@@ -530,10 +533,10 @@ var $exeDevice = {
 
     hasCompressedModelExtension: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
+        if (name.endsWith('.tar.gz')) return false;
         return (
             name.endsWith('.zip') ||
             name.endsWith('.tgz') ||
-            name.endsWith('.tar.gz') ||
             name.endsWith('.gz')
         );
     },
@@ -754,6 +757,90 @@ var $exeDevice = {
         return rawPath;
     },
 
+    getAssetManager: function () {
+        return window.eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+    },
+
+    /**
+     * Reverse-lookup a blob: URL through AssetManager to rebuild the canonical
+     * `asset://<id>.<ext>` reference. The workarea engine resolves asset:// →
+     * blob: when reading the iDevice JSON, so a re-opened form could otherwise
+     * carry an ephemeral blob URL. Returns '' when recovery isn't possible.
+     * Mirrors three-d-viewer's recoverAssetUrlFromBlob.
+     */
+    recoverAssetUrlFromBlob: function (blobUrl) {
+        if (typeof blobUrl !== 'string' || !blobUrl.startsWith('blob:')) return '';
+        const am = $exeDevice.getAssetManager();
+        if (!am) return '';
+        const assetId = am.reverseBlobCache?.get?.(blobUrl);
+        if (!assetId) return '';
+        const meta =
+            typeof am.getAssetMetadata === 'function'
+                ? am.getAssetMetadata(assetId)
+                : null;
+        const filename = (meta && meta.filename) || '';
+        const dot = filename.lastIndexOf('.');
+        const ext = dot !== -1 ? filename.substring(dot + 1).toLowerCase() : '';
+        return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+    },
+
+    /**
+     * Normalise a model path for persistence. A blob: URL is ephemeral and must
+     * never be saved: recover the canonical asset:// reference when possible,
+     * otherwise drop it. Other paths (asset://, bundled, http) pass through.
+     */
+    sanitizeModelPath: function (modelPath) {
+        const raw = (modelPath || '').trim();
+        if (!raw.startsWith('blob:')) return raw;
+        const recovered = $exeDevice.recoverAssetUrlFromBlob(raw);
+        if (recovered) return recovered;
+        console.warn('[3DMol] Discarding stale blob: URL from model path');
+        return '';
+    },
+
+    /**
+     * Persist raw model text as a project asset and return its asset:// URL.
+     * Returns '' when the AssetManager is unavailable (caller keeps the inline
+     * data / source path as fallback). Content-addressable, so identical models
+     * (e.g. the bundled default) are de-duplicated across questions/projects.
+     */
+    createAssetFromModel: async function (modelData, fileName, mime) {
+        const am = $exeDevice.getAssetManager();
+        if (!am || typeof am.insertImage !== 'function' || !modelData) return '';
+        if (typeof File !== 'function') return '';
+        try {
+            const file = new File([modelData], fileName || 'model.sdf', {
+                type: mime || 'application/octet-stream',
+            });
+            const assetUrl = await am.insertImage(file);
+            return (assetUrl || '').startsWith('asset://') ? assetUrl : '';
+        } catch (error) {
+            console.error(error);
+            return '';
+        }
+    },
+
+    /**
+     * Read the model file picker's blob URL from the native dataset. The shared
+     * file picker (legacyExeIdevicesFilePicker) writes `e.dataset.blobUrl`, so
+     * we must read the native attribute — jQuery's `.data()` caches the first
+     * value and would return a STALE blob when switching to another model.
+     */
+    getModelBlobUrl: function () {
+        const el = document.getElementById('dmoleModelFile');
+        return (el && el.dataset.blobUrl) || '';
+    },
+
+    /**
+     * Clear the picker's blob URL from both the native dataset attribute and
+     * any stale jQuery `.data()` cache, so the next read resolves freshly.
+     */
+    clearModelBlobUrl: function () {
+        const el = document.getElementById('dmoleModelFile');
+        if (el) delete el.dataset.blobUrl;
+        $('#dmoleModelFile').removeData('blobUrl');
+    },
+
     loadModelFromPath: async function (modelPath, blobUrl) {
         const sourceUrl = await $exeDevice.resolveModelSourceUrl(
             modelPath,
@@ -821,7 +908,7 @@ var $exeDevice = {
             return extracted;
         }
 
-        if (lowerName.endsWith('.tgz') || lowerName.endsWith('.tar.gz')) {
+        if (lowerName.endsWith('.tgz')) {
             if (!window.fflate.gunzipSync) {
                 throw new Error('GZIP support not available');
             }
@@ -985,8 +1072,51 @@ var $exeDevice = {
         viewer.setStyle({}, styleMap[style] || styleMap.stick);
     },
 
+    /**
+     * Ensure the transient model text (#dmoleModelData) is populated, then
+     * render. Canonical storage is the asset reference (p.modelPath); the text
+     * is fetched on demand and cached only in the hidden textarea for the
+     * current session (never persisted). Falls back to any legacy inline
+     * p.modelData still present in older projects.
+     */
+    ensureModelDataAndRender: function (p) {
+        const inline = $('#dmoleModelData').val() || '';
+        if (inline.trim()) {
+            // Legacy inline data (or freshly loaded by the change handler).
+            $exeDevice.renderModelPreview();
+            return;
+        }
+        const modelPath = (
+            (p && p.modelPath) || $('#dmoleModelFile').val() || ''
+        ).trim();
+        if (!modelPath) {
+            $exeDevice.renderModelPreview();
+            return;
+        }
+        $exeDevice
+            .loadModelFromPath(modelPath, $exeDevice.getModelBlobUrl())
+            .then((modelFile) => {
+                $('#dmoleModelData').val(modelFile.modelData || '');
+                if (modelFile.modelFormat) {
+                    $('#dmoleModelFormat').val(modelFile.modelFormat);
+                }
+                if (!$('#dmoleModelFileName').text().trim() && modelFile.modelName) {
+                    $('#dmoleModelFileName').text(modelFile.modelName);
+                }
+                $exeDevice.renderModelPreview();
+            })
+            .catch((error) => {
+                console.error(error);
+                $exeDevice.renderModelPreview();
+            });
+    },
+
     renderModelPreview: function () {
-        const modelData = $('#dmoleModelData').val().trim();
+        // Keep the model data raw: MDL molfiles (SDF/MOL) are line-position
+        // sensitive (line 1 is the title, which may be empty), so trimming the
+        // leading blank line shifts the counts line and breaks parsing. Trim
+        // only for the emptiness check below.
+        const modelData = $('#dmoleModelData').val() || '';
         let modelFormat = $('#dmoleModelFormat').val().trim().toLowerCase();
         const modelName = $('#dmoleModelFileName').text().trim();
         const preview = document.getElementById('dmoleModelPreview');
@@ -997,7 +1127,7 @@ var $exeDevice = {
             $('#dmoleModelFormat').val(modelFormat);
         }
 
-        if (!modelData || !modelFormat) {
+        if (!modelData.trim() || !modelFormat) {
             if ($exeDevice.modelViewer) {
                 $exeDevice.modelViewer.clear();
                 $exeDevice.modelViewer.render();
@@ -1064,10 +1194,13 @@ var $exeDevice = {
         $exeDevice.showSolution('');
         $('.DMOLE-Times')[0].checked = true;
         $('.DMOLE-Number')[2].checked = true;
-        $('#dmoleModelFile').val('').removeData('blobUrl');
+        $('#dmoleModelFile').val('');
+        $exeDevice.clearModelBlobUrl();
         $('#dmoleModelData').val('');
         $('#dmoleModelFormat').val('');
         $('#dmoleModelFileName').text('');
+        $('#dmoleModelAuthor').val('');
+        $('#dmoleModelAlt').val('');
         $('#dmoleModelSizeWarning').addClass('d-none');
         if ($exeDevice.modelViewer) {
             $exeDevice.modelViewer.clear();
@@ -1338,18 +1471,28 @@ var $exeDevice = {
                                     <div id="dmoleModelFileGroup">
                                         <span id="dmoleTitleModel">${_('3D model file')}:</span>
                                         <div class="DMOLE-EModelInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <input type="text" id="dmoleModelFile" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" />
+                                            <input type="text" id="dmoleModelFile" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" data-filemanager-accept="molecule" />
                                             <a href="#" id="dmolePreviewModel" class="DMOLE-ENavigationButton" title="${_('Preview model')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="DMOLE-ENavigationButton" />
                                             </a>
                                             <button type="button" id="dmoleResetCamera" class="DMOLE-EResetCamera btn btn-outline-secondary btn-sm" title="${_('Reset camera view')}">↺<span class="sr-av"> ${_('Reset camera view')}</span></button>
+                                        </div>
+                                        <div class="DMOLE-EAuthorAlt d-flex align-items-center flex-nowrap gap-2 mb-3" id="dmoleAuthorAlt">
+                                            <div class="w-50" id="dmoleInputAuthor">
+                                                <label for="dmoleModelAuthor" class="form-label mb-1">${_('Authorship')}</label>
+                                                <input id="dmoleModelAuthor" type="text" class="form-control w-100" />
+                                            </div>
+                                            <div class="w-50" id="dmoleInputAlt">
+                                                <label for="dmoleModelAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                                <input id="dmoleModelAlt" type="text" class="form-control w-100" />
+                                            </div>
                                         </div>
                                         <div id="dmoleModelFileName" class="small text-muted mb-2"></div>
                                         <p id="dmoleModelSizeWarning" class="d-none small text-warning mb-1"></p>
                                         <textarea id="dmoleModelData" class="d-none"></textarea>
                                         <input type="hidden" id="dmoleModelFormat" value="" />
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                             <div class="DMOLE-EContents" id="dmoleContents">
                                 <div id="dmoleSolitionOptions" class="DMOLE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="dmoleSolutionSelect">A</span></span></div>
@@ -1459,14 +1602,22 @@ var $exeDevice = {
         const sourcePath = $exeDevice.getDefaultModelSourcePath();
         $exeDevice.defaultModelDataPromise = $exeDevice
             .loadModelFromPath(sourcePath)
-            .then((modelFile) => {
+            .then(async (modelFile) => {
+                const modelData = modelFile.modelData || '';
+                const modelName =
+                    modelFile.modelName ||
+                    $exeDevice.getModelFileNameFromPath(sourcePath);
+                // Persist the bundled default model as a project asset so it
+                // follows the same asset:// discipline as uploaded models.
+                const assetUrl = await $exeDevice.createAssetFromModel(
+                    modelData,
+                    modelName
+                );
                 $exeDevice.defaultModelDataCache = {
-                    modelData: modelFile.modelData || '',
+                    modelData: modelData,
                     modelFormat: (modelFile.modelFormat || '').toLowerCase(),
-                    modelName:
-                        modelFile.modelName ||
-                        $exeDevice.getModelFileNameFromPath(sourcePath),
-                    modelPath: sourcePath,
+                    modelName: modelName,
+                    modelPath: assetUrl || sourcePath,
                 };
                 return $exeDevice.defaultModelDataCache;
             })
@@ -1501,8 +1652,10 @@ var $exeDevice = {
                 sampleModel.modelName ||
                 $exeDevice.getModelFileNameFromPath(sampleModelPath),
             modelPath: sampleModelPath,
+            author: '',
+            alt: '',
             quextion: c_('How many hydroxyl groups (–OH) does a glucose molecule have?'),
-            options: [c_('5'), c_('4'), c_('3'), c_('6')],
+            options: ['5', '4', '3', '6'],
             solution: 'A',
             solutionQuestion: '',
             percentageShow: 35,
@@ -1621,14 +1774,23 @@ var $exeDevice = {
                 typeof game.selectsGame[i].modelName == 'undefined'
                     ? ''
                     : game.selectsGame[i].modelName;
-            game.selectsGame[i].modelPath =
+            game.selectsGame[i].modelPath = $exeDevice.sanitizeModelPath(
                 typeof game.selectsGame[i].modelPath == 'undefined'
                     ? ''
-                    : game.selectsGame[i].modelPath;
+                    : game.selectsGame[i].modelPath
+            );
             game.selectsGame[i].description =
                 typeof game.selectsGame[i].description == 'undefined'
                     ? ''
                     : game.selectsGame[i].description;
+            game.selectsGame[i].author =
+                typeof game.selectsGame[i].author == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].author;
+            game.selectsGame[i].alt =
+                typeof game.selectsGame[i].alt == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].alt;
             if (!game.selectsGame[i].modelFormat && game.selectsGame[i].modelName) {
                 game.selectsGame[i].modelFormat = $exeDevice.getModelFormatByName(
                     game.selectsGame[i].modelName
@@ -1735,10 +1897,15 @@ var $exeDevice = {
         p.numberOptions = parseInt($('input[name=slcnumber]:checked').val());
         p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
         p.customScore = parseFloat($('#dmoleScoreQuestion').val()) || 1;
-        p.modelData = $('#dmoleModelData').val().trim();
+        // Store the model data raw (see renderModelPreview): trimming the
+        // leading blank title line of an MDL molfile corrupts it on save.
+        p.modelData = $('#dmoleModelData').val() || '';
         p.modelFormat = $('#dmoleModelFormat').val().trim();
         p.modelName = $('#dmoleModelFileName').text().trim();
-        p.modelPath = ($('#dmoleModelFile').val() || '').trim();
+        // Never persist an ephemeral blob: URL; keep the canonical asset:// ref.
+        p.modelPath = $exeDevice.sanitizeModelPath($('#dmoleModelFile').val());
+        p.author = ($('#dmoleModelAuthor').val() || '').trim();
+        p.alt = ($('#dmoleModelAlt').val() || '').trim();
         p.description = $('#dmoleDescription').val().trim();
         p.modelStyle = $exeDevice.normalizeModelStyle($('#dmoleModelStyle').val());
         p.bgDark = $('#dmoleModelToggleBg').attr('aria-pressed') === 'true';
@@ -1783,7 +1950,7 @@ var $exeDevice = {
         });
 
         if (activityMode === 'test') {
-            if (!p.modelData || !p.modelFormat) {
+            if (!p.modelData.trim() || !p.modelFormat) {
                 message = msgs.msgESelectModel;
             } else if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
                 message = msgs.msgTypeChoose;
@@ -1869,7 +2036,7 @@ var $exeDevice = {
 
         for (let i = 0; i < selectsGame.length; i++) {
             const mquestion = selectsGame[i];
-            if (!mquestion.modelData || !mquestion.modelFormat) {
+            if (!(mquestion.modelData || '').trim() || !mquestion.modelFormat) {
                 $exeDevice.showMessage($exeDevice.msgs.msgESelectModel);
                 return false;
             }
@@ -2260,7 +2427,7 @@ var $exeDevice = {
         $('#dmoleModelFile').on('change', async function () {
             const selectedFile = ($(this).val() || '').trim();
             if (!selectedFile) {
-                $(this).removeData('blobUrl');
+                $exeDevice.clearModelBlobUrl();
                 $('#dmoleModelData').val('');
                 $('#dmoleModelFormat').val('');
                 $('#dmoleModelFileName').text('');
@@ -2270,11 +2437,11 @@ var $exeDevice = {
             }
 
             try {
-                const blobUrl =
-                    selectedFile.startsWith('asset://') &&
-                    $(this).data('blobUrl')
-                        ? $(this).data('blobUrl').toString()
-                        : '';
+                // Read the blob URL from the native dataset (fresh per select);
+                // jQuery .data() would return a stale blob when switching models.
+                const blobUrl = selectedFile.startsWith('asset://')
+                    ? $exeDevice.getModelBlobUrl()
+                    : '';
                 const modelFile = await $exeDevice.loadModelFromPath(
                     selectedFile,
                     blobUrl
@@ -2302,7 +2469,8 @@ var $exeDevice = {
                 $('#dmoleModelFileName').text('');
                 $('#dmoleModelSizeWarning').addClass('d-none');
                 $exeDevice.showMessage($exeDevice.msgs.msgEModelFormat);
-                $(this).val('').removeData('blobUrl');
+                $(this).val('');
+                $exeDevice.clearModelBlobUrl();
             }
         });
 

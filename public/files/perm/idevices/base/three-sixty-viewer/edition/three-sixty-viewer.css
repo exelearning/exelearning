@@ -1,0 +1,255 @@
+/* 360° panorama viewer iDevice (edition CSS) */
+
+.three-sixty-viewer-form {
+    padding: 10px;
+    border: 1px dashed var(--info-bordercolor, #b0b0b0);
+    border-radius: var(--radius, 4px);
+    margin-top: 0.4em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+}
+
+.three-sixty-viewer-form .property-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+.three-sixty-viewer-form .property-row label.form-label {
+    min-width: 10em;
+}
+
+.three-sixty-viewer-form .exe-fieldset {
+    padding: 0.5em 0.75em;
+    border: 1px solid var(--elements-hover, #d0d0d0);
+    border-radius: var(--radius, 4px);
+}
+
+.three-sixty-viewer-form .exe-fieldset legend {
+    padding: 0 0.25em;
+    font-weight: 600;
+}
+
+.three-sixty-viewer-form .toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    margin-right: 1em;
+}
+
+.three-sixty-viewer-form .form-control {
+    max-width: 12em;
+}
+
+.three-sixty-viewer-form #threeSixtyAlt.form-control,
+.three-sixty-viewer-form #threeSixtySceneTitle.form-control,
+.three-sixty-viewer-form #threeSixtySceneDescription.form-control {
+    max-width: 32em;
+    flex: 1 1 auto;
+}
+
+.three-sixty-viewer-preview {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+}
+
+.three-sixty-preview-stage {
+    width: 100%;
+    min-height: 260px;
+    background-color: #111;
+    border-radius: var(--radius, 4px);
+    overflow: hidden;
+    position: relative;
+}
+
+.three-sixty-preview-stage canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+.three-sixty-preview-stage canvas:active {
+    cursor: grabbing;
+}
+
+.three-sixty-preview-stage--placing canvas {
+    cursor: crosshair !important;
+}
+
+/* Flat (non-360) scene preview image. */
+.three-sixty-preview-stage .three-sixty-preview-flat {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: #111;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+.three-sixty-preview-stage--placing .three-sixty-preview-flat,
+.three-sixty-preview-stage--placing .three-sixty-viewer-overlay--editor {
+    cursor: crosshair !important;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-overlay--editor {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: grab;
+    z-index: 4;
+    touch-action: none;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:active {
+    cursor: grabbing;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor .three-sixty-viewer-hotspot-icon {
+    display: inline-block;
+    width: 2em;
+    height: 2em;
+    border-radius: 50%;
+    background: rgba(255, 200, 0, 0.85);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor .three-sixty-viewer-hotspot-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 0.55em;
+    height: 0.55em;
+    background: #222;
+    border-radius: 50%;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:hover .three-sixty-viewer-hotspot-icon,
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:focus .three-sixty-viewer-hotspot-icon {
+    transform: scale(1.1);
+    background: rgba(64, 160, 220, 0.9);
+}
+
+#threeSixtyPlaceHotspot.active {
+    background-color: var(--info-bordercolor, #4ea0d4);
+    color: #fff;
+}
+
+.three-sixty-hotspot-item.is-highlighted {
+    box-shadow: 0 0 0 2px var(--info-bordercolor, #4ea0d4);
+    transition: box-shadow 0.2s ease;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-nav {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 2em);
+    grid-template-rows: 2em 2em;
+    gap: 0.2em;
+    z-index: 2;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-nav-btn {
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.95em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-nav-btn:hover,
+.three-sixty-preview-stage .three-sixty-viewer-nav-btn:focus {
+    background: rgba(0, 0, 0, 0.85);
+    outline: none;
+}
+
+.three-sixty-preview-stage .three-sixty-viewer-nav-left { grid-column: 1; grid-row: 2; }
+.three-sixty-preview-stage .three-sixty-viewer-nav-up { grid-column: 2; grid-row: 1; }
+.three-sixty-preview-stage .three-sixty-viewer-nav-down { grid-column: 2; grid-row: 2; }
+.three-sixty-preview-stage .three-sixty-viewer-nav-right { grid-column: 3; grid-row: 2; }
+
+/* Scene list */
+
+.three-sixty-scene-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin-bottom: 0.5em;
+}
+
+.three-sixty-scene-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.25em 0.5em;
+    border: 1px solid var(--elements-hover, #d0d0d0);
+    border-radius: var(--radius, 4px);
+}
+
+.three-sixty-scene-item.is-active {
+    background-color: var(--info-background, #e9f4fb);
+    border-color: var(--info-bordercolor, #4ea0d4);
+}
+
+.three-sixty-scene-item .three-sixty-scene-select {
+    flex: 1 1 auto;
+    text-align: left;
+    padding: 0.25em 0.5em;
+}
+
+.three-sixty-scene-actions {
+    display: inline-flex;
+    gap: 0.25em;
+}
+
+/* Hotspot list */
+
+.three-sixty-hotspot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.three-sixty-hotspot-item {
+    border: 1px solid var(--elements-hover, #d0d0d0);
+    border-radius: var(--radius, 4px);
+    padding: 0.5em;
+}
+
+.three-sixty-hotspot-item .form-control {
+    max-width: 16em;
+}

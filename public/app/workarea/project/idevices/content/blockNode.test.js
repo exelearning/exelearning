@@ -478,6 +478,40 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockContent.classList.contains('class3')).toBe(true);
         });
 
+        // Browsers (unlike jsdom) throw on classList.add('') with a SyntaxError.
+        // Make the test element strict so it reproduces the real-browser behaviour.
+        function makeClassListStrict(el) {
+            const realAdd = el.classList.add.bind(el.classList);
+            vi.spyOn(el.classList, 'add').mockImplementation((...tokens) => {
+                for (const token of tokens) {
+                    if (token === '') {
+                        throw new Error(
+                            "Failed to execute 'add' on 'DOMTokenList': The token provided must not be empty."
+                        );
+                    }
+                }
+                return realAdd(...tokens);
+            });
+        }
+
+        it('does not throw and skips empty tokens when cssClass has extra spaces', () => {
+            makeClassListStrict(block.blockContent);
+            block.properties.cssClass.value = '  a  b  ';
+
+            expect(() => block.setPropertiesClassesToElement()).not.toThrow();
+            expect(block.blockContent.classList.contains('a')).toBe(true);
+            expect(block.blockContent.classList.contains('b')).toBe(true);
+            expect(block.blockContent.classList.contains('')).toBe(false);
+        });
+
+        it('does not throw when cssClass contains a pasted CSS rule', () => {
+            makeClassListStrict(block.blockContent);
+            block.properties.cssClass.value =
+                '.lista_de_cotejo {     border: 1px solid #d4d4d4;     border-radius: 6px; }';
+
+            expect(() => block.setPropertiesClassesToElement()).not.toThrow();
+        });
+
         it('adds exe-teacher-highlight class when teacherOnly is true', () => {
             block.properties.teacherOnly = { value: 'true' };
             block.setPropertiesClassesToElement();

@@ -533,46 +533,52 @@ export async function transferOwnership(
     projectId: number,
     newOwnerId: number,
 ): Promise<TransferOwnershipResult> {
-    // 1. Get current project to find previous owner
-    const project = await findProjectById(db, projectId);
-    if (!project) {
-        throw new Error('Project not found');
-    }
+    // Wrap read-verify and all writes in a single transaction so the multi-row
+    // mutation (remove collaborator + add collaborator + update owner_id) either
+    // fully commits or fully rolls back. A mid-sequence failure must never leave
+    // inconsistent ownership state.
+    return db.transaction().execute(async trx => {
+        // 1. Get current project to find previous owner
+        const project = await findProjectById(trx, projectId);
+        if (!project) {
+            throw new Error('Project not found');
+        }
 
-    const previousOwnerId = project.owner_id;
+        const previousOwnerId = project.owner_id;
 
-    // 2. Cannot transfer to self
-    if (previousOwnerId === newOwnerId) {
-        throw new Error('Cannot transfer ownership to current owner');
-    }
+        // 2. Cannot transfer to self
+        if (previousOwnerId === newOwnerId) {
+            throw new Error('Cannot transfer ownership to current owner');
+        }
 
-    // 3. Verify new owner is a collaborator
-    const newOwnerIsCollaborator = await isCollaborator(db, projectId, newOwnerId);
-    if (!newOwnerIsCollaborator) {
-        throw new Error('New owner must be a current collaborator');
-    }
+        // 3. Verify new owner is a collaborator
+        const newOwnerIsCollaborator = await isCollaborator(trx, projectId, newOwnerId);
+        if (!newOwnerIsCollaborator) {
+            throw new Error('New owner must be a current collaborator');
+        }
 
-    // 4. Remove new owner from collaborators (they become owner)
-    await removeCollaborator(db, projectId, newOwnerId);
+        // 4. Remove new owner from collaborators (they become owner)
+        await removeCollaborator(trx, projectId, newOwnerId);
 
-    // 5. Add previous owner as collaborator
-    await addCollaborator(db, projectId, previousOwnerId);
+        // 5. Add previous owner as collaborator
+        await addCollaborator(trx, projectId, previousOwnerId);
 
-    // 6. Update owner_id
-    await db
-        .updateTable('projects')
-        .set({
-            owner_id: newOwnerId,
-            updated_at: now(),
-        })
-        .where('id', '=', projectId)
-        .execute();
+        // 6. Update owner_id
+        await trx
+            .updateTable('projects')
+            .set({
+                owner_id: newOwnerId,
+                updated_at: now(),
+            })
+            .where('id', '=', projectId)
+            .execute();
 
-    return {
-        success: true,
-        previousOwnerId,
-        newOwnerId,
-    };
+        return {
+            success: true,
+            previousOwnerId,
+            newOwnerId,
+        };
+    });
 }
 
 /**

@@ -31,6 +31,12 @@ var $eXeCrucigrama = {
         game: 'rgba(0, 255, 0, 0.3)',
     },
     options: [],
+    // Single source of truth for the board dimensions (boardSize × boardSize).
+    // The CSS grid is derived from this value at render time (applyBoardLayout).
+    boardSize: 16,
+    // Max words the played crossword uses; matches what the 16×16 board places
+    // reliably (≈8 vertical + ≈8 horizontal). Extra words are dropped on load.
+    maxWords: 16,
     domCache: {},
     inputCache: {},
     hasSCORMbutton: false,
@@ -127,6 +133,26 @@ var $eXeCrucigrama = {
         delete this.inputCache[instance];
     },
 
+    // Derive the CSS grid from boardSize so the board size lives only in JS.
+    // The container keeps its max-width/aspect-ratio, so the crossword stays the
+    // same visual size and the cells shrink to fit boardSize × boardSize.
+    applyBoardLayout: function (instance) {
+        const mOptions = $eXeCrucigrama.options[instance];
+        const cache = this.domCache[instance];
+
+        if (!cache) return;
+
+        const tracks = `repeat(${mOptions.boardSize}, 1fr)`;
+        // Expose the board size as a CSS variable so the cell font-size stays a
+        // constant fraction of a cell (font = base cqmin / boardSize), keeping
+        // letters proportional whatever the board size or container width.
+        cache.crossword.css({
+            'grid-template-columns': tracks,
+            'grid-template-rows': tracks,
+            '--ccgm-board-size': mOptions.boardSize,
+        });
+    },
+
     generateCrossword: function (instance) {
         let mOptions = $eXeCrucigrama.options[instance];
 
@@ -138,6 +164,8 @@ var $eXeCrucigrama = {
         cache.definitionsHList.empty();
         cache.definitionsVList.empty();
 
+        $eXeCrucigrama.applyBoardLayout(instance);
+
         mOptions.grid = Array(mOptions.boardSize)
             .fill()
             .map(() => Array(mOptions.boardSize).fill(null));
@@ -145,11 +173,9 @@ var $eXeCrucigrama = {
         mOptions.occupiedRows.clear();
         mOptions.occupiedColumns.clear();
 
-        const verticalWords = mOptions.wordsGame.slice(0, mOptions.half),
-            horizontalWords = mOptions.wordsGame.slice(mOptions.half);
-
-        $eXeCrucigrama.placeVerticalWords(instance, verticalWords);
-        $eXeCrucigrama.placeHorizontalWords(instance, horizontalWords);
+        // Grow the crossword from a central seed, placing each word so it crosses
+        // an already-placed one (connected by construction, crossings maximised).
+        $eXeCrucigrama.generateLayout(instance);
 
         let lettersShow = {};
         mOptions.wordsGame.forEach((wordObj, index) => {
@@ -815,85 +841,307 @@ var $eXeCrucigrama = {
         }
     },
 
-    placeVerticalWords: function (instance, verticalWords) {
+    // Number of randomized attempts of the layout generator; the attempt that
+    // places the most words (and crossings) is kept.
+    solverAttempts: 20,
+
+    // Grow the crossword from a central seed: each word after the first is placed
+    // perpendicular to an already-placed word, crossing it. This keeps a single
+    // connected component and favours the maximum number of crossings.
+    generateLayout: function (instance) {
         const mOptions = $eXeCrucigrama.options[instance],
-            centroCol = Math.floor(mOptions.boardSize / 2);
+            words = mOptions.wordsGame || [];
 
-        let offset = $eXeCrucigrama.randomTwoOrThree();
+        // Run every attempt: since the fill pass usually seats all words, the
+        // useful optimisation is the crossing count, so keep iterating and pick
+        // the attempt with the most words placed and then the most crossings.
+        let best = null;
+        for (let attempt = 0; attempt < $eXeCrucigrama.solverAttempts; attempt++) {
+            const placements = $eXeCrucigrama.tryLayout(instance, words);
+            const crossings = placements.reduce(
+                (sum, p) => sum + (p.crossings || 0),
+                0
+            );
+            const score = placements.length * 1000 + crossings;
+            if (!best || score > best.score) {
+                best = { placements, score };
+            }
+        }
 
-        $eXeCrucigrama.placeVerticalWord(
+        $eXeCrucigrama.buildGridFromPlacements(
             instance,
-            centroCol,
-            mOptions.grid,
-            verticalWords[0],
-            1
-        );
-
-        for (let i = 1; i <= Math.floor(verticalWords.length / 2); i++) {
-            let rightCol = centroCol - offset;
-            if (rightCol < mOptions.boardSize) {
-                $eXeCrucigrama.placeVerticalWord(
-                    instance,
-                    rightCol,
-                    mOptions.grid,
-                    verticalWords[i],
-                    i + 1
-                );
-            }
-            offset += $eXeCrucigrama.randomTwoOrThree();
-        }
-
-        offset = $eXeCrucigrama.randomTwoOrThree();
-        for (
-            let i = Math.floor(verticalWords.length / 2) + 1;
-            i < verticalWords.length;
-            i++
-        ) {
-            let leftCol = centroCol + offset;
-            if (leftCol >= 0) {
-                $eXeCrucigrama.placeVerticalWord(
-                    instance,
-                    leftCol,
-                    mOptions.grid,
-                    verticalWords[i],
-                    i + 1
-                );
-            }
-            offset += $eXeCrucigrama.randomTwoOrThree();
-        }
-    },
-
-    canPlaceVerticalWord: function (instance, col) {
-        let mOptions = $eXeCrucigrama.options[instance];
-        return (
-            !mOptions.occupiedColumns.has(col) &&
-            !mOptions.occupiedColumns.has(col - 1) &&
-            !mOptions.occupiedColumns.has(col + 1)
+            best ? best.placements : []
         );
     },
 
-    randomTwoOrThree: function () {
-        return Math.random() < 0.5 ? 2 : 3;
-    },
-
-    placeVerticalWord: function (instance, col, grid, wordObj, numero) {
+    // A single greedy pass: seed the longest word in the centre, then place each
+    // remaining word at its best-scoring crossing position. Returns the list of
+    // placements ({ index, row, col, horizontal, crossings }).
+    tryLayout: function (instance, words) {
         const mOptions = $eXeCrucigrama.options[instance],
-            row = Math.floor((mOptions.boardSize - wordObj.word.length) / 2);
+            size = mOptions.boardSize;
 
-        $eXeCrucigrama.placeWord(
-            instance,
-            wordObj.word,
-            row,
-            col,
-            false,
+        if (!words || words.length === 0) {
+            return [];
+        }
+
+        // Longest first; shuffle beforehand so equal-length ties and the overall
+        // ordering vary between attempts, exploring different layouts.
+        const order = $eXeCrucigrama
+            .shuffleArray(words.map((wordObj, index) => ({ wordObj, index })))
+            .sort((a, b) => b.wordObj.word.length - a.wordObj.word.length);
+
+        const grid = Array(size)
+            .fill()
+            .map(() => Array(size).fill(null));
+        const placements = [];
+
+        const seed = order[0],
+            seedLen = seed.wordObj.word.length;
+        if (seedLen > size) {
+            return [];
+        }
+        const seedRow = Math.floor(size / 2),
+            seedCol = Math.floor((size - seedLen) / 2);
+        $eXeCrucigrama.writeScratch(
             grid,
-            numero,
-            numero - 1
+            seed.wordObj.word,
+            seedRow,
+            seedCol,
+            true,
+            seed.index
         );
+        placements.push({
+            index: seed.index,
+            row: seedRow,
+            col: seedCol,
+            horizontal: true,
+            crossings: 0,
+        });
 
-        mOptions.occupiedColumns.add(col);
-        mOptions.occupiedColumns.add(col - 1);
-        mOptions.occupiedColumns.add(col + 1);
+        const placed = new Set([seed.index]);
+        const commit = (index, word, pos) => {
+            $eXeCrucigrama.writeScratch(
+                grid,
+                word,
+                pos.row,
+                pos.col,
+                pos.horizontal,
+                index
+            );
+            placements.push({
+                index,
+                row: pos.row,
+                col: pos.col,
+                horizontal: pos.horizontal,
+                crossings: pos.crossings,
+            });
+            placed.add(index);
+        };
+
+        // Pass 1: place each word at its best crossing with an existing word.
+        for (let k = 1; k < order.length; k++) {
+            const { wordObj, index } = order[k];
+            const best = $eXeCrucigrama.bestCandidate(
+                instance,
+                wordObj.word,
+                grid,
+                placements
+            );
+            if (best) {
+                commit(index, wordObj.word, best);
+            }
+        }
+
+        // Pass 2: words still unplaced are dropped into any valid free spot
+        // (with a crossing if one now exists, otherwise isolated), still keeping
+        // a separator before/after and never touching another word sideways.
+        for (let k = 0; k < order.length; k++) {
+            const { wordObj, index } = order[k];
+            if (placed.has(index)) {
+                continue;
+            }
+            const spot = $eXeCrucigrama.bestFreePosition(
+                instance,
+                wordObj.word,
+                grid
+            );
+            if (spot) {
+                commit(index, wordObj.word, spot);
+            }
+        }
+        return placements;
+    },
+
+    // Whole-board search for any valid placement of `word` (both orientations),
+    // preferring more crossings then a more central/compact spot. Used to seat
+    // words that found no crossing during the greedy pass, filling the free rows
+    // and columns while respecting the separation/adjacency rules.
+    bestFreePosition: function (instance, word, grid) {
+        const mOptions = $eXeCrucigrama.options[instance],
+            size = mOptions.boardSize,
+            center = (size - 1) / 2;
+        let best = null;
+
+        for (const horizontal of [true, false]) {
+            const maxRow = horizontal ? size - 1 : size - word.length,
+                maxCol = horizontal ? size - word.length : size - 1;
+            for (let row = 0; row <= maxRow; row++) {
+                for (let col = 0; col <= maxCol; col++) {
+                    if (
+                        !$eXeCrucigrama.canPlaceWord(
+                            instance,
+                            word,
+                            row,
+                            col,
+                            horizontal,
+                            grid
+                        )
+                    ) {
+                        continue;
+                    }
+                    const crossings = $eXeCrucigrama.countCrossings(
+                        word,
+                        row,
+                        col,
+                        horizontal,
+                        grid
+                    );
+                    const midR = row + (horizontal ? 0 : (word.length - 1) / 2),
+                        midC = col + (horizontal ? (word.length - 1) / 2 : 0),
+                        dist = Math.abs(midR - center) + Math.abs(midC - center),
+                        score = crossings * 100 - dist;
+                    if (!best || score > best.score) {
+                        best = { row, col, horizontal, crossings, score };
+                    }
+                }
+            }
+        }
+        return best;
+    },
+
+    // Among every way of crossing an already-placed word, return the valid
+    // position with the most crossings (tie-break: closer to the centre).
+    bestCandidate: function (instance, word, grid, placements) {
+        const mOptions = $eXeCrucigrama.options[instance],
+            size = mOptions.boardSize,
+            center = (size - 1) / 2;
+        let best = null;
+
+        for (const placed of placements) {
+            const pWord = mOptions.wordsGame[placed.index].word;
+            for (let pi = 0; pi < pWord.length; pi++) {
+                const pr = placed.row + (placed.horizontal ? 0 : pi),
+                    pc = placed.col + (placed.horizontal ? pi : 0),
+                    letter = pWord[pi],
+                    horizontal = !placed.horizontal;
+
+                for (let wi = 0; wi < word.length; wi++) {
+                    if (word[wi] !== letter) {
+                        continue;
+                    }
+                    const row = horizontal ? pr : pr - wi,
+                        col = horizontal ? pc - wi : pc;
+                    if (
+                        !$eXeCrucigrama.canPlaceWord(
+                            instance,
+                            word,
+                            row,
+                            col,
+                            horizontal,
+                            grid
+                        )
+                    ) {
+                        continue;
+                    }
+                    const crossings = $eXeCrucigrama.countCrossings(
+                        word,
+                        row,
+                        col,
+                        horizontal,
+                        grid
+                    );
+                    if (crossings < 1) {
+                        continue;
+                    }
+                    const midR = row + (horizontal ? 0 : (word.length - 1) / 2),
+                        midC = col + (horizontal ? (word.length - 1) / 2 : 0),
+                        dist = Math.abs(midR - center) + Math.abs(midC - center),
+                        score = crossings * 100 - dist;
+                    if (!best || score > best.score) {
+                        best = { row, col, horizontal, crossings, score };
+                    }
+                }
+            }
+        }
+        return best;
+    },
+
+    // Minimal grid write used only while exploring layouts (letters + hi/vi, no
+    // mappedWords or numbering). The final grid is built by buildGridFromPlacements.
+    writeScratch: function (grid, word, row, col, horizontal, index) {
+        for (let i = 0; i < word.length; i++) {
+            const r = row + (horizontal ? 0 : i),
+                c = col + (horizontal ? i : 0),
+                cell = grid[r][c] || { letter: word[i], hi: -1, vi: -1 };
+            cell.letter = word[i];
+            if (horizontal) {
+                cell.hi = index;
+                if (typeof cell.vi === 'undefined') cell.vi = -1;
+            } else {
+                cell.vi = index;
+                if (typeof cell.hi === 'undefined') cell.hi = -1;
+            }
+            grid[r][c] = cell;
+        }
+    },
+
+    // Rebuild the real grid from the chosen placements. Verticals are grouped
+    // first so mOptions.half keeps splitting wordsGame into vertical/horizontal,
+    // and placeWord is reused (verticals before horizontals so crossings are
+    // preserved). Unplaced words are dropped here (no ghosts, consistent indices).
+    buildGridFromPlacements: function (instance, placements) {
+        const mOptions = $eXeCrucigrama.options[instance],
+            size = mOptions.boardSize,
+            oldWords = mOptions.wordsGame,
+            verticals = placements.filter((p) => !p.horizontal),
+            horizontals = placements.filter((p) => p.horizontal);
+
+        mOptions.wordsGame = [
+            ...verticals.map((p) => oldWords[p.index]),
+            ...horizontals.map((p) => oldWords[p.index]),
+        ];
+        mOptions.half = verticals.length;
+        mOptions.numberQuestions = mOptions.wordsGame.length;
+        mOptions.grid = Array(size)
+            .fill()
+            .map(() => Array(size).fill(null));
+        mOptions.mappedWords = [];
+
+        verticals.forEach((p, iv) => {
+            $eXeCrucigrama.placeWord(
+                instance,
+                oldWords[p.index].word,
+                p.row,
+                p.col,
+                false,
+                mOptions.grid,
+                iv + 1,
+                iv
+            );
+        });
+        horizontals.forEach((p, ih) => {
+            $eXeCrucigrama.placeWord(
+                instance,
+                oldWords[p.index].word,
+                p.row,
+                p.col,
+                true,
+                mOptions.grid,
+                mOptions.half + ih + 1,
+                ih
+            );
+        });
     },
 
     placeWord: function (
@@ -971,283 +1219,25 @@ var $eXeCrucigrama = {
         }
     },
 
-    placeHorizontalWords: function (instance, horizontalWords) {
-        let mOptions = $eXeCrucigrama.options[instance],
-            maxPlacedWords = [],
-            bestAttempt = 0;
-
-        for (let attempt = 0; attempt < 30; attempt++) {
-            let placedWords = [],
-                currentGrid = JSON.parse(JSON.stringify(mOptions.grid)),
-                rowsUsed = new Set();
-            horizontalWords.forEach((wordObj, index) => {
-                const position = $eXeCrucigrama.findHorizontalPosition(
-                    instance,
-                    wordObj.word,
-                    currentGrid,
-                    rowsUsed
-                );
-                if (position) {
-                    const numero = index + mOptions.half + 1;
-                    $eXeCrucigrama.placeWord(
-                        instance,
-                        wordObj.word,
-                        position.row,
-                        position.col,
-                        true,
-                        currentGrid,
-                        numero,
-                        index
-                    );
-                    placedWords.push(wordObj);
-                    rowsUsed.add(position.row);
-                }
-            });
-            if (placedWords.length > bestAttempt) {
-                bestAttempt = placedWords.length;
-                maxPlacedWords = placedWords;
-                mOptions.grid = currentGrid;
-            }
-            if (bestAttempt === horizontalWords.length) break;
-        }
-
-        if (bestAttempt < horizontalWords.length) {
-            const notPlaced = horizontalWords.filter(
-                (word) =>
-                    !maxPlacedWords.some((placed) => placed.word === word.word)
-            );
-
-            let additionalPlaced = [];
-
-            if (
-                notPlaced.length > 0 &&
-                $eXeCrucigrama.isFirstRowFree(instance, mOptions.grid)
-            ) {
-                const firstWord = notPlaced[0];
-                const row = 0;
-                const col = Math.floor(
-                    (mOptions.boardSize - firstWord.word.length) / 2
-                );
-
-                if (
-                    col >= 0 &&
-                    col + firstWord.word.length <= mOptions.boardSize
-                ) {
-                    const index = horizontalWords.indexOf(firstWord);
-                    const numero = index + mOptions.half + 1;
-                    $eXeCrucigrama.placeWord(
-                        instance,
-                        firstWord.word,
-                        row,
-                        col,
-                        true,
-                        mOptions.grid,
-                        numero,
-                        index
-                    );
-                    maxPlacedWords.push(firstWord);
-                    additionalPlaced.push(firstWord);
-                    mOptions.occupiedRows.add(row);
-                    mOptions.occupiedRows.add(row + 1);
-                }
-            }
-
-            const stillNotPlaced = notPlaced.filter(
-                (word) => !additionalPlaced.includes(word)
-            );
-
-            if (
-                stillNotPlaced.length > 0 &&
-                $eXeCrucigrama.isLastRowFree(instance, mOptions.grid)
-            ) {
-                const secondWord = stillNotPlaced[0];
-                const row = mOptions.boardSize - 1;
-                const col = Math.floor(
-                    (mOptions.boardSize - secondWord.word.length) / 2
-                );
-
-                if (
-                    col >= 0 &&
-                    col + secondWord.word.length <= mOptions.boardSize
-                ) {
-                    const index = horizontalWords.indexOf(secondWord);
-                    const numero = index + mOptions.half + 1;
-                    $eXeCrucigrama.placeWord(
-                        instance,
-                        secondWord.word,
-                        row,
-                        col,
-                        true,
-                        mOptions.grid,
-                        numero,
-                        index
-                    );
-                    maxPlacedWords.push(secondWord);
-                    additionalPlaced.push(secondWord);
-                    mOptions.occupiedRows.add(row);
-                    mOptions.occupiedRows.add(row - 1);
-                }
-            }
-
-            const stillNotPlaced2 = stillNotPlaced.filter(
-                (word) => !additionalPlaced.includes(word)
-            );
-
-            if (
-                stillNotPlaced2.length > 0 &&
-                $eXeCrucigrama.isFirstColumnFree(instance, mOptions.grid)
-            ) {
-                const thirdWord = stillNotPlaced2[0];
-                const col = 0;
-                const row = Math.floor(
-                    (mOptions.boardSize - thirdWord.word.length) / 2
-                );
-
-                if (
-                    row >= 0 &&
-                    row + thirdWord.word.length <= mOptions.boardSize
-                ) {
-                    const originalIndex = horizontalWords.indexOf(thirdWord);
-                    const wordindexInGame = mOptions.half + originalIndex;
-                    const numero = originalIndex + mOptions.half + 1;
-                    $eXeCrucigrama.placeWord(
-                        instance,
-                        thirdWord.word,
-                        row,
-                        col,
-                        false,
-                        mOptions.grid,
-                        numero,
-                        wordindexInGame
-                    );
-                    maxPlacedWords.push(thirdWord);
-                    additionalPlaced.push(thirdWord);
-                    mOptions.occupiedColumns.add(col);
-                    mOptions.occupiedColumns.add(col + 1);
-                }
-            }
-
-            const stillNotPlaced3 = stillNotPlaced2.filter(
-                (word) => !additionalPlaced.includes(word)
-            );
-
-            if (
-                stillNotPlaced3.length > 0 &&
-                $eXeCrucigrama.isLastColumnFree(instance, mOptions.grid)
-            ) {
-                const fourthWord = stillNotPlaced3[0];
-                const col = mOptions.boardSize - 1;
-                const row = Math.floor(
-                    (mOptions.boardSize - fourthWord.word.length) / 2
-                );
-
-                if (
-                    row >= 0 &&
-                    row + fourthWord.word.length <= mOptions.boardSize
-                ) {
-                    const originalIndex = horizontalWords.indexOf(fourthWord);
-                    const wordindexInGame = mOptions.half + originalIndex;
-                    const numero = originalIndex + mOptions.half + 1;
-                    $eXeCrucigrama.placeWord(
-                        instance,
-                        fourthWord.word,
-                        row,
-                        col,
-                        false,
-                        mOptions.grid,
-                        numero,
-                        wordindexInGame
-                    );
-                    maxPlacedWords.push(fourthWord);
-                    additionalPlaced.push(fourthWord);
-                    mOptions.occupiedColumns.add(col);
-                    mOptions.occupiedColumns.add(col - 1);
-                }
-            }
-
-            const finalNotPlaced = notPlaced.filter(
-                (word) => !additionalPlaced.includes(word)
-            );
-
-            if (finalNotPlaced.length > 0) {
-                console.log(
-                    'No se pudieron colocar todas las palabras horizontales.'
-                );
-                mOptions.wordsGame = mOptions.wordsGame.filter(
-                    (word) =>
-                        !finalNotPlaced.some((np) => np.word === word.word)
-                );
-
-                mOptions.numberQuestions = mOptions.wordsGame.length;
-                mOptions.half = Math.ceil(mOptions.numberQuestions / 2);
-            }
-        }
-
-        return maxPlacedWords;
-    },
-
-    findHorizontalPosition: function (instance, word, grid, rowsUsed) {
-        let mOptions = $eXeCrucigrama.options[instance],
-            centerRow = Math.floor(mOptions.boardSize / 2),
-            startPositions = [centerRow];
-
-        for (let i = 1; i <= Math.floor(mOptions.boardSize / 2); i++) {
-            startPositions.push(centerRow - i);
-            startPositions.push(centerRow + i);
-        }
-
-        for (let row of startPositions) {
-            if (
-                rowsUsed.has(row) ||
-                rowsUsed.has(row - 1) ||
-                rowsUsed.has(row + 1)
-            )
+    // Counts the letters of a word that would land on a perpendicular cell with a
+    // matching letter (i.e. real crossings) at the given position/orientation.
+    countCrossings: function (word, row, col, horizontal, grid) {
+        let crossings = 0;
+        for (let i = 0; i < word.length; i++) {
+            const r = row + (horizontal ? 0 : i),
+                c = col + (horizontal ? i : 0),
+                cell = grid[r] ? grid[r][c] : null;
+            if (!cell || cell.letter !== word[i]) {
                 continue;
-            let centerCol = Math.floor((mOptions.boardSize - word.length) / 2);
-            if (
-                $eXeCrucigrama.canPlaceWord(
-                    instance,
-                    word,
-                    row,
-                    centerCol,
-                    true,
-                    grid
-                )
-            ) {
-                return { row: row, col: centerCol };
             }
-            for (let offset = 1; offset < mOptions.boardSize; offset++) {
-                let leftCol = centerCol - offset,
-                    rightCol = centerCol + offset;
-                if (
-                    leftCol >= 0 &&
-                    $eXeCrucigrama.canPlaceWord(
-                        instance,
-                        word,
-                        row,
-                        leftCol,
-                        true,
-                        grid
-                    )
-                ) {
-                    return { row: row, col: leftCol };
-                }
-                if (
-                    rightCol + word.length <= mOptions.boardSize &&
-                    $eXeCrucigrama.canPlaceWord(
-                        instance,
-                        word,
-                        row,
-                        rightCol,
-                        true,
-                        grid
-                    )
-                ) {
-                    return { row: row, col: rightCol };
-                }
+            const perpendicular = horizontal
+                ? typeof cell.vi !== 'undefined' && cell.vi !== -1
+                : typeof cell.hi !== 'undefined' && cell.hi !== -1;
+            if (perpendicular) {
+                crossings++;
             }
         }
-        return null;
+        return crossings;
     },
 
     shuffleArray: function (array) {
@@ -1677,120 +1667,71 @@ var $eXeCrucigrama = {
         mOptions.solutionsShow = true;
     },
 
+    // Can `word` be placed at (row, col) in the given orientation enforcing the
+    // crossword rules: in bounds; an empty separator cell (or board edge) before
+    // the first and after the last letter (A); crossings only where letters match
+    // a perpendicular word; no overlap with a parallel word; and no cell touching
+    // another word sideways without a crossing (B). Works for both orientations.
     canPlaceWord: function (instance, word, row, col, horizontal, grid) {
-        const mOptions = $eXeCrucigrama.options[instance];
+        const mOptions = $eXeCrucigrama.options[instance],
+            size = mOptions.boardSize,
+            len = word.length,
+            // step along the word, and step to a perpendicular neighbour
+            dr = horizontal ? 0 : 1,
+            dc = horizontal ? 1 : 0,
+            pdr = horizontal ? 1 : 0,
+            pdc = horizontal ? 0 : 1;
 
-        if (horizontal) {
-            if (col + word.length > mOptions.boardSize) {
-                return false;
-            }
+        const endRow = row + dr * (len - 1),
+            endCol = col + dc * (len - 1);
+        if (row < 0 || col < 0 || endRow >= size || endCol >= size) {
+            return false;
+        }
 
-            if (
-                mOptions.occupiedRows.has(row) ||
-                mOptions.occupiedRows.has(row - 1) ||
-                mOptions.occupiedRows.has(row + 1)
-            ) {
-                return false;
-            }
+        const hasLetter = (r, c) =>
+            r >= 0 &&
+            r < size &&
+            c >= 0 &&
+            c < size &&
+            grid[r] &&
+            grid[r][c] &&
+            grid[r][c].letter;
 
-            if (!grid[row]) {
-                return false;
-            }
+        // (A) separator before the first and after the last letter.
+        if (hasLetter(row - dr, col - dc) || hasLetter(endRow + dr, endCol + dc)) {
+            return false;
+        }
 
-            if (grid[row][col] && typeof grid[row][col].vi !== 'undefined') {
-                return false;
-            }
+        // Cannot start on an occupied cell (keeps numbering unambiguous).
+        if (hasLetter(row, col)) {
+            return false;
+        }
 
-            for (let i = 0; i < word.length; i++) {
-                if (!grid[row]) {
+        const isParallel = (cell) =>
+            horizontal
+                ? typeof cell.hi !== 'undefined' && cell.hi !== -1
+                : typeof cell.vi !== 'undefined' && cell.vi !== -1;
+
+        for (let i = 0; i < len; i++) {
+            const r = row + dr * i,
+                c = col + dc * i,
+                cell = grid[r] ? grid[r][c] : null;
+
+            if (!cell || !cell.letter) {
+                // (B) an empty cell of the word must not touch another word
+                // sideways: its perpendicular neighbours must be empty.
+                if (hasLetter(r - pdr, c - pdc) || hasLetter(r + pdr, c + pdc)) {
                     return false;
                 }
-
-                const cell = grid[row][col + i];
-
-                if (typeof cell === 'undefined' || cell === null) {
-                    continue;
-                }
-
-                if (cell.letter && cell.letter !== word[i]) {
-                    return false;
-                }
+                continue;
             }
-        }
-        return true;
-    },
 
-    isFirstRowFree: function (instance, grid) {
-        const mOptions = $eXeCrucigrama.options[instance];
-        const row = 0;
-
-        if (!grid[row]) {
-            return true;
-        }
-
-        for (let col = 0; col < mOptions.boardSize; col++) {
-            if (
-                grid[row][col] !== null &&
-                typeof grid[row][col] !== 'undefined'
-            ) {
+            // Occupied: only valid as a crossing with a perpendicular word whose
+            // letter matches. Overlapping a parallel word is not allowed.
+            if (isParallel(cell) || cell.letter !== word[i]) {
                 return false;
             }
         }
-
-        return true;
-    },
-
-    isLastRowFree: function (instance, grid) {
-        const mOptions = $eXeCrucigrama.options[instance];
-        const row = mOptions.boardSize - 1;
-
-        if (!grid[row]) {
-            return true;
-        }
-
-        for (let col = 0; col < mOptions.boardSize; col++) {
-            if (
-                grid[row][col] !== null &&
-                typeof grid[row][col] !== 'undefined'
-            ) {
-                return false;
-            }
-        }
-
-        return true;
-    },
-
-    isFirstColumnFree: function (instance, grid) {
-        const mOptions = $eXeCrucigrama.options[instance];
-        const col = 0;
-
-        for (let row = 0; row < mOptions.boardSize; row++) {
-            if (
-                grid[row] &&
-                grid[row][col] !== null &&
-                typeof grid[row][col] !== 'undefined'
-            ) {
-                return false;
-            }
-        }
-
-        return true;
-    },
-
-    isLastColumnFree: function (instance, grid) {
-        const mOptions = $eXeCrucigrama.options[instance];
-        const col = mOptions.boardSize - 1;
-
-        for (let row = 0; row < mOptions.boardSize; row++) {
-            if (
-                grid[row] &&
-                grid[row][col] !== null &&
-                typeof grid[row][col] !== 'undefined'
-            ) {
-                return false;
-            }
-        }
-
         return true;
     },
 
@@ -1879,7 +1820,7 @@ var $eXeCrucigrama = {
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
-        mOptions.boardSize = 16;
+        mOptions.boardSize = $eXeCrucigrama.boardSize;
         mOptions.mappedWords = [];
         mOptions.occupiedRows = new Set();
         mOptions.occupiedColumns = new Set();
@@ -1947,8 +1888,12 @@ var $eXeCrucigrama = {
             mOptions.wordsGame,
             mOptions.percentajeQuestions
         );
-        if (mOptions.wordsGame.length > 10) {
-            mOptions.wordsGame = mOptions.wordsGame.splice(0, 10);
+        // Cap the played crossword to what the board can place reliably.
+        if (mOptions.wordsGame.length > $eXeCrucigrama.maxWords) {
+            mOptions.wordsGame = mOptions.wordsGame.splice(
+                0,
+                $eXeCrucigrama.maxWords
+            );
         }
 
         mOptions.numberQuestions = mOptions.wordsGame.length;

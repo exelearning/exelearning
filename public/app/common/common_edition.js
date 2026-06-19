@@ -525,9 +525,9 @@ var $exeDevicesEdition = {
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
-                getTabIA: function (type = 0) {
+                getTabIA: function (type = 0, options = {}) {
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
@@ -551,16 +551,7 @@ var $exeDevicesEdition = {
                                     </li>
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
-                                        ${c_('Act as a highly experienced teacher.')}
-                                        ${fprompt.prompt}
-                                        ${c_('Formats')}:
-                                        ${fprompt.format.join('\n')}
-                                        ${fprompt.explanation}
-                                        ${c_('Examples')}:
-                                        ${fprompt.examples.join('\n')}
-                                        ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
-                                    </textarea>
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
@@ -637,7 +628,7 @@ var $exeDevicesEdition = {
                 },
 
 
-                getAllowedFormats: function (gameId) {
+                getAllowedFormats: function (gameId, options = {}) {
                     const gameFormats = {
                         0: { // Word/Definition
                             format: [`${c_('Word')}#${c_('Definition')}`],
@@ -755,7 +746,91 @@ var $exeDevicesEdition = {
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/
                         },
-                        10: { // Electric circuits
+                        10: (() => { // adaptative quiz (mixed: select / sort / word)
+                            const requestedLevels = parseInt(options.numLevels, 10);
+                            const numLevels = requestedLevels === 5 ? 5 : requestedLevels === 4 ? 4 : 3;
+                            const lvlClass = numLevels === 5 ? '[0-4]' : numLevels === 4 ? '[0-3]' : '[0-2]';
+                            const lvlList = numLevels === 5
+                                ? '0, 1, 2, 3 or 4'
+                                : numLevels === 4
+                                    ? '0, 1, 2 or 3'
+                                    : '0, 1 or 2';
+                            const lvlDescr = numLevels === 5
+                                ? c_('Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).')
+                                : numLevels === 4
+                                    ? c_('Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).')
+                                    : c_('Level: 0 (low), 1 (medium) or 2 (high).');
+
+                            const format = [
+                                // Type 0: Select (multiple-choice)
+                                `0@${c_('Level')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}[#${c_('OptionC')}][#${c_('OptionD')}][#${c_('OptionE')}][#${c_('OptionF')}]`,
+                                // Type 1: Sort / order
+                                `1@${c_('Level')}#${c_('Question')}#Item1#Item2#Item3[#Item4][#Item5][#Item6]`,
+                                // Type 2: Word / definition
+                                `2@${c_('Level')}#${c_('Word')}#${c_('Definition')}`
+                            ];
+
+                            const examples = [
+                                // Type 0: single correct answer (letter B = OptionB)
+                                `0@0#B#${c_('What is the largest planet in the solar system?')}#${c_('Earth')}#${c_('Jupiter')}#${c_('Mars')}#${c_('Venus')}`,
+                                // Type 0: multiple correct answers (A and C)
+                                `0@1#AC#${c_('Which of the following are prime numbers?')}#2#4#5#9`,
+                                // Type 1: sort
+                                `1@2#${c_('Sort from largest to smallest')}#${c_('Elephant')}#${c_('Tiger')}#${c_('Cat')}#${c_('Mouse')}`,
+                                // Type 2: word/definition
+                                `2@0#${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`
+                            ];
+                            if (numLevels >= 4) {
+                                examples.push(`0@3#ABCD#${c_('Which of these are transcendental numbers?')}#π#e#${c_('Liouville constant')}#${c_('Champernowne constant')}`);
+                            }
+                            if (numLevels === 5) {
+                                examples.push(`1@4#${c_('Sort these chemical elements from lowest to highest atomic number')}#${c_('Hydrogen')}#${c_('Carbon')}#${c_('Iron')}#${c_('Gold')}#${c_('Uranium')}`);
+                            }
+
+                            const explanation = [
+                                lvlDescr,
+                                c_('Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:'),
+                                c_('Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.'),
+                                c_('Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.'),
+                                c_('Type 2 (word/definition): 2@Level#Word#Definition.'),
+                                c_('Do not include the # character inside any field.')
+                            ].join(' ');
+
+                            // Type 0 (Select): 0..6 uppercase or lowercase letters A-F as solution; 2-6 options.
+                            const selectRe = `0@${lvlClass}#[A-Fa-f]{0,6}#[^#]+#[^#]+#[^#]+(#[^#]+){0,4}`;
+                            // Type 1 (Sort): question + 3 to 6 items already in correct order.
+                            const sortRe = `1@${lvlClass}#[^#]+#[^#]+#[^#]+#[^#]+(#[^#]+){0,3}`;
+                            // Type 2 (Word): word + definition.
+                            const wordRe = `2@${lvlClass}#[^#]+#[^#]+`;
+                            const allowRegex = new RegExp(`^(${selectRe}|${sortRe}|${wordRe})$`);
+
+                            const distribution = numLevels === 5
+                                ? c_('balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)')
+                                : numLevels === 4
+                                    ? c_('balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)')
+                                    : c_('balanced across the 3 levels (0=low, 1=medium, 2=high)');
+                            const perLevelCount = numLevels === 5 ? 12 : numLevels === 4 ? 15 : 20;
+                            const totalQuestions = perLevelCount * numLevels;
+                            const difficultyLadder = numLevels === 5
+                                ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.')
+                                : numLevels === 4
+                                    ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.')
+                                    : c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.');
+
+                            // The prompt is a single static translation key with %placeholders%
+                            // so it can be extracted and translated. We must NOT wrap a template
+                            // literal containing ${...} in c_(): the extractor skips dynamic keys
+                            // (translations.ts) and the catalogue lookup would never match, leaving
+                            // the whole sentence in English. Translate first, then substitute.
+                            const prompt = c_('Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.')
+                                .replace('%total%', totalQuestions)
+                                .replace('%distribution%', distribution)
+                                .replace('%ladder%', difficultyLadder)
+                                .replace('%perLevel%', perLevelCount);
+
+                            return { format, explanation, examples, allowRegex, prompt, _meta: { numLevels, lvlList } };
+                        })(),
+                        11: { // Electric circuits
                             format: [
                                 `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
                                 `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}`,
@@ -763,7 +838,7 @@ var $exeDevicesEdition = {
                             ],
                             explanation: `${c_('One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.')}`,
                             examples: [
-                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#${c_('1 kΩ')}#${c_('2 kΩ')}#${c_('500 Ω')}#${c_('10 kΩ')}`,
+                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#1 kΩ#2 kΩ#500 Ω#10 kΩ`,
                                 `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
                             ],
                             allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
@@ -786,7 +861,31 @@ var $exeDevicesEdition = {
                     };
                 },
 
-                addEvents: function (type, saveQuestions) {
+                buildIAPromptText: function (gameId, options = {}) {
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options);
+                    const lines = [
+                        c_('Act as a highly experienced teacher.'),
+                        fprompt.prompt,
+                        `${c_('Formats')}:`,
+                        fprompt.format.join('\n'),
+                        fprompt.explanation,
+                        `${c_('Examples')}:`,
+                        fprompt.examples.join('\n'),
+                        `${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')},`
+                    ];
+                    return lines.filter((line) => line !== undefined && line !== '').join('\n');
+                },
+
+                refreshIAPrompt: function (gameId, options = {}) {
+                    const $prompt = $('#eXeEPromptArea');
+                    if (!$prompt.length) return;
+                    $prompt.val($exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(gameId, options));
+                },
+
+                addEvents: function (type, saveQuestions, getOptions) {
+                    const resolveOptions = typeof getOptions === 'function'
+                        ? getOptions
+                        : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
                     const $textAreaIa = $('#eXeEQuestionsIA');
@@ -917,7 +1016,7 @@ var $exeDevicesEdition = {
                             eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -934,7 +1033,7 @@ var $exeDevicesEdition = {
                             return;
                         }
 
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -970,11 +1069,11 @@ var $exeDevicesEdition = {
 
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
-                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
+                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions, resolveOptions());
                     });
 
                 },
-                genarateIAQuestons: async function (type, saveQuestions) {
+                genarateIAQuestons: async function (type, saveQuestions, options = {}) {
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
                     const $specialty = $('#eXeSpecialtyIA');
                     const $course = $('#eXeCourseIA');
@@ -1011,14 +1110,14 @@ var $exeDevicesEdition = {
                         promptText += `${_('With the following formats:')}`;
                     }
 
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
                         ${fprompt.explanation}
                         ${_('Examples')}:
-                        ${fprompt.examples.join('\n')}  
-                        ${_('You must return only the questions without numbering and without classification or bullet points')},                    
+                        ${fprompt.examples.join('\n')}
+                        ${_('You must return only the questions without numbering and without classification or bullet points')},
                     `;
 
                     let sdata = '';
@@ -1030,7 +1129,7 @@ var $exeDevicesEdition = {
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions);
+                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
                                 saveQuestions(correctsQuestions);
                             } else {
                                 sdata = _('The questions could not be generated');
@@ -1079,11 +1178,11 @@ var $exeDevicesEdition = {
                 },
 
 
-                validateAndSave: function (gameId, $textQuestionsArea) {
+                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
                     const lines = $textQuestionsArea.val().trim().split('\n');
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1101,10 +1200,10 @@ var $exeDevicesEdition = {
                     }
                 },
 
-                validateQuesionsIA: function (gameId, lines) {
+                validateQuesionsIA: function (gameId, lines, options = {}) {
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();

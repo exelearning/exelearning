@@ -40,6 +40,56 @@ describe('form iDevice export', () => {
     $form = loadExportIdevice(code);
   });
 
+  describe('escapeHtmlText / escapeHtmlAttr', () => {
+    it('escapes <, > and & in text', () => {
+      expect($form.escapeHtmlText('A<B')).toBe('A&lt;B');
+      expect($form.escapeHtmlText('x>y')).toBe('x&gt;y');
+      expect($form.escapeHtmlText('a && b')).toBe('a &amp;&amp; b');
+      expect($form.escapeHtmlText('A + B > C+D && 4')).toBe('A + B &gt; C+D &amp;&amp; 4');
+    });
+
+    it('escapes double quotes for attributes', () => {
+      expect($form.escapeHtmlAttr('a"b<c')).toBe('a&quot;b&lt;c');
+    });
+
+    it('handles null/undefined', () => {
+      expect($form.escapeHtmlText(null)).toBe('');
+      expect($form.escapeHtmlText(undefined)).toBe('');
+    });
+  });
+
+  describe('getProcessTextSelectionQuestion escaping', () => {
+    it('renders plain-text symbols without changing the stored answers', () => {
+      $form.replaceResourceDirectoryPaths = (_data, text) => text;
+      const data = {
+        msgs: { msgSingleSelectionHelp: 'single', msgMultipleSelectionHelp: 'multiple' },
+      };
+      const answers = [
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ];
+
+      document.body.innerHTML = $form.getProcessTextSelectionQuestion(
+        '<p>Q</p>',
+        'radio',
+        answers,
+        data,
+      );
+
+      const labels = [...document.querySelectorAll('.selection-buttons-container label')];
+      const inputs = [...document.querySelectorAll('.selection-buttons-container input')];
+
+      expect(labels.map(label => label.textContent)).toEqual(answers.map(answer => answer[1]));
+      expect(inputs.map(input => input.value)).toEqual(answers.map(answer => answer[1]));
+      expect(answers).toEqual([
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ]);
+    });
+  });
+
   describe('formatTime', () => {
     it('formats seconds to mm:ss format', () => {
       expect($form.formatTime(0)).toBe('00:00');
@@ -267,6 +317,97 @@ describe('form iDevice export', () => {
 
     it('has scorm functions path', () => {
       expect($form.scormFunctions).toBe('libs/SCOFunctions.js');
+    });
+  });
+
+  describe('escapeHtmlButKeepRenderedMath', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+
+    it('keeps a valid pre-rendered math span raw while escaping surrounding plain text', () => {
+      const out = $form.escapeHtmlButKeepRenderedMath(`a<b ${RENDERED_MATH} c>d`);
+      // Plain-text angle brackets are escaped...
+      expect(out).toContain('a&lt;b');
+      expect(out).toContain('c&gt;d');
+      // ...but the math span survives verbatim so the SVG renders.
+      expect(out).toContain(RENDERED_MATH);
+    });
+
+    it('escapes a forged span carrying an unsafe event handler', () => {
+      const forged =
+        '<span class="exe-math-rendered" data-latex="x"><svg onload="alert(1)"></svg></span>';
+      const out = $form.escapeHtmlButKeepRenderedMath(forged);
+      expect(out).not.toContain('<svg onload');
+      expect(out).toContain('&lt;span');
+    });
+
+    it('handles null/undefined as empty string', () => {
+      expect($form.escapeHtmlButKeepRenderedMath(null)).toBe('');
+      expect($form.escapeHtmlButKeepRenderedMath(undefined)).toBe('');
+    });
+  });
+
+  describe('LaTeX pre-render compatibility', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+    let data;
+
+    beforeEach(() => {
+      // Isolate the pure HTML builders from jQuery/eXe DOM lookups.
+      $form.replaceResourceDirectoryPaths = (_data, html) => html;
+      data = { msgs: $form.msgs };
+    });
+
+    it('escapes a pre-rendered option in the selection value but keeps it visible in the label', () => {
+      const html = $form.getProcessTextSelectionQuestion(
+        'Which equals four?',
+        'radio',
+        [
+          [true, RENDERED_MATH],
+          [false, 'plain'],
+        ],
+        data
+      );
+
+      // The hidden input value is escaped so the SVG quotes cannot corrupt it...
+      expect(html).toContain('value="&lt;span class=&quot;exe-math-rendered');
+      expect(html).not.toContain('value="<span');
+      // ...while the visible label still renders the math span as innerHTML.
+      expect(html).toContain(`<label for=`);
+      expect(html).toContain(RENDERED_MATH);
+      // Grading stays index-based: the first option (index 0) is the right answer.
+      expect(html).toMatch(/class="selectionAnswer"[^>]*>0</);
+    });
+
+    it('renders stem LaTeX but keeps the plain fill blank answer intact', () => {
+      const html = $form.getProcessTextFillQuestion(
+        `Compute ${RENDERED_MATH} then write <u>four</u>`,
+        false,
+        false,
+        data
+      );
+
+      // Stem math survives as a pre-rendered span...
+      expect(html).toContain('exe-math-rendered');
+      // ...and the blank answer is the plain word, not the SVG markup.
+      expect(html).toMatch(/class="fillAnswer"[^>]*>four<\/span>/);
+      expect(html).not.toMatch(/class="fillAnswer"[^>]*>\s*<span/);
+    });
+
+    it('renders stem LaTeX but keeps the plain dropdown answer/options intact', () => {
+      const html = $form.getProcessTextDropdownQuestion(
+        `Pick ${RENDERED_MATH} <u>four</u>`,
+        'five|six',
+        data
+      );
+
+      // Stem math survives...
+      expect(html).toContain('exe-math-rendered');
+      // ...the correct answer is the plain word (compared verbatim at runtime)...
+      expect(html).toMatch(/class="dropdownAnswer"[^>]*>four<\/span>/);
+      // ...and every option value matches its plain text (no SVG injected).
+      expect(html).toContain('<option value="four">four</option>');
+      expect(html).toContain('<option value="five">five</option>');
     });
   });
 });

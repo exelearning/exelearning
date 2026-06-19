@@ -22,13 +22,29 @@ function loadExportIdevice(code) {
     return global.$eXeSeleccionaMedias;
 }
 
-describe('select-media-files iDevice export', () => {
+function loadExport() {
+    const code = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');
+    let modified = code.replace(/var\s+\$eXeSeleccionaMedias\s*=/, 'global.$eXeSeleccionaMedias =');
+    modified = modified.replace(
+        /\$\(function\s*\(\)\s*\{\s*\$eXeSeleccionaMedias\.init\(\);\s*\}\);?/g,
+        '',
+    );
+    // eslint-disable-next-line no-eval
+    (0, eval)(modified);
+    return global.$eXeSeleccionaMedias;
+}
+
+describe('select-media-files iDevice export — SCORM score', () => {
     let $eXeSeleccionaMedias;
     let originalMedia;
     let originalReport;
     let originalSendScoreNew;
 
     beforeEach(() => {
+        // checkQuestion/gameOver defer a setTimeout(gameOver, ...) callback that
+        // bare-references $eXeSeleccionaMedias; fake timers keep it from leaking
+        // past teardown (where the audio suite deletes the global).
+        vi.useFakeTimers();
         global.$eXeSeleccionaMedias = undefined;
         const code = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');
         $eXeSeleccionaMedias = loadExportIdevice(code);
@@ -53,6 +69,8 @@ describe('select-media-files iDevice export', () => {
         global.$exeDevices.iDevice.gamification.scorm.sendScoreNew =
             originalSendScoreNew;
         document.body.innerHTML = '';
+        vi.clearAllTimers();
+        vi.useRealTimers();
         vi.restoreAllMocks();
     });
 
@@ -223,5 +241,93 @@ describe('select-media-files iDevice export', () => {
                 scorerp: 5,
             })
         );
+    });
+});
+
+describe('select-media-files iDevice export — audio icon + autoplay gating', () => {
+    let media;
+    let dmedia;
+
+    beforeEach(() => {
+        global.$eXeSeleccionaMedias = undefined;
+        media = { playSound: vi.fn(), stopSound: vi.fn() };
+        global.$exeDevices = { iDevice: { gamification: { media } } };
+        dmedia = loadExport();
+        document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+        delete global.$exeDevices;
+        delete global.$eXeSeleccionaMedias;
+    });
+
+    describe('showPhrase audio icon + autoplay gating', () => {
+        const instance = 0;
+
+        function setup(phrases) {
+            dmedia.options[instance] = {
+                active: 0,
+                attempsNumber: 1,
+                phrasesGame: phrases,
+            };
+            // Isolate showPhrase from the card/image/message rendering helpers.
+            dmedia.addCards = () => {};
+            dmedia.showImage = () => {};
+            dmedia.showMessage = () => {};
+            document.body.innerHTML = `
+                <a href="#" id="slcmpAudioDef-${instance}" style="display:none"></a>
+                <div id="slcmpQuestion-${instance}"></div>
+            `;
+        }
+
+        it('shows the speaker icon and does NOT autoplay on the first question (num === 0)', () => {
+            setup([{ definition: 'Q0', audioDefinition: 'audio0.mp3', cards: [] }]);
+            dmedia.showPhrase(0, instance);
+            const icon = document.getElementById(`slcmpAudioDef-${instance}`);
+            expect(icon.style.display).toBe('block');
+            expect(media.playSound).not.toHaveBeenCalled();
+        });
+
+        it('shows the speaker icon AND autoplays when navigating to a later question (num > 0)', () => {
+            setup([
+                { definition: 'Q0', audioDefinition: 'audio0.mp3', cards: [] },
+                { definition: 'Q1', audioDefinition: 'audio1.mp3', cards: [] },
+            ]);
+            dmedia.showPhrase(1, instance);
+            const icon = document.getElementById(`slcmpAudioDef-${instance}`);
+            expect(icon.style.display).toBe('block');
+            expect(media.playSound).toHaveBeenCalledWith('audio1.mp3');
+        });
+
+        it('keeps the icon hidden when the statement has no audio', () => {
+            setup([{ definition: 'Q0', audioDefinition: '', cards: [] }]);
+            dmedia.showPhrase(0, instance);
+            const icon = document.getElementById(`slcmpAudioDef-${instance}`);
+            expect(icon.style.display).toBe('none');
+            expect(media.playSound).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('startGame never autoplays the statement audio', () => {
+        const instance = 0;
+
+        it('starts the game silently even when the first statement has audio', () => {
+            dmedia.options[instance] = {
+                phrasesGame: [{ definition: 'Q0', audioDefinition: 'audio0.mp3', cards: [] }],
+                phrase: { definition: 'Q0', audioDefinition: 'audio0.mp3', cards: [] },
+                time: 0,
+                attempts: 0,
+                gameStarted: false,
+                itinerary: { showCodeAccess: false },
+            };
+            // activateHover/uptateTime touch unrelated DOM; stub them out.
+            dmedia.activateHover = () => {};
+            dmedia.uptateTime = () => {};
+
+            dmedia.startGame(instance);
+
+            expect(media.playSound).not.toHaveBeenCalled();
+            expect(dmedia.options[instance].gameStarted).toBe(true);
+        });
     });
 });

@@ -2,7 +2,7 @@
 /**
  * Electrical Circuits Quiz iDevice (edition code)
  * Based on Select Activity (quick-questions-multiple-choice).
- * Questions are paired with TikZ circuit diagrams rendered via TikZJax.
+ * Questions are paired with SVG circuit diagrams rendered from TikZJax in edition.
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
@@ -25,6 +25,9 @@ var $exeDevice = {
     id: false,
     ci18n: {},
     version: 3.1,
+    renderedTikzPreview: null,
+    tikzFinishedHandler: null,
+    tikzCapturePromise: null,
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -169,7 +172,7 @@ var $exeDevice = {
         const msgs = $exeDevice.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgTypeChoose = _(
-            'Please select the correct answer for each option'
+            'Please select the correct answer for each question'
         );
         msgs.msgECompleteQuestion = _('Please write the question');
         msgs.msgECompleteAllOptions = _('Please complete all options');
@@ -192,6 +195,9 @@ var $exeDevice = {
         );
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
+        );
+        msgs.msgERenderCircuitPreview = _(
+            'Please render the circuit preview before saving.'
         );
         msgs.msgIDLenght = _(
             'The report identifier must have at least 5 characters'
@@ -360,9 +366,12 @@ var $exeDevice = {
         $('#elceNumberQuestion').val(num + 1);
 
         // Load TikZ code, description and render preview
-        $('#elceTikzCode').val(p.tikzCode || '');
+        const tikzCode = (p.tikzCode || '').trim();
+        $('#elceTikzCode').val(tikzCode);
         $('#elceDescription').val(p.description || '');
-        $exeDevice.renderTikzPreview();
+        if (!tikzCode || !$exeDevice.showStoredTikzSvg(tikzCode, p.tikzSvg)) {
+            $exeDevice.renderTikzPreview();
+        }
 
         if (activityMode === 'show') return;
 
@@ -419,13 +428,606 @@ var $exeDevice = {
         $('#elceSolutionSelect').text(solution);
     },
 
+    sanitizeTikzSvg: function (svg) {
+        if (!svg) return '';
+
+        const parser = new DOMParser();
+        let parsedSvg = null;
+
+        if (typeof svg === 'string') {
+            const parsed = parser.parseFromString(svg, 'image/svg+xml');
+            if (parsed.querySelector('parsererror')) return '';
+            parsedSvg = parsed.querySelector('svg');
+        } else if (svg.nodeType === 1) {
+            parsedSvg =
+                svg.tagName.toLowerCase() === 'svg'
+                    ? svg.cloneNode(true)
+                    : svg.querySelector('svg')?.cloneNode(true);
+        }
+
+        if (!parsedSvg || parsedSvg.tagName.toLowerCase() !== 'svg') return '';
+
+        parsedSvg.querySelectorAll('script, foreignObject').forEach((node) => {
+            node.remove();
+        });
+
+        [parsedSvg, ...parsedSvg.querySelectorAll('*')].forEach((node) => {
+            [...node.attributes].forEach((attribute) => {
+                const name = attribute.name.toLowerCase(),
+                    value = attribute.value.replace(/\s+/g, '').toLowerCase();
+
+                if (name.startsWith('on') || value.includes('javascript:')) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        parsedSvg.removeAttribute('width');
+        parsedSvg.removeAttribute('height');
+
+        return new XMLSerializer().serializeToString(parsedSvg);
+    },
+
+    // Unicode symbols TikZJax's bundled LaTeX cannot parse (its inputenc is not
+    // set up for utf8), mapped to their LaTeX commands. Authors routinely type
+    // these glyphs directly — e.g. the ohm sign Ω in "R=1 kΩ" or micro µ in
+    // "1 µF" — which otherwise aborts compilation with
+    // "Unicode character ... not set up for use with LaTeX" and leaves the
+    // circuit unrendered.
+    tikzUnicodeReplacements: {
+        // Uppercase Greek letters
+        Ω: '\\Omega',
+        Γ: '\\Gamma',
+        Δ: '\\Delta',
+        Θ: '\\Theta',
+        Λ: '\\Lambda',
+        Π: '\\Pi',
+        Σ: '\\Sigma',
+        Φ: '\\Phi',
+        Ψ: '\\Psi',
+        // Lowercase Greek letters
+        α: '\\alpha',
+        β: '\\beta',
+        γ: '\\gamma',
+        δ: '\\delta',
+        ε: '\\varepsilon',
+        η: '\\eta',
+        θ: '\\theta',
+        λ: '\\lambda',
+        µ: '\\mu', // U+00B5 micro sign
+        μ: '\\mu', // U+03BC greek small letter mu
+        ν: '\\nu',
+        π: '\\pi',
+        ρ: '\\rho',
+        σ: '\\sigma',
+        τ: '\\tau',
+        φ: '\\varphi',
+        χ: '\\chi',
+        ψ: '\\psi',
+        ω: '\\omega',
+        // Operators and units
+        '×': '\\times',
+        '÷': '\\div',
+        '±': '\\pm',
+        '∓': '\\mp',
+        '·': '\\cdot',
+        '≤': '\\leq',
+        '≥': '\\geq',
+        '≠': '\\neq',
+        '≈': '\\approx',
+        '∞': '\\infty',
+        '√': '\\surd',
+        '∝': '\\propto',
+        '∠': '\\angle',
+        '°': '^\\circ',
+        // Arrows
+        '→': '\\rightarrow',
+        '←': '\\leftarrow',
+        '↔': '\\leftrightarrow',
+        '⇒': '\\Rightarrow',
+    },
+
+    /**
+     * Replace bare Unicode symbols with their LaTeX equivalents wrapped in
+     * \ensuremath{} so they compile under TikZJax regardless of whether they
+     * appear in text or math context. Pure helper consumed by normalizeTikzCode
+     * (the single source of truth), so the rendered LaTeX, the cache key and the
+     * saved code all stay LaTeX-safe.
+     */
+    sanitizeTikzUnicode: function (code) {
+        if (!code) {
+            return '';
+        }
+
+        let result = '';
+        for (const char of code) {
+            const replacement = $exeDevice.tikzUnicodeReplacements[char];
+            result += replacement ? '\\ensuremath{' + replacement + '}' : char;
+        }
+        return result;
+    },
+
+    sanitizeTikzRendererSyntax: function (code) {
+        if (!code) {
+            return '';
+        }
+
+        const formatNumber = (value) =>
+            String(value).trim().replace(/(\d),(\d)/g, '$1{,}$2');
+
+        return code
+            .replace(/\\\\,/g, '\\,')
+            .replace(/\bto\s*\[\s*lD\b/g, 'to[leD')
+            .replace(
+                /\bto\s*\[\s*(battery1|battery2)\s*,\s*l\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*V\s*\]/g,
+                (_match, component, value) =>
+                    `to[${component},l={$${formatNumber(value)}\\,\\mathrm{V}$}]`
+            )
+            .replace(
+                /\bto\s*\[\s*R\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*(k?)\s*(?:Ω|\\Omega)\s*\]/g,
+                (_match, value, prefix) => {
+                    const unit = prefix ? '\\mathrm{k}\\Omega' : '\\Omega';
+                    return `to[R,l={$${formatNumber(value)}\\,${unit}$}]`;
+                }
+            )
+            .replace(
+                /\bto\s*\[\s*C\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*(?:\\mu|µ|μ|u)\s*F\s*\]/g,
+                (_match, value) =>
+                    `to[C,l={$${formatNumber(value)}\\,\\mu\\mathrm{F}$}]`
+            )
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,');
+    },
+
+    normalizeTikzCode: function (code) {
+        // Single source of truth: collapse line breaks (and the surrounding
+        // indentation), repair known AI-generated CircuiTikZ patterns, then
+        // replace Unicode symbols TikZJax cannot parse. TikZJax fails on
+        // multi-line input, and using this everywhere keeps the rendered-SVG
+        // cache key aligned with what validateQuestion/save look up.
+        const collapsed = (code || '').trim().replace(/\s*\r?\n\s*/g, ' ');
+        return $exeDevice.sanitizeTikzUnicode(
+            $exeDevice.sanitizeTikzRendererSyntax(collapsed)
+        );
+    },
+
+    normalizeVisibleCircuitText: function (text) {
+        if (!text) {
+            return '';
+        }
+
+        return String(text)
+            .trim()
+            .replace(/^\\\((.*)\\\)$/g, '$1')
+            .replace(/^\{\$(.*)\$\}$/g, '$1')
+            .replace(/^\$(.*)\$$/g, '$1')
+            .replace(/\{,\}/g, ',')
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1 ')
+            .replace(/\\mathrm\{([^{}]*)\}/g, '$1')
+            .replace(/\\\\,/g, ' ')
+            .replace(/\\,/g, ' ')
+            .replace(/\\Omega/g, 'Ω')
+            .replace(/\\mu/g, 'µ')
+            .replace(/\\times\b/g, '×')
+            .replace(/\\cdot\b/g, '·')
+            .replace(/\\pm\b/g, '±')
+            .replace(/\^\{?\\circ\}?/g, '°')
+            .replace(/\\degree\b/g, '°')
+            .replace(/[{}$]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    setRenderedTikzSvg: function (code, svg) {
+        const normalizedCode = $exeDevice.normalizeTikzCode(code),
+            sanitizedSvg = $exeDevice.sanitizeTikzSvg(svg);
+
+        if (!normalizedCode || !sanitizedSvg) {
+            $exeDevice.renderedTikzPreview = null;
+            return '';
+        }
+
+        $exeDevice.renderedTikzPreview = {
+            code: normalizedCode,
+            svg: sanitizedSvg,
+        };
+        return sanitizedSvg;
+    },
+
+    getRenderedTikzSvgForCode: function (code) {
+        const normalizedCode = $exeDevice.normalizeTikzCode(code);
+
+        if (
+            !normalizedCode ||
+            !$exeDevice.renderedTikzPreview ||
+            $exeDevice.renderedTikzPreview.code !== normalizedCode
+        ) {
+            return '';
+        }
+
+        return $exeDevice.renderedTikzPreview.svg;
+    },
+
+    invalidateTikzSvgPreview: function () {
+        $exeDevice.renderedTikzPreview = null;
+    },
+
+    // Parsed Computer Modern fonts, keyed by font-family, reused across renders.
+    tikzFontCache: {},
+
+    // TikZJax emits one Unicode code point per glyph from its own font-encoding
+    // table. That mapping for the operators-font uppercase Omega is off by one:
+    // it emits U+00AC (¬) although the Computer Modern fonts carry the Omega
+    // glyph at U+00AD. Correct it before looking the glyph up — otherwise the
+    // ohm sign is the not-sign, the code point the browser also refuses to draw.
+    tikzGlyphCodepointFixups: new Map([[0x00ac, 0x00ad]]),
+
+    /**
+     * Minimal big-endian TrueType reader: just enough to turn the Computer
+     * Modern glyphs TikZJax references into vector outlines. Returns a font
+     * object exposing unitsPerEm, a code-point -> glyph-index Map, per-glyph
+     * advance widths and the contours of a glyph, or null when a required table
+     * is missing or the buffer is not a recognizable font.
+     */
+    parseTikzFont: function (buffer) {
+        const view = new DataView(
+            buffer instanceof ArrayBuffer ? buffer : buffer.buffer
+        );
+        if (view.byteLength < 12) return null;
+
+        const u8 = (offset) => view.getUint8(offset);
+        const u16 = (offset) => view.getUint16(offset);
+        const i16 = (offset) => view.getInt16(offset);
+        const u32 = (offset) => view.getUint32(offset);
+
+        const tables = {};
+        const numTables = u16(4);
+        for (let i = 0; i < numTables; i++) {
+            const record = 12 + i * 16;
+            const tag = String.fromCharCode(
+                u8(record),
+                u8(record + 1),
+                u8(record + 2),
+                u8(record + 3)
+            );
+            tables[tag] = u32(record + 8);
+        }
+
+        if (
+            tables.head == null ||
+            tables.maxp == null ||
+            tables.loca == null ||
+            tables.glyf == null ||
+            tables.cmap == null
+        ) {
+            return null;
+        }
+
+        const cmap = $exeDevice.parseTikzCmap(view, tables.cmap);
+        if (!cmap) return null;
+
+        const unitsPerEm = u16(tables.head + 18);
+        const longLoca = i16(tables.head + 50) === 1;
+        const numGlyphs = u16(tables.maxp + 4);
+        const numberOfHMetrics =
+            tables.hhea != null ? u16(tables.hhea + 34) : 0;
+
+        const glyphOffsets = new Array(numGlyphs + 1);
+        for (let i = 0; i <= numGlyphs; i++) {
+            glyphOffsets[i] = longLoca
+                ? u32(tables.loca + i * 4)
+                : u16(tables.loca + i * 2) * 2;
+        }
+
+        const advanceWidth = (glyphIndex) => {
+            if (tables.hmtx == null || numberOfHMetrics === 0) return 0;
+            const index =
+                glyphIndex < numberOfHMetrics
+                    ? glyphIndex
+                    : numberOfHMetrics - 1;
+            return u16(tables.hmtx + index * 4);
+        };
+
+        const glyphContours = (glyphIndex) => {
+            if (glyphIndex < 0 || glyphIndex >= numGlyphs) return [];
+            if (glyphOffsets[glyphIndex] === glyphOffsets[glyphIndex + 1]) {
+                return [];
+            }
+
+            const start = tables.glyf + glyphOffsets[glyphIndex];
+            const numberOfContours = i16(start);
+            // The shipped Computer Modern fonts use only simple glyphs; composite
+            // glyphs (negative contour count) never occur, so leave them empty.
+            if (numberOfContours < 0) return [];
+
+            let pointer = start + 10;
+            const endPoints = [];
+            for (let i = 0; i < numberOfContours; i++) {
+                endPoints.push(u16(pointer));
+                pointer += 2;
+            }
+            const pointCount = numberOfContours
+                ? endPoints[numberOfContours - 1] + 1
+                : 0;
+            pointer += 2 + u16(pointer); // skip hinting instructions
+
+            const flags = [];
+            while (flags.length < pointCount) {
+                const flag = u8(pointer++);
+                flags.push(flag);
+                if (flag & 0x08) {
+                    let repeat = u8(pointer++);
+                    while (repeat-- > 0) flags.push(flag);
+                }
+            }
+
+            const readDeltas = (shortBit, sameBit) => {
+                const values = [];
+                let value = 0;
+                for (let i = 0; i < pointCount; i++) {
+                    const flag = flags[i];
+                    if (flag & shortBit) {
+                        const delta = u8(pointer++);
+                        value += flag & sameBit ? delta : -delta;
+                    } else if (!(flag & sameBit)) {
+                        value += i16(pointer);
+                        pointer += 2;
+                    }
+                    values.push(value);
+                }
+                return values;
+            };
+            const xs = readDeltas(0x02, 0x10);
+            const ys = readDeltas(0x04, 0x20);
+
+            const contours = [];
+            let from = 0;
+            for (let c = 0; c < numberOfContours; c++) {
+                const to = endPoints[c];
+                const points = [];
+                for (let i = from; i <= to; i++) {
+                    points.push({
+                        x: xs[i],
+                        y: ys[i],
+                        on: !!(flags[i] & 0x01),
+                    });
+                }
+                contours.push(points);
+                from = to + 1;
+            }
+            return contours;
+        };
+
+        return {
+            unitsPerEm: unitsPerEm,
+            cmap: cmap,
+            advanceWidth: advanceWidth,
+            glyphContours: glyphContours,
+        };
+    },
+
+    // Parse a TrueType `cmap` table, returning a code-point -> glyph-index Map.
+    // Only the Windows Unicode BMP subtable (platform 3, encoding 1, format 4)
+    // is needed for the bundled Computer Modern fonts.
+    parseTikzCmap: function (view, cmapOffset) {
+        const u16 = (offset) => view.getUint16(offset);
+        const u32 = (offset) => view.getUint32(offset);
+
+        const subtableCount = u16(cmapOffset + 2);
+        let subtable = -1;
+        for (let i = 0; i < subtableCount; i++) {
+            const record = cmapOffset + 4 + i * 8;
+            if (u16(record) === 3 && u16(record + 2) === 1) {
+                subtable = cmapOffset + u32(record + 4);
+                break;
+            }
+        }
+        if (subtable < 0 || u16(subtable) !== 4) return null;
+
+        const map = new Map();
+        const segCount = u16(subtable + 6) / 2;
+        const endCodes = subtable + 14;
+        const startCodes = endCodes + segCount * 2 + 2;
+        const deltas = startCodes + segCount * 2;
+        const ranges = deltas + segCount * 2;
+        for (let s = 0; s < segCount; s++) {
+            const end = u16(endCodes + s * 2);
+            const start = u16(startCodes + s * 2);
+            const delta = u16(deltas + s * 2);
+            const rangeOffset = u16(ranges + s * 2);
+            for (let code = start; code <= end && code !== 0xffff; code++) {
+                let glyph;
+                if (rangeOffset === 0) {
+                    glyph = (code + delta) & 0xffff;
+                } else {
+                    glyph = u16(ranges + s * 2 + rangeOffset + (code - start) * 2);
+                    if (glyph !== 0) glyph = (glyph + delta) & 0xffff;
+                }
+                if (glyph) map.set(code, glyph);
+            }
+        }
+        return map;
+    },
+
+    // Turn a glyph's TrueType contours (quadratic on/off-curve points, font
+    // units, Y axis up) into SVG path data placed at the baseline origin
+    // (penX, baselineY), matching how the original <text> element sat.
+    tikzContoursToPathData: function (contours, penX, baselineY, scale) {
+        const tx = (value) => Number((penX + value * scale).toFixed(2));
+        const ty = (value) => Number((baselineY - value * scale).toFixed(2));
+        let data = '';
+
+        for (const contour of contours) {
+            const count = contour.length;
+            if (count === 0) continue;
+
+            let current = contour[count - 1];
+            let next = contour[0];
+            if (current.on) {
+                data += 'M' + tx(current.x) + ' ' + ty(current.y);
+            } else if (next.on) {
+                data += 'M' + tx(next.x) + ' ' + ty(next.y);
+            } else {
+                data +=
+                    'M' +
+                    tx((current.x + next.x) / 2) +
+                    ' ' +
+                    ty((current.y + next.y) / 2);
+            }
+
+            for (let i = 0; i < count; i++) {
+                current = next;
+                next = contour[(i + 1) % count];
+                if (current.on) {
+                    data += 'L' + tx(current.x) + ' ' + ty(current.y);
+                    continue;
+                }
+                let endX = next.x;
+                let endY = next.y;
+                if (!next.on) {
+                    endX = (current.x + next.x) / 2;
+                    endY = (current.y + next.y) / 2;
+                }
+                data +=
+                    'Q' +
+                    tx(current.x) +
+                    ' ' +
+                    ty(current.y) +
+                    ' ' +
+                    tx(endX) +
+                    ' ' +
+                    ty(endY);
+            }
+            data += 'Z';
+        }
+        return data;
+    },
+
+    // Build the SVG path data for `text` rendered with `font` at baseline origin
+    // (x, y) and the given font size, advancing the pen per glyph.
+    tikzGlyphStringToPath: function (font, text, x, y, fontSize) {
+        const scale = fontSize / font.unitsPerEm;
+        let penX = x;
+        let data = '';
+        for (const character of text) {
+            const codePoint = character.codePointAt(0);
+            const fixedCodePoint =
+                $exeDevice.tikzGlyphCodepointFixups.get(codePoint) ?? codePoint;
+            const glyphIndex = font.cmap.get(fixedCodePoint);
+            if (glyphIndex) {
+                data += $exeDevice.tikzContoursToPathData(
+                    font.glyphContours(glyphIndex),
+                    penX,
+                    y,
+                    scale
+                );
+                penX += font.advanceWidth(glyphIndex) * scale;
+            }
+        }
+        return data;
+    },
+
+    // Fetch and parse a Computer Modern font shipped next to this iDevice,
+    // caching the (promise of the) result. Overridable in tests.
+    loadTikzFont: function (family) {
+        if (!$exeDevice.tikzFontCache[family]) {
+            const url = ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
+            $exeDevice.tikzFontCache[family] = fetch(url)
+                .then((response) => (response.ok ? response.arrayBuffer() : null))
+                .then((buffer) =>
+                    buffer ? $exeDevice.parseTikzFont(buffer) : null
+                )
+                .catch(() => null);
+        }
+        return $exeDevice.tikzFontCache[family];
+    },
+
+    /**
+     * Replace every <text> TikZJax produced with a self-contained <path> built
+     * from the real glyph outlines. This makes the stored/exported SVG render
+     * correctly without the Computer Modern web fonts (which are never
+     * registered as @font-face) and draws the ohm sign — whose code point the
+     * browser otherwise refuses to render. Falls back to leaving a <text>
+     * untouched when its font cannot be loaded.
+     */
+    convertTikzTextToPaths: function (svg) {
+        if (!svg) return Promise.resolve();
+        const texts = [...svg.querySelectorAll('text')];
+        if (texts.length === 0) return Promise.resolve();
+
+        const families = [
+            ...new Set(
+                texts.map((text) => text.getAttribute('font-family')).filter(Boolean)
+            ),
+        ];
+
+        return Promise.all(
+            families.map((family) =>
+                $exeDevice
+                    .loadTikzFont(family)
+                    .then((font) => [family, font])
+            )
+        ).then((entries) => {
+            const fonts = Object.fromEntries(entries);
+            texts.forEach((text) => {
+                const font = fonts[text.getAttribute('font-family')];
+                if (!font) return;
+
+                const x = parseFloat(text.getAttribute('x')) || 0;
+                const y = parseFloat(text.getAttribute('y')) || 0;
+                const fontSize = parseFloat(text.getAttribute('font-size')) || 10;
+                const data = $exeDevice.tikzGlyphStringToPath(
+                    font,
+                    text.textContent,
+                    x,
+                    y,
+                    fontSize
+                );
+                if (!data) return;
+
+                const path = document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'path'
+                );
+                path.setAttribute('d', data);
+                const fill = text.getAttribute('fill');
+                if (fill) path.setAttribute('fill', fill);
+                text.replaceWith(path);
+            });
+        });
+    },
+
+    captureRenderedTikzPreview: function (code, preview) {
+        const svg = preview.querySelector('svg');
+        if (!svg) return '';
+
+        const sanitizedSvg = $exeDevice.setRenderedTikzSvg(code, svg);
+        if (sanitizedSvg) {
+            preview.innerHTML = sanitizedSvg;
+        }
+        return sanitizedSvg;
+    },
+
+    showStoredTikzSvg: function (code, svg) {
+        const preview = document.getElementById('elceTikzPreview'),
+            $noCircuit = $('#elceNoCircuit'),
+            sanitizedSvg = $exeDevice.setRenderedTikzSvg(code, svg);
+
+        if (!preview || !sanitizedSvg) return false;
+
+        preview.innerHTML = sanitizedSvg;
+        $noCircuit.hide();
+        return true;
+    },
+
     /**
      * Render TikZ code in the preview area using TikZJax
      */
     renderTikzPreview: function () {
-        const code = $('#elceTikzCode').val().trim();
+        const code = $exeDevice.normalizeTikzCode($('#elceTikzCode').val());
         const preview = document.getElementById('elceTikzPreview');
         const $noCircuit = $('#elceNoCircuit');
+
+        $exeDevice.invalidateTikzSvgPreview();
 
         if (!code) {
             preview.innerHTML = '';
@@ -433,19 +1035,53 @@ var $exeDevice = {
             return;
         }
 
+        // Drop any listener still pending from a previous render.
+        if ($exeDevice.tikzFinishedHandler) {
+            preview.removeEventListener(
+                'tikzjax-load-finished',
+                $exeDevice.tikzFinishedHandler
+            );
+            $exeDevice.tikzFinishedHandler = null;
+        }
+
         $noCircuit.hide();
         preview.innerHTML = '';
 
-        // Insert <script type="text/tikz"> via DOM so MutationObserver detects it
+        // Insert <script type="text/tikz"> so TikZJax (which observes <body>)
+        // picks it up.
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
         tikzScript.dataset.texPackages = JSON.stringify({'circuitikz': '', 'amsmath': '', 'amssymb': ''});
         tikzScript.dataset.showConsole = 'true';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
+
+        // While compiling, TikZJax inserts a loading-spinner <svg> placeholder
+        // and only fires `tikzjax-load-finished` on the FINAL circuit <svg>
+        // (both for cached and freshly compiled results). Grabbing any <svg>
+        // captured the spinner by mistake and required a second click, so wait
+        // for that event and then capture the real circuit.
+        const onFinished = () => {
+            preview.removeEventListener('tikzjax-load-finished', onFinished);
+            $exeDevice.tikzFinishedHandler = null;
+            // TikZJax renders glyphs as <text> referencing Computer Modern fonts
+            // that are never registered, so convert them to self-contained
+            // <path>s before capturing. Conversion is async (it fetches fonts);
+            // expose the promise so the rest of the flow (and tests) can await.
+            const renderedSvg = preview.querySelector('svg');
+            $exeDevice.tikzCapturePromise = Promise.resolve(
+                renderedSvg ? $exeDevice.convertTikzTextToPaths(renderedSvg) : null
+            )
+                .catch(() => {})
+                .then(() => $exeDevice.captureRenderedTikzPreview(code, preview));
+        };
+        $exeDevice.tikzFinishedHandler = onFinished;
+        preview.addEventListener('tikzjax-load-finished', onFinished);
+
         preview.appendChild(tikzScript);
     },
 
     clearQuestion: function () {
+        $exeDevice.invalidateTikzSvgPreview();
         $exeDevice.showOptions(4);
         $exeDevice.showSolution('');
         $('.ELCE-Times')[0].checked = true;
@@ -524,7 +1160,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="elceShowMinimize">${_('Show minimized.')} </label>
-                            </div> 
+                            </div>
                             <div class="toggle-item mb-3" data-target="elceAnswersRamdon" id="elceAnswersRamdonDiv">
                                 <span class="toggle-control">
                                     <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
@@ -551,7 +1187,7 @@ var $exeDevice = {
                                     <input type="number" name="elceTimeShowSolution" id="elceTimeShowSolution" value="3" min="1" max="9" class="form-control" />
                                     <label for="elceTimeShowSolution">${_('Show solution time (seconds)')}</label>
                                 </div>
-                            </div>                            
+                            </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related" data-target="elceHasFeedBack">
                                     <span class="toggle-control">
@@ -690,7 +1326,7 @@ var $exeDevice = {
                                     <div id="elceScoreQuestionDiv" class="ELCE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
                                         <label for="elceScoreQuestion">${_('Score')}:</label>
                                         <input type="number" name="elceScoreQuestion" id="elceScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
-                                    </div>                                    
+                                    </div>
                                 </div>
                                 <div class="ELCE-EMultiMediaOption ">
                                     <div class="ELCE-EMultimedia" id="elceMultimedia">
@@ -700,7 +1336,7 @@ var $exeDevice = {
                                     <div id="elceTikzCodeGroup">
                                         <span id="elceTitleTikz">${_('Circuit code (TikZ)')}:</span>
                                         <div class="ELCE-ETikzInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code...')}"></textarea>
+                                            <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code…')}"></textarea>
                                             <a href="#" id="elcePreviewTikz" class="ELCE-ENavigationButton" title="${_('Preview circuit')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="ELCE-ENavigationButton" />
                                             </a>
@@ -710,7 +1346,7 @@ var $exeDevice = {
                                         <label for="elceDescription">${_('Description')}:</label>
                                         <input type="text" class="form-control" id="elceDescription" value="" />
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                             <div class="ELCE-EContents" id="elceContents">
                                 <div id="elceSolitionOptions" class="ELCE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="elceSolutionSelect">A</span></span></div>
@@ -748,7 +1384,7 @@ var $exeDevice = {
                                     <div class="ELCE-ESolutionWord"><label for="elceSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="elceSolutionWord" class="form-control"/></div>
                                     <div class="ELCE-ESolutionWord"><label for="elceDefinitionWord">${_('Definition')}:</label><input type="text" id="elceDefinitionWord" class="form-control"/></div>
                                 </div>
-                            </div>                           
+                            </div>
                             <div class="ELCE-ENavigationButtons gap-2">
                                 <a href="#" id="elceAdd" class="ELCE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ELCE-ENavigationButton" /></a>
                                 <a href="#" id="elceFirst" class="ELCE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ELCE-ENavigationButton" /></a>
@@ -771,7 +1407,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(10)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
 
             </div>`;
 
@@ -803,6 +1439,7 @@ var $exeDevice = {
             time: 0,
             numberOptions: 4,
             tikzCode: $exeDevice.defaultTikzCode,
+            tikzSvg: '',
             quextion: c_('What type of circuit is shown?'),
             options: [c_('Series circuit'), c_('Parallel circuit'), c_('Mixed circuit'), c_('Open circuit')],
             solution: 'A',
@@ -910,6 +1547,10 @@ var $exeDevice = {
                 typeof game.selectsGame[i].tikzCode == 'undefined'
                     ? ''
                     : game.selectsGame[i].tikzCode;
+            game.selectsGame[i].tikzSvg =
+                typeof game.selectsGame[i].tikzSvg == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].tikzSvg;
             game.selectsGame[i].description =
                 typeof game.selectsGame[i].description == 'undefined'
                     ? ''
@@ -974,7 +1615,7 @@ var $exeDevice = {
         }
 
         const textFeedBack = $exeDevice.getEditorContent('elceFeedBackEditor');
-   
+
         let html = '<div class="electrical-circuits-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
@@ -1003,7 +1644,8 @@ var $exeDevice = {
         p.numberOptions = parseInt($('input[name=slcnumber]:checked').val());
         p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
         p.customScore = parseFloat($('#elceScoreQuestion').val()) || 1;
-        p.tikzCode = $('#elceTikzCode').val().trim();
+        p.tikzCode = $exeDevice.normalizeTikzCode($('#elceTikzCode').val());
+        p.tikzSvg = $exeDevice.getRenderedTikzSvgForCode(p.tikzCode);
         p.description = $('#elceDescription').val().trim();
 
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
@@ -1033,7 +1675,9 @@ var $exeDevice = {
             p.options.push(option);
         });
 
-        if (activityMode === 'test') {
+        if (p.tikzCode.length > 0 && p.tikzSvg.length == 0) {
+            message = msgs.msgERenderCircuitPreview;
+        } else if (activityMode === 'test') {
             if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
                 message = msgs.msgTypeChoose;
             } else if (p.typeSelect != 2 && p.quextion.length == 0) {
@@ -1164,6 +1808,17 @@ var $exeDevice = {
             }
         }
         const selectsGame = $exeDevice.selectsGame;
+
+        for (let i = 0; i < selectsGame.length; i++) {
+            const mquestion = selectsGame[i],
+                tikzCode = (mquestion.tikzCode || '').trim(),
+                tikzSvg = (mquestion.tikzSvg || '').trim();
+
+            if (tikzCode.length > 0 && tikzSvg.length == 0) {
+                $exeDevice.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
+                return false;
+            }
+        }
 
         if (activityMode === 'test') {
             for (let i = 0; i < selectsGame.length; i++) {
@@ -1416,6 +2071,9 @@ var $exeDevice = {
             e.preventDefault();
             $exeDevice.renderTikzPreview();
         });
+        $('#elceTikzCode').on('input', () => {
+            $exeDevice.invalidateTikzSvgPreview();
+        });
 
         $elceTimeShowSolution
             .on('keyup', function () {
@@ -1559,7 +2217,7 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
-            10,
+            11,
             $exeDevice.insertQuestions
         );
 
@@ -1838,14 +2496,14 @@ var $exeDevice = {
                         solutionChar = letters.charAt(index);
                     }
                 }
-                p.description = description;
-                p.tikzCode = tikzCode;
+                p.description = $exeDevice.normalizeVisibleCircuitText(description);
+                p.tikzCode = $exeDevice.normalizeTikzCode(tikzCode);
                 p.solution = solutionChar;
-                p.quextion = linarray[3];
-                p.options[0] = linarray[4] || '';
-                p.options[1] = linarray[5] || '';
-                p.options[2] = linarray[6] || '';
-                p.options[3] = linarray[7] || '';
+                p.quextion = $exeDevice.normalizeVisibleCircuitText(linarray[3]);
+                p.options[0] = $exeDevice.normalizeVisibleCircuitText(linarray[4]);
+                p.options[1] = $exeDevice.normalizeVisibleCircuitText(linarray[5]);
+                p.options[2] = $exeDevice.normalizeVisibleCircuitText(linarray[6]);
+                p.options[3] = $exeDevice.normalizeVisibleCircuitText(linarray[7]);
                 p.numberOptions = linarray.length - 4;
                 questions.push(p);
             } else if (lineFormat1.test(line)) {

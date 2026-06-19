@@ -4,7 +4,7 @@ Reference document for the end-to-end process that turns a Yjs document into a
 downloadable `.elpx` file.
 
 Related documents: [import-pipeline.md](./import-pipeline.md) |
-[validation.md](./validation.md)
+[validation.md](./validation.md) | [tracking-emission.md](./tracking-emission.md)
 
 ---
 
