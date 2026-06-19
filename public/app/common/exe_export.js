@@ -201,9 +201,32 @@ window.$exeExport = {
             if (typeof window.registerScormLifecycleHandlers == 'function') {
                 window.registerScormLifecycleHandlers(isSCORM);
             } else if (typeof window.addEventListener == 'function') {
+                // Legacy SCO bundles without registerScormLifecycleHandlers: mirror its
+                // behaviour so progress is not lost on browsers that withhold `pagehide`
+                // when a tab is discarded (issue #1831). Commit on freeze / tab-hidden,
+                // finalize once on a real pagehide, and keep the session open on bfcache.
+                let finalized = false;
+                const commitProgress = () => {
+                    if (finalized) return;
+                    if (window.scorm && typeof window.scorm.save == 'function') {
+                        window.scorm.save();
+                    }
+                };
                 window.addEventListener('pagehide', event => {
-                    if (!event || !event.persisted) window.unloadPage(isSCORM);
+                    if (event && event.persisted) {
+                        commitProgress();
+                        return;
+                    }
+                    if (finalized) return;
+                    finalized = true;
+                    window.unloadPage(isSCORM);
                 });
+                window.addEventListener('freeze', commitProgress);
+                if (typeof document != 'undefined' && typeof document.addEventListener == 'function') {
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState == 'hidden') commitProgress();
+                    });
+                }
             }
         }
     },

@@ -308,32 +308,58 @@ describe('exe_export.js', () => {
     expect(window.unloadPage).not.toHaveBeenCalled();
   });
 
-  it('falls back to a pagehide handler when registerScormLifecycleHandlers is missing', () => {
+  it('mirrors the full lifecycle (pagehide/freeze/visibilitychange) when registerScormLifecycleHandlers is missing', () => {
     // Backward-compat path: an older SCO bundle without registerScormLifecycleHandlers.
-    window.scorm = {};
+    const save = vi.fn();
+    window.scorm = { save };
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
     // Intentionally no window.registerScormLifecycleHandlers defined.
 
-    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const winSpy = vi.spyOn(window, 'addEventListener');
+    const docSpy = vi.spyOn(document, 'addEventListener');
 
     window.$exeExport.initScorm();
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
-    const pagehideRegistration = addEventListenerSpy.mock.calls.find((call) => call[0] === 'pagehide');
-    expect(pagehideRegistration).toBeDefined();
+    const pagehide = winSpy.mock.calls.find((call) => call[0] === 'pagehide')?.[1];
+    const freeze = winSpy.mock.calls.find((call) => call[0] === 'freeze')?.[1];
+    const visibilitychange = docSpy.mock.calls.find((call) => call[0] === 'visibilitychange')?.[1];
 
-    const pagehideHandler = pagehideRegistration[1];
+    // The fallback must mirror registerScormLifecycleHandlers, not only pagehide.
+    expect(pagehide).toBeDefined();
+    expect(freeze).toBeDefined();
+    expect(visibilitychange).toBeDefined();
 
-    // Bfcache entry must NOT terminate the SCO session.
-    pagehideHandler({ persisted: true });
+    // Bfcache entry commits progress without terminating the session.
+    pagehide({ persisted: true });
+    expect(save).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).not.toHaveBeenCalled();
 
-    // Real unload must terminate it.
-    pagehideHandler({ persisted: false });
-    expect(window.unloadPage).toHaveBeenCalledWith(false);
+    // Freeze commits progress only.
+    freeze();
+    expect(save).toHaveBeenCalledTimes(2);
 
-    addEventListenerSpy.mockRestore();
+    // Tab hidden commits progress; tab visible is a no-op.
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    visibilitychange();
+    expect(save).toHaveBeenCalledTimes(2);
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    visibilitychange();
+    expect(save).toHaveBeenCalledTimes(3);
+    if (visibilityDescriptor) {
+      Object.defineProperty(document, 'visibilityState', visibilityDescriptor);
+    }
+
+    // A real pagehide finalizes exactly once; later commits are then no-ops.
+    pagehide({ persisted: false });
+    expect(window.unloadPage).toHaveBeenCalledWith(false);
+    freeze();
+    expect(save).toHaveBeenCalledTimes(3);
+
+    winSpy.mockRestore();
+    docSpy.mockRestore();
   });
 
   it('detects scorm data in JSON idevices that store isScorm directly', () => {

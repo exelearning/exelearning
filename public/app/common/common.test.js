@@ -1655,6 +1655,55 @@ describe('common.js $exeDevices', () => {
       }
     });
 
+    it('updateActivity marks a SCORM 1.2 SCO as failed below the passing threshold', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '3.00',
+            weighted: 100,
+            gameOver: true,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 30);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        // SCORM 2004-only keys must NOT leak into a 1.2 package.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.success_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.score.scaled', expect.anything());
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
     it('updateActivity uses SCORM 2004 CMI keys when the LMS reports version 2004', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
