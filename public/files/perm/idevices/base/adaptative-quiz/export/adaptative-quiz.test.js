@@ -1411,9 +1411,12 @@ describe('adaptative-quiz export', () => {
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(50);
 
-            // Second correct answer -> 2/2 -> 100/100.
+            // Second correct answer -> 2/2 -> 100/100. This is the final round, so
+            // the game is over: only then does the terminal status become "passed"
+            // (the in-progress saves above stay "incomplete").
             adq.options[id].hits = 2;
             adq.options[id].roundCount = 2;
+            adq.options[id].gameOver = true;
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
             expect(store['cmi.core.lesson_status']).toBe('passed');

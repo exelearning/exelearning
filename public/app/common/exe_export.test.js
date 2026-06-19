@@ -350,7 +350,10 @@ describe('exe_export.js', () => {
     document.body.appendChild(jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    // Issue #1831: the SCO finalizes on pagehide (the deprecated unload event was
+    // dropped). With no registerScormLifecycleHandlers present, initScorm falls
+    // back to a pagehide listener, which must still detect isScorm from the JSON.
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
