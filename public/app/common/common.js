@@ -1140,18 +1140,20 @@ var $exeDevices = {
                 registerActivity: function (game) {
                     if (typeof game !== 'object' || game === null) return;
 
+                    // Resolve the iDevice identity from the DOM once. This is used by
+                    // both SCORM tracking and the always-on xAPI emitter (exe_xapi.js),
+                    // so it must run in every export format, not only under SCORM.
+                    game.mainElement = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                    let $ideviceNode = game.mainElement.closest('.idevice_node');
+                    // The node id equals the stable odeIdeviceId, used as the xAPI object IRI.
+                    game.ideviceId = $ideviceNode.attr('id');
+                    game.title = (game.mainElement.closest('article')
+                        .find('header .box-title').text() || '').replace(/"/g, ' ');
+                    game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
+
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
-                        game.mainElement = game.main.charAt(0) === '.' ? game.mainElement = $(`${game.main}`).eq(0) : game.mainElement = $(`#${game.main}`).eq(0);
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
-                        game.title = game.mainElement.closest('article')
-                            .find('header .box-title').text() || '';
-                        game.title = game.title.replace(/"/g, ' ');
-                        let $idevices = $('.idevice_node');
-                        let deviceId = game.mainElement.closest('.idevice_node').attr('id');
-                        let index = $idevices.index($('#' + deviceId));
-
-                        game.ideviceNumber = index + 1;
 
                         let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
@@ -1238,7 +1240,15 @@ var $exeDevices = {
                 },
 
                 sendScoreNew: function (auto, game) {
-                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
+                    if (typeof game !== 'object' || game === null) {
+                        return;
+                    }
+                    // xAPI: emit a per-iDevice statement whenever the activity has a
+                    // score, regardless of SCORM/export format (see exe_xapi.js).
+                    if (game.gameStarted || game.gameOver) {
+                        $exeDevices.iDevice.gamification.track('answered', game);
+                    }
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         return;
                     }
                     const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
@@ -1338,6 +1348,45 @@ var $exeDevices = {
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
 
+                },
+            },
+
+            /**
+             * Transport-agnostic dispatch to the always-on xAPI emitter
+             * (exe_xapi.js). Runs in EVERY export format, independent of
+             * SCORM/pipwerks, so a published package is xAPI-compatible out
+             * of the box (it is therefore a sibling of `scorm`, not nested in
+             * it). Score math stays single-source (game.scorerp +
+             * getFinalScore); this only forwards it as an xAPI statement.
+             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
+             *
+             * @param {string} eventType e.g. 'answered'
+             * @param {Object} game the iDevice game options (carries score + identity)
+             */
+            track: function (eventType, game) {
+                try {
+                    let xapi = $exeDevices.iDevice.xapi;
+                    if (!xapi || typeof xapi.emit !== 'function') return;
+                    if (typeof game !== 'object' || game === null) return;
+                    if (!game.ideviceId && game.mainElement && game.mainElement.closest) {
+                        game.ideviceId = game.mainElement.closest('.idevice_node').attr('id');
+                    }
+                    xapi.emit({
+                        type: eventType,
+                        ideviceId: game.ideviceId,
+                        // The iDevice type/class name lives on game.idevice (see the
+                        // gamification-evaluation-saved emitter, which uses
+                        // `ideviceType: game.idevice`). game.ideviceType is never
+                        // populated by the real callers, so prefer it only when a
+                        // caller explicitly sets it and fall back to game.idevice.
+                        ideviceType: game.ideviceType || game.idevice,
+                        ideviceNumber: game.ideviceNumber,
+                        title: game.title,
+                        score: parseFloat(game.scorerp),
+                        weighted: game.weighted,
+                    });
+                } catch (e) {
+                    // Never let tracking break the activity.
                 }
             },
 
@@ -1659,7 +1708,15 @@ var $exeDevices = {
                 },
 
                 hasLatex: function (text) {
-                    return /\\\(|\\\[|\\begin\{|\$\$/.test(text);
+                    if (!text) return false;
+                    // Ignore already pre-rendered math: its data-latex attribute keeps the
+                    // original delimiters (e.g. \begin{...}) which would otherwise re-trigger
+                    // a MathJax load in exports that ship no MathJax engine (404).
+                    var stripped = String(text).replace(
+                        /<span[^>]*\bexe-math-rendered\b[^>]*>[\s\S]*?<\/span>/g,
+                        ''
+                    );
+                    return /\\\(|\\\[|\\begin\{|\$\$/.test(stripped);
                 },
 
                 updateLatex: function (target, opts) {

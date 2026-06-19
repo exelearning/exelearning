@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
+import { DOMParser as XmldomDOMParser } from '@xmldom/xmldom';
 import { Epub3Exporter } from './Epub3Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -260,6 +261,15 @@ describe('Epub3Exporter', () => {
 
         it('should return correct file suffix', () => {
             expect(exporter.getFileSuffix()).toBe('');
+        });
+
+        it('should share the pre-rendered LaTeX CSS without forcing vertical-align (issue #1919)', () => {
+            const css = (exporter as unknown as { getPreRenderedLatexCss(): string }).getPreRenderedLatexCss();
+
+            expect(css).toContain('.exe-math-rendered');
+            expect(css).toContain('display: inline-block');
+            // Baseline alignment relies on the SVG's own inline vertical-align, never `middle`.
+            expect(css).not.toContain('vertical-align: middle');
         });
     });
 
@@ -1017,5 +1027,162 @@ describe('Icon Resolution via setThemeIconFiles', () => {
 
         const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
         expect(indexXhtml).toContain('theme/icons/activity.png');
+    });
+});
+
+describe('htmlToXhtml conversion (H11 corruption fixes)', () => {
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+
+    // Build a single-page project whose first-page content is fully controlled by the test.
+    function buildExporter(content: string): Epub3Exporter {
+        const pages: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Introduction',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Content',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'comp-1',
+                                type: 'FreeTextIdevice',
+                                order: 0,
+                                content,
+                            },
+                        ],
+                    },
+                ],
+            },
+            // Second page so that "chapter-1.html" is a real internal target the exporter generated.
+            {
+                id: 'page-2',
+                title: 'Chapter 1',
+                parentId: null,
+                order: 1,
+                blocks: [],
+            },
+        ];
+        const document = new MockDocument({}, pages);
+        return new Epub3Exporter(document, resources, assets, zip);
+    }
+
+    beforeEach(() => {
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+    });
+
+    it('(a) leaves external .html links unchanged', async () => {
+        const exporter = buildExporter('<p>See <a href="https://example.com/page.html">the page</a>.</p>');
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(xhtml).toContain('href="https://example.com/page.html"');
+        expect(xhtml).not.toContain('https://example.com/page.xhtml');
+    });
+
+    it('(a2) leaves external http and protocol-relative .html links unchanged', async () => {
+        const exporter = buildExporter(
+            '<p><a href="http://other.org/doc.html">a</a> <a href="//cdn.example/lib.html">b</a></p>',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(xhtml).toContain('href="http://other.org/doc.html"');
+        // Protocol-relative URLs have no path scheme but their basename is not an internal page.
+        expect(xhtml).toContain('href="//cdn.example/lib.html"');
+    });
+
+    it('(b) does not mangle the literal text ".html" in prose', async () => {
+        const exporter = buildExporter(
+            '<p>To save your work, export it as an .html file or open page.html in a browser.</p>',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(xhtml).toContain('export it as an .html file or open page.html in a browser');
+        expect(xhtml).not.toContain('.xhtml file');
+        expect(xhtml).not.toContain('page.xhtml in a browser');
+    });
+
+    it('(c) rewrites internal page links from .html to .xhtml', async () => {
+        const exporter = buildExporter(
+            '<p><a href="html/chapter-1.html">Chapter 1</a> and <a href="html/chapter-1.html#section">deep</a></p>',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(xhtml).toContain('href="html/chapter-1.xhtml"');
+        expect(xhtml).toContain('href="html/chapter-1.xhtml#section"');
+        expect(xhtml).not.toContain('chapter-1.html');
+    });
+
+    it('(d) self-closes void elements without corrupting attributes containing ">"', async () => {
+        const exporter = buildExporter(
+            '<p>Line 1<br>Line 2</p>' +
+                '<hr>' +
+                '<img src="test.png" alt="An arrow -> pointer" title="a > b">' +
+                '<input type="text" value="x > y">',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+
+        // Void elements are self-closed.
+        expect(xhtml).toMatch(/<br\s*\/>/);
+        expect(xhtml).toMatch(/<hr\s*\/>/);
+        expect(xhtml).toMatch(/<img[^>]*\/>/);
+        expect(xhtml).toMatch(/<input[^>]*\/>/);
+
+        // The ">" inside attribute values is escaped, not treated as the tag end.
+        expect(xhtml).toContain('alt="An arrow -&gt; pointer"');
+        expect(xhtml).toContain('title="a &gt; b"');
+        expect(xhtml).toContain('value="x &gt; y"');
+
+        // No mangled fragments leaked into the document body.
+        expect(xhtml).not.toContain('pointer"&gt;');
+    });
+
+    it('(d2) preserves script and style contents without escaping comparison operators', async () => {
+        const exporter = buildExporter(
+            '<div class="x">content</div>' +
+                '<script>if (a < b && c > d) { run(); }</script>' +
+                '<style>.foo > .bar { color: red; }</style>',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(xhtml).toContain('if (a < b && c > d) { run(); }');
+        expect(xhtml).toContain('.foo > .bar { color: red; }');
+    });
+
+    it('produces well-formed XHTML parseable as XML', async () => {
+        const exporter = buildExporter(
+            '<p>Mixed <br>content<img src="x.png" alt="y > z"></p>' +
+                '<a href="https://example.com/page.html">ext</a>' +
+                '<a href="html/chapter-1.html">int</a>',
+        );
+        await exporter.export();
+
+        const xhtml = zip.files.get('EPUB/index.xhtml') as string;
+
+        // Re-parse the generated document strictly as XML; a fatalError would throw.
+        let parseError: string | null = null;
+        const doc = new XmldomDOMParser({
+            onError: (level: string, message: string) => {
+                if (level === 'fatalError') {
+                    parseError = message;
+                }
+            },
+        }).parseFromString(xhtml, 'text/xml');
+
+        expect(parseError).toBeNull();
+        expect(doc.getElementsByTagName('html').length).toBe(1);
     });
 });

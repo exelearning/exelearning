@@ -8,6 +8,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { safeFetch, SsrfBlockedError, type LookupFn } from '../utils/ssrf-guard';
 
 // =====================================================
 // Interfaces
@@ -170,6 +171,12 @@ export function extractLinksFromIdevices(idevices: IdeviceContent[]): ExtractedL
 export interface ValidateLinkOptions {
     filesDir: string;
     timeout?: number;
+    /** Maximum redirect hops to follow when validating external links (each re-validated). */
+    maxRedirects?: number;
+    /** Injectable DNS resolver, forwarded to the SSRF guard (for hermetic tests). */
+    lookupFn?: LookupFn;
+    /** Injectable fetch implementation, forwarded to the SSRF guard (for hermetic tests). */
+    fetchImpl?: typeof fetch;
 }
 
 /**
@@ -177,7 +184,7 @@ export interface ValidateLinkOptions {
  * Returns null if valid, or an error message if broken
  */
 export async function validateLink(url: string, options: ValidateLinkOptions): Promise<string | null> {
-    const { filesDir, timeout = 10000 } = options;
+    const { filesDir, timeout = 10000, maxRedirects, lookupFn, fetchImpl } = options;
 
     // Internal page links (exe-node:) - consider valid
     if (url.startsWith('exe-node:')) {
@@ -214,10 +221,16 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         try {
-            let response = await fetch(normalizedUrl, {
+            // safeFetch enforces SSRF egress filtering (allow only http(s), reject
+            // private/loopback/link-local/CGNAT addresses) and follows redirects
+            // manually, re-validating every hop. It forces redirect: 'manual'
+            // internally, so we must NOT pass redirect: 'follow'.
+            let response = await safeFetch(normalizedUrl, {
                 method: 'HEAD',
                 signal: controller.signal,
-                redirect: 'follow',
+                maxRedirects,
+                lookupFn,
+                fetchImpl,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 },
@@ -229,10 +242,12 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
             if (response.status === 405) {
                 const controller2 = new AbortController();
                 const timeoutId2 = setTimeout(() => controller2.abort(), timeout);
-                response = await fetch(normalizedUrl, {
+                response = await safeFetch(normalizedUrl, {
                     method: 'GET',
                     signal: controller2.signal,
-                    redirect: 'follow',
+                    maxRedirects,
+                    lookupFn,
+                    fetchImpl,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                         Range: 'bytes=0-0',
@@ -247,6 +262,12 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
             return String(response.status);
         } catch (fetchError: unknown) {
             clearTimeout(timeoutId);
+            // The SSRF guard blocked the URL or one of its redirect hops (private/
+            // loopback/link-local/CGNAT, disallowed scheme, etc.). Treat as broken
+            // without reflecting the resolved address (no internal-host oracle).
+            if (fetchError instanceof SsrfBlockedError) {
+                return 'Blocked address';
+            }
             const err = fetchError as { name?: string; message?: string; cause?: { code?: string } };
             if (err.name === 'AbortError') return 'Timeout';
             const cause = err.cause;

@@ -343,6 +343,8 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
+    // Always-on xAPI emitter (every export is xAPI-compatible out of the box)
+    'xapi/exe_xapi.js',
     // Bootstrap (JS bundle includes Popper)
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
@@ -836,6 +838,36 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
+
+// =============================================================================
+// Pre-rendered Content CSS
+// =============================================================================
+
+/**
+ * CSS for pre-rendered LaTeX (SVG + assistive MathML).
+ *
+ * Shipped with exports when MathJax is NOT bundled (`addMathJax = false`) so the
+ * pre-rendered `<span class="exe-math-rendered">` wrappers render correctly.
+ *
+ * Baseline alignment is intentionally driven by the SVG's own inline
+ * `vertical-align: -X.XXXex` (set by MathJax), exactly like the runtime MathJax
+ * render. The wrapper must NOT set `vertical-align: middle`: that centres the box on
+ * the line and breaks baseline alignment for fractions, sub/superscripts and radicals
+ * (glyphs with depth below the baseline). See issue #1919.
+ *
+ * Single source of truth: used by Html5Exporter (and its subclasses SCORM 1.2/2004,
+ * IMS, Page, ELPX) and Epub3Exporter.
+ */
+export const PRERENDERED_LATEX_CSS = `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
+.exe-math-rendered { display: inline-block; line-height: 0; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide assistive MathML visually but keep it accessible for screen readers.
+   position:absolute removes it from layout so it never shifts the SVG baseline. */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); }`;
 
 // =============================================================================
 // iDevice Type Mappings
