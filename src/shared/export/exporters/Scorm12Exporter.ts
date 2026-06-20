@@ -476,7 +476,9 @@ export class Scorm12Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScormHeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // Issue #1831: no onunload/onbeforeunload attributes. The SCO finalizes through
+            // the pagehide lifecycle registered in SCOFunctions.js (registerScormLifecycleHandlers),
+            // because Chrome deprecates `unload` and Moodle blocks it via Permissions-Policy.
             // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,
@@ -616,10 +618,9 @@ function loadPage() {
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
-    var status = scorm.get("cmi.core.lesson_status");
-    if (status === "not attempted" || status === "") {
-      scorm.set("cmi.core.lesson_status", "incomplete");
-    }
+    // Entering the page must NOT change cmi.core.lesson_status: the iDevice owns
+    // it and only changes it through learner interaction. loadPage only opens the
+    // session.
     pageLoaded = true;
   }
   return result;
@@ -634,15 +635,11 @@ function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
     scormLifecycleState.finalized = true;
+    // Leaving the page must NOT change cmi.core.lesson_status: the iDevice owns it.
+    // We only read it (read-only) to pick the resume mode and then close the
+    // session. A finished SCO exits "" (no resume); anything else stays resumable.
     var status = scorm.get("cmi.core.lesson_status");
     var isTerminal = status === "passed" || status === "failed" || status === "completed";
-    if (!isTerminal) {
-      var newStatus = isSCORM === true ? "incomplete" : "completed";
-      scorm.set("cmi.core.lesson_status", newStatus);
-      isTerminal = newStatus === "completed";
-    }
-    // Only suspend when the SCO is leaving in a non-terminal state, so Moodle
-    // does not keep "completed/passed/failed" pages stuck in a resumable state.
     scorm.set("cmi.core.exit", isTerminal ? "" : "suspend");
     commitScormProgress();
     scorm.quit();

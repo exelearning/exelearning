@@ -140,6 +140,8 @@ var $scrambledlist = {
         data.isScorm =
             data.escapedData && data.exportScorm.saveScore ? 1 : data.isScorm;
         data.isScorm = data.isScorm ?? 0;
+        data.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(data.isScorm);
 
         data.weighted = data.weighted ?? 100;
 

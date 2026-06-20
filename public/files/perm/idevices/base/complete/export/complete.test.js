@@ -46,6 +46,14 @@ describe('complete iDevice export', () => {
     $eXeCompleta = loadExportIdevice(code);
   });
 
+  it('coerces legacy manual SCORM mode (2) to automatic (1) at load', () => {
+    const code = readFileSync(join(__dirname, 'complete.js'), 'utf-8');
+
+    // complete is auto-only (no manual save button); loadDataGame normalizes
+    // legacy manual data to automatic via the shared helper.
+    expect(code).toContain('gamification.scorm.normalizeMode(mOptions.isScorm)');
+  });
+
   describe('editDistance', () => {
     it('returns 0 for identical strings', () => {
       expect($eXeCompleta.editDistance('hello', 'hello')).toBe(0);

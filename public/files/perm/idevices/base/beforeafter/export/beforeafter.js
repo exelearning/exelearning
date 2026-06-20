@@ -129,6 +129,8 @@ var $eXeBeforeAfter = {
 
         mOptions.numberCards = mOptions.cardsGame.length;
         mOptions.fullscreen = false;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
         return mOptions;
     },
 
@@ -140,6 +142,12 @@ var $eXeBeforeAfter = {
         mOptions.score = 0;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
+        // With a single image, starting the activity already visits every slide, so it is
+        // complete (SCORM state -> completed); otherwise it stays incomplete until the
+        // learner navigates to the last image (see showImage).
+        if (mOptions.cardsGame.length <= 1) {
+            mOptions.gameOver = true;
+        }
         $('#bfafCubierta-' + instance).hide();
         $('#bfafStartGame-' + instance).hide();
         if (mOptions.isScorm > 0) {
@@ -237,6 +245,13 @@ var $eXeBeforeAfter = {
         mOptions.active = number;
         mOptions.visiteds =
             mOptions.visiteds < number ? number : mOptions.visiteds;
+
+        // Reaching the last image means all slides have been visited: the comparison is
+        // complete (SCORM state -> completed). Until then it stays incomplete (gameStarted
+        // without gameOver). Guarded by gameStarted so edition/preview renders do not finalize.
+        if (mOptions.gameStarted && number >= mOptions.cardsGame.length - 1) {
+            mOptions.gameOver = true;
+        }
 
         const isVertical = mOptions.cardsGame[number].vertical;
 

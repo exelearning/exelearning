@@ -146,8 +146,7 @@ var $rubric = {
     },
 
     normalizeScormMode: function (value) {
-        var mode = parseInt(value, 10) || 0;
-        return mode === 2 ? 1 : mode;
+        return $exeDevices.iDevice.gamification.scorm.normalizeMode(value);
     },
 
     getIdeviceDomId: function (scope) {

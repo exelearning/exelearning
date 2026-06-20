@@ -43,6 +43,8 @@ describe('challenge iDevice export', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    $(window).off('pagehide.eXeChallenger');
+    $(document).off('visibilitychange.eXeChallenger');
     document.body.innerHTML = '';
   });
 
@@ -352,6 +354,59 @@ describe('challenge iDevice export', () => {
 
       expect($eXeDesafio.saveEvaluation).toHaveBeenCalledWith(0);
       expect($eXeDesafio.gameOver).toHaveBeenCalledWith(1, 0);
+    });
+  });
+
+  describe('page lifecycle persistence', () => {
+    function lifecycleOptions(overrides = {}) {
+      return {
+        author: '',
+        challengesGame: [],
+        desafioType: 0,
+        gameStarted: true,
+        instructions: '',
+        isScorm: 0,
+        msgs: { msgDesafioReboot: 'Reboot', msgPlayStart: 'Start' },
+        numberQuestions: 0,
+        title: '',
+        typeQuestion: 0,
+        ...overrides,
+      };
+    }
+
+    it('saves local progress on pagehide and when hidden, without unload events', () => {
+      vi.useFakeTimers();
+      $eXeDesafio.options[0] = lifecycleOptions();
+      $eXeDesafio.changeImageButtonState = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+
+      $eXeDesafio.addEvents(0);
+
+      // pagehide replaces the deprecated unload/beforeunload save.
+      $(window).trigger('pagehide');
+      expect($eXeDesafio.saveDataStorage).toHaveBeenCalledWith(0);
+
+      // Becoming hidden also persists (covers the visibilitychange branch).
+      $eXeDesafio.saveDataStorage.mockClear();
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      try {
+        $(document).trigger('visibilitychange');
+        expect($eXeDesafio.saveDataStorage).toHaveBeenCalledWith(0);
+      } finally {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      }
+    });
+
+    it('does not save on pagehide before the game has started', () => {
+      vi.useFakeTimers();
+      $eXeDesafio.options[0] = lifecycleOptions({ gameStarted: false });
+      $eXeDesafio.changeImageButtonState = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+
+      $eXeDesafio.addEvents(0);
+      $(window).trigger('pagehide');
+
+      expect($eXeDesafio.saveDataStorage).not.toHaveBeenCalled();
     });
   });
 });

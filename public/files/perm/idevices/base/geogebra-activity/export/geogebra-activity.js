@@ -543,6 +543,9 @@ var $geogebraactivity = {
         }
         const mOptions = JSON.parse(JSON.stringify(options));
         mOptions.gameStarted = true;
+        // sendScore only runs from the manual "save/send" button, so pressing it finalizes
+        // the activity (SCORM state -> completed) even on the first save.
+        mOptions.gameOver = true;
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
         const SCORE_RAW = 'SCORMRawScore';

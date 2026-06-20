@@ -418,9 +418,20 @@ var $eXeDesafio = {
 
         $eXeDesafio.removeEvents(instance);
 
-        $(window).on('unload.eXeChallenger beforeunload.eXeChallenger', () => {
+        // Persist the in-progress game locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeDesafio.saveDataStorage(instance);
+            }
+        };
+        $(window).on('pagehide.eXeChallenger', persistOnHide);
+        $(document).on('visibilitychange.eXeChallenger', () => {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -586,7 +597,8 @@ var $eXeDesafio = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeChallenger beforeunload.eXeChallenger');
+        $(window).off('pagehide.eXeChallenger');
+        $(document).off('visibilitychange.eXeChallenger');
         $(`#desafioLinkMaximize-${instance}`).off('click touchstart');
         $(`#desafioLinkMinimize-${instance}`).off('click touchstart');
         $(`#desafioSolution-${instance}`).off('keydown');

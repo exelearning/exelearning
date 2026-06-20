@@ -344,4 +344,49 @@ describe('electrical-circuits iDevice export', () => {
             expect(saveScormScore).toHaveBeenCalledWith(0);
         });
     });
+
+    describe('show mode completion (SCORM state)', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        function setupShow(slides) {
+            document.body.innerHTML = `
+                <div id="elcpGameContainer-0"></div>
+                <button id="elcpShowPrev-0"></button>
+                <button id="elcpShowNext-0"></button>
+            `;
+            $eXeEC.options[0] = {
+                selectsGame: Array.from({ length: slides }, () => ({})),
+                isScorm: 0,
+                feedBack: false,
+                itinerary: { showClue: false },
+                msgs: {},
+            };
+            vi.spyOn($eXeEC, 'showCircuitAtIndex').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'sendScore').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'saveEvaluation').mockImplementation(() => {});
+        }
+
+        it('completes immediately when there is a single circuit (all slides visited)', () => {
+            setupShow(1);
+            $eXeEC.initShowMode(0);
+            expect($eXeEC.options[0].gameOver).toBe(true);
+        });
+
+        it('stays incomplete until the last circuit is reached', () => {
+            setupShow(3);
+            $eXeEC.initShowMode(0);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+
+            $('#elcpShowNext-0').trigger('click');
+            expect($eXeEC.options[0].showCurrentIndex).toBe(1);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+
+            $('#elcpShowNext-0').trigger('click');
+            expect($eXeEC.options[0].showCurrentIndex).toBe(2);
+            expect($eXeEC.options[0].gameOver).toBe(true);
+        });
+    });
 });

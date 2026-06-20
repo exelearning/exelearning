@@ -154,6 +154,8 @@ var $eXeCompleta = {
                 : mOptions.authorBackImage;
         mOptions.fontColor =
             typeof mOptions.fontColor === 'undefined' ? '' : mOptions.fontColor;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
 
         return mOptions;
     },

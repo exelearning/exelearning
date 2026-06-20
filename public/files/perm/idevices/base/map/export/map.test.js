@@ -303,4 +303,32 @@ describe('map iDevice export score saving', () => {
         expect($eXeMapa.sendScore).not.toHaveBeenCalled();
         expect($eXeMapa.saveEvaluation).not.toHaveBeenCalled();
     });
+
+    it('completes a free-exploration map (mode 0) only when every point is visited', () => {
+        $eXeMapa.options[0] = {
+            activeMap: {
+                pts: [
+                    { id: 'p1', title: 'P1' },
+                    { id: 'p2', title: 'P2' },
+                ],
+            },
+            evaluationG: 0,
+            isScorm: 1,
+            numberQuestions: 2,
+            msgs: { msgYouScore: 'Score', msgAllVisited: 'All' },
+            visiteds: [],
+        };
+        $eXeMapa.showMessageModal = vi.fn();
+        $eXeMapa.messageAllVisited = vi.fn();
+        $eXeMapa.sendScore = vi.fn();
+        $eXeMapa.saveEvaluation = vi.fn();
+
+        // Visiting the first of two points keeps the activity incomplete.
+        $eXeMapa.showPointNone(0, 0);
+        expect($eXeMapa.options[0].gameOver).toBeFalsy();
+
+        // Visiting the last remaining point completes the exploration.
+        $eXeMapa.showPointNone(1, 0);
+        expect($eXeMapa.options[0].gameOver).toBe(true);
+    });
 });

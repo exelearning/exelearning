@@ -3316,6 +3316,18 @@ var $eXeMapa = {
             $eXeMapa.showMessageModal(instance, q.title, 1, 0, num);
         }
         mOptions.visiteds.push(q.id);
+        // Mode 0 (free exploration, scored by visited points): once every point has been
+        // visited the activity is complete (SCORM state -> completed); until then it stays
+        // incomplete. Set before the sendScore below so the completed state is persisted.
+        // Compare the count of unique visited points against the total directly (robust),
+        // instead of inferring it from the formatted score string.
+        if (
+            mOptions.evaluationG == 0 &&
+            mOptions.numberQuestions > 0 &&
+            $eXeMapa.getNumberVisited(mOptions.visiteds) >= mOptions.numberQuestions
+        ) {
+            mOptions.gameOver = true;
+        }
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&

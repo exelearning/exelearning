@@ -282,10 +282,21 @@ var $padlock = {
                     : 0;
             }
         }
-        $(window).on('unload.eXeCandado beforeunload.eXeCandado', function () {
+        // Persist the in-progress padlock locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = function () {
             const mOptions = $padlock.options[instance];
             if (mOptions.candadoStarted) {
                 $padlock.saveCandadoData(instance);
+            }
+        };
+        $(window).on('pagehide.eXeCandado', persistOnHide);
+        $(document).on('visibilitychange.eXeCandado', function () {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
 
@@ -325,7 +336,8 @@ var $padlock = {
         $(`#candadoShowRetro-${instance}`).off('click');
         $(`#candadoSendScore`).off('click');
 
-        $(window).off('unload.eXeCandado beforeunload.eXeCandado');
+        $(window).off('pagehide.eXeCandado');
+        $(document).off('visibilitychange.eXeCandado');
     },
 
     startGame: function (instance) {

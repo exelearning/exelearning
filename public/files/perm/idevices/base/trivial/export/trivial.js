@@ -1539,7 +1539,8 @@ var $eXeTrivial = {
             typeof mOptions.modeBoard == 'undefined'
                 ? false
                 : mOptions.modeBoard;
-        mOptions.isScorm = mOptions.isScorm === 2 ? 1 : mOptions.isScorm;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
 
         // Default messages for legacy imports
         if (typeof mOptions.msgs === 'undefined') {
@@ -2443,9 +2444,20 @@ var $eXeTrivial = {
             .find('input')
             .eq(0)
             .focus();
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
+        // Persist the in-progress game locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = function () {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeTrivial.saveDataStorage(instance);
+            }
+        };
+        $(window).on('pagehide.eXeTrivial', persistOnHide);
+        $(document).on('visibilitychange.eXeTrivial', function () {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
     },

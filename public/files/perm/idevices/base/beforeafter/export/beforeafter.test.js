@@ -65,6 +65,14 @@ describe('beforeafter iDevice export', () => {
         expect(code).not.toMatch(/beforeunload|unload\.eXeBeforeAfter|endScorm/);
     });
 
+    it('coerces legacy manual SCORM mode (2) to automatic (1) at load', () => {
+        const code = readFileSync(join(__dirname, 'beforeafter.js'), 'utf-8');
+
+        // beforeafter is auto-only (no manual save button); loadDataGame normalizes
+        // legacy manual data to automatic via the shared helper.
+        expect(code).toContain('gamification.scorm.normalizeMode(mOptions.isScorm)');
+    });
+
     it('sends the SCORM score from the visited cards', () => {
         $eXeBeforeAfter.options[0] = {
             cardsGame: [{}, {}, {}, {}],
@@ -131,5 +139,67 @@ describe('beforeafter iDevice export', () => {
             }),
             expect.any(Boolean),
         );
+    });
+
+    it('marks a single-image before/after as completed on start (all slides visited)', () => {
+        document.body.innerHTML = `
+            <div id="bfafCubierta-0"></div>
+            <button id="bfafStartGame-0"></button>
+        `;
+        $eXeBeforeAfter.options[0] = {
+            cardsGame: [{}],
+            gameOver: false,
+            gameStarted: false,
+            isScorm: 1,
+            itinerary: { showClue: false },
+            msgs: {},
+            visiteds: 0,
+        };
+        vi.spyOn($eXeBeforeAfter, 'showClue').mockImplementation(() => {});
+
+        $eXeBeforeAfter.startGame(0);
+
+        expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
+    });
+
+    it('completes only when the last image is shown', () => {
+        vi.useFakeTimers();
+        document.body.innerHTML = `
+            <img id="bfafpImageAfter-0"><img id="bfafpImageBefore-0">
+            <div id="bfafpContainerBA-0"></div>
+        `;
+        const card = {
+            vertical: false,
+            description: '',
+            alt: '',
+            altBk: '',
+            eText: '',
+            eTextBk: '',
+            position: 50,
+            url: 'a',
+            urlBk: 'b',
+        };
+        $eXeBeforeAfter.options[0] = {
+            cardsGame: [{ ...card }, { ...card }],
+            gameStarted: true,
+            gameOver: false,
+            isScorm: 0,
+            visiteds: 0,
+            msgs: { msgImage: 'Image' },
+        };
+        vi.spyOn($eXeBeforeAfter, 'saveEvaluation').mockImplementation(() => {});
+        vi.spyOn($eXeBeforeAfter, 'showClue').mockImplementation(() => {});
+        vi.spyOn($eXeBeforeAfter, 'initComparison').mockImplementation(() => {});
+
+        // An intermediate image keeps the activity incomplete.
+        $eXeBeforeAfter.showImage(0, 0);
+        expect($eXeBeforeAfter.options[0].gameOver).toBe(false);
+
+        // Reaching the last image completes it.
+        $eXeBeforeAfter.showImage(1, 0);
+        expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
+
+        vi.clearAllTimers();
+        vi.useRealTimers();
     });
 });

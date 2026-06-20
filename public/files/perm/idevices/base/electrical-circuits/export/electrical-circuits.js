@@ -674,6 +674,16 @@ var $eXeEC = {
         // Show first circuit
         $eXeEC.showCircuitAtIndex(0, instance);
 
+        // With a single circuit, showing it means every slide has been visited, so the
+        // exploration is already complete (SCORM state -> completed).
+        if (mOptions.selectsGame.length <= 1) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm > 0) {
+                $eXeEC.sendScore(true, instance);
+            }
+            $eXeEC.saveEvaluation(instance);
+        }
+
         // Save initial score only if previous > 0 and below minimum
         const previous = parseFloat($eXeEC.previousScore) || 0;
         const minScore = (1 * 10) / mOptions.selectsGame.length;
@@ -699,6 +709,12 @@ var $eXeEC = {
             if (mOptions.showCurrentIndex < mOptions.selectsGame.length - 1) {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
+                // Reaching the last circuit means all slides have been visited: the show-mode
+                // exploration is complete (SCORM state -> completed). Until then it stays
+                // incomplete (gameStarted without gameOver).
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 $eXeEC.showCircuitAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {
                     $eXeEC.sendScore(true, instance);

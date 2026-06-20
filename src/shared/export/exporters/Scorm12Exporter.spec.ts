@@ -459,10 +459,14 @@ describe('Scorm12Exporter', () => {
             expect(html).toContain('loadPage');
         });
 
-        it('should include onunload handler', () => {
+        it('does not wire the deprecated onunload/onbeforeunload handlers (issue #1831)', () => {
             const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('unloadPage');
+            // The SCO finalizes via the pagehide lifecycle in SCOFunctions.js, not the
+            // deprecated unload event (Chrome deprecates it; Moodle blocks it via Permissions-Policy).
+            expect(html).not.toContain('onunload');
+            expect(html).not.toContain('onbeforeunload');
+            expect(html).toContain('SCOFunctions');
         });
 
         it('should have exe-scorm class', () => {
@@ -602,23 +606,25 @@ describe('Scorm12Exporter', () => {
                 expect(sandbox.counters.quit).toBe(0);
             });
 
-            it('leaves a scored, non-terminal SCO as incomplete + suspend on exit', () => {
+            it('does not change lesson_status on exit and keeps a non-terminal SCO resumable', () => {
                 const { api, listeners, sets } = instantiateScoTemplate(exporter.getScoFunctions());
                 api.registerScormLifecycleHandlers(true); // page carries a scored iDevice
 
                 listeners['win:pagehide']({ persisted: false });
 
-                expect(sets).toContainEqual(['cmi.core.lesson_status', 'incomplete']);
+                // Leaving the page must not write lesson_status — the iDevice owns it.
+                expect(sets.some(([key]) => key === 'cmi.core.lesson_status')).toBe(false);
                 expect(sets).toContainEqual(['cmi.core.exit', 'suspend']);
             });
 
-            it('auto-completes a non-scored page and exits normally (empty exit)', () => {
-                const { listeners, sets } = instantiateScoTemplate(exporter.getScoFunctions());
+            it('exits without resuming when the iDevice already completed the SCO', () => {
+                const sandbox = instantiateScoTemplate(exporter.getScoFunctions());
+                sandbox.store['cmi.core.lesson_status'] = 'passed'; // already set by the iDevice
 
-                listeners['win:pagehide']({ persisted: false });
+                sandbox.listeners['win:pagehide']({ persisted: false });
 
-                expect(sets).toContainEqual(['cmi.core.lesson_status', 'completed']);
-                expect(sets).toContainEqual(['cmi.core.exit', '']);
+                expect(sandbox.sets.some(([key]) => key === 'cmi.core.lesson_status')).toBe(false);
+                expect(sandbox.sets).toContainEqual(['cmi.core.exit', '']);
             });
         });
     });

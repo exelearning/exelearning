@@ -390,4 +390,50 @@ describe('3dmol iDevice export', () => {
             expect(saveScormScore).toHaveBeenCalledWith(0);
         });
     });
+
+    describe('show mode completion (SCORM state)', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        function setupShow(slides) {
+            document.body.innerHTML = `
+                <div id="dmolpGameContainer-0"></div>
+                <button id="dmolpShowPrev-0"></button>
+                <button id="dmolpShowNext-0"></button>
+            `;
+            dmol.options[0] = {
+                selectsGame: Array.from({ length: slides }, () => ({})),
+                isScorm: 0,
+                feedBack: false,
+                itinerary: { showClue: false },
+                msgs: {},
+            };
+            vi.spyOn(dmol, 'showModelAtIndex').mockImplementation(() => {});
+            vi.spyOn(dmol, 'setModelStyleControlVisibility').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'saveEvaluation').mockImplementation(() => {});
+        }
+
+        it('completes immediately when there is a single model (all slides visited)', () => {
+            setupShow(1);
+            dmol.initShowMode(0);
+            expect(dmol.options[0].gameOver).toBe(true);
+        });
+
+        it('stays incomplete until the last model is reached', () => {
+            setupShow(3);
+            dmol.initShowMode(0);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+
+            $('#dmolpShowNext-0').trigger('click');
+            expect(dmol.options[0].showCurrentIndex).toBe(1);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+
+            $('#dmolpShowNext-0').trigger('click');
+            expect(dmol.options[0].showCurrentIndex).toBe(2);
+            expect(dmol.options[0].gameOver).toBe(true);
+        });
+    });
 });

@@ -174,6 +174,34 @@ describe('scrambled-list iDevice export', () => {
         eXe.app.isInExe = previousIsInExe;
       }
     });
+
+    it('coerces legacy manual SCORM mode (2) to automatic (1)', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Scrambled list</h1></header>
+          <div id="scrambled-1" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>
+      `;
+
+      try {
+        // scrambled-list is auto-only (no manual save button): legacy data stored
+        // as manual mode (2) must load as automatic (1).
+        const result = $scrambledlist.updateConfig(
+          {
+            id: 'scrambled-1',
+            isScorm: 2,
+            msgs: $scrambledlist.getMessages(),
+          },
+          'scrambled-1',
+        );
+
+        expect(result.isScorm).toBe(1);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
   });
 
   describe('sendScore', () => {

@@ -459,7 +459,9 @@ export class Scorm2004Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // Issue #1831: no onunload/onbeforeunload attributes. The SCO finalizes through
+            // the pagehide lifecycle registered in SCOFunctions.js (registerScormLifecycleHandlers),
+            // because Chrome deprecates `unload` and Moodle blocks it via Permissions-Policy.
             hideNavigation: true,
             hideNavButtons: true,
             themeFiles: themeFiles || [],
@@ -602,10 +604,9 @@ function loadPage() {
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
-    var status = scorm.get("cmi.completion_status");
-    if (status === "not attempted" || status === "unknown" || status === "") {
-      scorm.set("cmi.completion_status", "incomplete");
-    }
+    // Entering the page must NOT change cmi.completion_status: the iDevice owns it
+    // and only changes it through learner interaction. loadPage only opens the
+    // session.
     pageLoaded = true;
   }
   return result;
@@ -620,21 +621,11 @@ function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
     scormLifecycleState.finalized = true;
+    // Leaving the page must NOT change completion/success: the iDevice owns them.
+    // We only read completion_status (read-only) to pick the resume mode and then
+    // close the session. A completed SCO exits "normal"; anything else stays
+    // resumable ("suspend").
     var completionStatus = scorm.get("cmi.completion_status");
-    var successStatus = scorm.get("cmi.success_status");
-    if (completionStatus !== "completed" && successStatus !== "passed" && successStatus !== "failed") {
-      if (isSCORM === true) {
-        scorm.set("cmi.completion_status", "incomplete");
-        scorm.set("cmi.success_status", "failed");
-        completionStatus = "incomplete";
-      } else {
-        scorm.set("cmi.completion_status", "completed");
-        scorm.set("cmi.success_status", "passed");
-        completionStatus = "completed";
-      }
-    }
-    // Only suspend when the SCO is leaving in a non-terminal state; SCOs that
-    // already finished should exit normally so Moodle marks them as done.
     scorm.set("cmi.exit", completionStatus === "completed" ? "normal" : "suspend");
     commitScormProgress();
     scorm.quit();

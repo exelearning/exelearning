@@ -1580,7 +1580,7 @@ describe('common.js $exeDevices', () => {
       expect(scorm.parseSuspendData('')).toEqual({});
     });
 
-    it('parseActivity parses valid activity line', () => {
+    it('parseActivity parses a legacy line without state (defaults state to 0)', () => {
       const scorm = getScorm();
       const line = '1. "Test Activity"; Score: 85%; Weight: 50%.';
       const result = scorm.parseActivity(line);
@@ -1589,6 +1589,20 @@ describe('common.js $exeDevices', () => {
         title: 'Test Activity',
         score: 85,
         weighted: 50,
+        state: 0,
+      });
+    });
+
+    it('parseActivity parses the per-iDevice state when present', () => {
+      const scorm = getScorm();
+      const line = '2. "Quiz"; Score: 70%; Weight: 100%; Estado: 2';
+      const result = scorm.parseActivity(line);
+      expect(result).toEqual({
+        index: 2,
+        title: 'Quiz',
+        score: 70,
+        weighted: 100,
+        state: 2,
       });
     });
 
@@ -1597,15 +1611,196 @@ describe('common.js $exeDevices', () => {
       expect(scorm.parseActivity('invalid line')).toBeNull();
     });
 
-    it('convertToLineFormat converts object to line format', () => {
+    it('convertToLineFormat converts object to line format including the state', () => {
       const scorm = getScorm();
       const obj = {
-        1: { title: 'Test', score: 80, weighted: 50 },
+        1: { title: 'Test', score: 80, weighted: 50, state: 1 },
       };
       const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
       const result = scorm.convertToLineFormat(obj, game);
       expect(result).toContain('Test');
       expect(result).toContain('80%');
+      expect(result).toContain('Estado: 1');
+    });
+
+    it('convertToLineFormat <-> parseSuspendData round-trips the state per iDevice', () => {
+      const scorm = getScorm();
+      const obj = {
+        1: { title: 'A', score: 80, weighted: 100, state: 2 },
+        2: { title: 'B', score: 0, weighted: 100, state: 0 },
+        3: { title: 'C', score: 40, weighted: 100, state: 1 },
+      };
+      const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+
+      const parsed = scorm.parseSuspendData(scorm.convertToLineFormat(obj, game));
+
+      expect(parsed[1].state).toBe(2);
+      expect(parsed[2].state).toBe(0);
+      expect(parsed[3].state).toBe(1);
+    });
+
+    it('getActivityState aggregates the per-iDevice states into the page state', () => {
+      const scorm = getScorm();
+      // All unattempted -> 0
+      expect(scorm.getActivityState({ 1: { state: 0 }, 2: { state: 0 }, 3: { state: 0 } })).toBe(0);
+      // All completed -> 2
+      expect(scorm.getActivityState({ 1: { state: 2 }, 2: { state: 2 }, 3: { state: 2 } })).toBe(2);
+      // Only one of three finished -> incomplete (1)
+      expect(scorm.getActivityState({ 1: { state: 2 }, 2: { state: 0 }, 3: { state: 0 } })).toBe(1);
+      // A started-but-unfinished iDevice -> incomplete (1)
+      expect(scorm.getActivityState({ 1: { state: 1 }, 2: { state: 2 } })).toBe(1);
+      // No entries / missing state default to unattempted
+      expect(scorm.getActivityState({})).toBe(0);
+      expect(scorm.getActivityState({ 1: {} })).toBe(0);
+    });
+
+    it('normalizeMode coerces legacy manual mode (2) to automatic (1)', () => {
+      const scorm = getScorm();
+      // Auto-only iDevices must never run in manual mode (2).
+      expect(scorm.normalizeMode(2)).toBe(1);
+      expect(scorm.normalizeMode('2')).toBe(1);
+      // Other modes are preserved.
+      expect(scorm.normalizeMode(0)).toBe(0);
+      expect(scorm.normalizeMode(1)).toBe(1);
+      // Missing / invalid values fall back to "no SCORM" (0).
+      expect(scorm.normalizeMode(undefined)).toBe(0);
+      expect(scorm.normalizeMode('nan')).toBe(0);
+    });
+
+    it('sendScoreNew ignores automatic saves in manual SCORM mode (isScorm 2)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(true, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgEndGameScore: 'End' },
+        });
+        // Manual mode persists ONLY on a button press, so an automatic save
+        // must not touch the LMS.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    it('sendScoreNew persists a manual button press in manual SCORM mode (isScorm 2)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const originalAlert = global.alert;
+      global.alert = vi.fn();
+      if (typeof window !== 'undefined') window.alert = global.alert;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(false, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgOnlySaveScore: 'Only', msgEndGameScore: 'End' },
+        });
+        // A button press (auto === false) is the only way manual mode saves; a
+        // finished game records state 2 (completed) for the iDevice.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        global.alert = originalAlert;
+        if (typeof window !== 'undefined') window.alert = originalAlert;
+      }
+    });
+
+    it('sendScoreNew does not save a manual button press before the game starts', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const originalAlert = global.alert;
+      global.alert = vi.fn();
+      if (typeof window !== 'undefined') window.alert = global.alert;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(false, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: false,
+          gameOver: false,
+          scorerp: '0',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgEndGameScore: 'Play first' },
+        });
+        // Pressing the button without playing is NOT an attempt: nothing is
+        // persisted and the iDevice stays "not attempted".
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        global.alert = originalAlert;
+        if (typeof window !== 'undefined') window.alert = originalAlert;
+      }
+    });
+
+    it('sendScoreNew still persists automatic saves in automatic mode (isScorm 1)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(true, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgEndGameScore: 'End' },
+        });
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
     });
 
     it('updateActivity commits score changes to the LMS', () => {
@@ -1643,6 +1838,8 @@ describe('common.js $exeDevices', () => {
         );
 
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Activity'));
+        // A finished iDevice persists its per-iDevice state code (2 = completed) in suspend_data.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
         expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
@@ -1805,7 +2002,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('keeps SCORM 2004 activities non-terminal while the game is in progress', () => {
+    it('marks a SCORM 2004 page incomplete while an iDevice is started but not finished', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -1841,6 +2038,9 @@ describe('common.js $exeDevices', () => {
           {},
         );
 
+        // The only iDevice is started but not finished (state 1) -> the page aggregates to
+        // "incomplete". The pass/fail result is only reported once completed, so while the page
+        // is incomplete success_status stays "unknown" (same as SCORM 1.2 not showing passed/failed).
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
@@ -1854,7 +2054,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('keeps SCORM 1.2 activities non-terminal while the game is in progress', () => {
+    it('marks a SCORM 1.2 page incomplete while an iDevice is started but not finished', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -1889,8 +2089,9 @@ describe('common.js $exeDevices', () => {
           {},
         );
 
-        // Even with a passing score, an unfinished SCORM 1.2 game must stay "incomplete":
-        // cmi.core.lesson_status folds completion+success, so it must not read as "passed" yet.
+        // The only iDevice is started but not finished (state 1) -> the page is "incomplete".
+        // In SCORM 1.2 the single lesson_status reads "incomplete" (not "passed") until the page
+        // is fully completed, even though the running score would pass.
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
@@ -1987,7 +2188,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('showFinalScore marks the SCO incomplete once the learner restarts without finishing', () => {
+    it('showFinalScore marks the SCO incomplete when a restarted iDevice is no longer finished', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -2005,13 +2206,18 @@ describe('common.js $exeDevices', () => {
       `;
 
       try {
-        // The learner has started a fresh attempt (gameStarted) but has not finished it yet.
+        // iDevice 1 was restarted (state 1, not finished); iDevice 2 is still completed (state 2).
+        // The page aggregates to "incomplete"; the pass/fail result is withheld until the page is
+        // completed, so success_status is "unknown" even though the running score would pass.
         scorm.showFinalScore(
-          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            1: { title: 'A', score: 80, weighted: 100, state: 1 },
+            2: { title: 'B', score: 80, weighted: 100, state: 2 },
+          },
           {
             main: '#game',
             ideviceNumber: 1,
-            title: 'Activity',
+            title: 'A',
             gameStarted: true,
             gameOver: false,
             msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },

@@ -1120,6 +1120,12 @@ const mockGamificationScorm = {
     weighted: 0,
   })),
   setValues: vi.fn(),
+  // Auto-only iDevices coerce legacy manual mode (2) to automatic (1) at load.
+  // Mirrors $exeDevices.iDevice.gamification.scorm.normalizeMode in common.js.
+  normalizeMode: vi.fn((isScorm) => {
+    const mode = parseInt(isScorm, 10) || 0;
+    return mode === 2 ? 1 : mode;
+  }),
 };
 
 const mockGamificationCommon = {

@@ -99,13 +99,9 @@ function loadPage() {
     return result;
   }
 
-  var status = scorm.GetCompletionStatus();
-
-  if (status == "not attempted" || status == "incomplete") {
-    // the student is now attempting the lesson
-    scorm.SetCompletionStatus("unknown");
-    scorm.SetSuccessStatus("unknown")
-  }
+  // Entering a page must NOT change the activity status. completion/success are
+  // owned by the iDevice and only change through learner interaction (sendScore
+  // -> showFinalScore). loadPage only opens and times the session.
 
   exitPageStatus = false;
   pageLoaded = true;
@@ -236,29 +232,18 @@ function unloadPage(isSCORM) {
     isSCORM = false;
   }
   if (exitPageStatus != true) {
+    // Leaving a page must NOT change completion/success: those are owned by the
+    // iDevice and only change through learner interaction. Here we only read the
+    // status the iDevice already set (read-only) to pick the resume mode, then
+    // close the session. A finished SCO exits "normal" (no resume); anything else
+    // stays resumable ("suspend"). In SCORM12 completion+success share lesson_status.
     var completionStatus = scorm.GetCompletionStatus();
     var successStatus = scorm.GetSuccessStatus();
     var isScorm2004 = scorm.version == "2004";
-    var hasTerminalStatus = isScorm2004
-      ? completionStatus == "completed" || successStatus == "passed" || successStatus == "failed"
-      : successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
-    var shouldExitNormally = isScorm2004
+    var isCompleted = isScorm2004
       ? completionStatus == "completed"
       : successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
-    // In SCORM12, information about completion and success is stored in the same place (cmi.core.lesson_status)
-    if (!hasTerminalStatus) {
-      if (isSCORM == true) {
-        scorm.SetCompletionStatus("incomplete");
-        scorm.SetSuccessStatus("failed")
-        shouldExitNormally = false;
-      }
-      else {
-        scorm.SetCompletionStatus("completed");
-        scorm.SetSuccessStatus("passed")
-        shouldExitNormally = true;
-      }
-    }
-    doQuit(shouldExitNormally ? "normal" : "suspend");
+    doQuit(isCompleted ? "normal" : "suspend");
   }
   // NOTE: don't return anything that resembles a javascript
   //       string from this function or IE will take the liberty of displaying a confirm message box.

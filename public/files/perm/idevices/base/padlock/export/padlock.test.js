@@ -43,7 +43,8 @@ describe('padlock iDevice export', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
-    $(window).off('unload.eXeCandado beforeunload.eXeCandado');
+    $(window).off('pagehide.eXeCandado');
+    $(document).off('visibilitychange.eXeCandado');
     document.body.innerHTML = '';
   });
 
@@ -182,6 +183,64 @@ describe('padlock iDevice export', () => {
       expect($padlock.sendScore).toHaveBeenCalledWith(false, 0);
       expect($padlock.saveEvaluation).toHaveBeenCalledWith(0);
       expect(updateEvaluationIcon).toHaveBeenCalledWith($padlock.options[0], $padlock.isInExe);
+    });
+
+    it('persists the padlock locally on pagehide and when the page is hidden', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      $padlock.options[0] = {
+        candadoShowMinimize: true,
+        candadoStarted: true,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+        score: 4,
+      };
+      $padlock.saveCandadoData = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      // pagehide replaces the deprecated unload/beforeunload save.
+      $(window).trigger('pagehide');
+      expect($padlock.saveCandadoData).toHaveBeenCalledWith(0);
+
+      // Becoming hidden also persists (covers the visibilitychange branch).
+      $padlock.saveCandadoData.mockClear();
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      try {
+        $(document).trigger('visibilitychange');
+        expect($padlock.saveCandadoData).toHaveBeenCalledWith(0);
+      } finally {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      }
+    });
+
+    it('does not persist on pagehide when the padlock has not started', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      $padlock.options[0] = {
+        candadoShowMinimize: true,
+        candadoStarted: false,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+      };
+      $padlock.saveCandadoData = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      $(window).trigger('pagehide');
+      expect($padlock.saveCandadoData).not.toHaveBeenCalled();
     });
   });
 

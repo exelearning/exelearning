@@ -36,6 +36,14 @@ describe('trueorfalse iDevice export', () => {
     $trueorfalse = loadExportIdevice(code);
   });
 
+  it('coerces legacy manual SCORM mode (2) to automatic (1) at load', () => {
+    const code = readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8');
+
+    // trueorfalse is auto-only (no manual save button); updateConfig normalizes
+    // legacy manual data to automatic via the shared helper.
+    expect(code).toContain('gamification.scorm.normalizeMode(data.isScorm)');
+  });
+
   describe('escapeForCallback', () => {
     it('escapes backslashes', () => {
       const obj = { path: 'C:\\folder\\file' };
@@ -336,7 +344,7 @@ describe('trueorfalse iDevice export', () => {
       expect(saveEvaluation).toHaveBeenCalledWith(options, false);
     });
 
-    it('sends the SCORM score on Comprobar in test mode (isScorm = 2)', () => {
+    it('auto-submits the SCORM score on Comprobar when the game is over', () => {
       const previousReport = $exeDevices.iDevice.gamification.report;
       const previousSendScoreNew = $exeDevices.iDevice.gamification.scorm.sendScoreNew;
       const sendScoreNew = vi.fn();
@@ -365,7 +373,7 @@ describe('trueorfalse iDevice export', () => {
         questionsGame: [{ solution: '1' }, { solution: '0' }],
         numberQuestions: 2,
         msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
-        isScorm: 2,
+        isScorm: 1,
         isInExe: false,
       };
 

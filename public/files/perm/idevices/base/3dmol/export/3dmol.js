@@ -903,6 +903,16 @@ var $eXe3Dmol = {
         // Show first model and question
         $eXe3Dmol.showModelAtIndex(0, instance);
 
+        // With a single model, showing it means every slide has been visited, so the
+        // exploration is already complete (SCORM state -> completed).
+        if (mOptions.selectsGame.length <= 1) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm > 0) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+            $eXe3Dmol.saveEvaluation(instance);
+        }
+
         // Save initial score only if previous > 0 and below minimum
         const previous = parseFloat($eXe3Dmol.previousScore) || 0;
         const minScore = (1 * 10) / mOptions.selectsGame.length;
@@ -947,6 +957,12 @@ var $eXe3Dmol = {
                             .show();
                         $(`#dmolpDivFeedBack-${instance}`).show();
                     }
+                }
+                // Reaching the last model means all slides have been visited: the show-mode
+                // exploration is complete (SCORM state -> completed). Until then it stays
+                // incomplete (gameStarted without gameOver).
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {

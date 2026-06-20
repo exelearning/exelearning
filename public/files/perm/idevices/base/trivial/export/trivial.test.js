@@ -52,27 +52,37 @@ function createGameOptions(overrides = {}) {
 }
 
 describe('TriviExt score saving', () => {
-    it('does not send SCORM score when leaving the page', () => {
+    it('persists locally on hide via the Page Lifecycle API, never SCORM', () => {
         const code = readFileSync(join(__dirname, 'trivial.js'), 'utf-8');
         const loadGameSource = code.slice(
             code.indexOf('loadGame: function'),
             code.indexOf('positionPointer: function')
         );
-        const unloadHandlers = [
-            ...loadGameSource.matchAll(
-                /\$\(window\)\.on\('unload\.eXeTrivial beforeunload\.eXeTrivial', function \(\) \{([\s\S]*?)\s*\}\);/g
-            ),
-        ];
 
-        expect(unloadHandlers.some((handler) => handler[1].includes('sendScore'))).toBe(false);
+        // The leave handler must not rely on the deprecated unload/beforeunload
+        // events (blocked under bfcache and inside LMS iframes); it uses
+        // pagehide + visibilitychange instead.
+        expect(loadGameSource).not.toContain('unload.eXeTrivial');
+        expect(loadGameSource).not.toContain('beforeunload.eXeTrivial');
+        expect(loadGameSource).toContain("$(window).on('pagehide.eXeTrivial'");
+        expect(loadGameSource).toContain("$(document).on('visibilitychange.eXeTrivial'");
+
+        // Leaving the page persists local progress only; it never saves a SCORM score.
+        const persistHandler = loadGameSource.slice(
+            loadGameSource.indexOf('const persistOnHide'),
+            loadGameSource.indexOf("$(window).on('pagehide.eXeTrivial'")
+        );
+        expect(persistHandler).toContain('$eXeTrivial.saveDataStorage(instance);');
+        expect(persistHandler).not.toContain('sendScore');
         expect(loadGameSource).not.toMatch(/endScorm\(\$eXeTrivial\.mScorm\)/);
-        expect(loadGameSource).toContain('$eXeTrivial.saveDataStorage(instance);');
     });
 
     it('loads legacy manual SCORM mode as automatic mode', () => {
         const code = readFileSync(join(__dirname, 'trivial.js'), 'utf-8');
 
-        expect(code).toContain('mOptions.isScorm = mOptions.isScorm === 2 ? 1 : mOptions.isScorm;');
+        expect(code).toContain(
+            '$exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm)'
+        );
     });
 
     it('saves automatic SCORM score after an incorrect completed question', () => {

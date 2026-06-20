@@ -65,24 +65,25 @@ describe('SCOFunctions.js', () => {
   });
 
   describe('loadPage', () => {
-    it('initializes scorm and sets status if not attempted', () => {
+    it('initializes scorm without changing the activity status when not attempted', () => {
       globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('not attempted');
 
       globalThis.loadPage();
 
       expect(globalThis.pipwerks.SCORM.init).toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('unknown');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('unknown');
+      // Entering the page must not touch completion/success: the iDevice owns them.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
       expect(getExitPageStatus()).toBe(false);
     });
 
-    it('sets status to unknown if incomplete', () => {
+    it('does not change the status while attempting (incomplete)', () => {
       globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('incomplete');
 
       globalThis.loadPage();
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('unknown');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('unknown');
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
     });
 
     it('does not change status if already completed', () => {
@@ -363,37 +364,44 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).not.toHaveBeenCalled();
     });
 
-    it('sets status to completed if not SCORM and exitPageStatus is false', () => {
+    it('does not change completion/success when leaving a non-scored page', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(false);
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('passed');
+      // Leaving a page never writes status; the iDevice owns it. A non-terminal
+      // page stays resumable.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
     });
 
-    it('sets status to incomplete if isSCORM is true', () => {
+    it('does not change completion/success when leaving a scored page', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(true);
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('incomplete');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('failed');
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
-    it('defaults isSCORM to false when undefined', () => {
+    it('does not change status and suspends when called without an isSCORM argument', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(); // No argument
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('passed');
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
     });
 
     it('does not change status if already passed', () => {
@@ -426,26 +434,14 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
     });
 
-    it('exits normally after completing a non-scored page', () => {
+    it('exits normally and still saves/quits when the page is already completed', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('completed');
 
       globalThis.unloadPage();
 
       expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
-      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
-    });
-
-    it('suspends after leaving a scored page incomplete', () => {
-      setExitPageStatus(false);
-      setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
-
-      globalThis.unloadPage(true);
-
-      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
       expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
@@ -531,13 +527,14 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledTimes(1);
     });
 
-    it('uses the registered isSCORM value when finalizing on pagehide', () => {
+    it('finalizes the session on pagehide without changing the activity status', () => {
       scoFunctions.registerScormLifecycleHandlers(true, fakeWin, fakeDoc);
 
       listeners['win:pagehide']({ persisted: false });
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('incomplete');
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('failed');
+      // Finalizing the session must not write completion/success — the iDevice owns them.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledTimes(1);
     });
 

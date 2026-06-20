@@ -163,6 +163,8 @@ var $trueorfalse = {
         }
         data.repeatActivity = true;
         data.isScorm = data.isScorm ?? 0;
+        data.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(data.isScorm);
 
         const $idevices = $('.idevice_node');
         data.ideviceNumber = $idevices.index($('#' + data.id)) + 1;

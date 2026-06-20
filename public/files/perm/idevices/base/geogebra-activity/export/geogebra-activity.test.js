@@ -240,4 +240,28 @@ describe('geogebra-activity iDevice (export)', () => {
       $exeDevices.iDevice.gamification.report = previousReport;
     }
   });
+
+  it('finalizes the activity (gameOver) when the manual save button triggers sendScore', () => {
+    const originalPipwerks = global.pipwerks;
+    const originalGgb = global.ggbApplet;
+    const originalScorm = $exeDevices.iDevice.gamification.scorm;
+    const sendScoreNew = vi.fn();
+    $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+    global.pipwerks = { SCORM: { SetScoreMax: vi.fn(), SetScoreMin: vi.fn() } };
+    global.ggbApplet = { exists: () => false, getValue: () => 0 };
+
+    try {
+      $geogebraactivity.sendScore({ main: '#x', ideviceNumber: 1, weighted: 100, msgs: {} });
+
+      // Pressing the save button finalizes the activity on the first save.
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        false,
+        expect.objectContaining({ gameStarted: true, gameOver: true }),
+      );
+    } finally {
+      global.pipwerks = originalPipwerks;
+      global.ggbApplet = originalGgb;
+      $exeDevices.iDevice.gamification.scorm = originalScorm;
+    }
+  });
 });
