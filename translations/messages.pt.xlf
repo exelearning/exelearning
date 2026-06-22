@@ -15357,6 +15357,26 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Gera a pré-visualização do circuito antes de guardar</target>
       </trans-unit>
+      <trans-unit id="3l5ox2y" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r8mb8zc" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="s1w2f2w" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ri991no" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="og1bwfz" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
