@@ -53,6 +53,8 @@
                         <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
                         {# Advanced: save the project as an unpacked folder. Hidden until Alt is held or feature flag is set. #}
                         <li class="d-none exe-folder-project-action"><a class="dropdown-item" id="navbar-button-save-folder-offline" href="#"><span class="small-icon save-icon-green"></span> {{ t.save_to_folder or 'Save to folder' }}</a></li>
+                        {# Desktop only: close the current window. Revealed by navbarFile.js only when the Electron bridge (window.electronAPI) is present. #}
+                        <li class="d-none exe-electron-only"><a class="dropdown-item" id="navbar-button-close-file" href="#"><span class="small-icon close-icon"></span> {{ t.close or 'Close' }}</a></li>
                         <li class="dropdown dropend">
                             <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.export_as or 'Export as...' }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">

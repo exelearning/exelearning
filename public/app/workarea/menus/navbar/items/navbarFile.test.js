@@ -39,6 +39,7 @@ describe('NavbarFile', () => {
             openUserOdeFilesButton: createButton('navbar-button-openuserodefiles'),
             openOfflineButton: createButton('navbar-button-open-offline'),
             saveOfflineButton: createButton('navbar-button-save-offline'),
+            closeFileButton: createButton('navbar-button-close-file'),
             recentProjectsButton: createButton('navbar-button-dropdown-recent-projects'),
             downloadProjectButton: createButton('navbar-button-download-project'),
             downloadProjectAsButton: createButton('navbar-button-download-project-as'),
@@ -212,6 +213,7 @@ describe('NavbarFile', () => {
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-openuserodefiles');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-open-offline');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-save-offline');
+            expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-close-file');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-dropdown-recent-projects');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-download-project');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-download-project-as');
@@ -249,6 +251,7 @@ describe('NavbarFile', () => {
             expect(navbarFile.openUserOdeFilesButton).toBe(mockButtons.openUserOdeFilesButton);
             expect(navbarFile.openOfflineButton).toBe(mockButtons.openOfflineButton);
             expect(navbarFile.saveOfflineButton).toBe(mockButtons.saveOfflineButton);
+            expect(navbarFile.closeFileButton).toBe(mockButtons.closeFileButton);
             expect(navbarFile.recentProjectsButton).toBe(mockButtons.recentProjectsButton);
             expect(navbarFile.downloadProjectButton).toBe(mockButtons.downloadProjectButton);
             expect(navbarFile.downloadProjectAsButton).toBe(mockButtons.downloadProjectAsButton);
@@ -290,6 +293,7 @@ describe('NavbarFile', () => {
                 setRecentProjectsEvent: vi.spyOn(navbarFile, 'setRecentProjectsEvent'),
                 setDownloadProjectEvent: vi.spyOn(navbarFile, 'setDownloadProjectEvent'),
                 setSaveProjectOfflineEvent: vi.spyOn(navbarFile, 'setSaveProjectOfflineEvent'),
+                setCloseFileEvent: vi.spyOn(navbarFile, 'setCloseFileEvent'),
                 setDownloadProjectAsEvent: vi.spyOn(navbarFile, 'setDownloadProjectAsEvent'),
                 setExportHTML5Event: vi.spyOn(navbarFile, 'setExportHTML5Event'),
                 setExportHTML5AsEvent: vi.spyOn(navbarFile, 'setExportHTML5AsEvent'),
@@ -811,6 +815,72 @@ describe('NavbarFile', () => {
         it('setImportElpEvent should add click listener when button exists', () => {
             navbarFile.setImportElpEvent();
             expect(mockButtons.importElpButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+    });
+
+    describe('setCloseFileEvent (Electron-only File -> Close)', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should reveal the entry and close the window when the Electron bridge is present', () => {
+            // Mirror the real markup: the <a> lives inside a hidden <li> wrapper.
+            const li = document.createElement('li');
+            li.classList.add('d-none', 'exe-electron-only');
+            li.appendChild(mockButtons.closeFileButton);
+            navbarElement.appendChild(li);
+
+            const closeCurrentWindow = vi.fn();
+            window.electronAPI = { closeCurrentWindow };
+
+            navbarFile.setCloseFileEvent();
+
+            expect(li.classList.contains('d-none')).toBe(false);
+            expect(mockButtons.closeFileButton.addEventListener).toHaveBeenCalledWith(
+                'click',
+                expect.any(Function)
+            );
+
+            const clickHandler = mockButtons.closeFileButton.addEventListener.mock.calls[0][1];
+            const preventDefault = vi.fn();
+            clickHandler({ preventDefault });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(closeCurrentWindow).toHaveBeenCalled();
+        });
+
+        it('should not close when an idevice editor is open', () => {
+            const closeCurrentWindow = vi.fn();
+            window.electronAPI = { closeCurrentWindow };
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+
+            navbarFile.setCloseFileEvent();
+            const clickHandler = mockButtons.closeFileButton.addEventListener.mock.calls[0][1];
+            clickHandler({ preventDefault: vi.fn() });
+
+            expect(eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
+            expect(closeCurrentWindow).not.toHaveBeenCalled();
+        });
+
+        it('should stay hidden and wire nothing in the static browser build (no electronAPI)', () => {
+            const li = document.createElement('li');
+            li.classList.add('d-none', 'exe-electron-only');
+            li.appendChild(mockButtons.closeFileButton);
+            navbarElement.appendChild(li);
+
+            window.electronAPI = null;
+
+            navbarFile.setCloseFileEvent();
+
+            expect(li.classList.contains('d-none')).toBe(true);
+            expect(mockButtons.closeFileButton.addEventListener).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when the close button is absent', () => {
+            navbarFile.closeFileButton = null;
+            window.electronAPI = { closeCurrentWindow: vi.fn() };
+
+            expect(() => navbarFile.setCloseFileEvent()).not.toThrow();
         });
     });
 
