@@ -15357,6 +15357,14 @@
         <source>Please render the circuit preview before saving.</source>
         <target>Genera la vista previa del circuito antes de guardar</target>
       </trans-unit>
+      <trans-unit id="ysm21qa" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dp1s884" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
