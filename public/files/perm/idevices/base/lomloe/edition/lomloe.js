@@ -456,7 +456,21 @@ var $exeDevice = (function () {
     // DATA ACCESSORS
     // ════════════════════════════════════════════════════════════════
 
-    var ETAPA_ORDER = ['infantil', 'primaria', 'eso', 'bachillerato'];
+    // Canonical stage order. Each entry lists the substrings that identify the
+    // stage. Matching is lower-cased and accent-insensitive (see foldEtapa), so
+    // the Castilian abbreviation ("ESO"), the full official Castilian name
+    // ("Educación Secundaria Obligatoria") and the co-official-language spelling
+    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària") all resolve
+    // to the same rank. Without the full-name/co-official synonyms a regional
+    // dataset that uses official stage names (e.g. Navarra, Comunitat Valenciana)
+    // would mis-sort — "Educación Secundaria Obligatoria" matched no token and
+    // fell behind "Bachillerato" in the stage selector.
+    var ETAPA_ORDER = [
+        ['infantil'],
+        ['primaria'],
+        ['eso', 'secundaria'],
+        ['bachillerato', 'batxillerat'],
+    ];
 
     // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
     // per-dataset `descriptors` override catalog). Keep in sync with the same
@@ -464,18 +478,28 @@ var $exeDevice = (function () {
     var RESERVED_DATASET_KEYS = ['descriptors'];
     function isEtapaKey(k) { return RESERVED_DATASET_KEYS.indexOf(k) === -1; }
 
+    // Lower-case and strip combining diacritics so accented co-official spellings
+    // ("Primària", "Secundària", "Obligatòria") match the ASCII order tokens.
+    function foldEtapa(s) {
+        return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function etapaRank(name) {
+        var folded = foldEtapa(name);
+        for (var i = 0; i < ETAPA_ORDER.length; i++) {
+            var tokens = ETAPA_ORDER[i];
+            for (var j = 0; j < tokens.length; j++) {
+                if (folded.indexOf(tokens[j]) !== -1) return i;
+            }
+        }
+        return ETAPA_ORDER.length;
+    }
+
     function getEtapas() {
         if (!rawData) return [];
+        // Array.prototype.sort is stable, so unknown stages keep insertion order.
         return Object.keys(rawData).filter(isEtapaKey).sort(function (a, b) {
-            var al = a.toLowerCase();
-            var bl = b.toLowerCase();
-            var ai = ETAPA_ORDER.length;
-            var bi = ETAPA_ORDER.length;
-            for (var i = 0; i < ETAPA_ORDER.length; i++) {
-                if (al.indexOf(ETAPA_ORDER[i]) !== -1 && ai === ETAPA_ORDER.length) ai = i;
-                if (bl.indexOf(ETAPA_ORDER[i]) !== -1 && bi === ETAPA_ORDER.length) bi = i;
-            }
-            return ai - bi;
+            return etapaRank(a) - etapaRank(b);
         });
     }
 
@@ -596,6 +620,11 @@ var $exeDevice = (function () {
             if (top + tr.height > vh - 4 && r.top - gap - tr.height >= 4) {
                 top = r.top - gap - tr.height;
             }
+            // Clamp vertically so a tall tooltip (long criteria definitions) is
+            // never clipped at the bottom edge — pin it just inside the viewport
+            // when it fits neither fully below nor above the target.
+            if (vh && top + tr.height > vh - 4) top = Math.max(4, vh - 4 - tr.height);
+            if (top < 4) top = 4;
             var left = r.left + (r.width / 2) - (tr.width / 2);
             if (left < 4) left = 4;
             if (left + tr.width > vw - 4) left = Math.max(4, vw - 4 - tr.width);

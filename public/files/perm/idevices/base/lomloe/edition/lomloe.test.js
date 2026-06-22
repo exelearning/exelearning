@@ -1048,6 +1048,95 @@ describe('Tooltip popover controller', () => {
         plain.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
         expect(document.getElementById('lomloe-tooltip')).toBeNull();
     });
+
+    it('clamps a tall tooltip inside the viewport so long definitions are not clipped', async () => {
+        $exeDevice.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const target = document.createElement('span');
+        target.setAttribute('data-lomloe-tip', 'A very long criteria definition…');
+        el.appendChild(target);
+        // Create + show the tooltip, then simulate a tall tooltip near the
+        // bottom edge and re-position via a scroll event.
+        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        const tip = document.getElementById('lomloe-tooltip');
+        const vh = window.innerHeight || 768;
+        const tipH = 700;
+        // Mid-viewport target; the tooltip is too tall to fit either below or
+        // above it, so the clamp must pull it back inside the viewport.
+        target.getBoundingClientRect = () =>
+            ({ top: 400, bottom: 420, left: 100, right: 200, width: 100, height: 20 });
+        tip.getBoundingClientRect = () =>
+            ({ top: 0, bottom: tipH, left: 0, right: 360, width: 360, height: tipH });
+        window.dispatchEvent(new Event('scroll'));
+        // Pinned so its bottom stays just inside the viewport (vh - 4 - height).
+        expect(tip.style.top).toBe(Math.max(4, vh - 4 - tipH) + 'px');
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Stage (etapa) ordering must be Infantil → Primaria → ESO → Bachillerato
+// regardless of how the dataset spells the stage names. Regional datasets use
+// the full official names ("Educación Secundaria Obligatoria") or co-official
+// spellings ("Educació Secundària Obligatòria", "Batxillerat"); these must sort
+// like the Castilian abbreviations and not fall behind Bachillerato.
+describe('LOMLOE stage (etapa) ordering', () => {
+    let el;
+    let dev;
+
+    // Re-instantiate per test so the module-level dataCache is fresh (each test
+    // loads the default dataset id with a different fixture).
+    beforeEach(async () => {
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
+            globalThis, globalThis._, globalThis.CSS
+        );
+    });
+    afterEach(() => {
+        el && el.remove();
+        vi.restoreAllMocks();
+    });
+
+    async function renderedEtapaOrder(dataset) {
+        el = buildMockElement();
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({ ok: true, json: () => Promise.resolve(dataset) })
+        );
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        return Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.dataset.etapa);
+    }
+
+    it('orders official Castilian stage names (Navarra-style) ESO before Bachillerato', async () => {
+        // Insertion order scrambled on purpose to prove it is the sort, not the
+        // object order, that fixes this — the regression was Bachillerato first.
+        const order = await renderedEtapaOrder({
+            Bachillerato: { '1º Bachillerato': { MAT: area('Matemáticas') } },
+            'Educación Secundaria Obligatoria': { '1º de ESO': { MAT: area('Matemáticas') } },
+            'Educación Infantil': { '2º ciclo': { ÁCA: area('Comunicación') } },
+            'Educación Primaria': { '1º Primaria': { MAT: area('Matemáticas') } },
+        });
+        expect(order).toEqual([
+            'Educación Infantil',
+            'Educación Primaria',
+            'Educación Secundaria Obligatoria',
+            'Bachillerato',
+        ]);
+    });
+
+    it('orders accented co-official stage names (Valencian-style) correctly', async () => {
+        const order = await renderedEtapaOrder({
+            Batxillerat: { '1r Batxillerat': { MAT: area('Matemàtiques') } },
+            'Educació Secundària Obligatòria': { '1r ESO': { MAT: area('Matemàtiques') } },
+            'Educació Infantil': { '2n cicle': { ÁCA: area('Comunicació') } },
+            'Educació Primària': { '1r Primària': { MAT: area('Matemàtiques') } },
+        });
+        expect(order).toEqual([
+            'Educació Infantil',
+            'Educació Primària',
+            'Educació Secundària Obligatòria',
+            'Batxillerat',
+        ]);
+    });
 });
 
 // ════════════════════════════════════════════════════════════════
