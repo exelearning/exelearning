@@ -96,8 +96,8 @@ describe('ModalImageOptimizer', () => {
                 modals: {
                     alert: { show: vi.fn() },
                 },
-                alerts: {
-                    showToast: vi.fn(),
+                toasts: {
+                    createToast: vi.fn(),
                 },
             },
         };
@@ -1423,8 +1423,8 @@ describe('ModalImageOptimizer', () => {
 
             await modal.startOptimization();
 
-            expect(eXeLearning.app.alerts.showToast).toHaveBeenCalledWith(
-                expect.objectContaining({ type: 'success' })
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+                expect.objectContaining({ icon: 'check' })
             );
         });
 
@@ -1439,8 +1439,8 @@ describe('ModalImageOptimizer', () => {
 
             await modal.startOptimization();
 
-            expect(eXeLearning.app.alerts.showToast).toHaveBeenCalledWith(
-                expect.objectContaining({ type: 'error' })
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+                expect.objectContaining({ icon: 'error' })
             );
         });
     });
