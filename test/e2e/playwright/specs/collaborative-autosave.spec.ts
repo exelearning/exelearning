@@ -24,7 +24,7 @@ async function waitForCollaboratorPresent(page: import('@playwright/test').Page)
             return dm.getOnlineUsers().filter((u: any) => u && !u.isLocal).length > 0;
         },
         undefined,
-        { timeout: 30000 }
+        { timeout: 30000 },
     );
 }
 
@@ -58,10 +58,10 @@ test.describe('Collaborative autosave', () => {
         getShareUrl,
         joinSharedProject,
     }) => {
-        await authenticatedPage.addInitScript((ms) => {
+        await authenticatedPage.addInitScript(ms => {
             window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = ms;
         }, SHORT_IDLE_MS);
-        await secondAuthenticatedPage.addInitScript((ms) => {
+        await secondAuthenticatedPage.addInitScript(ms => {
             window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = ms;
         }, SHORT_IDLE_MS);
 
@@ -127,8 +127,6 @@ test.describe('Collaborative autosave', () => {
 
         const notice = authenticatedPage.locator('#exe-collab-save-status');
         await expect(notice).toBeVisible({ timeout: 15000 });
-        await expect(notice).toContainText(
-            'Collaborative changes are shared live and will be saved automatically.'
-        );
+        await expect(notice).toContainText('Collaborative changes are shared live and will be saved automatically.');
     });
 });
