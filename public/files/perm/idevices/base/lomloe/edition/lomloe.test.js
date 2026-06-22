@@ -2058,7 +2058,8 @@ describe('DATASETS registry (regression guard)', () => {
         const preciseRe = /id:\s*'(ES-[A-Z]+)'[^}]*?descriptorsPerCriterion:\s*true/g;        
         const ids = [...lomloeSrc.matchAll(preciseRe)].map(m => m[1]).sort();
         expect(ids).toEqual(['ES-CN', 'ES-GA']);
-
+    });
+    
     it('declares ES-NC with available:true and the lomloe-ES-NC.json file', () => {
         const m = entryFor('ES-NC');
         expect(m, "ES-NC entry missing").not.toBeNull();
@@ -2071,7 +2072,6 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m, "ES-VC entry missing").not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-VC.json'");
-
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {
