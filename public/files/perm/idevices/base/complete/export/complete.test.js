@@ -348,6 +348,105 @@ describe('complete iDevice export', () => {
     });
   });
 
+  describe('checkPhrase SCORM completion', () => {
+    const instance = 0;
+
+    function setup({ correct, attempts }) {
+      document.body.innerHTML = `
+        <div id="cmptMultimedia-${instance}">
+          <input class="CMPT-Input" data-number="0" value="cat">
+        </div>
+        <div id="cmptPNumber-${instance}"></div>
+        <div id="cmptCheckPhrase-${instance}"></div>
+        <div id="cmptReloadPhrase-${instance}"></div>
+        <div id="cmptRepeatActivity-${instance}"></div>`;
+      $eXeCompleta.options[instance] = {
+        type: 0,
+        words: ['cat'],
+        number: 1,
+        attempsNumber: attempts,
+        isScorm: 1,
+        gameStarted: true,
+        gameOver: false,
+        hits: 0,
+        errors: 0,
+        blacks: 0,
+        itinerary: { showClue: false },
+        msgs: { msgEndScore: '%s/%d', msgYouScore: 'Score', msgTry: 'Try' },
+      };
+      vi.spyOn($eXeCompleta, 'checkWord').mockReturnValue(correct);
+      vi.spyOn($eXeCompleta, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'updateGameBoard').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'gameOver').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('marks the activity completed BEFORE sending the score on the terminal check', () => {
+      // All gaps right -> terminal. gameOver must already be true when sendScore
+      // runs, so the shared SCORM helper records state 2 (not "incomplete").
+      setup({ correct: true, attempts: 1 });
+      let gameOverAtSend;
+      vi.spyOn($eXeCompleta, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeCompleta.options[inst].gameOver;
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(gameOverAtSend).toBe(true);
+      expect($eXeCompleta.gameOver).toHaveBeenCalledWith(1, instance);
+    });
+
+    it('keeps the activity incomplete on a non-terminal check (attempts remain)', () => {
+      // Wrong answer with attempts left -> not terminal, stays incomplete.
+      setup({ correct: false, attempts: 2 });
+      let gameOverAtSend;
+      vi.spyOn($eXeCompleta, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeCompleta.options[inst].gameOver;
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(gameOverAtSend).toBe(false);
+      expect($eXeCompleta.gameOver).not.toHaveBeenCalled();
+    });
+
+    it('marks completed when the time runs out, even with attempts remaining', () => {
+      // The countdown reaching 0 must finalize the SCO: gameOver is set before
+      // checkPhrase runs so the score it sends records state 2, not incomplete.
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="cmptMainContainer-${instance}"></div>`;
+      const options = {
+        time: 0, // counter starts at 0 -> first tick crosses the <= 0 threshold
+        attempsNumber: 3, // attempts still remain when time is up
+        isScorm: 1,
+        gameStarted: false,
+        gameOver: false,
+        activeCounter: false,
+      };
+      $eXeCompleta.options[instance] = options;
+      let gameOverAtCheck;
+      vi.spyOn($eXeCompleta, 'checkPhrase').mockImplementation((inst) => {
+        gameOverAtCheck = $eXeCompleta.options[inst].gameOver;
+      });
+      vi.spyOn($eXeCompleta, 'gameOver').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'updateTime').mockImplementation(() => {});
+
+      $eXeCompleta.startGame(instance);
+      vi.advanceTimersByTime(1000); // one tick -> counter -1 -> time-up branch
+
+      expect(gameOverAtCheck).toBe(true);
+      expect($eXeCompleta.gameOver).toHaveBeenCalledWith(2, instance);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+  });
+
   describe('setupTouchDragAndDrop', () => {
     it('exists as a function', () => {
       expect(typeof $eXeCompleta.setupTouchDragAndDrop).toBe('function');

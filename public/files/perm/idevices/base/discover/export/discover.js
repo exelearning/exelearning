@@ -1338,6 +1338,13 @@ var $eXeDescubre = {
         mOptions.selecteds = [];
         $eXeDescubre.updateCovers(instance, true);
         $eXeDescubre.updateScore(true, instance);
+        // All groups (pairs/trios/quartets) discovered: mark completed NOW so the
+        // score sent just below records state 2, and any unload during the
+        // timeShowSolution celebration before gameOver still finalizes the SCO as
+        // completed instead of "incomplete". (#1831)
+        if (mOptions.hits >= mOptions.wordsGame.length) {
+            mOptions.gameOver = true;
+        }
         const percentageHits =
             (mOptions.hits / mOptions.wordsGame.length) * 100;
         if (

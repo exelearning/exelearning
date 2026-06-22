@@ -142,12 +142,9 @@ var $eXeBeforeAfter = {
         mOptions.score = 0;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
-        // With a single image, starting the activity already visits every slide, so it is
-        // complete (SCORM state -> completed); otherwise it stays incomplete until the
-        // learner navigates to the last image (see showImage).
-        if (mOptions.cardsGame.length <= 1) {
-            mOptions.gameOver = true;
-        }
+        // Completion is derived from the visited slides at save/send time (see
+        // allSlidesVisited). A single-image activity already has every slide
+        // visited, so the sendScore/saveEvaluation calls below finalize it.
         $('#bfafCubierta-' + instance).hide();
         $('#bfafStartGame-' + instance).hide();
         if (mOptions.isScorm > 0) {
@@ -246,10 +243,11 @@ var $eXeBeforeAfter = {
         mOptions.visiteds =
             mOptions.visiteds < number ? number : mOptions.visiteds;
 
-        // Reaching the last image means all slides have been visited: the comparison is
-        // complete (SCORM state -> completed). Until then it stays incomplete (gameStarted
-        // without gameOver). Guarded by gameStarted so edition/preview renders do not finalize.
-        if (mOptions.gameStarted && number >= mOptions.cardsGame.length - 1) {
+        // Visiting every slide means the comparison is complete (SCORM state ->
+        // completed). visiteds never decreases, so this stays true after
+        // navigating back. Guarded by gameStarted so edition/preview renders do
+        // not finalize.
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
             mOptions.gameOver = true;
         }
 
@@ -735,9 +733,20 @@ var $eXeBeforeAfter = {
             .show();
     },
 
+    // Single source of truth for completion: the activity is finished once the
+    // learner has visited every slide. visiteds tracks the furthest slide reached
+    // (set in showImage) and never decreases, so completion does not depend on the
+    // slide the learner is on when the score is sent.
+    allSlidesVisited: function (mOptions) {
+        return mOptions.visiteds >= mOptions.cardsGame.length - 1;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
+            mOptions.gameOver = true;
+        }
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
@@ -749,6 +758,12 @@ var $eXeBeforeAfter = {
     sendScore: function (auto, instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
+        // Finalize from the visited slides regardless of the current position, so
+        // the completed state is sent even when the last slide was reached on the
+        // same gesture that started the game (event-bubbling order).
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
+            mOptions.gameOver = true;
+        }
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         mOptions.previousScore = $eXeBeforeAfter.previousScore;

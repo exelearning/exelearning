@@ -97,6 +97,57 @@ describe('mathproblems iDevice export', () => {
             expect($eXeMathProblems.sendScore).toHaveBeenCalledWith(true, 0);
             expect($eXeMathProblems.saveEvaluation).toHaveBeenCalledWith(0);
         });
+
+        it('marks complete BEFORE sending when the last question is answered', () => {
+            $eXeMathProblems.options[0] = {
+                isScorm: 1,
+                scorm: { repeatActivity: true },
+                hits: 0,
+                errors: 0,
+                numberQuestions: 1, // answering one leaves none pending
+                gameOver: false,
+            };
+            $eXeMathProblems.initialScore = '';
+            $eXeMathProblems.getMessageAnswer = vi.fn(() => '');
+            let gameOverAtSend;
+            $eXeMathProblems.sendScore = vi.fn((_auto, inst) => {
+                gameOverAtSend = $eXeMathProblems.options[inst].gameOver;
+            });
+            $eXeMathProblems.saveEvaluation = vi.fn();
+            $eXeMathProblems.checkClue = vi.fn();
+            $eXeMathProblems.updateGameBoard = vi.fn();
+            $eXeMathProblems.showMessage = vi.fn();
+
+            $eXeMathProblems.updateScore(true, 0);
+
+            expect(gameOverAtSend).toBe(true);
+        });
+
+        it('stays incomplete while questions remain', () => {
+            $eXeMathProblems.options[0] = {
+                isScorm: 1,
+                scorm: { repeatActivity: true },
+                hits: 0,
+                errors: 0,
+                numberQuestions: 2, // one answered, one still pending
+                gameOver: false,
+            };
+            $eXeMathProblems.initialScore = '';
+            $eXeMathProblems.getMessageAnswer = vi.fn(() => '');
+            let gameOverAtSend;
+            $eXeMathProblems.sendScore = vi.fn((_auto, inst) => {
+                gameOverAtSend = $eXeMathProblems.options[inst].gameOver;
+            });
+            $eXeMathProblems.saveEvaluation = vi.fn();
+            $eXeMathProblems.checkClue = vi.fn();
+            $eXeMathProblems.updateGameBoard = vi.fn();
+            $eXeMathProblems.showMessage = vi.fn();
+
+            $eXeMathProblems.updateScore(false, 0);
+
+            expect(gameOverAtSend).toBe(false);
+            expect($eXeMathProblems.options[0].gameOver).toBe(false);
+        });
     });
 
     describe('gameOver', () => {

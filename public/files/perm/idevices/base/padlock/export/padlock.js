@@ -308,15 +308,16 @@ var $padlock = {
                 $padlock.saveEvaluation(instance);
             });
 
-        if (mOptions.isScorm === 1) {
-            $padlock.sendScore(true, instance);
+        // Register BEFORE startGame so page load is NOT treated as an active
+        // session. The score must only be sent when the learner presses the check
+        // button (answerActivity -> showFeedback on a correct answer) or the time
+        // runs out, never on load. (#1831)
+        if (mOptions.isScorm > 0) {
+            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         if (!mOptions.candadoShowMinimize) {
             $padlock.startGame(instance);
-        }
-        if (mOptions.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         setTimeout(() => {

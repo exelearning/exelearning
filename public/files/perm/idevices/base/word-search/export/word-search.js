@@ -818,7 +818,12 @@ var $eXeSopa = {
         if (mOptions.showResolve)
             $container.find('#sopaResolve-' + instanceId).show();
 
-        mOptions.gameStarted = true;
+        // Do NOT mark the game started before registerActivity: the shared SCORM
+        // helper treats an active session (gameStarted/gameOver) as an
+        // interaction and would send a 0 score on page load, before the learner
+        // plays. Untimed games are enabled after registration (below); timed games
+        // start from the Start button. (#1831)
+        mOptions.gameStarted = false;
 
         if (mOptions.time > 0) {
             mOptions.gameStarted = false;
@@ -870,6 +875,12 @@ var $eXeSopa = {
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
+        }
+
+        // Untimed games are playable immediately; enable them only AFTER
+        // registerActivity so page load was not counted as an active session.
+        if (!(mOptions.time > 0)) {
+            mOptions.gameStarted = true;
         }
 
         setTimeout(() => {

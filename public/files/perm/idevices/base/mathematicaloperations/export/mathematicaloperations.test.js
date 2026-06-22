@@ -135,4 +135,74 @@ describe('mathematicaloperations iDevice export', () => {
       expect($eXeMathOperations.idevicePath).toBe('');
     });
   });
+
+  describe('completion (complete only when all answered or time is up)', () => {
+    function setupScore(opts) {
+      $eXeMathOperations.options[0] = {
+        isScorm: 1,
+        repeatActivity: true,
+        hits: 0,
+        errors: 0,
+        number: 2,
+        gameOver: false,
+        ...opts,
+      };
+      $eXeMathOperations.initialScore = '';
+      vi.spyOn($eXeMathOperations, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'checkClue').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'updateGameBoard').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'gameOver').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('does NOT complete on an intermediate answer (stays in-progress)', () => {
+      setupScore({ number: 2, hits: 0, errors: 0 });
+
+      $eXeMathOperations.updateScore(true, 0); // 1 of 2 -> 1 pending
+
+      expect($eXeMathOperations.gameOver).not.toHaveBeenCalled();
+      // The score is still persisted progressively, just not finalized.
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('completes when the last question is answered', () => {
+      setupScore({ number: 1, hits: 0, errors: 0 });
+
+      $eXeMathOperations.updateScore(true, 0); // 1 of 1 -> 0 pending
+
+      expect($eXeMathOperations.gameOver).toHaveBeenCalledWith(1, 0);
+    });
+
+    it('gameOver finalizes the activity (gameOver flag + score sent)', () => {
+      document.body.innerHTML =
+        '<div id="mthoGameContainer-0"></div><div id="mthoStartGame-0"></div>';
+      $eXeMathOperations.options[0] = {
+        isScorm: 1,
+        repeatActivity: true,
+        hits: 1,
+        errors: 0,
+        number: 2,
+        time: 0,
+        gameOver: false,
+        gameStarted: true,
+        msgs: { msgNewGame: 'New' },
+      };
+      $eXeMathOperations.initialScore = '';
+      vi.spyOn($eXeMathOperations, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'checkClue').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'showFeedBack').mockImplementation(() => {});
+
+      // Used by both the all-answered (gameOver(1)) and time-up (gameOver(0)) paths.
+      $eXeMathOperations.gameOver(0, 0);
+
+      expect($eXeMathOperations.options[0].gameOver).toBe(true);
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
 });

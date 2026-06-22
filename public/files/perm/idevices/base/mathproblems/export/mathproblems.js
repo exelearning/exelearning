@@ -1182,6 +1182,15 @@ var $eXeMathProblems = {
         message = $eXeMathProblems.getMessageAnswer(correctAnswer, instance);
         mOptions.score = (mOptions.hits / mOptions.numberQuestions) * 10;
 
+        // No questions pending means this answer (or timed-out question) finishes
+        // the activity. Mark it completed BEFORE sending so the score recorded for
+        // this final question is state 2; the gameOver() that runs after the
+        // timeShowSolution delay would otherwise leave this send as
+        // "incomplete". (#1831)
+        if (mOptions.numberQuestions - mOptions.hits - mOptions.errors <= 0) {
+            mOptions.gameOver = true;
+        }
+
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.scorm.repeatActivity ||

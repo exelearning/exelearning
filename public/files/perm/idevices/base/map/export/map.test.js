@@ -242,6 +242,39 @@ describe('map iDevice export score saving', () => {
         expect($eXeMapa.saveEvaluation).toHaveBeenCalledWith(0);
     });
 
+    it('registers with gameStarted=false then restores it (no score sent on load)', () => {
+        // Modes 0/4/6 set gameStarted=true at setup; registration (in initElements)
+        // must not treat page load as an active session, but the flag is restored
+        // afterwards so intermediate progress is still tracked.
+        $eXeMapa.options[0] = {
+            evaluationG: 0,
+            gameOver: false,
+            gameStarted: true,
+            isScorm: 1,
+            instructions: '',
+            authorImage: '',
+            showMinimize: false,
+            hasAreas: false,
+            showActiveAreas: false,
+            hideAreas: false,
+            itinerary: { showCodeAccess: false },
+            msgs: { msgPlayStart: '' },
+        };
+        $eXeMapa.hideModalWindows = vi.fn();
+
+        let gameStartedAtRegister;
+        global.$exeDevices.iDevice.gamification.scorm = {
+            registerActivity: vi.fn(opts => {
+                gameStartedAtRegister = opts.gameStarted;
+            }),
+        };
+
+        $eXeMapa.initElements(0);
+
+        expect(gameStartedAtRegister).toBe(false);
+        expect($eXeMapa.options[0].gameStarted).toBe(true);
+    });
+
     it.each([4, 5])('does not save scores from point-only visits in mode %s', evaluationG => {
         $eXeMapa.options[0] = {
             activeMap: {

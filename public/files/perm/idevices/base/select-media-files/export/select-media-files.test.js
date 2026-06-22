@@ -353,3 +353,106 @@ describe('select-media-files iDevice export — audio icon + autoplay gating', (
         });
     });
 });
+
+describe('select-media-files iDevice export — Masonry guard', () => {
+    let dmedia;
+    let hadMasonry;
+    let originalMasonry;
+
+    beforeEach(() => {
+        // initializeMasonry retries via setTimeout; fake timers keep it deterministic.
+        vi.useFakeTimers();
+        global.$eXeSeleccionaMedias = undefined;
+        dmedia = loadExport();
+        // Masonry is an optional dependency not present in the test runtime.
+        // Snapshot whatever (if anything) is on $.fn so we can restore it cleanly.
+        hadMasonry = Object.prototype.hasOwnProperty.call($.fn, 'masonry');
+        originalMasonry = $.fn.masonry;
+        delete $.fn.masonry;
+        document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+        if (hadMasonry) {
+            $.fn.masonry = originalMasonry;
+        } else {
+            delete $.fn.masonry;
+        }
+        document.body.innerHTML = '';
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        delete global.$eXeSeleccionaMedias;
+    });
+
+    function gridMarkup(instance) {
+        document.body.innerHTML = `
+            <div id="slcmpMainContainer-${instance}">
+                <div class="SLCMP-Multimedia">
+                    <div class="SLCMP-GridItem"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    it('isMasonryReady reflects whether the plugin is registered on jQuery', () => {
+        expect(dmedia.isMasonryReady()).toBe(false);
+        $.fn.masonry = vi.fn();
+        expect(dmedia.isMasonryReady()).toBe(true);
+    });
+
+    it('does not throw when the masonry plugin is missing on first layout', () => {
+        gridMarkup(0);
+        expect(() => dmedia.initializeMasonry(0)).not.toThrow();
+    });
+
+    it('initializes masonry with grid options when the plugin is available', () => {
+        gridMarkup(0);
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+
+        dmedia.initializeMasonry(0);
+
+        expect(masonry).toHaveBeenCalledWith({
+            itemSelector: '.SLCMP-GridItem',
+            columnWidth: '.SLCMP-GridItem',
+            gutter: 10,
+        });
+        expect(masonry).toHaveBeenCalledWith('reloadItems');
+        expect(masonry).toHaveBeenCalledWith('layout');
+    });
+
+    it('retries until the plugin becomes available, then initializes', () => {
+        gridMarkup(0);
+        dmedia.initializeMasonry(0); // plugin missing -> schedules a retry
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+        vi.advanceTimersByTime(200); // retry fires; plugin is now present
+        expect(masonry).toHaveBeenCalled();
+    });
+
+    it('falls back to table mode when the plugin never loads', () => {
+        gridMarkup(0);
+        dmedia.initializeMasonry(0, 1); // one retry left
+        vi.advanceTimersByTime(200); // retry exhausts the budget -> fallback
+        const $grid = $('#slcmpMainContainer-0').find('.SLCMP-Multimedia');
+        expect($grid.hasClass('SLCMP-ModeTable')).toBe(true);
+    });
+
+    it('returns early without scheduling a retry when the grid is absent', () => {
+        expect(() => dmedia.initializeMasonry(99)).not.toThrow();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('destroyMasonry is a no-op when the plugin is missing', () => {
+        gridMarkup(0);
+        expect(() => dmedia.destroyMasonry()).not.toThrow();
+    });
+
+    it('destroyMasonry calls masonry("destroy") when the plugin is available', () => {
+        gridMarkup(0);
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+        dmedia.destroyMasonry();
+        expect(masonry).toHaveBeenCalledWith('destroy');
+    });
+});

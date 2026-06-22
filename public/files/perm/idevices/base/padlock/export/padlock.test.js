@@ -244,6 +244,47 @@ describe('padlock iDevice export', () => {
     });
   });
 
+  describe('does not send a score on page load', () => {
+    it('registers with gameStarted=false (before startGame) and sends nothing on load', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      let gameStartedAtRegister;
+      global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn(
+        (opts) => {
+          gameStartedAtRegister = opts.gameStarted;
+        },
+      );
+      document.body.innerHTML =
+        '<article class="idevice_node"><div id="candadoMainContainer-0"></div></article>';
+      $padlock.options[0] = {
+        candadoReboot: false,
+        candadoShowMinimize: false, // startGame runs on load
+        candadoTime: 0, // untimed: the reported bug case
+        id: 'padlock-test',
+        isScorm: 1,
+        score: 0,
+        gameStarted: false,
+        gameOver: false,
+        msgs: {},
+      };
+      $padlock.sendScore = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      // registerActivity runs before startGame, so page load is not an active
+      // session and no score is sent.
+      expect(gameStartedAtRegister).toBe(false);
+      expect($padlock.sendScore).not.toHaveBeenCalled();
+      // startGame still enables play afterwards.
+      expect($padlock.options[0].gameStarted).toBe(true);
+    });
+  });
+
   describe('answerActivity', () => {
     it('marks the game over and sends the SCORM score when the correct solution is checked', () => {
       document.body.innerHTML = `

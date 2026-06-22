@@ -378,6 +378,11 @@ var $eXeFlipCards = {
         $eXeFlipCards.showMessage(type, message, instance, false);
         if (mOptions.hits >= mOptions.realNumberCards) {
             mOptions.gameActived = false;
+            // All pairs matched: mark completed NOW so the score sent for this
+            // last match (correctPairMemory) records state 2, and any unload
+            // during the 2s celebration before gameOverMemory still finalizes the
+            // SCO as completed instead of "incomplete". (#1831)
+            mOptions.gameOver = true;
             setTimeout(function () {
                 $eXeFlipCards.gameOverMemory(0, instance);
             }, 2000);
@@ -1013,6 +1018,12 @@ var $eXeFlipCards = {
 
         if (isFlipped) {
             mOptions.visiteds.push($card.data('number'));
+            // Show/navigation modes (type < 2) are complete once every card has
+            // been flipped. visiteds never shrinks, so it stays complete even if
+            // the learner keeps flipping without leaving the activity. (#1831)
+            if (mOptions.type < 2 && $eXeFlipCards.allCardsVisited(mOptions)) {
+                mOptions.gameOver = true;
+            }
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
@@ -1894,6 +1905,16 @@ var $eXeFlipCards = {
         });
 
         return lvisiteds.length;
+    },
+
+    // Show/navigation modes (type < 2) finish once every card has been flipped
+    // at least once. Single source of truth for that rule, reused by the flip
+    // handler (and safe to call repeatedly as the learner keeps flipping).
+    allCardsVisited: function (mOptions) {
+        return (
+            $eXeFlipCards.getNumberVisited(mOptions.visiteds) >=
+            mOptions.realNumberCards
+        );
     },
 
     getColors: function (number) {

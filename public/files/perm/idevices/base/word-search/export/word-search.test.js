@@ -119,4 +119,67 @@ describe('word-search iDevice export', () => {
         );
         expect($('#sopaRepeatActivity-0').text()).toBe('Score: 5.00');
     });
+
+    describe('does not send a score on page load', () => {
+        function setupInstance(time) {
+            document.body.innerHTML =
+                '<div class="idevice_node"><div id="sopaMainContainer-0"></div></div>';
+            global.$exeDevices.iDevice.gamification.report.updateEvaluationIcon =
+                vi.fn();
+            $eXeSopa.instances[0] = {
+                itinerary: { showCodeAccess: false, clueGame: 'clue' },
+                wordsGame: ['a', 'b'],
+                msgs: { mgsGameStart: 'start', msgInformation: 'info' },
+                numberQuestions: 2,
+                instructions: '',
+                time,
+                isScorm: 1,
+                showResolve: false,
+            };
+            vi.spyOn($eXeSopa, 'removeEvents').mockImplementation(() => {});
+            vi.spyOn($eXeSopa, 'showMessage').mockImplementation(() => {});
+        }
+
+        it('registers the untimed activity with gameStarted=false (no premature send)', () => {
+            vi.useFakeTimers();
+            setupInstance(0);
+            let gameStartedAtRegister;
+            global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn(
+                (opts) => {
+                    gameStartedAtRegister = opts.gameStarted;
+                },
+            );
+
+            $eXeSopa.addEvents(0);
+
+            // The session is not active at registration, so the shared helper
+            // does not send a 0 score on load.
+            expect(gameStartedAtRegister).toBe(false);
+            // Untimed games become playable right after registration.
+            expect($eXeSopa.instances[0].gameStarted).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('keeps a timed activity not started at registration', () => {
+            vi.useFakeTimers();
+            setupInstance(60);
+            let gameStartedAtRegister;
+            global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn(
+                (opts) => {
+                    gameStartedAtRegister = opts.gameStarted;
+                },
+            );
+
+            $eXeSopa.addEvents(0);
+
+            expect(gameStartedAtRegister).toBe(false);
+            // Timed games stay not started until the Start button is pressed.
+            expect($eXeSopa.instances[0].gameStarted).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
 });

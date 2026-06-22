@@ -1565,7 +1565,11 @@ var $periodicTable = {
                     $periodicTable.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
                         clearInterval(mOptions.counterClock);
-                        $periodicTable.checkAnswers(instance);
+                        // Time is up: finish the activity. checkAnswers() does not
+                        // exist (it threw a TypeError and the SCO never completed);
+                        // gameOver is the shared end path used by every other
+                        // terminal branch and sends the completed score. (#1831)
+                        $periodicTable.gameOver(instance);
                         return;
                     }
                 }

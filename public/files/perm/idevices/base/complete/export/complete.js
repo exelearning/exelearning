@@ -604,6 +604,10 @@ var $eXeCompleta = {
                 mOptions.counter--;
                 $eXeCompleta.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    // Time is up: the activity is finished. Mark completed before
+                    // checkPhrase so the score it sends records state 2 (not
+                    // "incomplete") even if attempts still remained. (#1831)
+                    mOptions.gameOver = true;
                     $eXeCompleta.checkPhrase(instance);
                     $eXeCompleta.gameOver(2, instance);
                 }
@@ -790,6 +794,17 @@ var $eXeCompleta = {
         mOptions.attempsNumber--;
         const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
 
+        // The activity is finished when the learner runs out of attempts or gets
+        // every gap right. Mark it completed BEFORE sending the score: sendScore
+        // runs here while gameStarted is still true and the later gameOver() call
+        // does not re-send, so without this the SCO records state 1 ("incomplete")
+        // even at 100%. (#1831)
+        const isComplete =
+            mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number;
+        if (isComplete) {
+            mOptions.gameOver = true;
+        }
+
         if (mOptions.isScorm === 1) {
             $eXeCompleta.sendScore(true, instance);
             $('#cmptRepeatActivity-' + instance).text(
@@ -816,7 +831,7 @@ var $eXeCompleta = {
 
         $eXeCompleta.saveEvaluation(instance);
 
-        if (mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number) {
+        if (isComplete) {
             $eXeCompleta.gameOver(1, instance);
             return;
         }

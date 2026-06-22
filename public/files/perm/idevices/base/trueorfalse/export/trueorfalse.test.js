@@ -44,6 +44,40 @@ describe('trueorfalse iDevice export', () => {
     expect(code).toContain('gamification.scorm.normalizeMode(data.isScorm)');
   });
 
+  describe('does not send a score on page load', () => {
+    it('registers with gameStarted=false even when updateConfig flagged it started', () => {
+      // updateConfig sets gameStarted=true for the new format; renderBehaviour
+      // must reset it before registering so no score is written on load.
+      const ldata = { id: 'tof-1', isScorm: 1, gameStarted: true };
+      vi.spyOn($trueorfalse, 'updateConfig').mockReturnValue(ldata);
+      vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('');
+      vi.spyOn($trueorfalse, 'addEvents').mockImplementation(() => {});
+      vi.spyOn($trueorfalse, 'updateLatexInView').mockImplementation(() => {});
+
+      const prevScorm = $exeDevices.iDevice.gamification.scorm;
+      let gameStartedAtRegister;
+      $exeDevices.iDevice.gamification.scorm = {
+        registerActivity: vi.fn((opts) => {
+          gameStartedAtRegister = opts.gameStarted;
+        }),
+      };
+      document.body.className = ''; // not an exe-scorm runtime -> direct register
+
+      try {
+        $trueorfalse.renderBehaviour(
+          { id: 'tof-1', questionsData: [] },
+          0,
+          'tof-1',
+        );
+      } finally {
+        $exeDevices.iDevice.gamification.scorm = prevScorm;
+        vi.restoreAllMocks();
+      }
+
+      expect(gameStartedAtRegister).toBe(false);
+    });
+  });
+
   describe('escapeForCallback', () => {
     it('escapes backslashes', () => {
       const obj = { path: 'C:\\folder\\file' };

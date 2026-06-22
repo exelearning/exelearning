@@ -504,6 +504,13 @@ var $scrambledlist = {
 
         this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
 
+        // Pressing Comprobar finalizes the activity for SCORM: send the score and
+        // mark it completed now, regardless of whether a retry is offered next.
+        // Each retry's Comprobar updates the score but the activity stays completed.
+        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
+            this.sendScore(nRightAnswers, userList[0].children.length, data);
+        }
+
         const errors = userList[0].children.length - nRightAnswers;
         if (!right && data.pendingAttempts > 0) {
             const retryQuestion = this.getRetryMessage(data, errors);
@@ -522,9 +529,7 @@ var $scrambledlist = {
                         feedback,
                         right,
                         rightAnswers,
-                        data,
-                        nRightAnswers,
-                        userList[0].children.length
+                        data
                     );
                 }
             );
@@ -536,9 +541,7 @@ var $scrambledlist = {
             feedback,
             right,
             rightAnswers,
-            data,
-            nRightAnswers,
-            userList[0].children.length
+            data
         );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
@@ -546,17 +549,10 @@ var $scrambledlist = {
         }
     },
 
-    showResultFeedback: function (
-        activity,
-        feedback,
-        right,
-        rightAnswers,
-        data,
-        nRightAnswers,
-        totalOptions
-    ) {
+    showResultFeedback: function (activity, feedback, right, rightAnswers, data) {
+        // SCORM finalization (score + completed) happens in check() on every
+        // Comprobar; SCORM exports show no inline feedback panel here.
         if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
-            this.sendScore(nRightAnswers, totalOptions, data);
             return;
         }
 
@@ -876,10 +872,10 @@ var $scrambledlist = {
      */
     sendScore: function (rightAnswers, totalOptions, data) {
         data.scorerp = (rightAnswers * 10) / totalOptions;
-        // sendScore only runs at a terminal point (all correct, attempts
-        // exhausted, or the learner declined to retry), so mark the activity as
-        // finished. Without gameOver the shared SCORM helper records the score
-        // but keeps lesson_status "incomplete" instead of passed/failed (#1831).
+        // Pressing Comprobar finalizes the activity: mark it completed so the
+        // shared SCORM helper writes lesson_status passed/failed instead of
+        // "incomplete" (#1831). Called on every Comprobar (see check), even when a
+        // retry is still offered; later retries update the score but keep it done.
         data.gameStarted = false;
         data.gameOver = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);

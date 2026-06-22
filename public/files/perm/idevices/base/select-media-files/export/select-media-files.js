@@ -1071,10 +1071,37 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    initializeMasonry: function (instance) {
+    // Masonry ships as an optional jQuery plugin (mansory-jq.js). It may not be
+    // registered on jQuery yet when the grid is first laid out (slow/late
+    // dependency load, preview service worker, CSP-blocked script…). Calling
+    // `$grid.masonry(...)` blindly in that window throws
+    // "$grid.masonry is not a function" and aborts the rest of the iDevice
+    // setup. Mirror the image-gallery/SimpleLightbox guard: only call the plugin
+    // when it exists. See issue: masonry runtime TypeError.
+    isMasonryReady: function () {
+        return typeof $.fn !== 'undefined' && typeof $.fn.masonry === 'function';
+    },
+
+    initializeMasonry: function (instance, retries) {
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
+        if (!$grid.length) return;
+
+        if (!$eXeSeleccionaMedias.isMasonryReady()) {
+            const remaining = typeof retries === 'number' ? retries : 25;
+            if (remaining <= 0) {
+                // Masonry never loaded: leave the grid in its default flow
+                // layout (table mode) so items render without overlapping.
+                $grid.addClass('SLCMP-ModeTable');
+                return;
+            }
+            setTimeout(function () {
+                $eXeSeleccionaMedias.initializeMasonry(instance, remaining - 1);
+            }, 200);
+            return;
+        }
+
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',
@@ -1085,6 +1112,7 @@ var $eXeSeleccionaMedias = {
     },
 
     destroyMasonry: function () {
+        if (!$eXeSeleccionaMedias.isMasonryReady()) return;
         const $grid = $('.SLCMP-Multimedia');
         $grid.masonry('destroy');
     },

@@ -228,6 +228,89 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  describe('check finalizes the SCORM activity on Comprobar', () => {
+    beforeEach(() => {
+      document.body.classList.add('exe-scorm');
+      // The HTML5 Sortable plugin is not loaded in unit tests; stub the method
+      // so check()'s list.sortable('destroy') call does not throw.
+      $.fn.sortable = vi.fn().mockReturnThis();
+    });
+
+    afterEach(() => {
+      document.body.classList.remove('exe-scorm');
+      delete $.fn.sortable;
+      document.body.innerHTML = '';
+    });
+
+    function setupDom(jsonData) {
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div class="exe-sortableList">
+            <p id="exe-sortableListButton-0"><input class="check" type="button"></p>
+            <ul id="exe-sortableList-0">
+              <li data-orig-index="1">B</li>
+              <li data-orig-index="0">A</li>
+            </ul>
+            <ul id="exe-sortableListResults-0"></ul>
+            <div id="exe-sortableList-0-feedback"></div>
+            <div id="exe-sortableList-0-retry"></div>
+          </div>
+        </div>`;
+      document
+        .querySelector('.idevice_node')
+        .setAttribute('data-idevice-json-data', JSON.stringify(jsonData));
+      return document.querySelector('.check');
+    }
+
+    it('sends the score (marks completed) even when a retry is still available', () => {
+      // Wrong order (orig indices [1,0]) with attempts remaining -> a retry is
+      // offered, but the activity must already be finalized for SCORM.
+      const e = setupDom({
+        id: '0',
+        isScorm: 1,
+        attemptsNumber: 3,
+        pendingAttempts: 3,
+        showSolutions: false,
+      });
+      const sendScore = vi
+        .spyOn($scrambledlist, 'sendScore')
+        .mockImplementation(() => {});
+      const showRetry = vi
+        .spyOn($scrambledlist, 'showRetryPrompt')
+        .mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'saveEvaluation').mockImplementation(() => {});
+
+      $scrambledlist.check(e, 0);
+
+      expect(sendScore).toHaveBeenCalledWith(0, 2, expect.any(Object));
+      expect(showRetry).toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('does not send the SCORM score outside SCORM mode', () => {
+      document.body.classList.remove('exe-scorm');
+      const e = setupDom({
+        id: '0',
+        isScorm: 0,
+        attemptsNumber: 1,
+        pendingAttempts: 1,
+        showSolutions: false,
+      });
+      const sendScore = vi
+        .spyOn($scrambledlist, 'sendScore')
+        .mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'showResultFeedback').mockImplementation(() => {});
+
+      $scrambledlist.check(e, 0);
+
+      expect(sendScore).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+  });
+
   describe('setupTouchDrag', () => {
     it('exists as a function', () => {
       expect(typeof $scrambledlist.setupTouchDrag).toBe('function');

@@ -199,4 +199,74 @@ describe('discover iDevice export', () => {
       expect($eXeDescubre.options).toEqual([]);
     });
   });
+
+  describe('completion when all groups are discovered', () => {
+    beforeEach(() => {
+      vi.spyOn($eXeDescubre, 'updateCovers').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'getMessageAnswer').mockReturnValue('');
+      vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'gameOver').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    function baseOptions(overrides) {
+      return {
+        selecteds: [0],
+        hits: 0,
+        score: 0,
+        attempts: 0,
+        nattempts: 0,
+        wordsGame: [{}],
+        gameMode: 0,
+        isScorm: 1,
+        numberQuestions: 1,
+        timeShowSolution: 1000,
+        showCards: false,
+        gameOver: false,
+        gameActived: true,
+        itinerary: { showClue: false },
+        msgs: { msgCool: 'Cool', mgsAllCards: 'all' },
+        ...overrides,
+      };
+    }
+
+    it('marks complete BEFORE sending when the last group is discovered', () => {
+      vi.useFakeTimers();
+      // A single group: discovering it completes the activity.
+      $eXeDescubre.options[0] = baseOptions();
+      let gameOverAtSend;
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeDescubre.options[inst].gameOver;
+      });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect(gameOverAtSend).toBe(true);
+      // gameOver still runs after the celebration delay.
+      vi.advanceTimersByTime(1000);
+      expect($eXeDescubre.gameOver).toHaveBeenCalledWith(0, 0);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('stays incomplete while groups remain', () => {
+      // Two groups: discovering one of them is not terminal.
+      $eXeDescubre.options[0] = baseOptions({ wordsGame: [{}, {}] });
+      let gameOverAtSend;
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeDescubre.options[inst].gameOver;
+      });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect(gameOverAtSend).toBe(false);
+      expect($eXeDescubre.gameOver).not.toHaveBeenCalled();
+    });
+  });
 });

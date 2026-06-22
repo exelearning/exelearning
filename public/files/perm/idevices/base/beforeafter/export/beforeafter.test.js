@@ -162,6 +162,86 @@ describe('beforeafter iDevice export', () => {
         expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
     });
 
+    describe('completion derived from visited slides (not current position)', () => {
+        it('allSlidesVisited is true once the furthest slide reached is the last', () => {
+            expect(
+                $eXeBeforeAfter.allSlidesVisited({ visiteds: 0, cardsGame: [{}, {}] }),
+            ).toBe(false);
+            expect(
+                $eXeBeforeAfter.allSlidesVisited({ visiteds: 1, cardsGame: [{}, {}] }),
+            ).toBe(true);
+        });
+
+        it('sendScore finalizes when every slide was visited (2-card first-click case)', () => {
+            // The last slide was reached on the same gesture that started the
+            // game, so showImage never set gameOver. sendScore must still finalize.
+            $eXeBeforeAfter.options[0] = {
+                cardsGame: [{}, {}],
+                gameOver: false,
+                gameStarted: true,
+                isScorm: 1,
+                visiteds: 1,
+                msgs: {},
+            };
+
+            $eXeBeforeAfter.sendScore(true, 0);
+
+            expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
+            expect(
+                global.$exeDevices.iDevice.gamification.scorm.sendScoreNew,
+            ).toHaveBeenCalledWith(
+                true,
+                expect.objectContaining({ gameOver: true, scorerp: 10 }),
+            );
+        });
+
+        it('finalizes regardless of the slide the learner is on when sending', () => {
+            // All slides visited but the learner navigated back to slide 0.
+            $eXeBeforeAfter.options[0] = {
+                cardsGame: [{}, {}, {}],
+                active: 0,
+                gameOver: false,
+                gameStarted: true,
+                isScorm: 1,
+                visiteds: 2,
+                msgs: {},
+            };
+
+            $eXeBeforeAfter.sendScore(true, 0);
+
+            expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
+        });
+
+        it('does not finalize before the game has started (edition/preview safe)', () => {
+            $eXeBeforeAfter.options[0] = {
+                cardsGame: [{}],
+                gameOver: false,
+                gameStarted: false,
+                isScorm: 1,
+                visiteds: 0,
+                msgs: {},
+            };
+
+            $eXeBeforeAfter.sendScore(true, 0);
+
+            expect($eXeBeforeAfter.options[0].gameOver).toBe(false);
+        });
+
+        it('saveEvaluation also derives completion from the visited slides', () => {
+            $eXeBeforeAfter.options[0] = {
+                cardsGame: [{}, {}],
+                gameOver: false,
+                gameStarted: true,
+                visiteds: 1,
+                msgs: {},
+            };
+
+            $eXeBeforeAfter.saveEvaluation(0);
+
+            expect($eXeBeforeAfter.options[0].gameOver).toBe(true);
+        });
+    });
+
     it('completes only when the last image is shown', () => {
         vi.useFakeTimers();
         document.body.innerHTML = `

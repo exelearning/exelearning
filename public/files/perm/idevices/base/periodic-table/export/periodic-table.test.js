@@ -17,4 +17,14 @@ describe('Periodic Table score saving', () => {
         expect(code).not.toMatch(/unload\.PeriodicTable/);
         expect(code).not.toMatch(/pagehide|unloadpage/);
     });
+
+    it('finishes the activity via gameOver when the time runs out', () => {
+        const code = readFileSync(join(__dirname, 'periodic-table.js'), 'utf-8');
+
+        // The time-up branch must call the real end path (sends the completed score).
+        expect(code).toContain('$periodicTable.gameOver(instance);');
+        // Regression: it used to call checkAnswers(instance), a function that was
+        // never defined, so the SCO never completed on timeout. (#1831)
+        expect(code).not.toContain('checkAnswers(instance)');
+    });
 });

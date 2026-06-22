@@ -1432,6 +1432,13 @@ var $eXeOrdena = {
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
         $exeDevices.iDevice.gamification.media.stopSound();
+        // Advancing past the last phrase finishes the activity. Mark it completed
+        // synchronously (the real gameOver runs after the timeShowSolution delay)
+        // so the score sent by the validate handler records state 2, and an unload
+        // during that delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+            mOptions.gameOver = true;
+        }
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');

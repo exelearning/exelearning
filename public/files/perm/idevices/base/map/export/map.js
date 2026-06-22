@@ -2443,7 +2443,15 @@ var $eXeMapa = {
         $('#mapaWordDiv-' + instance).hide();
 
         if (mOptions.isScorm > 0) {
+            // Modes 0/4/6 set gameStarted=true at setup so they are immediately
+            // playable. Register with it temporarily false so the shared SCORM
+            // helper does not treat page load as an active session and send a
+            // 0/incomplete score before the learner interacts; restore it right
+            // after so intermediate progress is still tracked. (#1831)
+            const wasStarted = mOptions.gameStarted;
+            mOptions.gameStarted = false;
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
+            mOptions.gameStarted = wasStarted;
         }
         if (mOptions.hideAreas) {
             $('#mapaLinkAreas-' + instance).hide();

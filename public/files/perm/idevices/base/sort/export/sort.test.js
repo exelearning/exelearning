@@ -593,4 +593,61 @@ describe('sort iDevice export', () => {
             expect(result).toBe(false);
         });
     });
+
+    describe('nextPhrase completion (all questions answered)', () => {
+        beforeEach(() => {
+            global.$exeDevices.iDevice.gamification.media = {
+                stopSound: vi.fn(),
+            };
+        });
+
+        it('marks complete synchronously when advancing past the last phrase', () => {
+            vi.useFakeTimers();
+            const options = {
+                active: 1, // last index of a 2-phrase activity
+                phrasesGame: [{}, {}],
+                gameOver: false,
+                timeShowSolution: 0,
+            };
+            $eXeOrdena.options[0] = options;
+            vi.spyOn($eXeOrdena, 'gameOver').mockImplementation(() => {});
+
+            $eXeOrdena.nextPhrase(0);
+
+            // The flag is set immediately, before the delayed gameOver() runs, so
+            // the validate handler's sendScore records state 2.
+            expect(options.gameOver).toBe(true);
+            expect($eXeOrdena.gameOver).not.toHaveBeenCalled();
+
+            vi.runAllTimers();
+            expect($eXeOrdena.gameOver).toHaveBeenCalledWith(0, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('does not complete while phrases remain', () => {
+            vi.useFakeTimers();
+            const options = {
+                active: 0, // not the last phrase
+                phrasesGame: [{}, {}],
+                gameOver: false,
+                timeShowSolution: 0,
+            };
+            $eXeOrdena.options[0] = options;
+            vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showPhraseText').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'gameOver').mockImplementation(() => {});
+
+            $eXeOrdena.nextPhrase(0);
+
+            expect(options.gameOver).toBe(false);
+
+            vi.runAllTimers(); // advance to next phrase, no gameOver
+            expect($eXeOrdena.gameOver).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
 });

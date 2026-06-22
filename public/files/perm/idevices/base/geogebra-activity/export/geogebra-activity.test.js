@@ -264,4 +264,33 @@ describe('geogebra-activity iDevice (export)', () => {
       $exeDevices.iDevice.gamification.scorm = originalScorm;
     }
   });
+
+  it('sends complete on every save press (manual save is repeatable)', () => {
+    const originalPipwerks = global.pipwerks;
+    const originalGgb = global.ggbApplet;
+    const originalScorm = $exeDevices.iDevice.gamification.scorm;
+    const sendScoreNew = vi.fn();
+    $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+    global.pipwerks = { SCORM: { SetScoreMax: vi.fn(), SetScoreMin: vi.fn() } };
+    global.ggbApplet = { exists: () => false, getValue: () => 0 };
+
+    try {
+      const options = { main: '#x', ideviceNumber: 1, weighted: 100, msgs: {} };
+      // Press save twice: each press must finalize (gameOver) as a manual save.
+      $geogebraactivity.sendScore(options);
+      $geogebraactivity.sendScore(options);
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(2);
+      for (const call of sendScoreNew.mock.calls) {
+        expect(call[0]).toBe(false); // auto === false -> manual save
+        expect(call[1]).toEqual(
+          expect.objectContaining({ gameStarted: true, gameOver: true }),
+        );
+      }
+    } finally {
+      global.pipwerks = originalPipwerks;
+      global.ggbApplet = originalGgb;
+      $exeDevices.iDevice.gamification.scorm = originalScorm;
+    }
+  });
 });

@@ -75,6 +75,12 @@ var $trueorfalse = {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
+        // updateConfig flags the new-format data as gameStarted; reset it BEFORE
+        // registering so the shared SCORM helper does not treat page load as an
+        // active session and write a 0/incomplete score before the learner
+        // interacts. addEvents() resets it again below. (#1831)
+        ldata.gameStarted = false;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
