@@ -15357,6 +15357,14 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Genera l'anteprima del circuito prima di salvare</target>
       </trans-unit>
+      <trans-unit id="0fsul7v" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dg6kvtj" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
