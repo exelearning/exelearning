@@ -15357,6 +15357,114 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Gera a pré-visualização do circuito antes de guardar</target>
       </trans-unit>
+      <trans-unit id="gds1937" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captura de ecrã</target>
+      </trans-unit>
+      <trans-unit id="gvb6say" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Pré-visualização da captura de ecrã do projeto atual</target>
+      </trans-unit>
+      <trans-unit id="ar1o052" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Ainda não há captura de ecrã. Será gerada automaticamente ao guardar ou exportar.</target>
+      </trans-unit>
+      <trans-unit id="n7vm8cb" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Carregar imagem personalizada</target>
+      </trans-unit>
+      <trans-unit id="l2b7wyo" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~A captura de ecrã deve ser inferior a 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="yhcb22t" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imagem inválida</target>
+      </trans-unit>
+      <trans-unit id="px6z6vx" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~A imagem não cumpre os requisitos mínimos: proporção 16:9 e pelo menos 600 píxeis de largura.</target>
+      </trans-unit>
+      <trans-unit id="042pugn" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Gerar a partir do conteúdo</target>
+      </trans-unit>
+      <trans-unit id="p6wlihs" resname="Not available">
+        <source>Not available</source>
+        <target>~Não disponível</target>
+      </trans-unit>
+      <trans-unit id="9kqifo3" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~A geração de capturas de ecrã não está disponível.</target>
+      </trans-unit>
+      <trans-unit id="mw2qggk" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Falha na geração</target>
+      </trans-unit>
+      <trans-unit id="zkwuqf2" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Não foi possível gerar a captura a partir do conteúdo. Tente carregar uma imagem.</target>
+      </trans-unit>
+      <trans-unit id="0yn1y64" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Substituir captura de ecrã</target>
+      </trans-unit>
+      <trans-unit id="40z1pkf" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Isto irá eliminar a imagem atual. Deseja continuar?</target>
+      </trans-unit>
+      <trans-unit id="j08r8f0" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Eliminar captura de ecrã</target>
+      </trans-unit>
+      <trans-unit id="e476g0j" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Eliminar a imagem atual? Esta ação não pode ser anulada.</target>
+      </trans-unit>
+      <trans-unit id="eoq2514" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomendações</target>
+      </trans-unit>
+      <trans-unit id="z9ct9zm" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Utilize uma imagem 16:9 (recomenda-se 1280×720 px) que represente claramente o conteúdo principal do recurso educativo. Evite desordem e texto pequeno, e garanta bom contraste para legibilidade em tamanhos reduzidos.</target>
+      </trans-unit>
+      <trans-unit id="4bjp14s" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~A imagem será utilizada como pré-visualização deste recurso educativo em diferentes plataformas.</target>
+      </trans-unit>
+      <trans-unit id="rlubesd" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Molécula 3D</target>
+      </trans-unit>
+      <trans-unit id="c1e91jm" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Moléculas 3D</target>
+      </trans-unit>
+      <trans-unit id="85w81po" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Largura máx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="23o1pdp" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Altura máx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="oxi6y24" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="4v150w9" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~A largura máx. deve ser superior a 0 e usar px, em, rem ou % (ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="rblop30" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~A altura máx. deve ser superior a 0 e usar px, em, rem ou % (ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="qha8b5b" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Lamentamos, está incorreto... A resposta correta é:</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
