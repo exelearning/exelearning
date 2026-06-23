@@ -153,11 +153,20 @@ describe('MenuIdevicesBehaviour', () => {
       const spy1 = vi.spyOn(menuIdevicesBehaviour, 'addEventClickIdeviceCategory');
       const spy2 = vi.spyOn(menuIdevicesBehaviour, 'changeAttributePosBehaviour');
       const spy3 = vi.spyOn(menuIdevicesBehaviour, 'addResizeListener');
+      const spy4 = vi.spyOn(menuIdevicesBehaviour, 'observeRootPageState');
 
       menuIdevicesBehaviour.behaviour();
 
       expect(spy1).toHaveBeenCalledBefore(spy2);
       expect(spy2).toHaveBeenCalledBefore(spy3);
+      expect(spy3).toHaveBeenCalledBefore(spy4);
+    });
+
+    it('should call observeRootPageState', () => {
+      const spy = vi.spyOn(menuIdevicesBehaviour, 'observeRootPageState');
+      menuIdevicesBehaviour.behaviour();
+
+      expect(spy).toHaveBeenCalled();
     });
   });
 
@@ -478,17 +487,158 @@ describe('MenuIdevicesBehaviour', () => {
     });
   });
 
+  describe('observeRootPageState', () => {
+    let mockNodeContent;
+    let mockListMenuIdevices;
+    let mockIdevicesBottom;
+
+    beforeEach(() => {
+      mockNodeContent = {
+        getAttribute: vi.fn(() => null),
+      };
+      mockListMenuIdevices = {
+        classList: { toggle: vi.fn(), remove: vi.fn(), add: vi.fn() },
+        setAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+      };
+      mockIdevicesBottom = {
+        classList: { toggle: vi.fn() },
+        setAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+      };
+
+      vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+        if (selector === '#node-content') return mockNodeContent;
+        if (selector === '#list_menu_idevices') return mockListMenuIdevices;
+        if (selector === '#idevices-bottom') return mockIdevicesBottom;
+        return null;
+      });
+    });
+
+    it('should not throw when #node-content is absent', () => {
+      vi.spyOn(document, 'querySelector').mockReturnValue(null);
+      expect(() => menuIdevicesBehaviour.observeRootPageState()).not.toThrow();
+    });
+
+    it('should initialize disabled state from current attribute value', () => {
+      mockNodeContent.getAttribute.mockReturnValue('root');
+      const spy = vi.spyOn(menuIdevicesBehaviour, 'updateIdevicesDisabledState');
+
+      menuIdevicesBehaviour.observeRootPageState();
+
+      expect(spy).toHaveBeenCalledWith('root');
+    });
+
+    it('should create a MutationObserver on #node-content', () => {
+      menuIdevicesBehaviour.observeRootPageState();
+
+      const observer = global.MutationObserver.mock.results[0].value;
+      expect(observer.observe).toHaveBeenCalledWith(
+        mockNodeContent,
+        { attributes: true, attributeFilter: ['node-selected'] }
+      );
+    });
+
+    it('should call updateIdevicesDisabledState when node-selected attribute changes', () => {
+      mockNodeContent.getAttribute.mockReturnValue('page-1');
+      menuIdevicesBehaviour.observeRootPageState();
+
+      const spy = vi.spyOn(menuIdevicesBehaviour, 'updateIdevicesDisabledState');
+      mockNodeContent.getAttribute.mockReturnValue('root');
+
+      const observer = global.MutationObserver.mock.results[0].value;
+      observer.callback([{ attributeName: 'node-selected' }]);
+
+      expect(spy).toHaveBeenCalledWith('root');
+    });
+
+    it('should ignore mutations for other attributes', () => {
+      menuIdevicesBehaviour.observeRootPageState();
+
+      const spy = vi.spyOn(menuIdevicesBehaviour, 'updateIdevicesDisabledState');
+      const observer = global.MutationObserver.mock.results[0].value;
+      observer.callback([{ attributeName: 'class' }]);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateIdevicesDisabledState', () => {
+    let mockListMenuIdevices;
+    let mockIdevicesBottom;
+
+    beforeEach(() => {
+      mockListMenuIdevices = {
+        classList: { toggle: vi.fn(), remove: vi.fn(), add: vi.fn() },
+        setAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+      };
+      mockIdevicesBottom = {
+        classList: { toggle: vi.fn() },
+        setAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+      };
+
+      vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+        if (selector === '#list_menu_idevices') return mockListMenuIdevices;
+        if (selector === '#idevices-bottom') return mockIdevicesBottom;
+        return null;
+      });
+    });
+
+    it('should add disabled class and title to both elements when root', () => {
+      menuIdevicesBehaviour.updateIdevicesDisabledState('root');
+
+      expect(mockListMenuIdevices.classList.toggle).toHaveBeenCalledWith('disabled', true);
+      expect(mockListMenuIdevices.setAttribute).toHaveBeenCalledWith('title', expect.any(String));
+      expect(mockIdevicesBottom.classList.toggle).toHaveBeenCalledWith('disabled', true);
+      expect(mockIdevicesBottom.setAttribute).toHaveBeenCalledWith('title', expect.any(String));
+    });
+
+    it('should remove disabled class and title from both elements when not root', () => {
+      menuIdevicesBehaviour.updateIdevicesDisabledState('page-1');
+
+      expect(mockListMenuIdevices.classList.toggle).toHaveBeenCalledWith('disabled', false);
+      expect(mockListMenuIdevices.removeAttribute).toHaveBeenCalledWith('title');
+      expect(mockIdevicesBottom.classList.toggle).toHaveBeenCalledWith('disabled', false);
+      expect(mockIdevicesBottom.removeAttribute).toHaveBeenCalledWith('title');
+    });
+
+    it('should close open categories when switching to root', () => {
+      menuIdevicesBehaviour.updateIdevicesDisabledState('root');
+
+      mockCategoryElements.forEach((el) => {
+        expect(el.classList.remove).toHaveBeenCalledWith('on', 'last-open');
+        expect(el.classList.add).toHaveBeenCalledWith('off');
+      });
+    });
+
+    it('should not throw when #list_menu_idevices or #idevices-bottom are absent', () => {
+      vi.spyOn(document, 'querySelector').mockReturnValue(null);
+      expect(() => menuIdevicesBehaviour.updateIdevicesDisabledState('root')).not.toThrow();
+      expect(() => menuIdevicesBehaviour.updateIdevicesDisabledState('page-1')).not.toThrow();
+    });
+
+    it('should treat null nodeSelected as non-root', () => {
+      menuIdevicesBehaviour.updateIdevicesDisabledState(null);
+
+      expect(mockListMenuIdevices.classList.toggle).toHaveBeenCalledWith('disabled', false);
+    });
+  });
+
   describe('integration', () => {
     it('should initialize all behaviors on behaviour call', () => {
       const spy1 = vi.spyOn(menuIdevicesBehaviour, 'addEventClickIdeviceCategory');
       const spy2 = vi.spyOn(menuIdevicesBehaviour, 'changeAttributePosBehaviour');
       const spy3 = vi.spyOn(menuIdevicesBehaviour, 'addResizeListener');
+      const spy4 = vi.spyOn(menuIdevicesBehaviour, 'observeRootPageState');
 
       menuIdevicesBehaviour.behaviour();
 
       expect(spy1).toHaveBeenCalled();
       expect(spy2).toHaveBeenCalled();
       expect(spy3).toHaveBeenCalled();
+      expect(spy4).toHaveBeenCalled();
     });
 
     it('should handle complete click and position workflow', () => {
