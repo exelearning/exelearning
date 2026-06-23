@@ -311,4 +311,34 @@ describe('Template Service', () => {
             expect(typeof result).toBe('string');
         });
     });
+
+    describe('workarea navbar export menu labels (#1760)', () => {
+        // Extract the visible text of the anchor identified by `id` from rendered HTML.
+        const anchorText = (html: string, id: string): string | null => {
+            const match = html.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`));
+            return match ? match[1].trim() : null;
+        };
+
+        it('shows the SCORM version on the "Download as" SCORM 1.2 option', () => {
+            const html = renderTemplate('workarea/menus/menuNavbar', { config: {}, t: {} });
+            expect(anchorText(html, 'navbar-button-export-scorm12')).toBe('SCORM (1.2)');
+        });
+
+        it('shows the SCORM version on the offline "Export as" SCORM 1.2 option', () => {
+            const html = renderTemplate('workarea/menus/menuNavbar', {
+                config: { isOfflineInstallation: true },
+                t: {},
+            });
+            expect(anchorText(html, 'navbar-button-exportas-scorm12')).toBe('SCORM (1.2)');
+        });
+
+        it('leaves the SCORM 2004 option labels unchanged', () => {
+            const html = renderTemplate('workarea/menus/menuNavbar', {
+                config: { isOfflineInstallation: true },
+                t: {},
+            });
+            expect(anchorText(html, 'navbar-button-export-scorm2004')).toBe('SCORM 2004');
+            expect(anchorText(html, 'navbar-button-exportas-scorm2004')).toBe('SCORM 2004');
+        });
+    });
 });
