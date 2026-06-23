@@ -332,6 +332,72 @@ export default class ApiCallManager {
     }
 
     /**
+     * Generate questions for game iDevices using the server-managed AI provider.
+     *
+     * Online + managed mode only: the browser sends the fully-built prompt and
+     * the server runs the configured provider, returning plain text. We
+     * normalize that text into an array of question lines that the gamification
+     * editor validates per game format. In external mode the UI never calls this
+     * (it opens the selected public AI assistant instead).
+     *
+     * @param {string} prompt Fully-composed prompt string.
+     * @returns {Promise<{questions: string[]}|{error: string, message?: string}>}
+     */
+    async getGenerateQuestions(prompt) {
+        if (this._isStaticMode()) {
+            return { error: 'AI_OFFLINE', message: 'AI generation is not available offline.' };
+        }
+
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/ai/generate-text`;
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            eXeLearning?.config?.token ||
+            localStorage.getItem('authToken');
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+            credentials: 'include',
+            body: JSON.stringify({ prompt }),
+        });
+
+        if (!response.ok) {
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (_e) {
+                // Non-JSON error body: fall back to a generic provider error code.
+            }
+            return { error: payload.error || 'AI_PROVIDER_ERROR', message: payload.message };
+        }
+
+        const data = await response.json();
+        return { questions: this._normalizeAiQuestions(data.text) };
+    }
+
+    /**
+     * Normalize a model's plain-text answer into question lines: strip Markdown
+     * code fences and blank lines so the gamification editor receives one
+     * question per array entry.
+     *
+     * @param {string} text
+     * @returns {string[]}
+     */
+    _normalizeAiQuestions(text) {
+        if (typeof text !== 'string') return [];
+        return text
+            .replace(/```[a-zA-Z0-9]*\n?/g, '')
+            .replace(/```/g, '')
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+    }
+
+    /**
      * Get recent user odefiles (projects)
      * Uses NestJS endpoint for Yjs-based projects
      * Returns the 3 most recently updated projects

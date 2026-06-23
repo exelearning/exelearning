@@ -125,4 +125,26 @@ describe('buildConfigParams', () => {
             expect(result.USER_PREFERENCES_CONFIG.theme.type).toBe('text');
         });
     });
+
+    describe('INCLUDE_DEFAULT_AI dependency', () => {
+        it('includes defaultAI by default (external mode)', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+            expect(result.USER_PREFERENCES_CONFIG.defaultAI).toBeDefined();
+        });
+
+        it('omits defaultAI when INCLUDE_DEFAULT_AI is false (managed/disabled)', () => {
+            const result = buildConfigParams({
+                TRANS_PREFIX: '',
+                LICENSES,
+                PACKAGE_LOCALES,
+                LOCALES,
+                INCLUDE_DEFAULT_AI: false,
+            });
+            expect(result.USER_PREFERENCES_CONFIG.defaultAI).toBeUndefined();
+            // Other preferences remain intact.
+            expect(result.USER_PREFERENCES_CONFIG.locale).toBeDefined();
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme).toBeDefined();
+            expect(result.USER_PREFERENCES_CONFIG.versionControl).toBeDefined();
+        });
+    });
 });

@@ -1175,6 +1175,24 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     maintenance: {
                         maintenance_mode: false,
                     },
+                    // AI settings. Secrets are rendered as *_set booleans only — the
+                    // raw API keys are NEVER sent to the admin template/browser.
+                    ai: {
+                        features_enabled: parseBoolean(process.env.AI_FEATURES_ENABLED, true),
+                        provider: process.env.AI_PROVIDER || 'external',
+                        azure_endpoint: process.env.AI_AZURE_ENDPOINT || '',
+                        azure_api_key_set: Boolean(process.env.AI_AZURE_API_KEY),
+                        azure_deployment: process.env.AI_AZURE_DEPLOYMENT || '',
+                        azure_api_version: process.env.AI_AZURE_API_VERSION || '',
+                        ollama_endpoint: process.env.AI_OLLAMA_ENDPOINT || 'http://localhost:11434',
+                        ollama_model: process.env.AI_OLLAMA_MODEL || '',
+                        compat_endpoint: process.env.AI_COMPAT_ENDPOINT || '',
+                        compat_api_key_set: Boolean(process.env.AI_COMPAT_API_KEY),
+                        compat_model: process.env.AI_COMPAT_MODEL || '',
+                        request_timeout_ms: parseNumber(process.env.AI_REQUEST_TIMEOUT_MS, 60000),
+                        max_output_tokens: parseNumber(process.env.AI_MAX_OUTPUT_TOKENS, 4096),
+                        temperature: process.env.AI_TEMPERATURE || '0.2',
+                    },
                 };
 
                 const adminSettingsMap: Record<
@@ -1222,11 +1240,32 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
                     APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
                     MAINTENANCE_MODE: { path: ['maintenance', 'maintenance_mode'], type: 'boolean' },
+                    // AI (non-secret keys only; AI_*_API_KEY are handled as *_set flags below).
+                    AI_FEATURES_ENABLED: { path: ['ai', 'features_enabled'], type: 'boolean' },
+                    AI_PROVIDER: { path: ['ai', 'provider'], type: 'string' },
+                    AI_AZURE_ENDPOINT: { path: ['ai', 'azure_endpoint'], type: 'string' },
+                    AI_AZURE_DEPLOYMENT: { path: ['ai', 'azure_deployment'], type: 'string' },
+                    AI_AZURE_API_VERSION: { path: ['ai', 'azure_api_version'], type: 'string' },
+                    AI_OLLAMA_ENDPOINT: { path: ['ai', 'ollama_endpoint'], type: 'string' },
+                    AI_OLLAMA_MODEL: { path: ['ai', 'ollama_model'], type: 'string' },
+                    AI_COMPAT_ENDPOINT: { path: ['ai', 'compat_endpoint'], type: 'string' },
+                    AI_COMPAT_MODEL: { path: ['ai', 'compat_model'], type: 'string' },
+                    AI_REQUEST_TIMEOUT_MS: { path: ['ai', 'request_timeout_ms'], type: 'number' },
+                    AI_MAX_OUTPUT_TOKENS: { path: ['ai', 'max_output_tokens'], type: 'number' },
+                    AI_TEMPERATURE: { path: ['ai', 'temperature'], type: 'string' },
                 };
 
                 try {
                     const storedSettings = await getAllSettingsDefault(db as unknown as AppSettingsDb);
                     for (const setting of storedSettings) {
+                        // Secrets: never expose the value, only whether one is set.
+                        if (setting.key === 'AI_AZURE_API_KEY') {
+                            adminSettings.ai.azure_api_key_set =
+                                adminSettings.ai.azure_api_key_set || Boolean(setting.value);
+                        } else if (setting.key === 'AI_COMPAT_API_KEY') {
+                            adminSettings.ai.compat_api_key_set =
+                                adminSettings.ai.compat_api_key_set || Boolean(setting.value);
+                        }
                         const mapping = adminSettingsMap[setting.key];
                         if (!mapping) continue;
 

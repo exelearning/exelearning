@@ -127,6 +127,9 @@ export const API_ROUTES: RouteMap = {
     // Config
     api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },
     api_config_parameters: { path: '/api/config/parameters', methods: ['GET'] },
+
+    // AI (online-only managed generation; intentionally NOT in STATIC_ROUTES)
+    api_ai_generate_text: { path: '/api/ai/generate-text', methods: ['POST'] },
 };
 
 /**

@@ -1484,6 +1484,167 @@ describe('Admin Routes', () => {
         });
     });
 
+    describe('AI settings — secret masking and write-only behaviour', () => {
+        it('never returns the AI API key value, only whether it is set', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getAllSettings: async () => [
+                            { key: 'AI_AZURE_API_KEY', value: 'stored-secret', type: 'string' },
+                        ],
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            const data = await response.json();
+            expect(data.settings.AI_AZURE_API_KEY.value).toBe('');
+            expect(data.settings.AI_AZURE_API_KEY.isSet).toBe(true);
+            expect(JSON.stringify(data)).not.toContain('stored-secret');
+        });
+
+        it('reports isSet=false when no AI key is stored', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps({ getAllSettings: async () => [] })));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            const data = await response.json();
+            expect(data.settings.AI_COMPAT_API_KEY.value).toBe('');
+            expect(data.settings.AI_COMPAT_API_KEY.isSet).toBe(false);
+        });
+
+        it('skips saving a blank AI API key (keeps the stored secret)', async () => {
+            const token = await generateAdminToken();
+            const saved: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            saved.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [
+                            { key: 'AI_AZURE_API_KEY', value: '', type: 'string' },
+                            { key: 'AI_PROVIDER', value: 'azure', type: 'string' },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(saved.some(s => s.key === 'AI_AZURE_API_KEY')).toBe(false);
+            expect(saved.some(s => s.key === 'AI_PROVIDER')).toBe(true);
+        });
+
+        it('saves a non-blank AI API key', async () => {
+            const token = await generateAdminToken();
+            const saved: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            saved.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'AI_COMPAT_API_KEY', value: 'new-key', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(saved).toEqual([{ key: 'AI_COMPAT_API_KEY', value: 'new-key' }]);
+        });
+
+        it('rejects an AI_PROVIDER outside the allow-list', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings: [{ key: 'AI_PROVIDER', value: 'skynet', type: 'string' }] }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            expect((await response.json()).message).toContain('AI_PROVIDER');
+        });
+
+        it('rejects an invalid AI endpoint URL', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'AI_OLLAMA_ENDPOINT', value: 'not-a-url', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            expect((await response.json()).message).toContain('AI_OLLAMA_ENDPOINT');
+        });
+
+        it('accepts a valid AI endpoint URL', async () => {
+            const token = await generateAdminToken();
+            const saved: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            saved.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'AI_OLLAMA_ENDPOINT', value: 'http://localhost:11434', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(saved).toEqual([{ key: 'AI_OLLAMA_ENDPOINT', value: 'http://localhost:11434' }]);
+        });
+    });
+
     describe('PUT /api/admin/settings', () => {
         it('should update settings successfully', async () => {
             const token = await generateAdminToken();

@@ -21,12 +21,20 @@ export interface ConfigParamsDeps {
      * callers keep working until they pass the new dependency.
      */
     THEMES?: Record<string, string>;
+    /**
+     * Whether to include the `defaultAI` user preference (the public AI
+     * assistant selector). It is shown only when AI features are enabled AND
+     * the provider is `external`. Defaults to true so existing callers keep
+     * the historical behaviour.
+     */
+    INCLUDE_DEFAULT_AI?: boolean;
 }
 
 export function buildConfigParams(deps: ConfigParamsDeps) {
     // Named TRANS_PREFIX so the translation extractor can detect strings in this file.
     const TRANS_PREFIX = deps.TRANS_PREFIX;
     const { LICENSES, PACKAGE_LOCALES, LOCALES } = deps;
+    const includeDefaultAI = deps.INCLUDE_DEFAULT_AI !== false;
     // The first option (empty value) means "use the server/site default theme".
     const THEMES: Record<string, string> = {
         '': `${TRANS_PREFIX}Use the default style of the site`,
@@ -71,21 +79,27 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             options: THEMES,
             category: `${TRANS_PREFIX}General settings`,
         },
-        defaultAI: {
-            title: `${TRANS_PREFIX}Default AI Assistant`,
-            help: `${TRANS_PREFIX}Select the AI that will be selected by default when editing iDevices.`,
-            value: 'https://chatgpt.com/?q=',
-            type: 'select',
-            options: {
-                'https://chatgpt.com/?q=': 'ChatGPT',
-                'https://claude.ai/new?q=': 'Claude',
-                'https://www.perplexity.ai/search?q=': 'Perplexity',
-                'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
-                'https://grok.com/?q=': 'Grok',
-                'https://chat.qwen.ai/?text=': 'Qwen',
-            },
-            category: `${TRANS_PREFIX}General settings`,
-        },
+        // The public AI assistant selector is only offered in external mode; a
+        // managed/disabled AI configuration omits it (see INCLUDE_DEFAULT_AI).
+        ...(includeDefaultAI
+            ? {
+                  defaultAI: {
+                      title: `${TRANS_PREFIX}Default AI Assistant`,
+                      help: `${TRANS_PREFIX}Select the AI that will be selected by default when editing iDevices.`,
+                      value: 'https://chatgpt.com/?q=',
+                      type: 'select',
+                      options: {
+                          'https://chatgpt.com/?q=': 'ChatGPT',
+                          'https://claude.ai/new?q=': 'Claude',
+                          'https://www.perplexity.ai/search?q=': 'Perplexity',
+                          'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
+                          'https://grok.com/?q=': 'Grok',
+                          'https://chat.qwen.ai/?text=': 'Qwen',
+                      },
+                      category: `${TRANS_PREFIX}General settings`,
+                  },
+              }
+            : {}),
         // Legacy 'theme' key is kept hidden for backward compatibility so projects
         // that still read user.preferences.preferences.theme keep working until
         // they migrate to the new defaultTheme key.

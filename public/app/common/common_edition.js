@@ -525,9 +525,68 @@ var $exeDevicesEdition = {
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
+                /**
+                 * Resolve the AI behaviour for the editor UI from the safe public
+                 * config served by the backend (window.eXeLearning.app.api.parameters.ai).
+                 *
+                 * When the config is absent (static/offline build or legacy server),
+                 * the historical behaviour is preserved: external assistants enabled.
+                 *
+                 * @returns {{enabled: boolean, mode: 'external'|'managed'}}
+                 */
+                aiSettings: function () {
+                    const root =
+                        (typeof window !== 'undefined' && window.eXeLearning) ||
+                        (typeof globalThis !== 'undefined' && globalThis.eXeLearning) ||
+                        null;
+                    const ai = root?.app?.api?.parameters?.ai || null;
+                    if (!ai) {
+                        return { enabled: true, mode: 'external' };
+                    }
+                    return {
+                        enabled: ai.enabled !== false,
+                        mode: ai.mode === 'managed' ? 'managed' : 'external',
+                    };
+                },
+
                 getTabIA: function (type = 0, options = {}) {
+                    const ai = $exeDevicesEdition.iDevice.gamification.share.aiSettings();
+                    // AI features disabled by the administrator: render no AI tab at all.
+                    if (!ai.enabled) {
+                        return '';
+                    }
+                    const managed = ai.mode === 'managed';
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
                     const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
+
+                    // The "Generate" tab and its Create surface only exist in managed
+                    // mode (server-side generation). In external mode the user copies
+                    // the prompt and opens a public assistant instead.
+                    const generateTab = managed
+                        ? `<li class="nav-item">
+                                        <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
+                                        ${_('Generate')}
+                                        </a>
+                                    </li>`
+                        : '';
+                    const iaDiv = managed
+                        ? `<div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
+                                        ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
+                                        <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
+                                    </div>`
+                        : '';
+                    // External public-assistant selector + "Send to AI" button only in external mode.
+                    const externalControls = managed
+                        ? ''
+                        : `<select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
+                                        <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
+                                        <option value="https://claude.ai/new?q=">Claude</option>
+                                        <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
+                                        <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
+                                        <option value="https://grok.com/?q=">Grok</option>
+                                        <option value="https://chat.qwen.ai/?text=">Qwen</option>
+                                    </select>
+                                   <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>`;
                     const tab = `
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
@@ -544,33 +603,18 @@ var $exeDevicesEdition = {
                                          ${_('Questions')}
                                         </a>
                                     </li>
-                                    <li class="nav-item" style="display:none">
-                                        <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
-                                        ${_('Generate')}
-                                        </a>
-                                    </li>
+                                    ${generateTab}
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
                                     <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
-                                    <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
-                                        ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
-                                        <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
-                                    </div>
+                                    ${iaDiv}
                                 </div>
                                 <div class="d-flex justify-content-end  border-secondary p-2">
                                    <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
                                    <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
-                                   <select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
-                                        <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
-                                        <option value="https://claude.ai/new?q=">Claude</option>
-                                        <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
-                                        <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
-                                        <option value="https://grok.com/?q=">Grok</option>
-                                        <option value="https://chat.qwen.ai/?text=">Qwen</option>
-                                    </select>
-                                   <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
-                                   <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
+                                   ${externalControls}
+                                   <button id="eXeEIAButton"  class="btn btn-primary" style="display:none"/>${_('Add questions')}</button>
                                 </div>
                             </div>
                         </div>`;
@@ -1136,8 +1180,14 @@ var $exeDevicesEdition = {
                                 $('#eXeIAMessage').text(_(sdata)).show();
                             }
                         } else {
-                            sdata = _('The questions could not be generated. Incorrect format');
-                            $('#eXeIAMessage').text(_(sdata)).show();
+                            // Managed-provider failures arrive as { error, message } (no
+                            // questions). Surface the backend's safe message when present
+                            // so the teacher gets a useful diagnostic instead of a generic one.
+                            const detail = data.message || data.error;
+                            sdata = detail
+                                ? `${_('The questions could not be generated')}: ${detail}`
+                                : _('The questions could not be generated. Incorrect format');
+                            $('#eXeIAMessage').text(sdata).show();
                         }
                         $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', false);
                     } catch (error) {

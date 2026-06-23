@@ -1028,6 +1028,98 @@ describe('common_edition.js', () => {
       expect(result).toContain('eXeSpecialtyIA');
     });
 
+    describe('AI behaviour matrix (aiSettings / getTabIA)', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+      function setAi(ai) {
+        globalThis.eXeLearning.app.api.parameters = ai ? { ai } : undefined;
+      }
+      afterEach(() => {
+        // Reset so other tests observe the external-default behaviour.
+        if (globalThis.eXeLearning?.app?.api) {
+          delete globalThis.eXeLearning.app.api.parameters;
+        }
+      });
+
+      it('aiSettings defaults to enabled/external when no config is present', () => {
+        setAi(null);
+        expect(share().aiSettings()).toEqual({ enabled: true, mode: 'external' });
+      });
+
+      it('aiSettings reflects a managed provider', () => {
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        expect(share().aiSettings()).toEqual({ enabled: true, mode: 'managed' });
+      });
+
+      it('aiSettings reflects disabled AI', () => {
+        setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        expect(share().aiSettings().enabled).toBe(false);
+      });
+
+      it('getTabIA renders nothing when AI is disabled', () => {
+        setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        expect(share().getTabIA(0)).toBe('');
+      });
+
+      it('external mode renders the assistant selector and "Send to AI", not the Generate tab', () => {
+        setAi({ enabled: true, provider: 'external', mode: 'external', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeEIASelect');
+        expect(html).toContain('eXeEOpenChatGPTButton');
+        expect(html).not.toContain('eXeETabIA');
+        expect(html).not.toContain('eXeEIADiv');
+      });
+
+      it('managed mode renders the Generate tab + Create surface, not the external selector', () => {
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeETabIA');
+        expect(html).toContain('eXeEIADiv');
+        expect(html).toContain('eXeFormIAContainer');
+        expect(html).not.toContain('eXeEIASelect');
+        expect(html).not.toContain('eXeEOpenChatGPTButton');
+      });
+    });
+
+    describe('genarateIAQuestons (managed mode result handling)', () => {
+      let savedEXe;
+      beforeEach(() => {
+        savedEXe = globalThis.eXeLearning;
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><input id="eXeNumberOfQuestionsIA" value="3"></div>
+          <p id="eXeIAMessage"></p>`;
+      });
+      afterEach(() => {
+        globalThis.eXeLearning = savedEXe;
+        document.body.innerHTML = '';
+      });
+
+      it('surfaces the backend error message instead of a generic "Incorrect format"', async () => {
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi.fn().mockResolvedValue({
+                error: 'AI_NOT_CONFIGURED',
+                message: 'The AI provider is not fully configured.',
+              }),
+            },
+          },
+        };
+        const saveQuestions = vi.fn();
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
+        expect(saveQuestions).not.toHaveBeenCalled();
+        expect(document.getElementById('eXeIAMessage').textContent).toContain('not fully configured');
+      });
+
+      it('saves questions returned by the managed provider', async () => {
+        globalThis.eXeLearning = {
+          app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['q1', 'q2'] }) } },
+        };
+        const saveQuestions = vi.fn();
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
+        expect(saveQuestions).toHaveBeenCalled();
+      });
+    });
+
     it('getAllowedFormats returns formats for each gameId', () => {
       // Test each game type
       for (let i = 0; i <= 9; i++) {

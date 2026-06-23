@@ -1289,6 +1289,10 @@
                 <span class="mi">tune</span>
                 {{ t.customization or 'Customization' }}
             </a>
+            <a href="#ai" class="admin-nav-link" data-section="ai">
+                <span class="mi">smart_toy</span>
+                {{ t.ai or 'AI' }}
+            </a>
             <a href="#maintenance" class="admin-nav-link" data-section="maintenance">
                 <span class="mi">engineering</span>
                 {{ t.maintenance or 'Maintenance' }}
@@ -2007,6 +2011,130 @@ window.$eXeLearningCustom = {
                 </div>
             </section>
 
+            <!-- AI Section -->
+            <section id="ai" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">smart_toy</span>
+                            {{ t.ai_settings or 'AI Settings' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <p class="admin-help">{{ t.ai_intro or 'Configure how AI assistance is offered in game-generation activities.' }}</p>
+                        <div class="admin-settings-actions">
+                            <button id="aiSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <button id="aiTestBtn" class="btn-admin-secondary" type="button">
+                                <span class="mi mi-sm">network_check</span>
+                                {{ t.ai_test_connection or 'Test connection' }}
+                            </button>
+                            <span id="aiSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.ai_settings or 'AI Settings' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>AI_FEATURES_ENABLED</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="AI_FEATURES_ENABLED" data-setting-type="boolean" {% if adminSettings.ai.features_enabled %}checked{% endif %}>
+                                        <span>{{ t.ai_features_enabled or 'Enable AI features' }}</span>
+                                    </div>
+                                    <small>{{ t.ai_features_enabled_help or 'When disabled, all AI buttons and AI preferences are hidden everywhere.' }}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_PROVIDER</label>
+                                    <select id="aiProviderSelect" class="admin-input" data-setting-key="AI_PROVIDER" data-setting-type="string">
+                                        <option value="external" {% if adminSettings.ai.provider == 'external' %}selected{% endif %}>{{ t.ai_provider_external or 'External public assistants' }}</option>
+                                        <option value="azure" {% if adminSettings.ai.provider == 'azure' %}selected{% endif %}>{{ t.ai_provider_azure or 'Azure OpenAI' }}</option>
+                                        <option value="ollama" {% if adminSettings.ai.provider == 'ollama' %}selected{% endif %}>{{ t.ai_provider_ollama or 'Ollama' }}</option>
+                                        <option value="openai_compat" {% if adminSettings.ai.provider == 'openai_compat' %}selected{% endif %}>{{ t.ai_provider_openai_compat or 'OpenAI-compatible' }}</option>
+                                    </select>
+                                    <small>{{ t.ai_provider_help or 'External keeps the public AI assistant links. Azure, Ollama and OpenAI-compatible route generation through your configured server-side provider.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group" data-ai-provider-group="azure">
+                            <h6>{{ t.ai_azure_group or 'Azure OpenAI' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>AI_AZURE_ENDPOINT</label>
+                                    <input class="admin-input" data-setting-key="AI_AZURE_ENDPOINT" data-setting-type="string" value="{{ adminSettings.ai.azure_endpoint }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_AZURE_API_KEY</label>
+                                    <input type="password" class="admin-input" data-setting-key="AI_AZURE_API_KEY" data-setting-type="string" autocomplete="new-password" placeholder="{% if adminSettings.ai.azure_api_key_set %}••••••••{% endif %}">
+                                    <small>{{ t.ai_api_key_help or 'Stored on the server only. Leave blank to keep the current key.' }} {% if adminSettings.ai.azure_api_key_set %}{{ t.ai_api_key_set or 'A key is currently configured.' }}{% else %}{{ t.ai_api_key_unset or 'No key configured.' }}{% endif %}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_AZURE_DEPLOYMENT</label>
+                                    <input class="admin-input" data-setting-key="AI_AZURE_DEPLOYMENT" data-setting-type="string" value="{{ adminSettings.ai.azure_deployment }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_AZURE_API_VERSION</label>
+                                    <input class="admin-input" data-setting-key="AI_AZURE_API_VERSION" data-setting-type="string" value="{{ adminSettings.ai.azure_api_version }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group" data-ai-provider-group="ollama">
+                            <h6>{{ t.ai_ollama_group or 'Ollama' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>AI_OLLAMA_ENDPOINT</label>
+                                    <input class="admin-input" data-setting-key="AI_OLLAMA_ENDPOINT" data-setting-type="string" value="{{ adminSettings.ai.ollama_endpoint }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_OLLAMA_MODEL</label>
+                                    <input class="admin-input" data-setting-key="AI_OLLAMA_MODEL" data-setting-type="string" value="{{ adminSettings.ai.ollama_model }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group" data-ai-provider-group="openai_compat">
+                            <h6>{{ t.ai_compat_group or 'OpenAI-compatible' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>AI_COMPAT_ENDPOINT</label>
+                                    <input class="admin-input" data-setting-key="AI_COMPAT_ENDPOINT" data-setting-type="string" value="{{ adminSettings.ai.compat_endpoint }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_COMPAT_API_KEY</label>
+                                    <input type="password" class="admin-input" data-setting-key="AI_COMPAT_API_KEY" data-setting-type="string" autocomplete="new-password" placeholder="{% if adminSettings.ai.compat_api_key_set %}••••••••{% endif %}">
+                                    <small>{{ t.ai_api_key_help or 'Stored on the server only. Leave blank to keep the current key.' }} {% if adminSettings.ai.compat_api_key_set %}{{ t.ai_api_key_set or 'A key is currently configured.' }}{% else %}{{ t.ai_api_key_unset or 'No key configured.' }}{% endif %}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_COMPAT_MODEL</label>
+                                    <input class="admin-input" data-setting-key="AI_COMPAT_MODEL" data-setting-type="string" value="{{ adminSettings.ai.compat_model }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group" data-ai-provider-group="managed">
+                            <h6>{{ t.ai_common_group or 'Generation options' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>AI_REQUEST_TIMEOUT_MS</label>
+                                    <input type="number" class="admin-input" data-setting-key="AI_REQUEST_TIMEOUT_MS" data-setting-type="number" value="{{ adminSettings.ai.request_timeout_ms }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_MAX_OUTPUT_TOKENS</label>
+                                    <input type="number" class="admin-input" data-setting-key="AI_MAX_OUTPUT_TOKENS" data-setting-type="number" value="{{ adminSettings.ai.max_output_tokens }}">
+                                </div>
+                                <div class="admin-field">
+                                    <label>AI_TEMPERATURE</label>
+                                    <input class="admin-input" data-setting-key="AI_TEMPERATURE" data-setting-type="string" value="{{ adminSettings.ai.temperature }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Maintenance Section -->
             <section id="maintenance" class="admin-section">
                 <div class="admin-card">
@@ -2211,7 +2339,14 @@ window.$eXeLearningCustom = {
             presentation: '{{ t.customization or "Customization" }}',
             maintenance: '{{ t.maintenance or "Maintenance" }}',
             logins: '{{ t.logins or "Logins" }}',
-            projects_created: '{{ t.projects_created or "Projects Created" }}'
+            projects_created: '{{ t.projects_created or "Projects Created" }}',
+            ai: '{{ t.ai or "AI" }}',
+            saving: '{{ t.saving or "Saving..." }}',
+            saved: '{{ t.saved or "Saved" }}',
+            error_saving: '{{ t.error_saving or "Error saving" }}',
+            ai_testing: '{{ t.ai_testing or "Testing..." }}',
+            ai_test_ok: '{{ t.ai_test_ok or "Connection successful" }}',
+            ai_test_failed: '{{ t.ai_test_failed or "Connection failed" }}'
         };
 
         // State
@@ -2256,6 +2391,7 @@ window.$eXeLearningCustom = {
                 extensions: T.extensions,
                 settings: T.settings,
                 presentation: T.customization,
+                ai: T.ai,
                 maintenance: T.maintenance
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
@@ -2651,7 +2787,9 @@ window.$eXeLearningCustom = {
         document.getElementById('collapseAssets')?.addEventListener('show.bs.collapse', loadCustomAssets);
 
         function collectAdminSettings() {
-            const inputs = Array.from(document.querySelectorAll('[data-setting-key]'));
+            // Exclude the AI section: it has its own scoped Save (ai.js) so the
+            // global Settings Save must not also submit/validate AI inputs.
+            const inputs = Array.from(document.querySelectorAll('[data-setting-key]')).filter(i => !i.closest('#ai'));
             const grouped = new Map();
 
             inputs.forEach(input => {
@@ -4093,5 +4231,6 @@ window.$eXeLearningCustom = {
         loadSystemInfo();
     </script>
     <script type="module" src="{{ basePath }}/app/admin/dashboard.js"></script>
+    <script type="module" src="{{ basePath }}/app/admin/ai.js"></script>
 </body>
 </html>
