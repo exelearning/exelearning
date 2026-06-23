@@ -191,6 +191,59 @@ describe('hidden-image iDevice export', () => {
         sendScore.mock.invocationCallOrder[0]
       );
     });
+
+    it('marks the activity completed on the last question, before sending', () => {
+      vi.spyOn($eXeHiddenImage, 'updateScore').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'hideSquares').mockImplementation(() => {});
+      let gameOverAtSend;
+      vi.spyOn($eXeHiddenImage, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeHiddenImage.options[inst].gameOver;
+      });
+
+      $eXeHiddenImage.options[0] = {
+        gameActived: true,
+        activeCounter: true,
+        question: { solution: 1 },
+        activeQuestion: 2, // last index of a 3-question activity
+        numberQuestions: 3,
+        isScorm: 1,
+        showSolution: false,
+        gameOver: false,
+      };
+
+      $eXeHiddenImage.answerQuestion('1', 0);
+
+      // gameOver is set synchronously, so the final answer is sent as state 2,
+      // without waiting for the delayed reveal + gameOver.
+      expect(gameOverAtSend).toBe(true);
+    });
+
+    it('stays incomplete when answering a non-last question', () => {
+      vi.spyOn($eXeHiddenImage, 'updateScore').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'hideSquares').mockImplementation(() => {});
+      let gameOverAtSend;
+      vi.spyOn($eXeHiddenImage, 'sendScore').mockImplementation((_auto, inst) => {
+        gameOverAtSend = $eXeHiddenImage.options[inst].gameOver;
+      });
+
+      $eXeHiddenImage.options[0] = {
+        gameActived: true,
+        activeCounter: true,
+        question: { solution: 1 },
+        activeQuestion: 0, // not the last question
+        numberQuestions: 3,
+        isScorm: 1,
+        showSolution: false,
+        gameOver: false,
+      };
+
+      $eXeHiddenImage.answerQuestion('1', 0);
+
+      expect(gameOverAtSend).toBe(false);
+      expect($eXeHiddenImage.options[0].gameOver).toBe(false);
+    });
   });
 
   describe('hideSquareAfterElapsedTime', () => {

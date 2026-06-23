@@ -1126,6 +1126,14 @@ var $eXeHiddenImage = {
         if (mOptions.showSolution) {
             $eXeHiddenImage.drawSolution(instance);
         }
+        // The activity finishes on the last question. Mark it completed BEFORE
+        // saving/sending so this final answer records state 2 immediately, instead
+        // of waiting for the delayed reveal + newQuestion -> gameOver (which runs
+        // only after the timeShowSolution delay). The delayed gameOver still runs
+        // for the end-of-game UI. (#1831)
+        if (mOptions.activeQuestion >= mOptions.numberQuestions - 1) {
+            mOptions.gameOver = true;
+        }
         $eXeHiddenImage.saveEvaluation(instance);
         if (mOptions.isScorm > 0) {
             $eXeHiddenImage.sendScore(true, instance);
