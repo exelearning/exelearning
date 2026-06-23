@@ -1201,7 +1201,10 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
-    it('should skip theme import when theme is marked as non-downloadable', async () => {
+    it('should still import theme when marked as non-downloadable', async () => {
+      // Regression for issue #1893: a <downloadable>0</downloadable> flag in the embedded
+      // theme config must NOT block importing the style from an opened .elpx. The import
+      // modal is shown like for any other embedded style instead of falling back.
       const mockSelectTheme = mock(() => Promise.resolve());
       const mockShowModal = mock(() => undefined);
 
@@ -1235,9 +1238,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
-      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
-      expect(mockShowModal).not.toHaveBeenCalled();
+      // The style is offered for import (modal shown); selectTheme is left to the modal flow.
+      expect(mockShowModal).toHaveBeenCalledWith('blocked-theme');
+      expect(mockSelectTheme).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
@@ -5284,7 +5287,9 @@ describe('YjsProjectBridge', () => {
         expect(result.displayName).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
-        expect(result.downloadable).toBe('0');
+        // Issue #1893: styles imported from a .elpx are always available, so the legacy
+        // <downloadable>0</downloadable> flag is normalized to '1' instead of being kept.
+        expect(result.downloadable).toBe('1');
       });
 
       it('uses default values when config.xml is missing', () => {
