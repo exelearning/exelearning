@@ -1201,7 +1201,10 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
-    it('should skip theme import when theme is marked as non-downloadable', async () => {
+    it('should still import theme when marked as non-downloadable', async () => {
+      // Regression for issue #1893: a <downloadable>0</downloadable> flag in the embedded
+      // theme config must NOT block importing the style from an opened .elpx. The import
+      // modal is shown like for any other embedded style instead of falling back.
       const mockSelectTheme = mock(() => Promise.resolve());
       const mockShowModal = mock(() => undefined);
 
@@ -1235,9 +1238,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
-      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
-      expect(mockShowModal).not.toHaveBeenCalled();
+      // The style is offered for import (modal shown); selectTheme is left to the modal flow.
+      expect(mockShowModal).toHaveBeenCalledWith('blocked-theme');
+      expect(mockSelectTheme).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
@@ -5284,7 +5287,9 @@ describe('YjsProjectBridge', () => {
         expect(result.displayName).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
-        expect(result.downloadable).toBe('0');
+        // Issue #1893: styles imported from a .elpx are always available, so the legacy
+        // <downloadable>0</downloadable> flag is normalized to '1' instead of being kept.
+        expect(result.downloadable).toBe('1');
       });
 
       it('uses default values when config.xml is missing', () => {
@@ -5875,6 +5880,85 @@ describe('YjsProjectBridge', () => {
 
         // Should not throw even with null dependencies
         await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+    });
+
+    describe('_showThemeImportModal', () => {
+      let mockConfirmShow;
+      let mockCreateToast;
+      let capturedConfirmExec;
+      let capturedCancelExec;
+
+      beforeEach(() => {
+        capturedConfirmExec = null;
+        capturedCancelExec = null;
+        mockConfirmShow = mock(({ confirmExec, cancelExec }) => {
+          capturedConfirmExec = confirmExec;
+          capturedCancelExec = cancelExec;
+        });
+        mockCreateToast = mock(() => {});
+
+        global.eXeLearning.app.modals = {
+          confirm: { show: mockConfirmShow },
+        };
+        global.eXeLearning.app.toasts = {
+          createToast: mockCreateToast,
+        };
+        global.eXeLearning.app.themes.selectTheme = mock(() => Promise.resolve());
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        bridge._extractThemeFilesFromZip = mock(() => ({
+          files: { 'style.css': new Uint8Array([1, 2, 3]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'test-theme',
+          type: 'user',
+          displayName: 'Test Theme',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._copyThemeToYjs = mock(() => Promise.resolve());
+      });
+
+      it('shows confirm modal', () => {
+        bridge._showThemeImportModal('test-theme');
+        expect(mockConfirmShow).toHaveBeenCalledTimes(1);
+        const args = mockConfirmShow.mock.calls[0][0];
+        expect(args.title).toBe('Import style');
+      });
+
+      it('shows success toast after successful installation', async () => {
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.icon).toBe('task_alt');
+        expect(toastData.error).toBeFalsy();
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('shows error toast when installation fails', async () => {
+        bridge._extractThemeFilesFromZip = mock(() => null);
+
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.error).toBe(true);
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('cleans up pending references after cancel', () => {
+        bridge._pendingThemeFile = 'file';
+        bridge._pendingThemeZip = 'zip';
+
+        bridge._showThemeImportModal('test-theme');
+        capturedCancelExec();
+
+        expect(bridge._pendingThemeFile).toBeNull();
+        expect(bridge._pendingThemeZip).toBeNull();
       });
     });
   });
