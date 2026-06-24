@@ -8,8 +8,7 @@
             content: "select_all";
             font-family: var(--icons-ff);
             border-radius: var(--radius);
-            transition: var(--tr-02);
-            opacity: .5;
+            opacity: .8;
         }
 
         .box-icon-value {
@@ -30,14 +29,9 @@
 
             &[selected="true"] {
                 opacity: 1;
-
-                &.selected-provisional {
-                    color: var(--icon-gray);
-                    background-color: var(--work-area-bg-color);
-                    border: 2px dotted var(--dark-exe-color);
-                    height: 36px;
-                    width: 36px;
-                }
+                border: 2px solid transparent;
+                outline: 2px solid var(--dark-exe-color) !important;
+                outline-offset: 2px;
             }
         }
 
