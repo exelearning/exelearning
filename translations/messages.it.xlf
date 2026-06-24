@@ -15467,23 +15467,23 @@
       </trans-unit>
       <trans-unit id="rnv1pyk" resname="Style installed">
         <source>Style installed</source>
-        <target></target>
+        <target>~Stile installato</target>
       </trans-unit>
       <trans-unit id="a3fcty0" resname="The style has been installed successfully.">
         <source>The style has been installed successfully.</source>
-        <target></target>
+        <target>~Lo stile è stato installato correttamente.</target>
       </trans-unit>
       <trans-unit id="qq6g5pb" resname="Editing iDevice. Other actions are disabled until you save or discard.">
         <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
-        <target></target>
+        <target>~Modifica dell'iDevice in corso. Le altre azioni sono disabilitate finché non salvi o annulli le modifiche.</target>
       </trans-unit>
       <trans-unit id="gsze0ih" resname="Finished editing the iDevice.">
         <source>Finished editing the iDevice.</source>
-        <target></target>
+        <target>~Hai terminato di modificare l'iDevice.</target>
       </trans-unit>
       <trans-unit id="59h7ms4" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
-        <target></target>
+        <target>~Salva o annulla l'iDevice aperto prima di salvare il progetto.</target>
       </trans-unit>
     </body>
   </file>

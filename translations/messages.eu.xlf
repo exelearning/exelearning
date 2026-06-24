@@ -15467,23 +15467,23 @@
       </trans-unit>
       <trans-unit id="475j9ni" resname="Style installed">
         <source>Style installed</source>
-        <target></target>
+        <target>~Estiloa instalatuta</target>
       </trans-unit>
       <trans-unit id="c8n384t" resname="The style has been installed successfully.">
         <source>The style has been installed successfully.</source>
-        <target></target>
+        <target>~Estiloa behar bezala instalatu da.</target>
       </trans-unit>
       <trans-unit id="czjc174" resname="Editing iDevice. Other actions are disabled until you save or discard.">
         <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
-        <target></target>
+        <target>~iDevice editatzen. Gainerako ekintzak desgaituta daude gorde edo baztertu arte.</target>
       </trans-unit>
       <trans-unit id="5o1gqt7" resname="Finished editing the iDevice.">
         <source>Finished editing the iDevice.</source>
-        <target></target>
+        <target>~iDevice editatzeari amaiera eman diozu.</target>
       </trans-unit>
       <trans-unit id="xymfkab" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
-        <target></target>
+        <target>~Gorde edo baztertu irekitako iDevice-a proiektua gorde aurretik.</target>
       </trans-unit>
     </body>
   </file>

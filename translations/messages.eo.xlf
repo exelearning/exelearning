@@ -15467,23 +15467,23 @@
       </trans-unit>
       <trans-unit id="4cfg707" resname="Style installed">
         <source>Style installed</source>
-        <target></target>
+        <target>~Stilo instalita</target>
       </trans-unit>
       <trans-unit id="2zaf14c" resname="The style has been installed successfully.">
         <source>The style has been installed successfully.</source>
-        <target></target>
+        <target>~La stilo estis instalita sukcese.</target>
       </trans-unit>
       <trans-unit id="eq721gg" resname="Editing iDevice. Other actions are disabled until you save or discard.">
         <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
-        <target></target>
+        <target>~Redaktante la iDevice. Aliaj agoj estas malaktivigitaj ĝis vi konservas aŭ forĵetas.</target>
       </trans-unit>
       <trans-unit id="dewmtcn" resname="Finished editing the iDevice.">
         <source>Finished editing the iDevice.</source>
-        <target></target>
+        <target>~Finita redaktado de la iDevice.</target>
       </trans-unit>
       <trans-unit id="9r1333v" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
-        <target></target>
+        <target>~Konservu aŭ forĵetu la malfermitan iDevice antaŭ ol konservi la projekton.</target>
       </trans-unit>
     </body>
   </file>
