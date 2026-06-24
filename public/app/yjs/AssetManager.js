@@ -3406,6 +3406,19 @@ class AssetManager {
     const totalAssets = assetFiles.length;
     let currentAsset = 0;
 
+    // #1951: Self-contained HTML bundles (e.g. Tumult Hype exports) ship the SAME
+    // byte-identical resource (HYPE-runtime.js, …) inside several bundle folders, each
+    // referenced by a relative <script src> from its own folder. Content-addressed dedup
+    // would collapse them onto one asset and overwrite its folderPath, breaking every
+    // bundle but the first (404). Track hashes seen within THIS import: the first
+    // occurrence keeps the content-addressed id (incl. cross-project blob reuse and the
+    // same-project skip below); any subsequent occurrence of the SAME hash in the SAME
+    // import gets a fresh random id so it is stored as a distinct asset with its own
+    // folderPath. Safe because references resolve BY PATH (assetMap is Map<path,id>) and
+    // bundle resources are linked only by relative paths inside the stored .html asset,
+    // never by asset:// in content.xml — so a fresh id still resolves.
+    const seenHashesThisImport = new Set();
+
     for (const { path, fileData } of assetFiles) {
       currentAsset++;
 
@@ -3424,16 +3437,24 @@ class AssetManager {
         // Calculate hash
         const hash = await this.calculateHash(blob);
 
-        // Generate deterministic ID from hash (content-addressable)
-        const assetId = this.hashToUUID(hash);
+        // #1951: first occurrence of a hash within this import is content-addressed;
+        // a subsequent occurrence of the same hash is forced to a new id so byte-identical
+        // bundle files at different relative paths stay separate assets.
+        const isIntraImportDuplicate = seenHashesThisImport.has(hash);
+        seenHashesThisImport.add(hash);
+
+        // Generate ID: deterministic from hash (content-addressable) for the first
+        // occurrence, or a fresh random id for an intra-import duplicate (#1951).
+        const assetId = isIntraImportDuplicate ? crypto.randomUUID() : this.hashToUUID(hash);
 
         // Extract filename and folderPath from the path
         // Path can be: "mywebsite/css/style.css", "content/resources/uuid/file.jpg", "uuid/file.jpg"
         const filename = path.split('/').pop();
         const folderPath = this._extractFolderPathFromImport(path, assetId);
 
-        // Check if already exists (same content = same ID)
-        const existing = await this.getAsset(assetId);
+        // Check if already exists (same content = same ID). Skipped for intra-import
+        // duplicates so they are always stored as a new asset (#1951).
+        const existing = isIntraImportDuplicate ? null : await this.getAsset(assetId);
         if (existing) {
           // Check if asset belongs to current project
           if (existing.projectId === this.projectId) {

@@ -331,9 +331,12 @@ export default class ModalOdeBrokenLinks extends Modal {
 
             this.linkManager.onError = (error) => {
                 console.error('[ModalOdeBrokenLinks] Validation error:', error);
-                eXeLearning.app.alerts.showToast({
-                    type: 'error',
-                    message: _('Error validating links'),
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Error validating links'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 5000,
                 });
             };
 
@@ -373,9 +376,12 @@ export default class ModalOdeBrokenLinks extends Modal {
         // Check if there are any broken links (rows with table-danger class)
         const brokenRows = table.querySelectorAll('tbody tr.table-danger');
         if (brokenRows.length === 0) {
-            eXeLearning.app.alerts.showToast({
-                type: 'info',
-                message: _('No broken links to export'),
+            eXeLearning.app.toasts.createToast({
+                title: _('Link Validation'),
+                body: _('No broken links to export'),
+                icon: 'info',
+                modal: true,
+                remove: 5000,
             });
             return;
         }
