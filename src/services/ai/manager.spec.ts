@@ -1,7 +1,16 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { parseAiConfig } from './config';
 import { assertCanGenerate, generateText, type ManagerDeps } from './manager';
 import { AiError, type AiConfig, type GenerateTextOptions } from './types';
+
+// The manager logs a diagnostic when wrapping an unexpected provider error.
+let errorSpy: ReturnType<typeof spyOn>;
+beforeEach(() => {
+    errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+});
+afterEach(() => {
+    errorSpy.mockRestore();
+});
 
 function recordingDeps() {
     const calls: Array<{ provider: string; prompt: string; options: GenerateTextOptions }> = [];
@@ -109,10 +118,11 @@ describe('generateText', () => {
                 openai_compat: async () => 'x',
             },
         };
-        await expect(generateText(azureConfig, 'p', {}, deps)).rejects.toMatchObject({
-            code: 'AI_PROVIDER_ERROR',
-            status: 502,
-        });
+        const err = (await generateText(azureConfig, 'p', {}, deps).catch(e => e)) as AiError;
+        expect(err).toMatchObject({ code: 'AI_PROVIDER_ERROR', status: 502 });
+        // The unexpected reason is captured for diagnostics and logged server-side.
+        expect(err.details).toBe('kaboom');
+        expect(String(errorSpy.mock.calls[0][0])).toContain('kaboom');
     });
 
     it('maps a provider AbortError to AI_TIMEOUT', async () => {

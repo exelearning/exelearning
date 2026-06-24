@@ -1055,9 +1055,20 @@ describe('common_edition.js', () => {
         expect(share().aiSettings().enabled).toBe(false);
       });
 
-      it('getTabIA renders nothing when AI is disabled', () => {
+      it('getTabIA keeps a copy-only tab when AI is disabled (no selector / Send to AI / Generate)', () => {
         setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
-        expect(share().getTabIA(0)).toBe('');
+        const html = share().getTabIA(0);
+        // The tab itself and the prompt/copy/questions surface remain so teachers
+        // can still copy the prompt and paste questions generated elsewhere.
+        expect(html).not.toBe('');
+        expect(html).toContain('eXeEPromptArea');
+        expect(html).toContain('eXeECopyButton');
+        expect(html).toContain('eXeEQuestionsArea');
+        // But no AI provider controls of any kind.
+        expect(html).not.toContain('eXeEIASelect');
+        expect(html).not.toContain('eXeEOpenChatGPTButton');
+        expect(html).not.toContain('eXeETabIA');
+        expect(html).not.toContain('eXeEIADiv');
       });
 
       it('external mode renders the assistant selector and "Send to AI", not the Generate tab', () => {
@@ -1578,6 +1589,31 @@ describe('common_edition.js', () => {
           'https://chatgpt.com/?q=test%20prompt%20with%20spaces',
           '_blank'
         );
+      });
+
+      it('disabled mode: addEvents wires the Save flow without binding absent external controls', () => {
+        const saveQuestionsMock = vi.fn();
+        // Copy-only disabled-mode DOM: no #eXeEIASelect, no #eXeEOpenChatGPTButton.
+        document.body.innerHTML = `
+          <textarea id="eXeEQuestionsArea"></textarea>
+          <textarea id="eXeEPromptArea"></textarea>
+          <button id="eXeESaveButton"></button>
+          <button id="eXeECopyButton"></button>
+          <a id="eXeETabQuestions" class="active"></a>
+          <a id="eXeETabPrompt"></a>
+        `;
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
+
+        // hasExternalControls is false here; addEvents must not throw and must not
+        // try to bind the Send-to-AI handler against a non-existent element.
+        expect(() =>
+          globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock)
+        ).not.toThrow();
+
+        // The manual copy/paste-back Save flow still works when AI is disabled.
+        $('#eXeESaveButton').trigger('click');
+        expect(saveQuestionsMock).toHaveBeenCalled();
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
       it('saveButton click shows alert when questions textarea is empty', () => {

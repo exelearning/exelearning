@@ -8,7 +8,7 @@ import type { Page } from '@playwright/test';
  * The game-generation editor (here the Form iDevice, which renders getTabIA)
  * shows different AI controls depending on the safe public AI config served by
  * the backend at window.eXeLearning.app.api.parameters.ai:
- *   - disabled  -> no AI tab at all
+ *   - disabled  -> copy-only tab (prompt + Copy), no provider selector/Send to AI
  *   - external  -> public assistant selector + "Send to AI" (default behaviour)
  *   - managed   -> server-side "Generate"/"Create" surface, no external selector
  *
@@ -58,7 +58,10 @@ test.describe('AI configuration behaviour matrix', () => {
         await expect(page.locator('#eXeETabIA')).toHaveCount(0);
     });
 
-    test('disabled mode renders no AI tab', async ({ authenticatedPage, createProject }) => {
+    test('disabled mode keeps a copy-only tab (prompt + Copy) without provider controls', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         const projectUuid = await createProject(page, 'AI Disabled Test');
         await gotoWorkarea(page, projectUuid);
@@ -67,10 +70,13 @@ test.describe('AI configuration behaviour matrix', () => {
         await setAiConfig(page, { enabled: false, provider: 'external', mode: 'external', configured: true });
         await addFormGameIdevice(page);
 
-        // getTabIA returns '' when disabled: no AI tab content anywhere.
-        await expect(page.locator('#eXeEPromptArea')).toHaveCount(0);
+        // The prompt + Copy surface stays so teachers can still copy the prompt and
+        // paste questions generated elsewhere; no AI provider controls are rendered.
+        await expect(page.locator('#eXeEPromptArea')).toBeAttached({ timeout: 10000 });
+        await expect(page.locator('#eXeECopyButton')).toBeAttached();
         await expect(page.locator('#eXeEIASelect')).toHaveCount(0);
         await expect(page.locator('#eXeEOpenChatGPTButton')).toHaveCount(0);
+        await expect(page.locator('#eXeETabIA')).toHaveCount(0);
     });
 
     test('managed mode shows the Generate/Create surface and hides the external selector', async ({

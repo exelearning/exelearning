@@ -89,18 +89,27 @@ describe('POST /api/ai/generate-text', () => {
         expect((await res.json()).text).toBe('Q for: biology');
     });
 
-    it('maps provider failures to a useful error without leaking secrets', async () => {
+    it('maps provider failures to a useful error without leaking secrets or upstream details', async () => {
         const app = buildApp({
             loadAiConfig: async () => azureConfig,
             generateText: async () => {
-                throw new AiError('AI_PROVIDER_ERROR', 'The AI provider returned an error (HTTP 500).', 502);
+                // The error carries an upstream `details` snippet for admin diagnostics;
+                // the public generate-text response must NOT expose it.
+                throw new AiError(
+                    'AI_PROVIDER_ERROR',
+                    'The AI provider returned an error (HTTP 500).',
+                    502,
+                    'upstream stack trace with secret-key',
+                );
             },
         });
         const res = await app.handle(postGenerate(await userToken(), { prompt: 'p' }));
         expect(res.status).toBe(502);
         const body = await res.json();
         expect(body.error).toBe('AI_PROVIDER_ERROR');
+        expect(body.details).toBeUndefined();
         expect(JSON.stringify(body)).not.toContain('secret-key');
+        expect(JSON.stringify(body)).not.toContain('upstream stack trace');
     });
 
     it('validates the request body (empty prompt rejected)', async () => {
@@ -144,5 +153,25 @@ describe('POST /api/ai/test-connection', () => {
         const body = await res.json();
         expect(body.ok).toBe(false);
         expect(body.error).toBe('AI_NOT_CONFIGURED');
+    });
+
+    it('surfaces the upstream `details` snippet to an admin so a provider failure is debuggable', async () => {
+        const app = buildApp({
+            loadAiConfig: async () => azureConfig,
+            generateText: async () => {
+                throw new AiError(
+                    'AI_PROVIDER_ERROR',
+                    'The AI provider returned an error (HTTP 500).',
+                    502,
+                    "model 'llama3' not found, try pulling it first",
+                );
+            },
+        });
+        const res = await app.handle(postTest(await adminToken()));
+        expect(res.status).toBe(502);
+        const body = await res.json();
+        expect(body.ok).toBe(false);
+        expect(body.error).toBe('AI_PROVIDER_ERROR');
+        expect(body.details).toContain("model 'llama3' not found");
     });
 });

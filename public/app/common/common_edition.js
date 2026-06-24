@@ -551,11 +551,13 @@ var $exeDevicesEdition = {
 
                 getTabIA: function (type = 0, options = {}) {
                     const ai = $exeDevicesEdition.iDevice.gamification.share.aiSettings();
-                    // AI features disabled by the administrator: render no AI tab at all.
-                    if (!ai.enabled) {
-                        return '';
-                    }
-                    const managed = ai.mode === 'managed';
+                    // Managed (server-side generation) only when AI is enabled in managed mode.
+                    const managed = ai.enabled && ai.mode === 'managed';
+                    // The public-assistant selector + "Send to AI" only when AI is enabled
+                    // in external mode. When AI is fully disabled the tab still renders so
+                    // teachers can copy the prompt and paste questions generated elsewhere,
+                    // but without any provider selector, "Send to AI" or "Generate" surface.
+                    const showExternalControls = ai.enabled && ai.mode === 'external';
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
                     const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
 
@@ -576,7 +578,7 @@ var $exeDevicesEdition = {
                                     </div>`
                         : '';
                     // External public-assistant selector + "Send to AI" button only in external mode.
-                    const externalControls = managed
+                    const externalControls = !showExternalControls
                         ? ''
                         : `<select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
                                         <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
@@ -948,8 +950,13 @@ var $exeDevicesEdition = {
                     const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
                     const $eXeEAddArea = $('#eXeEAddArea');
 
+                    // The public-assistant selector + "Send to AI" button only exist when
+                    // AI is enabled in external mode (see getTabIA). Guard the logic that
+                    // depends on them so disabled/managed mode does no dead work.
+                    const hasExternalControls = $iaSelect.length > 0 && $openChatGPTButton.length > 0;
+
                     // Load user's default AI preference and select it
-                    if (window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
+                    if (hasExternalControls && window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
                         const defaultAI = eXeLearning.app.user.preferences.preferences.defaultAI.value;
                         if ($iaSelect.find(`option[value="${defaultAI}"]`).length) {
                             $iaSelect.val(defaultAI);
@@ -1037,22 +1044,25 @@ var $exeDevicesEdition = {
                         $iaSelect.hide();
                     });
 
-                    $openChatGPTButton.on('click', function () {
-                        $tabQuestions.trigger('click');
-                        let prompt = $textPrompt.val();
-                        if (!prompt || !prompt.trim()) {
-                            eXe.app.alert(_('There is no query to send to the assistant.'));
-                            return;
-                        }
-                        const encodedPrompt = encodeURIComponent(prompt.trim());
-                        const baseUrl = $iaSelect.val();
-                        if (!baseUrl) {
-                            eXe.app.alert(_('Please select an AI assistant.'));
-                            return;
-                        }
-                        const url = `${baseUrl}${encodedPrompt}`;
-                        window.open(url, '_blank');
-                    });
+                    // "Send to AI" only exists in external mode; bind it only then.
+                    if (hasExternalControls) {
+                        $openChatGPTButton.on('click', function () {
+                            $tabQuestions.trigger('click');
+                            let prompt = $textPrompt.val();
+                            if (!prompt || !prompt.trim()) {
+                                eXe.app.alert(_('There is no query to send to the assistant.'));
+                                return;
+                            }
+                            const encodedPrompt = encodeURIComponent(prompt.trim());
+                            const baseUrl = $iaSelect.val();
+                            if (!baseUrl) {
+                                eXe.app.alert(_('Please select an AI assistant.'));
+                                return;
+                            }
+                            const url = `${baseUrl}${encodedPrompt}`;
+                            window.open(url, '_blank');
+                        });
+                    }
 
                     $saveButton.on('click', function () {
                         const content = $textQuestionsArea.val().trim();

@@ -89,7 +89,9 @@ export async function generateText(
         if (error instanceof Error && error.name === 'AbortError') {
             throw new AiError('AI_TIMEOUT', 'The AI provider did not respond in time.', 504);
         }
-        throw new AiError('AI_PROVIDER_ERROR', 'The AI provider request failed.', 502);
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`[ai] provider "${config.provider}" generation failed: ${reason}`);
+        throw new AiError('AI_PROVIDER_ERROR', 'The AI provider request failed.', 502, reason);
     } finally {
         clearTimeout(timer);
     }

@@ -17,20 +17,56 @@ export function joinUrl(base: string, path: string): string {
     return `${trimmedBase}/${trimmedPath}`;
 }
 
+/** Max length of an upstream body snippet captured for diagnostics/logging. */
+export const PROVIDER_DETAILS_MAX_LENGTH = 500;
+
+/** Host (never the full URL/secret query) of a provider endpoint, for log context. */
+export function endpointHost(url: string): string {
+    try {
+        return new URL(url).host;
+    } catch {
+        return 'unknown-host';
+    }
+}
+
+/**
+ * Read and truncate an upstream response body for diagnostics. Best-effort:
+ * a body that cannot be read yields an empty string rather than throwing.
+ */
+export async function readDetails(response: Response): Promise<string> {
+    try {
+        const text = (await response.text()).trim();
+        return text.length > PROVIDER_DETAILS_MAX_LENGTH ? `${text.slice(0, PROVIDER_DETAILS_MAX_LENGTH)}…` : text;
+    } catch {
+        return '';
+    }
+}
+
 export interface PostJsonOptions {
     url: string;
     headers?: Record<string, string>;
     body: unknown;
     signal?: AbortSignal;
     fetchImpl?: typeof fetch;
+    /** Provider label (e.g. `ollama`) used only for server-side log context. */
+    provider?: string;
 }
 
 /**
  * POST a JSON body and parse a JSON response, mapping transport/HTTP failures to
- * a typed {@link AiError} that never leaks request details (URL, key, payload).
+ * a typed {@link AiError}.
+ *
+ * The public error message never leaks request details (URL, key, payload), but
+ * the failure is logged server-side (provider, endpoint host, HTTP status and a
+ * truncated body snippet) and the snippet is attached to the error's `details`
+ * so the admin-only test-connection diagnostic can surface why a managed
+ * provider failed. This is what makes `HTTP 500`-style failures debuggable from
+ * the container logs instead of silently opaque.
  */
 export async function postJson<T = unknown>(opts: PostJsonOptions): Promise<T> {
     const fetchImpl = opts.fetchImpl ?? fetch;
+    const label = opts.provider ?? 'unknown';
+    const host = endpointHost(opts.url);
     let response: Response;
     try {
         response = await fetchImpl(opts.url, {
@@ -41,18 +77,31 @@ export async function postJson<T = unknown>(opts: PostJsonOptions): Promise<T> {
         });
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
+            console.error(`[ai] provider "${label}" request to ${host} timed out.`);
             throw new AiError('AI_TIMEOUT', 'The AI provider did not respond in time.', 504);
         }
-        throw new AiError('AI_PROVIDER_ERROR', 'Could not reach the AI provider.', 502);
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`[ai] provider "${label}" request to ${host} failed: ${reason}`);
+        throw new AiError('AI_PROVIDER_ERROR', 'Could not reach the AI provider.', 502, reason);
     }
 
     if (!response.ok) {
-        throw new AiError('AI_PROVIDER_ERROR', `The AI provider returned an error (HTTP ${response.status}).`, 502);
+        const details = await readDetails(response);
+        console.error(
+            `[ai] provider "${label}" at ${host} returned HTTP ${response.status}${details ? `: ${details}` : ''}`,
+        );
+        throw new AiError(
+            'AI_PROVIDER_ERROR',
+            `The AI provider returned an error (HTTP ${response.status}).`,
+            502,
+            details || undefined,
+        );
     }
 
     try {
         return (await response.json()) as T;
     } catch {
+        console.error(`[ai] provider "${label}" at ${host} returned a non-JSON response.`);
         throw new AiError('AI_PROVIDER_ERROR', 'The AI provider returned an invalid response.', 502);
     }
 }

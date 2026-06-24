@@ -15,6 +15,7 @@ export async function generate(config: AiConfig, prompt: string, options: Genera
 
     const data = await postJson({
         url,
+        provider: 'azure',
         headers: { 'api-key': apiKey },
         body: {
             messages: [{ role: 'user', content: prompt }],

@@ -83,15 +83,23 @@ export type AiErrorCode = 'AI_DISABLED' | 'AI_EXTERNAL_MODE' | 'AI_NOT_CONFIGURE
 /**
  * Error raised by the AI manager/providers. Carries a stable {@link AiErrorCode}
  * and an HTTP status so the route can respond without leaking provider details.
+ *
+ * `details` is an optional, truncated diagnostic snippet of the upstream
+ * provider's response/failure (e.g. Ollama's `model 'x' not found` body). It is
+ * captured for server-side logging and the **admin-only** test-connection
+ * diagnostic. It is NEVER included in the public `/api/ai/generate-text`
+ * response, so it cannot leak provider internals to ordinary users.
  */
 export class AiError extends Error {
     readonly code: AiErrorCode;
     readonly status: number;
+    readonly details?: string;
 
-    constructor(code: AiErrorCode, message: string, status: number) {
+    constructor(code: AiErrorCode, message: string, status: number, details?: string) {
         super(message);
         this.name = 'AiError';
         this.code = code;
         this.status = status;
+        this.details = details;
     }
 }

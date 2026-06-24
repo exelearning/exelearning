@@ -41,7 +41,7 @@ With no configuration, AI features are **enabled** and the provider is
 
 | `AI_FEATURES_ENABLED` | `AI_PROVIDER` | Game editor | `defaultAI` preference |
 |-----------------------|---------------|-------------|------------------------|
-| `false`               | (any)         | No AI tab, no AI buttons | Hidden |
+| `false`               | (any)         | Copy-only AI tab: prompt + **Copy**, no provider selector / **Send to AI** / **Generate** | Hidden |
 | `true`                | `external`    | Prompt + assistant selector + **Send to AI** | Shown |
 | `true`                | `azure` / `ollama` / `openai_compat` | **Generate** tab with a server-side **Create** button; no external selector | Hidden |
 
@@ -56,9 +56,16 @@ managed provider is selected but misconfigured — it shows a clear error.
 AI_FEATURES_ENABLED=false
 ```
 
-This hides every AI button, the AI tab, and the `defaultAI` preference. The
-server endpoint also responds with a safe `AI_DISABLED` error if called
-directly.
+This removes every AI **provider** integration — the assistant selector, the
+**Send to AI** button, the managed **Generate**/**Create** surface and the
+`defaultAI` preference all disappear, and the server endpoint responds with a
+safe `AI_DISABLED` error if called directly.
+
+The AI tab itself **stays visible** in a copy-only form: teachers can still read
+and **Copy** the auto-built prompt, take it to any AI tool of their choice, and
+paste the result back into the **Questions** tab. This keeps the
+heavily-used game-authoring workflow available without eXeLearning ever calling
+an AI provider.
 
 ## Configuring a managed provider
 
@@ -108,6 +115,32 @@ AI_REQUEST_TIMEOUT_MS=60000
 AI_MAX_OUTPUT_TOKENS=4096
 AI_TEMPERATURE=0.2
 ```
+
+## Troubleshooting a managed provider
+
+When a managed provider request fails, the editor shows a safe message such as
+*"The AI provider returned an error (HTTP 500)"*. The underlying cause is logged
+**server-side** with provider, endpoint host, HTTP status and a truncated body
+snippet, for example:
+
+```
+[ai] provider "ollama" at localhost:11434 returned HTTP 500: {"error":"model 'llama3' not found, try pulling it first"}
+```
+
+Check the application/container logs for `[ai]` lines first. Administrators can
+also use **Test connection** in the admin **AI** tab: that admin-only diagnostic
+returns the upstream `details` snippet directly, so the exact provider error is
+visible without reading logs. (The public `POST /api/ai/generate-text` response
+never includes this snippet.)
+
+Common causes of an upstream `HTTP 500`:
+
+- **Ollama** — the model named in `AI_OLLAMA_MODEL` has not been pulled
+  (`ollama pull <model>`), so Ollama answers with *model not found*.
+- **Azure / OpenAI-compatible** — a wrong deployment name, API version or key,
+  or an endpoint that is not actually reachable from the server (e.g. a
+  `localhost` Ollama is not reachable from inside the Docker container started by
+  `make up`; use a host-reachable address there).
 
 ## Security notes
 

@@ -17,6 +17,7 @@ export async function generate(config: AiConfig, prompt: string, options: Genera
 
     const data = await postJson({
         url,
+        provider: 'openai_compat',
         headers,
         body: {
             model: config.compat.model,

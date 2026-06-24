@@ -84,7 +84,11 @@ export function createAiRoutes(deps: AiRoutesDeps = defaultDeps) {
                 } catch (error) {
                     if (error instanceof AiError) {
                         set.status = error.status;
-                        return { ok: false, error: error.code, message: error.message };
+                        // Admin-only diagnostic: include the upstream `details` snippet
+                        // (e.g. Ollama's "model not found" body) so an administrator can
+                        // see exactly why the managed provider failed. This endpoint is
+                        // guarded by requireAdmin, so the snippet is never exposed publicly.
+                        return { ok: false, error: error.code, message: error.message, details: error.details };
                     }
                     set.status = 502;
                     return { ok: false, error: 'AI_PROVIDER_ERROR', message: 'The AI request failed.' };

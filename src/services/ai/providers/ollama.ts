@@ -17,6 +17,7 @@ export async function generate(config: AiConfig, prompt: string, options: Genera
 
     const data = await postJson<OllamaChatResponse>({
         url,
+        provider: 'ollama',
         body: {
             model: config.ollama.model,
             messages: [{ role: 'user', content: prompt }],
