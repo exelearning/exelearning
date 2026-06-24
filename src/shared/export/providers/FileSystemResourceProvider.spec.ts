@@ -149,8 +149,10 @@ describe('FileSystemResourceProvider', () => {
             expect(files.get('content.css')?.toString()).toBe('.custom { color: blue; }');
         });
 
-        it('should fall back to base theme when downloadable=0', async () => {
-            // Create embedded theme with downloadable=0
+        it('should use embedded theme even when downloadable=0', async () => {
+            // Styles embedded in an opened/imported .elpx are always available; the
+            // legacy <downloadable>0</downloadable> flag must not make export ignore
+            // the embedded theme and silently fall back to the base theme (issue #1893).
             await fs.ensureDir(path.join(extractedDir, 'theme'));
             await fs.writeFile(
                 path.join(extractedDir, 'theme', 'config.xml'),
@@ -166,10 +168,11 @@ describe('FileSystemResourceProvider', () => {
             const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
             const files = await embeddedProvider.fetchTheme('nondl');
 
-            // Should fall back to base theme (2 files in our test setup)
+            // Should use the embedded theme (config.xml + content.css)
             expect(files.size).toBe(2);
+            expect(files.has('config.xml')).toBe(true);
             expect(files.has('content.css')).toBe(true);
-            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
+            expect(files.get('content.css')?.toString()).toBe('.nondl { color: green; }');
         });
 
         it('should fall back to base theme when config.xml is missing', async () => {

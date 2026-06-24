@@ -49,8 +49,8 @@ describe('ModalOdeBrokenLinks', () => {
         window.eXeLearning = {
             app: {
                 project: { odeSession: 'test-session' },
-                alerts: {
-                    showToast: vi.fn(),
+                toasts: {
+                    createToast: vi.fn(),
                 },
                 api: {
                     extractLinksForValidation: vi.fn().mockResolvedValue({
@@ -342,6 +342,28 @@ describe('ModalOdeBrokenLinks', () => {
         });
     });
 
+    describe('onError', () => {
+        it('should show an error toast via the real toast API when validation fails', () => {
+            vi.useFakeTimers();
+            modal.show([]);
+            vi.advanceTimersByTime(100);
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            // Trigger the validation-error callback wired up in show()
+            modal.linkManager.onError(new Error('boom'));
+
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+                title: 'Error',
+                body: 'Error validating links',
+                icon: 'error',
+                modal: true,
+                remove: 5000,
+            });
+            consoleSpy.mockRestore();
+            vi.useRealTimers();
+        });
+    });
+
     describe('downloadCsv', () => {
         it('should warn when no table found', () => {
             const consoleSpy = vi.spyOn(console, 'warn');
@@ -364,10 +386,28 @@ describe('ModalOdeBrokenLinks', () => {
                 </table>
             `;
             modal.downloadCsv();
-            expect(eXeLearning.app.alerts.showToast).toHaveBeenCalledWith({
-                type: 'info',
-                message: 'No broken links to export',
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+                title: 'Link Validation',
+                body: 'No broken links to export',
+                icon: 'info',
+                modal: true,
+                remove: 5000,
             });
+        });
+
+        it('should not throw when there are no broken links (regression #1947)', () => {
+            // Reproduces the reported crash: the toast manager lives at
+            // app.toasts.createToast, not the non-existent app.alerts.showToast.
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead><tr><th>Status</th><th>Link</th></tr></thead>
+                    <tbody>
+                        <tr><td>OK</td><td>https://valid.com</td></tr>
+                    </tbody>
+                </table>
+            `;
+            expect(() => modal.downloadCsv()).not.toThrow();
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalled();
         });
 
         it('should create and trigger download for broken links', () => {
