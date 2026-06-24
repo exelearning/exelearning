@@ -480,11 +480,27 @@ describe('NavbarStyles', () => {
         clickSpy.mockRestore();
     });
 
-    it('shows alert when theme is not downloadable', async () => {
+    it('downloads theme even when downloadable is 0 (issue #1893)', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            blob: vi.fn().mockResolvedValue(mockBlob),
+        });
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        await navbarStyles.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
-        expect(eXeLearning.app.api.getThemeZip).not.toHaveBeenCalled();
+
+        navbarStyles.downloadThemeZip({ dirName: 'user-1', name: 'User Theme', downloadable: '0' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(alertSpy).not.toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
+        expect(fetch).toHaveBeenCalledWith('/bundles/themes/user-1.zip');
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
     });
 
     it('downloads user theme from IndexedDB', async () => {
@@ -567,19 +583,19 @@ describe('NavbarStyles', () => {
             expect(li.querySelector('.download-icon-green')).toBeTruthy();
         });
 
-        it('shows disabled download button when downloadable is not 1', () => {
+        it('shows enabled download button even when downloadable is 0 (issue #1893)', () => {
             const theme = { downloadable: '0' };
             const li = navbarStyles.makeMenuThemeDownload(theme);
-            expect(li.classList.contains('disabled')).toBe(true);
-            expect(li.querySelector('.download-icon-disabled')).toBeTruthy();
+            expect(li.classList.contains('disabled')).toBe(false);
+            expect(li.querySelector('.download-icon-green')).toBeTruthy();
         });
 
-        it('does not call downloadThemeZip when disabled', async () => {
+        it('calls downloadThemeZip even when downloadable is 0 (issue #1893)', async () => {
             const theme = { downloadable: '0' };
-            const downloadSpy = vi.spyOn(navbarStyles, 'downloadThemeZip');
+            const downloadSpy = vi.spyOn(navbarStyles, 'downloadThemeZip').mockImplementation(() => {});
             const li = navbarStyles.makeMenuThemeDownload(theme);
             li.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            expect(downloadSpy).not.toHaveBeenCalled();
+            expect(downloadSpy).toHaveBeenCalledWith(theme);
         });
     });
 
@@ -757,7 +773,7 @@ describe('NavbarStyles', () => {
             );
         });
 
-        it('shows alert when theme is marked as non-downloadable', async () => {
+        it('installs theme even when marked as non-downloadable (issue #1893)', async () => {
             window.fflate.unzipSync.mockReturnValue({
                 'config.xml': new TextEncoder().encode(
                     '<theme><name>Blocked Theme</name><downloadable>0</downloadable></theme>'
@@ -768,11 +784,15 @@ describe('NavbarStyles', () => {
 
             await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
 
-            expect(alertSpy).toHaveBeenCalledWith(
+            expect(alertSpy).not.toHaveBeenCalledWith(
                 expect.stringContaining('Failed to install'),
                 expect.objectContaining({ error: expect.stringContaining('cannot be downloaded') })
             );
-            expect(mockResourceCache.setUserTheme).not.toHaveBeenCalled();
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'blocked_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({ name: 'blocked_theme', downloadable: '1' })
+            );
         });
 
         it('shows alert when storage is not available', async () => {

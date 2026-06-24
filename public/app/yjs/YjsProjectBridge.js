@@ -3571,19 +3571,9 @@ class YjsProjectBridge {
         return;
       }
 
-      const configXml = new TextDecoder().decode(themeConfig);
-      const getValue = (tag) => {
-        const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-        return match ? match[1].trim() : '';
-      };
-      const downloadable = getValue('downloadable');
-      if (downloadable === '0') {
-        Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
-        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
-        // (user defaultTheme preference -> admin default -> base).
-        eXeLearning.app.themes.selectTheme(themeName, true);
-        return;
-      }
+      // Styles embedded in an opened/imported .elpx are always available. The legacy
+      // <downloadable>0</downloadable> flag must not block importing the style (issue #1893):
+      // the package has a theme folder, so offer it for import like any other embedded style.
 
       // Store file reference for later extraction
       this._pendingThemeFile = file;
@@ -3667,14 +3657,22 @@ class YjsProjectBridge {
           // Select the theme and save to metadata
           await eXeLearning.app.themes.selectTheme(themeName, true);
           Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
+          eXeLearning.app.toasts.createToast({
+            title: _('Style installed'),
+            body: _('The style has been installed successfully.'),
+            icon: 'task_alt',
+            remove: 4000,
+          });
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
-          eXeLearning.app.modals.alert.show({
+          eXeLearning.app.toasts.createToast({
             title: _('Error'),
             body: _('Failed to import style'),
+            error: true,
+            remove: 5000,
           });
         }
       },
@@ -3776,7 +3774,9 @@ class YjsProjectBridge {
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
         config.description = getValue('description') || '';
-        config.downloadable = getValue('downloadable') || '1';
+        // Styles imported from a .elpx are always available, so the legacy
+        // <downloadable> flag is intentionally ignored and stays normalized to '1'
+        // (issue #1893). config.downloadable keeps its default value above.
       }
 
       // Scan for CSS files
