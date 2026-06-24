@@ -650,6 +650,23 @@ var $eXeOrdena = {
         return positions;
     },
 
+    /**
+     * Number of cards/words reported as correctly placed after a check.
+     *
+     * Every check function (checkPhrase, checkPhraseColumns, checkPhraseText)
+     * already returns in `valids` only the entries that sit in a correct
+     * position — in column mode the fixed header row is excluded at source
+     * (it is never pushed to `valids`). The reported figure is therefore just
+     * the count of valid entries; subtracting the header columns here would
+     * undercount it by `gameColumns`.
+     *
+     * @param {{valids?: Array}} response result of a checkPhrase* function
+     * @returns {number} count of correctly placed entries (never negative)
+     */
+    getCorrectPositionsCount: function (response) {
+        return Array.isArray(response?.valids) ? response.valids.length : 0;
+    },
+
     createInterfaceOrdena: function (instance) {
         const path = $eXeOrdena.idevicePath,
             msgs = $eXeOrdena.options[instance].msgs,
@@ -1160,10 +1177,7 @@ var $eXeOrdena = {
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
-            const valids =
-                mOptions.type > 0 && mOptions.orderedColumns
-                    ? response.valids.length - mOptions.gameColumns
-                    : response.valids.length;
+            const valids = $eXeOrdena.getCorrectPositionsCount(response);
             let msg = `${$eXeOrdena.updateScore(response.correct, instance)} ${mOptions.msgs.msgPositions}: ${valids}. `;
             let color = $eXeOrdena.borderColors.red;
             if (response.correct) {

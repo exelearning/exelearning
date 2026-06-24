@@ -524,6 +524,55 @@ describe('sort iDevice export', () => {
             expect(result.valids).toEqual([2, 3]);
         });
 
+        it('reports the full count of correct cards in ordered-column mode (no double header subtraction)', () => {
+            // Regression: checkPhraseColumns already excludes the fixed header
+            // row from `valids`, so the reported count must NOT subtract
+            // gameColumns again. A 2-column activity with both body cards
+            // correct must report 2, not 0.
+            const instance = 24;
+            $eXeOrdena.options[instance] = {
+                gameColumns: 2,
+                type: 1,
+                orderedColumns: true,
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 1, url: 'img/para.png', eText: '', audio: '' },
+                        { order: 2, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 3, url: 'img/para.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(0, 'img/avanza.png')}
+                    ${createCardDrawHtml(1, 'img/para.png')}
+                    ${createCardDrawHtml(2, 'img/avanza.png')}
+                    ${createCardDrawHtml(3, 'img/para.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhraseColumns(instance);
+            expect(result.valids).toEqual([2, 3]);
+            expect($eXeOrdena.getCorrectPositionsCount(result)).toBe(2);
+        });
+
+        it('getCorrectPositionsCount returns the number of valid entries', () => {
+            expect(
+                $eXeOrdena.getCorrectPositionsCount({ valids: [2, 3, 4] })
+            ).toBe(3);
+        });
+
+        it('getCorrectPositionsCount is 0 when there are no valids', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({ valids: [] })).toBe(0);
+        });
+
+        it('getCorrectPositionsCount is 0 when valids is missing', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({})).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount(undefined)).toBe(0);
+        });
+
         it('checkPhraseColumns does not accept duplicated occurrences beyond expected count', () => {
             const instance = 23;
             $eXeOrdena.options[instance] = {
