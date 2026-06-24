@@ -33,6 +33,11 @@
                 outline: 2px solid var(--dark-exe-color) !important;
                 outline-offset: 2px;
             }
+
+            &.original-icon-selection:not([selected="true"]) {
+                outline: 2px solid var(--gray-400);
+                outline-offset: 2px;
+            }
         }
 
         .empty-block-icon[selected="true"] {

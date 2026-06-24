@@ -1295,6 +1295,7 @@ export default class IdeviceBlockNode {
                 this.iconName == icon.id
             ) {
                 iconElement.setAttribute('selected', true);
+                iconElement.classList.add('original-icon-selection');
             }
             // Add icon element to content
             modalBody.appendChild(iconElement);
@@ -1318,7 +1319,11 @@ export default class IdeviceBlockNode {
         emptyIconElement.title = emptyIconTitle;
         emptyIconElement.innerHTML = emptyIconValue;
         // Check if selected
-        emptyIconElement.setAttribute('selected', !this.iconName);
+        const emptyIsSelected = !this.iconName;
+        emptyIconElement.setAttribute('selected', emptyIsSelected);
+        if (emptyIsSelected) {
+            emptyIconElement.classList.add('original-icon-selection');
+        }
         return emptyIconElement;
     }
 

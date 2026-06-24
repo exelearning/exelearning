@@ -706,11 +706,25 @@ describe('IdeviceBlockNode', () => {
             expect(icon.getAttribute('selected')).toBe('true');
         });
 
+        it('adds original-icon-selection class when no iconName', () => {
+            block.iconName = '';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(true);
+        });
+
         it('sets selected to false when iconName exists', () => {
             block.iconName = 'icon1';
             const icon = block.makeEmptyIcon();
 
             expect(icon.getAttribute('selected')).toBe('false');
+        });
+
+        it('does not add original-icon-selection class when iconName exists', () => {
+            block.iconName = 'icon1';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(false);
         });
     });
 
@@ -1583,6 +1597,21 @@ describe('IdeviceBlockNode', () => {
 
             expect(shareEl.getAttribute('selected')).toBe('true');
             expect(downloadEl.getAttribute('selected')).not.toBe('true');
+        });
+
+        it('adds original-icon-selection class to the matching icon', () => {
+            block.iconName = 'share';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
+
+            expect(shareEl.classList.contains('original-icon-selection')).toBe(true);
+            expect(downloadEl.classList.contains('original-icon-selection')).toBe(false);
         });
 
         it('marks icon as selected when iconName matches icon.value', () => {
