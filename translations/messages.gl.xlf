@@ -15465,6 +15465,26 @@
         <source>Sorry, that's incorrect... The right answer is:</source>
         <target>~Sentímolo, é incorrecto... A resposta correcta é:</target>
       </trans-unit>
+      <trans-unit id="b9jmqml" resname="Style installed">
+        <source>Style installed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9llj3d8" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oazap4t" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9k4ojt8" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5i9nrt6" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
