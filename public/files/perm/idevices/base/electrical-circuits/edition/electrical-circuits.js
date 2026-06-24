@@ -202,6 +202,14 @@ var $exeDevice = {
         msgs.msgIDLenght = _(
             'The report identifier must have at least 5 characters'
         );
+        msgs.msgGeneratingCircuitsTitle = _('Please wait');
+        msgs.msgGeneratingCircuits = _(
+            'Generating the circuit images, please wait…'
+        );
+        msgs.msgQuestionsAdded = _('The questions have been added successfully');
+        msgs.msgEQuestionsNotAdded = _(
+            'Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.'
+        );
     },
 
     showMessage: function (msg) {
@@ -1114,6 +1122,84 @@ var $exeDevice = {
         preview.addEventListener('tikzjax-load-finished', onFinished);
 
         preview.appendChild(tikzScript);
+    },
+
+    /**
+     * Compile a single TikZ circuit to a sanitized SVG string and resolve with
+     * it (or '' on failure/timeout).
+     *
+     * Used by the AI save flow to pre-render every circuit before inserting its
+     * question. It renders through the exact same proven path as the manual
+     * preview — the persistent #elceTikzPreview element that TikZJax already
+     * compiles reliably — instead of a throwaway container, which TikZJax did
+     * not always finish for back-to-back renders. It does NOT touch the
+     * single-slot SVG cache; addQuestions() re-renders the active question
+     * afterwards, restoring the preview. Resolves '' when the code is empty,
+     * when TikZJax produces no <svg>, or when it does not finish within the
+     * timeout — callers treat an empty result as "this circuit could not be
+     * generated". TikZJax gives no reliable error event, so a circuit that never
+     * compiles relies on that timeout.
+     */
+    renderTikzCodeToSvg: function (code, timeoutMs = 60000) {
+        const normalized = $exeDevice.normalizeTikzCode(code);
+        const preview = document.getElementById('elceTikzPreview');
+        if (!normalized || !preview) {
+            return Promise.resolve('');
+        }
+
+        // Drop any listener still pending from a manual preview render so it
+        // does not also fire on our script.
+        if ($exeDevice.tikzFinishedHandler) {
+            preview.removeEventListener(
+                'tikzjax-load-finished',
+                $exeDevice.tikzFinishedHandler
+            );
+            $exeDevice.tikzFinishedHandler = null;
+        }
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (svg) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                preview.removeEventListener('tikzjax-load-finished', onFinished);
+                resolve(svg || '');
+            };
+
+            const timer = setTimeout(() => finish(''), timeoutMs);
+
+            const onFinished = () => {
+                const renderedSvg = preview.querySelector('svg');
+                Promise.resolve(
+                    renderedSvg
+                        ? $exeDevice.convertTikzTextToPaths(renderedSvg)
+                        : null
+                )
+                    .catch(() => {})
+                    .then(() => {
+                        const finalSvg = preview.querySelector('svg');
+                        finish(
+                            finalSvg ? $exeDevice.sanitizeTikzSvg(finalSvg) : ''
+                        );
+                    });
+            };
+
+            preview.innerHTML = '';
+            preview.addEventListener('tikzjax-load-finished', onFinished);
+
+            const tikzScript = document.createElement('script');
+            tikzScript.type = 'text/tikz';
+            tikzScript.dataset.texPackages = JSON.stringify({
+                circuitikz: '',
+                amsmath: '',
+                amssymb: '',
+            });
+            tikzScript.dataset.showConsole = 'false';
+            tikzScript.textContent =
+                '\\begin{document}' + normalized + '\\end{document}';
+            preview.appendChild(tikzScript);
+        });
     },
 
     clearQuestion: function () {
@@ -2254,7 +2340,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             11,
-            $exeDevice.insertQuestions
+            $exeDevice.insertAIQuestions
         );
 
         //eXe 3.0 Dismissible messages
@@ -2510,17 +2596,28 @@ var $exeDevice = {
         $exeDevice.insertQuestions(lines);
     },
 
-    insertQuestions: function (lines) {
+    // Pure parser shared by the file-import path (insertQuestions) and the AI
+    // save path (insertAIQuestions). Returns the parsed question objects, the
+    // source line each one came from (parallel to `questions`, so a question
+    // that later fails to render can be put back verbatim for the user to fix),
+    // and the lines that matched no supported format.
+    parseAIQuestions: function (lines) {
         // Format: Description#TikzCode#Solution#Question#OptionA#OptionB[#OptionC][#OptionD]
         const lineFormat =
                 /^([^#]+)#([^#]+)#([0-3]|[ABCD]{1,4})#([^#]+)#([^#]+)#([^#]+)(#([^#]*))?(#([^#]*))?$/i,
             lineFormat1 = /^([^#]+)#([^#]+)$/;
-        let questions = [];
+        const questions = [],
+            sourceLines = [],
+            invalidLines = [];
 
-        lines.forEach((line) => {
+        (lines || []).forEach((line) => {
+            if (typeof line !== 'string' || line.trim().length === 0) {
+                return;
+            }
+            const trimmed = line.trim();
             const p = $exeDevice.getCuestionDefault();
             if (lineFormat.test(line)) {
-                const linarray = line.trim().split('#'),
+                const linarray = trimmed.split('#'),
                     description = linarray[0],
                     tikzCode = linarray[1],
                     solution = linarray[2];
@@ -2542,19 +2639,95 @@ var $exeDevice = {
                 p.options[3] = $exeDevice.normalizeVisibleCircuitText(linarray[7]);
                 p.numberOptions = linarray.length - 4;
                 questions.push(p);
+                sourceLines.push(trimmed);
             } else if (lineFormat1.test(line)) {
-                const linarray1 = line.trim().split('#');
+                const linarray1 = trimmed.split('#');
                 p.typeSelect = 2;
                 p.solutionQuestion = linarray1[0];
                 p.quextion = linarray1[1];
                 p.percentageShow = 35;
                 if (p.quextion && p.solutionQuestion) {
                     questions.push(p);
+                    sourceLines.push(trimmed);
+                } else {
+                    invalidLines.push(trimmed);
                 }
+            } else {
+                invalidLines.push(trimmed);
             }
         });
 
+        return { questions, lines: sourceLines, invalidLines };
+    },
+
+    insertQuestions: function (lines) {
+        const { questions } = $exeDevice.parseAIQuestions(lines);
         $exeDevice.addQuestions(questions);
+    },
+
+    // Callback for the AI "save questions" button. Unlike insertQuestions (used
+    // by file import), it renders every circuit before inserting: a blocking
+    // "please wait" modal is shown while each TikZ code is compiled to SVG, and a
+    // question whose circuit cannot be generated is discarded. The rejected lines
+    // (verbatim, plus any that had an invalid format) are returned as
+    // `remainingLines` so the shared handler can put them back in the text box
+    // for the user to fix and try again. Returns { handledMessaging: true } so
+    // the shared handler skips its generic alert.
+    insertAIQuestions: async function (validLines, invalidLines = []) {
+        const parsed = $exeDevice.parseAIQuestions(validLines);
+        const remainingLines = [...(invalidLines || []), ...parsed.invalidLines];
+
+        $exeDevice.showCircuitGenerationModal();
+        try {
+            const validQuestions = [];
+            for (let i = 0; i < parsed.questions.length; i++) {
+                const question = parsed.questions[i];
+                const code = (question.tikzCode || '').trim();
+                if (!code) {
+                    // Word/phrase questions carry no circuit; nothing to render.
+                    validQuestions.push(question);
+                    continue;
+                }
+                const svg = await $exeDevice.renderTikzCodeToSvg(code);
+                if (svg) {
+                    question.tikzSvg = svg;
+                    validQuestions.push(question);
+                } else {
+                    remainingLines.push(parsed.lines[i]);
+                }
+            }
+
+            if (validQuestions.length > 0) {
+                $exeDevice.addQuestions(validQuestions);
+            }
+        } finally {
+            $exeDevice.hideCircuitGenerationModal();
+        }
+
+        if (remainingLines.length > 0) {
+            $exeDevice.showMessage($exeDevice.msgs.msgEQuestionsNotAdded);
+        } else {
+            $exeDevice.showMessage($exeDevice.msgs.msgQuestionsAdded);
+        }
+
+        return { handledMessaging: true, remainingLines };
+    },
+
+    showCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.show === 'function') {
+            modals.info.show({
+                title: $exeDevice.msgs.msgGeneratingCircuitsTitle,
+                body: $exeDevice.msgs.msgGeneratingCircuits,
+            });
+        }
+    },
+
+    hideCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.close === 'function') {
+            modals.info.close();
+        }
     },
 
     addQuestions: function (questions) {

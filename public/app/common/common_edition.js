@@ -1010,7 +1010,7 @@ var $exeDevicesEdition = {
                         window.open(url, '_blank');
                     });
 
-                    $saveButton.on('click', function () {
+                    $saveButton.on('click', async function () {
                         const content = $textQuestionsArea.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
@@ -1018,7 +1018,20 @@ var $exeDevicesEdition = {
                         }
                         const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        // saveQuestions may be async and may own the result messaging
+                        // (e.g. electrical-circuits renders each circuit image before
+                        // inserting). When it returns { handledMessaging: true } the
+                        // callback already informed the user, so skip the generic alert.
+                        // It may also return `remainingLines` (questions it could not
+                        // add): refill the textarea with them, cleared, so the user can
+                        // correct them and save again.
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
@@ -1026,7 +1039,7 @@ var $exeDevicesEdition = {
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
-                    $iaButton.on('click', function () {
+                    $iaButton.on('click', async function () {
                         const content = $textAreaIa.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
@@ -1035,7 +1048,13 @@ var $exeDevicesEdition = {
 
                         const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {

@@ -66,21 +66,27 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
 
         await openQuestionsTab(page);
 
-        // Paste the "AI-generated" questions and save them.
+        // Paste the "AI-generated" questions and save them. The save now renders
+        // every circuit to SVG before inserting it (a "please wait" modal is
+        // shown meanwhile), so only circuits TikZJax can compile are kept. Both
+        // sample circuits are valid, so both must land in the editor — with their
+        // image already generated. Allow generous time for the TikZJax engine.
         await page.locator('#eXeEQuestionsArea').fill(GENERATED_QUESTIONS);
         await page.locator('#eXeESaveButton').click();
-        await closeAlertModals(page);
 
         // The questions must be loaded into the editor — this is the regression.
         await expect
             .poll(async () => parseInt((await page.locator('#elceNumQuestions').textContent()) || '0', 10), {
-                timeout: 10000,
+                timeout: 120000,
             })
             .toBeGreaterThanOrEqual(2);
 
+        await closeAlertModals(page);
+
         // Assert against the editor model so the check is independent of which
         // question is currently active: both the generated question text and the
-        // normalized ohm sign (\Omega) must be present in the loaded questions.
+        // normalized ohm sign (\Omega) must be present in the loaded questions,
+        // and every loaded question must carry a pre-rendered circuit SVG.
         const model = await page.evaluate(() => {
             const game = (window as unknown as { $exeDevice?: { selectsGame?: Array<Record<string, unknown>> } })
                 .$exeDevice;
@@ -89,6 +95,7 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
                 count: questions.length,
                 tikz: questions.map(q => String(q.tikzCode ?? '')).join('\n'),
                 texts: questions.map(q => String(q.quextion ?? '')).join('\n'),
+                allHaveSvg: questions.every(q => String(q.tikzSvg ?? '').includes('<svg')),
             };
         });
 
@@ -96,6 +103,11 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
         expect(model.texts).toContain('What component is shown?');
         expect(model.tikz).toContain('circuitikz');
         expect(model.tikz).toContain('\\Omega');
+        expect(model.allHaveSvg).toBe(true);
+
+        // All circuits were generated, so nothing is left to correct: the text
+        // box is cleared (rejected questions would have been kept here instead).
+        await expect(page.locator('#eXeEQuestionsArea')).toHaveValue('');
     });
 
     test('renders a circuit with an ohm label as vector paths in the preview', async ({

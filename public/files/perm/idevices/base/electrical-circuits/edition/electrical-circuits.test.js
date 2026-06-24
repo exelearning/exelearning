@@ -332,7 +332,10 @@ describe('electrical-circuits iDevice edition', () => {
 
         $exeDevice.addEvents();
 
-        expect(shareAddEvents).toHaveBeenCalledWith(11, $exeDevice.insertQuestions);
+        // The AI save button renders every circuit before inserting, so the
+        // registered callback is the async insertAIQuestions (not insertQuestions,
+        // which stays for the file-import path).
+        expect(shareAddEvents).toHaveBeenCalledWith(11, $exeDevice.insertAIQuestions);
     });
 
     it('insertQuestions normalizes AI-generated TikZ before adding questions', () => {
@@ -556,5 +559,247 @@ describe('electrical-circuits iDevice edition', () => {
         expect(path).not.toBeNull();
         expect(path.hasAttribute('fill')).toBe(false);
         expect(path.getAttribute('d').startsWith('M')).toBe(true);
+    });
+
+    it('parseAIQuestions separates valid questions from invalid lines', () => {
+        const multi =
+            'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const word = 'Ohm#Unit of resistance';
+        const invalid = 'this is not a valid line';
+
+        const { questions, lines, invalidLines } = $exeDevice.parseAIQuestions([
+            multi,
+            word,
+            invalid,
+            '   ',
+            42,
+        ]);
+
+        expect(questions).toHaveLength(2);
+        expect(questions[0].typeSelect).toBe(0);
+        expect(questions[1].typeSelect).toBe(2);
+        // The source line of each valid question is kept (parallel to questions)
+        // so a question that later fails to render can be put back verbatim.
+        expect(lines).toEqual([multi, word]);
+        expect(invalidLines).toEqual(['this is not a valid line']);
+    });
+
+    it('parseAIQuestions returns empty buckets for empty input', () => {
+        expect($exeDevice.parseAIQuestions(null)).toEqual({
+            questions: [],
+            lines: [],
+            invalidLines: [],
+        });
+    });
+
+    it('renderTikzCodeToSvg resolves empty for empty code', async () => {
+        document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+        expect(await $exeDevice.renderTikzCodeToSvg('')).toBe('');
+    });
+
+    it('renderTikzCodeToSvg resolves empty when there is no preview element', async () => {
+        document.body.innerHTML = '';
+        expect(await $exeDevice.renderTikzCodeToSvg('\\draw (0,0);')).toBe('');
+    });
+
+    it('renderTikzCodeToSvg renders through the preview element and captures the sanitized SVG', async () => {
+        document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+        const preview = document.getElementById('elceTikzPreview');
+
+        const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);');
+        const script = preview.querySelector('script[type="text/tikz"]');
+        expect(script).not.toBeNull();
+
+        preview.innerHTML =
+            '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0"></path></svg>';
+        preview
+            .querySelector('svg')
+            .dispatchEvent(
+                new Event('tikzjax-load-finished', { bubbles: true })
+            );
+
+        const svg = await promise;
+        expect(svg).toContain('<svg');
+        // sanitizeTikzSvg strips width/height
+        expect(svg).not.toContain('width=');
+    });
+
+    it('renderTikzCodeToSvg drops a pending manual-preview listener before rendering', async () => {
+        document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+        const preview = document.getElementById('elceTikzPreview');
+        $exeDevice.tikzFinishedHandler = vi.fn();
+
+        const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);');
+        expect($exeDevice.tikzFinishedHandler).toBeNull();
+
+        preview.dispatchEvent(
+            new Event('tikzjax-load-finished', { bubbles: true })
+        );
+        await promise;
+    });
+
+    it('renderTikzCodeToSvg resolves empty when tikzjax finishes without an SVG', async () => {
+        document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+        const preview = document.getElementById('elceTikzPreview');
+
+        const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);');
+        preview.dispatchEvent(
+            new Event('tikzjax-load-finished', { bubbles: true })
+        );
+
+        expect(await promise).toBe('');
+    });
+
+    it('renderTikzCodeToSvg resolves empty when the render times out', async () => {
+        document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+        vi.useFakeTimers();
+        try {
+            const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 1000);
+            vi.advanceTimersByTime(1000);
+            expect(await promise).toBe('');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('insertAIQuestions renders each circuit, inserts the valid ones and reports success', async () => {
+        const showModal = vi
+            .spyOn($exeDevice, 'showCircuitGenerationModal')
+            .mockImplementation(() => {});
+        const hideModal = vi
+            .spyOn($exeDevice, 'hideCircuitGenerationModal')
+            .mockImplementation(() => {});
+        const addQuestions = vi
+            .spyOn($exeDevice, 'addQuestions')
+            .mockImplementation(() => {});
+        vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockResolvedValue(
+            '<svg></svg>'
+        );
+
+        const line =
+            'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const result = await $exeDevice.insertAIQuestions([line], []);
+
+        expect(showModal).toHaveBeenCalled();
+        expect(hideModal).toHaveBeenCalled();
+        const inserted = addQuestions.mock.calls[0][0];
+        expect(inserted).toHaveLength(1);
+        expect(inserted[0].tikzSvg).toBe('<svg></svg>');
+        expect(eXe.app.getLastAlert()).toBe($exeDevice.msgs.msgQuestionsAdded);
+        expect(result).toEqual({ handledMessaging: true, remainingLines: [] });
+    });
+
+    it('insertAIQuestions discards circuits that fail to render and returns them verbatim', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        const addQuestions = vi
+            .spyOn($exeDevice, 'addQuestions')
+            .mockImplementation(() => {});
+        vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockImplementation((code) =>
+            Promise.resolve(code.includes('GOOD') ? '<svg></svg>' : '')
+        );
+
+        const good =
+            'Good circuit#\\begin{circuitikz}GOOD\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const bad =
+            'Bad circuit#\\begin{circuitikz}BROKEN\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const result = await $exeDevice.insertAIQuestions([good, bad], []);
+
+        const inserted = addQuestions.mock.calls[0][0];
+        expect(inserted).toHaveLength(1);
+        expect(inserted[0].description).toBe('Good circuit');
+        // The failed question is reported as its original line so it can be put
+        // back in the text box; the alert no longer enumerates the failures.
+        expect(result).toEqual({
+            handledMessaging: true,
+            remainingLines: [bad],
+        });
+        expect(eXe.app.getLastAlert()).toBe(
+            $exeDevice.msgs.msgEQuestionsNotAdded
+        );
+    });
+
+    it('insertAIQuestions returns shared format-invalid lines and skips insertion when nothing is valid', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        const addQuestions = vi
+            .spyOn($exeDevice, 'addQuestions')
+            .mockImplementation(() => {});
+        vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockResolvedValue('');
+
+        const bad =
+            'Bad#\\begin{circuitikz}X\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const result = await $exeDevice.insertAIQuestions(
+            [bad],
+            ['totally invalid line']
+        );
+
+        expect(addQuestions).not.toHaveBeenCalled();
+        expect(result).toEqual({
+            handledMessaging: true,
+            remainingLines: ['totally invalid line', bad],
+        });
+        expect(eXe.app.getLastAlert()).toBe(
+            $exeDevice.msgs.msgEQuestionsNotAdded
+        );
+    });
+
+    it('insertAIQuestions keeps a circuit-less question without rendering it', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        const addQuestions = vi
+            .spyOn($exeDevice, 'addQuestions')
+            .mockImplementation(() => {});
+        const render = vi.spyOn($exeDevice, 'renderTikzCodeToSvg');
+        vi.spyOn($exeDevice, 'parseAIQuestions').mockReturnValue({
+            questions: [{ tikzCode: '', typeSelect: 2, description: 'Word q' }],
+            lines: ['ignored'],
+            invalidLines: [],
+        });
+
+        const result = await $exeDevice.insertAIQuestions(['ignored'], []);
+
+        expect(render).not.toHaveBeenCalled();
+        expect(addQuestions.mock.calls[0][0]).toHaveLength(1);
+        expect(eXe.app.getLastAlert()).toBe($exeDevice.msgs.msgQuestionsAdded);
+        expect(result).toEqual({ handledMessaging: true, remainingLines: [] });
+    });
+
+    it('circuit modal helpers drive the info modal when it is available', () => {
+        const show = vi.fn();
+        const close = vi.fn();
+        window.eXeLearning.app = { modals: { info: { show, close } } };
+        try {
+            $exeDevice.showCircuitGenerationModal();
+            $exeDevice.hideCircuitGenerationModal();
+
+            expect(show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    body: $exeDevice.msgs.msgGeneratingCircuits,
+                })
+            );
+            expect(close).toHaveBeenCalled();
+        } finally {
+            delete window.eXeLearning.app;
+        }
+    });
+
+    it('circuit modal helpers are a no-op when the modal manager is missing', () => {
+        expect(() => {
+            $exeDevice.showCircuitGenerationModal();
+            $exeDevice.hideCircuitGenerationModal();
+        }).not.toThrow();
     });
 });
