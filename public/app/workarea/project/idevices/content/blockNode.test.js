@@ -1569,6 +1569,34 @@ describe('IdeviceBlockNode', () => {
             expect(iconIds).toContain('share');
             expect(iconIds).toContain('download');
         });
+
+        it('marks icon as selected when iconName matches icon.id', () => {
+            block.iconName = 'share';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
+
+            expect(shareEl.getAttribute('selected')).toBe('true');
+            expect(downloadEl.getAttribute('selected')).not.toBe('true');
+        });
+
+        it('marks icon as selected when iconName matches icon.value', () => {
+            block.iconName = '/path/to/share.svg';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+
+            expect(shareEl.getAttribute('selected')).toBe('true');
+        });
     });
 
     describe('makeIconValueElement', () => {
