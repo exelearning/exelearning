@@ -849,6 +849,61 @@ describe('NavbarFile', () => {
             expect(closeCurrentWindow).toHaveBeenCalled();
         });
 
+        it('should reveal the preceding electron-only divider when the bridge is present', () => {
+            // Mirror the real markup: a hidden divider sits right above the
+            // hidden <li> wrapper, both flagged exe-electron-only.
+            const divider = document.createElement('li');
+            divider.classList.add('dropdown-divider', 'd-none', 'exe-electron-only');
+            const li = document.createElement('li');
+            li.classList.add('d-none', 'exe-electron-only');
+            li.appendChild(mockButtons.closeFileButton);
+            navbarElement.appendChild(divider);
+            navbarElement.appendChild(li);
+
+            window.electronAPI = { closeCurrentWindow: vi.fn() };
+
+            navbarFile.setCloseFileEvent();
+
+            expect(li.classList.contains('d-none')).toBe(false);
+            expect(divider.classList.contains('d-none')).toBe(false);
+        });
+
+        it('should leave the preceding divider hidden when electronAPI is absent', () => {
+            const divider = document.createElement('li');
+            divider.classList.add('dropdown-divider', 'd-none', 'exe-electron-only');
+            const li = document.createElement('li');
+            li.classList.add('d-none', 'exe-electron-only');
+            li.appendChild(mockButtons.closeFileButton);
+            navbarElement.appendChild(divider);
+            navbarElement.appendChild(li);
+
+            window.electronAPI = null;
+
+            navbarFile.setCloseFileEvent();
+
+            expect(li.classList.contains('d-none')).toBe(true);
+            expect(divider.classList.contains('d-none')).toBe(true);
+        });
+
+        it('should not touch a preceding sibling that is not an electron-only divider', () => {
+            // A non-divider previous sibling (e.g. the Print item) must be left
+            // untouched even when the close entry is revealed.
+            const sibling = document.createElement('li');
+            const li = document.createElement('li');
+            li.classList.add('d-none', 'exe-electron-only');
+            li.appendChild(mockButtons.closeFileButton);
+            navbarElement.appendChild(sibling);
+            navbarElement.appendChild(li);
+
+            window.electronAPI = { closeCurrentWindow: vi.fn() };
+
+            navbarFile.setCloseFileEvent();
+
+            expect(li.classList.contains('d-none')).toBe(false);
+            expect(sibling.classList.contains('d-none')).toBe(false);
+            expect(sibling.classList.length).toBe(0);
+        });
+
         it('should not close when an idevice editor is open', () => {
             const closeCurrentWindow = vi.fn();
             window.electronAPI = { closeCurrentWindow };

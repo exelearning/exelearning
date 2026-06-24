@@ -758,6 +758,14 @@ export default class NavbarFile {
         const wrapper = this.closeFileButton.closest('li') || this.closeFileButton;
         wrapper.classList.remove('d-none');
 
+        // Reveal the preceding separator too. It shares the exe-electron-only
+        // marker and is hidden by default so the browser/PWA build never shows
+        // a stray divider above a missing entry.
+        const divider = wrapper.previousElementSibling;
+        if (divider && divider.classList.contains('exe-electron-only')) {
+            divider.classList.remove('d-none');
+        }
+
         this.closeFileButton.addEventListener('click', (event) => {
             event.preventDefault();
             if (eXeLearning.app.project.checkOpenIdevice()) return;
