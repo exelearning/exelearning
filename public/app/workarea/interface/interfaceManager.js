@@ -9,6 +9,7 @@ import DownloadProjectButton from './elements/downloadButton.js';
 // import ModeButton from "./elements/modeButton.js";
 import PreviewButton from './elements/previewButton.js';
 import LogoutButton from './elements/logoutButton.js';
+import FocusedEditMode from './focusedEditMode.js';
 
 export default class InterfaceManager {
     constructor(app) {
@@ -26,6 +27,8 @@ export default class InterfaceManager {
         // this.propertiesButton = new PropertiesProjectButton();
         this.previewButton = new PreviewButton();
         this.logoutButton = new LogoutButton();
+        // Experimental focused full-workarea iDevice edit mode (Refs #1811, #1411)
+        this.focusedEditMode = new FocusedEditMode(app);
     }
 
     /**
@@ -45,5 +48,6 @@ export default class InterfaceManager {
         // this.propertiesButton; - hidden for now
         this.previewButton.init();
         this.logoutButton.init();
+        this.focusedEditMode.init();
     }
 }

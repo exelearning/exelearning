@@ -50,7 +50,7 @@
                         {# Hidden to reduce Open/Import confusion (issue #1223) #}
                         <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                         <li class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.download or 'Download' }}</a></li>
                         {# Advanced: save the project as an unpacked folder. Hidden until Alt is held or feature flag is set. #}
                         <li class="d-none exe-folder-project-action"><a class="dropdown-item" id="navbar-button-save-folder-offline" href="#"><span class="small-icon save-icon-green"></span> {{ t.save_to_folder or 'Save to folder' }}</a></li>
                         {# Desktop only: close the current window. Revealed by navbarFile.js only when the Electron bridge (window.electronAPI) is present. #}

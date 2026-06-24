@@ -1417,10 +1417,16 @@ export default class NavbarFile {
             yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
         if (hasUnsaved) {
-            // Show confirmation modal with save option
+            // Show confirmation modal with contextual, action-specific labels.
+            // Functional transition logic is unchanged: Save -> skipSave:false,
+            // Don't Save -> skipSave:true (handled by ModalSessionLogout).
             const data = {
                 title: _('New file'),
-                forceOpen: _('Create new file without saving'),
+                body: _(
+                    'Do you want to save changes before creating a new file?'
+                ),
+                saveButtonText: _('Save'),
+                notSaveButtonText: _("Don't Save"),
                 pendingAction: { action: 'new' },
             };
             eXeLearning.app.modals.sessionlogout.show(data);

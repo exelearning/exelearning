@@ -1162,7 +1162,9 @@ describe('NavbarFile', () => {
 
             expect(eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
                 title: 'New file',
-                forceOpen: 'Create new file without saving',
+                body: 'Do you want to save changes before creating a new file?',
+                saveButtonText: 'Save',
+                notSaveButtonText: "Don't Save",
                 pendingAction: { action: 'new' },
             });
             expect(navbarFile.createSession).not.toHaveBeenCalled();
