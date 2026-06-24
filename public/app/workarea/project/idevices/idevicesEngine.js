@@ -1054,12 +1054,8 @@ export default class IdevicesEngine {
      * @returns
      */
     async createIdeviceInContent(ideviceData, container, ideviceOnEdit = null) {
-        // Check if current page is document root
+        // Check if current page is document root (panel is visually disabled, guard kept as safety net)
         if (container.getAttribute('node-selected') == 'root') {
-            eXeLearning.app.modals.alert.show({
-                title: _('Problem adding iDevice'),
-                body: _("You can't add an iDevice on the root page"),
-            });
             return false;
         }
 
