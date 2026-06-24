@@ -3589,14 +3589,22 @@ class YjsProjectBridge {
           // Select the theme and save to metadata
           await eXeLearning.app.themes.selectTheme(themeName, true);
           Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
+          eXeLearning.app.toasts.createToast({
+            title: _('Style installed'),
+            body: _('The style has been installed successfully.'),
+            icon: 'task_alt',
+            remove: 4000,
+          });
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
-          eXeLearning.app.modals.alert.show({
+          eXeLearning.app.toasts.createToast({
             title: _('Error'),
             body: _('Failed to import style'),
+            error: true,
+            remove: 5000,
           });
         }
       },
