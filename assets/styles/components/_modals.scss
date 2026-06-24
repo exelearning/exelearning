@@ -1676,12 +1676,6 @@
                 &:last-child > td {
                     border-bottom: none;
                 }
-
-                .theme-action-export[downloadable="false"] {
-                    color: var(--icon-bg-gray);
-                    pointer-events: none;
-                    cursor: default;
-                }
             }
         }
 

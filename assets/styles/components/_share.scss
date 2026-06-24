@@ -98,6 +98,10 @@
 
 #share-people-list {
     max-height: 300px;
+    /* Scroll the people list inside the modal instead of overflowing the
+       dialog body when many people have access (see issue #1960). */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .share-person-row {

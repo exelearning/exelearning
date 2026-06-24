@@ -29,7 +29,10 @@ lomloe/
     ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
     ├── lomloe-ES-EX.json   # Extremadura (ISO ES-EX) — Decretos 98/2022, 107/2022, 110/2022, 109/2022
     ├── lomloe-ES-MD.json   # Comunidad de Madrid (ISO ES-MD) — Decretos 36/2022, 61/2022, 65/2022, 64/2022
-    └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
+    ├── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
+    ├── lomloe-ES-GA.json   # Galicia (ISO ES-GA) — DOG decrees, Galician language
+    ├── lomloe-ES-NC.json   # Com. Foral de Navarra (ISO ES-NC) — Decretos Forales 61/67/71/72-2022, Spanish
+    └── lomloe-ES-VC.json   # Comunitat Valenciana (ISO ES-VC) — Decrets 100/106/107/108-2022, Valencian
 ```
 
 ## Dataset format
@@ -72,6 +75,38 @@ All dataset JSON files share the same schema:
 }
 ```
 
+### Optional per-dataset descriptor catalogue (`descriptors`)
+
+The codes in `competencias_clave` (the perfil-d'eixida / competence codes — `CCL`,
+`CMCT`, `CCL1`, `STEM2.3`…) are rendered with human-readable **text**. By default
+that text comes from a shared, hardcoded **Castilian** catalogue (`CC_DESCRIPTIONS`,
+defined in both `edition/lomloe.js` and `export/lomloe.js`).
+
+A dataset may **override** that text — e.g. a community with a co-official language
+(the Comunitat Valenciana publishes its descriptors in Valencian) — by adding an
+optional **reserved top-level `descriptors` key**: a flat `{ "code": "text" }` map
+sitting alongside the etapa keys.
+
+```jsonc
+{
+  "descriptors": {                                  // optional, reserved (NOT an etapa)
+    "CCL":  "Competència en comunicació lingüística",
+    "CCL1": "CCL1 — S'expressa de manera oral, escrita…",
+    "CMCT": "Competència matemàtica, científica i tecnològica"
+  },
+  "Educació Primària": { /* …etapes… */ }
+}
+```
+
+Render-time lookup is **per-code with fallback**:
+`descriptorText(code) = dataset.descriptors[code] ?? CC_DESCRIPTIONS[code] ?? code`
+— so a dataset can override only some codes and inherit the rest. The key is
+**reserved**: every top-level walker (`getEtapas()`, the tests' `walkAreas`) skips
+it, so it never becomes an etapa tab; on save the editor denormalizes the used
+codes' override text into `lomloeDescriptors` so standalone **exports** keep the
+overridden wording. Datasets without a `descriptors` key are unaffected and keep
+using `CC_DESCRIPTIONS`. `lomloe-ES-VC.json` is the first to ship one (Valencian).
+
 ## How to add a new autonomous community
 
 Dataset identifiers use **ISO 3166-2:ES** codes (e.g. `ES-MD` for Madrid, `ES-CT` for Catalunya).
@@ -102,14 +137,14 @@ File names follow the pattern `lomloe-{ISO-code}.json`.
 |-------|-------------------------------|-------|-------------------------|
 | ES    | Estado (national)             | ES-MD | Comunidad de Madrid     |
 | ES-AN | Andalucía                     | ES-MC | Región de Murcia        |
-| ES-AR | Aragón                        | ES-NC | Com. Foral de Navarra   |
+| ES-AR | Aragón                        | ES-NC | **Com. Foral de Navarra** ✓ (available) |
 | ES-AS | Asturias, Principado de       | ES-PV | País Vasco / Euskadi    |
 | ES-CB | Cantabria                     | ES-RI | La Rioja                |
-| ES-CL | Castilla y León               | ES-VC | Comunitat Valenciana    |
+| ES-CL | Castilla y León               | ES-VC | **Comunitat Valenciana** ✓ (available) |
 | ES-CM | Castilla-La Mancha            | ES-CE | Ceuta                   |
 | ES-CN | **Canarias** ✓ (available)    | ES-ML | Melilla                 |
 | ES-CT | Catalunya                     | ES-IB | Illes Balears           |
-| ES-EX | Extremadura                   | ES-GA | Galicia                 |
+| ES-EX | **Extremadura** ✓ (available) | ES-GA | **Galicia** ✓ (available) |
 
 ## National (state) datasets
 
@@ -355,6 +390,76 @@ All text in `lomloe-ES-GA.json` is in Galician (`gl`). The generator does **not*
 ### Generator script
 
 A Python script (`generate_lomloe_es_ga.py`, requires `beautifulsoup4`) implements the full extraction. It is **attached to the PR** that introduced this dataset rather than committed to the repo.
+
+## `lomloe-ES-NC.json` — Comunidad Foral de Navarra concretion
+
+Full extraction from the official **BON** (*Boletín Oficial de Navarra*) curriculum annexes (ANEXO II) published by the Gobierno de Navarra. **Language: Spanish.** All curriculum text is taken verbatim from the official Spanish-language sources — nothing is translated or paraphrased. Navarra publishes a Basque-language educational offer too, but the general curriculum dataset for this iDevice is the official Spanish curriculum (the Basque-medium subjects *Lengua Vasca Modelo A* and *Lengua Vasca y Literatura Modelo D* are included as areas, with their official Spanish-language curriculum text).
+
+### Base curriculum decrees (Decretos Forales 2022, ANEXO II)
+
+| Decree | Stage | BON |
+|--------|-------|-----|
+| Decreto Foral 61/2022 | Educación Infantil | BON 112, 07/06/2022 |
+| Decreto Foral 67/2022 | Educación Primaria | BON 130, 01/07/2022 |
+| Decreto Foral 71/2022 | Educación Secundaria Obligatoria | BON 155, 04/08/2022 |
+| Decreto Foral 72/2022 | Bachillerato | BON 170, 26/08/2022 |
+
+### Corrections / modifications reviewed
+
+- **Decreto Foral 51/2025** (modifies DF 71/2022 for ESO) and the timetable/implementation Órdenes Forales 62/63/64/67-2022 were reviewed. The timetable orders do not alter the stable curriculum content (competencias/criterios/saberes) the iDevice represents and are therefore not extracted.
+
+### Curriculum structure and mapping
+
+- The Lexnavarra HTML detail pages contain only the decree articulado; the per-area curriculum lives in the official ANEXO II PDFs (linked from the Gobierno de Navarra curriculum portal), which are the extraction source.
+- **Infantil** is kept by ciclo (`Primer ciclo (0-3 años)`, `Segundo ciclo (3-6 años)`). **Primaria** criterios/saberes are defined per ciclo and duplicated into each of the two concrete years of the cycle. **ESO/Bachillerato** are per course.
+- Each competencia's *Vinculación con el Perfil de salida* descriptores are copied onto every one of its criterios (checkbox mode — the teacher picks them explicitly; `descriptorsPerCriterion` is not set).
+- Single-course Bachillerato subjects whose specific course is fixed only in the separate timetable annex (not in ANEXO II) are made browsable in **both** Bachillerato years; this preserves the verbatim curriculum content for UI browsing.
+
+### Nivel labels (Spanish)
+
+`Educación Infantil`: `Primer ciclo (0-3 años)`, `Segundo ciclo (3-6 años)`. `Educación Primaria`: `1º`–`6º de Educación Primaria`. `Educación Secundaria Obligatoria`: `1º`–`4º de ESO`. `Bachillerato`: `1º`/`2º de Bachillerato`. Codes use the `ES-NC-` prefix with an embedded nivel tag (`INF1`, `PRI1`…`PRI6`, `ESO1`…`ESO4`, `BAC1`/`BAC2`).
+
+## `lomloe-ES-VC.json` — Comunitat Valenciana concretion
+
+Full extraction from the official **DOGV** (*Diari Oficial de la Generalitat Valenciana*) curriculum annexes published by the Generalitat Valenciana. **Language: Valencian.** All curriculum text is taken verbatim from the official Valencian-language sources — nothing is translated or paraphrased. No `ES-VC-es` (Spanish) variant is produced.
+
+### Base curriculum decrees (Decrets 2022)
+
+| Decree | Stage | Source |
+|--------|-------|--------|
+| Decret 100/2022 | Educació Infantil | DOGV 9402, 10/08/2022 (bilingual publication; Valencian column extracted) |
+| Decret 106/2022 | Educació Primària | DOGV annex `annexos_primaria.pdf` |
+| Decret 107/2022 | Educació Secundària Obligatòria | DOGV annex `ANEXOS_SECUND_VAL.pdf` (Annex III comunes + Annex IV optatives) |
+| Decret 108/2022 | Batxillerat | DOGV annex `annexes_bat_val.pdf` |
+
+### Issue #1883 attachments
+
+The Valencian curriculum annexes attached to issue **#1883** (provided by community contributors) were used as the extraction source for Primària, ESO and Batxillerat and cross-checked against the official DOGV publications. The Infantil annex was taken from the official DOGV bilingual publication of Decret 100/2022 (Valencian column).
+
+### Corrections / modifications reviewed
+
+- The DOGV *correccions d'errades* of Decrets 100/106/107/108-2022 and **Decret 66/2024** (modifies Decret 107/2022 for ESO) were reviewed. Modifications affecting evaluation/implementation annexes rather than the stable competencia/criteri/saber content are not represented in the dataset.
+
+### Curriculum structure and mapping
+
+- **Infantil**: the decree defines `criteris d'avaluació` as a single per-cycle list at the *area* level (not mapped to individual competències); this list is attached to the area's first competència and the remaining competències carry their statement/description without criteris, faithfully matching the source.
+- **Primària**: criteris/sabers are defined per cicle and duplicated into the concrete years of each cycle. The official annex labels each criteris column either by its cicle (`2n cicle (4t curs)`) or only by the cycle's reference year (`4t primària`, `4t de primària`, `4t curs EP`); both variants denote the **whole cicle** and are duplicated into both of its years — so a column printed without the literal word "cicle" is not collapsed onto its terminal year alone (this previously left `3r`/`5é` without criteris for *Educació Plàstica i Visual*, *Llengua Castellana* and *Matemàtiques*).
+- **Primària first cicle (1r i 2n) — criteris from the 2026 modification**: the in-force **Decret 106/2022** does **not** publish `criteris d'avaluació` for the first cicle (its Annex III tables only carry `2n cicle (4t curs)` and `3r cicle (6é curs)`; the *sabers bàsics* matrix does include a `1r cicle` column). The **2026 PROJECTE de modificació del Decret 106/2022** re-publishes apartat 6 of each àrea with a `1r cicle | 2n cicle | 3r cicle` table that adds the missing first-cicle column. We take **only that `1r cicle` column** (verbatim) into `1r`/`2n d'Educació Primària`; the in-force `2n`/`3r cicle` criteris already in `3r`–`6é` are left untouched. Both first-cicle years carry identical criteris. *Música i Dansa* keeps only the four competències the modification graduates to the 1r cicle (its digital competència 5 is not graduated). The text comes from the official modification project (a draft), so it may change if the decree is published with edits.
+- **ESO criteris — first-cycle block (1r–3r) + 4t**: Decret 107/2022 publishes criteris d'avaluació as a **first-cycle block (cursos 1r–3r)** plus a separate **4t** block (following RD 217/2022 arts. 8–9 and Decret 107/2022 arts. 10 & 12), not per individual course. A subject taught every year (Matemàtiques, Llengua Castellana, Geografia i Història, Llengua Estrangera, Educació Física) names its first-cycle column with a single representative course — the wording is editorially inconsistent across subjects (`2n d'ESO`, `3r ESO`, `SEGON CURS`, `2n ESO (1r cicle)`) — and its 4t column with 4t. The first-cycle criteris are duplicated into **1r, 2n and 3r**; previously they landed only on the named representative course, leaving the other first-cycle years empty. Subjects taught only in a real course pair carry **no** 4t column and keep their columns as the actual courses (Biologia i Geologia 1r/3r, Física i Química 2n/3r, Música 1r/2n, Tecnologia i Digitalització 1r/3r, Ed. Plàstica 2n/3r), so their untaught years stay correctly empty.
+- **Batxillerat / single-course ESO opció subjects**: per course; subjects without an explicit course label in the annex are made browsable in every year of the stage (as in Navarra).
+- **ESO *sabers bàsics* — all 27 subjects + Valencià.** The ESO sabers parser handles both source layouts: the X-mark matrix (with `4.N. Bloc M:`, `Bloc N.` or `4.N. <Title>` headers, and per-cycle/per-course mark columns) and the plain bulleted list with no per-course marks (emitted under a `TOTS` label that `build_dataset` maps to every nivel where the àrea has criteris). *Valencià: Llengua i Literatura* (`VLL`) is extracted from the decree section it shares with *Llengua Castellana* (the title is printed directly above it) and added to Primària and ESO.
+- **Descriptors / competències clau (`competencias_clave`)**: extracted from each materia's *Connexions amb les competències clau* matrix (secció 3) that maps every competència específica to its key-competence families. The Valencian DOGV decrees publish only the **family codes** (`CCL`, `CP`, `STEM`/`CMCT`, `CD`, `CPSAA`, `CC`, `CE`, `CCEC`) per competència. Coverage: **Primària 9/9 àrees**, **ESO 26/28** (EE partial, LCA states its links as prose). Genuine source limits (not parse gaps): **Infantil** has no per-CE descriptor model; **Batxillerat**'s "connexions" pages are narrative prose with no per-CE matrix; ESO LCA likewise.
+- **Why there are no *numbered* operatius (`CCL1`, `STEM2.3`…)**: those appear only in the decrees' preamble *catalogue* (definitions), never linked per competència (confirmed by OCR). They cannot be borrowed from the state RDs either, because **the Valencian decrees author their own competències específiques rather than adopting the state ones verbatim** — e.g. ESO *Biologia i Geologia* has **11** competències in Decret 107/2022 vs **6** in RD 217/2022, with different wording and no 1:1 correspondence. Grafting the RD's numbered descriptors onto the renumbered Valencian competències would mis-map curriculum content, so the dataset keeps the DOGV's own per-competència family codes. Numbered operatius would require a hand-curated, expert VC↔RD competència alignment.
+- **Descriptor text in Valencian (`descriptors` catalogue)**: ES-VC ships the optional per-dataset `descriptors` override (see [Optional per-dataset descriptor catalogue](#optional-per-dataset-descriptor-catalogue-descriptors)) with the **Valencian** perfil-d'eixida wording — the 8 families + `CMCT` + the full numbered set `CCL1`…`CCEC4.2`, extracted verbatim from the DOGV decree preambles — so a teacher on the Valencian dataset sees Valencian descriptor text in the editor and exports. The shared Castilian catalogues also gained the previously-missing `CMCT` entry (ES-VC uses `CMCT` 1352× and its badges had no tooltip before).
+- Note: a small number of Valencian clitic line-break hyphens (e.g. `participant-hi`) may be joined during de-hyphenation; affected items remain otherwise verbatim.
+
+### Nivel labels (Valencian)
+
+`Educació Infantil`: `Primer cicle (0-3 anys)`, `Segon cicle (3-6 anys)`. `Educació Primària`: `1r`–`6é d'Educació Primària`. `Educació Secundària Obligatòria`: `1r`–`4t d'ESO`. `Batxillerat`: `1r`/`2n de Batxillerat`. Codes use the `ES-VC-` prefix with an embedded nivel tag (`INF1`, `PRI1`…`PRI6`, `ESO1`…`ESO4`, `BAT1`/`BAT2`).
+
+### Generator scripts (Navarra + Valencia)
+
+A Python generator (`generate_lomloe_navarra_valencia.py`, requires `beautifulsoup4` + `pdfplumber`) implements the multi-column PDF extraction (column detection from cycle/course headers and code markers, header/footer stripping, deterministic ordered output). It is **attached to the PR** rather than committed to the repo, following the precedent of the other regional datasets.
 
 ## Data source (Canary Islands)
 
