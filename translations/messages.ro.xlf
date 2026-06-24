@@ -15465,6 +15465,26 @@
         <source>Sorry, that's incorrect... The right answer is:</source>
         <target>~Ne pare rău, este incorect... Răspunsul corect este:</target>
       </trans-unit>
+      <trans-unit id="wtov2pg" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stil instalat</target>
+      </trans-unit>
+      <trans-unit id="safz1qd" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Stilul a fost instalat cu succes.</target>
+      </trans-unit>
+      <trans-unit id="3xzv34q" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Se editează iDevice-ul. Alte acțiuni sunt dezactivate până când salvați sau renunțați.</target>
+      </trans-unit>
+      <trans-unit id="dgzirxb" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Ați terminat de editat iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="wc9vz6h" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
