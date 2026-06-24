@@ -639,37 +639,84 @@ export async function updateProjectVisibilityByUuid(
  * Find unsaved projects older than specified age
  * Used for cleanup of abandoned projects that were never saved
  *
+ * Safety guard (#1932): a project is only eligible for auto-deletion when it is
+ * private AND has no collaborators. A shared/public project — or one with
+ * collaborators — can hold real collaborative work even while `saved_once = 0`
+ * (the flag is flipped by a best-effort, client-driven save when collaboration
+ * starts, which may not complete), so such projects are never returned here.
+ *
+ * The collaborator guard uses a correlated EXISTS rather than `id NOT IN (subquery)`
+ * for cross-database portability and to avoid the NULL pitfalls of `NOT IN` (a single
+ * NULL in the subquery makes `NOT IN` return no rows on SQLite/PostgreSQL/MySQL alike).
+ *
  * @param db - Kysely database instance
  * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
- * @returns Array of projects with saved_once = 0 older than maxAgeMs
+ * @returns Array of private, collaborator-free projects with saved_once = 0 older than maxAgeMs
  */
 export async function findUnsavedProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
     const cutoffTime = now() - maxAgeMs;
-    return db
-        .selectFrom('projects')
-        .selectAll()
-        .where('saved_once', '=', 0)
-        .where('created_at', '<', cutoffTime)
-        .execute();
+    return (
+        db
+            .selectFrom('projects')
+            .selectAll()
+            .where('saved_once', '=', 0)
+            .where('created_at', '<', cutoffTime)
+            // Never auto-delete shared work: only private projects are eligible.
+            .where('visibility', '=', 'private')
+            // ...and only when nobody else has been granted access.
+            .where(eb =>
+                eb.not(
+                    eb.exists(
+                        eb
+                            .selectFrom('project_collaborators')
+                            .select('project_collaborators.project_id')
+                            .whereRef('project_collaborators.project_id', '=', 'projects.id'),
+                    ),
+                ),
+            )
+            .execute()
+    );
 }
 
 /**
  * Find projects owned by guest users older than specified age
  * Guest users have email pattern: guest_*@guest.local
  *
+ * Safety guard (#1932): mirrors findUnsavedProjectsOlderThan — a guest project is
+ * only eligible for hard-deletion when it is private AND has no collaborators. A
+ * shared/public guest project, or one with collaborators, can hold real
+ * collaborative work and must never be auto-deleted. The collaborator guard uses a
+ * correlated EXISTS (not `id NOT IN (subquery)`) for cross-database portability and
+ * to avoid the NULL pitfalls of `NOT IN`.
+ *
  * @param db - Kysely database instance
  * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
- * @returns Array of projects owned by guest users older than maxAgeMs
+ * @returns Array of private, collaborator-free guest projects older than maxAgeMs
  */
 export async function findGuestProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
     const cutoffTime = now() - maxAgeMs;
-    return db
-        .selectFrom('projects')
-        .innerJoin('users', 'projects.owner_id', 'users.id')
-        .selectAll('projects')
-        .where('users.email', 'like', 'guest_%@guest.local')
-        .where('projects.updated_at', '<', cutoffTime)
-        .execute();
+    return (
+        db
+            .selectFrom('projects')
+            .innerJoin('users', 'projects.owner_id', 'users.id')
+            .selectAll('projects')
+            .where('users.email', 'like', 'guest_%@guest.local')
+            .where('projects.updated_at', '<', cutoffTime)
+            // Never auto-delete shared work: only private projects are eligible.
+            .where('projects.visibility', '=', 'private')
+            // ...and only when nobody else has been granted access.
+            .where(eb =>
+                eb.not(
+                    eb.exists(
+                        eb
+                            .selectFrom('project_collaborators')
+                            .select('project_collaborators.project_id')
+                            .whereRef('project_collaborators.project_id', '=', 'projects.id'),
+                    ),
+                ),
+            )
+            .execute()
+    );
 }
 
 /**

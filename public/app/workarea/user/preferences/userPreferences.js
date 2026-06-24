@@ -99,7 +99,8 @@ export default class UserPreferences {
     }
 
     /**
-     * Add notice for static mode users that preferences require page refresh
+     * Add notice for static mode users that changing the language may require
+     * reloading or reopening the app to update the whole interface.
      * @private
      */
     _addStaticModeNotice() {
@@ -114,7 +115,9 @@ export default class UserPreferences {
         notice.id = 'preferences-static-notice';
         notice.className = 'alert alert-info';
         notice.setAttribute('role', 'alert');
-        notice.textContent = _('Preferences will be applied after refreshing the page.');
+        notice.textContent = _(
+            'Language changes may require reloading or reopening eXeLearning to update the whole interface.'
+        );
 
         // Insert at the beginning of the body
         body.prepend(notice);
@@ -249,8 +252,8 @@ export default class UserPreferences {
         if (!body) return;
 
         const message = typeof _ === 'function'
-            ? _('Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.')
-            : 'Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.';
+            ? _('The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.')
+            : 'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.';
 
         let warning = body.querySelector('#preferences-reload-warning');
         if (!warning) {
