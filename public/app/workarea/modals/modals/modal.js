@@ -657,7 +657,12 @@ export default class Modal {
         downloadLink.click();
         document.body.removeChild(downloadLink);
 
-        URL.revokeObjectURL(url);
+        // Defer revocation so asynchronous download handlers can still read the
+        // blob. In Electron the global click interceptor in asset_url_resolver.js
+        // routes blob: downloads through saveBufferAs, which fetches the blob URL
+        // on a later microtask; revoking synchronously here would invalidate the
+        // URL first and abort the save with ERR_FILE_NOT_FOUND (issue #1947).
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
     /*******************************************************************************

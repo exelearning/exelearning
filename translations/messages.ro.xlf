@@ -15357,13 +15357,133 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Generează previzualizarea circuitului înainte de salvare</target>
       </trans-unit>
-      <trans-unit id="fomg7k4" resname="Do you want to save changes before creating a new file?">
-        <source>Do you want to save changes before creating a new file?</source>
-        <target></target>
+      <trans-unit id="67oeim1" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captură de ecran</target>
       </trans-unit>
-      <trans-unit id="t0v6idj" resname="Don&apos;t Save">
-        <source>Don't Save</source>
-        <target></target>
+      <trans-unit id="egfkd32" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Previzualizare captură de ecran a proiectului curent</target>
+      </trans-unit>
+      <trans-unit id="7gfncu2" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Nu există încă o captură de ecran. Va fi generată automat la salvare sau export.</target>
+      </trans-unit>
+      <trans-unit id="j6qe17o" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Încarcă imagine personalizată</target>
+      </trans-unit>
+      <trans-unit id="du7886u" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Captura de ecran trebuie să fie mai mică de 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="9ghh8cs" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imagine nevalidă</target>
+      </trans-unit>
+      <trans-unit id="fjtviff" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~Imaginea nu îndeplinește cerințele minime: raport de aspect 16:9 și cel puțin 600 de pixeli lățime.</target>
+      </trans-unit>
+      <trans-unit id="jhvmhtj" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Generează din conținut</target>
+      </trans-unit>
+      <trans-unit id="32qsnol" resname="Not available">
+        <source>Not available</source>
+        <target>~Indisponibil</target>
+      </trans-unit>
+      <trans-unit id="6x5jja9" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~Generarea capturii de ecran nu este disponibilă.</target>
+      </trans-unit>
+      <trans-unit id="pa6zoby" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Generare eșuată</target>
+      </trans-unit>
+      <trans-unit id="u8lue0h" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Nu s-a putut genera captura din conținut. Încearcă să încarci o imagine în schimb.</target>
+      </trans-unit>
+      <trans-unit id="8c2d6qj" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Înlocuiește captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="3eqbaf1" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Aceasta va șterge imaginea curentă. Dorești să continui?</target>
+      </trans-unit>
+      <trans-unit id="qziik0s" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Șterge captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="72zdvo8" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Ștergi imaginea curentă? Această acțiune nu poate fi anulată.</target>
+      </trans-unit>
+      <trans-unit id="pxch4ab" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomandări</target>
+      </trans-unit>
+      <trans-unit id="76w0thd" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Folosește o imagine 16:9 (se recomandă 1280×720 px) care să reprezinte clar conținutul principal al resursei de învățare. Evită aglomerarea și textul mic și asigură un contrast bun pentru lizibilitate la dimensiuni mici.</target>
+      </trans-unit>
+      <trans-unit id="bt3odta" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~Imaginea va fi folosită ca previzualizare a acestei resurse educaționale pe diferite platforme.</target>
+      </trans-unit>
+      <trans-unit id="3is1mdt" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Moleculă 3D</target>
+      </trans-unit>
+      <trans-unit id="riup14d" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molecule 3D</target>
+      </trans-unit>
+      <trans-unit id="4bv02yj" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Lăț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="qohgl6u" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Înălț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="uyzr3cq" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="7icorgp" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~Lățimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="gxoq8hj" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~Înălțimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="fbslxqe" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ne pare rău, este incorect... Răspunsul corect este:</target>
+      </trans-unit>
+      <trans-unit id="wtov2pg" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stil instalat</target>
+      </trans-unit>
+      <trans-unit id="safz1qd" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Stilul a fost instalat cu succes.</target>
+      </trans-unit>
+      <trans-unit id="3xzv34q" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Se editează iDevice-ul. Alte acțiuni sunt dezactivate până când salvați sau renunțați.</target>
+      </trans-unit>
+      <trans-unit id="dgzirxb" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Ați terminat de editat iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="wc9vz6h" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
       </trans-unit>
     </body>
   </file>

@@ -452,6 +452,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
             addMathJax: meta.addMathJax === true,
+            // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
+            addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             isScorm: true,

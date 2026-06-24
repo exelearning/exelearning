@@ -15357,13 +15357,133 @@
         <source>Please render the circuit preview before saving.</source>
         <target>~Genera la vista prèvia del circuit abans de guardar</target>
       </trans-unit>
-      <trans-unit id="ur8iogv" resname="Do you want to save changes before creating a new file?">
-        <source>Do you want to save changes before creating a new file?</source>
-        <target></target>
+      <trans-unit id="nhub00v" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captura de pantalla</target>
       </trans-unit>
-      <trans-unit id="sgrq89v" resname="Don&apos;t Save">
-        <source>Don't Save</source>
-        <target></target>
+      <trans-unit id="5wutt35" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Previsualització de la captura del projecte actual</target>
+      </trans-unit>
+      <trans-unit id="oxrcqlr" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Encara no hi ha captura de pantalla. Es generarà automàticament en guardar o exportar.</target>
+      </trans-unit>
+      <trans-unit id="wr21xae" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Puja una imatge personalitzada</target>
+      </trans-unit>
+      <trans-unit id="1itmfm4" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~La captura de pantalla ha de ser inferior a 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="y0t2r4s" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imatge no vàlida</target>
+      </trans-unit>
+      <trans-unit id="brbv4og" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~La imatge no compleix els requisits mínims: relació d'aspecte 16:9 i almenys 600 píxels d'amplada.</target>
+      </trans-unit>
+      <trans-unit id="ekn9t49" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Genera des del contingut</target>
+      </trans-unit>
+      <trans-unit id="rdkimdz" resname="Not available">
+        <source>Not available</source>
+        <target>~No disponible</target>
+      </trans-unit>
+      <trans-unit id="p85210k" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~La generació de captures de pantalla no està disponible.</target>
+      </trans-unit>
+      <trans-unit id="ztsqmyb" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Error en la generació</target>
+      </trans-unit>
+      <trans-unit id="f1t4ifq" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~No s'ha pogut generar la captura des del contingut. Prova a pujar una imatge.</target>
+      </trans-unit>
+      <trans-unit id="sxx6qq2" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Substituïx la captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="3cjr4d1" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Açò eliminarà la imatge actual. Vols continuar?</target>
+      </trans-unit>
+      <trans-unit id="uf2pvm8" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Elimina la captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="6rlpmrf" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Elimines la imatge actual? Esta acció no es pot desfer.</target>
+      </trans-unit>
+      <trans-unit id="gy1tkjb" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomanacions</target>
+      </trans-unit>
+      <trans-unit id="j22o1ai" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Utilitza una imatge 16:9 (es recomanen 1280×720 px) que represente clarament el contingut principal del recurs educatiu. Evita el desordre i el text menut, i assegura un bon contrast per a la llegibilitat en grandàries reduïdes.</target>
+      </trans-unit>
+      <trans-unit id="x0ec2vs" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~La imatge s'utilitzarà com a previsualització d'este recurs educatiu en diferents plataformes.</target>
+      </trans-unit>
+      <trans-unit id="sanaf2j" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Molècula 3D</target>
+      </trans-unit>
+      <trans-unit id="kcc41ya" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molècules 3D</target>
+      </trans-unit>
+      <trans-unit id="ijod1pb" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Amplada màx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="2xhv5s3" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Alçada màx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="zlp2t7q" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~p. ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="4v8qkam" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~L'amplada màx. ha de ser superior a 0 i usar px, em, rem o % (p. ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="rb075qo" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~L'alçada màx. ha de ser superior a 0 i usar px, em, rem o % (p. ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="k75vl4p" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ho sentim, és incorrecte... La resposta correcta és:</target>
+      </trans-unit>
+      <trans-unit id="aze7wdk" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Estil instal·lat</target>
+      </trans-unit>
+      <trans-unit id="19i85yt" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~L'estil s'ha instal·lat correctament.</target>
+      </trans-unit>
+      <trans-unit id="0yr3lub" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Editant el iDevice. La resta d'accions estan desactivades fins que guardeu o descarteu els canvis.</target>
+      </trans-unit>
+      <trans-unit id="qjhlam3" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Heu acabat d'editar el iDevice.</target>
+      </trans-unit>
+      <trans-unit id="65jrj0v" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Guardeu o descarteu el iDevice obert abans de guardar el projecte.</target>
       </trans-unit>
     </body>
   </file>
