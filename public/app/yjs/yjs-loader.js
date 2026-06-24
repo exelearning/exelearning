@@ -99,6 +99,7 @@
     // Group 4: Bridge components (depend on exporters)
     [
       'SaveManager.js',
+      'CollaborativeAutosaveManager.js',  // Collaborative autosave coordinator (issue #1592), used by the bridge
       'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',

@@ -7539,4 +7539,119 @@ describe('YjsProjectBridge', () => {
       document.createElement = originalCreateElement;
     });
   });
+
+  describe('collaborative autosave integration (issue #1592)', () => {
+    class MockCollaborativeAutosaveManager {
+      constructor(bridgeRef, options) {
+        this.bridgeRef = bridgeRef;
+        this.options = options || {};
+        this.started = false;
+        this.destroyed = false;
+      }
+      start() {
+        this.started = true;
+      }
+      cancel() {}
+      destroy() {
+        this.destroyed = true;
+      }
+    }
+
+    beforeEach(async () => {
+      global.window.CollaborativeAutosaveManager = MockCollaborativeAutosaveManager;
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('creates and starts a collaborative autosave manager on enableAutoSync', () => {
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave).toBeInstanceOf(MockCollaborativeAutosaveManager);
+      expect(bridge.collaborativeAutosave.started).toBe(true);
+      expect(bridge.collaborativeAutosave.bridgeRef).toBe(bridge);
+    });
+
+    it('does not throw when CollaborativeAutosaveManager is unavailable', () => {
+      delete global.window.CollaborativeAutosaveManager;
+      expect(() => bridge.enableAutoSync()).not.toThrow();
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('passes the idle delay override from window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__', () => {
+      global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 1500;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBe(1500);
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+    });
+
+    it('uses the default idle delay when no override is set', () => {
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBeUndefined();
+    });
+
+    it('destroys and clears the autosave manager on disconnect', async () => {
+      bridge.enableAutoSync();
+      const manager = bridge.collaborativeAutosave;
+      await bridge.disconnect();
+      expect(manager.destroyed).toBe(true);
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('routes autosave phase changes to the collaborative status notice', () => {
+      const renderSpy = spyOn(bridge, '_updateCollaborativeSaveStatus').mockImplementation(() => {});
+      bridge.enableAutoSync();
+      bridge.collaborativeAutosave.options.onStatusChange('saving');
+      expect(renderSpy).toHaveBeenCalledWith('saving');
+    });
+  });
+
+  describe('_updateCollaborativeSaveStatus (issue #1592)', () => {
+    function makeFakeStatusEl() {
+      const classes = new Set(['d-none']);
+      const span = { textContent: '' };
+      return {
+        classList: {
+          add: (...c) => c.forEach((x) => classes.add(x)),
+          remove: (...c) => c.forEach((x) => classes.delete(x)),
+          contains: (x) => classes.has(x),
+        },
+        querySelector: () => span,
+        setAttribute: mock(() => undefined),
+        _classes: classes,
+        _span: span,
+      };
+    }
+
+    it('does nothing when the notice element is absent', () => {
+      global.document.getElementById = mock(() => null);
+      expect(() => bridge._updateCollaborativeSaveStatus('pending')).not.toThrow();
+    });
+
+    it('renders the failed message and reveals the notice', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('failed');
+      expect(el._span.textContent).toBe('Autosave failed. Please click Save before leaving.');
+      expect(el._classes.has('collab-save-status--failed')).toBe(true);
+      expect(el._classes.has('d-none')).toBe(false);
+      expect(el.setAttribute).toHaveBeenCalledWith(
+        'title',
+        'Autosave failed. Please click Save before leaving.'
+      );
+    });
+
+    it('renders the clean message', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('clean');
+      expect(el._span.textContent).toBe('All collaborative changes are saved.');
+      expect(el._classes.has('collab-save-status--clean')).toBe(true);
+    });
+
+    it('ignores unknown phases without revealing the notice', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('bogus');
+      expect(el._classes.has('d-none')).toBe(true);
+    });
+  });
 });
