@@ -14,6 +14,10 @@
 - Reviewed and completed Spanish (ES) translation
 - Added automated placeholder translations for new strings in incomplete translations
 
+### Changed
+
+- LOMLOE iDevice: the Galicia (ES-GA) dataset is temporarily hidden pending formal definition of its official curriculum requirements (see #1900)
+
 ### Fixed
 
 - Security: multiple hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
