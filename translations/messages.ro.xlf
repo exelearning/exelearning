@@ -15465,6 +15465,42 @@
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
       </trans-unit>
+      <trans-unit id="xmec942" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ga8h4a1" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c33jtnl" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xsfwqoo" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gowl21n" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d794hcn" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="95dflc0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y9c5p4t" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="55qb83u" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
