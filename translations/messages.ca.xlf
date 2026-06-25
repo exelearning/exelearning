@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Nou fitxer</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crea un fitxer nou sense desar</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Desant el projecte...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>No pots afegir un iDevice a la pàgina arrel</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema en afegir l'iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml no trobat al ZIP</target>
       </trans-unit>
-      <trans-unit id="nu62n9p" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Aquest estil no es pot descarregar</target>
-      </trans-unit>
       <trans-unit id="yjbmryo" resname="Style already exists">
         <source>Style already exists</source>
         <target>~L'estil ja existeix</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="yxp77kp" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Seran redirigits automàticament a la pàgina de nivell superior.</target>
-      </trans-unit>
-      <trans-unit id="hncpzpd" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~Les preferències s'aplicaran després d'actualitzar la pàgina.</target>
-      </trans-unit>
-      <trans-unit id="hw8yi8h" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~És necessari recarregar la pàgina per aplicar els canvis. Descarrega el teu projecte primer per no perdre feina. Després recarrega la pàgina.</target>
       </trans-unit>
       <trans-unit id="n1mjhxq" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>

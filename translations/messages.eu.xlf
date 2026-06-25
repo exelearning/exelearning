@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Fitxategi berria</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Gorde gabe fitxategi berria sortu</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Proiektua gordetzen...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Ezin da iDevicea gehitu erroko orrian</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Arazoa iDevicea gehitzerakoan</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml ez da aurkitu ZIP artxiboan</target>
       </trans-unit>
-      <trans-unit id="vu1hlkx" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Estilo hau ezin da deskargatu</target>
-      </trans-unit>
       <trans-unit id="010mtjt" resname="Style already exists">
         <source>Style already exists</source>
         <target>Estilo hori jada existitzen da</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="tct21y6" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Automatikoki goragoko mailako orrialdera bideratuko dira.</target>
-      </trans-unit>
-      <trans-unit id="5c4y17c" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Lehentasunak orria eguneratu ondoren aplikatuko dira.</target>
-      </trans-unit>
-      <trans-unit id="wque1se" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Aldaketak aplikatzeko orria berriro kargatu behar da. Mesedez, lehenik deskargatu zure proiektua lana ez galtzeko, eta gero kargatu berriro orria.</target>
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>

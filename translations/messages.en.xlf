@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target></target>
@@ -4527,10 +4523,6 @@
       </trans-unit>
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
         <target></target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
@@ -13365,10 +13357,6 @@
         <source>config.xml not found in ZIP</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="dx8uoqf" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="3hwxc7e" resname="Style already exists">
         <source>Style already exists</source>
         <target></target>
@@ -13447,14 +13435,6 @@
       </trans-unit>
       <trans-unit id="t2egcmx" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="28b2snj" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="9w1d6h0" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="4iq4b75" resname="You have unsaved changes. Are you sure you want to leave?">

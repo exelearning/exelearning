@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Nuovo file</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crea un nuovo file senza salvare il progetto</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Salvataggio del progetto...</target>
@@ -4528,10 +4524,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Non puoi aggiungere un iDevice nella pagina delle Proprietà</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema con l'aggiunta di iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml non trovato nello ZIP</target>
       </trans-unit>
-      <trans-unit id="i1jojwp" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Questo stile non può essere scaricato</target>
-      </trans-unit>
       <trans-unit id="783er8y" resname="Style already exists">
         <source>Style already exists</source>
         <target>Lo stile esiste già</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="09m6xzz" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Verranno reindirizzati automaticamente alla pagina superiore.</target>
-      </trans-unit>
-      <trans-unit id="43fshpx" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Le preferenze verranno applicate dopo aver aggiornato la pagina.</target>
-      </trans-unit>
-      <trans-unit id="erpvvs8" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Le modifiche richiedono il ricaricamento della pagina per avere effetto. Scarica prima il progetto per non perdere il lavoro, poi ricarica la pagina.</target>
       </trans-unit>
       <trans-unit id="enfs0qn" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>

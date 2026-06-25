@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Fișier nou</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Creează fișier nou fără a salva</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Se salvează proiectul...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Nu puteți adăuga un iDevice pe pagina principală</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema la adăugarea iDevice-ului</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml nu a fost găsit în ZIP</target>
       </trans-unit>
-      <trans-unit id="cu49yos" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Acest stil nu poate fi descărcat</target>
-      </trans-unit>
       <trans-unit id="x7kouct" resname="Style already exists">
         <source>Style already exists</source>
         <target>Stilul deja există</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="ujy8vwh" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Vor fi redirecționați automat către pagina de nivel superior.</target>
-      </trans-unit>
-      <trans-unit id="vtiv805" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Preferințele vor fi aplicate după reîmprospătarea paginii.</target>
-      </trans-unit>
-      <trans-unit id="rbvvztp" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Modificările necesită o reîncărcare a paginii pentru a intra în vigoare. Vă rugăm să descărcați mai întâi proiectul pentru a evita pierderea lucrării, apoi reîncărcați pagina.</target>
       </trans-unit>
       <trans-unit id="ho5a2tz" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>

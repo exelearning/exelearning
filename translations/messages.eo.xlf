@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>~Nova dosiero</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>~Krei novan dosieron sen konservi</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>~Konservas la projekton...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>~Vi ne povas aldoni iDevice en la ĉefpaĝo</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>~Problemo aldoni iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml ne trovita en la ZIP</target>
       </trans-unit>
-      <trans-unit id="6g70xum" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Ĉi tiu stilo ne povas esti elŝutita</target>
-      </trans-unit>
       <trans-unit id="pfq6z0d" resname="Style already exists">
         <source>Style already exists</source>
         <target>~La stilo jam ekzistas</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="9w78mzz" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Ili estos aŭtomate redirektitaj al la superrega paĝo.</target>
-      </trans-unit>
-      <trans-unit id="04ta28o" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~La preferoj estos aplikitaj post la paĝa ĝisdatigo.</target>
-      </trans-unit>
-      <trans-unit id="2yatdge" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~Estas necesas reŝargi la paĝon por apliki la ŝanĝojn. Unue elŝutu vian projekton por ne perdi laboron. Poste reŝarĝu la paĝon.</target>
       </trans-unit>
       <trans-unit id="6l88wq6" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
