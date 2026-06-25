@@ -49,6 +49,10 @@
 
 - esbuild: 0.27.7 → 0.28.1
 
+### Removed
+
+- Removed the `<downloadable>` option from style `config.xml`; styles are now always downloadable
+
 ---
 
 ## v4.0.1 – 2026-06-09
