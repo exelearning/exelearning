@@ -29,6 +29,14 @@ var $exeDevice = {
     tikzFinishedHandler: null,
     tikzCapturePromise: null,
 
+    // Per-circuit TikZJax compile budget for the AI save flow. The very first
+    // circuit also pays TikZJax's one-time WebAssembly cold start, which on a
+    // slow browser (e.g. Firefox CI) easily exceeds the warm budget, so give it
+    // a much longer window before treating a valid circuit as un-renderable;
+    // every later circuit renders on the warm engine and uses the normal budget.
+    tikzRenderTimeoutMs: 15000,
+    tikzColdStartTimeoutMs: 60000,
+
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -1211,7 +1219,7 @@ var $exeDevice = {
      * generated". TikZJax gives no reliable error event, so a circuit that never
      * compiles relies on that timeout.
      */
-    renderTikzCodeToSvg: function (code, timeoutMs = 15000) {
+    renderTikzCodeToSvg: function (code, timeoutMs = $exeDevice.tikzRenderTimeoutMs) {
         const normalized = $exeDevice.normalizeTikzCode(code);
         const preview = document.getElementById('elceTikzPreview');
         if (!normalized || !preview) {
@@ -2751,6 +2759,7 @@ var $exeDevice = {
         $exeDevice.showCircuitGenerationModal();
         try {
             const validQuestions = [];
+            let isFirstRender = true;
             for (let i = 0; i < parsed.questions.length; i++) {
                 const question = parsed.questions[i];
                 const code = (question.tikzCode || '').trim();
@@ -2759,7 +2768,14 @@ var $exeDevice = {
                     validQuestions.push(question);
                     continue;
                 }
-                const svg = await $exeDevice.renderTikzCodeToSvg(code);
+                // Absorb TikZJax's one-time WASM cold start on the first compiled
+                // circuit so a valid circuit is not wrongly discarded on a slow
+                // browser; the engine is warm for the rest.
+                const timeoutMs = isFirstRender
+                    ? $exeDevice.tikzColdStartTimeoutMs
+                    : $exeDevice.tikzRenderTimeoutMs;
+                isFirstRender = false;
+                const svg = await $exeDevice.renderTikzCodeToSvg(code, timeoutMs);
                 if (svg) {
                     question.tikzSvg = svg;
                     validQuestions.push(question);

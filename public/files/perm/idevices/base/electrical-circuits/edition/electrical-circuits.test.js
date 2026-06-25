@@ -785,6 +785,31 @@ describe('electrical-circuits iDevice edition', () => {
         );
     });
 
+    it('insertAIQuestions gives the first circuit the cold-start timeout and the rest the warm one', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(
+            () => {}
+        );
+        vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+        const render = vi
+            .spyOn($exeDevice, 'renderTikzCodeToSvg')
+            .mockResolvedValue('<svg></svg>');
+
+        const first =
+            'First#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+        const second =
+            'Second#\\begin{circuitikz}\\draw (1,1);\\end{circuitikz}#A#Q#Opt A#Opt B';
+        await $exeDevice.insertAIQuestions([first, second], []);
+
+        // The first compiled circuit pays the WASM cold start, so it gets the
+        // generous budget; later circuits render on the warm engine.
+        expect(render).toHaveBeenCalledTimes(2);
+        expect(render.mock.calls[0][1]).toBe($exeDevice.tikzColdStartTimeoutMs);
+        expect(render.mock.calls[1][1]).toBe($exeDevice.tikzRenderTimeoutMs);
+    });
+
     it('insertAIQuestions returns shared format-invalid lines and skips insertion when nothing is valid', async () => {
         vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(
             () => {}
