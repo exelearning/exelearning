@@ -1,16 +1,28 @@
 $exe.tooltips = {
 	className : "exe-tooltip",
 	init : function(path){
-		this.path = path;
-		this.viewport = $(window);
-		var as = $("A."+$exe.tooltips.className);
-		if (as.length>0) {
-			this.links = as;
-			this.loadCSS();
-            this.loadJS();
-		}
-		if (window.location.protocol.indexOf("http")==0) this.isAJAXAllowed = true;
-		if (document.body.className.indexOf("exe-single-page")!=-1) this.isAJAXAllowed = false; // To review
+		var self = this;
+		// Defer execution to the next event loop tick to ensure $exeFX.init() has completed first.
+		setTimeout(function() {
+			self.path = path;
+			self.viewport = $(window);
+
+			var as = $("A." + $exe.tooltips.className);
+
+			if (as.length > 0) {
+				self.links = as;
+				self.loadCSS();
+				self.loadJS();
+			}
+
+			if (window.location.protocol.indexOf("http") === 0) {
+				self.isAJAXAllowed = true;
+			}
+
+			if (document.body.className.indexOf("exe-single-page") !== -1) {
+				self.isAJAXAllowed = false;
+			}
+		}, 0);
 	},
 	loadCSS : function() {
 		// We can't use this in Safari $exe.loadScript("jquery.qtip.min.css","$exe.tooltips.loadJS()"); because the callback function won't work with CSS files in that browser, so we just call this.loadJS(); (see line 7)
