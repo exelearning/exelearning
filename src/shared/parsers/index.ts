@@ -50,3 +50,41 @@ export {
     type ParsedTranslations,
     type TranslationFileSystemReader,
 } from './translation-parser';
+
+// Unified compact activity authoring format parser (issue #1228)
+export {
+    parseUnifiedActivityLine,
+    parseUnifiedActivityLines,
+    type UnifiedActivityKind,
+    type DiagnosticSeverity,
+    type UnifiedActivityDiagnostic,
+    type UnifiedActivityParams,
+    type UnifiedActivityItemBase,
+    type UnifiedSelectionItem,
+    type UnifiedTrueFalseItem,
+    type FillToken,
+    type UnifiedFillBlankItem,
+    type UnifiedFlashcardItem,
+    type UnifiedActivityItem,
+    type UnifiedActivityParseOptions,
+    type UnifiedActivityParseResult,
+    type UnifiedActivityParseBatchResult,
+} from './unified-activity-format';
+
+// Unified activity format adapters (normalized model -> iDevice data)
+export {
+    unifiedSelectionToFormQuestion,
+    unifiedTrueFalseToTrueOrFalseQuestion,
+    unifiedTrueFalseToFormQuestion,
+    unifiedFillBlankToFormQuestion,
+    unifiedFlashcardToFlipCard,
+    unifiedItemsToFormQuestionsData,
+    flipCardDefault,
+    type FormSelectionQuestion,
+    type FormTrueFalseQuestion,
+    type FormFillQuestion,
+    type FormQuestion,
+    type TrueOrFalseQuestion,
+    type FlipCard,
+    type FormQuestionsResult,
+} from './unified-activity-adapters';

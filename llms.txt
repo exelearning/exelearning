@@ -28,6 +28,7 @@
 - [iDevice content patterns](doc/elpx-format/idevices/patterns.md): the four storage patterns (Standard JSON, URI-encoded JSON, `<script type="application/json">`, `htmlView`-only) with decision flow
 - [Per-iDevice config.xml](doc/elpx-format/idevices/config-xml.md): schema for the `config.xml` in `public/files/perm/idevices/base/<type>/`
 - [iDevice XML snippets](doc/elpx-format/idevices/snippets.md): copy-pasteable `<odeComponent>` XML for every type, extracted from real fixtures
+- [Unified compact activity authoring format](doc/elpx-format/idevices/unified-authoring-format.md): the `#`-separator + `@parameter` authoring syntax (issue #1228) with grammar, escaping, iDevice mapping and limitations
 
 ## ELPX format — resources, themes, assets
 

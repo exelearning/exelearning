@@ -24,10 +24,10 @@ See also:
 | `example` | Example | Information and presentation | 1 | 3.0 | json | — |
 | `trueorfalse` | True or false | Assessment and tracking | 0 | 3.0 | json | `TrueFalseIdevice`, `VerdaderoFalsoFPDIdevice`, `VerdaderofalsofpdIdevice` |
 | `quick-questions` | Test | Assessment and tracking | 0 | — | — | `QuizTestIdevice`, `ScormTestIdevice` |
-| `quick-questions-multiple-choice` | Select | Assessment and tracking | 0 | — | — | `MultichoiceIdevice`, `EleccionmultiplefpdIdevice` |
+| `quick-questions-multiple-choice` | Select | Assessment and tracking | 0 | — | — | — |
 | `quick-questions-video` | Video test | Assessment and tracking | 0 | — | — | — |
 | `interactive-video` | Interactive video | Assessment and tracking | 0 | — | — | — |
-| `form` | Form | Assessment and tracking | 0 | 3.0 | json | `ClozeIdevice`, `ClozeActivityIdevice`, `ClozeLanguageIdevice`, `ClozeLangIdevice`, `MultiSelectIdevice`, `SeleccionmultiplefpdIdevice`, `ClozefpdIdevice`, `ClozelangfpdIdevice` |
+| `form` | Form | Assessment and tracking | 0 | 3.0 | json | `MultichoiceIdevice`, `MultiSelectIdevice`, `EleccionmultiplefpdIdevice`, `SeleccionmultiplefpdIdevice`, `ClozeIdevice`, `ClozeActivityIdevice`, `ClozeLanguageIdevice`, `ClozeLangIdevice`, `ClozefpdIdevice`, `ClozelangfpdIdevice` |
 | `guess` | Guess | Assessment and tracking | 0 | — | — | — |
 | `checklist` | Checklist | Assessment and tracking | 0 | — | — | — |
 | `rubric` | Rubric | Assessment and tracking | 0 | — | — | — |

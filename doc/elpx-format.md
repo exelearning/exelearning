@@ -56,6 +56,7 @@ Because the package contains both the editable source and the rendered output, `
 - **[idevices/patterns.md](elpx-format/idevices/patterns.md)** — the four content-storage patterns (Standard JSON, URI-encoded JSON, `<script type="application/json">`, `htmlView`-only) with decision flow.
 - **[idevices/config-xml.md](elpx-format/idevices/config-xml.md)** — the per-iDevice `config.xml` schema in `public/files/perm/idevices/base/<type>/`.
 - **[idevices/snippets.md](elpx-format/idevices/snippets.md)** — copy-pasteable `<odeComponent>` XML for every type, extracted from real fixtures.
+- **[idevices/unified-authoring-format.md](elpx-format/idevices/unified-authoring-format.md)** — the compact `#` + `@parameter` activity authoring syntax (issue #1228): grammar, escaping, parameters, iDevice mapping, and limitations.
 
 ### Resources, themes, assets
 
