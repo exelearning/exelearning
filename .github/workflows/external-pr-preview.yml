@@ -39,7 +39,7 @@ jobs:
       && github.event.label.name == 'external-pr-preview'
     steps:
       - name: Checkout PR head safely
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -84,7 +84,7 @@ jobs:
       && github.event.action == 'closed'
     steps:
       - name: Checkout base branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Remove preview
         uses: rossjrw/pr-preview-action@v1
