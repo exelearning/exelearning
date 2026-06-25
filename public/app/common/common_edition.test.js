@@ -1055,9 +1055,15 @@ describe('common_edition.js', () => {
         expect(share().aiSettings().enabled).toBe(false);
       });
 
-      it('getTabIA renders nothing when AI is disabled', () => {
+      it('disabled mode renders prompt + Copy but no provider controls', () => {
         setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
-        expect(share().getTabIA(0)).toBe('');
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeEPromptArea');
+        expect(html).toContain('eXeECopyButton');
+        expect(html).not.toContain('eXeEIASelect');
+        expect(html).not.toContain('eXeEOpenChatGPTButton');
+        expect(html).not.toContain('eXeETabIA');
+        expect(html).not.toContain('eXeEIADiv');
       });
 
       it('external mode renders the assistant selector and "Send to AI", not the Generate tab', () => {

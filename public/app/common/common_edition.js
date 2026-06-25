@@ -551,11 +551,9 @@ var $exeDevicesEdition = {
 
                 getTabIA: function (type = 0, options = {}) {
                     const ai = $exeDevicesEdition.iDevice.gamification.share.aiSettings();
-                    // AI features disabled by the administrator: render no AI tab at all.
-                    if (!ai.enabled) {
-                        return '';
-                    }
-                    const managed = ai.mode === 'managed';
+                    // When disabled, treat as external-mode with no provider controls so
+                    // teachers can still copy the prompt and paste it in a public assistant.
+                    const managed = ai.enabled && ai.mode === 'managed';
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
                     const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
 
@@ -576,7 +574,7 @@ var $exeDevicesEdition = {
                                     </div>`
                         : '';
                     // External public-assistant selector + "Send to AI" button only in external mode.
-                    const externalControls = managed
+                    const externalControls = managed || !ai.enabled
                         ? ''
                         : `<select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
                                         <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
