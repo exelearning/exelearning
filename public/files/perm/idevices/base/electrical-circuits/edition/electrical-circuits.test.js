@@ -286,6 +286,68 @@ describe('electrical-circuits iDevice edition', () => {
         expect($exeDevice.sanitizeTikzRendererSyntax(code)).toBe(code);
     });
 
+    it('sanitizeTikzRendererSyntax repairs unit macros and <...> wrappers TikZJax cannot compile', () => {
+        // \ohm (and the angle-bracket wrapper the AI adds) is undefined under
+        // TikZJax's packages; map it to Ω so the resistor-label rule wraps it.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[R=100<\\ohm>]')).toBe(
+            'to[R,l={$100\\,\\Omega$}]'
+        );
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[R=470\\ohm]')).toBe(
+            'to[R,l={$470\\,\\Omega$}]'
+        );
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[R=1k<\\ohm>]')).toBe(
+            'to[R,l={$1\\,\\mathrm{k}\\Omega$}]'
+        );
+        // Prefix + unit macros chained on a capacitor.
+        expect(
+            $exeDevice.sanitizeTikzRendererSyntax('to[C=47\\micro\\farad]')
+        ).toBe('to[C,l={$47\\,\\mu\\mathrm{F}$}]');
+        // Voltage macro on a battery.
+        expect(
+            $exeDevice.sanitizeTikzRendererSyntax('to[battery1,l=9<\\volt>]')
+        ).toBe('to[battery1,l={$9\\,\\mathrm{V}$}]');
+        // A unit without a dedicated label rule becomes a plain ASCII unit letter.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[L=10<\\henry>]')).toBe(
+            'to[L=10H]'
+        );
+    });
+
+    it('sanitizeTikzRendererSyntax repairs invalid switch component names only as the component', () => {
+        // "open switch"/"closed switch" are not valid circuitikz keys.
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[open switch]')).toBe(
+            'to[opening switch]'
+        );
+        expect($exeDevice.sanitizeTikzRendererSyntax('to[closed switch]')).toBe(
+            'to[closing switch]'
+        );
+        // Tolerates extra spaces and keeps trailing options.
+        expect(
+            $exeDevice.sanitizeTikzRendererSyntax('to[open  switch, l=S]')
+        ).toBe('to[opening switch, l=S]');
+        // Idempotent: the valid name is left alone.
+        expect(
+            $exeDevice.sanitizeTikzRendererSyntax('to[opening switch]')
+        ).toBe('to[opening switch]');
+        // A label that merely mentions the words must NOT be rewritten.
+        expect(
+            $exeDevice.sanitizeTikzRendererSyntax('to[switch, l={open switch}]')
+        ).toBe('to[switch, l={open switch}]');
+    });
+
+    it('sanitizeTikzRendererSyntax leaves valid math macros untouched and is idempotent on repaired labels', () => {
+        const repaired = 'to[R,l={$220\\,\\Omega$}]';
+        expect($exeDevice.sanitizeTikzRendererSyntax(repaired)).toBe(repaired);
+    });
+
+    it('normalizeTikzCode renders the AI <\\ohm> circuit instead of aborting', () => {
+        const code =
+            '\\begin{circuitikz}\\draw (0,0) to[battery1] (0,2) to[R=100<\\ohm>] (2,2) -- (2,0) -- (0,0);\\end{circuitikz}';
+        const out = $exeDevice.normalizeTikzCode(code);
+        expect(out).toContain('to[R,l={$100\\,\\Omega$}]');
+        expect(out).not.toContain('\\ohm');
+        expect(out).not.toContain('<');
+    });
+
     it('normalizeTikzCode collapses whitespace and sanitizes Unicode together', () => {
         expect(
             $exeDevice.normalizeTikzCode(

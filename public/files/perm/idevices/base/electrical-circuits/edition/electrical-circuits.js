@@ -204,7 +204,7 @@ var $exeDevice = {
         );
         msgs.msgGeneratingCircuitsTitle = _('Please wait');
         msgs.msgGeneratingCircuits = _(
-            'Generating the circuit images, please wait…'
+            'Generating the circuit images, this may take a few minutes, please wait…'
         );
         msgs.msgQuestionsAdded = _('The questions have been added successfully');
         msgs.msgEQuestionsNotAdded = _(
@@ -535,6 +535,59 @@ var $exeDevice = {
         '⇒': '\\Rightarrow',
     },
 
+    // siunitx/gensymb unit and SI-prefix macros the AI emits but TikZJax's loaded
+    // packages (circuitikz, amsmath, amssymb) do NOT define, so they abort the
+    // compile with "Undefined control sequence" (e.g. \ohm, \volt, \kilo). Mapped
+    // to plain-text/Unicode equivalents: \ohm/\micro flow into the Ω/µ handling
+    // (the Unicode net above and the R=/C= label rules below); the rest are ASCII
+    // unit letters that are always valid inside a label.
+    tikzUnitMacroReplacements: {
+        ohm: 'Ω',
+        kohm: 'kΩ',
+        megohm: 'MΩ',
+        volt: 'V',
+        millivolt: 'mV',
+        kilovolt: 'kV',
+        ampere: 'A',
+        milliampere: 'mA',
+        microampere: 'µA',
+        watt: 'W',
+        milliwatt: 'mW',
+        kilowatt: 'kW',
+        farad: 'F',
+        microfarad: 'µF',
+        nanofarad: 'nF',
+        picofarad: 'pF',
+        henry: 'H',
+        millihenry: 'mH',
+        microhenry: 'µH',
+        hertz: 'Hz',
+        kilohertz: 'kHz',
+        megahertz: 'MHz',
+        siemens: 'S',
+        coulomb: 'C',
+        joule: 'J',
+        kelvin: 'K',
+        newton: 'N',
+        pascal: 'Pa',
+        tesla: 'T',
+        weber: 'Wb',
+        second: 's',
+        metre: 'm',
+        meter: 'm',
+        gram: 'g',
+        // SI prefixes
+        kilo: 'k',
+        milli: 'm',
+        micro: 'µ',
+        mega: 'M',
+        giga: 'G',
+        nano: 'n',
+        pico: 'p',
+        centi: 'c',
+        deci: 'd',
+    },
+
     /**
      * Replace bare Unicode symbols with their LaTeX equivalents wrapped in
      * \ensuremath{} so they compile under TikZJax regardless of whether they
@@ -565,7 +618,25 @@ var $exeDevice = {
 
         return code
             .replace(/\\\\,/g, '\\,')
+            // Drop angle brackets the AI wraps around a unit macro (<\ohm> -> \ohm)
+            // and replace siunitx/gensymb unit/prefix macros TikZJax cannot compile
+            // with plain-text/Unicode equivalents, so the label rules below (and the
+            // Unicode net) render them instead of aborting with "Undefined control
+            // sequence".
+            .replace(/<\s*(\\[a-zA-Z]+)\s*>/g, '$1')
+            .replace(/\\([a-zA-Z]+)\b/g, (match, name) =>
+                Object.hasOwn($exeDevice.tikzUnitMacroReplacements, name)
+                    ? $exeDevice.tikzUnitMacroReplacements[name]
+                    : match
+            )
             .replace(/\bto\s*\[\s*lD\b/g, 'to[leD')
+            // Repair clear circuitikz component-name mistakes the AI makes: the
+            // symbol is unambiguous, only the key is wrong. "open switch" /
+            // "closed switch" are not valid keys (pgfkeys "I do not know the key"
+            // → abort); circuitikz uses "opening switch" / "closing switch". Only
+            // rewrite right after to[ so a {label} mentioning the words is untouched.
+            .replace(/\bto\s*\[\s*open\s+switch\b/gi, 'to[opening switch')
+            .replace(/\bto\s*\[\s*closed\s+switch\b/gi, 'to[closing switch')
             .replace(
                 /\bto\s*\[\s*(battery1|battery2)\s*,\s*l\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*V\s*\]/g,
                 (_match, component, value) =>
@@ -1140,7 +1211,7 @@ var $exeDevice = {
      * generated". TikZJax gives no reliable error event, so a circuit that never
      * compiles relies on that timeout.
      */
-    renderTikzCodeToSvg: function (code, timeoutMs = 60000) {
+    renderTikzCodeToSvg: function (code, timeoutMs = 15000) {
         const normalized = $exeDevice.normalizeTikzCode(code);
         const preview = document.getElementById('elceTikzPreview');
         if (!normalized || !preview) {
