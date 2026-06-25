@@ -51,6 +51,11 @@ async function closeAlertModals(page: Page): Promise<void> {
 }
 
 test.describe('Electrical Circuits iDevice — AI generation flow', () => {
+    // These tests drive the real TikZJax engine (WASM cold start + per-circuit
+    // compile), which easily exceeds the 45s global per-test timeout — especially
+    // the AI save, which now renders every circuit before inserting it.
+    test.describe.configure({ timeout: 120000 });
+
     test('loads AI-generated questions into the editor and normalizes Ω', async ({
         authenticatedPage,
         createProject,
@@ -77,7 +82,7 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
         // The questions must be loaded into the editor — this is the regression.
         await expect
             .poll(async () => parseInt((await page.locator('#elceNumQuestions').textContent()) || '0', 10), {
-                timeout: 120000,
+                timeout: 90000,
             })
             .toBeGreaterThanOrEqual(2);
 
@@ -95,7 +100,11 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
                 count: questions.length,
                 tikz: questions.map(q => String(q.tikzCode ?? '')).join('\n'),
                 texts: questions.map(q => String(q.quextion ?? '')).join('\n'),
-                allHaveSvg: questions.every(q => String(q.tikzSvg ?? '').includes('<svg')),
+                // Number of questions that carry a pre-rendered circuit SVG. The
+                // iDevice starts with one default placeholder question (TikZ code
+                // but no SVG) that the AI insert leaves untouched, so assert the
+                // two AI circuits were generated rather than every question.
+                withSvg: questions.filter(q => String(q.tikzSvg ?? '').includes('<svg')).length,
             };
         });
 
@@ -103,9 +112,10 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
         expect(model.texts).toContain('What component is shown?');
         expect(model.tikz).toContain('circuitikz');
         expect(model.tikz).toContain('\\Omega');
-        expect(model.allHaveSvg).toBe(true);
+        // Both AI circuits must have been rendered to SVG during the save.
+        expect(model.withSvg).toBeGreaterThanOrEqual(2);
 
-        // All circuits were generated, so nothing is left to correct: the text
+        // All AI circuits were generated, so nothing is left to correct: the text
         // box is cleared (rejected questions would have been kept here instead).
         await expect(page.locator('#eXeEQuestionsArea')).toHaveValue('');
     });

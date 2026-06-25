@@ -1443,6 +1443,21 @@ describe('common_edition.js', () => {
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
+      it('iaButton click refills the textarea with the remainingLines the callback could not add', async () => {
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
+        $('#eXeEQuestionsIA').val('SomeContent');
+        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+        await flushAsync();
+
+        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
       it('iaButton click shows invalid lines alert when some lines are invalid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsIA').val('SomeContent');
