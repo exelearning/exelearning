@@ -1114,17 +1114,17 @@ describe('common_edition.js', () => {
 
       it('saves questions, populates the textarea, switches tab and hides the message', async () => {
         globalThis.eXeLearning = {
-          app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['q1', 'q2'] }) } },
+          app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }) } },
         };
         const tabClicked = vi.fn();
-        document.getElementById('eXeETabQuestions').addEventListener('click', tabClicked);
+        $('#eXeETabQuestions').on('click', tabClicked);
         document.getElementById('eXeIAMessage').style.display = 'block';
 
         const saveQuestions = vi.fn();
         await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
 
         expect(saveQuestions).toHaveBeenCalled();
-        expect(document.getElementById('eXeEQuestionsArea').value).toContain('q1');
+        expect(document.getElementById('eXeEQuestionsArea').value).toContain('Word1#Definition1');
         expect(tabClicked).toHaveBeenCalled();
         expect(document.getElementById('eXeIAMessage').style.display).toBe('none');
       });
