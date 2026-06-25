@@ -15465,6 +15465,26 @@
         <source>Sorry, that's incorrect... The right answer is:</source>
         <target>Es incorrecto... La respuesta correcta es:</target>
       </trans-unit>
+      <trans-unit id="pp50ey7" resname="Style installed">
+        <source>Style installed</source>
+        <target>Estilo instalado</target>
+      </trans-unit>
+      <trans-unit id="batjqg7" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>El estilo se ha instalado correctamente.</target>
+      </trans-unit>
+      <trans-unit id="5jyhkfi" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>Editando el iDevice. El resto de acciones están desactivadas hasta que guardes o descartes los cambios.</target>
+      </trans-unit>
+      <trans-unit id="8dfqdag" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>Has terminado de editar el iDevice.</target>
+      </trans-unit>
+      <trans-unit id="m0oo2pp" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>Guarda o descarta el iDevice abierto antes de guardar el proyecto.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -254,6 +254,48 @@ describe('Epub3Exporter', () => {
         exporter = new Epub3Exporter(document, resources, assets, zip);
     });
 
+    describe('Accessibility toolbar (addAccessibilityToolbar)', () => {
+        // Regression test for #1978: when the author enables the accessibility toolbar,
+        // every exported page must load exe_atools (JS + CSS) in its <head>, and the
+        // files must be bundled and declared in the EPUB package.opf manifest.
+        const mockToolbarLibFiles = () => {
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+        };
+
+        it('references the toolbar JS and CSS in the page head when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('libs/exe_atools/exe_atools.js');
+            expect(indexXhtml).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('bundles the toolbar files and declares them in package.opf when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/libs/exe_atools/exe_atools.js')).toBe(true);
+            expect(zip.files.has('EPUB/libs/exe_atools/exe_atools.css')).toBe(true);
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('libs/exe_atools/exe_atools.js');
+            expect(packageOpf).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('does not reference the toolbar when disabled (default)', async () => {
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).not.toContain('exe_atools');
+        });
+    });
+
     describe('Basic Properties', () => {
         it('should return correct file extension', () => {
             expect(exporter.getFileExtension()).toBe('.epub');

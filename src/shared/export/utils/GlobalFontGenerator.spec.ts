@@ -120,6 +120,29 @@ describe('GlobalFontGenerator', () => {
 
             expect(result).not.toContain('line-height');
         });
+
+        test('should keep the license footer off the global font (issue #1939)', () => {
+            const result = GlobalFontGenerator.generateCss('playwrite-es');
+
+            // The license box is pinned to a neutral font, overriding the global one.
+            expect(result).toContain('#packageLicense');
+            expect(result).toContain('#packageLicense *');
+            expect(result).toContain(
+                'font-family: var(--exe-license-font, Arial, Verdana, Helvetica, sans-serif) !important',
+            );
+        });
+
+        test('should apply the license override for every global font', () => {
+            for (const fontId of GlobalFontGenerator.getAvailableFontIds()) {
+                const result = GlobalFontGenerator.generateCss(fontId);
+                expect(result).toContain('#packageLicense');
+                expect(result).toContain('--exe-license-font');
+            }
+        });
+
+        test('should not emit the license override for the default font', () => {
+            expect(GlobalFontGenerator.generateCss('default')).not.toContain('#packageLicense');
+        });
     });
 
     describe('generatePreviewCss', () => {

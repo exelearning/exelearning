@@ -1253,9 +1253,7 @@ export default class IdeviceBlockNode {
      */
     saveIconAction() {
         let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-        let iconElement = modalBody.querySelector(
-            '.option-block-icon[selected="true"]'
-        );
+        let iconElement = modalBody.querySelector('.option-block-icon[selected="true"]');
         // Get icon value
         let iconValue = '';
         if (iconElement) {
@@ -1294,12 +1292,10 @@ export default class IdeviceBlockNode {
             // Check if selected
             if (
                 this.iconName == icon.value ||
-                this.iconName == iconValue.getAttribute('icon-id')
+                this.iconName == icon.id
             ) {
                 iconElement.setAttribute('selected', true);
-                if (this.iconName == icon.value) {
-                    iconElement.classList.add('selected-provisional');
-                }
+                iconElement.classList.add('original-icon-selection');
             }
             // Add icon element to content
             modalBody.appendChild(iconElement);
@@ -1323,7 +1319,11 @@ export default class IdeviceBlockNode {
         emptyIconElement.title = emptyIconTitle;
         emptyIconElement.innerHTML = emptyIconValue;
         // Check if selected
-        emptyIconElement.setAttribute('selected', !this.iconName);
+        const emptyIsSelected = !this.iconName;
+        emptyIconElement.setAttribute('selected', emptyIsSelected);
+        if (emptyIsSelected) {
+            emptyIconElement.classList.add('original-icon-selection');
+        }
         return emptyIconElement;
     }
 
@@ -1343,14 +1343,14 @@ export default class IdeviceBlockNode {
                 iconsElements.forEach((option) => {
                     option.setAttribute('selected', 'false');
                 });
-                icon.setAttribute('selected', true);
+                icon.setAttribute('selected', 'true');
             });
             // Double click to select and save
             icon.addEventListener('dblclick', (event) => {
                 iconsElements.forEach((option) => {
                     option.setAttribute('selected', 'false');
                 });
-                icon.setAttribute('selected', true);
+                icon.setAttribute('selected', 'true');
                 this.saveIconAction();
                 eXeLearning.app.modals.confirm.close();
             });
@@ -1360,7 +1360,7 @@ export default class IdeviceBlockNode {
                     iconsElements.forEach((option) => {
                         option.setAttribute('selected', 'false');
                     });
-                    icon.setAttribute('selected', true);
+                    icon.setAttribute('selected', 'true');
                     this.saveIconAction();
                     eXeLearning.app.modals.confirm.close();
                 }

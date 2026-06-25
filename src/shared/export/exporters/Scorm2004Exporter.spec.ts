@@ -271,6 +271,48 @@ describe('Scorm2004Exporter', () => {
         });
     });
 
+    describe('Accessibility toolbar (addAccessibilityToolbar)', () => {
+        // Regression test for #1978: when the author enables the accessibility toolbar,
+        // every exported page must load exe_atools (JS + CSS) in its <head>, and the
+        // files must be bundled and referenced in imsmanifest.xml.
+        const mockToolbarLibFiles = () => {
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+        };
+
+        it('references the toolbar JS and CSS in the page head when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.js');
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('bundles the toolbar files and references them in imsmanifest.xml when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/exe_atools/exe_atools.js')).toBe(true);
+            expect(zip.files.has('libs/exe_atools/exe_atools.css')).toBe(true);
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('libs/exe_atools/exe_atools.js');
+            expect(manifest).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('does not reference the toolbar when disabled (default)', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('exe_atools');
+        });
+    });
+
     describe('Basic Properties', () => {
         it('should return correct file suffix', () => {
             expect(exporter.getFileSuffix()).toBe('_scorm2004');
