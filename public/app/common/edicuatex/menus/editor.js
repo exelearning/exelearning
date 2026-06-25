@@ -185,7 +185,7 @@ function renderEditor(currentData) {
         categoryDiv.dataset.catId = catIndex;
         const header = document.createElement('div');
         header.className = 'flex justify-between items-center mb-3 pb-2 border-b';
-        header.innerHTML = `<div class="flex items-center"><span class="drag-handle cat-drag-handle">&#9776;</span><span class="toggle-collapse-btn text-gray-500 hover:text-gray-800" data-cat-index="${catIndex}"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span><h3 class="text-xl font-semibold text-gray-700 ml-1">${cat.nombre} (${cat.elementos ? cat.elementos.length : 0})</h3></div><div class="space-x-2"><button data-cat-index="${catIndex}" class="edit-cat-btn text-blue-500 hover:text-blue-700" title="${_('Edit category')}">&#9998;</button><button data-cat-index="${catIndex}" class="delete-cat-btn text-red-500 hover:text-red-700" title="${_('Delete category')}">&#10006;</button><button data-cat-index="${catIndex}" class="add-el-btn bg-green-500 text-white text-sm px-3 py-1 rounded hover:bg-green-600" title="${_('Add element')}">+</button></div>`;
+        header.innerHTML = `<div class="flex items-center"><span class="drag-handle cat-drag-handle">&#9776;</span><span class="toggle-collapse-btn text-gray-500 hover:text-gray-800" data-cat-index="${catIndex}"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span><h3 class="text-xl font-semibold text-gray-700 ml-1">${_(cat.nombre)} (${cat.elementos ? cat.elementos.length : 0})</h3></div><div class="space-x-2"><button data-cat-index="${catIndex}" class="edit-cat-btn text-blue-500 hover:text-blue-700" title="${_('Edit category')}">&#9998;</button><button data-cat-index="${catIndex}" class="delete-cat-btn text-red-500 hover:text-red-700" title="${_('Delete category')}">&#10006;</button><button data-cat-index="${catIndex}" class="add-el-btn bg-green-500 text-white text-sm px-3 py-1 rounded hover:bg-green-600" title="${_('Add element')}">+</button></div>`;
         const elementsList = document.createElement('div');
         elementsList.className = 'elements-list space-y-2 pl-8';
         if (isCollapsed) elementsList.classList.add('hidden');
@@ -195,7 +195,7 @@ function renderEditor(currentData) {
                 const elDiv = document.createElement('div');
                 elDiv.className = 'editor-item flex justify-between items-center p-2 rounded-md bg-white border border-gray-200 transition-colors duration-300';
                 elDiv.dataset.editorId = `${catIndex}-${elIndex}`;
-                elDiv.innerHTML = `<div class="flex items-center truncate"><span class="drag-handle el-drag-handle">&#9776;</span><div class="truncate"><strong class="text-sm font-medium">${el.title || el.type || _('Element')}</strong><p class="text-xs text-gray-500 truncate font-mono">${el.latex || ''}</p></div></div><div class="flex-shrink-0 space-x-2"><button data-cat-index="${catIndex}" data-el-index="${elIndex}" class="edit-el-btn text-blue-500 hover:text-blue-700" title="${_('Edit element')}">&#9998;</button><button data-cat-index="${catIndex}" data-el-index="${elIndex}" class="delete-el-btn text-red-500 hover:text-red-700" title="${_('Delete element')}">&#10006;</button></div>`;
+                elDiv.innerHTML = `<div class="flex items-center truncate"><span class="drag-handle el-drag-handle">&#9776;</span><div class="truncate"><strong class="text-sm font-medium">${_(el.title) || el.type || _('Element')}</strong><p class="text-xs text-gray-500 truncate font-mono">${el.latex || ''}</p></div></div><div class="flex-shrink-0 space-x-2"><button data-cat-index="${catIndex}" data-el-index="${elIndex}" class="edit-el-btn text-blue-500 hover:text-blue-700" title="${_('Edit element')}">&#9998;</button><button data-cat-index="${catIndex}" data-el-index="${elIndex}" class="delete-el-btn text-red-500 hover:text-red-700" title="${_('Delete element')}">&#10006;</button></div>`;
                 elementsList.appendChild(elDiv);
             });
         }
@@ -216,7 +216,7 @@ function renderPreview(currentData) {
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'mb-6 preview-category';
         categoryDiv.dataset.previewCatId = catIndex;
-        categoryDiv.innerHTML = `<h3 class="text-xl font-semibold text-gray-700 mb-3">${cat.nombre} (${cat.elementos ? cat.elementos.length : 0})</h3>`;
+        categoryDiv.innerHTML = `<h3 class="text-xl font-semibold text-gray-700 mb-3">${_(cat.nombre)} (${cat.elementos ? cat.elementos.length : 0})</h3>`;
         const gridDiv = document.createElement('div');
         gridDiv.className = 'grid gap-2';
         gridDiv.style.gridTemplateColumns = cat.grid_template_columns || 'repeat(auto-fit, minmax(80px, 1fr))';
@@ -998,9 +998,21 @@ async function init() {
         console.error("Could not load base formulas:", error);
         alert(_("Could not load the default base formulas."));
     }
+
     baseTab.savedSnapshot = serializeTabData(baseTab.data);
     render();
     renderAiCreatorInputs('full_json'); // Render initial inputs for AI creator
 }
+const appLang = new URLSearchParams(window.location.search).get('lang') 
+                || document.documentElement.lang 
+                || 'en';
+try {
+const bundle = await fetch('../../../../data/bundle.json').then(res => res.json());
 
-document.addEventListener('DOMContentLoaded', init);
+window._ = function(str) {
+    return bundle.translations[appLang]?.translations?.[str] ?? str;
+}
+} catch(e) {
+	console.error('Could not load eXe Tanslation');
+}
+init();
