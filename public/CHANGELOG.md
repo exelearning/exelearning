@@ -4,44 +4,44 @@
 
 ### Added
 
-- iDevice edit mode now expands to fill the workarea, keeping the toolbar always visible and preventing the page from scrolling behind it
-- LOMLOE iDevice: added Navarra (ES-NC) and Comunitat Valenciana (ES-VC) official curriculum datasets
-- Mermaid iDevice: configurable maximum diagram width and height
+- iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
+- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
+- Mermaid iDevice: added configurable maximum diagram width and height
 - Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
-- File → New: improved unsaved-changes confirmation dialog with clearer wording and action labels
-- Desktop: new File → Close menu option
-- Authentication: OIDC endpoints are now auto-discovered from `OIDC_ISSUER` when not configured individually
+- File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
+- Desktop: added a new File → Close menu option
+- Authentication: OIDC endpoints are now automatically discovered from `OIDC_ISSUER` when not configured individually
 
 ### Fixed
 
-- Security: 32 hardening fixes across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
-- Security: additional fixes for cross-tenant asset deletion, unauthenticated file uploads and export filename collisions for non-Latin titles
-- Collaboration: shared Yjs changes are now correctly auto-saved in collaborative sessions
-- Collaboration: assets shared between collaborators are identified consistently, preventing image loss
-- Collaboration: resolved cross-day data loss in collaborative editing
-- Collaboration: shared and collaborative projects are no longer automatically deleted on session cleanup
-- Export: iDevice structure properties are now preserved when single-box content is exported and re-imported
-- Export: internal page links are preserved in `content.xml` across export/import round trips
-- Export: LaTeX renders correctly in interactive iDevices in preview and all export formats
-- Export: pre-rendered LaTeX equations are now aligned with the surrounding text baseline
-- Export: the license footer no longer inherits the global content font
-- Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
-- Export: duplicate assets are no longer included in self-contained HTML bundles
-- Assets without a file extension are now served with the correct MIME type, preventing automatic PDF downloads
-- iDevices panel is now disabled when the selected page is the document root
-- Electrical Circuits iDevice: AI prompt identifier corrected; Ω and Greek/math symbols now render correctly
-- Electrical Circuits iDevice: iDevice name is now correctly translated
-- Magnifier iDevice: the exported image path is now preserved so images appear in HTML exports
+- Security: hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
+- Security: enhanced protections against cross-tenant asset deletion and unauthorised file uploads; improved export filename handling for non-Latin titles
+- Collaboration: shared Yjs changes are now saved correctly during collaborative sessions
+- Collaboration: shared assets are now identified consistently, preventing image loss
+- Collaboration: fixed data loss affecting collaborative editing across day changes
+- Collaboration: shared and collaborative projects are no longer deleted during session cleanup
+- Assets without a file extension are now served with the correct MIME type, preventing unintended downloads
+- Share dialog: the people-with-access list now scrolls correctly within the modal
+- Link Validator and Resource Report: Download CSV now works correctly
+- The iDevices panel is now disabled when the selected page is the document root
+- Electrical Circuits iDevice: corrected the AI prompt identifier and fixed rendering of Ω and other Greek and mathematical symbols
+- Electrical Circuits iDevice: fixed iDevice name translations
+- Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
 - 3DMol iDevice: molecule files are now supported in the file manager and viewer
 - 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
-- 3D Viewer iDevice: the empty-state overlay is now hidden over a loaded model in exports
-- Nova style: teacher-only iDevices are now highlighted with the yellow border in the workarea
+- 3D Viewer iDevice: models are now displayed correctly in exported content
+- Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
 - Tooltips inside accordions and other effects now initialise correctly
-- iDevice icon selector: improved contrast in all styles
-- Styles from .elpx projects can now be downloaded from the style manager
-- Share dialog: the people-with-access list now scrolls correctly inside the modal
-- Link validator and resource report: Download CSV now works correctly
-- Preferences: the language-change warning in static and offline mode now accurately describes what to do before reloading
+- iDevice icon selector: improved contrast across all styles
+- Styles from `.elpx` projects can now be downloaded from the style manager
+- Nova style: teacher-only iDevices are now highlighted with a yellow border in the work area
+- Export: iDevice structure properties are now preserved when single-box content is exported and re-imported
+- Export: internal page links in `content.xml` are now preserved across exports and imports
+- Export: LaTeX now renders correctly in interactive iDevices in preview and all export formats
+- Export: pre-rendered LaTeX equations are now aligned correctly with surrounding text
+- Export: the license footer no longer inherits the global content font
+- Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
+- Export: duplicate assets are no longer included in self-contained HTML exports
 
 ### Upgraded
 
