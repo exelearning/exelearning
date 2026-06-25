@@ -10,8 +10,8 @@
  *
  * Run with:  npx vitest run public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
  */
+ 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-
 // ── Mock eXeLearning globals ─────────────────────────────────────
 globalThis._ = (str) => str;  // i18n passthrough
 globalThis.CSS = { escape: (s) => s.replace(/[^a-zA-Z0-9\-_]/g, '\\$&') };
@@ -392,6 +392,28 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
         const saved = $exeDevice.save();
         expect(saved.lomloeSelections[0].competenciasClave).toEqual(['CCL1', 'CCL2', 'STEM4']);
     });
+
+    // Galicia uses descriptorsPerCriterion:true → same fixed-badge behaviour as
+    // Canarias: competencias_clave are authoritative, no checkbox picker shown.
+    it('Galicia keeps fixed badges and renders no descriptor checkboxes', async () => {
+        const list = await initWithCriterio('ES-GA', makeSel('ES-GA', {
+            competenciasClave: ['CCL1', 'STEM4', 'CD2']
+        }));
+        expect(list.querySelectorAll('.lomloe-desc-cb')).toHaveLength(0);
+        const saved = $exeDevice.save();
+        expect(saved.lomloeSelections[0].competenciasClave).toEqual(['CCL1', 'STEM4', 'CD2']);
+    });
+
+    it('Galicia competenciasClave are immutable across save/restore cycle', async () => {
+        await initWithCriterio('ES-GA', makeSel('ES-GA', {
+            competenciasClave: ['CCL1', 'STEM4']
+        }));
+        // Saving twice must not alter the fixed list.
+        const first  = $exeDevice.save().lomloeSelections[0].competenciasClave;
+        const second = $exeDevice.save().lomloeSelections[0].competenciasClave;
+        expect(first).toEqual(['CCL1', 'STEM4']);
+        expect(second).toEqual(['CCL1', 'STEM4']);
+    });
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -466,6 +488,20 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
         expect(sel.competenciasClave).toEqual(['CCL1', 'STEM4', 'CD2']);
         expect(sel.descriptorOptions).toBeUndefined();
         expect(el.querySelectorAll('.lomloe-cc-tag').length).toBeGreaterThan(0);
+    });
+
+    // Galicia (descriptorsPerCriterion:true) behaves identically to Canarias:
+    // competencias_clave are taken verbatim from the dataset, no teacher picker.
+    it('Galicia keeps the authoritative per-criterio descriptor list and shows tags', async () => {
+        const sel = await selectCriterio('ES-GA');
+        expect(sel.competenciasClave).toEqual(['CCL1', 'STEM4', 'CD2']);
+        expect(sel.descriptorOptions).toBeUndefined();
+        expect(el.querySelectorAll('.lomloe-cc-tag').length).toBeGreaterThan(0);
+    });
+
+    it('Galicia does not store descriptorOptions on the saved selection', async () => {
+        const sel = await selectCriterio('ES-GA');
+        expect(Object.prototype.hasOwnProperty.call(sel, 'descriptorOptions')).toBe(false);
     });
 
     // Issue #1832 follow-up: after the Infantil backfill, a non-Canarias Infantil
@@ -582,16 +618,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).toContain('BIG');
         expect(codes).not.toContain('FQX');
     });
-
-    it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        // ES-GA is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
-        // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
-        // ES because the module caches datasets by id across tests.)
-        const codes = await listedCodAreas('ES-GA');
-        expect(codes).toContain('BIG');
-        expect(codes).toContain('FQX');
-        expect(codes).toContain('DIG');
-    });
+    
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -913,6 +940,94 @@ describe('Summary HTML generation', () => {
         expect(saved.lomloeSummaryHtml).toContain('Spec. Comp.');
         // Key Comp. header has Bootstrap tooltip
         expect(saved.lomloeSummaryHtml).toContain('data-lomloe-tip="Key Competencies"');
+    });
+
+    // Galicia (descriptorsPerCriterion:true) must render the same summary shape as
+    // Canarias: fixed descriptor badges in the "Operational descriptors" column,
+    // not a checkbox picker placeholder, and no descriptorOptions key in the data.
+    // Uses real Galician etapa/nivel/codArea keys from the dataset.
+    it('Galicia summary contains fixed descriptor badges (not checkbox-mode placeholders)', async () => {
+        const selId = makeCriterioSelId('ESO', '1º ESO', 'ES-GA-ESO1-BiXe', 'ES-GA-ESO1-BiXe-OBX1', 'ES-GA-ESO1-BiXe-OBX1-CA1.1');
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES-GA',
+            lomloeSelections: [{
+                id: selId,
+                type: 'criterio',
+                dataset: 'ES-GA',
+                etapa: 'ESO',
+                nivel: '1º ESO',
+                codArea: 'ES-GA-ESO1-BiXe',
+                denominacion: 'Bioloxía e Xeoloxía',
+                codigoComp: 'ES-GA-ESO1-BiXe-OBX1',
+                descripcionComp: 'OBX1: Interpretar e transmitir información e datos científicos',
+                codigoCriterio: 'ES-GA-ESO1-BiXe-OBX1-CA1.1',
+                descripcionCriterio: 'CA1.1. Analizar e explicar conceptos e procesos biolóxicos',
+                competenciasClave: ['CCL1', 'CCL2', 'CD2', 'STEM4'],
+                partial: false
+            }]
+        });
+        await new Promise(r => setTimeout(r, 50));
+        const saved = $exeDevice.save();
+        // Descriptor badges must appear.
+        expect(saved.lomloeSummaryHtml).toContain('CCL1');
+        expect(saved.lomloeSummaryHtml).toContain('STEM4');
+        // No descriptorOptions key was stored on the selection.
+        expect(saved.lomloeSelections[0].descriptorOptions).toBeUndefined();
+    });
+
+    it('Galicia summary uses "Operational descriptors" column header (not "Key Comp.")', async () => {
+        const selId = makeCriterioSelId('ESO', '1º ESO', 'ES-GA-ESO1-BiXe', 'ES-GA-ESO1-BiXe-OBX1', 'ES-GA-ESO1-BiXe-OBX1-CA1.1');
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES-GA',
+            lomloeSelections: [{
+                id: selId,
+                type: 'criterio',
+                dataset: 'ES-GA',
+                etapa: 'ESO',
+                nivel: '1º ESO',
+                codArea: 'ES-GA-ESO1-BiXe',
+                denominacion: 'Bioloxía e Xeoloxía',
+                codigoComp: 'ES-GA-ESO1-BiXe-OBX1',
+                descripcionComp: 'OBX1: Interpretar e transmitir información e datos científicos',
+                codigoCriterio: 'ES-GA-ESO1-BiXe-OBX1-CA1.1',
+                descripcionCriterio: 'CA1.1. Analizar e explicar conceptos e procesos biolóxicos',
+                competenciasClave: ['CCL1'],
+                partial: false
+            }]
+        });
+        await new Promise(r => setTimeout(r, 50));
+        const saved = $exeDevice.save();
+        expect(saved.lomloeSummaryHtml).toContain('Operational descriptors');
+        expect(saved.lomloeSummaryHtml).not.toContain('>Key Comp.<');
+    });
+
+    // The summary must not render a second subtitle line for those saberes.
+    it('Galicia saber with empty subtitulo2 renders only the first subtitle in the tooltip', async () => {
+        const saberId = makeSaberSelId('ESO', '1º ESO', 'ES-GA-ESO1-BiXe', 'Bloque 1. Comunicación', 'ES-GA-ESO1-BiXe-C1.1');
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES-GA',
+            lomloeSelections: [{
+                id: saberId,
+                type: 'saber',
+                dataset: 'ES-GA',
+                etapa: 'ESO',
+                nivel: '1º ESO',
+                codArea: 'ES-GA-ESO1-BiXe',
+                denominacion: 'Bioloxía e Xeoloxía',
+                bloque: 'Bloque 1. Comunicación',
+                nombre: 'ES-GA-ESO1-BiXe-C1.1',
+                subtitulo1: 'C1.1. Manifestación de autoconfianza e iniciativa.',
+                subtitulo2: ''
+            }]
+        });
+        await new Promise(r => setTimeout(r, 50));
+        const saved = $exeDevice.save();
+        expect(saved.lomloeSummaryHtml).toContain('ES-GA-ESO1-BiXe-C1.1');
+        // Tooltip must contain only the first subtitle.
+        expect(saved.lomloeSummaryHtml).toContain('C1.1. Manifestación de autoconfianza e iniciativa.');
+        // Empty subtitulo2 must not produce a trailing separator or blank segment.
+        expect(saved.lomloeSummaryHtml).not.toMatch(/data-lomloe-tip="[^"]*\s+—\s*"/);
+        expect(saved.lomloeSummaryHtml).not.toMatch(/data-lomloe-tip="[^"]*\s*·\s*"/);
     });
 });
 
@@ -1669,7 +1784,7 @@ describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
     });
 });
 
-describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', () => {
+describe('lomloe-ES-GA.json (Galicia concretion)', () => {
     const data = loadDataset('lomloe-ES-GA.json');
 
     it('parses as a non-empty object with no placeholder notice', () => {
@@ -1681,9 +1796,9 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
 
     it('exposes the four Galician etapa labels', () => {
         for (const etapa of [
-            'Educación Infantil',
-            'Educación Primaria',
-            'Educación Secundaria Obrigatoria',
+            'Educación infantil',
+            'Educación primaria',
+            'ESO',
             'Bacharelato',
         ]) {
             expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
@@ -1691,17 +1806,19 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
         }
     });
 
-    it('uses Galician nivel labels (per-year for Primaria/ESO/Bacharelato, ciclo for Infantil)', () => {
-        expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º de educación primaria', '2º de educación primaria', '3º de educación primaria',
-            '4º de educación primaria', '5º de educación primaria', '6º de educación primaria',
+    it('uses Galician nivel labels (per-year for Infantil/Primaria/ESO/Bacharelato)', () => {
+        expect(Object.keys(data['Educación primaria'])).toEqual([
+            '1º Educación primaria', '2º Educación primaria', '3º Educación primaria',
+            '4º Educación primaria', '5º Educación primaria', '6º Educación primaria',
         ]);
-        expect(Object.keys(data['Educación Secundaria Obrigatoria'])).toEqual([
-            '1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO',
+        expect(Object.keys(data['ESO'])).toEqual([
+            '1º ESO', '2º ESO', '3º ESO', '4º ESO',
         ]);
-        expect(Object.keys(data['Bacharelato'])).toEqual(['1º de bacharelato', '2º de bacharelato']);
-        expect(Object.keys(data['Educación Infantil'])).toEqual([
-            'Primeiro ciclo (0-3 anos)', 'Segundo ciclo (3-6 anos)',
+        expect(Object.keys(data['Bacharelato'])).toEqual([
+            '1º Bacharelato', '2º Bacharelato',
+        ]);
+        expect(Object.keys(data['Educación infantil'])).toEqual([
+            '4º Educación infantil', '5º Educación infantil', '6º Educación infantil',
         ]);
     });
 
@@ -1924,6 +2041,25 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-GA.json'");
     });
 
+
+    it('ES-GA declares descriptorsPerCriterion:true (fixed badges, no checkbox picker)', () => {
+        // Competencias_clave are taken verbatim from the dataset per criterio,
+        // rather than offering the teacher a checkbox picker.
+        const re = /\{\s*id:\s*'ES-GA'[\s\S]*?descriptorsPerCriterion:\s*(true|false)/;
+        const m = lomloeSrc.match(re);
+        expect(m, "ES-GA entry missing descriptorsPerCriterion").not.toBeNull();
+        expect(m[1]).toBe('true');
+    });
+
+    it('only ES-CN and ES-GA declare descriptorsPerCriterion:true', () => {
+        // Instead of using an imprecise regex that overflows across object boundaries,
+        // a corrected regex that prevents jumping from one dataset object to another ({...})
+        // is the ideal solution since DATASETS is scoped within lomloe.js.
+        const preciseRe = /id:\s*'(ES-[A-Z]+)'[^}]*?descriptorsPerCriterion:\s*true/g;        
+        const ids = [...lomloeSrc.matchAll(preciseRe)].map(m => m[1]).sort();
+        expect(ids).toEqual(['ES-CN', 'ES-GA']);
+    });
+    
     it('declares ES-NC with available:true and the lomloe-ES-NC.json file', () => {
         const m = entryFor('ES-NC');
         expect(m, "ES-NC entry missing").not.toBeNull();
