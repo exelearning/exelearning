@@ -15467,39 +15467,39 @@
       </trans-unit>
       <trans-unit id="5ogqi4j" resname="All collaborative changes are saved.">
         <source>All collaborative changes are saved.</source>
-        <target></target>
+        <target>~Todas as alterações colaborativas foram guardadas.</target>
       </trans-unit>
       <trans-unit id="vqqnb5a" resname="Collaborative changes are shared live and will be saved automatically.">
         <source>Collaborative changes are shared live and will be saved automatically.</source>
-        <target></target>
+        <target>~As alterações colaborativas são partilhadas em tempo real e serão guardadas automaticamente.</target>
       </trans-unit>
       <trans-unit id="t8xmt9z" resname="Saving collaborative changes...">
         <source>Saving collaborative changes...</source>
-        <target></target>
+        <target>~A guardar alterações colaborativas...</target>
       </trans-unit>
       <trans-unit id="mzuxsqv" resname="Autosave failed. Please click Save before leaving.">
         <source>Autosave failed. Please click Save before leaving.</source>
-        <target></target>
+        <target>~O guardado automático falhou. Clique em Guardar antes de sair.</target>
       </trans-unit>
       <trans-unit id="94zxz4h" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
         <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
-        <target></target>
+        <target>~As alterações de idioma podem requerer recarregar ou reabrir o eXeLearning para atualizar toda a interface.</target>
       </trans-unit>
       <trans-unit id="5bhymwn" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
         <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
-        <target></target>
+        <target>~A preferência de idioma foi guardada. É possível que alguns textos da interface não sejam atualizados até que recarregue ou reabra o eXeLearning. Guarde ou transfira o seu projeto antes de recarregar ou fechar a aplicação para evitar perder alterações.</target>
       </trans-unit>
       <trans-unit id="9i4tv9g" resname="Do you want to save changes before creating a new file?">
         <source>Do you want to save changes before creating a new file?</source>
-        <target></target>
+        <target>~Pretende guardar as alterações antes de criar um novo ficheiro?</target>
       </trans-unit>
       <trans-unit id="iomenyo" resname="Don&apos;t Save">
         <source>Don't Save</source>
-        <target></target>
+        <target>~Não guardar</target>
       </trans-unit>
       <trans-unit id="kgn8t47" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
         <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
-        <target></target>
+        <target>~Algumas alterações colaborativas ainda não foram guardadas. Clique em Guardar antes de sair para evitar perdê-las.</target>
       </trans-unit>
     </body>
   </file>

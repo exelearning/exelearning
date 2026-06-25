@@ -11,6 +11,8 @@
 - File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
 - Desktop: added a new File → Close menu option
 - Authentication: OIDC endpoints are now automatically discovered from `OIDC_ISSUER` when not configured individually
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
 
 ### Fixed
 
