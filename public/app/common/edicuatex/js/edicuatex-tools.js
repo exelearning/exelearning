@@ -37,35 +37,29 @@ if (isInExe) {
 }
 // Redefine _ function once the DOM is loaded and $i18n is available
 document.addEventListener("DOMContentLoaded", function() {
-    _ = function(str){
-        let res = str;
-        let appLang = document.documentElement.lang;
-        // Default language (en)
-        let translations = $i18n['eXe'];
-        // Check if local translation exists
-        if (typeof $i18n[appLang] == 'object') translations = $i18n[appLang];
-        // Return local translation if available
-        if (typeof translations[str] == 'string') return translations[str];
-        // Use eXe's translation if needed
+    const appLang = document.documentElement.lang;
+
+    _ = function(str) {
         if (isInExe) return parent._(str);
-        // Otherwite, return the original string
-        return res;
+        let translations = $i18n['eXe'];
+        if (typeof $i18n[appLang] == 'object') translations = $i18n[appLang];
+        if (typeof translations[str] == 'string') return translations[str];
+        return str;
     }
 
-    // After defining _, update all texts
     if (!isInExe) {
         if (typeof setupLanguageSelector === 'function') {
             setupLanguageSelector();
         }
     } else {
         const editorLink = document.getElementById('menu-editor-link');
-        if (editorLink) editorLink.href = editorLink.href + '?lang=' + document.documentElement.lang;
+        if (editorLink) editorLink.href = editorLink.href + '?lang=' + appLang;
     }
     if (typeof updateAllDynamicTexts === 'function') {
         updateAllDynamicTexts();
     }
     if (typeof addFooter === 'function') {
-        addFooter(); // Ensure footer is translated on load
+        addFooter();
     }
 });
 
