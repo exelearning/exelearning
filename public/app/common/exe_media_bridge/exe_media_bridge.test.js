@@ -439,13 +439,23 @@ describe('exe_media_bridge', () => {
             }
         });
 
-        it('skips an embed that the author opted out of with data-exe-media-floating="false"', async () => {
+        it('normal mode: leaves data-exe-media-floating="false" inline (plays via referrerpolicy)', async () => {
             const container = document.createElement('div');
             container.innerHTML =
                 '<iframe src="https://vimeo.com/76979871" data-exe-media-floating="false"></iframe>';
-            const placeholders = await bridge.scanAndReplace(container, { win: opaqueNoParent(), timeoutMs: 20 });
+            const placeholders = await bridge.scanAndReplace(container, { win: lone() });
             expect(placeholders).toHaveLength(0);
             expect(container.querySelector('iframe[src="https://vimeo.com/76979871"]')).toBeTruthy();
+        });
+
+        it('opaque mode: protects every recognized embed regardless of the floating attribute', async () => {
+            const container = document.createElement('div');
+            // Even data-exe-media-floating="false" must be protected — inline can't run opaque.
+            container.innerHTML =
+                '<iframe src="https://vimeo.com/76979871" data-exe-media-floating="false"></iframe>';
+            const placeholders = await bridge.scanAndReplace(container, { win: opaqueNoParent(), timeoutMs: 20 });
+            expect(placeholders).toHaveLength(1);
+            expect(container.querySelector('.exe-external-media[data-exe-media-provider="vimeo"]')).toBeTruthy();
         });
 
         it('returns an empty list when there is no external media to replace', async () => {
@@ -567,6 +577,7 @@ describe('exe_media_bridge', () => {
             expect(iframe.getAttribute('src')).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ');
             expect(iframe.getAttribute('src')).toContain('autoplay=1');
             expect(iframe.getAttribute('allowfullscreen')).not.toBeNull();
+            expect(iframe.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin');
             lb.close();
             expect(document.querySelector('.exe-media-lightbox')).toBeNull();
         });

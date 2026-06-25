@@ -103,21 +103,39 @@ fall back immediately. The content never silently shows a blank frame.
 
 ## Author control (TinyMCE media dialog)
 
-When an author inserts a YouTube/Vimeo URL via the media dialog, an auto-checked **"Open in a floating
-window"** checkbox appears (with a help "i" icon + tooltip). The choice is stamped onto the embed as
-`data-exe-media-floating`:
+When an author inserts a YouTube/Vimeo URL via the media dialog, an **unchecked-by-default** "Open in a
+floating window" checkbox appears (with a help "i" icon + Bootstrap tooltip). The choice is stamped onto
+the embed as `data-exe-media-floating`. **Videos play inline by default** (now that `referrerpolicy` is
+set — see below); floating is opt-in and only affects **normal (non-opaque) rendering**:
 
-- **`"true"` (checked, default):** the exported video **always opens in a floating window**. In normal
-  (non-sandboxed) rendering it opens in a **self-contained lightbox** in the export document
-  (`exeMediaBridge.openLightbox`); in an opaque sandboxed iframe it opens in the trusted parent modal.
-  The inline iframe is replaced by an accessible click-to-open placeholder.
-- **`"false"` (unchecked):** the runtime **leaves the raw iframe inline** and does not intervene (the
-  author is warned via the tooltip that it may not work in a secure embedded view).
-- **Absent** (existing content): inline in normal rendering; protected (placeholder + bridge) only in
-  opaque mode.
+- **`"true"` (checked):** in normal rendering the embed is replaced by an accessible click-to-open
+  placeholder that opens a **self-contained lightbox** (`exeMediaBridge.openLightbox`).
+- **`"false"` / absent (default):** the embed plays **inline**; the runtime does not intervene.
+- **Opaque sandbox mode (the default host deployment):** the bridge protects **every** recognized embed
+  regardless of the checkbox — inline cannot run there, so videos always open in the trusted parent modal.
 
 So `scanAndReplace` swaps an embed in normal mode **only** when `data-exe-media-floating="true"`, and in
-opaque mode for every recognized embed except an explicit `"false"`.
+opaque mode for **every** recognized embed.
+
+## YouTube "Error 153" and `referrerpolicy`
+
+Separate from sandboxing, YouTube's embedded player returns **Error 153**
+(`embedder.identity.missing.referrer`) when it cannot read the HTTP `Referer` header — e.g. when the host
+page's `Referrer-Policy` is `no-referrer`/`same-origin`, or the iframe has no `referrerpolicy`. Common
+sanitizers (and WordPress **Jetpack**'s embed handling) strip the attribute, which triggers this.
+
+eXeLearning therefore ensures every YouTube/Vimeo iframe it produces carries
+`referrerpolicy="strict-origin-when-cross-origin"` (the per-iframe attribute **overrides** the page
+policy):
+
+- The collaborative sanitizer (`sanitizeHtml.js`) **preserves** `referrerpolicy` (it is in `ADD_ATTR`).
+- The export/preview renderer (`IdeviceRenderer.addReferrerPolicyToEmbeds`) **adds** it to YouTube/Vimeo
+  iframes that lack it — covering existing content and every export format.
+- The lightbox iframe and the reference relay's player iframe set it too.
+
+**Host integrators (WordPress/Moodle/Procomún):** for full robustness also set the response header
+`Referrer-Policy: strict-origin-when-cross-origin` on pages that embed eXe content, and — on WordPress —
+disable Jetpack's embed/shortcode handling for eXe iframes (it strips `referrerpolicy`).
 
 ## How to integrate a host plugin
 

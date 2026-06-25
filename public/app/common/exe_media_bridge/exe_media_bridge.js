@@ -389,9 +389,9 @@
         var found = [];
         for (var i = 0; i < nodes.length; i++) {
             var floating = nodes[i].getAttribute && nodes[i].getAttribute('data-exe-media-floating');
-            if (floating === 'false') continue; // explicit author opt-out
-            // Normal rendering only intervenes for embeds the author marked as floating;
-            // opaque mode protects every recognized embed (it cannot run nested).
+            // Normal rendering only swaps embeds the author opted into floating; everything
+            // else plays inline (referrerpolicy makes that work). Opaque mode protects EVERY
+            // recognized embed — inline can't run there, so the checkbox does not apply.
             if (!bridgeMode && floating !== 'true') continue;
             var d = policy.parseExternalMedia(nodes[i]);
             if (d) found.push({ node: nodes[i], descriptor: d });
@@ -463,6 +463,8 @@
         iframe.setAttribute('title', labelText);
         iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture');
         iframe.setAttribute('allowfullscreen', 'allowfullscreen');
+        // Needed so YouTube/Vimeo identify the page (avoids "Error 153").
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
         iframe.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;border:0;');
 
         var close = doc.createElement('button');

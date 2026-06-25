@@ -63,6 +63,16 @@
             events: {
                 onReady: function (e) {
                     var p = (e && e.target) || player;
+                    // Best-effort: tag the API-created iframe so YouTube identifies the host
+                    // page (avoids Error 153 when the host's Referrer-Policy is restrictive).
+                    try {
+                        var ifr = p && p.getIframe && p.getIframe();
+                        if (ifr && ifr.setAttribute) {
+                            ifr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                        }
+                    } catch (err) {
+                        /* ignore */
+                    }
                     if (cb.onReady) cb.onReady(p && p.getDuration ? p.getDuration() : undefined);
                 },
                 onStateChange: function (e) {

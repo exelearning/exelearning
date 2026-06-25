@@ -171,12 +171,33 @@ export class IdeviceRenderer {
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
 
-        const contentHtml = escapedContent;
+        // Ensure YouTube/Vimeo iframes carry referrerpolicy so they play when the package
+        // is embedded in a host with a restrictive Referrer-Policy (YouTube Error 153).
+        const contentHtml = this.addReferrerPolicyToEmbeds(escapedContent);
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>
 ${contentHtml}
 </div>`;
+    }
+
+    /**
+     * Add `referrerpolicy="strict-origin-when-cross-origin"` to YouTube/Vimeo `<iframe>`
+     * elements that lack it. Those providers need the HTTP Referer header to identify the
+     * embedding page; without the attribute, a host page with a restrictive Referrer-Policy
+     * makes YouTube return "Error 153". Only provider iframes are touched, and an existing
+     * `referrerpolicy` is left as-is.
+     */
+    addReferrerPolicyToEmbeds(html: string): string {
+        if (!html || html.indexOf('<iframe') === -1) return html;
+        const POLICY = ' referrerpolicy="strict-origin-when-cross-origin"';
+        const PROVIDER = /(?:youtube\.com|youtube-nocookie\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/i;
+        return html.replace(/<iframe\b[^>]*>/gi, tag => {
+            if (/\breferrerpolicy\s*=/i.test(tag)) return tag;
+            const srcMatch = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+            if (!srcMatch || !PROVIDER.test(srcMatch[1])) return tag;
+            return tag.endsWith('/>') ? `${tag.slice(0, -2)}${POLICY} />` : `${tag.slice(0, -1)}${POLICY}>`;
+        });
     }
 
     /**

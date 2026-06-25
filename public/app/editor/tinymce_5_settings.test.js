@@ -2706,14 +2706,15 @@ describe('TinyMCE 5 Settings', () => {
       expect(globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse })).toBe(false);
     });
 
-    it('adds an auto-checked floating checkbox for a YouTube source (tabpanel body)', () => {
+    it('adds an unchecked-by-default floating checkbox for a YouTube source (tabpanel body)', () => {
       const spec = {
         initialData: { source: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
         body: { type: 'tabpanel', tabs: [{ title: 'General', items: [{ type: 'input', name: 'source' }] }] },
       };
       const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
       expect(result).toBe(true);
-      expect(spec.initialData.exeMediaFloating).toBe(true);
+      // Inline by default — floating is opt-in.
+      expect(spec.initialData.exeMediaFloating).toBe(false);
       expect(findCheckbox(spec.body)).toBeTruthy();
     });
 
@@ -2733,7 +2734,7 @@ describe('TinyMCE 5 Settings', () => {
       };
       const result = globalThis.$exeTinyMCE.decorateMediaDialogSpec(spec, { parse: fakeParse });
       expect(result).toBe(true);
-      expect(spec.initialData.exeMediaFloating).toBe(true);
+      expect(spec.initialData.exeMediaFloating).toBe(false);
       expect(findCheckbox(spec.body)).toBeTruthy();
     });
 

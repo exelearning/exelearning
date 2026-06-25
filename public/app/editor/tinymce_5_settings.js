@@ -731,9 +731,9 @@ var $exeTinyMCE = {
         var hasT = typeof _ === 'function';
         var noteText = hasT
             ? _(
-                  'Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.',
+                  'By default the video plays inline. Enable this to open it in a floating window instead. In some secure embedded environments (such as an LMS) the video opens in a floating window automatically.',
               )
-            : 'Some external providers (such as YouTube or Vimeo) cannot play inside a secure embedded view like an LMS. When enabled, this video opens in a floating window provided by the host.';
+            : 'By default the video plays inline. Enable this to open it in a floating window instead. In some secure embedded environments (such as an LMS) the video opens in a floating window automatically.';
         var checkboxLabel = hasT ? _('Open in a floating window') : 'Open in a floating window';
         var helpLabel = hasT ? _('Help') : 'Help';
 
@@ -746,7 +746,8 @@ var $exeTinyMCE = {
 
         spec.initialData = initial;
         if (typeof spec.initialData.exeMediaFloating === 'undefined') {
-            spec.initialData.exeMediaFloating = true;
+            // Inline by default; floating is opt-in (only affects normal, non-opaque rendering).
+            spec.initialData.exeMediaFloating = false;
         }
 
         var origSubmit = spec.onSubmit;
