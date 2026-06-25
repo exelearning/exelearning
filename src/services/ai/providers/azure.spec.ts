@@ -37,13 +37,13 @@ describe('azure provider', () => {
         expect(headers.Authorization).toBeUndefined();
     });
 
-    it('sends a chat-completions payload using config max_tokens/temperature', async () => {
+    it('sends a chat-completions payload using config max_completion_tokens/temperature', async () => {
         const { calls, fetchImpl } = captureFetch({ choices: [{ message: { content: 'ok' } }] });
         await generate(azureConfig, 'prompt text', { fetchImpl });
 
         const body = JSON.parse(calls[0].init.body as string);
         expect(body.messages).toEqual([{ role: 'user', content: 'prompt text' }]);
-        expect(body.max_tokens).toBe(1000);
+        expect(body.max_completion_tokens).toBe(1000);
         expect(body.temperature).toBeCloseTo(0.3);
     });
 
@@ -51,7 +51,7 @@ describe('azure provider', () => {
         const { calls, fetchImpl } = captureFetch({ choices: [{ message: { content: 'ok' } }] });
         await generate(azureConfig, 'p', { fetchImpl, maxOutputTokens: 7, temperature: 0.9 });
         const body = JSON.parse(calls[0].init.body as string);
-        expect(body.max_tokens).toBe(7);
+        expect(body.max_completion_tokens).toBe(7);
         expect(body.temperature).toBeCloseTo(0.9);
     });
 

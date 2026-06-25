@@ -15,11 +15,10 @@ export async function generate(config: AiConfig, prompt: string, options: Genera
 
     const data = await postJson({
         url,
-        provider: 'azure',
         headers: { 'api-key': apiKey },
         body: {
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: options.maxOutputTokens ?? config.maxOutputTokens,
+            max_completion_tokens: options.maxOutputTokens ?? config.maxOutputTokens,
             temperature: options.temperature ?? config.temperature,
         },
         signal: options.signal,

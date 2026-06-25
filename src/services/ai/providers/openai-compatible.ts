@@ -17,12 +17,11 @@ export async function generate(config: AiConfig, prompt: string, options: Genera
 
     const data = await postJson({
         url,
-        provider: 'openai_compat',
         headers,
         body: {
             model: config.compat.model,
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: options.maxOutputTokens ?? config.maxOutputTokens,
+            max_completion_tokens: options.maxOutputTokens ?? config.maxOutputTokens,
             temperature: options.temperature ?? config.temperature,
         },
         signal: options.signal,

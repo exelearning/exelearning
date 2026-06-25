@@ -32,6 +32,24 @@ describe('openai-compatible provider', () => {
         expect(body.messages).toEqual([{ role: 'user', content: 'prompt' }]);
     });
 
+    it('sends max_completion_tokens and temperature in the request body', async () => {
+        const config = parseAiConfig({
+            AI_PROVIDER: 'openai_compat',
+            AI_COMPAT_ENDPOINT: 'https://api.example.com/v1',
+            AI_COMPAT_MODEL: 'gpt-4o-mini',
+            AI_MAX_OUTPUT_TOKENS: '512',
+            AI_TEMPERATURE: '0.5',
+        });
+        const { calls, fetchImpl } = captureFetch({ choices: [{ message: { content: 'x' } }] });
+
+        await generate(config, 'p', { fetchImpl });
+
+        const body = JSON.parse(calls[0].init.body as string);
+        expect(body.max_completion_tokens).toBe(512);
+        expect(body).not.toHaveProperty('max_tokens');
+        expect(body.temperature).toBeCloseTo(0.5);
+    });
+
     it('omits the Authorization header when no key is configured', async () => {
         const config = parseAiConfig({
             AI_PROVIDER: 'openai_compat',
