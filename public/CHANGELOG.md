@@ -14,13 +14,13 @@
 
 ### Fixed
 
-- Security: hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
+- Security: multiple hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
 - Security: enhanced protections against cross-tenant asset deletion and unauthorised file uploads; improved export filename handling for non-Latin titles
 - Collaboration: shared Yjs changes are now saved correctly during collaborative sessions
 - Collaboration: shared assets are now identified consistently, preventing image loss
 - Collaboration: fixed data loss affecting collaborative editing across day changes
 - Collaboration: shared and collaborative projects are no longer deleted during session cleanup
-- Assets without a file extension are now served with the correct MIME type, preventing unintended downloads
+- Assets without a file extension are now served with the correct MIME type, preventing unintended PDF downloads
 - Share dialog: the people-with-access list now scrolls correctly within the modal
 - Link Validator and Resource Report: Download CSV now works correctly
 - The iDevices panel is now disabled when the selected page is the document root
@@ -29,7 +29,7 @@
 - Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
 - 3DMol iDevice: molecule files are now supported in the file manager and viewer
 - 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
-- 3D Viewer iDevice: models are now displayed correctly in exported content
+- 3D Viewer iDevice: fixed a display issue affecting models in exported content
 - Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
 - Tooltips inside accordions and other effects now initialise correctly
 - iDevice icon selector: improved contrast across all styles
