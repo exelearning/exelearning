@@ -34,6 +34,7 @@ import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSock
 import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
 import { getAppVersion } from './utils/version';
+import { jwtSecretBootError } from './utils/env';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
@@ -707,14 +708,12 @@ async function syncBuiltinThemes() {
  * forgeable by anyone who reads the open-source codebase.
  */
 function assertProductionJwtSecret(): void {
-    if (process.env.NODE_ENV !== 'production') return;
-    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || '';
-    if (!secret || secret === 'dev_secret_change_me' || secret === 'elysia-dev-secret-change-me') {
-        console.error(
-            '[SECURITY] Refusing to start: NODE_ENV=production but no API_JWT_SECRET/JWT_SECRET is set ' +
-                '(or it is still the in-repo default). Generate a long random string and export it as ' +
-                'API_JWT_SECRET before starting the server.',
-        );
+    // Keyed on BOTH APP_ENV=prod and NODE_ENV=production (see src/utils/env.ts)
+    // so the default-secret refusal also fires on non-Docker prod deploys that
+    // only set APP_ENV=prod, not just the Docker image that sets NODE_ENV.
+    const error = jwtSecretBootError();
+    if (error) {
+        console.error(error);
         process.exit(1);
     }
 }

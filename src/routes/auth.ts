@@ -3,6 +3,7 @@
  * Handles login, logout, session checks, and guest access
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
@@ -236,7 +237,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -313,7 +314,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: originalToken,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -449,7 +450,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -584,7 +585,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const returnUrl = query.returnUrl as string | undefined;
                 const headers: [string, string][] = [['Location', loginUrl]];
                 if (returnUrl && isValidReturnUrl(returnUrl)) {
-                    const isSecure = process.env.NODE_ENV === 'production';
+                    const isSecure = isProductionEnv();
                     headers.push([
                         'Set-Cookie',
                         `sso_return_url=${encodeURIComponent(returnUrl)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
@@ -702,7 +703,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -791,7 +792,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 });
 
                 // Build cookies to set (OIDC state + optional returnUrl)
-                const isSecure = process.env.NODE_ENV === 'production';
+                const isSecure = isProductionEnv();
                 const cookies: string[] = [
                     `oidc_state=${encodeURIComponent(oidcState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
                 ];
@@ -1039,7 +1040,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -1074,7 +1075,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         'sso_return_url=; Path=/; HttpOnly; Max-Age=0', // Clear returnUrl cookie
                     ];
                     if (idToken) {
-                        const isSecure = process.env.NODE_ENV === 'production';
+                        const isSecure = isProductionEnv();
                         setCookieHeaders.push(
                             `oidc_id_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`,
                         );
@@ -1156,7 +1157,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',
