@@ -744,6 +744,10 @@ describe('Platform Integration Routes', () => {
                 pkgtype: 'webzip',
             });
 
+            // Server does not yet know this project; the ownership gate defers
+            // (the realistic first-time browser-authored save).
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
+
             let capturedUrl: string | null = null;
             let capturedFormData: FormData | null = null;
             globalThis.fetch = async (url, init) => {
@@ -792,6 +796,7 @@ describe('Platform Integration Routes', () => {
 
         it('propagates platform error descriptions back to the client as 500', async () => {
             const token = await createValidToken();
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
             globalThis.fetch = async () =>
                 new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
                     status: 200,
@@ -812,6 +817,7 @@ describe('Platform Integration Routes', () => {
 
         it('returns 500 when the platform replies with a non-OK HTTP status', async () => {
             const token = await createValidToken();
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
             globalThis.fetch = async () => new Response(null, { status: 503 });
 
             const formData = new FormData();
@@ -843,6 +849,51 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(401);
             const data = await response.json();
             expect(data.responseMessage).toContain('Invalid token');
+        });
+
+        it('returns 403 and forwards/rebinds nothing when projectUuid is bound to another platform module (IDOR)', async () => {
+            // Attacker holds a valid JWT for their OWN course module (cmid '456')
+            // but supplies a victim project already bound to a DIFFERENT module
+            // (cmid '999'). The ownership gate must deny the rebind/forward.
+            const token = await createValidToken({ cmid: '456' });
+
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '999' }),
+            });
+
+            // The rebind sink must never run.
+            let updateCalled = false;
+            configureService({
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+
+            // The package must never be forwarded to any platform.
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
+            const data = await response.json();
+            expect(data.responseMessage).toContain('Forbidden');
+
+            // Critically: nothing forwarded and no platform_id rebind happened.
+            expect(fetchCalled).toBe(false);
+            expect(updateCalled).toBe(false);
         });
     });
 });

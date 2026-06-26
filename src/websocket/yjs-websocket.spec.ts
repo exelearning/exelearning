@@ -1191,6 +1191,53 @@ describe('Yjs WebSocket Service', () => {
             expect(result.hasAccess).toBe(false);
             expect(result.reason).toBe('Project not found');
         });
+
+        // Regression: ws-inmemory-session-authz-bypass (security audit)
+        // The presence of an in-memory session must never short-circuit the
+        // authorization check for a persisted private project.
+        it('should deny a non-owner even when an in-memory session exists for a persisted private project', async () => {
+            mockProjects.set('inmemory-uuid', {
+                id: 99,
+                uuid: 'inmemory-uuid',
+                owner_id: 1,
+                visibility: 'private',
+            });
+            mockSessions.set('inmemory-uuid', {
+                sessionId: 'inmemory-uuid',
+                fileName: 'Victim.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('inmemory-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('Access denied');
+        });
+
+        it('should deny a non-creator for an unsaved in-memory session with no DB record', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('ACCESS_DENIED');
+        });
+
+        it('should still grant the creator access to their unsaved in-memory session', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 1);
+
+            expect(result.hasAccess).toBe(true);
+        });
     });
 
     // =========================================================================
@@ -1368,7 +1415,10 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the second collaborator (user 2) is legitimately
+                // authorized under the hardened WS access check (the old test
+                // relied on the now-closed in-memory-session authz bypass).
+                visibility: 'public',
                 saved_once: 0, // Not saved yet
             });
 
@@ -1426,7 +1476,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1, // Already saved
             });
 
@@ -1477,8 +1528,11 @@ describe('Yjs WebSocket Service', () => {
             let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
                 callCount++;
-                // First call succeeds (for access check), subsequent calls throw
-                if (callCount > 1 && uuid === projectUuid) {
+                // The hardened access check does one lookup per connecting client
+                // (calls #1 and #2). The injected DB error must therefore fire on
+                // the later save-status lookup (#3) so we still exercise the
+                // error-swallowing path during collaboration.
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
@@ -1489,7 +1543,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 0,
             });
 
@@ -1521,14 +1576,20 @@ describe('Yjs WebSocket Service', () => {
             const docName = `project-${projectUuid}`;
 
             const mockQueries = createMockQueries();
+            let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
-                if (uuid === projectUuid) {
+                callCount++;
+                // Access does one lookup per client (#1 and #2, returning undefined
+                // so the in-memory session governs admission); the save-status lookup
+                // during collaboration (#3) throws and must be swallowed.
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
             };
 
-            // Add session so access check bypasses DB
+            // In-memory session (no DB project) so the access check admits both
+            // connecting clients; the collaboration save-status lookup then errors.
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             configure({
@@ -1563,7 +1624,9 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the joining second client (user 2) is authorized
+                // under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1,
             });
 

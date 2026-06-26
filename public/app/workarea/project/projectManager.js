@@ -575,7 +575,8 @@ export default class projectManager {
                 // Cleanup: Request server to delete temp file (URL-import workflow only)
                 try {
                     await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
                 } catch (cleanupError) {
                     console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);

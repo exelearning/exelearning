@@ -214,27 +214,38 @@ export async function checkWebSocketProjectAccess(
     projectUuid: string,
     userId: number,
 ): Promise<{ hasAccess: boolean; reason?: string }> {
-    // First, check if it's an in-memory session
-    // In-memory sessions are created for new projects before they're saved to DB
+    // Resolve the persisted project first. When a project record exists it is
+    // authoritative: run the centralized owner/collaborator/public access check.
+    // The mere existence of an in-memory session must NEVER substitute for
+    // authorization, otherwise any authenticated user could join any private
+    // room that happens to have a live session (cross-tenant read AND write of
+    // the relayed Y.Doc). This mirrors the access-control flow already used by
+    // the workarea page handler in src/routes/pages.ts.
+    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
+    if (project) {
+        return deps.queries.checkProjectAccess(deps.db, project, userId);
+    }
+
+    // No persisted project. An in-memory session can still legitimately exist for
+    // a brand-new project that has not been written to the database yet (offline
+    // / not-yet-saved flow). Only the user who created that session may join it.
     const session = deps.sessionManager.getSession(projectUuid);
     if (session) {
-        // Session exists in memory - allow access
+        if (session.userId && session.userId !== userId) {
+            if (DEBUG)
+                console.log(
+                    `[YjsWebSocket] Access denied to in-memory session ${projectUuid}: ` +
+                        `created by user ${session.userId}, requested by ${userId}`,
+                );
+            return { hasAccess: false, reason: 'ACCESS_DENIED' };
+        }
         if (DEBUG) console.log(`[YjsWebSocket] Access granted via in-memory session: ${projectUuid}`);
         return { hasAccess: true };
     }
 
-    // Fall back to database check for persisted projects using centralized function
-    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
-
-    if (!project) {
-        // Neither in session nor in database - deny access
-        if (DEBUG)
-            console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
-        return { hasAccess: false, reason: 'Project not found' };
-    }
-
-    // Use centralized access check
-    return deps.queries.checkProjectAccess(deps.db, project, userId);
+    // Neither in database nor in session - deny access
+    if (DEBUG) console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
+    return { hasAccess: false, reason: 'Project not found' };
 }
 
 /**
