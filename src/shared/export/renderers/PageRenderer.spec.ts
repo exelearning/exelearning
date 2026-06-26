@@ -379,6 +379,88 @@ describe('PageRenderer', () => {
             // First page gets main-node class too
             expect(html).toContain('class="active main-node daddy"');
         });
+
+        it('should mark ancestors of the current page with current-page-parent', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'section', title: 'Section', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'leaf', title: 'Leaf', parentId: 'section', order: 2 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'leaf', '');
+
+            // The middle ancestor is highlighted; the deep current page is active.
+            expect(html).toContain('class="current-page-parent"');
+            expect(html).toContain('class="active"');
+            expect(html).toContain('Leaf');
+        });
+
+        it('should exclude a hidden subtree and its descendants from navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden-parent',
+                    title: 'HiddenParent',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+                createTestPage({ id: 'hidden-child', title: 'HiddenChild', parentId: 'hidden-parent', order: 2 }),
+                createTestPage({ id: 'visible', title: 'VisiblePage', parentId: 'root', order: 3 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'root', '');
+
+            expect(html).toContain('VisiblePage');
+            // Both the hidden page and its (otherwise visible) child are dropped.
+            expect(html).not.toContain('HiddenParent');
+            expect(html).not.toContain('HiddenChild');
+        });
+
+        it('should produce identical output across repeated renders (memoization is stateless per call)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'a', title: 'A', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'b', title: 'B', parentId: 'a', order: 2 }),
+                createTestPage({ id: 'c', title: 'C', parentId: 'root', order: 3 }),
+            ];
+
+            const first = renderer.renderNavigation(pages, 'b', '');
+            const second = renderer.renderNavigation(pages, 'b', '');
+
+            expect(first).toBe(second);
+        });
+    });
+
+    describe('renderNavItem (public entry point)', () => {
+        it('should render a single item with its visible children', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'parent', title: 'Parent', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'child', title: 'Child', parentId: 'parent', order: 2 }),
+            ];
+
+            const html = renderer.renderNavItem(pages[1], pages, 'child', '');
+
+            expect(html).toContain('Parent');
+            expect(html).toContain('Child');
+            expect(html).toContain('class="other-section"');
+        });
+
+        it('should return empty string for a hidden page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden',
+                    title: 'Hidden',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+            ];
+
+            expect(renderer.renderNavItem(pages[1], pages, 'root', '')).toBe('');
+        });
     });
 
     describe('renderNavButtons', () => {
@@ -589,7 +671,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderFooterSection', () => {
-        it('should render footer with license', () => {
+        it('should render footer with license using English label by default', () => {
             const html = renderer.renderFooterSection({
                 license: 'creative commons: attribution - share alike 4.0',
                 licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
@@ -598,10 +680,20 @@ describe('PageRenderer', () => {
             expect(html).toContain('<footer id="siteFooter">');
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
-            expect(html).toContain('class="license-label">Licencia: </span>');
+            expect(html).toContain('class="license-label">License: </span>');
             // formatLicenseText returns the lowercase key for CC licenses (used as translation key)
             expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
             expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
+        });
+
+        it('should use navLabels.licenseLabel when provided', () => {
+            const html = renderer.renderFooterSection({
+                license: 'creative commons: attribution - share alike 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+                navLabels: { licenseLabel: 'Licencia' },
+            });
+
+            expect(html).toContain('class="license-label">Licencia: </span>');
         });
 
         it('should render correct license class for different licenses', () => {
@@ -699,14 +791,33 @@ describe('PageRenderer', () => {
     });
 
     describe('renderMadeWithEXe', () => {
-        it('should render made-with-eXe credit', () => {
+        it('should render made-with-eXe credit with English defaults', () => {
             const html = renderer.renderMadeWithEXe();
 
             expect(html).toContain('id="made-with-eXe"');
             expect(html).toContain('href="https://exelearning.net/"');
-            expect(html).toContain('Creado con eXeLearning');
+            expect(html).toContain('Made with eXeLearning');
+            expect(html).toContain('(New window)');
             expect(html).toContain('target="_blank"');
             expect(html).toContain('rel="noopener"');
+        });
+
+        it('should use navLabels translations when provided', () => {
+            const html = renderer.renderMadeWithEXe('es', {
+                madeWith: 'Creado con eXeLearning',
+                newWindow: 'Ventana nueva',
+            });
+
+            expect(html).toContain('Creado con eXeLearning');
+            expect(html).toContain('(Ventana nueva)');
+            expect(html).not.toContain('Made with eXeLearning');
+        });
+
+        it('should use trans() fallback when navLabels are not provided', () => {
+            const html = renderer.renderMadeWithEXe('en');
+
+            expect(html).toContain('Made with eXeLearning');
+            expect(html).toContain('(New window)');
         });
     });
 
@@ -1812,6 +1923,195 @@ describe('PageRenderer', () => {
             // Both icons should be resolved
             expect(html).toContain('theme/icons/info.svg');
             expect(html).toContain('theme/icons/warning.png');
+        });
+    });
+
+    // Render-time internal-link rewrites for #1927. These run on the rendered HTML so the
+    // source feeding content.xml keeps the original exe-node: references.
+    describe('replaceInternalLinks (multi-page)', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves exe-node to html/<file> from the index', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html">About</a>');
+        });
+
+        it('resolves exe-node to the index from a subpage (basePath ../)', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-1">Home</a>', allPages, '../');
+            expect(out).toBe('<a href="../index.html">Home</a>');
+        });
+
+        it('preserves the #anchor fragment', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2#sec">Sec</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html#sec">Sec</a>');
+        });
+
+        it('uses the collision-safe filename from pageFilenameMap', () => {
+            const map = new Map([['page-2', 'about-2.html']]);
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '', map);
+            expect(out).toBe('<a href="html/about-2.html">About</a>');
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-999">X</a>', allPages, '');
+            expect(out).toBe('<a href="exe-node:page-999">X</a>');
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const content = '<a href="https://example.com">Ext</a>';
+            expect(renderer.replaceInternalLinks(content, allPages, '')).toBe(content);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceInternalLinks('', allPages, '')).toBe('');
+        });
+
+        it('replaces multiple links in a single pass', () => {
+            const out = renderer.replaceInternalLinks(
+                '<a href="exe-node:page-2">A</a> <a href="exe-node:page-1">H</a>',
+                allPages,
+                '',
+            );
+            expect(out).toBe('<a href="html/about.html">A</a> <a href="index.html">H</a>');
+        });
+    });
+
+    describe('namespaceSinglePageAnchors', () => {
+        it('prefixes id on named anchors (a without href)', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a id="intro">I</a></p>', 'page-2')).toBe(
+                '<p><a id="page-2--intro">I</a></p>',
+            );
+        });
+
+        it('prefixes name on named anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a name="s1">S</a></p>', 'page-2')).toBe(
+                '<p><a name="page-2--s1">S</a></p>',
+            );
+        });
+
+        it('does not touch anchors that have href (regular links)', () => {
+            const c = '<a href="https://example.com" id="link1">E</a>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('does not touch non-anchor elements with id', () => {
+            const c = '<div id="mydiv">C</div>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('handles empty and null content', () => {
+            expect(renderer.namespaceSinglePageAnchors('', 'page-1')).toBe('');
+            expect((renderer as any).namespaceSinglePageAnchors(null, 'page-1')).toBe(null);
+        });
+
+        it('handles content without anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p>Just text</p>', 'page-1')).toBe('<p>Just text</p>');
+        });
+    });
+
+    describe('replaceSinglePageInternalLinks', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves a plain exe-node link to the page section', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2">A</a>', allPages)).toBe(
+                '<a href="#section-page-2">A</a>',
+            );
+        });
+
+        it('resolves an anchored exe-node link to the namespaced anchor', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2#intro">A</a>', allPages)).toBe(
+                '<a href="#page-2--intro">A</a>',
+            );
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const c = '<a href="exe-node:nope">X</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const c = '<a href="https://example.com">E</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
+        });
+    });
+
+    describe('xAPI config script injection (XSS hardening)', () => {
+        // A title that, with a naive JSON.stringify, would close the inline <script> and
+        // inject an executable <script>alert(1)</script> into the exported page.
+        const maliciousTitle = '</script><script>alert(1)</script>';
+
+        function expectNeutralized(html: string): void {
+            // The emitted markup must NOT contain a literal breakout sequence that would
+            // escape the xAPI config <script> tag.
+            expect(html).not.toContain('</script><script>alert(1)</script>');
+            // The '<' of the payload must be escaped as a JS unicode escape inside the JSON.
+            expect(html).toContain('\\u003c/script>\\u003cscript>alert(1)\\u003c/script>');
+            // The xAPI config must still be present and the emitter script must follow it.
+            expect(html).toContain('window.exeXapi=');
+            expect(html).toContain('libs/xapi/exe_xapi.js');
+        }
+
+        it('neutralizes </script> breakout in renderHead (multi-page head)', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                xapi: {
+                    odeId: 'ode-1',
+                    baseIri: 'https://exe.test/',
+                    activityId: 'https://exe.test/act',
+                    packageTitle: maliciousTitle,
+                    language: 'en',
+                },
+            });
+            expectNeutralized(head);
+        });
+
+        it('neutralizes </script> breakout in renderSinglePage (single-page head)', () => {
+            const pages: ExportPage[] = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                projectTitle: 'Test',
+                xapi: {
+                    odeId: 'ode-1',
+                    baseIri: 'https://exe.test/',
+                    activityId: 'https://exe.test/act',
+                    packageTitle: maliciousTitle,
+                    language: 'en',
+                },
+            });
+            expectNeutralized(html);
+        });
+
+        it('escapes U+2028 / U+2029 line separators so the JS string literal stays valid', () => {
+            const ls = '\u2028';
+            const ps = '\u2029';
+            const result = renderer.serializeForScript({ packageTitle: `a${ls}b${ps}c` });
+            // The raw separators (illegal in a JS string literal) must not survive verbatim.
+            expect(result).not.toContain(ls);
+            expect(result).not.toContain(ps);
+            expect(result).toContain('\\u2028');
+            expect(result).toContain('\\u2029');
+        });
+
+        it('round-trips back to the original value via JSON.parse', () => {
+            const value = {
+                packageTitle: maliciousTitle,
+                baseIri: `https://exe.test/x${'\u2028'}y`,
+            };
+            const serialized = renderer.serializeForScript(value);
+            // The escaped less-than, U+2028 and U+2029 are valid JSON escapes, so
+            // JSON.parse must recover the exact original object.
+            expect(JSON.parse(serialized)).toEqual(value);
         });
     });
 });

@@ -52,27 +52,16 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * @returns Map of file paths to content
      */
     async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
-        // 1. Check for embedded theme in extracted directory (custom themes from ELPX)
+        // 1. Check for embedded theme in extracted directory (custom themes from ELPX).
+        // Styles embedded in an opened/imported .elpx are always available: the legacy
+        // <downloadable> flag must not make export ignore the embedded theme (issue #1893).
+        // A config.xml is still required so incomplete theme folders fall back to base.
         if (this.extractedDir) {
             const extractedThemePath = path.join(this.extractedDir, 'theme');
-            if (await fs.pathExists(extractedThemePath)) {
-                // Check config.xml for downloadable flag
-                const configPath = path.join(extractedThemePath, 'config.xml');
-                if (await fs.pathExists(configPath)) {
-                    try {
-                        const configContent = await fs.readFile(configPath, 'utf-8');
-                        const downloadableMatch = configContent.match(/<downloadable>(\d)<\/downloadable>/);
-                        const isDownloadable = downloadableMatch && downloadableMatch[1] === '1';
-
-                        if (isDownloadable) {
-                            // Use embedded theme
-                            console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
-                            return this.readDirectoryRecursive(extractedThemePath, '');
-                        }
-                    } catch (e) {
-                        console.warn(`[FileSystemResourceProvider] Error reading theme config.xml:`, e);
-                    }
-                }
+            const configPath = path.join(extractedThemePath, 'config.xml');
+            if ((await fs.pathExists(extractedThemePath)) && (await fs.pathExists(configPath))) {
+                console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
+                return this.readDirectoryRecursive(extractedThemePath, '');
             }
         }
 
@@ -156,6 +145,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
+            // Always-on xAPI emitter (every export is xAPI-compatible)
+            { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon
             { src: 'favicon.ico', dest: 'favicon.ico' },
             // Note: common_i18n.js is generated dynamically by I18nGenerator per project language

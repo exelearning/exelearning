@@ -14,7 +14,7 @@
  * This is a TypeScript port of public/app/yjs/exporters/renderers/PageHtmlRenderer.js
  */
 
-import type { ExportPage, PageRenderOptions } from '../interfaces';
+import type { ExportPage, PageRenderOptions, XapiConfig } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import {
     LIBRARY_PATTERNS,
@@ -26,6 +26,29 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+
+/**
+ * Precomputed lookups shared across a single navigation render so each nav node
+ * costs O(1) instead of re-scanning the whole page array. See
+ * PageRenderer.buildNavRenderContext.
+ */
+interface NavRenderContext {
+    /** id → page. */
+    idIndex: Map<string, ExportPage>;
+    /** parentId (or null for roots) → children, in original page order. */
+    childrenByParent: Map<string | null, ExportPage[]>;
+    /** Memoized visibility check (same semantics as isPageVisible). */
+    isVisible: (page: ExportPage) => boolean;
+    /** Strict ancestors of the current page. */
+    ancestorsOfCurrent: Set<string>;
+}
+
+// Matches an opening <a> tag that is a *named anchor* (has id or name) and is NOT a link
+// (no href). Used by single-page export to namespace anchor ids so they don't collide when
+// every page is merged into one document.
+const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
+const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
+
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -115,6 +138,8 @@ export class PageRenderer {
             assetExportPathMap,
             // Application version for generator meta tag
             version,
+            // xAPI runtime config (always-on emitter)
+            xapi,
         } = options;
 
         const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
@@ -124,14 +149,23 @@ export class PageRenderer {
         const originalContent = this.collectPageContent(page);
         const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
 
-        // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
-            author: options.author,
-            description: options.description,
-            license: options.license,
-            language: options.language,
-            translatedLicense: options.navLabels?.license,
-        });
+        // Render page content (includes exe-package:elp → onclick transformation and,
+        // because allPages is provided, the render-time exe-node: → static path rewrite)
+        const pageContent = this.renderPageContent(
+            page,
+            basePath,
+            projectTitle,
+            assetExportPathMap,
+            {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: options.navLabels?.license,
+            },
+            allPages,
+            options.pageFilenameMap,
+        );
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -160,7 +194,7 @@ export class PageRenderer {
             : '';
 
         // Build "Made with eXeLearning" link (only if enabled)
-        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
+        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(language, options.navLabels) : '';
 
         // Extract page filename map for navigation links (handles title collisions)
         const pageFilenameMap = options.pageFilenameMap;
@@ -176,7 +210,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version, xapi })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -216,6 +250,7 @@ ${madeWithExeHtml}
         faviconPath?: string;
         faviconType?: string;
         version?: string;
+        xapi?: XapiConfig;
         isEpub?: boolean;
     }): string {
         const {
@@ -236,6 +271,7 @@ ${madeWithExeHtml}
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             version,
+            xapi,
             isEpub = false,
         } = options;
 
@@ -267,6 +303,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
+
+        // Always-on xAPI emitter: identity config + emitter library. Present in
+        // every export format so the package is xAPI-compatible out of the box.
+        if (xapi) {
+            head += `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>`;
+        }
+        head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;
 
         // Search index script (loads before exe_export.js initializes)
         if (addSearchBox) {
@@ -370,11 +413,20 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        const rootPages = allPages.filter(p => !p.parentId);
+        // Precompute indices ONCE per navigation render. The previous
+        // implementation re-scanned the full page array for every nav node
+        // (children filter + recursive visibility/ancestry walks, each doing an
+        // O(n) find per level), making rendering O(n²·depth) per page and the
+        // whole HTML5 export/preview O(n³·depth). For courses with hundreds of
+        // pages that dominated export time on the browser main thread. The
+        // precomputed structures below make navigation O(n) per page with
+        // identical output.
+        const ctx = this.buildNavRenderContext(allPages, currentPageId);
+        const rootPages = ctx.childrenByParent.get(null) ?? [];
 
         let html = '<nav id="siteNav">\n<ul>\n';
         for (const page of rootPages) {
-            html += this.renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap);
+            html += this.renderNavItemFast(page, allPages, currentPageId, basePath, pageFilenameMap, ctx);
         }
         html += '</ul>\n</nav>';
 
@@ -382,7 +434,118 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
-     * Render a single navigation item (recursive for children)
+     * Build the per-render navigation index: an id→page map, a parentId→children
+     * map (preserving page array order; root pages keyed under `null`), a
+     * memoized visibility cache, and the set of the current page's ancestors.
+     * This collapses the repeated O(n) scans in renderNavItem/isPageVisible/
+     * isAncestorOf into a single O(n) pass with O(1) lookups thereafter.
+     */
+    private buildNavRenderContext(allPages: ExportPage[], currentPageId: string): NavRenderContext {
+        const idIndex = new Map<string, ExportPage>();
+        const childrenByParent = new Map<string | null, ExportPage[]>();
+        const rootId = allPages[0]?.id;
+
+        for (const page of allPages) {
+            idIndex.set(page.id, page);
+            const key = page.parentId ?? null;
+            const bucket = childrenByParent.get(key);
+            if (bucket) {
+                bucket.push(page);
+            } else {
+                childrenByParent.set(key, [page]);
+            }
+        }
+
+        const visibleCache = new Map<string, boolean>();
+        const isVisible = (page: ExportPage): boolean => {
+            const cached = visibleCache.get(page.id);
+            if (cached !== undefined) return cached;
+            let result: boolean;
+            if (page.id === rootId) {
+                result = true;
+            } else if (this.isFalsyProperty(page.properties?.visibility)) {
+                result = false;
+            } else if (page.parentId) {
+                const parent = idIndex.get(page.parentId);
+                result = parent ? isVisible(parent) : true;
+            } else {
+                result = true;
+            }
+            visibleCache.set(page.id, result);
+            return result;
+        };
+
+        // Ancestor chain of the current page (strict ancestors only), with a
+        // cycle guard so malformed parent links cannot loop forever.
+        const ancestorsOfCurrent = new Set<string>();
+        let cursor = idIndex.get(currentPageId);
+        while (cursor?.parentId && !ancestorsOfCurrent.has(cursor.parentId)) {
+            ancestorsOfCurrent.add(cursor.parentId);
+            cursor = idIndex.get(cursor.parentId);
+        }
+
+        return { idIndex, childrenByParent, isVisible, ancestorsOfCurrent };
+    }
+
+    /**
+     * Optimized counterpart to renderNavItem that uses the precomputed
+     * NavRenderContext. Output is byte-for-byte identical to renderNavItem;
+     * only the lookups differ (O(1) map access instead of O(n) array scans).
+     */
+    private renderNavItemFast(
+        page: ExportPage,
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap: Map<string, string> | undefined,
+        ctx: NavRenderContext,
+    ): string {
+        if (!ctx.isVisible(page)) {
+            return '';
+        }
+
+        const children = (ctx.childrenByParent.get(page.id) ?? []).filter(child => ctx.isVisible(child));
+        const isCurrent = page.id === currentPageId;
+        const hasChildren = children.length > 0;
+        const isAncestor = ctx.ancestorsOfCurrent.has(page.id);
+        const isFirstPage = page.id === allPages[0]?.id;
+
+        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
+
+        const linkClasses: string[] = [];
+        if (isCurrent) linkClasses.push('active');
+        if (isFirstPage) linkClasses.push('main-node');
+        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        if (this.isPageHighlighted(page)) {
+            linkClasses.push('highlighted-link');
+        }
+
+        let html = `<li${liClass}>`;
+        html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
+
+        if (hasChildren) {
+            html += '<ul class="other-section">\n';
+            for (const child of children) {
+                html += this.renderNavItemFast(child, allPages, currentPageId, basePath, pageFilenameMap, ctx);
+            }
+            html += '</ul>\n';
+        }
+
+        html += '</li>\n';
+        return html;
+    }
+
+    /**
+     * Render a single navigation item (recursive for children).
+     *
+     * Public entry point kept for backward compatibility; it builds a
+     * NavRenderContext on demand and delegates to the optimized renderer so
+     * there is a single source of truth for the markup. Callers rendering a
+     * whole tree should prefer renderNavigation, which builds the context once
+     * and reuses it across every node.
+     *
      * @param page - Page to render
      * @param allPages - All pages
      * @param currentPageId - Current page ID
@@ -397,46 +560,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        // Skip hidden pages (except we check at parent level to preserve hierarchy)
-        if (!this.isPageVisible(page, allPages)) {
-            return '';
-        }
-
-        // Filter children to only visible ones
-        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
-        const isCurrent = page.id === currentPageId;
-        const hasChildren = children.length > 0;
-        const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
-        const isFirstPage = page.id === allPages[0]?.id;
-
-        // Build li class attribute
-        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
-        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
-
-        // Build link classes: main-node for first page, daddy/no-ch for children, active if current
-        const linkClasses: string[] = [];
-        if (isCurrent) linkClasses.push('active');
-        if (isFirstPage) linkClasses.push('main-node');
-        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
-
-        // Add highlighted-link class if page is highlighted
-        if (this.isPageHighlighted(page)) {
-            linkClasses.push('highlighted-link');
-        }
-
-        let html = `<li${liClass}>`;
-        html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
-
-        if (hasChildren) {
-            html += '<ul class="other-section">\n';
-            for (const child of children) {
-                html += this.renderNavItem(child, allPages, currentPageId, basePath, pageFilenameMap);
-            }
-            html += '</ul>\n';
-        }
-
-        html += '</li>\n';
-        return html;
+        const ctx = this.buildNavRenderContext(allPages, currentPageId);
+        return this.renderNavItemFast(page, allPages, currentPageId, basePath, pageFilenameMap, ctx);
     }
 
     /**
@@ -632,6 +757,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        allPages?: ExportPage[],
+        pageFilenameMap?: Map<string, string>,
     ): string {
         let html = '';
 
@@ -647,6 +774,16 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
         if (projectTitle) {
             html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
+        // Rewrite exe-node: internal links to their static export paths. Like the
+        // exe-package:elp transform above, this happens at render time (not during
+        // preprocessing) so the re-editable content.xml keeps the original exe-node:
+        // references and survives an export → re-import round trip (#1927).
+        // Only applies for multi-page exports, which pass allPages; the single-page
+        // export handles its own anchor-based rewrite in renderSinglePage().
+        if (allPages && allPages.length > 0) {
+            html = this.replaceInternalLinks(html, allPages, basePath, pageFilenameMap);
         }
 
         // Sync project properties for download-source-file and similar iDevices
@@ -749,6 +886,100 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
+     * Rewrite exe-node: internal links to their static export paths at render time.
+     *
+     * Reuses getPageLink() — the same helper that builds navigation links — so internal
+     * links and nav links stay consistent (single source of truth). basePath already
+     * encodes from-subpage relativity ('' on index, '../' on subpages). The #anchor
+     * fragment, if any, is preserved. Unknown targets are left untouched (external link
+     * or stale reference) so nothing is silently dropped.
+     *
+     * Kept out of preprocessPagesForExport so the source HTML that feeds content.xml
+     * keeps the exe-node: protocol and survives an export → re-import round trip (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to resolve the target and its filename)
+     * @param basePath - Base path of the current page ('' for index, '../' for subpages)
+     * @param pageFilenameMap - Collision-safe page id → filename map
+     * @returns HTML with exe-node: links replaced by static export paths
+     */
+    replaceInternalLinks(
+        content: string,
+        allPages: ExportPage[],
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
+            const target = allPages.find(p => p.id === pageId);
+            if (!target) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            const url = this.getPageLink(target, allPages, basePath, pageFilenameMap);
+            return `href="${url}${anchorFragment}"`;
+        });
+    }
+
+    /**
+     * Prefix id/name attributes on named anchors (<a> without href) with the page id.
+     * Single-page export merges every page into one document, so anchor ids like "intro"
+     * on different pages would collide; e.g. <a id="intro"> on page "page-2" becomes
+     * <a id="page-2--intro">. Applied at render time so content.xml keeps the raw ids.
+     *
+     * @param content - Rendered page HTML
+     * @param pageId - Id of the page the content belongs to
+     * @returns HTML with named-anchor ids/names namespaced
+     */
+    namespaceSinglePageAnchors(content: string, pageId: string): string {
+        if (!content) return content;
+        return content.replace(NAMED_ANCHOR_RE, match =>
+            match.replace(ID_NAME_ATTR_RE, (_, attr, value) => `${attr}="${pageId}--${value}"`),
+        );
+    }
+
+    /**
+     * Rewrite exe-node: internal links to in-page anchors for single-page export.
+     * A link carrying its own anchor (exe-node:pageId#anchor) resolves to the namespaced
+     * anchor (#pageId--anchor, matching namespaceSinglePageAnchors); without an anchor it
+     * resolves to the page section (#section-pageId). Unknown targets are left untouched.
+     * Applied at render time so content.xml keeps the raw exe-node: references (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to validate the target id)
+     * @returns HTML with exe-node: links replaced by in-page anchors
+     */
+    replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        const pageIds = new Set(allPages.map(p => p.id));
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchor = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx + 1) : '';
+
+            if (!pageIds.has(pageId)) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            // With an anchor: jump to the namespaced anchor; without: jump to the section.
+            return anchor ? `href="#${pageId}--${anchor}"` : `href="#section-${pageId}"`;
+        });
+    }
+
+    /**
      * Render navigation buttons (prev/next links).
      * Uses pre-translated labels resolved at export time from XLF translations,
      * so the exported HTML already contains the correct text for the content language.
@@ -820,7 +1051,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         licenseUrl?: string;
         userFooterContent?: string;
         language?: string;
-        navLabels?: { license?: string };
+        navLabels?: { license?: string; licenseLabel?: string };
     }): string {
         const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
@@ -839,23 +1070,28 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const licenseText = formatLicenseText(license);
         const translatedLicenseText = navLabels?.license || trans(licenseText, {}, language);
         const licenseClass = getLicenseClass(license);
+        const licenseLabel = navLabels?.licenseLabel || trans('License', {}, language);
 
         // If there's a license URL, create a link; otherwise, just show the text
         const licenseContent = licenseUrl
             ? `<a href="${licenseUrl}" class="license">${translatedLicenseText}</a>`
             : `<span class="license">${translatedLicenseText}</span>`;
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">${licenseLabel}: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
 
     /**
-     * Render "Made with eXeLearning" credit
+     * Render "Made with eXeLearning" credit in the document language.
+     * @param language - Document language code (e.g. 'es', 'en')
+     * @param navLabels - Pre-translated labels (browser-side exports supply these via fetchNavLabels)
      * @returns Made with eXe HTML
      */
-    renderMadeWithEXe(): string {
-        return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>Creado con eXeLearning <span>(nueva ventana)</span></span></a></p>`;
+    renderMadeWithEXe(language: string = 'en', navLabels?: { madeWith?: string; newWindow?: string }): string {
+        const madeWithText = navLabels?.madeWith || trans('Made with eXeLearning', {}, language);
+        const newWindowText = navLabels?.newWindow || trans('New window', {}, language);
+        return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>${madeWithText} <span>(${newWindowText})</span></span></a></p>`;
     }
 
     /**
@@ -997,6 +1233,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
             version?: string;
+            xapi?: XapiConfig;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
@@ -1016,6 +1253,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink = true,
             userFooterContent = '',
             version,
+            xapi,
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
@@ -1035,6 +1273,20 @@ ${userFooterHtml}</div></footer>`;
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
+            // Render the section content WITHOUT allPages so the multi-page exe-node:
+            // rewrite is skipped; single-page uses its own anchor-based rewrite instead.
+            let sectionContent = this.renderPageContent(page, '', projectTitle, undefined, {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: navLabels?.license,
+            });
+            // Namespace this page's named anchors, then resolve exe-node: links to in-page
+            // anchors — both at render time so content.xml keeps the raw source (#1927).
+            sectionContent = this.namespaceSinglePageAnchors(sectionContent, page.id);
+            sectionContent = this.replaceSinglePageInternalLinks(sectionContent, allPages);
+
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section id="section-${page.id}">
 <header class="main-header">
@@ -1043,13 +1295,7 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-    language: options.language,
-    translatedLicense: navLabels?.license,
-})}
+${sectionContent}
 </div>
 </section>\n`;
         }
@@ -1078,6 +1324,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
+${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n` : ''}<script src="libs/xapi/exe_xapi.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
@@ -1096,9 +1343,9 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
-${addExeLink ? this.renderMadeWithEXe() : ''}
+${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
 </body>
 </html>`;
     }
@@ -1238,6 +1485,26 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
     escapeAttr(str: string): string {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Serialize a value to JSON for safe embedding inside an inline `<script>` element.
+     *
+     * `JSON.stringify` alone does NOT escape `</script>` (or `<!--`), so a value such as
+     * `</script><script>alert(1)</script>` would close the inline script and inject markup
+     * (XSS). It also leaves the U+2028 / U+2029 line separators raw, which are valid JSON
+     * but illegal in a JavaScript string literal and break parsing. We neutralize all of
+     * them by escaping `<` as `<` and the line separators as `\u2028` / `\u2029`. The
+     * result is still valid JSON (and valid JS) but can never break out of the script tag.
+     *
+     * @param value - Value to serialize (typically the xAPI config object)
+     * @returns A JSON string safe to embed verbatim inside `<script>...</script>`
+     */
+    serializeForScript(value: unknown): string {
+        return JSON.stringify(value)
+            .replace(/</g, '\\u003c')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029');
     }
 
     /**

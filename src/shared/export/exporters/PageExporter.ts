@@ -16,15 +16,13 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 
-// Regex to match <a> elements that have id or name but NO href (named anchors only)
-const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
-const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
-
 /**
  * PageExporter - Single-page HTML export
  *
- * For internal links, uses anchor fragments (#page-content-pageId)
- * instead of file paths since all content is on one page.
+ * For internal links, uses anchor fragments (#section-pageId) instead of file paths
+ * since all content is on one page. The exe-node: → anchor rewrite and named-anchor
+ * namespacing are applied at render time in PageRenderer.renderSinglePage(), so the
+ * re-editable content.xml keeps the raw exe-node: references (#1927).
  */
 export class PageExporter extends Html5Exporter {
     /**
@@ -54,6 +52,8 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const includeMathJax = meta.addMathJax === true;
+            let latexWasRendered = false;
 
             // 4. Fetch and add theme
             const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
@@ -105,7 +105,15 @@ export class PageExporter extends Html5Exporter {
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate single-page HTML with all content
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo, [], false, navLabels);
+            const html = this.generateSinglePageHtml(
+                pages,
+                meta,
+                usedIdevices,
+                faviconInfo,
+                [],
+                includeMathJax,
+                navLabels,
+            );
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -149,7 +157,7 @@ export class PageExporter extends Html5Exporter {
             // This is crucial for things like MathJax, Tooltips, etc.
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
+                includeMathJax,
             });
 
             try {
@@ -175,16 +183,36 @@ export class PageExporter extends Html5Exporter {
             // PageRenderer.renderSinglePage calls ideviceRenderer.renderBlock which handles structure.
 
             // 7. Generate single page HTML
-            const singlePageHtml = await this.generateSinglePageHtml(
+            let singlePageHtml = await this.generateSinglePageHtml(
                 pages,
                 meta,
                 usedIdevices,
                 faviconInfo,
                 patterns.map(p => p.name),
-                meta.addMathJax === true,
+                includeMathJax,
                 navLabels,
             );
+
+            // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
+            // adaptative-quiz / trueorfalse keep their math through runtime escaping.
+            // The whole document is one HTML here, so we render it in a single pass
+            // (mirrors the per-page HTML5 export; see RECURSIVE_JSON_LATEX_IDEVICES).
+            if (!includeMathJax) {
+                const latexResult = await this.preRenderHtmlLatex(singlePageHtml, options);
+                singlePageHtml = latexResult.html;
+                latexWasRendered = latexResult.latexRendered;
+            }
             this.zip.addFile(options?.filename || 'index.html', singlePageHtml);
+
+            // Append the pre-rendered LaTeX CSS to base.css (overwrites the earlier
+            // entry) so the baked SVG renders correctly without the MathJax engine.
+            // The single-page template only links content/css/base.css.
+            if (latexWasRendered) {
+                const decoder = new TextDecoder();
+                const encoder = new TextEncoder();
+                const baseCssText = decoder.decode(baseCss) + '\n' + this.getPreRenderedLatexCss();
+                this.zip.addFile('content/css/base.css', encoder.encode(baseCssText));
+            }
 
             // 8. Generate CSS files
             const cssFiles = await this.resources.fetchContentCss();
@@ -243,113 +271,14 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
+            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,
             addExeLink: meta.addExeLink ?? true,
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
-        });
-    }
-
-    /**
-     * Override pre-processing to namespace named anchors before resolving internal links.
-     * In single-page export all pages share one HTML document, so anchor ids like "intro"
-     * on different pages would collide. We prefix them with the page id (e.g. "page-2--intro")
-     * so that exe-node:page-2#intro resolves unambiguously.
-     */
-    async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
-        const pageUrlMap = this.buildPageUrlMap(clonedPages);
-
-        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
-            const page = clonedPages[pageIndex];
-            const isIndex = pageIndex === 0;
-
-            for (const block of page.blocks || []) {
-                for (const component of block.components || []) {
-                    if (component.content) {
-                        component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Namespace anchors BEFORE resolving links so links know the prefix
-                        component.content = this.namespaceSinglePageAnchors(component.content, page.id);
-                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
-                    }
-                    if (component.properties && Object.keys(component.properties).length > 0) {
-                        const propsStr = JSON.stringify(component.properties);
-                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
-                        component.properties = JSON.parse(processedStr);
-                    }
-                }
-            }
-        }
-        return clonedPages;
-    }
-
-    /**
-     * Prefix id/name attributes on named anchors (<a> without href) with the page id.
-     * This avoids collisions when all pages are merged into a single HTML document.
-     * E.g. <a id="intro"> on page "page-2" becomes <a id="page-2--intro">
-     */
-    namespaceSinglePageAnchors(content: string, pageId: string): string {
-        if (!content) return content;
-        return content.replace(NAMED_ANCHOR_RE, match =>
-            match.replace(ID_NAME_ATTR_RE, (_, attr, value) => `${attr}="${pageId}--${value}"`),
-        );
-    }
-
-    /**
-     * Override page URL map for single-page export
-     * Uses anchor fragments instead of file paths
-     */
-    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
-        const map = new Map<string, { url: string; urlFromSubpage: string }>();
-
-        for (const page of pages) {
-            // All pages use anchor fragments on the same page
-            // Uses section-{id} to match the IDs generated in renderSinglePageSection
-            const anchor = `#section-${page.id}`;
-            map.set(page.id, {
-                url: anchor,
-                urlFromSubpage: anchor, // Same since it's all one page
-            });
-        }
-
-        return map;
-    }
-
-    /**
-     * Override internal link replacement for single-page export.
-     * When a link carries its own anchor (exe-node:pageId#anchor), use just #anchor
-     * since all content is in the same document. Without an anchor, use #section-pageId.
-     */
-    protected replaceInternalLinks(
-        content: string,
-        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
-        isFromIndex: boolean,
-    ): string {
-        if (!content || !content.includes('exe-node:')) {
-            return content;
-        }
-
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
-            const hashIdx = pageIdWithAnchor.indexOf('#');
-            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
-            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
-
-            if (!pageUrlMap.has(pageId)) {
-                console.warn(`[PageExporter] Internal link target not found: ${pageId}`);
-                return match;
-            }
-
-            // If the link has its own anchor, prefix it with the target page id
-            // so it matches the namespaced id/name (e.g. #intro → #page-2--intro)
-            if (anchorFragment) {
-                return `href="#${pageId}--${anchorFragment.substring(1)}"`;
-            }
-
-            // No anchor: navigate to the page section
-            const pageUrl = pageUrlMap.get(pageId)!;
-            return `href="${isFromIndex ? pageUrl.url : pageUrl.urlFromSubpage}"`;
         });
     }
 

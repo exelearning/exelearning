@@ -1,6 +1,8 @@
 /**
  * Translations Format Command
  * Normalizes XLF translation files:
+ *   - Fixes curly/smart quote characters used as XML attribute delimiters
+ *     (e.g. id="…" → id="…").
  *   - Wraps <target> content in <![CDATA[...]]> when the text contains characters
  *     that are invalid as raw XML (unrecognised entity references or bare `<`).
  *   - Normalises indentation: 6 spaces before <trans-unit>, 8 spaces before
@@ -92,11 +94,40 @@ export function formatTargetContent(rawContent: string): string {
 }
 
 /**
+ * Replaces curly/smart quote characters used as XML attribute delimiters with
+ * straight ASCII double quotes. Attribute values are preserved verbatim.
+ *
+ * Curly quotes inside element text content (e.g. the body of a `<target>`) are
+ * intentional typographic choices (common in Romanian „…", German „…", etc.)
+ * and are not affected: Romanian content uses U+201E „ as opening, whereas the
+ * broken attribute delimiter is always U+201C " (left double quotation mark).
+ */
+export function fixAttributeQuotes(content: string): string {
+    // Curly/smart double-quote variants sometimes misused as XML attribute delimiters:
+    //   U+201C left double quotation mark
+    //   U+201D right double quotation mark
+    //   U+201E double low-9 quotation mark
+    // String.fromCharCode() is used for all special characters to prevent editors
+    // from silently normalising character literals to unexpected codepoints.
+    //
+    // The `=` prefix makes the pattern unambiguous: identical characters inside
+    // element text content are not preceded by `=` and are therefore not touched
+    // (e.g. Romanian and German typographic quotes inside <target>).
+    const CURLY = String.fromCharCode(0x201c, 0x201d, 0x201e);
+    const Q = String.fromCharCode(0x22); // ASCII straight double quote
+    const re = new RegExp(`=[${CURLY}]([^${CURLY}\\r\\n]*)[${CURLY}]`, 'g');
+    return content.replace(re, (_: string, val: string) => `=${Q}${val}${Q}`);
+}
+
+/**
  * Apply formatting to the full content of an XLF file.
  *
- * Two independent passes — neither ever parses or reconstructs attribute values
- * from `<trans-unit>` opening tags, so those are guaranteed to be preserved
- * exactly as-is:
+ * Three independent passes — none ever reconstructs attribute values from
+ * scratch, so all attribute content is guaranteed to be preserved exactly:
+ *
+ *   Pass 0 — Attribute quote fix:
+ *     · Replaces curly/smart quotes used as XML attribute delimiters with
+ *       straight ASCII double quotes.
  *
  *   Pass 1 — Indentation (line-by-line, no attribute parsing):
  *     · `<trans-unit …>` and `</trans-unit>` lines → 6 leading spaces
@@ -111,8 +142,11 @@ export function formatXlfContent(content: string): string {
     // Detect original line-ending style so we can preserve it.
     const eol = content.includes('\r\n') ? '\r\n' : '\n';
 
+    // Pass 0: fix curly/smart quote characters used as XML attribute delimiters.
+    const withFixedQuotes = fixAttributeQuotes(content);
+
     // Pass 1: reindent line by line.
-    const lines = content.split(/\r?\n/);
+    const lines = withFixedQuotes.split(/\r?\n/);
     const reindented = lines
         .map(line => {
             // <trans-unit …> opening tag — only strip/add leading whitespace;
@@ -212,11 +246,13 @@ ${colors.cyan('Options:')}
 
 ${colors.cyan('What it does:')}
   1. Reads each target-language XLF file in translations/.
-  2. Wraps any <target> element whose text contains characters invalid as raw
+  2. Fixes curly/smart quote characters used as XML attribute delimiters:
+       id=“MwExe01”  →  id="MwExe01"
+  3. Wraps any <target> element whose text contains characters invalid as raw
      XML (e.g. &percnt;, bare <) inside a CDATA section:
        <target><![CDATA[...]]></target>
-  3. Leaves already-wrapped CDATA sections and valid plain-text targets untouched.
-  4. Normalises indentation: 6 spaces before <trans-unit>, 8 spaces before
+  4. Leaves already-wrapped CDATA sections and valid plain-text targets untouched.
+  5. Normalises indentation: 6 spaces before <trans-unit>, 8 spaces before
      <source> and <target>.
 
 ${colors.cyan('Available Locales:')}

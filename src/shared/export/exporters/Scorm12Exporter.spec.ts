@@ -2,7 +2,8 @@
  * Scorm12Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Scorm12Exporter } from './Scorm12Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -198,12 +199,118 @@ describe('Scorm12Exporter', () => {
     let zip: MockZipProvider;
     let exporter: Scorm12Exporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new Scorm12Exporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax without pre-rendering the page', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+            let preRenderCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            expect(preRenderCalled).toBe(false);
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    });
+
+    describe('Accessibility toolbar (addAccessibilityToolbar)', () => {
+        // Regression test for #1978: when the author enables the accessibility toolbar,
+        // every exported page must load exe_atools (JS + CSS) in its <head>, and the
+        // files must be bundled and referenced in imsmanifest.xml.
+        const mockToolbarLibFiles = () => {
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+        };
+
+        it('references the toolbar JS and CSS in the page head when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.js');
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('bundles the toolbar files and references them in imsmanifest.xml when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/exe_atools/exe_atools.js')).toBe(true);
+            expect(zip.files.has('libs/exe_atools/exe_atools.css')).toBe(true);
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('libs/exe_atools/exe_atools.js');
+            expect(manifest).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('does not reference the toolbar when disabled (default)', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('exe_atools');
+        });
     });
 
     describe('Basic Properties', () => {
