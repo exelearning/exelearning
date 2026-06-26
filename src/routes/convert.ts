@@ -19,6 +19,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
+import { safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
@@ -355,8 +356,11 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         tempDirPath = await createTempDir();
 
                         // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
+                        // Generate the on-disk name server-side so the client-supplied
+                        // filename can never traverse out of the per-conversion temp dir.
+                        // safeJoin validates the segment and asserts containment.
+                        const ext = sanitizeFileExtension((data.file as FileWithName).name) || '.elp';
+                        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
                         await writeUploadedFile(data.file, uploadPath);
 
                         // Run ELPX export (conversion)
@@ -448,8 +452,11 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         tempDirPath = await createTempDir();
 
                         // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
+                        // Generate the on-disk name server-side so the client-supplied
+                        // filename can never traverse out of the per-conversion temp dir.
+                        // safeJoin validates the segment and asserts containment.
+                        const ext = sanitizeFileExtension((data.file as FileWithName).name) || '.elp';
+                        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
                         await writeUploadedFile(data.file, uploadPath);
 
                         // Run export

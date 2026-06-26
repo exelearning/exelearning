@@ -277,6 +277,27 @@ describe('Link Validator Service', () => {
             expect(result).toBe('404');
         });
 
+        it('should treat a "files/" traversal escaping FILES_DIR as broken (no existence oracle)', async () => {
+            // A file that definitely EXISTS outside filesDir (parent of tempDir).
+            const oracleTarget = '/tmp/exe-link-validator-oracle-target';
+            await fs.writeFile(oracleTarget, 'secret');
+            // A legitimate nested link inside filesDir must still validate.
+            await fs.ensureDir(`${tempDir}/docs`);
+            await fs.writeFile(`${tempDir}/docs/file.pdf`, 'ok');
+            try {
+                // Resolves to /tmp/exe-link-validator-oracle-target, OUTSIDE filesDir.
+                // Vulnerable build: file exists -> returns null (leaks existence).
+                // Hardened build: traversal rejected -> '404'.
+                const escaped = await validateLink('files/../exe-link-validator-oracle-target', { filesDir: tempDir });
+                expect(escaped).toBe('404');
+                // No over-blocking: a real nested file is still valid.
+                const nested = await validateLink('files/docs/file.pdf', { filesDir: tempDir });
+                expect(nested).toBeNull();
+            } finally {
+                await fs.remove(oracleTarget);
+            }
+        });
+
         it('should return null for relative URLs (skip validation)', async () => {
             const result = await validateLink('images/pic.jpg', { filesDir: tempDir });
             expect(result).toBeNull();

@@ -2332,11 +2332,16 @@ describe('Project Routes', () => {
     });
 
     describe('Used Files Report (usedfiles)', () => {
+        let usedFilesToken: string;
+        beforeEach(async () => {
+            usedFilesToken = await createAuthToken(1);
+        });
+
         it('should return no files for empty content', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({ idevices: [] }),
                 }),
             );
@@ -2351,7 +2356,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2376,7 +2381,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2411,7 +2416,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2448,7 +2453,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5148,11 +5153,16 @@ describe('Project Routes', () => {
     });
 
     describe('Used Files Edge Cases', () => {
+        let usedFilesToken: string;
+        beforeEach(async () => {
+            usedFilesToken = await createAuthToken(1);
+        });
+
         it('should return null for non-existent file', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5175,7 +5185,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5202,7 +5212,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5243,7 +5253,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5275,7 +5285,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5307,7 +5317,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5334,7 +5344,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5365,7 +5375,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5394,7 +5404,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5464,6 +5474,69 @@ describe('Project Routes', () => {
 
             expect(res.status).toBe(200);
             // The URL parser should catch this and return error
+        });
+    });
+
+    describe('Used Files Report — auth & path safety (security audit)', () => {
+        // usedfiles performs server-side file existence/size lookups, so it must
+        // require auth and must not escape FILES_DIR (path-traversal size oracle).
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should not leak files outside FILES_DIR via path traversal', async () => {
+            // Plant a sentinel one level ABOVE the mock FILES_DIR (testDir/files).
+            const secretPath = path.join(testDir, 'secret-oracle.txt');
+            await fs.writeFile(secretPath, 'top-secret-contents');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
+                    body: JSON.stringify({
+                        idevices: [{ html: '<img src="files/../secret-oracle.txt">' }],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles).toEqual([]);
+        });
+
+        it('should report files that live inside FILES_DIR', async () => {
+            const filesDir = path.join(testDir, 'files');
+            await fs.ensureDir(filesDir);
+            await fs.writeFile(path.join(filesDir, 'image.png'), 'pngdata');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
+                    body: JSON.stringify({
+                        idevices: [{ html: '<img src="files/image.png">' }],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].usedFiles).toBe('image.png');
         });
     });
 });

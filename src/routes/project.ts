@@ -1970,7 +1970,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/usedfiles - Get used files report
-            .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
+            .post('/api/ode-management/odes/session/usedfiles', async ({ body, set, currentUser }) => {
+                // Server-side file existence/size lookups must require authentication
+                // so this report cannot be abused as an unauthenticated file oracle,
+                // mirroring the brokenlinks handler above (security audit).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = data.idevices || [];
                 const assetMetadata = data.assetMetadata || {};
@@ -2080,6 +2088,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                         // Remove "files/" prefix for filesystem path
                         const relativePath = filePath.startsWith('files/') ? filePath.substring(6) : filePath;
+                        // Reject traversal escaping FILES_DIR (same existence/size
+                        // oracle class as the brokenlinks validator); skip silently.
+                        if (!isWithinBase(filesDir, relativePath)) {
+                            return null;
+                        }
                         const fullPath = path.join(filesDir, relativePath);
 
                         // Check if file exists
