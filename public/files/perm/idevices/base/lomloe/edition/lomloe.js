@@ -95,7 +95,13 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Galicia',
             file: '../data/lomloe-ES-GA.json',
-            available: true
+            // On hold (#1900 / #1898): the Galicia concretion needs official
+            // spec decisions before it can match the regulatory curriculum —
+            // a hybrid "mandatory + optional" descriptor mode (unsupported
+            // today) and official Galician descriptor labels. Hidden until
+            // those are defined; flip back to true to re-enable. The dataset
+            // JSON stays in the repo untouched.
+            available: false
         },
         {
             id: 'ES-CN',

@@ -1,10 +1,63 @@
 # CHANGELOG
 
-## Unreleased
+## v4.0.2 – 2026-07-07
+
+### Added
+
+- iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
+- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
+- Mermaid iDevice: added configurable maximum diagram width and height
+- Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
+- File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
+- Desktop: added a new File → Close menu option
+- Authentication: OIDC endpoints are now automatically discovered from `OIDC_ISSUER` when not configured individually
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
 
 ### Changed
 
-- Teacher Mode content is now **hidden by default** in exported packages. Existing packages must be re-exported to pick up the new default. The in-page self-serve toggle is now opt-in: it appears only when the content is opened with `?exe-teacher=1` (alias `?teacher-mode=1`, or the legacy `?exe-teacher-toggler=1`), and it is OFF by default — the viewer activates it to reveal teacher content. Without the parameter there is no toggle and teacher content stays hidden. Host plugins (WordPress, Moodle, Omeka-S) make the toggle available by changing the content URL only, with no injected CSS/JS. eXeLearning's own authoring preview loads with the parameter, so the toggle is available while editing. This is a presentation mode, not access control.
+- LOMLOE iDevice: the Galicia (ES-GA) dataset is temporarily hidden pending formal definition of its official curriculum requirements (see #1900)
+
+### Fixed
+
+- Security: multiple hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
+- Security: enhanced protections against cross-tenant asset deletion and unauthorised file uploads; improved export filename handling for non-Latin titles
+- Collaboration: shared Yjs changes are now saved correctly during collaborative sessions
+- Collaboration: shared assets are now identified consistently, preventing image loss
+- Collaboration: fixed data loss affecting collaborative editing across day changes
+- Collaboration: shared and collaborative projects are no longer deleted during session cleanup
+- Assets without a file extension are now served with the correct MIME type, preventing unintended PDF downloads
+- Share dialog: the people-with-access list now scrolls correctly within the modal
+- Link Validator and Resource Report: Download CSV now works correctly
+- The iDevices panel is now disabled when the selected page is the document root
+- Electrical Circuits iDevice: corrected the AI prompt identifier and fixed rendering of Ω and other Greek and mathematical symbols
+- Electrical Circuits iDevice: fixed iDevice name translations
+- Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
+- 3DMol iDevice: molecule files are now supported in the file manager and viewer
+- 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
+- 3D Viewer iDevice: fixed a display issue affecting models in exported content
+- Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
+- Tooltips inside accordions and other effects now initialise correctly
+- iDevice icon selector: improved contrast across all styles
+- Styles from `.elpx` projects can now be downloaded from the style manager
+- Nova style: teacher-only iDevices are now highlighted with a yellow border in the work area
+- Export: iDevice structure properties are now preserved when single-box content is exported and re-imported
+- Export: internal page links in `content.xml` are now preserved across exports and imports
+- Export: LaTeX now renders correctly in interactive iDevices in preview and all export formats
+- Export: pre-rendered LaTeX equations are now aligned correctly with surrounding text
+- Export: the license footer no longer inherits the global content font
+- Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
+- Export: duplicate assets are no longer included in self-contained HTML exports
+
+### Upgraded
+
+- esbuild: 0.27.7 → 0.28.1
+
+### Removed
+
+- Removed the `<downloadable>` option from style `config.xml`; styles are now always downloadable
+
+---
 
 ## v4.0.1 – 2026-06-09
 
