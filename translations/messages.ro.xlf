@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Fișier nou</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Creează fișier nou fără a salva</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Se salvează proiectul...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Nu puteți adăuga un iDevice pe pagina principală</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema la adăugarea iDevice-ului</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml nu a fost găsit în ZIP</target>
       </trans-unit>
-      <trans-unit id="cu49yos" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Acest stil nu poate fi descărcat</target>
-      </trans-unit>
       <trans-unit id="x7kouct" resname="Style already exists">
         <source>Style already exists</source>
         <target>Stilul deja există</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="ujy8vwh" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Vor fi redirecționați automat către pagina de nivel superior.</target>
-      </trans-unit>
-      <trans-unit id="vtiv805" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Preferințele vor fi aplicate după reîmprospătarea paginii.</target>
-      </trans-unit>
-      <trans-unit id="rbvvztp" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Modificările necesită o reîncărcare a paginii pentru a intra în vigoare. Vă rugăm să descărcați mai întâi proiectul pentru a evita pierderea lucrării, apoi reîncărcați pagina.</target>
       </trans-unit>
       <trans-unit id="ho5a2tz" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15484,6 +15464,42 @@
       <trans-unit id="wc9vz6h" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
+      </trans-unit>
+      <trans-unit id="xmec942" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Toate modificările colaborative au fost salvate.</target>
+      </trans-unit>
+      <trans-unit id="ga8h4a1" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Modificările colaborative sunt partajate în timp real și vor fi salvate automat.</target>
+      </trans-unit>
+      <trans-unit id="c33jtnl" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Se salvează modificările colaborative...</target>
+      </trans-unit>
+      <trans-unit id="xsfwqoo" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~Salvarea automată a eșuat. Faceți clic pe Salvare înainte de a ieși.</target>
+      </trans-unit>
+      <trans-unit id="gowl21n" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Modificările de limbă pot necesita reîncărcarea sau redeschiderea eXeLearning pentru a actualiza întreaga interfață.</target>
+      </trans-unit>
+      <trans-unit id="d794hcn" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Preferința de limbă a fost salvată. Este posibil ca unele texte ale interfeței să nu se actualizeze până când nu reîncărcați sau redeschideți eXeLearning. Salvați sau descărcați proiectul înainte de a reîncărca sau închide aplicația pentru a evita pierderea modificărilor.</target>
+      </trans-unit>
+      <trans-unit id="95dflc0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Doriți să salvați modificările înainte de a crea un fișier nou?</target>
+      </trans-unit>
+      <trans-unit id="y9c5p4t" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Nu salva</target>
+      </trans-unit>
+      <trans-unit id="55qb83u" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Unele modificări colaborative nu au fost încă salvate. Faceți clic pe Salvare înainte de a ieși pentru a evita pierderea lor.</target>
       </trans-unit>
     </body>
   </file>

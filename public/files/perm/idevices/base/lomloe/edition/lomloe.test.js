@@ -602,11 +602,12 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
 
-    it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        // ES-GA is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
-        // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
-        // ES because the module caches datasets by id across tests.)
-        const codes = await listedCodAreas('ES-GA');
+    it('datasets without a per-course distribution (e.g. Navarra, State) are not filtered', async () => {
+        // ES-NC is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
+        // so the full 1º–3º block is shown unchanged. (Uses ES-NC rather than
+        // ES because the module caches datasets by id across tests, and rather
+        // than ES-GA because that dataset is on hold / unavailable — see #1900.)
+        const codes = await listedCodAreas('ES-NC');
         expect(codes).toContain('BIG');
         expect(codes).toContain('FQX');
         expect(codes).toContain('DIG');
@@ -2085,10 +2086,12 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-MD.json'");
     });
 
-    it('declares ES-GA with available:true and the lomloe-ES-GA.json file', () => {
+    it('declares ES-GA on hold (available:false) with the lomloe-ES-GA.json file', () => {
+        // On hold pending official Galician spec (#1900 / #1898). The dataset
+        // file stays in the repo; only the availability flag is flipped off.
         const m = entryFor('ES-GA');
         expect(m, "ES-GA entry missing").not.toBeNull();
-        expect(m[1]).toBe('true');
+        expect(m[1]).toBe('false');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-GA.json'");
     });
 
