@@ -14,12 +14,12 @@ import os from 'os';
  * - --project=chromium/firefox → only dynamic server (port 3001)
  * - No --project (run all) → both servers start
  */
-const projectArgs = process.argv.filter((arg) => arg.startsWith('--project='));
-const requestedProjects = projectArgs.map((arg) => arg.replace('--project=', ''));
+const projectArgs = process.argv.filter(arg => arg.startsWith('--project='));
+const requestedProjects = projectArgs.map(arg => arg.replace('--project=', ''));
 
-const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every((p) => p === 'static');
+const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every(p => p === 'static');
 const isRunningOnlyDynamic =
-    requestedProjects.length > 0 && requestedProjects.every((p) => p === 'chromium' || p === 'firefox');
+    requestedProjects.length > 0 && requestedProjects.every(p => p === 'chromium' || p === 'firefox');
 const isRunningMixed = !isRunningOnlyStatic && !isRunningOnlyDynamic;
 
 // Set STATIC_MODE env var for test helpers when running static-only tests
@@ -39,6 +39,11 @@ const dynamicServerEnv = {
     APP_AUTH_METHODS: 'password,guest',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
+    // The default .env ships APP_ENV=prod, and the production boot guard now
+    // refuses to start with a missing/default API_JWT_SECRET (security audit).
+    // Provide a real, non-default test secret so the E2E server boots; the value
+    // is irrelevant to the tests (they authenticate through the real API).
+    API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
 };
 
