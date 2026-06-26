@@ -175,7 +175,9 @@ window.$exeExport = {
             if ($(".box.teacher-only").length==0 && $(".idevice_node.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
-            // The self-serve toggle is opt-in: shown only with ?exe-teacher-toggler=1.
+            // The self-serve toggle is opt-in: shown only when the teacher URL parameter
+            // made it available (?exe-teacher=1, alias ?teacher-mode=1, or the legacy
+            // ?exe-teacher-toggler=1) — see bootstrap(). _showToggler captures that decision.
             if (this._showToggler !== true) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
