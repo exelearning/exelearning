@@ -337,7 +337,10 @@ and `ES-GA` already encode it. For each affected dataset the wrong-year copy of 
 subject (identical content, only the `BAC1`/`BAC2` code tag differed) was removed; the correct-year
 copy is kept unchanged. **No `BACH_COURSE_SUBJECTS` runtime filter is needed.** I/II families
 (*Matemáticas*, *Latín*, *Griego*, *Dibujo Técnico/Artístico*, *Análisis Musical*, *Coro y Técnica
-Vocal*, the *lenguas comunes*…) keep their distinct per-year content in both courses.
+Vocal*, the *lenguas comunes*…) keep their distinct per-year content in both courses and are now
+labelled with the **official course suffix** — *Matemáticas I*/*II*, *Análisis Musical I*/*II*… —
+exactly as RD 243/2022 names them and as `ES-CN` already does (the Castilian datasets previously
+shipped the bare base name in both years).
 
 | Dataset | Bachillerato status |
 |---|---|
@@ -359,6 +362,13 @@ Vocal*, the *lenguas comunes*…) keep their distinct per-year content in both c
   Entorno*); these are not in the verified single-year list and need the Orden EFP/755/2022 optativa
   annex to be confirmed.
 - **`ES-VC`** Bachillerato (Valencian) — see the table above.
+- **Saberes básicos order / completeness (Bachillerato).** The Bachillerato *saberes* of the
+  state-derived datasets were extracted (in `#1828`) without preserving the DOE saber codes
+  (`A.1.1.1`, `A.1.1.2`…), so within a block they do not follow the official DOE order and some
+  entries were merged or dropped. Re-ordering/completing them cannot be done by hand from the
+  current data (the codes are gone) — it needs a **re-extraction from the DOE PDFs** that keeps the
+  `A.b.c.d` code on each saber. Tracked for the dataset regeneration, together with the missing 2.º
+  I/II entries above.
 
 ### Generator script
 

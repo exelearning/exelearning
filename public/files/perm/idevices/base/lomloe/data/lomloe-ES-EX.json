@@ -46525,7 +46525,7 @@
   "Bachillerato": {
     "1º Bachillerato": {
       "AMU": {
-        "denominacion": "Análisis Musical",
+        "denominacion": "Análisis Musical I",
         "competencias_especificas": {
           "ES-EX-BAC1-AMU-CE01": {
             "descripcion": "Analizar los elementos musicales de diferentes obras, utilizando la escucha activa y el estudio de partituras, para describir sus características y establecer comparaciones.",
@@ -46735,7 +46735,7 @@
         }
       },
       "AES": {
-        "denominacion": "Artes Escénicas",
+        "denominacion": "Artes Escénicas I",
         "competencias_especificas": {
           "ES-EX-BAC1-AES-CE01": {
             "descripcion": "Analizar manifestaciones escénicas de diferentes épocas y tradiciones, describiendo sus características, estableciendo relaciones con su contexto e identificando posibles influencias y proyecciones, para valorar el patrimonio y enriquecer el imaginario propio.",
@@ -47540,7 +47540,7 @@
         }
       },
       "CTV": {
-        "denominacion": "Coro y Técnica Vocal",
+        "denominacion": "Coro y Técnica Vocal I",
         "competencias_especificas": {
           "ES-EX-BAC1-CTV-CE01": {
             "descripcion": "CTV 1. Desarrollar el criterio estético a través de la escucha y visionado de piezas vocales de distintos estilos, géneros y culturas, analizando los rasgos de estilo y las características de la interpretación y estimulando el hábito de escucha activa y la capacidad de disfrute de la música.",
@@ -48031,7 +48031,7 @@
         }
       },
       "DAR": {
-        "denominacion": "Dibujo Artístico",
+        "denominacion": "Dibujo Artístico I",
         "competencias_especificas": {
           "ES-EX-BAC1-DAR-CE01": {
             "descripcion": "Comprender el dibujo como forma de conocimiento, comunicación y expresión, comparando el uso que se hace de él en manifestaciones culturales y artísticas de diferentes épocas, lugares y ámbitos disciplinares, y valorando la diversidad de significados que origina, para apreciar la importancia de la diversidad cultural y la relevancia de la conservación y la promoción del patrimonio.",
@@ -48467,7 +48467,7 @@
         }
       },
       "DTE": {
-        "denominacion": "Dibujo Técnico",
+        "denominacion": "Dibujo Técnico I",
         "competencias_especificas": {
           "ES-EX-BAC1-DTE-CE01": {
             "descripcion": "DT 1. Representar e interpretar elementos o conjuntos arquitectónicos y de ingeniería, empleando recursos asociados a la percepción, estudio, construcción e investigación de formas y analizando tanto las estructuras geométricas como los elementos técnicos utilizados.",
@@ -48762,7 +48762,7 @@
         }
       },
       "DTA": {
-        "denominacion": "Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño",
+        "denominacion": "Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño I",
         "competencias_especificas": {
           "ES-EX-BAC1-DTA-CE01": {
             "descripcion": "DTAP 1. Analizar, representar y reinterpretar la geometría presente en la naturaleza, el entorno construido y el arte, identificando sus estructuras geométricas y códigos con una actitud de valoración y disfrute, sabiendo explicar su origen y función en distintos contextos y medios.",
@@ -50615,7 +50615,7 @@
         }
       },
       "GRI": {
-        "denominacion": "Griego",
+        "denominacion": "Griego I",
         "competencias_especificas": {
           "ES-EX-BAC1-GRI-CE01": {
             "descripcion": "GRI 1. Leer de forma comprensiva o, en su caso, interpretar textos griegos no demasiado complejos, analizando las unidades lingüísticas y reflexionando sobre ellas mediante la comparación con la lengua de enseñanza y con otras lenguas del repertorio individual.",
@@ -51538,7 +51538,7 @@
         }
       },
       "LAT": {
-        "denominacion": "Latín",
+        "denominacion": "Latín I",
         "competencias_especificas": {
           "ES-EX-BAC1-LAT-CE01": {
             "descripcion": "LAT 1. Leer de forma comprensiva o, en su caso, interpretar textos latinos no demasiado complejos, analizando las unidades lingüísticas y reflexionando sobre ellas mediante la comparación con la lengua de enseñanza y con otras lenguas del repertorio individual.",
@@ -52059,7 +52059,7 @@
         }
       },
       "LCL": {
-        "denominacion": "Lengua Castellana y Literatura",
+        "denominacion": "Lengua Castellana y Literatura I",
         "competencias_especificas": {
           "ES-EX-BAC1-LCL-CE01": {
             "descripcion": "Explicar y apreciar la diversidad lingüística del mundo a partir del conocimiento de la realidad plurilingüe y pluricultural de España y la riqueza dialectal del español, así como de la reflexión sobre los fenómenos del contacto entre lenguas, para favorecer la reflexión interlingüística, para refutar los estereotipos y prejuicios lingüísticos y para valorar esta diversidad como fuente de patrimonio cultural.",
@@ -52619,7 +52619,7 @@
         }
       },
       "LEX": {
-        "denominacion": "Lengua Extranjera",
+        "denominacion": "Lengua Extranjera I",
         "competencias_especificas": {
           "ES-EX-BAC1-LEX-CE01": {
             "descripcion": "Comprender e interpretar las ideas principales y las líneas argumentales básicas de textos expresados en la lengua estándar, buscando fuentes fiables y haciendo uso de estrategias de inferencia y comprobación de significados, para responder a las necesidades comunicativas planteadas.",
@@ -53479,7 +53479,7 @@
         }
       },
       "MAT": {
-        "denominacion": "Matemáticas",
+        "denominacion": "Matemáticas I",
         "competencias_especificas": {
           "ES-EX-BAC1-MAT-CE01": {
             "descripcion": "MAT 1. Modelizar y resolver problemas de la vida cotidiana y de la ciencia y la tecnología, aplicando diferentes estrategias y formas de razonamiento para obtener posibles soluciones.",
@@ -53969,7 +53969,7 @@
         }
       },
       "MAC": {
-        "denominacion": "Matemáticas Aplicadas a las Ciencias Sociales",
+        "denominacion": "Matemáticas Aplicadas a las Ciencias Sociales I",
         "competencias_especificas": {
           "ES-EX-BAC1-MAC-CE01": {
             "descripcion": "Modelizar y resolver problemas de la vida cotidiana y de las ciencias sociales aplicando diferentes estrategias y formas de razonamiento para obtener posibles soluciones.",
@@ -55443,7 +55443,7 @@
     },
     "2º Bachillerato": {
       "AMU": {
-        "denominacion": "Análisis Musical",
+        "denominacion": "Análisis Musical II",
         "competencias_especificas": {
           "ES-EX-BAC2-AMU-CE01": {
             "descripcion": "Analizar los elementos musicales de diferentes obras, utilizando la escucha activa y el estudio de partituras, para describir sus características y establecer comparaciones.",
@@ -56471,7 +56471,7 @@
         }
       },
       "CTV": {
-        "denominacion": "Coro y Técnica Vocal",
+        "denominacion": "Coro y Técnica Vocal II",
         "competencias_especificas": {
           "ES-EX-BAC2-CTV-CE01": {
             "descripcion": "CTV 1. Desarrollar el criterio estético a través de la escucha y visionado de piezas vocales de distintos estilos, géneros y culturas, analizando los rasgos de estilo y las características de la interpretación y estimulando el hábito de escucha activa y la capacidad de disfrute de la música.",
@@ -56666,7 +56666,7 @@
         }
       },
       "DAR": {
-        "denominacion": "Dibujo Artístico",
+        "denominacion": "Dibujo Artístico II",
         "competencias_especificas": {
           "ES-EX-BAC2-DAR-CE01": {
             "descripcion": "Comprender el dibujo como forma de conocimiento, comunicación y expresión, comparando el uso que se hace de él en manifestaciones culturales y artísticas de diferentes épocas, lugares y ámbitos disciplinares, y valorando la diversidad de significados que origina, para apreciar la importancia de la diversidad cultural y la relevancia de la conservación y la promoción del patrimonio.",
@@ -57103,7 +57103,7 @@
         }
       },
       "DTE": {
-        "denominacion": "Dibujo Técnico",
+        "denominacion": "Dibujo Técnico II",
         "competencias_especificas": {
           "ES-EX-BAC2-DTE-CE01": {
             "descripcion": "DT 1. Representar e interpretar elementos o conjuntos arquitectónicos y de ingeniería, empleando recursos asociados a la percepción, estudio, construcción e investigación de formas y analizando tanto las estructuras geométricas como los elementos técnicos utilizados.",
@@ -57334,7 +57334,7 @@
         }
       },
       "DTA": {
-        "denominacion": "Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño",
+        "denominacion": "Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño II",
         "competencias_especificas": {
           "ES-EX-BAC2-DTA-CE01": {
             "descripcion": "DTAP 1. Analizar, representar y reinterpretar la geometría presente en la naturaleza, el entorno construido y el arte, identificando sus estructuras geométricas y códigos con una actitud de valoración y disfrute, sabiendo explicar su origen y función en distintos contextos y medios.",
@@ -59631,7 +59631,7 @@
         }
       },
       "GRI": {
-        "denominacion": "Griego",
+        "denominacion": "Griego II",
         "competencias_especificas": {
           "ES-EX-BAC2-GRI-CE01": {
             "descripcion": "GRI 1. Leer de forma comprensiva o, en su caso, interpretar textos griegos no demasiado complejos, analizando las unidades lingüísticas y reflexionando sobre ellas mediante la comparación con la lengua de enseñanza y con otras lenguas del repertorio individual.",
@@ -61331,7 +61331,7 @@
         }
       },
       "LAT": {
-        "denominacion": "Latín",
+        "denominacion": "Latín II",
         "competencias_especificas": {
           "ES-EX-BAC2-LAT-CE01": {
             "descripcion": "LAT 1. Leer de forma comprensiva o, en su caso, interpretar textos latinos no demasiado complejos, analizando las unidades lingüísticas y reflexionando sobre ellas mediante la comparación con la lengua de enseñanza y con otras lenguas del repertorio individual.",
@@ -61832,7 +61832,7 @@
         }
       },
       "LCL": {
-        "denominacion": "Lengua Castellana y Literatura",
+        "denominacion": "Lengua Castellana y Literatura II",
         "competencias_especificas": {
           "ES-EX-BAC2-LCL-CE01": {
             "descripcion": "Explicar y apreciar la diversidad lingüística del mundo a partir del conocimiento de la realidad plurilingüe y pluricultural de España y la riqueza dialectal del español, así como de la reflexión sobre los fenómenos del contacto entre lenguas, para favorecer la reflexión interlingüística, para refutar los estereotipos y prejuicios lingüísticos y para valorar esta diversidad como fuente de patrimonio cultural.",
@@ -62380,7 +62380,7 @@
         }
       },
       "LEX": {
-        "denominacion": "Lengua Extranjera",
+        "denominacion": "Lengua Extranjera II",
         "competencias_especificas": {
           "ES-EX-BAC2-LEX-CE01": {
             "descripcion": "Comprender e interpretar las ideas principales y las líneas argumentales básicas de textos expresados en la lengua estándar, buscando fuentes fiables y haciendo uso de estrategias de inferencia y comprobación de significados, para responder a las necesidades comunicativas planteadas.",
@@ -63051,7 +63051,7 @@
         }
       },
       "MAT": {
-        "denominacion": "Matemáticas",
+        "denominacion": "Matemáticas II",
         "competencias_especificas": {
           "ES-EX-BAC2-MAT-CE01": {
             "descripcion": "MAT 1. Modelizar y resolver problemas de la vida cotidiana y de la ciencia y la tecnología, aplicando diferentes estrategias y formas de razonamiento para obtener posibles soluciones.",

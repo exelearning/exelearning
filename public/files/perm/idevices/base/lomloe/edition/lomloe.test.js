@@ -1507,10 +1507,13 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
             expect(y1, `${s} is taught in 1.º`).toContain(s);
             expect(y2, `${s} must not appear in 2.º`).not.toContain(s);
         }
-        // I/II families stay in BOTH years (distinct per-year content).
-        for (const s of ['Matemáticas', 'Latín']) {
-            expect(y1, `${s} I in 1.º`).toContain(s);
-            expect(y2, `${s} II in 2.º`).toContain(s);
+        // I/II families stay in BOTH years, named with the official course
+        // suffix (RD 243/2022 — "Matemáticas I"/"II"…), matching ES-CN (#1904).
+        for (const base of ['Matemáticas', 'Latín', 'Análisis Musical', 'Dibujo Técnico']) {
+            expect(y1, `${base} I in 1.º`).toContain(`${base} I`);
+            expect(y2, `${base} II in 2.º`).toContain(`${base} II`);
+            expect(y1, `1.º must not use the bare name "${base}"`).not.toContain(base);
+            expect(y2, `2.º must not use the bare name "${base}"`).not.toContain(base);
         }
     });
 
