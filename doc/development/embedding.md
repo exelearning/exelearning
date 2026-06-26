@@ -347,6 +347,39 @@ The editor preview works in two modes:
 
 The fallback is automatic and requires no configuration.
 
+## Teacher Mode
+
+Content that an author marks as **Teacher only** (the `teacher-only` CSS class on blocks and
+iDevices) is **hidden by default** in every exported package. Whether a viewer can reveal it
+is driven entirely by a URL parameter, so host plugins switch between the student and teacher
+experiences by changing the content URL only — **no injected CSS or JavaScript**.
+
+| View | URL | Result |
+|------|-----|--------|
+| Student (default) | `index.html` | Teacher content hidden; no toggle. |
+| Teacher | `index.html?exe-teacher=1` | The in-page Teacher Mode toggle appears (OFF by default); the viewer flips it to reveal teacher content. |
+
+```javascript
+// The parent only changes the iframe src — nothing else.
+iframe.src = base + '/index.html' + (isTeacher ? '?exe-teacher=1' : '');
+```
+
+- `?exe-teacher=1` makes the self-serve toggle **available**; it does **not** reveal content on
+  its own — the viewer activates the toggle, and its on/off state is remembered per browser in
+  `localStorage`. Accepted truthy values: `1`, `true`, `yes`; the generic alias `?teacher-mode=1`
+  and the legacy `?exe-teacher-toggler=1` are also accepted.
+- Without the parameter there is no toggle and teacher content stays hidden (student view).
+- The toggle's restored on/off state is applied in an early `<head>` script (before first paint),
+  so there is no flicker.
+- The parameter is propagated onto in-package navigation links, so the toggle stays available
+  across pages of a multi-page export (works in same-origin and opaque-origin iframes).
+- eXeLearning's own authoring preview loads the viewer with `?exe-teacher=1`, so the toggle is
+  available in the preview and the author can reveal their own teacher content.
+
+> **This is a presentation mode, not access control.** `?exe-teacher=1` only exposes a toggle;
+> it is not authentication and is not a security boundary. Truly sensitive answer keys must be
+> protected by a separate authenticated/password-gated feature, not by this flag.
+
 ## Example: WordPress Integration
 
 ```javascript

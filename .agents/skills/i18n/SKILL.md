@@ -45,24 +45,23 @@ The distinction matters because the GUI language and the content language can di
 ## Commands
 
 ```bash
-make translations                        # Extract new translation keys from source
-make translations-cleanup LOCALE=es      # Remove obsolete keys for a locale
-make fix                                 # Lint
+make fix                                 # Lint (the only command this skill ever runs)
 ```
+
+> `make translations` and `make translations-cleanup` are **never run by agents**. Key extraction and all XLF changes are managed by a dedicated separate process. See the prohibition below.
 
 ## Gotchas
 
-- **Never author or edit translated values under `translations/`.** Agents add translation _keys_ only (by wrapping strings in `_()` / `c_()` / `| trans` and running `make translations`), and must leave every target/translated value blank. Do not hand-write, copy, or machine-translate target strings in a PR — the translation team owns `translations/**` and fills in the actual translations later. This mirrors AGENTS.md section 7.4.
+- **NEVER touch any file under `translations/`.** This is a hard rule. Do not run `make translations`, do not add or remove `<trans-unit>` elements, do not write or edit `<target>` values. A PR that modifies `translations/**` in any way will be rejected. Translation key extraction is handled by a separate automated process outside of code PRs.
 - **Never hardcode English strings** in UI code — even "OK" or "Cancel" must use `_()`.
 - **`_()` vs `c_()` confusion** — using the wrong function means the string is translated in the wrong context. GUI strings → `_()`, content strings → `c_()`.
 - **Forgetting `| trans` in Nunjucks** — raw English strings will appear in the UI for non-English users.
-- **Run `make translations` after adding new strings** — this extracts keys into XLF files. Without it, translators won't see the new strings.
 - **Static build config drift** — if translated strings appear in config parameters, ensure both server and static builder use the same shared function. Duplicated config leads to untranslated strings in one of the two builds. _Example: PR #1564._
 
 ## Done When
 
 - [ ] All user-facing strings use `_()` / `c_()` / `| trans`
-- [ ] `make translations` run to extract new keys
-- [ ] No translated/target values authored or edited under `translations/` (keys only; values left blank for the translation team)
+- [ ] No file under `translations/` has been modified
+- [ ] `make translations` has NOT been run
 - [ ] No hardcoded English in UI
 - [ ] `make fix` passes clean

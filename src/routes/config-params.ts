@@ -138,6 +138,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
@@ -221,6 +222,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
