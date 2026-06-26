@@ -532,7 +532,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         vi.restoreAllMocks();
     });
 
-    async function listedCodAreas(dataset, sample, nivel = '1º ESO') {
+    async function listedCodAreas(dataset, sample, nivel = '1º ESO', etapa = 'ESO') {
         if (sample) {
             globalThis.fetch = vi.fn(() =>
                 Promise.resolve({ ok: true, json: () => Promise.resolve(sample) })
@@ -540,7 +540,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         }
         $exeDevice.init(el, {
             lomloeDataset: dataset,
-            lomloeSelectedEtapa: 'ESO',
+            lomloeSelectedEtapa: etapa,
             lomloeSelectedNivel: nivel,
             lomloeSelections: []
         });
@@ -567,6 +567,27 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         const eso4 = await listedCodAreas('ES-EX', real, '4º ESO');
         expect(eso4).toContain('FQ');
         expect(eso4.length).toBeGreaterThan(eso1.length);
+    });
+
+    it('Extremadura Bachillerato renders only each course\'s subjects from the real dataset (#1904)', async () => {
+        // No runtime filter for Bachillerato: the per-course distribution lives in
+        // the data (Decreto 109/2022). Selecting 1.º must not surface 2.º-only
+        // subjects (Física, Química, Historia de España…) and vice versa.
+        const real = loadDataset('lomloe-ES-EX.json');
+        const bac1 = await listedCodAreas('ES-EX', real, '1º Bachillerato', 'Bachillerato');
+        expect(bac1).toContain('FYQ');      // Física y Química — 1.º
+        expect(bac1).toContain('HMC');      // Historia del Mundo Contemporáneo — 1.º
+        expect(bac1).not.toContain('FIS');  // Física — 2.º only
+        expect(bac1).not.toContain('QUI');  // Química — 2.º only
+        expect(bac1).not.toContain('HES');  // Historia de España — 2.º only
+        const bac2 = await listedCodAreas('ES-EX', real, '2º Bachillerato', 'Bachillerato');
+        expect(bac2).toContain('FIS');
+        expect(bac2).toContain('QUI');
+        expect(bac2).toContain('HES');
+        expect(bac2).not.toContain('FYQ');  // Física y Química — 1.º only
+        expect(bac2).not.toContain('HMC');  // Historia del Mundo Contemporáneo — 1.º only
+        expect(bac2).toContain('MAT');      // Matemáticas II (I/II family stays in both)
+        expect(bac1).toContain('MAT');      // Matemáticas I
     });
 
     it('Madrid 1º ESO hides Física y Química too', async () => {
@@ -1312,8 +1333,68 @@ function assertInfantilLinkedToCompetenciasClave(data) {
     expect(empty, 'all Infantil criterios must be linked to competencias clave').toBe(0);
 }
 
+// ─── Bachillerato per-course distribution (issue #1904) ─────────────────────
+// Bachillerato subjects are assigned to a specific course by law. Sources:
+// RD 243/2022 arts. 9-13 (the state floor every community adopts for the common
+// and modalidad subjects) and, for Extremadura, Decreto 109/2022 arts. 15-19,
+// which adopts the state distribution verbatim. Cross-validated against the two
+// datasets that were extracted per-course correctly from the start: ES-CN and
+// ES-GA. Subjects are matched by NORMALISED denominación so the same check works
+// across datasets regardless of their codArea codes. I/II families (Matemáticas,
+// Latín, Griego, Dibujo Técnico/Artístico, Análisis Musical, Coro y Técnica
+// Vocal, the lenguas comunes…) are taught in BOTH years and are deliberately
+// absent from these lists.
+const BACH_YEAR1_ONLY = [
+    'biologia geologia y ciencias ambientales', 'cultura audiovisual', 'economia',
+    'economia emprendimiento y actividad empresarial', 'educacion fisica', 'filosofia',
+    'fisica y quimica', 'historia del mundo contemporaneo', 'lenguaje y practica musical',
+    'literatura universal', 'matematicas generales', 'proyectos artisticos', 'volumen',
+];
+const BACH_YEAR2_ONLY = [
+    'biologia', 'ciencias generales', 'diseno', 'empresa y diseno de modelos de negocio',
+    'fundamentos artisticos', 'fisica', 'geologia y ciencias ambientales', 'geografia',
+    'historia del arte', 'historia de espana', 'historia de la filosofia',
+    'historia de la musica y de la danza', 'literatura dramatica',
+    'movimientos culturales y artisticos', 'quimica', 'tecnicas de expresion grafico plastica',
+];
+
+function normDenom(s) {
+    return s
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '') // strip accents (and ñ -> n)
+        .toLowerCase()
+        .replace(/\b(i|ii)\b/g, '') // collapse I/II families to their base name
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// Assert each Bachillerato nivel exposes only the subjects taught in that year:
+// no 2.º-only subject leaks into 1.º and vice versa.
+function assertBachilleratoYearSeparation(data, etapaKey = 'Bachillerato') {
+    const bach = data[etapaKey];
+    expect(bach, `missing ${etapaKey}`).toBeDefined();
+    const courses = Object.keys(bach);
+    const c1 = courses.find(c => /(^|\D)1/.test(c));
+    const c2 = courses.find(c => /(^|\D)2/.test(c));
+    expect(c1, `${etapaKey}: no 1.º course found in ${courses}`).toBeTruthy();
+    expect(c2, `${etapaKey}: no 2.º course found in ${courses}`).toBeTruthy();
+    const d1 = new Set(Object.values(bach[c1]).map(a => normDenom(a.denominacion)));
+    const d2 = new Set(Object.values(bach[c2]).map(a => normDenom(a.denominacion)));
+    for (const s of BACH_YEAR2_ONLY) {
+        expect(d1.has(s), `${etapaKey}/${c1} must not expose 2.º-only subject "${s}"`).toBe(false);
+    }
+    for (const s of BACH_YEAR1_ONLY) {
+        expect(d2.has(s), `${etapaKey}/${c2} must not expose 1.º-only subject "${s}"`).toBe(false);
+    }
+}
+
 describe('lomloe-ES.json (state minimum teachings)', () => {
     const data = loadDataset('lomloe-ES.json');
+
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        assertBachilleratoYearSeparation(data);
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1407,6 +1488,30 @@ describe('lomloe-ES.json (state minimum teachings)', () => {
 
 describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
     const data = loadDataset('lomloe-ES-EX.json');
+
+    it('Bachillerato subjects sit in their legally-assigned course (DOE Decreto 109/2022, #1904)', () => {
+        assertBachilleratoYearSeparation(data);
+        const y1 = new Set(Object.values(data['Bachillerato']['1º Bachillerato']).map(a => a.denominacion));
+        const y2 = new Set(Object.values(data['Bachillerato']['2º Bachillerato']).map(a => a.denominacion));
+        // Single-year subjects appear only in their course (Decreto 109/2022 arts. 15-19).
+        expect(y1).toContain('Física y Química');        // 1.º (art. 16.1.c)
+        expect(y2).not.toContain('Física y Química');
+        expect(y2).toContain('Historia de España');      // 2.º común (art. 15.2.b)
+        expect(y1).not.toContain('Historia de España');
+        for (const s of ['Física', 'Química', 'Biología', 'Historia del Arte', 'Geografía']) {
+            expect(y2, `${s} is taught in 2.º`).toContain(s);
+            expect(y1, `${s} must not appear in 1.º`).not.toContain(s);
+        }
+        for (const s of ['Historia del Mundo Contemporáneo', 'Filosofía', 'Matemáticas Generales']) {
+            expect(y1, `${s} is taught in 1.º`).toContain(s);
+            expect(y2, `${s} must not appear in 2.º`).not.toContain(s);
+        }
+        // I/II families stay in BOTH years (distinct per-year content).
+        for (const s of ['Matemáticas', 'Latín']) {
+            expect(y1, `${s} I in 1.º`).toContain(s);
+            expect(y2, `${s} II in 2.º`).toContain(s);
+        }
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1550,6 +1655,11 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
 describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
     const data = loadDataset('lomloe-ES-MD.json');
 
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        // Madrid (Decreto 64/2022) adopts the RD 243/2022 per-course distribution.
+        assertBachilleratoYearSeparation(data);
+    });
+
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
         expect(data).not.toBeNull();
@@ -1626,6 +1736,13 @@ describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
 
 describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
     const data = loadDataset('lomloe-ES-EFP.json');
+
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        // MEFPD (Orden EFP/755/2022) adopts the RD 243/2022 per-course distribution.
+        // Note: a few MEFPD-specific optativas (Psicología, Actividad Física y Salud…)
+        // are not in the verified single-year lists and are left untouched.
+        assertBachilleratoYearSeparation(data);
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1793,9 +1910,16 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
 // Shared structural assertions for an autonomous-community concretion. The data
 // is generated from the official curriculum decrees, so we check the schema
 // contract and the code invariants rather than specific wording.
-function assertConcretion(name, prefix, etapaNiveles) {
+function assertConcretion(name, prefix, etapaNiveles, opts = {}) {
     describe(name, () => {
         const data = loadDataset(name.split(' ')[0]);
+
+        if (opts.bachilleratoYearSeparated) {
+            const bachKey = Object.keys(etapaNiveles).find(k => /[Bb]achiller|[Bb]atxiller|[Bb]acharel/.test(k));
+            it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+                assertBachilleratoYearSeparation(data, bachKey);
+            });
+        }
 
         it('parses as a non-empty object with no placeholder notice', () => {
             expect(typeof data).toBe('object');
@@ -1890,8 +2014,14 @@ assertConcretion(
         'Educación Secundaria Obligatoria': ['1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO'],
         'Bachillerato': ['1º de Bachillerato', '2º de Bachillerato'],
     },
+    // Navarra adopts the RD 243/2022 per-course distribution; its Bachillerato is fixed (#1904).
+    { bachilleratoYearSeparated: true },
 );
 
+// NOTE: lomloe-ES-VC.json (Comunitat Valenciana) still carries the Bachillerato
+// 1r/2n duplication. Its subjects are in Valencian and the per-course fix needs
+// the Valencian Decret 108/2022 to be verified, so it is deliberately left
+// unchanged here (no bachilleratoYearSeparated flag) — see the iDevice README.
 assertConcretion(
     'lomloe-ES-VC.json (Comunitat Valenciana concretion — official Valencian extraction)',
     'ES-VC-',
