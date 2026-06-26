@@ -2862,8 +2862,13 @@ window.$eXeLearningCustom = {
                         ? T.cannot_impersonate_admin
                         : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
                     const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
+                    // HTML-encode & and ' so an email containing a single quote (e.g. from
+                    // SSO auto-provisioning) cannot break out of the single-quoted onclick
+                    // attribute. JSON.stringify does NOT escape ', so the raw value would
+                    // close the attribute and inject markup (stored XSS in the admin panel).
+                    const safeEmailArg = JSON.stringify(user.email || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;');
                     const impersonateButton = canImpersonate
-                        ? `<button class="btn-admin-outline" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})' title="${safeImpersonateTitle}">
+                        ? `<button class="btn-admin-outline" data-action="impersonate" onclick='impersonateUser(${user.id}, ${safeEmailArg})' title="${safeImpersonateTitle}">
                                 <span class="mi mi-sm">login</span>
                            </button>`
                         : `<button class="btn-admin-outline" data-action="impersonate" disabled title="${safeImpersonateTitle}">
@@ -2909,8 +2914,8 @@ window.$eXeLearningCustom = {
                         <td style="font-weight: 600; color: var(--admin-text-muted);">#${user.id}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="user-avatar user-avatar-sm">${(user.email[0] || 'U').toUpperCase()}</div>
-                                <span style="font-weight: 500;">${user.email}</span>
+                                <div class="user-avatar user-avatar-sm">${escapeHtml((user.email[0] || 'U').toUpperCase())}</div>
+                                <span style="font-weight: 500;">${escapeHtml(user.email)}</span>
                             </div>
                         </td>
                         <td>${roles}</td>
@@ -3180,9 +3185,9 @@ window.$eXeLearningCustom = {
                         <td>
                             <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
                         </td>
-                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${project.uuid}">#${project.id}</td>
-                        <td>${project.title || '-'}</td>
-                        <td>${ownerLabel}</td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${escapeHtml(project.uuid)}">#${project.id}</td>
+                        <td>${escapeHtml(project.title || '-')}</td>
+                        <td>${escapeHtml(ownerLabel)}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
                         <td>${createdAt}</td>
@@ -3191,7 +3196,7 @@ window.$eXeLearningCustom = {
                             <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
                                 <span class="mi mi-sm">open_in_new</span>
                             </a>
-                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id}, '${(project.title || '').replace(/'/g, "\\'")}')" title="{{ t.download_elpx or 'Download .elpx' }}">
+                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id})" title="{{ t.download_elpx or 'Download .elpx' }}">
                                 <span class="mi mi-sm">download</span>
                             </button>
                             ` : ''}
