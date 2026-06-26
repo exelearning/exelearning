@@ -2,7 +2,7 @@
  * Auth Routes Tests
  * Tests for authentication endpoints using DI pattern
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
@@ -246,6 +246,61 @@ describe('Auth Routes', () => {
             expect(data.message).toBe('Account deactivated');
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie ?? '').not.toContain('auth=');
+        });
+    });
+
+    // =========================================================================
+    // Username-enumeration timing oracle (constant-time login)
+    //
+    // A failed login MUST run exactly one bcrypt.compare whether or not the
+    // email exists, otherwise the fast "user not found" path (no bcrypt) leaks
+    // account existence through response latency. See security finding
+    // "no-rate-limit-auth-brute-force".
+    // =========================================================================
+    describe('login is constant-time for unknown vs existing accounts', () => {
+        it('POST /api/auth/login runs bcrypt.compare even when the email does not exist', async () => {
+            const compareSpy = spyOn(bcrypt, 'compare');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'ghost-does-not-exist@example.com',
+                            password: 'whatever',
+                        }),
+                    }),
+                );
+
+                expect(response.status).toBe(401);
+                // Vulnerable code returns before bcrypt.compare when the user is
+                // absent, so the spy is never called and this assertion fails.
+                expect(compareSpy).toHaveBeenCalledTimes(1);
+            } finally {
+                compareSpy.mockRestore();
+            }
+        });
+
+        it('POST /login_check runs bcrypt.compare even when the email does not exist', async () => {
+            const compareSpy = spyOn(bcrypt, 'compare');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/login_check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            email: 'ghost-does-not-exist-2@example.com',
+                            password: 'whatever',
+                        }).toString(),
+                    }),
+                );
+
+                // Symfony-compatible form login redirects on failure.
+                expect(response.status).toBe(302);
+                expect(compareSpy).toHaveBeenCalledTimes(1);
+            } finally {
+                compareSpy.mockRestore();
+            }
         });
     });
 

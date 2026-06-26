@@ -132,6 +132,33 @@ const loginSchema = t.Object({
 });
 
 /**
+ * Pre-computed bcrypt hash (cost factor 10, matching real user passwords) of a
+ * random secret that intentionally corresponds to no real account. It is used
+ * as a decoy so password verification always performs one bcrypt.compare — even
+ * when the email does not exist — keeping the response time of a failed login
+ * constant and closing the username-enumeration timing oracle.
+ */
+const DUMMY_PASSWORD_HASH = '$2b$10$pWMhak8HjxajRfmz7mkS8O99xR2ozkUT89L1IFMeKMaE3ERN0huYm';
+
+/**
+ * Verify a plaintext password against a (possibly missing) user in constant time.
+ *
+ * When `user` is null/undefined we still run bcrypt.compare against
+ * DUMMY_PASSWORD_HASH so an attacker cannot use the response latency to tell
+ * whether the email exists. Returns true only when the user exists AND the
+ * password matches. Shared by both password-login entry points so the
+ * comparison behaviour lives in a single place.
+ */
+export async function verifyUserPassword(
+    user: { password?: string | null } | null | undefined,
+    password: string,
+): Promise<boolean> {
+    const hash = user?.password || DUMMY_PASSWORD_HASH;
+    const matches = await bcrypt.compare(password, hash);
+    return Boolean(user) && matches;
+}
+
+/**
  * Factory function to create auth routes with dependency injection
  * @param deps - Dependencies to inject (db, queries)
  */
@@ -208,13 +235,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const { email, password } = body;
 
                     const user = await findUserByEmail(db, email);
-                    if (!user) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Invalid credentials' };
-                    }
-
-                    const isValid = await bcrypt.compare(password, user.password);
-                    if (!isValid) {
+                    // Always run one bcrypt.compare (see verifyUserPassword) so an
+                    // unknown email and a wrong password take the same time and
+                    // cannot be distinguished via response latency.
+                    const passwordValid = await verifyUserPassword(user, password);
+                    if (!user || !passwordValid) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
@@ -413,16 +438,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const user = await findUserByEmail(db, email);
-                if (!user) {
-                    // Redirect back to login with error
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
-                        302,
-                    );
-                }
-
-                const isValid = await bcrypt.compare(password, user.password);
-                if (!isValid) {
+                // Always run one bcrypt.compare (see verifyUserPassword) so an
+                // unknown email and a wrong password take the same time and
+                // cannot be distinguished via response latency.
+                const passwordValid = await verifyUserPassword(user, password);
+                if (!user || !passwordValid) {
                     // Redirect back to login with error
                     return Response.redirect(
                         `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
