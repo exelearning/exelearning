@@ -23,7 +23,7 @@
  */
 
 import * as Y from 'yjs';
-import * as fflate from 'fflate';
+import { DEFAULT_ZIP_LIMITS, ZipLimitError, safeUnzipSync, type ZipDecompressionLimits } from '../../utils/safe-unzip';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import type {
@@ -70,32 +70,12 @@ import { generateOdeId } from '../export/utils/odeId';
  * decompress to ~42 MB across ~1440 entries, with a largest single entry of
  * ~3.4 MB. The limits below leave ample headroom for legitimate packages.
  */
-export interface ZipDecompressionLimits {
-    /** Maximum total uncompressed bytes across all entries. */
-    maxTotalBytes: number;
-    /** Maximum uncompressed bytes for any single entry. */
-    maxEntryBytes: number;
-    /** Maximum number of entries in the archive. */
-    maxEntries: number;
-}
-
-/** Default ZIP decompression limits applied to every inflate path. */
-export const DEFAULT_ZIP_LIMITS: ZipDecompressionLimits = {
-    maxTotalBytes: 500 * 1024 * 1024, // 500 MB cumulative
-    maxEntryBytes: 200 * 1024 * 1024, // 200 MB per entry
-    maxEntries: 10000, // entry-count cap
-};
-
-/**
- * Thrown when a ZIP archive would exceed the configured decompression limits.
- * The inflate is aborted before the offending data is materialised in memory.
- */
-export class ZipLimitError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'ZipLimitError';
-    }
-}
+// ZIP-bomb protection now lives in the shared single source of truth at
+// src/utils/safe-unzip.ts. Re-export the symbols for backward compatibility so
+// existing importers (and ElpxImporter.spec.ts) keep their import paths and there
+// is exactly one ZipLimitError class / one set of default limits.
+export { DEFAULT_ZIP_LIMITS, ZipLimitError };
+export type { ZipDecompressionLimits };
 
 /**
  * ElpxImporter class
@@ -157,40 +137,8 @@ export class ElpxImporter {
      * @returns Map of entry path -> decompressed bytes
      */
     private safeUnzip(buffer: Uint8Array, label: string): Record<string, Uint8Array> {
-        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
-        let cumulativeBytes = 0;
-        let entryCount = 0;
-
-        return fflate.unzipSync(buffer, {
-            filter: (file: { name: string; originalSize: number }) => {
-                entryCount++;
-                if (entryCount > maxEntries) {
-                    throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
-                }
-
-                // NOTE: `originalSize` is the attacker-declared uncompressed
-                // size from the central directory, not a measured value (see the
-                // KNOWN LIMITATION in this method's doc comment). It is checked
-                // before inflation as a cheap zip-bomb guard.
-                const entrySize = file.originalSize;
-                if (entrySize > maxEntryBytes) {
-                    throw new ZipLimitError(
-                        `Entry '${file.name}' in ${label} is too large when decompressed ` +
-                            `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
-                    );
-                }
-
-                cumulativeBytes += entrySize;
-                if (cumulativeBytes > maxTotalBytes) {
-                    throw new ZipLimitError(
-                        `${label} exceeds the maximum total decompressed size ` +
-                            `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
-                    );
-                }
-
-                return true;
-            },
-        });
+        // Delegate to the shared bounded inflate (single source of truth).
+        return safeUnzipSync(buffer, { label, limits: this.zipLimits });
     }
 
     /**

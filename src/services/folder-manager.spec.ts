@@ -832,5 +832,47 @@ describe('Folder Manager Service', () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain('Security error: invalid file paths detected');
         });
+
+        it('rejects a decompression-bomb ZIP asset before inflating it (zip-bomb DoS guard)', async () => {
+            // 4 MB of zeros compresses to a few KB — a ~1000:1 bomb shape. With a
+            // 1 MB per-entry cap the service must refuse it BEFORE inflation, so the
+            // declared 4 MB is never materialised in memory or written to disk.
+            const bombService = createFolderManagerService({
+                db,
+                queries: assetQueries,
+                fs,
+                path,
+                fflate,
+                getProjectAssetsDir: (uuid: string) => path.join(tempDir, 'assets', uuid),
+                zipLimits: { maxEntryBytes: 1 * 1024 * 1024 },
+            });
+
+            const zipped = fflate.zipSync({ 'bomb.bin': new Uint8Array(4 * 1024 * 1024) }, { level: 6 });
+            // Sanity: the crafted archive is tiny on disk (the DoS vector).
+            expect(zipped.length).toBeLessThan(64 * 1024);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'bomb.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'bomb.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'bomb-zip',
+            });
+
+            const result = await bombService.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toMatch(/too large when decompressed/);
+            expect(result.extractedCount).toBe(0);
+
+            // The bomb must NOT have been written as an extracted asset.
+            const extracted = await assetQueries.findAssetByPath(db, testProjectId, 'extracted', 'bomb.bin');
+            expect(extracted).toBeFalsy();
+        });
     });
 });

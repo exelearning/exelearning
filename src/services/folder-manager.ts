@@ -13,6 +13,7 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 import * as cryptoModule from 'crypto';
 import { getProjectAssetsDir as defaultGetProjectAssetsDir } from './file-helper';
+import { safeUnzipSync, ZipLimitError, type ZipDecompressionLimits } from '../utils/safe-unzip';
 
 // ============================================================================
 // Types and Interfaces
@@ -29,6 +30,7 @@ export interface FolderManagerDeps {
     path?: typeof pathModule;
     crypto?: typeof cryptoModule;
     getProjectAssetsDir?: (projectUuid: string) => string;
+    zipLimits?: Partial<ZipDecompressionLimits>;
 }
 
 /**
@@ -153,6 +155,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
     const path = deps.path ?? pathModule;
     const crypto = deps.crypto ?? cryptoModule;
     const getProjectAssetsDir = deps.getProjectAssetsDir ?? defaultGetProjectAssetsDir;
+    const zipLimits = deps.zipLimits;
 
     // ========================================================================
     // Validation Functions
@@ -499,12 +502,24 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents
+        // Extract ZIP contents with hardened decompression limits (zip-bomb / DoS
+        // guard). safeUnzipSync rejects oversized or over-numerous entries BEFORE
+        // they are inflated, throwing ZipLimitError instead of materialising the
+        // whole payload in memory.
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
-            unzipped = fflate.unzipSync(uint8ZipData);
-        } catch {
+            unzipped = safeUnzipSync(uint8ZipData, { label: 'project ZIP asset', fflate, limits: zipLimits });
+        } catch (err) {
+            if (err instanceof ZipLimitError) {
+                return {
+                    success: false,
+                    error: err.message,
+                    extractedCount: 0,
+                    folders: [],
+                    assets: [],
+                };
+            }
             return {
                 success: false,
                 error: 'Failed to extract ZIP file - invalid or corrupted archive',
