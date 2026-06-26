@@ -310,6 +310,20 @@ only codify *materias de modalidad* (with per-course suffixes, e.g. `DA I`/`DA I
 subjects appear by full name without a sigla — so there is no complete, unambiguous official set to
 adopt there.
 
+#### Bachillerato per-course distribution (known limitation)
+
+Like the state dataset and every other regional concretion, `ES-EX` currently duplicates most
+Bachillerato subjects into **both** `1º` and `2º Bachillerato`: the generator inherits the state
+RD 243/2022 structure, which the BOE defines per *modalidad* rather than strictly per course. As a
+result, single-year subjects — e.g. *Física*, *Química*, *Historia de España* (2.º) or *Física y
+Química*, *Historia del Mundo Contemporáneo* (1.º) — appear in the year where they are not taught.
+Subjects genuinely taught across both years (*Matemáticas I/II*, *Latín I/II*, *Lengua Extranjera
+I/II*…) already carry distinct per-year content. Aligning the Bachillerato year distribution with
+DOE Decreto 109/2022 (Anexo horario) is deferred to a follow-up so it can be applied **consistently
+across all LOMLOE datasets**, not only `ES-EX`; the editor's per-course filter
+(`ESO_COURSE_SUBJECTS` in `edition/lomloe.js`) is the natural place to encode it once the
+authoritative per-year list is confirmed.
+
 ### Generator script
 
 A separate Python script (`generate_lomloe_es_ex.py`) implements the hybrid build: load `lomloe-ES.json`, inherit + reprefix, then overlay DOE-extracted regional saberes. The script is **attached to the PR** that introduced this dataset rather than committed to the repo. The Primaria/ESO `codArea` values are then re-mapped to the official Extremadura siglas documented above.

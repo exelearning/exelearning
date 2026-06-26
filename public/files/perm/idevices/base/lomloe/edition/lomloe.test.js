@@ -532,7 +532,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         vi.restoreAllMocks();
     });
 
-    async function listedCodAreas(dataset, sample) {
+    async function listedCodAreas(dataset, sample, nivel = '1º ESO') {
         if (sample) {
             globalThis.fetch = vi.fn(() =>
                 Promise.resolve({ ok: true, json: () => Promise.resolve(sample) })
@@ -541,7 +541,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         $exeDevice.init(el, {
             lomloeDataset: dataset,
             lomloeSelectedEtapa: 'ESO',
-            lomloeSelectedNivel: '1º ESO',
+            lomloeSelectedNivel: nivel,
             lomloeSelections: []
         });
         await new Promise(r => setTimeout(r, 50));
@@ -550,25 +550,23 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
             .map(li => li.getAttribute('data-codarea'));
     }
 
-    // Extremadura uses official subject codes (BG, FQ…); see README.
-    const EX_SAMPLE = {
-        ESO: {
-            '1º ESO': {
-                BG: area('Biología y Geología'),
-                FQ: area('Física y Química'),
-                GH: area('Geografía e Historia'),
-                EF: area('Educación Física'),
-                DIG: area('Digitalización')
-            }
+    it('Extremadura ESO renders the official per-course materias from the real dataset (#1904)', async () => {
+        // Exercise the render path against the production dataset (official
+        // siglas BG, FQ…), the exact integration the #1904 regression broke.
+        const real = loadDataset('lomloe-ES-EX.json');
+        // 1º ESO is filtered to Decreto 110/2022 Anexo V: the official siglas
+        // show; Física y Química (taught 2º/3º) and the 4º-only Digitalización
+        // duplicated into the cycle are hidden.
+        const eso1 = await listedCodAreas('ES-EX', real, '1º ESO');
+        for (const code of ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS']) {
+            expect(eso1, `1º ESO should list ${code}`).toContain(code);
         }
-    };
-
-    it('Extremadura 1º ESO hides Física y Química (not taught in 1º)', async () => {
-        const codes = await listedCodAreas('ES-EX', EX_SAMPLE);
-        expect(codes).toContain('BG');
-        expect(codes).not.toContain('FQ');
-        // 4º-only optatives duplicated into the cycle are also filtered out.
-        expect(codes).not.toContain('DIG');
+        expect(eso1).not.toContain('FQ');
+        expect(eso1).not.toContain('DIG');
+        // 4º ESO is intentionally unfiltered: every materia (incl. FQ) stays.
+        const eso4 = await listedCodAreas('ES-EX', real, '4º ESO');
+        expect(eso4).toContain('FQ');
+        expect(eso4.length).toBeGreaterThan(eso1.length);
     });
 
     it('Madrid 1º ESO hides Física y Química too', async () => {
@@ -1435,31 +1433,70 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
         expect(Object.keys(data['Educación Infantil'])).toContain('Segundo ciclo (3-6 años)');
     });
 
-    it('Infantil criterios do not have competencias clave linked', () => {
-        const inf = data['Educación Infantil'];
-        const primerCiclo = inf['Primer ciclo (0-3 años)'];
-        const areas = Object.values(primerCiclo);
-        expect(areas.length).toBeGreaterThan(0);
-        const comp = Object.values(areas[0].competencias_especificas)[0];
-        const cr = comp.criterios_evaluacion[0];
-        expect(cr.competencias_clave).toEqual([]);
+    it('Infantil criterios are linked to competencias clave (backfilled, issue #1832)', () => {
+        assertInfantilLinkedToCompetenciasClave(data);
+        // Spot-check the same mapping the state dataset asserts: the backfill is
+        // byte-identical across ES / ES-EX / ES-MD (see README, "Infantil
+        // competencias clave"). Crecimiento en Armonía, competencia 1, criterio 1.
+        const ciclo = data['Educación Infantil']['Primer ciclo (0-3 años)'];
+        const aca = Object.values(ciclo).find(a => /Crecimiento en Armon/i.test(a.denominacion));
+        const c1 = Object.values(aca.competencias_especificas)[0];
+        expect(c1.criterios_evaluacion[0].competencias_clave).toEqual(['CCL', 'CPSAA']);
     });
 
-    it('Primaria and ESO use generator-derived subject codes', () => {
+    it('Primaria and ESO use the official Extremadura subject codes (DOE 22050223)', () => {
+        // ESO official siglas (Anexo VIII): BG, FQ, GH, EPVA, TECD, EVCE, LE, EF…
+        // These must match ESO_COURSE_SUBJECTS['ES-EX'] in edition/lomloe.js, so
+        // the per-course filter shows the right materias (issue #1904).
         const eso1 = data['ESO']['1º ESO'];
-        for (const derived of ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI']) {
-            expect(Object.keys(eso1), `ESO 1º should expose ${derived}`).toContain(derived);
+        for (const official of ['BG', 'FQ', 'GH', 'EPVA', 'TECD', 'EVCE', 'LE', 'EF']) {
+            expect(Object.keys(eso1), `ESO 1º should expose ${official}`).toContain(official);
         }
+        // Generator-derived codes must no longer appear in Primaria/ESO — neither
+        // as área keys nor embedded in any competencia/criterio/saber code.
+        const derived = ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI', 'EAR', 'EEX', 'FOP', 'CMN'];
         for (const etapa of ['Educación Primaria', 'ESO']) {
             for (const [, areas] of Object.entries(data[etapa])) {
-                // Embedded competencia codes match their area key.
+                for (const old of derived) {
+                    expect(areas[old], `${etapa} must not keep derived code ${old}`).toBeUndefined();
+                }
+                // Every embedded code (competencia key, criterio código, saber
+                // nombre) carries its área key in segment 3.
                 for (const [codArea, area] of Object.entries(areas)) {
-                    for (const code of Object.keys(area.competencias_especificas)) {
+                    for (const [code, comp] of Object.entries(area.competencias_especificas)) {
                         expect(code.split('-')[3]).toBe(codArea);
+                        for (const cr of comp.criterios_evaluacion || []) {
+                            expect(cr.codigo.split('-')[3]).toBe(codArea);
+                        }
+                    }
+                    for (const items of Object.values(area.saberes_basicos.bloques)) {
+                        for (const item of items) {
+                            expect(item.nombre.split('-')[3]).toBe(codArea);
+                        }
                     }
                 }
             }
         }
+    });
+
+    it('ESO per-course filter codes are all present in the dataset (issue #1904)', () => {
+        // Mirror of ESO_COURSE_SUBJECTS['ES-EX'] in edition/lomloe.js (Decreto
+        // 110/2022, Anexo V). The editor filters 1º–3º ESO to this distribution,
+        // so every listed código must exist in the dataset or the materia would
+        // silently disappear from the editor — the regression behind #1904.
+        const FILTER = {
+            '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
+            '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
+            '3º ESO': ['BG', 'EF', 'EPVA', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'TECD'],
+        };
+        for (const [nivel, codes] of Object.entries(FILTER)) {
+            const present = Object.keys(data['ESO'][nivel]);
+            for (const code of codes) {
+                expect(present, `${nivel} dataset must contain filter code ${code}`).toContain(code);
+            }
+        }
+        // 4º ESO is intentionally unfiltered; it must still carry materias.
+        expect(Object.keys(data['ESO']['4º ESO']).length).toBeGreaterThan(0);
     });
 
     it('every area record has the iDevice schema shape', () => {
