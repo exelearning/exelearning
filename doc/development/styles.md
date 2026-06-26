@@ -31,7 +31,6 @@ Example structure:
   <description>Example style for eXe.
 
 iDevice icons by…</description>
-  <downloadable>1</downloadable>
 </theme>
 ```
 
@@ -43,9 +42,6 @@ iDevice icons by…</description>
 - **`compatibility`**: eXeLearning version the style is compatible with.
 - **`author`**, **`license`**, **`license-url`**: Author and licensing information.
 - **`description`**: Style description (may include line breaks).
-- **`downloadable`**:  
-  - `1` → the style can be imported/downloaded from the interface.  
-  - `0` → the style cannot be downloaded or imported from the application.
 
 ---
 

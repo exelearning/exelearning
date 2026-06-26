@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>~Neue Datei</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>~Neue Datei ohne Speichern erstellen</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>~Projekt wird gespeichert...</target>
@@ -4528,10 +4524,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>~Sie können kein iDevice auf der Startseite hinzufügen  </target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>~Problem beim Hinzufügen des iDevice  </target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml im ZIP nicht gefunden</target>
       </trans-unit>
-      <trans-unit id="gqvbmgo" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Dieser Stil kann nicht heruntergeladen werden</target>
-      </trans-unit>
       <trans-unit id="wjfaxhm" resname="Style already exists">
         <source>Style already exists</source>
         <target>~Der Stil existiert bereits</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="k9osa29" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Sie werden automatisch zur übergeordneten Seite weitergeleitet.</target>
-      </trans-unit>
-      <trans-unit id="8ynthbm" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~Die Einstellungen werden nach dem Aktualisieren der Seite übernommen.</target>
-      </trans-unit>
-      <trans-unit id="trqte6q" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~Es ist erforderlich, die Seite neu zu laden, um die Änderungen anzuwenden. Speichere dein Projekt zuerst, um Arbeit nicht zu verlieren. Lade dann die Seite neu.</target>
       </trans-unit>
       <trans-unit id="n3d7bxy" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15484,6 +15464,42 @@
       <trans-unit id="7rypf11" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Speichern oder verwerfen Sie das geöffnete iDevice, bevor Sie das Projekt speichern.</target>
+      </trans-unit>
+      <trans-unit id="xenawln" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Alle kollaborativen Änderungen wurden gespeichert.</target>
+      </trans-unit>
+      <trans-unit id="exs85m5" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Kollaborative Änderungen werden live geteilt und automatisch gespeichert.</target>
+      </trans-unit>
+      <trans-unit id="abojzb6" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Kollaborative Änderungen werden gespeichert...</target>
+      </trans-unit>
+      <trans-unit id="6gk5ib3" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~Automatisches Speichern fehlgeschlagen. Bitte klicken Sie auf Speichern, bevor Sie die Seite verlassen.</target>
+      </trans-unit>
+      <trans-unit id="cko432v" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Sprachänderungen erfordern möglicherweise ein Neuladen oder Neustarten von eXeLearning, um die gesamte Oberfläche zu aktualisieren.</target>
+      </trans-unit>
+      <trans-unit id="r5526jr" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Die Spracheinstellung wurde gespeichert. Einige Oberflächentexte werden möglicherweise erst nach dem Neuladen oder Neustarten von eXeLearning aktualisiert. Speichern oder laden Sie Ihr Projekt herunter, bevor Sie die App neu laden oder schließen, um Datenverlust zu vermeiden.</target>
+      </trans-unit>
+      <trans-unit id="e41qda8" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Möchten Sie Änderungen speichern, bevor Sie eine neue Datei erstellen?</target>
+      </trans-unit>
+      <trans-unit id="hgrsh1s" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Nicht speichern</target>
+      </trans-unit>
+      <trans-unit id="d0sz324" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Einige kollaborative Änderungen wurden noch nicht gespeichert. Klicken Sie auf Speichern, bevor Sie die Seite verlassen, um Datenverlust zu vermeiden.</target>
       </trans-unit>
     </body>
   </file>
