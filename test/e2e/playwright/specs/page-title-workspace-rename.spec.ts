@@ -60,8 +60,14 @@ test.describe('Workspace page title rename', () => {
             (window as any).eXeLearning.app.project.idevices.setNodeContentPageTitle(id);
         }, firstId);
         await expect(page.locator('[data-testid="page-title"]')).toHaveText('New page');
-        // The inline edit control (pencil button) is wired up.
-        await expect(page.locator('.content-editable-title .btn-edit-title')).toBeVisible();
+        // The inline edit control (pencil button) is accessible-hidden by default and
+        // only revealed on hover / focus-within (see assets/styles/components/_buttons.scss).
+        // Verify both halves of that behaviour: hidden until the title is hovered.
+        const titleContainer = page.locator('.content-editable-title');
+        const editButton = titleContainer.locator('.btn-edit-title');
+        await expect(editButton).toHaveCSS('opacity', '0');
+        await titleContainer.hover();
+        await expect(editButton).toHaveCSS('opacity', '1');
         return firstId;
     }
 
