@@ -134,7 +134,45 @@ export function isAllowedProviderUrl(url: string): boolean {
         return false;
     }
 
-    return config.urls.some(allowedUrl => url.startsWith(allowedUrl));
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+
+    // Reject embedded credentials (userinfo). `https://allowed.example@evil/...`
+    // parses to host `evil` while a naive `url.startsWith('https://allowed.example')`
+    // would be true — a classic allow-list bypass that lets a valid-JWT holder
+    // point the server's outbound request at an internal host (SSRF).
+    if (parsed.username !== '' || parsed.password !== '') {
+        return false;
+    }
+
+    return config.urls.some(allowedUrl => {
+        let allowed: URL;
+        try {
+            allowed = new URL(allowedUrl);
+        } catch {
+            return false;
+        }
+
+        // Scheme + host (including any non-default port) must match exactly.
+        // Prefix string matching let `https://moodle.allowed.example.evil.test`
+        // through; comparing parsed hosts does not.
+        if (parsed.protocol !== allowed.protocol || parsed.host !== allowed.host) {
+            return false;
+        }
+
+        // An allow-list entry may pin a base path (subdirectory installs). The
+        // returnurl path must equal it or extend it on a `/` segment boundary
+        // so `/moodle` does not also match `/moodleXX`.
+        const allowedPath = allowed.pathname.replace(/\/+$/, '');
+        if (allowedPath === '') {
+            return true;
+        }
+        return parsed.pathname === allowedPath || parsed.pathname.startsWith(`${allowedPath}/`);
+    });
 }
 
 /**
@@ -171,6 +209,12 @@ export function isSafeReturnUrl(url: string): boolean {
     }
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+    }
+
+    // Reject embedded credentials: `https://allowed@internal/...` routes to
+    // `internal` while masquerading as `allowed` (SSRF / allow-list bypass).
+    if (parsed.username !== '' || parsed.password !== '') {
         return false;
     }
 

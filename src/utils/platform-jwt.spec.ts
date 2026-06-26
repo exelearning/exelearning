@@ -627,4 +627,48 @@ describe('Platform JWT Utilities', () => {
             expect(params).toBeNull();
         });
     });
+
+    describe('SSRF allow-list bypass hardening (isAllowedProviderUrl)', () => {
+        beforeEach(() => {
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('rejects a userinfo-smuggled internal host that prefix-matches an allowed origin', () => {
+            // Real host is internal.svc.cluster.local; the `@` makes
+            // url.startsWith('https://moodle.allowed.example') deceptively true.
+            expect(
+                isAllowedProviderUrl('https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/x'),
+            ).toBe(false);
+        });
+
+        it('rejects a look-alike host that has an allowed origin as a string prefix', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example.evil.test/mod/exescorm/x')).toBe(false);
+        });
+
+        it('still allows a genuine returnurl on the configured provider origin', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example/mod/exescorm/view.php?id=1')).toBe(true);
+        });
+    });
+
+    describe('SSRF allow-list bypass hardening (getPlatformIntegrationParams end-to-end)', () => {
+        const signToken = async (returnurl: string) =>
+            new SignJWT({ userid: '1', cmid: '1', returnurl, pkgtype: 'scorm' } as unknown as Record<string, unknown>)
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode('test-secret'));
+
+        beforeEach(() => {
+            process.env.APP_SECRET = 'test-secret';
+            delete process.env.PROVIDER_IDS;
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('returns null for a userinfo-smuggled internal returnurl', async () => {
+            const token = await signToken(
+                'https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/view.php',
+            );
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
+        });
+    });
 });

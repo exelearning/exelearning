@@ -1,7 +1,7 @@
 /**
  * Platform Integration Service Tests
  */
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, beforeEach } from 'bun:test';
 import {
     buildSetOdeUrl,
     buildGetOdeUrl,
@@ -16,6 +16,9 @@ import type { PlatformJWTPayload } from '../utils/platform-jwt';
 describe('Platform Integration Service', () => {
     // Store original fetch
     const originalFetch = globalThis.fetch;
+    // Hermetic DNS resolver so safeFetch never hits the network for the
+    // example returnurl hosts; the mocked globalThis.fetch is still used.
+    const publicLookup = async (_host: string) => [{ address: '93.184.216.34' }];
 
     afterEach(() => {
         // Restore original fetch
@@ -79,6 +82,9 @@ describe('Platform Integration Service', () => {
     });
 
     describe('platformPetitionGet', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const mockPayload: PlatformJWTPayload = {
             userid: '123',
             cmid: '456',
@@ -192,6 +198,9 @@ describe('Platform Integration Service', () => {
     });
 
     describe('platformPetitionSet', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const mockPayload: PlatformJWTPayload = {
             userid: '123',
             cmid: '456',
@@ -215,9 +224,7 @@ describe('Platform Integration Service', () => {
 
         it('should return error when project not found', async () => {
             // Configure with mock that returns null
-            configure({
-                findProjectByUuid: async () => null,
-            });
+            configure({ lookupFn: publicLookup, findProjectByUuid: async () => null });
 
             const result = await platformPetitionSet(mockPayload, 'jwt-token', 'non-existent-uuid');
 
@@ -228,6 +235,7 @@ describe('Platform Integration Service', () => {
         it('should return error when Yjs document snapshot not found', async () => {
             // Configure with mock project but no snapshot
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -249,6 +257,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -271,6 +280,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -300,6 +310,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -328,6 +339,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -357,6 +369,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -386,6 +399,7 @@ describe('Platform Integration Service', () => {
 
         it('should handle exceptions during snapshot loading gracefully', async () => {
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -409,6 +423,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -433,6 +448,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -469,6 +485,7 @@ describe('Platform Integration Service', () => {
             let storedProjectUuid: string | null = null;
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -503,6 +520,7 @@ describe('Platform Integration Service', () => {
             let updateCalled = false;
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -533,6 +551,9 @@ describe('Platform Integration Service', () => {
     });
 
     describe('platformPetitionSetForward', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const forwardPayload: PlatformJWTPayload = {
             userid: '7',
             cmid: '42',
@@ -587,6 +608,7 @@ describe('Platform Integration Service', () => {
             // platform_id linkage is performed only when the upload succeeds.
             let linkedCmid: string | null = null;
             configure({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
                     return undefined;
@@ -628,7 +650,7 @@ describe('Platform Integration Service', () => {
                 });
             };
 
-            configure({ updateProjectByUuid: async () => undefined });
+            configure({ lookupFn: publicLookup, updateProjectByUuid: async () => undefined });
 
             const result = await platformPetitionSetForward(forwardPayload, 'jwt-token', '', samplePackage, '');
 
@@ -674,6 +696,7 @@ describe('Platform Integration Service', () => {
         it('does not link platform_id when projectUuid is empty', async () => {
             let updateCalled = false;
             configure({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async () => {
                     updateCalled = true;
                     return undefined;

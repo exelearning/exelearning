@@ -6,6 +6,7 @@
  */
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
 import { buildIntegrationUrl, getExportTypeFromPkgType } from '../utils/platform-jwt';
+import { safeFetch, type LookupFn } from '../utils/ssrf-guard';
 import { db as defaultDb } from '../db/client';
 import {
     findProjectByUuid as findProjectByUuidDefault,
@@ -72,6 +73,10 @@ export interface PlatformIntegrationDependencies {
     findProjectByUuid: typeof findProjectByUuidDefault;
     findSnapshotByProjectId: typeof findSnapshotByProjectIdDefault;
     updateProjectByUuid: typeof updateProjectByUuidDefault;
+    /** Injectable DNS resolver, forwarded to the SSRF guard (for hermetic tests). */
+    lookupFn?: LookupFn;
+    /** Injectable fetch implementation, forwarded to the SSRF guard (for hermetic tests). */
+    fetchImpl?: typeof fetch;
 }
 
 const defaultDeps: PlatformIntegrationDependencies = {
@@ -130,9 +135,15 @@ export async function platformPetitionGet(payload: PlatformJWTPayload, jwtToken:
     formData.append('ode_data', JSON.stringify(postData));
 
     try {
-        const response = await fetch(platformUrl, {
+        // Route through the SSRF guard: redirects are followed manually and every
+        // hop is re-validated against the egress block-list, so an allowed host
+        // cannot 302 the request to an internal address (cloud metadata, loopback,
+        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            lookupFn: deps.lookupFn,
+            fetchImpl: deps.fetchImpl,
         });
 
         if (!response.ok) {
@@ -283,9 +294,15 @@ export async function platformPetitionSet(
         const formData = new FormData();
         formData.append('ode_data', JSON.stringify(postData));
 
-        const response = await fetch(platformUrl, {
+        // Route through the SSRF guard: redirects are followed manually and every
+        // hop is re-validated against the egress block-list, so an allowed host
+        // cannot 302 the request to an internal address (cloud metadata, loopback,
+        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            lookupFn: deps.lookupFn,
+            fetchImpl: deps.fetchImpl,
         });
 
         if (!response.ok) {
@@ -401,9 +418,15 @@ export async function platformPetitionSetForward(
         const formData = new FormData();
         formData.append('ode_data', JSON.stringify(postData));
 
-        const response = await fetch(platformUrl, {
+        // Route through the SSRF guard: redirects are followed manually and every
+        // hop is re-validated against the egress block-list, so an allowed host
+        // cannot 302 the request to an internal address (cloud metadata, loopback,
+        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            lookupFn: deps.lookupFn,
+            fetchImpl: deps.fetchImpl,
         });
 
         if (!response.ok) {

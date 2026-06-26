@@ -19,6 +19,9 @@ describe('Platform Integration Routes', () => {
     let originalEnv: Record<string, string | undefined>;
     // Store original fetch
     const originalFetch = globalThis.fetch;
+    // Hermetic DNS resolver so safeFetch (now used by the service) never hits
+    // the network for the example returnurl hosts.
+    const publicLookup = async (_host: string) => [{ address: '93.184.216.34' }];
 
     beforeEach(() => {
         originalEnv = {
@@ -38,6 +41,8 @@ describe('Platform Integration Routes', () => {
         // returnurl. Configure a default allow-list matching the happy-path return URLs so the
         // many 200-expecting tests keep passing. Tests that set their own PROVIDER_URLS override this.
         process.env.PROVIDER_URLS = 'https://moodle.example.com';
+        // Default hermetic DNS resolver for outbound platform fetches.
+        configureService({ lookupFn: publicLookup });
     });
 
     afterEach(() => {
@@ -320,9 +325,7 @@ describe('Platform Integration Routes', () => {
             });
 
             // Configure service with mock that returns null for project
-            configureService({
-                findProjectByUuid: async () => null,
-            });
+            configureService({ lookupFn: publicLookup, findProjectByUuid: async () => null });
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
@@ -353,6 +356,7 @@ describe('Platform Integration Routes', () => {
 
             // Configure service with mocks
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -400,6 +404,7 @@ describe('Platform Integration Routes', () => {
             });
 
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -441,6 +446,7 @@ describe('Platform Integration Routes', () => {
             });
 
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -487,6 +493,7 @@ describe('Platform Integration Routes', () => {
             let snapshotLookupCalled = false;
             let updateCalled = false;
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => {
                     throw new Error('service.findProjectByUuid must not run when access is denied');
                 },
@@ -542,6 +549,7 @@ describe('Platform Integration Routes', () => {
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid', platform_id: '456' }),
             });
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'owned-uuid',
@@ -763,6 +771,7 @@ describe('Platform Integration Routes', () => {
             // the cmid even though the project was newly created in this test.
             let linkedCmid: string | null = null;
             configureService({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
                     return undefined;
@@ -864,6 +873,7 @@ describe('Platform Integration Routes', () => {
             // The rebind sink must never run.
             let updateCalled = false;
             configureService({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async () => {
                     updateCalled = true;
                     return undefined;
