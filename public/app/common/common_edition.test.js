@@ -1376,46 +1376,96 @@ describe('common_edition.js', () => {
         global.window.open = originalWindowOpen;
       });
 
-      it('saveButton click shows success alert when all lines are valid', () => {
+      // The save/IA handlers await saveQuestions (it may render images
+      // asynchronously), so the generic alert fires on a later microtask.
+      const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+      it('saveButton click shows success alert when all lines are valid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         expect(saveQuestionsMock).toHaveBeenCalled();
       });
 
-      it('saveButton click shows invalid lines alert when some lines are invalid', () => {
+      it('saveButton click shows invalid lines alert when some lines are invalid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsArea').val('Word1#Definition1\nInvalidLine\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
       });
 
-      it('iaButton click shows success alert when all lines are valid', () => {
+      it('saveButton click skips the generic alert when saveQuestions handles its own messaging', async () => {
+        const saveQuestionsMock = vi.fn().mockResolvedValue({ handledMessaging: true });
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        expect(saveQuestionsMock).toHaveBeenCalledWith(expect.any(Array), expect.any(Array));
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('saveButton click refills the textarea with the remainingLines the callback could not add', async () => {
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
+        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        // The cleared textarea keeps only the rejected lines so the user can fix them.
+        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows success alert when all lines are valid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsIA').val('Word1#Definition1');
         $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
-      it('iaButton click shows invalid lines alert when some lines are invalid', () => {
+      it('iaButton click refills the textarea with the remainingLines the callback could not add', async () => {
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
+        $('#eXeEQuestionsIA').val('SomeContent');
+        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+        await flushAsync();
+
+        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows invalid lines alert when some lines are invalid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsIA').val('SomeContent');
         $('#eXeEQuestionsArea').val('BadFormat\nWord1#Definition1');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
