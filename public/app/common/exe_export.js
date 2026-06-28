@@ -95,32 +95,106 @@ window.$exeExport = {
     
     /**
      * Teacher Mode
+     *
+     * Teacher-only content (.teacher-only) is HIDDEN by default in exports (see the rule in
+     * base.css). It is revealed by the `mode-teacher` class on <html>, which the in-page
+     * self-serve toggle adds/removes. The toggle is opt-in via URL parameter, so host
+     * integrations (LMS/CMS) only need to change the iframe URL — no injected CSS/JS:
+     *
+     *   ?exe-teacher=1|true|yes   show the Teacher Mode toggle (alias: ?teacher-mode=1, or
+     *                             the legacy ?exe-teacher-toggler=1). The toggle is OFF by
+     *                             default and remembers the viewer's choice in localStorage;
+     *                             the viewer activates it to reveal teacher content. The
+     *                             parameter never reveals content on its own.
+     *   (no parameter)            no toggle; teacher content stays hidden (student view).
+     *
+     * NOTE: this is an opt-in PRESENTATION mode, not access control and not a security
+     * boundary. Truly sensitive answer keys need a separate authenticated/password-gated
+     * feature.
      */
     teacherMode : {
         STORAGE_KEY : 'exeTeacherMode',
+        _showToggler : false,
+        _navParams : '',
+        _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
+        /**
+         * Decide — as early as possible, since this file runs in <head> — whether the
+         * self-serve toggle should be available, and restore the viewer's stored choice
+         * flicker-free. The parameter only makes the toggle AVAILABLE; it never reveals
+         * content on its own. Vanilla JS only; never throws (safe default = student view).
+         */
+        bootstrap : function(){
+            var root = document.documentElement;
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var teacher = params.get('exe-teacher');
+                if (teacher === null) teacher = params.get('teacher-mode'); // documented alias
+                var toggler = params.get('exe-teacher-toggler'); // legacy alias, same effect
+                this._showToggler = this._truthy(teacher) || this._truthy(toggler);
+                this._navParams = this._showToggler ? 'exe-teacher=1' : '';
+                if (this._showToggler) {
+                    // Restore the viewer's stored choice (OFF by default), flicker-free.
+                    try {
+                        if (localStorage.getItem(this.STORAGE_KEY) === '1') root.classList.add('mode-teacher');
+                    } catch (e) {}
+                }
+            } catch (e) {
+                // Keep student mode (no toggle) as the safe default.
+            }
+        },
+        /**
+         * Append the active teacher params to an in-package navigation href so the chosen
+         * view survives navigation between pages — works in same-origin AND opaque-origin
+         * iframes (where storage is unavailable). Leaves external links, non-relative
+         * schemes and pure fragments untouched.
+         */
+        withTeacherParams : function(href){
+            if (!href || !this._navParams) return href;
+            if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
+            if (href.indexOf('exe-teacher') !== -1) return href;
+            var hashIdx = href.indexOf('#');
+            var hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
+            var base = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+            var sep = base.indexOf('?') !== -1 ? '&' : '?';
+            return base + sep + this._navParams + hash;
+        },
+        /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
+        propagateNavParams : function(){
+            if (!this._navParams) return;
+            var self = this;
+            var links = document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]');
+            links.forEach(function(a){
+                a.setAttribute('href', self.withTeacherParams(a.getAttribute('href')));
+            });
+        },
         init : function(){
+            // Reveal is already applied by bootstrap() (flicker-free); here we only carry
+            // the params across navigation and manage the optional self-serve toggle.
+            this.propagateNavParams();
             if (typeof(localStorage)!='object') return;
             if ($(".box.teacher-only").length==0 && $(".idevice_node.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
+            // The self-serve toggle is opt-in: shown only when the teacher URL parameter
+            // made it available (?exe-teacher=1, alias ?teacher-mode=1, or the legacy
+            // ?exe-teacher-toggler=1) — see bootstrap(). _showToggler captures that decision.
+            if (this._showToggler !== true) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
             if ($("body").hasClass("exe-single-page")) $(".package-header").before(btn);
             else $(".page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
-            var enabled = this.isEnabled();
-            if (enabled) {
+            if (document.documentElement.classList.contains('mode-teacher')) {
                 this.toggler.prop("checked", true);
-                document.documentElement.classList.add('mode-teacher');
             }
             this.toggler.on("change", function(){
                 var root = document.documentElement;
                 var key = $exeExport.teacherMode.STORAGE_KEY;
                 if (this.checked) {
-                    localStorage.setItem(key, '1');
+                    try { localStorage.setItem(key, '1'); } catch (e) {}
                     root.classList.add('mode-teacher');
                 } else {
-                    localStorage.removeItem(key);
+                    try { localStorage.removeItem(key); } catch (e) {}
                     root.classList.remove('mode-teacher');
                 }
             });
@@ -461,6 +535,10 @@ window.$exeExport = {
 
 // Use local reference for cleaner code
 var $exeExport = window.$exeExport;
+
+// Apply the Teacher Mode reveal as early as possible. This script runs in <head>, so
+// doing it now (before DOMContentLoaded and the first paint) avoids any content flicker.
+try { $exeExport.teacherMode.bootstrap(); } catch (e) { /* student mode is the safe default */ }
 
 $(function () {
     $exeExport.init();
