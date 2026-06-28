@@ -615,6 +615,92 @@ describe('common.js $exe helpers', () => {
         global.$exe.loadMediaPlayer.isReady = false;
         global.$exe.loadMediaPlayer.isCalledInBox = false;
       });
+
+      it('extracts download src from a <source> child when the media element has no src attribute', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        // Video is rendered as <video><source src="..."/></video> (no src on the element itself)
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        expect(downloadLink.getAttribute('href')).toBe('video/test.mp4');
+        expect(downloadLink.textContent).toBe('mp4');
+      });
+
+      it('labels the download link with the real extension for multi-dot filenames and query strings', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="video/lesson.part1.mp4">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <video class="exe-media-box-element"><source src="video/lesson.part1.mp4?token=abc#t=10" /></video>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        // last dot-segment, query string and fragment stripped → "mp4" (not "part1" or "mp4?token=abc#t=10")
+        expect(downloadLink.textContent).toBe('mp4');
+      });
+
+      it('recalculates pp_content height from the video bounding rect', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
+          </div>
+          <div class="pp_content"></div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+        const video = document.querySelector('#pp_full_res video');
+        video.getBoundingClientRect = () => ({ height: 300, width: 480, top: 0, left: 0, right: 480, bottom: 300 });
+
+        prettyPhotoOptions.changepicturecallback();
+
+        // 300 (video height) + 50 (controls) = 350px
+        const content = document.querySelector('.pp_content');
+        expect(content.style.height).toBe('350px');
+      });
+
+      it('leaves pp_content height untouched when the video has zero height', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
+          </div>
+          <div class="pp_content"></div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+        const video = document.querySelector('#pp_full_res video');
+        video.getBoundingClientRect = () => ({ height: 0, width: 0, top: 0, left: 0, right: 0, bottom: 0 });
+
+        prettyPhotoOptions.changepicturecallback();
+
+        const content = document.querySelector('.pp_content');
+        expect(content.style.height).toBe('');
+      });
     });
 
     it('applies GalleryIdevice fallback when no lightbox links but gallery exists', () => {

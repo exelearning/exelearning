@@ -547,10 +547,11 @@ var $exe = {
                     }
                     if (src) {
                         if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
-                        var ext = src.split("/");
-                        ext = ext[ext.length - 1];
-                        ext = ext.split(".")[1];
-                        if (typeof ext == 'undefined' || ext == 'undefined') ext = $exe_i18n.download;
+                        // Extension = last dot-segment of the filename, without query string or fragment
+                        var fileName = src.split("/").pop().split("?")[0].split("#")[0];
+                        var dotIndex = fileName.lastIndexOf(".");
+                        var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
+                        if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
                         $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
                     } else {
                         // Hide the title at the bottom (we use h2.pp_title instead)
