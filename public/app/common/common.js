@@ -528,16 +528,25 @@ var $exe = {
                     var media = $(".exe-media-box-element", block);
                     if ($exe.loadMediaPlayer != undefined) {
                         if ($exe.loadMediaPlayer.isReady) {
-                            if (media.length == 1) media.mediaelementplayer();
+                            // No mediaelementplayer in prettyPhoto
+                            // if (media.length == 1) media.mediaelementplayer();
                             $exe.loadMediaPlayer.isCalledInBox = true;
                         }
                     }
                     // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
                     var cont = $(".pp_content_container");
                     cont.attr("class", "pp_content_container");
-                    if (media.length == 1 && media[0].hasAttribute('src')) {
+                    var src = null;
+                    if (media.length == 1) {
+                        if (media[0].hasAttribute('src')) {
+                            src = media.attr('src');
+                        } else {
+                            var sourceEl = media.find('source[src]').first();
+                            if (sourceEl.length) src = sourceEl.attr('src');
+                        }
+                    }
+                    if (src) {
                         if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
-                        var src = media.attr('src');
                         var ext = src.split("/");
                         ext = ext[ext.length - 1];
                         ext = ext.split(".")[1];
@@ -547,6 +556,14 @@ var $exe = {
                         // Hide the title at the bottom (we use h2.pp_title instead)
                         block = $(".pp_inline", block);
                         if (block.length == 1) $(".pp_description").hide();
+                    }
+                    // Recalculate pp_content height for video elements (screen height + 50px for controls)
+                    var ppVideo = $("#pp_full_res video");
+                    if (ppVideo.length) {
+                        var videoHeight = ppVideo[0].getBoundingClientRect().height;
+                        if (videoHeight > 0) {
+                            $(".pp_content").css('height', videoHeight + 50);
+                        }
                     }
                 }
             });
