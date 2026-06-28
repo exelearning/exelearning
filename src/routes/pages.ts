@@ -955,6 +955,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     import_elpx: trans('Import (.elpx...)', {}, locale),
                     save: trans('Save', {}, locale),
                     save_as: trans('Save as', {}, locale),
+                    close: trans('Close', {}, locale),
                     download_as: trans('Download as...', {}, locale),
                     export_as: trans('Export as...', {}, locale),
                     exelearning_content: trans('eXeLearning content (.elpx)', {}, locale),

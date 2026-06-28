@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Nou fitxer</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crea un fitxer nou sense desar</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Desant el projecte...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>No pots afegir un iDevice a la pàgina arrel</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema en afegir l'iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml no trobat al ZIP</target>
       </trans-unit>
-      <trans-unit id="nu62n9p" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Aquest estil no es pot descarregar</target>
-      </trans-unit>
       <trans-unit id="yjbmryo" resname="Style already exists">
         <source>Style already exists</source>
         <target>~L'estil ja existeix</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="yxp77kp" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Seran redirigits automàticament a la pàgina de nivell superior.</target>
-      </trans-unit>
-      <trans-unit id="hncpzpd" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~Les preferències s'aplicaran després d'actualitzar la pàgina.</target>
-      </trans-unit>
-      <trans-unit id="hw8yi8h" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~És necessari recarregar la pàgina per aplicar els canvis. Descarrega el teu projecte primer per no perdre feina. Després recarrega la pàgina.</target>
       </trans-unit>
       <trans-unit id="n1mjhxq" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15484,6 +15464,42 @@
       <trans-unit id="lm6cjxo" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Guardeu o descarteu el iDevice obert abans de guardar el projecte.</target>
+      </trans-unit>
+      <trans-unit id="t86aqo9" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Tots els canvis col·laboratius estan guardats.</target>
+      </trans-unit>
+      <trans-unit id="sn5vre4" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Els canvis col·laboratius es comparteixen en temps real i es guardaran automàticament.</target>
+      </trans-unit>
+      <trans-unit id="aakxbny" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Guardant canvis col·laboratius...</target>
+      </trans-unit>
+      <trans-unit id="i7okyvg" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~El desat automàtic ha fallat. Fes clic a Guardar abans de sortir.</target>
+      </trans-unit>
+      <trans-unit id="1823w67" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Els canvis d'idioma poden requerir recarregar o tornar a obrir eXeLearning per actualitzar tota la interfície.</target>
+      </trans-unit>
+      <trans-unit id="8gt8mt5" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~La preferència d'idioma s'ha guardat. És possible que alguns textos de la interfície no s'actualitzin fins que recarreguis o tornis a obrir eXeLearning. Guarda o descarrega el teu projecte abans de recarregar o tancar l'aplicació per evitar perdre canvis.</target>
+      </trans-unit>
+      <trans-unit id="nsi4av0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Voleu guardar els canvis abans de crear un fitxer nou?</target>
+      </trans-unit>
+      <trans-unit id="tnvkzx6" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~No guardar</target>
+      </trans-unit>
+      <trans-unit id="sswuu14" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Alguns canvis col·laboratius encara no s'han guardat. Feu clic a Guardar abans de sortir per evitar perdre'ls.</target>
       </trans-unit>
     </body>
   </file>

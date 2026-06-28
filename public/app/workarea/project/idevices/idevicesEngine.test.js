@@ -4102,4 +4102,228 @@ describe('IdevicesEngine', () => {
         });
     });
 
+    describe('Workspace page title inline rename', () => {
+        let titleEl;
+        let renameNodeAndReload;
+        let apiSaveProperties;
+        let node;
+
+        beforeEach(() => {
+            // Add the page title heading inside the (stable) content container
+            const nodeContent = document.querySelector('#node-content');
+            titleEl = document.createElement('h1');
+            titleEl.id = 'page-title-node-content';
+            titleEl.className = 'page-title';
+            titleEl.textContent = 'New page';
+            nodeContent.appendChild(titleEl);
+
+            renameNodeAndReload = vi.fn();
+            apiSaveProperties = vi.fn();
+            node = { apiSaveProperties };
+
+            engine.project.checkOpenIdevice = vi.fn(() => false);
+            engine.project.structure = {
+                getSelectNodeNavId: vi.fn(() => 'page-1'),
+                getNode: vi.fn(() => node),
+                renameNodeAndReload,
+            };
+        });
+
+        it('adds a pencil edit button and enters edit mode on a single click', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.initPageTitleInlineRename();
+            // Pencil button added next to the title (same markup as box titles).
+            const pencil = document.querySelector(
+                '.content-editable-title .btn-edit-title .edit-icon'
+            );
+            expect(pencil).not.toBeNull();
+            // A single click on the title enters edit mode.
+            titleEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            expect(titleEl.getAttribute('contenteditable')).toBe('true');
+            expect(titleEl.getAttribute('aria-label')).toBe('Page title');
+        });
+
+        it('enters edit mode when clicking the pencil button', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.initPageTitleInlineRename();
+            const pencil = document.querySelector(
+                '.content-editable-title .btn-edit-title'
+            );
+            pencil.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            expect(titleEl.getAttribute('contenteditable')).toBe('true');
+        });
+
+        it('wires the edit control only once', () => {
+            engine.initPageTitleInlineRename();
+            engine.initPageTitleInlineRename();
+            expect(
+                document.querySelectorAll('.content-editable-title .btn-edit-title')
+                    .length
+            ).toBe(1);
+        });
+
+        it('does nothing when the page title element is missing', () => {
+            titleEl.remove();
+            expect(() => engine.initPageTitleInlineRename()).not.toThrow();
+            expect(document.querySelector('.content-editable-title')).toBeNull();
+        });
+
+        it('does nothing when the node container is missing', () => {
+            const original = engine.nodeContainerElement;
+            engine.nodeContainerElement = null;
+            expect(() => engine.initPageTitleInlineRename()).not.toThrow();
+            engine.nodeContainerElement = original;
+        });
+
+        it('hides the pencil while editing and restores it after commit', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.initPageTitleInlineRename();
+            const pencil = engine.pageTitleEditButton;
+            titleEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            expect(pencil.style.display).toBe('none');
+            titleEl.textContent = 'Renamed';
+            titleEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            expect(pencil.style.display).toBe('');
+            expect(renameNodeAndReload).toHaveBeenCalledWith('page-1', 'Renamed');
+        });
+
+        it('renames the node via renameNodeAndReload on a default page', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = 'Renamed from workspace';
+            titleEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            expect(renameNodeAndReload).toHaveBeenCalledWith(
+                'page-1',
+                'Renamed from workspace'
+            );
+            expect(apiSaveProperties).not.toHaveBeenCalled();
+            expect(titleEl.textContent).toBe('Renamed from workspace');
+        });
+
+        it('updates only titlePage on an editableInPage page', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titlePage: 'Visible title',
+                editableInPage: true,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = 'New visible title';
+            titleEl.dispatchEvent(new Event('blur'));
+            expect(apiSaveProperties).toHaveBeenCalledWith({
+                titlePage: 'New visible title',
+            });
+            expect(renameNodeAndReload).not.toHaveBeenCalled();
+        });
+
+        it('trims surrounding whitespace before renaming', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = '   Trimmed Title   ';
+            titleEl.dispatchEvent(new Event('blur'));
+            expect(renameNodeAndReload).toHaveBeenCalledWith(
+                'page-1',
+                'Trimmed Title'
+            );
+        });
+
+        it('rejects an empty title and restores the previous value', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = '   ';
+            titleEl.dispatchEvent(new Event('blur'));
+            expect(renameNodeAndReload).not.toHaveBeenCalled();
+            expect(titleEl.textContent).toBe('New page');
+        });
+
+        it('cancels on Escape without renaming', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = 'Discard me';
+            titleEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            expect(renameNodeAndReload).not.toHaveBeenCalled();
+            expect(titleEl.textContent).toBe('New page');
+        });
+
+        it('does not edit a hidden page title', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                hidePageTitle: true,
+            });
+            engine.startPageTitleInlineEdit(titleEl);
+            expect(titleEl.getAttribute('contenteditable')).toBeNull();
+        });
+
+        it('does not edit while an iDevice is open', () => {
+            engine.project.checkOpenIdevice = vi.fn(() => true);
+            engine.startPageTitleInlineEdit(titleEl);
+            expect(titleEl.getAttribute('contenteditable')).toBeNull();
+        });
+
+        it('does not re-enter when already editing', () => {
+            titleEl.setAttribute('contenteditable', 'true');
+            const spy = vi.spyOn(engine, 'getPageTitleProperties');
+            engine.startPageTitleInlineEdit(titleEl);
+            expect(spy).not.toHaveBeenCalled();
+        });
+
+        it('does nothing when no page is selected', () => {
+            engine.project.structure.getSelectNodeNavId = vi.fn(() => null);
+            engine.startPageTitleInlineEdit(titleEl);
+            expect(titleEl.getAttribute('contenteditable')).toBeNull();
+        });
+
+        it('still updates the heading when the node lacks apiSaveProperties', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titlePage: 'Visible title',
+                editableInPage: true,
+            });
+            engine.project.structure.getNode = vi.fn(() => null);
+            engine.startPageTitleInlineEdit(titleEl);
+            titleEl.textContent = 'New visible title';
+            titleEl.dispatchEvent(new Event('blur'));
+            expect(apiSaveProperties).not.toHaveBeenCalled();
+            expect(titleEl.textContent).toBe('New visible title');
+        });
+
+        it('renders a LaTeX page title and shows it', () => {
+            engine.applyPageTitleText(titleEl, '\\(x^2\\)');
+            expect(titleEl.textContent).toBe('\\(x^2\\)');
+            expect(titleEl.classList.contains('hidden')).toBe(false);
+        });
+
+        it('hides the heading when the applied title is empty', () => {
+            engine.applyPageTitleText(titleEl, '');
+            expect(titleEl.classList.contains('hidden')).toBe(true);
+        });
+
+        it('typesets a LaTeX page title when MathJax is available', () => {
+            const original = global.MathJax;
+            global.MathJax = {
+                typesetPromise: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.applyPageTitleText(titleEl, '\\(a+b\\)');
+            expect(global.MathJax.typesetPromise).toHaveBeenCalledWith([titleEl]);
+            global.MathJax = original;
+        });
+    });
+
 });

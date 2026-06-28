@@ -279,7 +279,13 @@ class ComponentImporter {
       properties = this.convertAssetPathsInObject(properties);
     }
 
-    return {
+    // Parse component-level structure properties (visibility, teacherOnly, cssClass).
+    // These live in <odeComponentsProperties> as <odeComponentsProperty> key/value
+    // pairs (NOT in jsonProperties). Without this, a re-imported .block/.idevice
+    // lost "Visible in export", "Teacher only" and custom CSS classes (issue #1991).
+    const structureProperties = this.parseComponentStructureProperties(compNode);
+
+    const compData = {
       id: compId,
       ideviceId: compId,
       ideviceType: ideviceType,
@@ -289,6 +295,43 @@ class ComponentImporter {
       htmlView: htmlView,
       properties: properties,
     };
+
+    if (structureProperties) {
+      compData.structureProperties = structureProperties;
+    }
+
+    return compData;
+  }
+
+  /**
+   * Parse component structure properties from an <odeComponent> element.
+   *
+   * Reads the <odeComponentsProperty> key/value pairs inside
+   * <odeComponentsProperties>. Returns undefined when none are present so callers
+   * can skip creating an empty properties map.
+   *
+   * @param {Element} compNode - odeComponent element
+   * @returns {Object|undefined} Map of structure property key -> string value
+   */
+  parseComponentStructureProperties(compNode) {
+    const container = compNode.querySelector('odeComponentsProperties');
+    if (!container) {
+      return undefined;
+    }
+
+    const propNodes = container.querySelectorAll('odeComponentsProperty');
+    if (!propNodes || propNodes.length === 0) {
+      return undefined;
+    }
+
+    const structureProperties = {};
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      if (!key) continue;
+      structureProperties[key] = this.getTextContent(propNode, 'value') || '';
+    }
+
+    return Object.keys(structureProperties).length > 0 ? structureProperties : undefined;
   }
 
   /**
@@ -434,6 +477,20 @@ class ComponentImporter {
 
     if (compData.properties && typeof compData.properties === 'object') {
       compMap.set('jsonProperties', JSON.stringify(compData.properties));
+    }
+
+    // Store component-level structure properties (visibility, teacherOnly,
+    // cssClass) in the dedicated `properties` Y.Map, matching the full-page
+    // import path (createComponentMapFromApi) so the workarea and later exports
+    // pick them up (issue #1991).
+    if (compData.structureProperties && Object.keys(compData.structureProperties).length > 0) {
+      const propsMap = new this.Y.Map();
+      for (const [key, value] of Object.entries(compData.structureProperties)) {
+        if (value !== undefined && value !== null) {
+          propsMap.set(key, value);
+        }
+      }
+      compMap.set('properties', propsMap);
     }
 
     return compMap;
