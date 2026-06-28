@@ -38,6 +38,10 @@ export default class NavbarFile {
         this.saveOfflineButton = this.menu.navbar.querySelector(
             '#navbar-button-save-offline'
         );
+        // Electron-only "Close" entry (hidden by default in the offline markup).
+        this.closeFileButton = this.menu.navbar.querySelector(
+            '#navbar-button-close-file'
+        );
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
         );
@@ -132,6 +136,7 @@ export default class NavbarFile {
         this.setRecentProjectsEvent();
         this.setDownloadProjectEvent();
         this.setSaveProjectOfflineEvent();
+        this.setCloseFileEvent();
         this.setDownloadProjectAsEvent();
         this.setExportHTML5Event();
         this.setExportHTML5AsEvent();
@@ -725,6 +730,46 @@ export default class NavbarFile {
             if (eXeLearning.app.project.checkOpenIdevice()) return false;
             this.downloadProjectEvent();
             return false;
+        });
+    }
+
+    /**
+     * Close the current file/window.
+     * File -> Close (Electron desktop only)
+     *
+     * The static browser/PWA build and the Electron app both run in the same
+     * static/offline runtime, so `config.isOfflineInstallation` cannot tell
+     * them apart. We gate visibility on the Electron-only `window.electronAPI`
+     * bridge instead: the entry stays hidden in the browser and is revealed
+     * only when the desktop app exposes `closeCurrentWindow`.
+     *
+     * Closing goes through `BrowserWindow.close()` in the main process, so the
+     * existing close guard still prompts for unsaved changes.
+     */
+    setCloseFileEvent() {
+        if (!this.closeFileButton) return;
+
+        // Browser/PWA build: no Electron bridge, keep the entry hidden.
+        if (typeof window.electronAPI?.closeCurrentWindow !== 'function') {
+            return;
+        }
+
+        // Reveal the entry (its wrapper <li> is hidden by default).
+        const wrapper = this.closeFileButton.closest('li') || this.closeFileButton;
+        wrapper.classList.remove('d-none');
+
+        // Reveal the preceding separator too. It shares the exe-electron-only
+        // marker and is hidden by default so the browser/PWA build never shows
+        // a stray divider above a missing entry.
+        const divider = wrapper.previousElementSibling;
+        if (divider && divider.classList.contains('exe-electron-only')) {
+            divider.classList.remove('d-none');
+        }
+
+        this.closeFileButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            window.electronAPI.closeCurrentWindow();
         });
     }
 
