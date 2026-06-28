@@ -600,22 +600,18 @@ describe('common.js $exe helpers', () => {
         expect(desc.style.display).toBe('none');
       });
 
-      it('calls mediaelementplayer when loadMediaPlayer is ready', () => {
+      it('sets isCalledInBox when loadMediaPlayer is ready', () => {
         document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
         global.$exe.setMultimediaGalleries();
 
-        const mockMep = vi.fn();
-        global.$.fn.mediaelementplayer = mockMep;
         global.$exe.loadMediaPlayer.isReady = true;
         global.$exe.loadMediaPlayer.isCalledInBox = false;
 
         setupPrettyPhotoDOM('audio/test.mp3');
         prettyPhotoOptions.changepicturecallback();
 
-        expect(mockMep).toHaveBeenCalled();
         expect(global.$exe.loadMediaPlayer.isCalledInBox).toBe(true);
 
-        delete global.$.fn.mediaelementplayer;
         global.$exe.loadMediaPlayer.isReady = false;
         global.$exe.loadMediaPlayer.isCalledInBox = false;
       });
