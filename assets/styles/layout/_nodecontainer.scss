@@ -88,6 +88,10 @@
                     height: 16px;
                 }
             }
+            // Hide the pencil when the page title itself is hidden/empty.
+            .page-title.hidden ~ .btn-edit-title {
+                display: none;
+            }
         }
         .page-title {
             margin-top: 15px;
