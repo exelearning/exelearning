@@ -182,4 +182,63 @@ describe('word-search iDevice export', () => {
             vi.useRealTimers();
         });
     });
+
+    describe('hide time icon on timed activities', () => {
+        function setupTimedInstance(hideTime) {
+            document.body.innerHTML = `
+                <div class="idevice_node"><div id="sopaMainContainer-0">
+                    <span id="sopaPTimeTitle-0"></span>
+                    <span id="sopaPTime-0"></span>
+                    <span class="exeQuextIcons-Time"></span>
+                    <a id="sopaStartGame-0"></a>
+                    <div id="sopaDivImgHome-0"></div>
+                </div></div>`;
+            global.$exeDevices.iDevice.gamification.report.updateEvaluationIcon =
+                vi.fn();
+            global.$exeDevices.iDevice.gamification.scorm.registerActivity =
+                vi.fn();
+            $eXeSopa.instances[0] = {
+                itinerary: { showCodeAccess: false, clueGame: 'clue' },
+                wordsGame: ['a', 'b'],
+                msgs: { mgsGameStart: 'start', msgInformation: 'info' },
+                numberQuestions: 2,
+                instructions: '',
+                time: 60,
+                hideTime,
+                isScorm: 1,
+                showResolve: false,
+            };
+            vi.spyOn($eXeSopa, 'removeEvents').mockImplementation(() => {});
+            vi.spyOn($eXeSopa, 'showMessage').mockImplementation(() => {});
+        }
+
+        it('hides the countdown indicator but keeps the start button', () => {
+            vi.useFakeTimers();
+            setupTimedInstance(true);
+
+            $eXeSopa.addEvents(0);
+
+            expect($('#sopaPTime-0').css('display')).toBe('none');
+            expect($('#sopaPTimeTitle-0').css('display')).toBe('none');
+            expect($('.exeQuextIcons-Time').css('display')).toBe('none');
+            // The activity is still playable: the Start button stays visible.
+            expect($('#sopaStartGame-0').css('display')).not.toBe('none');
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('shows the countdown indicator by default (hideTime off)', () => {
+            vi.useFakeTimers();
+            setupTimedInstance(false);
+
+            $eXeSopa.addEvents(0);
+
+            expect($('#sopaPTime-0').css('display')).not.toBe('none');
+            expect($('.exeQuextIcons-Time').css('display')).not.toBe('none');
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
 });

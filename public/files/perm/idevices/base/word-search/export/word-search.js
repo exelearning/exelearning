@@ -272,6 +272,8 @@ var $eXeSopa = {
                 : 100;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
+        mOptions.hideTime =
+            typeof mOptions.hideTime == 'undefined' ? false : mOptions.hideTime;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
                 ? false
@@ -474,6 +476,8 @@ var $eXeSopa = {
 
     startGame: function (instanceId) {
         let mOptions = $eXeSopa.instances[instanceId];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         const $container = $('#sopaMainContainer-' + instanceId);
 
         if (mOptions.gameStarted) return;
@@ -841,15 +845,24 @@ var $eXeSopa = {
                 .find(
                     '#sopaDivImgHome-' +
                         instanceId +
-                        ', #sopaPTimeTitle-' +
-                        instanceId +
-                        ', #sopaPTime-' +
-                        instanceId +
                         ', #sopaStartGame-' +
                         instanceId
                 )
                 .show();
-            $container.find('.exeQuextIcons-Time').show();
+            // A timed activity can hide its on-screen countdown: the timer keeps
+            // running (and still ends the game), only its indicator is hidden.
+            const $timeIndicator = $container.find(
+                '#sopaPTimeTitle-' +
+                    instanceId +
+                    ', #sopaPTime-' +
+                    instanceId +
+                    ', .exeQuextIcons-Time'
+            );
+            if (mOptions.hideTime) {
+                $timeIndicator.hide();
+            } else {
+                $timeIndicator.show();
+            }
         }
 
         $container

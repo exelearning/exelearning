@@ -367,6 +367,13 @@ var $exeDevice = {
                         </div>
                         <div class="toggle-item mb-3">
                             <span class="toggle-control">
+                                <input type="checkbox" id="sopaEHideTime" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="sopaEHideTime">${_('Hide the time icon (the timer still runs)')}</label>
+                        </div>
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
                                 <input type="checkbox" id="sopaEShowResolve" class="toggle-input" checked />
                                 <span class="toggle-visual"></span>
                             </span>
@@ -839,6 +846,7 @@ var $exeDevice = {
                 clear($('#sopaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#sopaETime').val())),
+            hideTime = $('#sopaEHideTime').is(':checked'),
             diagonals = $('#sopaEDiagonals').is(':checked'),
             reverses = $('#sopaEReverses').is(':checked'),
             progressBar =
@@ -893,6 +901,7 @@ var $exeDevice = {
             version: 1,
             percentajeQuestions,
             time,
+            hideTime,
             diagonals,
             reverses,
             showResolve,
@@ -1387,6 +1396,7 @@ var $exeDevice = {
         $('#sopaEDiagonals').prop('checked', game.diagonals);
         $('#sopaEReverses').prop('checked', game.reverses);
         $('#sopaETime').val(game.time);
+        $('#sopaEHideTime').prop('checked', game.hideTime);
         $('#sopaEPercentajeFB').val(game.percentajeFB);
         $('#sopaEPercentajeQuestions').val(game.percentajeQuestions);
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
