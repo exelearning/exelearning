@@ -519,55 +519,59 @@ var $exe = {
                     $exe.hasMultimediaGalleries = true;
                 }
             });
-            lightboxLinks.prettyPhoto({
-                social_tools: "",
-                deeplinking: false,
-                opacity: 0.85,
-                changepicturecallback: function () {
-                    var block = $("#pp_full_res")
-                    var media = $(".exe-media-box-element", block);
-                    if ($exe.loadMediaPlayer != undefined) {
-                        if ($exe.loadMediaPlayer.isReady) {
-                            // No mediaelementplayer in prettyPhoto
-                            // if (media.length == 1) media.mediaelementplayer();
-                            $exe.loadMediaPlayer.isCalledInBox = true;
+            // Re-query after $exeFX.init() has finished rebuilding exe-fx DOM (e.g. accordion rft()).
+            // Using the pre-captured lightboxLinks set would miss elements replaced by rft().
+            setTimeout(function() {
+                $("a[rel^='lightbox']").prettyPhoto({
+                    social_tools: "",
+                    deeplinking: false,
+                    opacity: 0.85,
+                    changepicturecallback: function () {
+                        var block = $("#pp_full_res")
+                        var media = $(".exe-media-box-element", block);
+                        if ($exe.loadMediaPlayer != undefined) {
+                            if ($exe.loadMediaPlayer.isReady) {
+                                // No mediaelementplayer in prettyPhoto
+                                // if (media.length == 1) media.mediaelementplayer();
+                                $exe.loadMediaPlayer.isCalledInBox = true;
+                            }
                         }
-                    }
-                    // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
-                    var cont = $(".pp_content_container");
-                    cont.attr("class", "pp_content_container");
-                    var src = null;
-                    if (media.length == 1) {
-                        if (media[0].hasAttribute('src')) {
-                            src = media.attr('src');
+                        // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
+                        var cont = $(".pp_content_container");
+                        cont.attr("class", "pp_content_container");
+                        var src = null;
+                        if (media.length == 1) {
+                            if (media[0].hasAttribute('src')) {
+                                src = media.attr('src');
+                            } else {
+                                var sourceEl = media.find('source[src]').first();
+                                if (sourceEl.length) src = sourceEl.attr('src');
+                            }
+                        }
+                        if (src) {
+                            if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
+                            // Extension = last dot-segment of the filename, without query string or fragment
+                            var fileName = src.split("/").pop().split("?")[0].split("#")[0];
+                            var dotIndex = fileName.lastIndexOf(".");
+                            var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
+                            if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
+                            $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
                         } else {
-                            var sourceEl = media.find('source[src]').first();
-                            if (sourceEl.length) src = sourceEl.attr('src');
+                            // Hide the title at the bottom (we use h2.pp_title instead)
+                            block = $(".pp_inline", block);
+                            if (block.length == 1) $(".pp_description").hide();
+                        }
+                        // Recalculate pp_content height for video elements (screen height + 50px for controls)
+                        var ppVideo = $("#pp_full_res video");
+                        if (ppVideo.length) {
+                            var videoHeight = ppVideo[0].getBoundingClientRect().height;
+                            if (videoHeight > 0) {
+                                $(".pp_content").css('height', videoHeight + 50);
+                            }
                         }
                     }
-                    if (src) {
-                        if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
-                        // Extension = last dot-segment of the filename, without query string or fragment
-                        var fileName = src.split("/").pop().split("?")[0].split("#")[0];
-                        var dotIndex = fileName.lastIndexOf(".");
-                        var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
-                        if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
-                        $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
-                    } else {
-                        // Hide the title at the bottom (we use h2.pp_title instead)
-                        block = $(".pp_inline", block);
-                        if (block.length == 1) $(".pp_description").hide();
-                    }
-                    // Recalculate pp_content height for video elements (screen height + 50px for controls)
-                    var ppVideo = $("#pp_full_res video");
-                    if (ppVideo.length) {
-                        var videoHeight = ppVideo[0].getBoundingClientRect().height;
-                        if (videoHeight > 0) {
-                            $(".pp_content").css('height', videoHeight + 50);
-                        }
-                    }
-                }
-            });
+                });
+            }, 0);
             // If there are galleries, but lightboxLinks.length==0, there's an error
             // No links with the rel attribute were selected
             // This might happen in some ePub readers
