@@ -75,6 +75,9 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Extremadura',
             file: '../data/lomloe-ES-EX.json',
+            // Temporarily disabled, awaiting confirmation for reactivation. The
+            // dataset JSON stays in the repo untouched; flip back to true to
+            // re-enable.
             available: false
         },
         {
