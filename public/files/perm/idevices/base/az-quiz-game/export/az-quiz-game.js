@@ -736,6 +736,8 @@ var $azquizgame = {
 
     startGame: function (instance) {
         const mOptions = $azquizgame.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 

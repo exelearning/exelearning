@@ -654,6 +654,8 @@ var $eXeHiddenImage = {
 
     startGame: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 

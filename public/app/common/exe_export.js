@@ -198,6 +198,10 @@ window.$exeExport = {
                 }
             })
             window.loadPage();
+            // Derive and write the SCO (page) status on entry. The SAME computation runs on exit
+            // (unloadPage calls window.$exeExport.updateScormPageStatus), so a page keeps a status
+            // that matches its iDevices' final states and weighted average.
+            this.updateScormPageStatus(isSCORM);
             if (typeof window.registerScormLifecycleHandlers == 'function') {
                 window.registerScormLifecycleHandlers(isSCORM);
             } else if (typeof window.addEventListener == 'function') {
@@ -228,6 +232,135 @@ window.$exeExport = {
                     });
                 }
             }
+        }
+    },
+
+    /**
+     * Compute and write the SCO (page) status. Runs with the SAME rule on entry (initScorm)
+     * and on exit (unloadPage), so a page keeps a status that matches its iDevices.
+     * @param {boolean} isSCORM - true when the page carries evaluable SCORM iDevices.
+     *
+     * A page is treated as having evaluable iDevices when isSCORM is true OR suspend_data
+     * already holds per-iDevice entries (so a revisit is never mis-read as content-only even
+     * if the runtime iDevice options were not ready when isSCORM was computed). For such a page:
+     *   - every iDevice finished (state 2): passed when the weighted average is >= 5/10
+     *     (>= 50/100), otherwise failed.
+     *   - any iDevice with a state other than finished: incomplete.
+     * A page with no evaluable iDevices is completed (no score).
+     */
+    updateScormPageStatus: function (isSCORM) {
+        if (!window.scorm || typeof window.scorm.set != 'function') {
+            return;
+        }
+        let lmsData = this.readScormActivityState();
+        let keys = lmsData ? Object.keys(lmsData) : [];
+        let hasEvaluable = isSCORM || keys.length > 0;
+
+        if (!hasEvaluable) {
+            // Content-only page: completed, no score / no pass-fail verdict.
+            this.setScormStatus('completed', null);
+            return;
+        }
+        let allCompleted = keys.length > 0 && keys.every(key => lmsData[key] && lmsData[key].state === 2);
+        if (!allCompleted) {
+            // At least one evaluable iDevice is unfinished -> the page is incomplete.
+            this.setScormStatus('incomplete', null);
+            return;
+        }
+        // Every evaluable iDevice is finished: pass/fail from the weighted average (0-100).
+        // >= 50 (i.e. >= 5 out of 10) passes; below fails.
+        let score = this.readScormFinalScore(lmsData);
+        this.setScormStatus(score >= 50 ? 'passed' : 'failed', score);
+    },
+
+    /**
+     * Write a SCO status (and optional 0-100 score) to the right CMI keys for each profile:
+     * SCORM 1.2 folds completion+success into cmi.core.lesson_status; SCORM 2004 splits them
+     * into cmi.completion_status + cmi.success_status and adds the normalized cmi.score.scaled.
+     */
+    setScormStatus: function (status, score) {
+        let scorm = window.scorm;
+        if (!scorm || typeof scorm.set != 'function') {
+            return;
+        }
+        let is2004 = scorm.version == '2004';
+        if (status === 'passed' || status === 'failed') {
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'completed');
+                scorm.set('cmi.success_status', status);
+            } else {
+                scorm.set('cmi.core.lesson_status', status);
+            }
+        } else if (status === 'incomplete') {
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'incomplete');
+                scorm.set('cmi.success_status', 'unknown');
+            } else {
+                scorm.set('cmi.core.lesson_status', 'incomplete');
+            }
+        } else {
+            // 'completed' (content-only page): completed with no pass/fail verdict.
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'completed');
+                scorm.set('cmi.success_status', 'unknown');
+            } else {
+                scorm.set('cmi.core.lesson_status', 'completed');
+            }
+        }
+        if (score != null) {
+            if (is2004) {
+                scorm.set('cmi.score.raw', score);
+                scorm.set('cmi.score.min', 0);
+                scorm.set('cmi.score.max', 100);
+                scorm.set('cmi.score.scaled', score / 100);
+            } else {
+                scorm.set('cmi.core.score.raw', score);
+            }
+        }
+        if (typeof scorm.save == 'function') {
+            scorm.save();
+        }
+    },
+
+    /**
+     * Weighted final score (0-100) for the page, reusing getFinalScore from common.js
+     * ($exeDevices.iDevice.gamification.scorm.getFinalScore). Returns 0 when unavailable.
+     */
+    readScormFinalScore: function (lmsData) {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (scormHelpers && typeof scormHelpers.getFinalScore == 'function') {
+                return scormHelpers.getFinalScore(lmsData) || 0;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return 0;
+    },
+
+    /**
+     * Read and parse the per-iDevice state stored in cmi.suspend_data, reusing the shared
+     * parser in common.js ($exeDevices.iDevice.gamification.scorm.parseSuspendData). Returns
+     * an empty object when SCORM, the parser or the data are unavailable.
+     */
+    readScormActivityState: function () {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (!scormHelpers || typeof scormHelpers.parseSuspendData != 'function') {
+                return {};
+            }
+            let suspendData = (window.scorm && typeof window.scorm.get == 'function')
+                ? (window.scorm.get('cmi.suspend_data') || '')
+                : '';
+            return scormHelpers.parseSuspendData(suspendData) || {};
+        } catch (e) {
+            return {};
         }
     },
 

@@ -27,7 +27,7 @@ function loadExportIdevice() {
                     borderColors: { black: '#000', white: '#fff', red: '#f00', green: '#0f0', yellow: '#ff0' },
                     backColor: { black: '#000', white: '#fff' },
                 },
-                scorm: { addButtonScoreNew: () => '' },
+                scorm: { addButtonScoreNew: () => '', restartActivity: () => {} },
             },
         },
     };

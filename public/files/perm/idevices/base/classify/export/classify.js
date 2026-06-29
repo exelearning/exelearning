@@ -1621,6 +1621,8 @@ var $eXeClasifica = {
 
     startGame: function (instance) {
         const mOptions = $eXeClasifica.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 

@@ -1124,6 +1124,9 @@ var $eXeOrdena = {
 
         $(`#ordenaStartGameEnd-${instance}`).on('click', function (e) {
             e.preventDefault();
+            // SCORM: "play again" (user action) drops a completed activity (and the page) back to incomplete.
+            // Hooked here (not in startGame, which auto-starts on load when startAutomatically/time is 0).
+            $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
             mOptions.phrasesGame =
                 $exeDevices.iDevice.gamification.helpers.shuffleAds(
                     mOptions.phrasesGame

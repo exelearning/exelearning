@@ -1545,6 +1545,8 @@ var $eXeCrucigrama = {
 
     repeatActivity: function (instance) {
         const mOptions = $eXeCrucigrama.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.shuffleAds(

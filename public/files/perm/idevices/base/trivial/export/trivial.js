@@ -712,6 +712,9 @@ var $eXeTrivial = {
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
         mOptions.gameOver = false;
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        // Placed after the reset above: rebootGame's earlier sendScore() still saw gameOver=true.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;

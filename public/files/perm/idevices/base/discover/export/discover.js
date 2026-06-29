@@ -1823,6 +1823,8 @@ var $eXeDescubre = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (!mOptions.gameStarted) return;
 

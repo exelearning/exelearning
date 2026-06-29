@@ -137,6 +137,8 @@ var $eXeBeforeAfter = {
     startGame: function (instance) {
         let mOptions = $eXeBeforeAfter.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.gameStarted = true;
         mOptions.hits = 0;
         mOptions.score = 0;

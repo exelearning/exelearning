@@ -392,6 +392,24 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
+    it('recomputes the page status on exit via window.$exeExport.updateScormPageStatus', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      const updateScormPageStatus = vi.fn();
+      globalThis.window.$exeExport = { updateScormPageStatus };
+
+      try {
+        globalThis.unloadPage(true);
+
+        // The real export bundles exe_export.js as window.$exeExport; leaving the page recomputes
+        // the SCO status from the iDevices' final states before the session is closed.
+        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
+      } finally {
+        delete globalThis.window.$exeExport;
+      }
+    });
+
     it('does not change status and suspends when called without an isSCORM argument', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());

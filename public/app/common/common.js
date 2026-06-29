@@ -1387,6 +1387,51 @@ var $exeDevices = {
 
                 },
 
+                // Restarting a COMPLETED iDevice drops it (and its page) back to incomplete. Called
+                // ONLY from each iDevice's restart/start CLICK handler (a user action), never on page
+                // load: the auto-start/restore paths bypass the click handler. It only acts when this
+                // iDevice is currently completed (stored state === 2), so it is a no-op on a first play
+                // or a plain reopen, which makes it safe to call from the shared "start" button too.
+                // It rewrites this iDevice's suspend_data entry to state 1 / score 0 and recomputes the
+                // SCO (page) status immediately, reusing the single status writer from exe_export.js.
+                restartActivity: function (game) {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
+                        return;
+                    }
+                    if (game.ideviceNumber == null) {
+                        return;
+                    }
+
+                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                    const previous = lmsData[game.ideviceNumber];
+                    if (!previous || previous.state !== 2) {
+                        return;
+                    }
+
+                    lmsData[game.ideviceNumber] = {
+                        title: previous.title || game.title,
+                        // A restart clears the previous result: the activity starts over from zero.
+                        score: 0,
+                        weighted: previous.weighted != null ? previous.weighted : game.weighted,
+                        state: 1
+                    };
+
+                    const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                    pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+
+                    // Recompute the page status now (same single writer used on entry/exit). A restarted
+                    // iDevice leaves the page not-all-completed, so it becomes incomplete immediately.
+                    if (typeof window !== 'undefined' && window.$exeExport
+                        && typeof window.$exeExport.updateScormPageStatus === 'function') {
+                        window.$exeExport.updateScormPageStatus(true);
+                    }
+
+                    if (typeof pipwerks.SCORM.save === "function") {
+                        pipwerks.SCORM.save();
+                    }
+                },
+
                 showFinalScore: function (lmsData, game) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
                         return;

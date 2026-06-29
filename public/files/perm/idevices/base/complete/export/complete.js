@@ -673,6 +673,8 @@ var $eXeCompleta = {
 
     reloadGame: function (instance) {
         let mOptions = $eXeCompleta.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         $('#cmptReloadPhrase-' + instance).hide();
 

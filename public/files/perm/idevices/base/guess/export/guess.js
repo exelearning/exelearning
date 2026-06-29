@@ -828,6 +828,8 @@ var $guess = {
     },
 
     startGame: function (instance) {
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity($guess.options[instance]);
         const mOptions = $guess.options[instance],
             $divReply = $(`#adivinaDivReply-${instance}`),
             $divInstructions = $(`#adivinaDivInstructions-${instance}`),

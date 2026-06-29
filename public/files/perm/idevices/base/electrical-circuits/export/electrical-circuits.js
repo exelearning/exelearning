@@ -1021,6 +1021,8 @@ var $eXeEC = {
     startGame: function (instance) {
         const mOptions = $eXeEC.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.questionsRandom) {
             mOptions.selectsGame =

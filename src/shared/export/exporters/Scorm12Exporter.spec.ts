@@ -606,15 +606,32 @@ describe('Scorm12Exporter', () => {
                 expect(sandbox.counters.quit).toBe(0);
             });
 
-            it('does not change lesson_status on exit and keeps a non-terminal SCO resumable', () => {
+            it('does not change lesson_status on exit without the exe_export bundle', () => {
                 const { api, listeners, sets } = instantiateScoTemplate(exporter.getScoFunctions());
                 api.registerScormLifecycleHandlers(true); // page carries a scored iDevice
 
                 listeners['win:pagehide']({ persisted: false });
 
-                // Leaving the page must not write lesson_status — the iDevice owns it.
+                // The sandbox window has no $exeExport, so leaving only picks the resume mode and
+                // does not recompute lesson_status (the real bundle recomputes it — see below).
                 expect(sets.some(([key]) => key === 'cmi.core.lesson_status')).toBe(false);
                 expect(sets).toContainEqual(['cmi.core.exit', 'suspend']);
+            });
+
+            it('recomputes the page status on exit via window.$exeExport.updateScormPageStatus', () => {
+                const sandbox = instantiateScoTemplate(exporter.getScoFunctions());
+                const recomputed: boolean[] = [];
+                // The real export bundles exe_export.js as window.$exeExport; leaving a page then
+                // recomputes the SCO status from the iDevices' final states (same rule as on entry).
+                (sandbox.win as any).$exeExport = {
+                    updateScormPageStatus: (isSCORM: boolean) => recomputed.push(isSCORM),
+                };
+                sandbox.api.registerScormLifecycleHandlers(true);
+
+                sandbox.listeners['win:pagehide']({ persisted: false });
+
+                expect(recomputed).toEqual([true]);
+                expect(sandbox.counters.quit).toBe(1);
             });
 
             it('exits without resuming when the iDevice already completed the SCO', () => {

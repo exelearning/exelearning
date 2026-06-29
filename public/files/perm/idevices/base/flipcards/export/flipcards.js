@@ -606,6 +606,8 @@ var $eXeFlipCards = {
 
     rebootGameMemory: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.gameActived = false;
         mOptions.gameStarted = false;
@@ -1307,6 +1309,8 @@ var $eXeFlipCards = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         $('#flcdsMultimedia-' + instance)
             .find('.FLCDSP-FlipCardInner')

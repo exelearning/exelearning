@@ -765,6 +765,8 @@ var $eXeDragDrop = {
 
     reboot: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;

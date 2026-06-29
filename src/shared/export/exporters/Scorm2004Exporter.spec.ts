@@ -556,16 +556,33 @@ describe('Scorm2004Exporter', () => {
                 expect(sandbox.counters.quit).toBe(0);
             });
 
-            it('does not change completion/success on exit and keeps a non-terminal SCO resumable', () => {
+            it('does not change completion/success on exit without the exe_export bundle', () => {
                 const { api, listeners, sets } = instantiateScoTemplate(exporter.getSco2004Functions());
                 api.registerScormLifecycleHandlers(true); // page carries a scored iDevice
 
                 listeners['win:pagehide']({ persisted: false });
 
-                // Leaving the page must not write completion/success — the iDevice owns them.
+                // The sandbox window has no $exeExport, so leaving only picks the resume mode and
+                // does not recompute completion/success (the real bundle recomputes them — below).
                 expect(sets.some(([key]) => key === 'cmi.completion_status')).toBe(false);
                 expect(sets.some(([key]) => key === 'cmi.success_status')).toBe(false);
                 expect(sets).toContainEqual(['cmi.exit', 'suspend']);
+            });
+
+            it('recomputes the page status on exit via window.$exeExport.updateScormPageStatus', () => {
+                const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+                const recomputed: boolean[] = [];
+                // The real export bundles exe_export.js as window.$exeExport; leaving a page then
+                // recomputes the SCO status from the iDevices' final states (same rule as on entry).
+                (sandbox.win as any).$exeExport = {
+                    updateScormPageStatus: (isSCORM: boolean) => recomputed.push(isSCORM),
+                };
+                sandbox.api.registerScormLifecycleHandlers(true);
+
+                sandbox.listeners['win:pagehide']({ persisted: false });
+
+                expect(recomputed).toEqual([true]);
+                expect(sandbox.counters.quit).toBe(1);
             });
 
             it('exits normally when the iDevice already completed the SCO', () => {

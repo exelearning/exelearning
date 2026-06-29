@@ -163,6 +163,8 @@ var $eXeMathOperations = {
 
     reloadGame: function (instance) {
         let options = $eXeMathOperations.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(options);
         options.hits = 0;
         options.errors = 0;
         options.score = 0;

@@ -2235,6 +2235,61 @@ describe('common.js $exeDevices', () => {
       }
     });
 
+    it('restartActivity drops a completed iDevice (and the page) back to incomplete', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const completed = scorm.convertToLineFormat({ 1: { title: 'A', score: 80, weighted: 100, state: 2 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => completed), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        scorm.restartActivity(game);
+        // The iDevice entry is rewritten to state 1 ...
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 1'));
+        // ... and the page is recomputed immediately (it becomes incomplete).
+        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('restartActivity leaves a not-yet-completed or unknown iDevice untouched', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const started = scorm.convertToLineFormat({ 1: { title: 'A', score: 0, weighted: 100, state: 1 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        // Started but not finished (state 1) -> no change.
+        global.pipwerks = { SCORM: { get: vi.fn(() => started), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity(game);
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+        expect(updateScormPageStatus).not.toHaveBeenCalled();
+
+        // No stored entry for this iDevice yet -> no change.
+        global.pipwerks = { SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity(game);
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+
+        // Missing ideviceNumber -> no change.
+        global.pipwerks = { SCORM: { get: vi.fn(() => started), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity({ title: 'A', weighted: 100, msgs: game.msgs });
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
     it('endScorm does not throw', () => {
       const scorm = getScorm();
       expect(() => scorm.endScorm({})).not.toThrow();

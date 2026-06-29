@@ -27,7 +27,7 @@ function configureGamificationGlobals() {
                     isJsonString: (value) => JSON.parse(value),
                     getQuestions: (questions) => questions,
                 },
-                scorm: {},
+                scorm: { restartActivity: () => {} },
                 math: {
                     updateLatex: vi.fn(),
                 },

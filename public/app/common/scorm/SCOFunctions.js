@@ -232,11 +232,14 @@ function unloadPage(isSCORM) {
     isSCORM = false;
   }
   if (exitPageStatus != true) {
-    // Leaving a page must NOT change completion/success: those are owned by the
-    // iDevice and only change through learner interaction. Here we only read the
-    // status the iDevice already set (read-only) to pick the resume mode, then
-    // close the session. A finished SCO exits "normal" (no resume); anything else
-    // stays resumable ("suspend"). In SCORM12 completion+success share lesson_status.
+    // Recompute the page status from the iDevices' final states before leaving (same rule
+    // as on entry); see exe_export.js updateScormPageStatus.
+    if (typeof window !== "undefined" && window.$exeExport && typeof window.$exeExport.updateScormPageStatus == "function") {
+      window.$exeExport.updateScormPageStatus(isSCORM);
+    }
+    // Read the (now up-to-date) status to pick the resume mode, then close the session.
+    // A finished SCO exits "normal" (no resume); anything else stays resumable ("suspend").
+    // In SCORM12 completion+success share lesson_status.
     var completionStatus = scorm.GetCompletionStatus();
     var successStatus = scorm.GetSuccessStatus();
     var isScorm2004 = scorm.version == "2004";

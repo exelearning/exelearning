@@ -1611,6 +1611,8 @@ var $eXe3Dmol = {
 
     startGame: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         if (mOptions.gameStarted) return;
         $eXe3Dmol.setModelStyleControlVisibility(instance, true);
         // Per-question disableCamera is applied in renderModel per question

@@ -1126,6 +1126,9 @@ const mockGamificationScorm = {
     const mode = parseInt(isScorm, 10) || 0;
     return mode === 2 ? 1 : mode;
   }),
+  // Called from each iDevice's restart/start CLICK handler to drop a completed activity
+  // (and its page) back to incomplete. No-op stub for tests.
+  restartActivity: vi.fn(),
 };
 
 const mockGamificationCommon = {
