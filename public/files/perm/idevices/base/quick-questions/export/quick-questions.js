@@ -1108,6 +1108,8 @@ var $quickquestions = {
 
     startGame: function (instance) {
         const mOptions = $quickquestions.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 
@@ -1250,10 +1252,10 @@ var $quickquestions = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
+            // initialScore must be PER-INSTANCE: it used to be a shared static
+            // ($quickquestions.initialScore), so once any quick-questions instance on the page
+            // finished, the non-repeat guard blocked every other instance from sending.
+            if (mOptions.repeatActivity || !mOptions.initialScore) {
                 const score = (
                     (mOptions.scoreGame * 10) /
                     mOptions.scoreTotal
@@ -1262,7 +1264,7 @@ var $quickquestions = {
                 $('#quextRepeatActivity-' + instance).text(
                     `${mOptions.msgs.msgYouScore}: ${score}`
                 );
-                $quickquestions.initialScore = score;
+                mOptions.initialScore = score;
             }
         }
 
@@ -1864,7 +1866,8 @@ var $quickquestions = {
     saveScormScore: function (instance) {
         const mOptions = $quickquestions.options[instance];
         if (mOptions.isScorm !== 1) return;
-        if (!mOptions.repeatActivity && $quickquestions.initialScore !== '') return;
+        // Per-instance guard (see gameOver): in non-repeat mode each instance scores once.
+        if (!mOptions.repeatActivity && mOptions.initialScore) return;
 
         const score = $quickquestions.getScoreRP(instance).toFixed(2);
         $quickquestions.sendScore(true, instance);

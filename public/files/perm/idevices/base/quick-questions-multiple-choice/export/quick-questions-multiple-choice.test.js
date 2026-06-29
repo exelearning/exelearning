@@ -134,6 +134,32 @@ describe('quick-questions-multiple-choice export', () => {
         expect($('#seleccionaRepeatActivity-0').text()).toBe('Score: 5.00');
     });
 
+    it('non-repeat scoring is per-instance (a finished instance does not block others)', () => {
+        const sendScore = vi
+            .spyOn($quickquestionsmultiplechoice, 'sendScore')
+            .mockImplementation(() => {});
+        document.body.innerHTML = '<span id="seleccionaRepeatActivity-1"></span>';
+        // A DIFFERENT instance has finished: the old shared static must be ignored now.
+        $quickquestionsmultiplechoice.initialScore = '7.50';
+        $quickquestionsmultiplechoice.options[1] = {
+            isScorm: 1,
+            repeatActivity: false,
+            scoreGame: 2,
+            scoreTotal: 4,
+            msgs: { msgYouScore: 'Score' },
+        };
+
+        // This instance has not been scored yet, so it must still send on timer end / answer.
+        $quickquestionsmultiplechoice.saveScormScore(1);
+        expect(sendScore).toHaveBeenCalledWith(true, 1);
+
+        // Once THIS instance has its own score, non-repeat mode locks it (per-instance).
+        sendScore.mockClear();
+        $quickquestionsmultiplechoice.options[1].initialScore = '5.00';
+        $quickquestionsmultiplechoice.saveScormScore(1);
+        expect(sendScore).not.toHaveBeenCalled();
+    });
+
     describe('ramdonOptions', () => {
         // Deterministic permutation so we can assert the remapped solution:
         // every shuffle reverses the option order.

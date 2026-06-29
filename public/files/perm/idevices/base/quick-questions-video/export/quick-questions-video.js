@@ -1357,6 +1357,8 @@ var $quickquestionsvideo = {
 
     startGame: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 
@@ -1386,6 +1388,7 @@ var $quickquestionsvideo = {
         mOptions.errors = 0;
         mOptions.score = 0;
         mOptions.scoreGame = 0;
+        mOptions.initialScore = '';
         mOptions.gameActived = false;
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
@@ -1648,7 +1651,7 @@ var $quickquestionsvideo = {
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
+                !mOptions.initialScore
             ) {
                 let score = (
                     (mOptions.hits * 10) /
@@ -1658,7 +1661,7 @@ var $quickquestionsvideo = {
                 $('#vquextRepeatActivity-' + instance).text(
                     mOptions.msgs.msgYouScore + ': ' + score
                 );
-                $quickquestionsvideo.initialScore = score;
+                mOptions.initialScore = score;
             }
         }
         $quickquestionsvideo.saveEvaluation(instance);
@@ -1762,7 +1765,7 @@ var $quickquestionsvideo = {
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
+                !mOptions.initialScore
             ) {
                 let score = (
                     (mOptions.hits * 10) /
@@ -1892,7 +1895,7 @@ var $quickquestionsvideo = {
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
+                !mOptions.initialScore
             ) {
                 const score = (
                     (mOptions.hits * 10) /
@@ -1964,7 +1967,7 @@ var $quickquestionsvideo = {
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
+                !mOptions.initialScore
             ) {
                 const score = (
                     (mOptions.hits * 10) /

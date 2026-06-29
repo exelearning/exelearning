@@ -208,6 +208,47 @@ describe('select-media-files iDevice export — SCORM score', () => {
         );
     });
 
+    it('non-repeat scoring is per-instance (a finished instance does not block another)', () => {
+        const instance = 1;
+        document.body.innerHTML = `
+            <div id="slcmpCheck-${instance}"></div>
+            <div id="slcmpMultimedia-${instance}">
+                <div class="SLCMP-GridItem SLCMP-Select"></div>
+            </div>
+            <div id="slcmpMessage-${instance}"></div>
+            <div id="slcmpPNumber-${instance}"></div>
+            <div id="slcmpPErrors-${instance}"></div>
+            <div id="slcmpPScore-${instance}"></div>
+            <div id="slcmpPHits-${instance}"></div>
+        `;
+        $(`#slcmpMultimedia-${instance} .SLCMP-GridItem`).data('state', true);
+        // A DIFFERENT, already-finished instance must not lock this one:
+        // the old shared static guard is now replaced by a per-instance flag.
+        $eXeSeleccionaMedias.initialScore = '10.00';
+        $eXeSeleccionaMedias.options[instance] = {
+            active: 0,
+            customMessages: false,
+            errors: 0,
+            hits: 0,
+            isScorm: 1,
+            itinerary: { percentageClue: 80 },
+            msgs: { msgAllOK: 'Correct' },
+            numberQuestions: 1,
+            phrasesGame: [{}],
+            repeatActivity: false,
+            score: 0,
+            showSolution: false,
+        };
+
+        $eXeSeleccionaMedias.checkQuestion(instance);
+
+        // This (fresh) instance has its own empty score, so it must still send.
+        expect(
+            global.$exeDevices.iDevice.gamification.scorm.sendScoreNew
+        ).toHaveBeenCalledWith(true, expect.objectContaining({ scorerp: 10 }));
+        expect($eXeSeleccionaMedias.options[instance].initialScore).toBe('10.00');
+    });
+
     it('saves score when the game finishes', () => {
         const instance = 0;
         document.body.innerHTML = `
@@ -273,7 +314,7 @@ describe('select-media-files iDevice export — audio icon + autoplay gating', (
     beforeEach(() => {
         global.$eXeSeleccionaMedias = undefined;
         media = { playSound: vi.fn(), stopSound: vi.fn() };
-        global.$exeDevices = { iDevice: { gamification: { media } } };
+        global.$exeDevices = { iDevice: { gamification: { media, scorm: { restartActivity: () => {} } } } };
         dmedia = loadExport();
         document.body.innerHTML = '';
     });

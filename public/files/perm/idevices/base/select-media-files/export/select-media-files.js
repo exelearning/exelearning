@@ -707,12 +707,12 @@ var $eXeSeleccionaMedias = {
 
             if (
                 mOptions.isScorm === 1 &&
-                (mOptions.repeatActivity ||
-                    $eXeSeleccionaMedias.initialScore === '')
+                (mOptions.repeatActivity || !mOptions.initialScore)
             ) {
                 $eXeSeleccionaMedias.sendScore(true, instance);
-                $eXeSeleccionaMedias.initialScore =
-                    $eXeSeleccionaMedias.getScore(instance).toFixed(2);
+                mOptions.initialScore = $eXeSeleccionaMedias
+                    .getScore(instance)
+                    .toFixed(2);
             }
         } else {
             let msg = $eXeSeleccionaMedias.getMessageErrorAnswer(instance);
@@ -737,12 +737,12 @@ var $eXeSeleccionaMedias = {
                 $eXeSeleccionaMedias.updateScore(false, instance);
                 if (
                     mOptions.isScorm === 1 &&
-                    (mOptions.repeatActivity ||
-                        $eXeSeleccionaMedias.initialScore === '')
+                    (mOptions.repeatActivity || !mOptions.initialScore)
                 ) {
                     $eXeSeleccionaMedias.sendScore(true, instance);
-                    $eXeSeleccionaMedias.initialScore =
-                        $eXeSeleccionaMedias.getScore(instance).toFixed(2);
+                    mOptions.initialScore = $eXeSeleccionaMedias
+                        .getScore(instance)
+                        .toFixed(2);
                 }
             }
         }
@@ -1170,12 +1170,15 @@ var $eXeSeleccionaMedias = {
 
     startGame: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
+        mOptions.initialScore = '';
         mOptions.gameActived = true;
         mOptions.counter = mOptions.time * 60;
         mOptions.gameOver = false;
@@ -1263,8 +1266,9 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.saveEvaluation(instance);
         if (mOptions.isScorm == 1) {
             $eXeSeleccionaMedias.sendScore(true, instance);
-            $eXeSeleccionaMedias.initialScore =
-                $eXeSeleccionaMedias.getScore(instance).toFixed(2);
+            mOptions.initialScore = $eXeSeleccionaMedias
+                .getScore(instance)
+                .toFixed(2);
         }
         $eXeSeleccionaMedias.showFeedBack(instance);
         $('#slcmpCodeAccessDiv-' + instance).hide();

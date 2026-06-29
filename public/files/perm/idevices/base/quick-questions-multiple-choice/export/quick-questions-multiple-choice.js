@@ -75,10 +75,8 @@ var $quickquestionsmultiplechoice = {
     saveScormScore: function (instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         if (mOptions.isScorm !== 1) return;
-        if (
-            !mOptions.repeatActivity &&
-            $quickquestionsmultiplechoice.initialScore !== ''
-        ) {
+        // Per-instance guard (see gameOver): a shared static used to block other instances.
+        if (!mOptions.repeatActivity && mOptions.initialScore) {
             return;
         }
 
@@ -1393,6 +1391,8 @@ var $quickquestionsmultiplechoice = {
     startGame: function (instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.scoreGame = 0;
         mOptions.obtainedClue = false;
@@ -1548,10 +1548,10 @@ var $quickquestionsmultiplechoice = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
+            // initialScore is PER-INSTANCE: a shared static used to stop other
+            // quick-questions-multiple-choice instances on the page from updating their state
+            // ("the timer expired but the state didn't change") once any one of them finished.
+            if (mOptions.repeatActivity || !mOptions.initialScore) {
                 const score = (
                     (mOptions.scoreGame * 10) /
                     mOptions.scoreTotal
@@ -1560,7 +1560,7 @@ var $quickquestionsmultiplechoice = {
                 $(`#seleccionaRepeatActivity-${instance}`).text(
                     `${mOptions.msgs.msgYouScore}: ${score}`
                 );
-                $quickquestionsmultiplechoice.initialScore = score;
+                mOptions.initialScore = score;
             }
         }
         $quickquestionsmultiplechoice.saveEvaluation(instance);

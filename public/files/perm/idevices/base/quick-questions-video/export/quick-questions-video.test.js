@@ -117,4 +117,55 @@ describe('quick-questions-video iDevice export', () => {
         );
         expect($('#vquextRepeatActivity-0').text()).toBe('Score: 5.00');
     });
+
+    it('non-repeat scoring is per-instance (a finished instance does not block another)', () => {
+        document.body.innerHTML = '<span id="vquextRepeatActivity-1"></span>';
+        // A DIFFERENT, already-finished instance polluted the old shared static;
+        // it must not stop this fresh non-repeat instance from sending its score.
+        $quickquestionsvideo.initialScore = '7.50';
+        $quickquestionsvideo.options[1] = {
+            counterClock: 1,
+            gameActived: true,
+            gameOver: false,
+            gameStarted: true,
+            hits: 2,
+            isScorm: 1,
+            msgs: {
+                msgAllQuestions: 'All questions',
+                msgLostLives: 'Lost lives',
+                msgNewGame: 'New game',
+                msgYouScore: 'Score',
+            },
+            numberQuestions: 4,
+            repeatActivity: false,
+            scoreGame: 2,
+            scoreTotal: 4,
+            videoType: 1,
+        };
+        vi.spyOn($quickquestionsvideo, 'showMessage').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'showScoreGame').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'clearQuestions').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'uptateTime').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'stopVideo').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'showNumbersQuestions').mockImplementation(
+            () => {},
+        );
+        vi.spyOn($quickquestionsvideo, 'showNavigationButtons').mockImplementation(
+            () => {},
+        );
+        vi.spyOn($quickquestionsvideo, 'saveEvaluation').mockImplementation(() => {});
+        vi.spyOn($quickquestionsvideo, 'showFeedBack').mockImplementation(() => {});
+
+        $quickquestionsvideo.gameOver(0, 1);
+
+        expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+            true,
+            expect.objectContaining({
+                gameOver: true,
+                scorerp: 5,
+            }),
+        );
+        // The lock is now per-instance, not shared.
+        expect($quickquestionsvideo.options[1].initialScore).toBe('5.00');
+    });
 });

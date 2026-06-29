@@ -74,4 +74,29 @@ describe('quick-questions export', () => {
         $quickquestions.options[0] = { scoreGame: 3, scoreTotal: undefined };
         expect($quickquestions.getScoreRP(0)).toBe(0);
     });
+
+    it('non-repeat scoring is per-instance (a finished instance does not block others)', () => {
+        const sendScore = vi
+            .spyOn($quickquestions, 'sendScore')
+            .mockImplementation(() => {});
+        // A DIFFERENT instance has finished: the old shared static must be ignored now.
+        $quickquestions.initialScore = '7.50';
+        $quickquestions.options[1] = {
+            isScorm: 1,
+            repeatActivity: false,
+            scoreGame: 2,
+            scoreTotal: 4,
+            msgs: { msgYouScore: 'Score' },
+        };
+
+        // This instance has not been scored yet, so it must still send.
+        $quickquestions.saveScormScore(1);
+        expect(sendScore).toHaveBeenCalledWith(true, 1);
+
+        // Once THIS instance has its own score, non-repeat mode locks it (per-instance).
+        sendScore.mockClear();
+        $quickquestions.options[1].initialScore = '5.00';
+        $quickquestions.saveScormScore(1);
+        expect(sendScore).not.toHaveBeenCalled();
+    });
 });

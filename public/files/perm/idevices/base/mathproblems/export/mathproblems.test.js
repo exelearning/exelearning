@@ -98,6 +98,29 @@ describe('mathproblems iDevice export', () => {
             expect($eXeMathProblems.saveEvaluation).toHaveBeenCalledWith(0);
         });
 
+        it('non-repeat scoring is per-instance (a finished instance does not block others)', () => {
+            $eXeMathProblems.options[1] = {
+                isScorm: 1,
+                scorm: { repeatActivity: false },
+                hits: 0,
+                errors: 0,
+                numberQuestions: 4,
+            };
+            // A DIFFERENT instance has finished: the old shared static must be ignored now.
+            $eXeMathProblems.initialScore = '5.00';
+            $eXeMathProblems.getMessageAnswer = vi.fn(() => '');
+            $eXeMathProblems.sendScore = vi.fn();
+            $eXeMathProblems.saveEvaluation = vi.fn();
+            $eXeMathProblems.checkClue = vi.fn();
+            $eXeMathProblems.updateGameBoard = vi.fn();
+            $eXeMathProblems.showMessage = vi.fn();
+
+            $eXeMathProblems.updateScore(true, 1);
+
+            // This instance has not been scored yet, so it must still send.
+            expect($eXeMathProblems.sendScore).toHaveBeenCalledWith(true, 1);
+        });
+
         it('marks complete BEFORE sending when the last question is answered', () => {
             $eXeMathProblems.options[0] = {
                 isScorm: 1,
