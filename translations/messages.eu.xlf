@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Fitxategi berria</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Gorde gabe fitxategi berria sortu</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Proiektua gordetzen...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Ezin da iDevicea gehitu erroko orrian</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Arazoa iDevicea gehitzerakoan</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml ez da aurkitu ZIP artxiboan</target>
       </trans-unit>
-      <trans-unit id="vu1hlkx" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Estilo hau ezin da deskargatu</target>
-      </trans-unit>
       <trans-unit id="010mtjt" resname="Style already exists">
         <source>Style already exists</source>
         <target>Estilo hori jada existitzen da</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="tct21y6" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Automatikoki goragoko mailako orrialdera bideratuko dira.</target>
-      </trans-unit>
-      <trans-unit id="5c4y17c" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Lehentasunak orria eguneratu ondoren aplikatuko dira.</target>
-      </trans-unit>
-      <trans-unit id="wque1se" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Aldaketak aplikatzeko orria berriro kargatu behar da. Mesedez, lehenik deskargatu zure proiektua lana ez galtzeko, eta gero kargatu berriro orria.</target>
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15356,6 +15336,170 @@
       <trans-unit id="9n0ymdt" resname="Please render the circuit preview before saving.">
         <source>Please render the circuit preview before saving.</source>
         <target>~Sortu zirkuituaren aurrebista gorde aurretik</target>
+      </trans-unit>
+      <trans-unit id="abw5d9e" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="1sdabg7" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Uneko proiektuaren pantaila-argazkiaren aurrebista</target>
+      </trans-unit>
+      <trans-unit id="20clic6" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Oraindik ez dago pantaila-argazkirik. Automatikoki sortuko da gordetzean edo esportatzean.</target>
+      </trans-unit>
+      <trans-unit id="v39bmmd" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Kargatu irudi pertsonalizatua</target>
+      </trans-unit>
+      <trans-unit id="1chfds6" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Pantaila-argazkia 2 MB baino txikiagoa izan behar da.</target>
+      </trans-unit>
+      <trans-unit id="1c1e8cz" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Irudi baliogabea</target>
+      </trans-unit>
+      <trans-unit id="k4keozg" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~Irudiak ez ditu gutxieneko eskakizunak betetzen: 16:9 alderdi-ratioa eta gutxienez 600 pixel zabalera.</target>
+      </trans-unit>
+      <trans-unit id="kzrxn2o" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Sortu edukitik</target>
+      </trans-unit>
+      <trans-unit id="wgx5u0z" resname="Not available">
+        <source>Not available</source>
+        <target>~Ez dago erabilgarri</target>
+      </trans-unit>
+      <trans-unit id="tv4qcxb" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~Pantaila-argazkiak sortzea ez dago erabilgarri.</target>
+      </trans-unit>
+      <trans-unit id="vnfn22u" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Sorkuntza huts egin du</target>
+      </trans-unit>
+      <trans-unit id="8g7nfd9" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Ezin izan da pantaila-argazkia edukitik sortu. Saia zaitez irudi bat kargatzen.</target>
+      </trans-unit>
+      <trans-unit id="agdbvob" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Ordezkatu pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="swp3bly" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Honek uneko irudia ezabatuko du. Jarraitu nahi al duzu?</target>
+      </trans-unit>
+      <trans-unit id="wvqh61v" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Ezabatu pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="ndpnsli" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Uneko irudia ezabatu? Ekintza hau ezin da desegin.</target>
+      </trans-unit>
+      <trans-unit id="2xmr5dw" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Gomendioak</target>
+      </trans-unit>
+      <trans-unit id="qq69t0l" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Erabili 16:9 irudi bat (1280×720 px gomendatzen da) ikaskuntza-baliabidearen eduki nagusia argi irudikatzeko. Saihestu nahasketa eta testu txikia, eta ziurtatu kontraste ona tamaina txikietan irakurgarritasunerako.</target>
+      </trans-unit>
+      <trans-unit id="fv3rouy" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~Irudia hezkuntza-baliabide honen aurrebista gisa erabiliko da plataforma desberdinetan.</target>
+      </trans-unit>
+      <trans-unit id="gy8vvcd" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~3D molekula</target>
+      </trans-unit>
+      <trans-unit id="lf1xxbc" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~3D molekulak</target>
+      </trans-unit>
+      <trans-unit id="ixws64z" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Gehienezko zabalera (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="gqy25hp" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Gehienezko altuera (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="xqmdypi" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~adib. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="fah4ip8" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~Gehienezko zabaleak 0 baino handiagoa izan behar du eta px, em, rem edo % erabili (adib. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="rmd8e6b" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~Gehienezko altuerak 0 baino handiagoa izan behar du eta px, em, rem edo % erabili (adib. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="7tbw9yg" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Barkatu, hori okerra da... Erantzun zuzena hau da:</target>
+      </trans-unit>
+      <trans-unit id="475j9ni" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Estiloa instalatuta</target>
+      </trans-unit>
+      <trans-unit id="c8n384t" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Estiloa behar bezala instalatu da.</target>
+      </trans-unit>
+      <trans-unit id="czjc174" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~iDevice editatzen. Gainerako ekintzak desgaituta daude gorde edo baztertu arte.</target>
+      </trans-unit>
+      <trans-unit id="5o1gqt7" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~iDevice editatzeari amaiera eman diozu.</target>
+      </trans-unit>
+      <trans-unit id="xymfkab" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Gorde edo baztertu irekitako iDevice-a proiektua gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="nyvlopm" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Aldaketa kolaboratibo guztiak gordeta daude.</target>
+      </trans-unit>
+      <trans-unit id="42cs8to" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Aldaketa kolaboratiboak zuzenean partekatzen dira eta automatikoki gordeko dira.</target>
+      </trans-unit>
+      <trans-unit id="885uw4o" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Aldaketa kolaboratiboak gordetzen...</target>
+      </trans-unit>
+      <trans-unit id="k6ucp55" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~Automatikoki gordetzeak huts egin du. Sakatu Gorde irteten hasi aurretik.</target>
+      </trans-unit>
+      <trans-unit id="ar9ull7" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Hizkuntza aldaketek eXeLearning berriro kargatu edo ireki behar izan dezakete interfaze osoa eguneratzeko.</target>
+      </trans-unit>
+      <trans-unit id="zmmc653" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Hizkuntza hobespena gorde da. Baliteke interfazeko testu batzuk ez eguneratzea eXeLearning berriro kargatu edo ireki arte. Gorde edo deskargatu zure proiektua aplikazioa berriro kargatu edo itxi aurretik, aldaketak galtzea ekiditeko.</target>
+      </trans-unit>
+      <trans-unit id="8p115mw" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Fitxategi berri bat sortu aurretik aldaketak gorde nahi dituzu?</target>
+      </trans-unit>
+      <trans-unit id="vdfds2h" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Ez gorde</target>
+      </trans-unit>
+      <trans-unit id="nxgeas7" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Aldaketa kolaboratibo batzuk oraindik ez dira gorde. Sakatu Gorde irten aurretik, galtzea ekiditeko.</target>
       </trans-unit>
     </body>
   </file>

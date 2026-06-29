@@ -1017,9 +1017,12 @@ export default class ModalImageOptimizer extends Modal {
             // Show success and return to normal view
             this.applyViewState('normal');
 
-            eXeLearning.app.alerts?.showToast({
-                type: 'success',
-                message: _('Images optimized successfully'),
+            eXeLearning.app.toasts.createToast({
+                title: _('Image Optimizer'),
+                body: _('Images optimized successfully'),
+                icon: 'check',
+                modal: true,
+                remove: 5000,
             });
         } catch (error) {
             console.error('[ModalImageOptimizer] Optimization error:', error);
@@ -1030,9 +1033,12 @@ export default class ModalImageOptimizer extends Modal {
             // Return to normal view on error
             this.applyViewState('normal');
 
-            eXeLearning.app.alerts?.showToast({
-                type: 'error',
-                message: _('Error optimizing images'),
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Error optimizing images'),
+                icon: 'error',
+                modal: true,
+                remove: 5000,
             });
         }
 

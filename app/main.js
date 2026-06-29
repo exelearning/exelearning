@@ -1534,6 +1534,18 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
     };
 });
 
+// Close the window that initiated the request (File > Close). The unsaved
+// changes confirmation is handled by the close guard attached in
+// attachEditorWindowCloseGuard(), so we only trigger the close here.
+ipcMain.handle('app:closeCurrentWindow', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (win && !win.isDestroyed()) {
+        win.close();
+        return true;
+    }
+    return false;
+});
+
 function normalizeBinaryPayload(bufferData, base64Data) {
     if (bufferData instanceof Uint8Array) {
         return Buffer.from(bufferData);

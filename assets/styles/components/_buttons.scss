@@ -6,6 +6,40 @@
     padding: 0;
 }
 
+// Edit-title button: hidden accessibly by default, revealed on hover/focus-within
+.content-editable-title {
+    .btn-edit-title {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    &:hover,
+    &:focus-within {
+        .btn-edit-title {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 0;
+            margin: 0 0 0 .5em !important;
+            margin-inline-start: 0.25rem;
+            overflow: visible;
+            clip: auto;
+            white-space: normal;
+            border: 0;
+            opacity: 1;
+        }
+    }
+}
+
 // Ensure translated text spans inside buttons inherit the button's own color
 // (e.g., white for .btn-primary, white for .btn-danger) instead of var(--text).
 // Static mode wraps {{ 'Text' | trans }} in <span data-i18n="Text"> for runtime translation.
