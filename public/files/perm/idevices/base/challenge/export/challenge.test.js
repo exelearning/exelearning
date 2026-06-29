@@ -357,6 +357,39 @@ describe('challenge iDevice export', () => {
     });
   });
 
+  describe('gameOver persists the completed SCORM state', () => {
+    it('sends the score with the completed flag when the game ends (e.g. time-out)', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevSend = scormHelpers.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      scormHelpers.sendScoreNew = sendScoreNew;
+
+      $eXeDesafio.options[0] = {
+        isScorm: 1,
+        desafioSolved: false,
+        solvedsChallenges: [1, 2],
+        challengesGame: [1, 2, 3],
+        msgs: {},
+        gameStarted: true,
+        gameOver: false,
+      };
+
+      try {
+        $eXeDesafio.gameOver(1, 0); // type 1 = time-out
+
+        // The game is flagged completed so updateActivity records state 2...
+        expect($eXeDesafio.options[0].gameOver).toBe(true);
+        // ...and the score is sent on game end (it was only sent mid-play before).
+        expect(sendScoreNew).toHaveBeenCalledTimes(1);
+        const [auto, game] = sendScoreNew.mock.calls[0];
+        expect(auto).toBe(true);
+        expect(game.gameOver).toBe(true);
+      } finally {
+        scormHelpers.sendScoreNew = prevSend;
+      }
+    });
+  });
+
   describe('page lifecycle persistence', () => {
     function lifecycleOptions(overrides = {}) {
       return {

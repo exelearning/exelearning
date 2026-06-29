@@ -1120,6 +1120,8 @@ var $eXeMapa = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeMapa.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -4415,9 +4417,13 @@ var $eXeMapa = {
             (mOptions.evaluationG == 5 ||
                 mOptions.evaluationG == 1 ||
                 mOptions.evaluationG == 2 ||
-                mOptions.evaluationG == 3) &&
+                mOptions.evaluationG == 3 ||
+                mOptions.evaluationG == 4) &&
             mOptions.isScorm === 1
         ) {
+            // Questionnaire mode (4) only sent per-question scores (SCORM state 1);
+            // sending here with gameOver === true is what records the terminal
+            // "completed" state (state 2) when the questionnaire finishes. (#1831)
             let score = ((mOptions.hits * 10) / numq).toFixed(2);
             $eXeMapa.sendScore(true, instance);
             $eXeMapa.initialScore = score;

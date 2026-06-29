@@ -617,6 +617,8 @@ var $eXeDesafio = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeDesafio.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         clearInterval(mOptions.counterClock);
 
@@ -1061,6 +1063,13 @@ var $eXeDesafio = {
         $eXeDesafio.showScoreGame(type, instance);
         mOptions.gameOver = true;
         mOptions.endGame = true;
+        // Persist the COMPLETED state (state 2) to the LMS when the game ends, on solve AND on
+        // time-out. Previously gameOver only updated the UI (showScoreGame); the last SCORM send
+        // happened in saveDataStorage while gameOver was still false (state 1), so the page
+        // stayed "incomplete" after finishing / when the time ran out.
+        if (mOptions.isScorm === 1) {
+            $eXeDesafio.sendScore(true, instance);
+        }
     },
 
     getRetroFeedMessages: function (iHit, instance) {

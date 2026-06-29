@@ -155,4 +155,60 @@ describe('puzzle iDevice export', () => {
       expect($eXePuzzle.idevicePath).toBe('');
     });
   });
+
+  describe('score counting on solve (no off-by-one)', () => {
+    let prev$;
+    let prevExeDevices;
+    let sendScoreNew;
+
+    beforeEach(() => {
+      prev$ = global.$;
+      prevExeDevices = global.$exeDevices;
+      sendScoreNew = vi.fn();
+      // jQuery stub: the DOM writes in updateScore/checkIfSolved are chainable no-ops here.
+      global.$ = () => ({ text: () => {} });
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { sendScoreNew },
+            report: { saveEvaluation: () => {} },
+          },
+        },
+      };
+      $eXePuzzle.options[0] = {
+        active: 0,
+        puzzlesGame: [
+          { audioDefinition: '', audioClue: '' },
+          { audioDefinition: '', audioClue: '' },
+        ],
+        numberQuestions: 2,
+        hits: 0,
+        errors: 0,
+        score: 0,
+        attemps: 0,
+        audiofirst: false,
+        isScorm: 1,
+        itinerary: { percentageClue: 100 },
+        msgs: { msgYouScore: 'Score' },
+      };
+      // Force "solved" and skip the solution animation for the unit test.
+      $eXePuzzle.checkCorrectPlaces = () => true;
+      $eXePuzzle.showSholution = () => {};
+    });
+
+    afterEach(() => {
+      global.$ = prev$;
+      global.$exeDevices = prevExeDevices;
+    });
+
+    it('counts the solved puzzle and sends the score reflecting it (not the previous value)', () => {
+      $eXePuzzle.checkIfSolved(0);
+
+      // The solved puzzle is counted before the score is computed/sent...
+      expect($eXePuzzle.options[0].hits).toBe(1);
+      // ...so the score sent is (1*10)/2 = 5, NOT the pre-increment 0 (the reported bug).
+      expect(Number($eXePuzzle.options[0].scorerp)).toBe(5);
+      expect(sendScoreNew).toHaveBeenCalled();
+    });
+  });
 });

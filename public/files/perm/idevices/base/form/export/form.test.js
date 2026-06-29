@@ -410,4 +410,54 @@ describe('form iDevice export', () => {
       expect(html).toContain('<option value="five">five</option>');
     });
   });
+
+  describe('SCORM setup', () => {
+    let prevScorm;
+    let prevWinScorm;
+    let prevExeDevices;
+    let registerActivity;
+
+    beforeEach(() => {
+      prevScorm = global.scorm;
+      prevWinScorm = global.window ? global.window.scorm : undefined;
+      prevExeDevices = global.$exeDevices;
+      registerActivity = vi.fn();
+      // scorm.init() returns FALSE here on purpose: the SCORM session is already open
+      // (e.g. the page's loadPage opened it). The setup must NOT be skipped in that case.
+      const scormMock = {
+        init: vi.fn(() => false),
+        SetScoreMax: vi.fn(),
+        SetScoreMin: vi.fn(),
+      };
+      global.scorm = scormMock;
+      if (global.window) global.window.scorm = scormMock;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              getUserName: () => '',
+              getPreviousScore: () => '0',
+              registerActivity,
+            },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.scorm = prevScorm;
+      if (global.window) global.window.scorm = prevWinScorm;
+      global.$exeDevices = prevExeDevices;
+    });
+
+    it('registers the activity even when scorm.init() returns false (session already open)', () => {
+      $form.initSCORM({ id: 'form-1', isScorm: 1, weighted: 100, msgs: {} });
+
+      // init() is still called to open the session if needed...
+      expect(global.scorm.init).toHaveBeenCalled();
+      // ...but setup/registration must run regardless of its return value, so the live
+      // LMSCommit on "Comprobar" works instead of only persisting on page exit.
+      expect(registerActivity).toHaveBeenCalledTimes(1);
+    });
+  });
 });

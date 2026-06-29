@@ -69,7 +69,7 @@ var $form = {
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
-        if ($('body').hasClass('exe-scorm') && ldata.isScorm > 0) {
+        if (ldata.isScorm > 0) {
             ldata.msgs.msgCheck = ldata.textButtonScorm;
         }
 
@@ -297,7 +297,13 @@ var $form = {
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
+            if (typeof window.scorm !== 'undefined') {
+                // Open the SCORM session if it is not open yet. Do NOT gate the setup on
+                // init()'s return value: connection.initialize() returns false when the
+                // session is already active (e.g. opened by the page's loadPage), which used
+                // to skip registration/score wiring and prevent the live LMSCommit. The
+                // connection stays active either way, so registration must always run.
+                window.scorm.init();
                 $form.initScormData(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
@@ -754,7 +760,7 @@ var $form = {
         data.gameOver = true;
         $form.checkAllQuestions(data);
         $form.showScore(50, data);
-        if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
+        if ( data.isScorm > 0) {
             $form.sendScore(data);
         }
 
@@ -1813,9 +1819,10 @@ var $form = {
     initSCORM: function (ldata) {
         let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
         $form.mScorm = scorm;
-        if ($form.mScorm.init()) {
-            $form.initScormData(parsedData);
-        }
+        // Open the session if needed; do NOT gate setup on init()'s return value (it returns
+        // false when the session is already active), so registration always runs.
+        $form.mScorm.init();
+        $form.initScormData(parsedData);
     },
     endScorm: function () {
         if ($form.mScorm && typeof $form.mScorm.quit == 'function') {

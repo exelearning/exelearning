@@ -656,7 +656,8 @@ var $eXePuzzle = {
         $('#pzlImagePuzzle-' + instance)
             .find('.PZLP-Completed')
             .fadeIn();
-        $eXePuzzle.updateScore(true, instance);
+        // Score/hits are already counted and shown by updateScore() at solve time
+        // (see checkIfSolved); counting again here would double-count the puzzle.
     },
 
     resizePuzzlePieces: function (instance) {
@@ -956,17 +957,12 @@ var $eXePuzzle = {
                 );
             }
             $eXePuzzle.showSholution(instance);
-            if (mOptions.isScorm == 1) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.puzzlesGame.length
-                ).toFixed(2);
-                $eXePuzzle.sendScore(true, instance);
-                $('#pzlRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXePuzzle.initialScore = score;
-            }
+            // Count this solved puzzle and refresh the score NOW (updateScore does hits++ +
+            // display + SCORM send). Previously the score was sent/shown here using the
+            // pre-increment hits, and the increment happened later in showCompletedWindows, so
+            // the score lagged one puzzle behind ("shows 0 on the first solve"). updateScore is
+            // the single source of truth for the count.
+            $eXePuzzle.updateScore(true, instance);
             clearInterval(mOptions.counterClock);
         }
     },
@@ -1521,6 +1517,8 @@ var $eXePuzzle = {
 
     startGame: function (instance) {
         const mOptions = $eXePuzzle.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 

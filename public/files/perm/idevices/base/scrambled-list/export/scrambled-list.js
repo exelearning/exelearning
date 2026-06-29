@@ -205,7 +205,12 @@ var $scrambledlist = {
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
+            if (typeof window.scorm !== 'undefined') {
+                // Do NOT gate the setup on init()'s return value: connection.initialize()
+                // returns false when the session is already active (e.g. opened by the page's
+                // loadPage), which used to skip registration and prevent the live LMSCommit on
+                // "Comprobar". Open the session if needed, then always register.
+                window.scorm.init();
                 this.initScormData(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
@@ -291,9 +296,10 @@ var $scrambledlist = {
     initSCORM: function (ldata) {
         let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
         $scrambledlist.mScorm = window.scorm;
-        if ($scrambledlist.mScorm.init()) {
-            this.initScormData(parsedData);
-        }
+        // Open the session if needed; do NOT gate setup on init()'s return value (it returns
+        // false when the session is already active), so registration always runs.
+        $scrambledlist.mScorm.init();
+        this.initScormData(parsedData);
     },
 
     /**
@@ -507,7 +513,7 @@ var $scrambledlist = {
         // Pressing Comprobar finalizes the activity for SCORM: send the score and
         // mark it completed now, regardless of whether a retry is offered next.
         // Each retry's Comprobar updates the score but the activity stays completed.
-        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
+        if (data.isScorm > 0) {
             this.sendScore(nRightAnswers, userList[0].children.length, data);
         }
 
@@ -552,7 +558,7 @@ var $scrambledlist = {
     showResultFeedback: function (activity, feedback, right, rightAnswers, data) {
         // SCORM finalization (score + completed) happens in check() on every
         // Comprobar; SCORM exports show no inline feedback panel here.
-        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
+        if (data.isScorm > 0) {
             return;
         }
 

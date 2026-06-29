@@ -125,7 +125,7 @@ describe('map iDevice export score saving', () => {
         vi.runOnlyPendingTimers();
     });
 
-    it('does not save quiz scores again from gameOver', () => {
+    it('saves the completed quiz score from gameOver (terminal state)', () => {
         vi.useFakeTimers();
         document.body.innerHTML = '<div id="mapaFMessages-0"></div>';
         $eXeMapa.options[0] = {
@@ -152,7 +152,13 @@ describe('map iDevice export score saving', () => {
 
         $eXeMapa.gameOver(0);
 
-        expect($eXeMapa.sendScore).not.toHaveBeenCalled();
+        // The per-question sends recorded SCORM state 1 (in progress); this is
+        // the only point where the questionnaire's terminal "completed" state
+        // (gameOver === true -> state 2) is persisted. (#1831)
+        expect($eXeMapa.options[0].gameOver).toBe(true);
+        expect($eXeMapa.sendScore).toHaveBeenCalledWith(true, 0);
+        // The evaluation report is already saved per-question, so gameOver must
+        // not re-save it for the questionnaire mode.
         expect($eXeMapa.saveEvaluation).not.toHaveBeenCalled();
         vi.runOnlyPendingTimers();
     });

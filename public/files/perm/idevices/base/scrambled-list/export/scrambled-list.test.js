@@ -228,6 +228,41 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  describe('SCORM setup (init gating fix)', () => {
+    it('registers the activity even when scorm.init() returns false (session already open)', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevRegister = scormHelpers.registerActivity;
+      const prevGetUser = scormHelpers.getUserName;
+      const prevGetPrev = scormHelpers.getPreviousScore;
+      const prevWinScorm = window.scorm;
+
+      const registerActivity = vi.fn();
+      scormHelpers.registerActivity = registerActivity;
+      scormHelpers.getUserName = () => '';
+      scormHelpers.getPreviousScore = () => '0';
+      // init() returns FALSE on purpose: the SCORM session is already open (e.g. the page's
+      // loadPage opened it). Setup/registration must NOT be skipped in that case.
+      const scormMock = {
+        init: vi.fn(() => false),
+        SetScoreMax: vi.fn(),
+        SetScoreMin: vi.fn(),
+      };
+      window.scorm = scormMock;
+
+      try {
+        $scrambledlist.initSCORM({ id: 'sl-1', isScorm: 1, weighted: 100 });
+
+        expect(scormMock.init).toHaveBeenCalled();
+        expect(registerActivity).toHaveBeenCalledTimes(1);
+      } finally {
+        scormHelpers.registerActivity = prevRegister;
+        scormHelpers.getUserName = prevGetUser;
+        scormHelpers.getPreviousScore = prevGetPrev;
+        window.scorm = prevWinScorm;
+      }
+    });
+  });
+
   describe('check finalizes the SCORM activity on Comprobar', () => {
     beforeEach(() => {
       document.body.classList.add('exe-scorm');
