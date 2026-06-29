@@ -75,7 +75,7 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Extremadura',
             file: '../data/lomloe-ES-EX.json',
-            available: true
+            available: false
         },
         {
             id: 'ES-MD',
