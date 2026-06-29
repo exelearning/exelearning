@@ -680,6 +680,13 @@ var $quickquestionsvideo = {
                 controller.on('error', function () {
                     $quickquestionsvideo.showStartedButton();
                 });
+                controller.on('closed', function () {
+                    // The single-media bridge was handed to another instance, or the parent
+                    // modal was closed: stop driving this game so its clock cannot keep
+                    // reading a stale time, and drop the dead controller.
+                    mOptions.stateReproduction = -1;
+                    mOptions.mediaController = null;
+                });
                 controller.show();
                 controller.play();
             })

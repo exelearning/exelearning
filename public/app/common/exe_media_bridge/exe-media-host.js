@@ -232,6 +232,15 @@
 
     function openMedia(session, provider, videoId, openOpts) {
         var opts = session.opts || {};
+        // Single active media per session: discard any previous player/poll-timer/<dialog>
+        // before opening a new one, so repeated 'open' commands cannot stack modals or orphan
+        // provider players (host-page resource exhaustion). Remove the old dialog directly
+        // (no .close()) so its 'close' listener does not fire a spurious 'closed' to the child.
+        destroyAdapter(session);
+        if (session.dialog) {
+            if (typeof session.dialog.remove === 'function') session.dialog.remove();
+            session.dialog = null;
+        }
         var container = buildModal(session);
         var callbacks = {
             start: openOpts.start,
