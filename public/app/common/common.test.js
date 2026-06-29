@@ -718,6 +718,7 @@ describe('common.js $exe helpers', () => {
         </div>
       `;
       global.$exe.setMultimediaGalleries();
+      vi.runAllTimers();
 
       const link = document.querySelector('.exeImageGallery a');
       // element.href property returns absolute URL in happy-dom; use getAttribute for raw value

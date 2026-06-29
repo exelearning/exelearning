@@ -520,9 +520,10 @@ var $exe = {
                 }
             });
             // Re-query after $exeFX.init() has finished rebuilding exe-fx DOM (e.g. accordion rft()).
-            // Using the pre-captured lightboxLinks set would miss elements replaced by rft().
+            // Both prettyPhoto and the gallery-error fallback use the same post-FX-init set.
             setTimeout(function() {
-                $("a[rel^='lightbox']").prettyPhoto({
+                var currentLightboxLinks = $("a[rel^='lightbox']");
+                currentLightboxLinks.prettyPhoto({
                     social_tools: "",
                     deeplinking: false,
                     opacity: 0.85,
@@ -571,30 +572,28 @@ var $exe = {
                         }
                     }
                 });
-            }, 0);
-            // If there are galleries, but lightboxLinks.length==0, there's an error
-            // No links with the rel attribute were selected
-            // This might happen in some ePub readers
-            // See issue #258
-            var eXeGalleries = $('.GalleryIdevice');
-            if (lightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
-                // We execute this code only outside eXe or the Image Gallery edition will fail (see issue #317)
-                $('.exeImageGallery a').each(function () {
-                    this.title += " ~ [" + this.href + "]";
-                    this.href = "#";
-                    this.onclick = function () {
-                        var ul = $(this).parent().parent();
-                        if (ul.length == 1 && ul.attr('id') != "") {
-                            if ($("#" + ul.attr('id') + "-warning").length == 0) {
-                                // Due to G. Chrome's Content Security Policy
-                                var txt = $exe_i18n.dataError;
-                                if ($('body').hasClass('exe-epub3')) txt += '<br /><br />' + $exe_i18n.epubJSerror;
-                                ul.prepend('<div id="' + ul.attr('id') + '-warning">' + txt + '</div>');
+                // If there are galleries but no lightbox links, there's an error (e.g. some ePub readers).
+                // See issue #258
+                var eXeGalleries = $('.GalleryIdevice');
+                if (currentLightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
+                    // We execute this code only outside eXe or the Image Gallery edition will fail (see issue #317)
+                    $('.exeImageGallery a').each(function () {
+                        this.title += " ~ [" + this.href + "]";
+                        this.href = "#";
+                        this.onclick = function () {
+                            var ul = $(this).parent().parent();
+                            if (ul.length == 1 && ul.attr('id') != "") {
+                                if ($("#" + ul.attr('id') + "-warning").length == 0) {
+                                    // Due to G. Chrome's Content Security Policy
+                                    var txt = $exe_i18n.dataError;
+                                    if ($('body').hasClass('exe-epub3')) txt += '<br /><br />' + $exe_i18n.epubJSerror;
+                                    ul.prepend('<div id="' + ul.attr('id') + '-warning">' + txt + '</div>');
+                                }
                             }
                         }
-                    }
-                });
-            }
+                    });
+                }
+            }, 0);
         }
     },
 

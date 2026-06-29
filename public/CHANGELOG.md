@@ -31,6 +31,7 @@
 - Share dialog: the people-with-access list now scrolls correctly within the modal
 - Link Validator and Resource Report: Download CSV now works correctly
 - The iDevices panel is now disabled when the selected page is the document root
+- DigCompEdu iDevice: improved table header hover contrast for better readability
 - Electrical Circuits iDevice: corrected the AI prompt identifier and fixed rendering of Ω and other Greek and mathematical symbols
 - Electrical Circuits iDevice: fixed iDevice name translations
 - Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
