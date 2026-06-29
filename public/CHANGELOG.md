@@ -5,6 +5,7 @@
 ### Added
 
 - iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
+- Page titles can now be renamed directly from the workspace
 - LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
 - Mermaid iDevice: added configurable maximum diagram width and height
 - Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
@@ -37,7 +38,7 @@
 - 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
 - 3D Viewer iDevice: fixed a display issue affecting models in exported content
 - Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
-- Tooltips inside accordions and other effects now initialise correctly
+- Tooltips and lightbox links inside accordions and other effects now initialise correctly
 - iDevice icon selector: improved contrast across all styles
 - Styles from `.elpx` projects can now be downloaded from the style manager
 - Nova style: teacher-only iDevices are now highlighted with a yellow border in the work area
@@ -56,6 +57,7 @@
 ### Removed
 
 - Removed the `<downloadable>` option from style `config.xml`; styles are now always downloadable
+- `lightbox` links no longer use the JavaScript media player for video and audio playback
 
 ---
 
