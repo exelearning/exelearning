@@ -1160,6 +1160,75 @@ describe('exe_export.js', () => {
     });
   });
 
+  describe('setScormStatus and SCORM read helpers', () => {
+    let prevScorm;
+    let prevDevices;
+
+    beforeEach(() => {
+      prevScorm = window.scorm;
+      prevDevices = window.$exeDevices;
+    });
+
+    afterEach(() => {
+      window.scorm = prevScorm;
+      window.$exeDevices = prevDevices;
+    });
+
+    it('does nothing when there is no usable SCORM API', () => {
+      window.scorm = {}; // no set() function
+      expect(() =>
+        window.$exeExport.setScormStatus('passed', 50),
+      ).not.toThrow();
+    });
+
+    it('writes the SCORM 2004 incomplete status (completion + success)', () => {
+      window.scorm = { version: '2004', set: vi.fn(), save: vi.fn() };
+      window.$exeExport.setScormStatus('incomplete', null);
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.completion_status',
+        'incomplete',
+      );
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.success_status',
+        'unknown',
+      );
+    });
+
+    it('writes the SCORM 2004 content-only completed status (no pass/fail verdict)', () => {
+      window.scorm = { version: '2004', set: vi.fn(), save: vi.fn() };
+      window.$exeExport.setScormStatus('completed', null);
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.completion_status',
+        'completed',
+      );
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.success_status',
+        'unknown',
+      );
+    });
+
+    it('readScormFinalScore returns 0 when the shared helper is unavailable', () => {
+      window.$exeDevices = undefined;
+      expect(window.$exeExport.readScormFinalScore('sd')).toBe(0);
+    });
+
+    it('readScormActivityState returns {} when the parser throws', () => {
+      window.scorm = { get: vi.fn(() => 'sd') };
+      window.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              parseSuspendData: () => {
+                throw new Error('boom');
+              },
+            },
+          },
+        },
+      };
+      expect(window.$exeExport.readScormActivityState()).toEqual({});
+    });
+  });
+
   describe('initJsonIdevice edge cases', () => {
     it('returns false when exportIdevice is undefined', () => {
       const result = window.$exeExport.initJsonIdevice('nonexistent-type', 'intervalName');
