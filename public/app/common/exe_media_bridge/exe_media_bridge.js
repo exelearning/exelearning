@@ -371,12 +371,11 @@
     /**
      * Replace nested external embeds in `rootEl` with placeholders.
      *
-     * - Opaque/sandboxed mode: every recognized embed (unless the author opted out with
-     *   `data-exe-media-floating="false"`) becomes a placeholder that asks the trusted
-     *   parent to open the player (or degrades to open-in-new-tab when no parent answers).
-     * - Normal (non-sandboxed) mode: only embeds the author marked
-     *   `data-exe-media-floating="true"` become placeholders, and they open in a
-     *   self-contained floating lightbox within the export document.
+     * - Opaque/sandboxed mode: every recognized embed becomes a placeholder that asks the
+     *   trusted parent host to open the real player in its modal (or degrades to
+     *   open-in-new-tab when no parent answers). Inline players cannot run here.
+     * - Normal (non-sandboxed) mode: a no-op — every embed plays inline directly
+     *   (referrerpolicy lets YouTube/Vimeo load), so existing content is untouched.
      *
      * Returns a promise resolving to the created placeholders (for tests).
      */
@@ -385,34 +384,17 @@
         var doc = (rootEl && rootEl.ownerDocument) || root.document;
         var win = opts.win || root;
         var bridgeMode = shouldUseBridge(win);
+        // Normal rendering never swaps: every recognized embed plays inline (referrerpolicy
+        // makes that work). Only opaque/sandboxed mode protects each embed via the trusted
+        // parent host, because inline players cannot run in an opaque-origin iframe.
+        if (!bridgeMode) return Promise.resolve([]);
         var nodes = rootEl && rootEl.querySelectorAll ? rootEl.querySelectorAll('iframe[src]') : [];
         var found = [];
         for (var i = 0; i < nodes.length; i++) {
-            var floating = nodes[i].getAttribute && nodes[i].getAttribute('data-exe-media-floating');
-            // Normal rendering only swaps embeds the author opted into floating; everything
-            // else plays inline (referrerpolicy makes that work). Opaque mode protects EVERY
-            // recognized embed — inline can't run there, so the checkbox does not apply.
-            if (!bridgeMode && floating !== 'true') continue;
             var d = policy.parseExternalMedia(nodes[i]);
             if (d) found.push({ node: nodes[i], descriptor: d });
         }
         if (!found.length) return Promise.resolve([]);
-
-        if (!bridgeMode) {
-            // Self-contained floating playback (lightbox) in the export document.
-            var lightboxPlaceholders = [];
-            for (var k = 0; k < found.length; k++) {
-                var fit = found[k];
-                var lph = buildPlaceholder(fit.descriptor, {
-                    document: doc,
-                    degraded: !fit.descriptor.requiresBridge,
-                });
-                if (fit.descriptor.requiresBridge) wireLightbox(lph, fit.descriptor, opts);
-                if (fit.node.parentNode) fit.node.parentNode.replaceChild(lph, fit.node);
-                lightboxPlaceholders.push(lph);
-            }
-            return Promise.resolve(lightboxPlaceholders);
-        }
 
         return ensureSession(opts).then(function (session) {
             var degraded = !session;
@@ -427,100 +409,6 @@
                 placeholders.push(ph);
             }
             return placeholders;
-        });
-    }
-
-    /**
-     * Open a provider video in a self-contained, accessible floating lightbox within the
-     * current document. Used in normal (non-sandboxed) rendering where the document has a
-     * real origin and the provider iframe works directly. Returns { overlay, close }.
-     */
-    function openLightbox(descriptor, opts) {
-        opts = opts || {};
-        var doc = opts.document || root.document;
-        var labelText = descriptor.title || providerName(descriptor.provider);
-
-        var overlay = doc.createElement('div');
-        overlay.className = 'exe-media-lightbox';
-        overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-modal', 'true');
-        overlay.setAttribute('aria-label', labelText);
-        overlay.setAttribute(
-            'style',
-            'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;' +
-                'background:rgba(0,0,0,0.85);',
-        );
-
-        var frame = doc.createElement('div');
-        frame.setAttribute(
-            'style',
-            'position:relative;width:min(90vw,960px);max-height:90vh;aspect-ratio:16/9;background:#000;',
-        );
-
-        var sep = descriptor.embedUrl && descriptor.embedUrl.indexOf('?') >= 0 ? '&' : '?';
-        var iframe = doc.createElement('iframe');
-        iframe.setAttribute('src', (descriptor.embedUrl || '') + sep + 'autoplay=1');
-        iframe.setAttribute('title', labelText);
-        iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture');
-        iframe.setAttribute('allowfullscreen', 'allowfullscreen');
-        // Needed so YouTube/Vimeo identify the page (avoids "Error 153").
-        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        iframe.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;border:0;');
-
-        var close = doc.createElement('button');
-        close.type = 'button';
-        close.className = 'exe-media-lightbox__close';
-        close.setAttribute('aria-label', trc('exeMediaClose', 'Close'));
-        close.textContent = '×';
-        close.setAttribute(
-            'style',
-            'position:absolute;top:-40px;right:0;width:36px;height:36px;background:transparent;border:none;' +
-                'color:#fff;font-size:30px;line-height:1;cursor:pointer;',
-        );
-
-        function destroy() {
-            if (doc.removeEventListener) doc.removeEventListener('keydown', onKey, true);
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (opts.returnFocus && typeof opts.returnFocus.focus === 'function') {
-                try {
-                    opts.returnFocus.focus();
-                } catch (e) {
-                    /* ignore */
-                }
-            }
-        }
-        function onKey(e) {
-            if (e.key === 'Escape' || e.keyCode === 27) destroy();
-        }
-
-        close.addEventListener('click', destroy);
-        overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) destroy();
-        });
-        if (doc.addEventListener) doc.addEventListener('keydown', onKey, true);
-
-        frame.appendChild(iframe);
-        frame.appendChild(close);
-        overlay.appendChild(frame);
-        (doc.body || doc.documentElement).appendChild(overlay);
-        if (typeof close.focus === 'function') {
-            try {
-                close.focus();
-            } catch (e) {
-                /* ignore */
-            }
-        }
-        return { overlay: overlay, close: destroy };
-    }
-
-    function wireLightbox(placeholder, descriptor, opts) {
-        var btn = placeholder.querySelector('.exe-external-media__open');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-            openLightbox(descriptor, {
-                document: placeholder.ownerDocument || (opts && opts.document) || root.document,
-                returnFocus: btn,
-            });
         });
     }
 
@@ -550,9 +438,9 @@
 
     /**
      * Auto-activate on every exported page. In opaque/sandboxed mode it protects every
-     * recognized embed; in normal rendering it only swaps embeds the author marked
-     * `data-exe-media-floating="true"` for a click-to-open lightbox, so existing content
-     * (and local/file:// / Electron use) is unaffected.
+     * recognized embed via the trusted parent host; in normal rendering it is a no-op and
+     * every embed plays inline, so existing content (and local/file:// / Electron use) is
+     * unaffected.
      */
     function autoInit(win, doc) {
         win = win || root;
@@ -575,7 +463,6 @@
         createBridgeController: createBridgeController,
         ensureSession: ensureSession,
         openMedia: openMedia,
-        openLightbox: openLightbox,
         buildPlaceholder: buildPlaceholder,
         scanAndReplace: scanAndReplace,
         autoInit: autoInit,

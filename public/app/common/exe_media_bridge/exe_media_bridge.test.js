@@ -412,40 +412,18 @@ describe('exe_media_bridge', () => {
             expect(container.querySelector('iframe[src="https://example.com/not-media"]')).toBeTruthy();
         });
 
-        it('normal mode: swaps only floating-marked embeds and opens a lightbox on click', async () => {
+        it('normal mode: never swaps any recognized embed (always inline)', async () => {
             const container = document.createElement('div');
             container.innerHTML =
-                '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" data-exe-media-floating="true" title="Lesson"></iframe>' +
-                '<iframe src="https://vimeo.com/76979871"></iframe>'; // no attr → left inline in normal mode
-            document.body.appendChild(container);
-            try {
-                const placeholders = await bridge.scanAndReplace(container, { win: lone() });
-                expect(placeholders).toHaveLength(1);
-                expect(container.querySelector('.exe-external-media[data-exe-media-provider="youtube"]')).toBeTruthy();
-                // Un-marked embed stays inline (normal mode does not touch it).
-                expect(container.querySelector('iframe[src="https://vimeo.com/76979871"]')).toBeTruthy();
-                // Click opens a self-contained lightbox with the provider iframe.
-                placeholders[0].querySelector('button.exe-external-media__open').dispatchEvent(new window.Event('click'));
-                const lb = document.querySelector('.exe-media-lightbox');
-                expect(lb).toBeTruthy();
-                expect(lb.querySelector('iframe').getAttribute('src')).toContain(
-                    'youtube-nocookie.com/embed/dQw4w9WgXcQ',
-                );
-                lb.querySelector('.exe-media-lightbox__close').dispatchEvent(new window.Event('click'));
-                expect(document.querySelector('.exe-media-lightbox')).toBeNull();
-            } finally {
-                container.remove();
-                document.querySelectorAll('.exe-media-lightbox').forEach((el) => el.remove());
-            }
-        });
-
-        it('normal mode: leaves data-exe-media-floating="false" inline (plays via referrerpolicy)', async () => {
-            const container = document.createElement('div');
-            container.innerHTML =
-                '<iframe src="https://vimeo.com/76979871" data-exe-media-floating="false"></iframe>';
+                '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Lesson"></iframe>' +
+                '<iframe src="https://vimeo.com/76979871"></iframe>';
             const placeholders = await bridge.scanAndReplace(container, { win: lone() });
+            // Normal (non-opaque) rendering is a no-op: every embed plays inline directly
+            // (referrerpolicy lets YouTube/Vimeo load), so nothing is replaced.
             expect(placeholders).toHaveLength(0);
+            expect(container.querySelector('iframe[src="https://www.youtube.com/embed/dQw4w9WgXcQ"]')).toBeTruthy();
             expect(container.querySelector('iframe[src="https://vimeo.com/76979871"]')).toBeTruthy();
+            expect(container.querySelector('.exe-external-media')).toBeNull();
         });
 
         it('opaque mode: protects every recognized embed regardless of the floating attribute', async () => {
@@ -560,41 +538,6 @@ describe('exe_media_bridge', () => {
         });
     });
 
-    describe('openLightbox', () => {
-        afterEach(() => {
-            document.querySelectorAll('.exe-media-lightbox').forEach((el) => el.remove());
-        });
-
-        it('opens an accessible lightbox with an autoplay provider iframe and closes', () => {
-            const d = policy.parseExternalMedia('https://youtu.be/dQw4w9WgXcQ');
-            d.title = 'Lesson';
-            const lb = bridge.openLightbox(d, { document });
-            const overlay = document.querySelector('.exe-media-lightbox');
-            expect(overlay.getAttribute('role')).toBe('dialog');
-            expect(overlay.getAttribute('aria-modal')).toBe('true');
-            expect(overlay.getAttribute('aria-label')).toBe('Lesson');
-            const iframe = overlay.querySelector('iframe');
-            expect(iframe.getAttribute('src')).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ');
-            expect(iframe.getAttribute('src')).toContain('autoplay=1');
-            expect(iframe.getAttribute('allowfullscreen')).not.toBeNull();
-            expect(iframe.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin');
-            lb.close();
-            expect(document.querySelector('.exe-media-lightbox')).toBeNull();
-        });
-
-        it('closes on Escape and on backdrop click', () => {
-            const d = policy.parseExternalMedia('https://vimeo.com/76979871');
-            bridge.openLightbox(d, { document });
-            document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
-            expect(document.querySelector('.exe-media-lightbox')).toBeNull();
-
-            bridge.openLightbox(d, { document });
-            const overlay = document.querySelector('.exe-media-lightbox');
-            overlay.dispatchEvent(new window.Event('click')); // target === overlay (backdrop)
-            expect(document.querySelector('.exe-media-lightbox')).toBeNull();
-        });
-    });
-
     describe('autoInit', () => {
         beforeEach(() => bridge._resetForTests());
 
@@ -602,12 +545,12 @@ describe('exe_media_bridge', () => {
             expect(bridge.autoInit({}, null)).toBe(false);
         });
 
-        it('runs in normal mode (returns true) and leaves un-marked embeds inline', () => {
+        it('runs in normal mode (returns true) and leaves embeds inline', () => {
             const body = document.createElement('div');
             body.innerHTML = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>';
             const doc = { body, readyState: 'complete' };
             expect(bridge.autoInit(window, doc)).toBe(true);
-            // No data-exe-media-floating="true" → left inline in normal mode.
+            // Normal mode is a no-op → the embed plays inline (referrerpolicy).
             expect(body.querySelector('iframe[src="https://www.youtube.com/embed/dQw4w9WgXcQ"]')).toBeTruthy();
         });
 

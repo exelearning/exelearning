@@ -101,21 +101,19 @@ fatal `error`, or the provider/URL is unsupported, the content shows a **visible
 "open in a new tab" link (requires `allow-popups`). `file://`/offline contexts skip the handshake and
 fall back immediately. The content never silently shows a blank frame.
 
-## Author control (TinyMCE media dialog)
+## Media rendering (no author toggle)
 
-When an author inserts a YouTube/Vimeo URL via the media dialog, an **unchecked-by-default** "Open in a
-floating window" checkbox appears (with a help "i" icon + Bootstrap tooltip). The choice is stamped onto
-the embed as `data-exe-media-floating`. **Videos play inline by default** (now that `referrerpolicy` is
-set — see below); floating is opt-in and only affects **normal (non-opaque) rendering**:
+Videos play **inline by default** in normal/standalone rendering (web export, `file://`, Electron), made
+reliable by the `referrerpolicy` fix below. There is **no author choice** to make: the former "Open in a
+floating window" media-dialog checkbox (and the standalone lightbox it drove) was **removed** once
+inline-by-default worked and the opaque-mode bridge handled the secure case automatically.
 
-- **`"true"` (checked):** in normal rendering the embed is replaced by an accessible click-to-open
-  placeholder that opens a **self-contained lightbox** (`exeMediaBridge.openLightbox`).
-- **`"false"` / absent (default):** the embed plays **inline**; the runtime does not intervene.
-- **Opaque sandbox mode (the default host deployment):** the bridge protects **every** recognized embed
-  regardless of the checkbox — inline cannot run there, so videos always open in the trusted parent modal.
+- **Normal (non-opaque) rendering:** the runtime does **not** intervene — every YouTube/Vimeo embed plays
+  inline. `scanAndReplace` is a no-op outside the bridge.
+- **Opaque sandbox mode (the default host deployment):** inline cannot run, so the bridge protects
+  **every** recognized embed — the video always opens in the trusted parent (the host's modal/overlay).
 
-So `scanAndReplace` swaps an embed in normal mode **only** when `data-exe-media-floating="true"`, and in
-opaque mode for **every** recognized embed.
+So `scanAndReplace` swaps embeds **only** in opaque/bridge mode; in normal mode it does nothing.
 
 ## YouTube "Error 153" and `referrerpolicy`
 
@@ -131,7 +129,7 @@ policy):
 - The collaborative sanitizer (`sanitizeHtml.js`) **preserves** `referrerpolicy` (it is in `ADD_ATTR`).
 - The export/preview renderer (`IdeviceRenderer.addReferrerPolicyToEmbeds`) **adds** it to YouTube/Vimeo
   iframes that lack it — covering existing content and every export format.
-- The lightbox iframe and the reference relay's player iframe set it too.
+- The reference relay's player iframe sets it too.
 
 **Host integrators (WordPress/Moodle/Procomún):** for full robustness also set the response header
 `Referrer-Policy: strict-origin-when-cross-origin` on pages that embed eXe content, and — on WordPress —
