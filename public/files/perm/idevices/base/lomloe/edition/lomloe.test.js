@@ -2118,3 +2118,117 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m[1]).toBe('true');
     });
 });
+
+// ════════════════════════════════════════════════════════════════
+describe('Saber DOE code: natural ordering (#1905)', () => {
+    it('compares numeric segments as numbers, not lexicographically', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.1.2', 'A.1.10')).toBeLessThan(0);     // 2 before 10
+        expect(cmp('A.1.10', 'A.1.2')).toBeGreaterThan(0);
+        expect(cmp('E.1.1', 'E.2.1')).toBeLessThan(0);
+        expect(cmp('E.2.1', 'E.1.1')).toBeGreaterThan(0);
+        expect(cmp('A.1.1', 'A.1.1')).toBe(0);
+    });
+
+    it('orders by block letter first', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.9.9', 'B.1.1')).toBeLessThan(0);
+        expect(cmp('C.1.1', 'B.9.9')).toBeGreaterThan(0);
+    });
+
+    it('a shorter prefix sorts before a code that extends it', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.1', 'A.1.1')).toBeLessThan(0);
+        expect(cmp('A.1.1', 'A.1')).toBeGreaterThan(0);
+    });
+
+    it('items without a code sort last and tolerate non-numeric segments', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('', 'A.1.1')).toBeGreaterThan(0);
+        expect(cmp('A.1.1', '')).toBeLessThan(0);
+        expect(cmp('', '')).toBe(0);
+        expect(cmp('A.x.1', 'A.1.1')).toBeLessThan(0);      // NaN segment → treated as -1
+    });
+
+    it('sortSaberItems reorders a fully-coded block by codigo (immutable copy)', () => {
+        const sort = $exeDevice._sortSaberItems;
+        const block = [
+            { nombre: 'c', codigo: 'E.2.2' },
+            { nombre: 'a', codigo: 'E.2.1' },
+            { nombre: 'b', codigo: 'E.1.1' }
+        ];
+        expect(sort(block).map(s => s.codigo)).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
+        expect(block.map(s => s.codigo)).toEqual(['E.2.2', 'E.2.1', 'E.1.1']); // input untouched
+    });
+
+    it('sortSaberItems is a no-op when any item lacks a codigo (and for <2 items)', () => {
+        const sort = $exeDevice._sortSaberItems;
+        const partial = [{ nombre: 'a', codigo: 'A.1.1' }, { nombre: 'b' }];
+        expect(sort(partial)).toBe(partial);                // same reference, untouched
+        const one = [{ nombre: 'x', codigo: 'A.1.1' }];
+        expect(sort(one)).toBe(one);
+        expect(sort([])).toEqual([]);
+        expect(sort(null)).toEqual([]);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('ES-EX real dataset: saberes carry DOE codes and are ordered (#1905)', () => {
+    it('every fully-coded block is non-decreasing by DOE code', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        const data = loadDataset('lomloe-ES-EX.json');
+        let checkedBlocks = 0;
+        for (const { etapa, nivel, codArea, area } of walkAreas(data)) {
+            const bloques = (area.saberes_basicos && area.saberes_basicos.bloques) || {};
+            for (const [title, items] of Object.entries(bloques)) {
+                if (!items.length || !items.every(s => s.codigo)) continue;
+                checkedBlocks++;
+                for (let i = 1; i < items.length; i++) {
+                    expect(
+                        cmp(items[i - 1].codigo, items[i].codigo),
+                        `${etapa}/${nivel}/${codArea} “${title}”: ${items[i - 1].codigo} !<= ${items[i].codigo}`
+                    ).toBeLessThanOrEqual(0);
+                }
+            }
+        }
+        expect(checkedBlocks).toBeGreaterThan(300); // 394 fully-coded blocks today
+    });
+
+    it('Física y Química 1º Bachillerato block E is in official DOE order', () => {
+        const data = loadDataset('lomloe-ES-EX.json');
+        const fyq = data['Bachillerato']['1º Bachillerato']['FYQ'];
+        const blockE = fyq.saberes_basicos.bloques['E. Estática y dinámica'];
+        expect(blockE.map(s => s.codigo)).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
+        // The code is lifted into `codigo`, not left duplicated in the prose.
+        expect(blockE[0].codigo).toBe('E.1.1');
+        expect(blockE[0].subtitulo_nivel_1.startsWith('E.1.1')).toBe(false);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('ES-EX saberes render shows DOE codes in order (#1905)', () => {
+    let el;
+    beforeEach(() => { el = buildMockElement(); });
+    afterEach(() => { el && el.remove(); vi.restoreAllMocks(); });
+
+    it('renders FYQ 1º Bach block E as E.1.1, E.2.1, E.2.2 with the code visible', async () => {
+        const real = loadDataset('lomloe-ES-EX.json');
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({ ok: true, json: () => Promise.resolve(real) }));
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES-EX',
+            lomloeActiveTab: 'saberes',
+            lomloeSelectedEtapa: 'Bachillerato',
+            lomloeSelectedNivel: '1º Bachillerato',
+            lomloeSelectedMateria: { codArea: 'FYQ', denominacion: 'Física y Química' },
+            lomloeSelections: []
+        });
+        await new Promise(r => setTimeout(r, 50));
+        const blocks = [...el.querySelectorAll('.lomloe-block')];
+        const blockE = blocks.find(b =>
+            /Estática y dinámica/.test(b.querySelector('.lomloe-block-header').textContent));
+        expect(blockE, 'block E should be rendered').toBeTruthy();
+        const codes = [...blockE.querySelectorAll('.lomloe-saber-code')].map(s => s.textContent);
+        expect(codes).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
+    });
+});

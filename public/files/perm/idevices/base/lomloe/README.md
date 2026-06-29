@@ -62,8 +62,9 @@ All dataset JSON files share the same schema:
           "bloques": {
             "Block title": [    // e.g. "I. Cultura científica"
               {
-                "nombre": "PC9N01SBI.1.1",        // unique code
-                "subtitulo_nivel_1": "Topic",
+                "nombre": "PC9N01SBI.1.1",        // unique selection id (stable)
+                "codigo": "A.1.1",               // optional: official source saber code
+                "subtitulo_nivel_1": "Topic",     //   (block letter + numeric segments)
                 "subtitulo_nivel_2": "Sub-topic"  // optional
               }
             ]
@@ -74,6 +75,17 @@ All dataset JSON files share the same schema:
   }
 }
 ```
+
+#### Optional saber `codigo` (source order)
+
+`nombre` is the **stable selection id** (persisted in user documents) and must never
+change. `codigo` is the **official source saber code** (block letter + numeric
+segments, e.g. `A.1.1`, `E.2.1`) when the curriculum source numbers its saberes. The
+iDevice renders each saber's `codigo` (falling back to `nombre`) and **sorts every
+fully-coded block by it** with a natural comparator (`A.1.10` after `A.1.2`), so the
+list follows the official order regardless of array order. Datasets/blocks without
+codes keep their array order unchanged. Currently populated for **`ES-EX`** (see the
+note below); other datasets may add it as their saberes are re-extracted with codes.
 
 ### Optional per-dataset descriptor catalogue (`descriptors`)
 
@@ -362,13 +374,15 @@ shipped the bare base name in both years).
   Entorno*); these are not in the verified single-year list and need the Orden EFP/755/2022 optativa
   annex to be confirmed.
 - **`ES-VC`** Bachillerato (Valencian) — see the table above.
-- **Saberes básicos order / completeness (Bachillerato).** The Bachillerato *saberes* of the
-  state-derived datasets were extracted (in `#1828`) without preserving the DOE saber codes
-  (`A.1.1.1`, `A.1.1.2`…), so within a block they do not follow the official DOE order and some
-  entries were merged or dropped. Re-ordering/completing them cannot be done by hand from the
-  current data (the codes are gone) — it needs a **re-extraction from the DOE PDFs** that keeps the
-  `A.b.c.d` code on each saber. Tracked for the dataset regeneration, together with the missing 2.º
-  I/II entries above.
+- **Saberes básicos order (Bachillerato) — fixed where codes survived; completeness still pending.**
+  The DOE saber code (`A.1.1`, `E.2.1`…) is now lifted out of the saber prose into a structured
+  `codigo` field, and `ES-EX` ships it for **3399 / 4601** saberes (`#1905`). Every **fully-coded**
+  block is now sorted by `codigo`, so the order matches the DOE (e.g. Física y Química 1.º block *E*
+  is `E.1.1, E.2.1, E.2.2`). What is **not** fixed and needs the DOE **re-extraction follow-up**: the
+  **1202** saberes that still have no code (state-inherited fallback — may be content outside the
+  Extremadura decree) and the **sequence gaps** (omitted saberes, e.g. FYQ block *A* is missing
+  `A.2.1`). Both are itemised per subject/block in **`ES-EX-saberes-code-coverage.md`** as a finite
+  checklist for the curriculum review, and tracked together with the missing 2.º I/II entries above.
 
 ### Generator script
 
