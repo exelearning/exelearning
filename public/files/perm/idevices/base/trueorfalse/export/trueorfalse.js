@@ -85,7 +85,11 @@ var $trueorfalse = {
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
+            if (typeof window.scorm !== 'undefined') {
+                // Do not gate on init()'s return: it is false when the SCO
+                // session is already active, which would wrongly fall through to
+                // reloading the wrapper instead of binding to the live session.
+                window.scorm.init();
                 this.initScormData(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);

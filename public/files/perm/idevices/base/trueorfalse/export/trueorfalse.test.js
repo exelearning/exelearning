@@ -78,6 +78,45 @@ describe('trueorfalse iDevice export', () => {
     });
   });
 
+  describe('SCORM session binding', () => {
+    it('binds to a live SCO session even when init() returns false', () => {
+      // init() returns false when the SCO session is already active; renderBehaviour
+      // must still load the SCORM data (bind to the live session) instead of
+      // falling through to reloading the wrapper.
+      const ldata = { id: 'tof-1', isScorm: 1, gameStarted: true };
+      vi.spyOn($trueorfalse, 'updateConfig').mockReturnValue(ldata);
+      vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('');
+      vi.spyOn($trueorfalse, 'addEvents').mockImplementation(() => {});
+      vi.spyOn($trueorfalse, 'updateLatexInView').mockImplementation(() => {});
+      const initScormData = vi
+        .spyOn($trueorfalse, 'initScormData')
+        .mockImplementation(() => {});
+      const loadWrapper = vi
+        .spyOn($trueorfalse, 'loadSCORM_API_wrapper')
+        .mockImplementation(() => {});
+
+      document.body.className = 'exe-scorm';
+      const init = vi.fn(() => false);
+      window.scorm = { init };
+
+      try {
+        $trueorfalse.renderBehaviour(
+          { id: 'tof-1', questionsData: [] },
+          0,
+          'tof-1',
+        );
+      } finally {
+        delete window.scorm;
+        document.body.className = '';
+        vi.restoreAllMocks();
+      }
+
+      expect(init).toHaveBeenCalled();
+      expect(initScormData).toHaveBeenCalledWith(ldata);
+      expect(loadWrapper).not.toHaveBeenCalled();
+    });
+  });
+
   describe('escapeForCallback', () => {
     it('escapes backslashes', () => {
       const obj = { path: 'C:\\folder\\file' };
