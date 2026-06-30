@@ -357,9 +357,12 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
         return; // CRITICAL: return here to prevent server mode code from executing
     }
 
-    // Server mode: navigate to workarea with project UUID
-    await page.goto(`/workarea?project=${projectUuid}`);
-    await page.waitForLoadState('networkidle');
+    // Server mode: navigate to workarea with project UUID.
+    // Use 'domcontentloaded' and a deterministic readiness signal instead of
+    // 'networkidle': the app holds a long-lived Yjs WebSocket, so the network
+    // never goes idle, making networkidle both slow and flaky. The _yjsEnabled
+    // wait below plus waitForLoadingScreen are the real readiness signals.
+    await page.goto(`/workarea?project=${projectUuid}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, undefined, {
         timeout: 30000,
     });
@@ -429,7 +432,7 @@ export async function navigateToPageByTitle(page: Page, title: string): Promise<
     await navItem.scrollIntoViewIfNeeded();
     await navItem.click({ force: true });
 
-    // Wait for content to load
+    // Wait for content to load (deterministic — no trailing fixed sleep needed)
     await page.waitForFunction(
         () => {
             const nodeContent = document.querySelector('#node-content');
@@ -438,7 +441,6 @@ export async function navigateToPageByTitle(page: Page, title: string): Promise<
         undefined,
         { timeout: 10000 },
     );
-    await page.waitForTimeout(500);
 }
 
 /**
@@ -519,8 +521,7 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
                 );
 
                 if (found) {
-                    // Small buffer for any remaining DOM settling
-                    await page.waitForTimeout(200);
+                    // The waitForFunction above already proved the page rendered.
                     return true;
                 }
             } catch {}
@@ -595,6 +596,20 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
 }
 
 /**
+ * Wait until the navigation node with the given nav-id carries the `selected`
+ * class. `waitForFunction` re-queries the DOM on each poll, so this survives the
+ * Yjs-driven structure re-render that recreates nav elements: the app's
+ * `setNodeSelected()` re-applies `selected` by nav-id after every re-render, so a
+ * held element handle would go stale, but this selector-based check does not.
+ */
+async function waitForNavNodeSelected(page: Page, navId: string, timeout = 10000): Promise<void> {
+    await page.waitForFunction(id => !!document.querySelector(`.nav-element[nav-id="${id}"].selected`), navId, {
+        timeout,
+        polling: 100,
+    });
+}
+
+/**
  * Select a node in the navigation tree by ID
  *
  * @param page - Playwright page
@@ -605,9 +620,13 @@ export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
         const navItem = page.locator(`.nav-element[nav-id="${nodeId}"] > .nav-element-text`).first();
         try {
             await navItem.waitFor({ state: 'visible', timeout: 5000 });
-            await navItem.scrollIntoViewIfNeeded();
-            await navItem.click({ force: true, timeout: 5000 });
-            await page.waitForTimeout(500);
+            // Auto-waiting click() scrolls into view and re-resolves/retries on
+            // detach; an explicit scrollIntoViewIfNeeded + force click defeat that
+            // retry and widen the detach race, so they are intentionally dropped.
+            await navItem.click({ timeout: 5000 });
+            // Deterministic post-condition instead of a fixed sleep: the node is
+            // actually selected once it carries the `selected` class.
+            await waitForNavNodeSelected(page, nodeId);
             return;
         } catch {
             await page.waitForTimeout(250);
@@ -625,13 +644,28 @@ export async function selectFirstPage(page: Page): Promise<void> {
         const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
         return !!selected;
     });
-
-    if (!isPageSelected) {
-        const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-        await pageNode.scrollIntoViewIfNeeded();
-        await pageNode.click({ force: true });
-        await page.waitForTimeout(500);
+    if (isPageSelected) {
+        return;
     }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const firstNode = page.locator('.nav-element:not([nav-id="root"])').first();
+        try {
+            const navId = await firstNode.getAttribute('nav-id');
+            if (!navId) {
+                throw new Error('first non-root page node has no nav-id yet');
+            }
+            // Auto-waiting click() handles scroll + re-resolution on detach, so
+            // scrollIntoViewIfNeeded + force (which defeat that retry) are dropped.
+            await firstNode.locator(':scope > .nav-element-text').click();
+            // Deterministic post-condition instead of a fixed sleep.
+            await waitForNavNodeSelected(page, navId);
+            return;
+        } catch {
+            await page.waitForTimeout(250);
+        }
+    }
+    throw new Error('selectFirstPage: could not select the first non-root page');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1338,9 +1372,6 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
             // Wait for target element to be attached
             await targetNode.waitFor({ state: 'attached', timeout: 5000 });
 
-            // Small delay to let any DOM mutations settle
-            await page.waitForTimeout(100);
-
             await targetNode.scrollIntoViewIfNeeded();
             await targetNode.click({ force: true });
 
@@ -1365,9 +1396,7 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
         throw lastError;
     }
 
-    await page.waitForTimeout(500);
-
-    // Wait for page content area to be ready
+    // Wait for page content area to be ready (deterministic — no fixed sleep)
     await page
         .waitForFunction(
             () => {
