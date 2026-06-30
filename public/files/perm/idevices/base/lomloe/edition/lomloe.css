@@ -857,6 +857,12 @@
     max-width: 360px;
     min-width: 80px;
     width: max-content;
+    /* Long criteria definitions (e.g. the verbose Comunitat Valenciana wording)
+       must never grow taller than the viewport, otherwise the bottom of the
+       tooltip is clipped off-screen and cannot be read. Cap the height and let
+       the box scroll; positioning (lomloe.js) keeps it fully on-screen. */
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     text-align: left;
     pointer-events: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);

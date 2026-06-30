@@ -37,6 +37,8 @@ import {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    findUnsavedProjectsOlderThan,
+    findGuestProjectsOlderThan,
 } from './projects';
 import { createUser } from './users';
 
@@ -1109,6 +1111,133 @@ describe('Project Queries', () => {
 
             const found = await findProjectByUuid(db, uuid);
             expect(found?.updated_at).not.toBe(originalUpdatedAt);
+        });
+    });
+
+    describe('findUnsavedProjectsOlderThan (cleanup safety guards, #1932)', () => {
+        // Negative maxAge => cutoff is in the future, so the age filter matches
+        // freshly-created rows; lets us assert the other guards in isolation.
+        const ALL_AGES = -1_000_000;
+
+        it('returns a private, unsaved project past the age cutoff', async () => {
+            const p = await createProject(db, { title: 'Draft', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).toContain(p.id);
+        });
+
+        it('excludes saved projects (saved_once = 1)', async () => {
+            const p = await createProject(db, { title: 'Saved', owner_id: testUser.id });
+            await markProjectAsSaved(db, p.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('excludes recent projects (within the age window)', async () => {
+            const p = await createProject(db, { title: 'Recent', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, 60 * 60 * 1000);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes shared (non-private) projects, even unsaved and old', async () => {
+            const p = await createProject(db, { title: 'Public Draft', owner_id: testUser.id });
+            await updateProjectVisibility(db, p.id, 'public');
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes projects with collaborators, even private/unsaved/old', async () => {
+            const p = await createProject(db, { title: 'Collab Draft', owner_id: testUser.id });
+            const collaborator = await createUser(db, {
+                email: 'collab@example.com',
+                user_id: 'collab-user',
+                password: 'hashed',
+            });
+            await addCollaborator(db, p.id, collaborator.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('correlates the collaborator guard per project: returns a collaborator-free project but not one with collaborators', async () => {
+            // Project A: private + unsaved + old, WITH a collaborator -> must be excluded.
+            const projectA = await createProject(db, { title: 'Has Collaborator', owner_id: testUser.id });
+            const collaborator = await createUser(db, {
+                email: 'correlated-collab@example.com',
+                user_id: 'correlated-collab',
+                password: 'hashed',
+            });
+            await addCollaborator(db, projectA.id, collaborator.id);
+
+            // Project B: private + unsaved + old, WITHOUT collaborators -> must be returned.
+            const projectB = await createProject(db, { title: 'No Collaborator', owner_id: testUser.id });
+
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            const ids = found.map(x => x.id);
+
+            // If the NOT EXISTS were uncorrelated/global, the presence of any
+            // collaborator row would wrongly exclude B (or wrongly include A).
+            expect(ids).toContain(projectB.id);
+            expect(ids).not.toContain(projectA.id);
+        });
+    });
+
+    describe('findGuestProjectsOlderThan (cleanup safety guards, #1932)', () => {
+        // Negative maxAge => cutoff is in the future, so the age filter matches
+        // freshly-created rows; lets us assert the other guards in isolation.
+        const ALL_AGES = -1_000_000;
+
+        async function createGuestUser(suffix: string): Promise<User> {
+            return createUser(db, {
+                email: `guest_${suffix}@guest.local`,
+                user_id: `guest-${suffix}`,
+                password: 'hashed',
+            });
+        }
+
+        it('returns a private, collaborator-free guest project past the age cutoff', async () => {
+            const guest = await createGuestUser('plain');
+            const p = await createProject(db, { title: 'Guest Draft', owner_id: guest.id });
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).toContain(p.id);
+        });
+
+        it('never deletes shared (non-private) guest projects', async () => {
+            const guest = await createGuestUser('shared');
+            const p = await createProject(db, { title: 'Guest Public', owner_id: guest.id });
+            await updateProjectVisibility(db, p.id, 'public');
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes guest projects with collaborators', async () => {
+            const guest = await createGuestUser('withcollab');
+            const p = await createProject(db, { title: 'Guest Collab', owner_id: guest.id });
+            const collaborator = await createUser(db, {
+                email: 'guest-collab-peer@example.com',
+                user_id: 'guest-collab-peer',
+                password: 'hashed',
+            });
+            await addCollaborator(db, p.id, collaborator.id);
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('correlates the collaborator guard per guest project', async () => {
+            const guest = await createGuestUser('correlated');
+            // Project A: shared via collaborator -> excluded.
+            const projectA = await createProject(db, { title: 'Guest Has Collab', owner_id: guest.id });
+            const collaborator = await createUser(db, {
+                email: 'guest-correlated-peer@example.com',
+                user_id: 'guest-correlated-peer',
+                password: 'hashed',
+            });
+            await addCollaborator(db, projectA.id, collaborator.id);
+            // Project B: same guest owner, no collaborators -> returned.
+            const projectB = await createProject(db, { title: 'Guest No Collab', owner_id: guest.id });
+
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            const ids = found.map(x => x.id);
+            expect(ids).toContain(projectB.id);
+            expect(ids).not.toContain(projectA.id);
         });
     });
 });

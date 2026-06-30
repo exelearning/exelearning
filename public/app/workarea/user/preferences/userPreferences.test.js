@@ -174,7 +174,9 @@ describe('UserPreferences', () => {
       const notice = document.getElementById('preferences-static-notice');
       expect(notice).not.toBeNull();
       expect(notice.className).toBe('alert alert-info');
-      expect(notice.textContent).toBe('Preferences will be applied after refreshing the page.');
+      expect(notice.textContent).toBe(
+        'Language changes may require reloading or reopening eXeLearning to update the whole interface.'
+      );
 
       // Cleanup
       document.body.removeChild(mockModal);
@@ -273,6 +275,9 @@ describe('UserPreferences', () => {
       const warning = document.getElementById('preferences-reload-warning');
       expect(warning).not.toBeNull();
       expect(warning.className).toBe('alert alert-warning');
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
 
       // Cleanup
       document.body.removeChild(mockModal);
@@ -299,6 +304,29 @@ describe('UserPreferences', () => {
 
     it('should handle missing modal gracefully', () => {
       expect(() => userPreferences._showStaticReloadWarning()).not.toThrow();
+    });
+
+    it('should fall back to English text when translation function is unavailable', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Simulate the global translation helper not being defined
+      delete globalThis._;
+
+      userPreferences._showStaticReloadWarning();
+
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
+
+      // Cleanup
+      document.body.removeChild(mockModal);
     });
   });
 
@@ -392,15 +420,35 @@ describe('UserPreferences', () => {
       mockModal.appendChild(mockBody);
       document.body.appendChild(mockModal);
 
+      // Spy on window.location.reload to prove it is NOT triggered in static mode
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { reload: vi.fn() };
+
       await userPreferences.apiSaveProperties({
         locale: 'es'
       });
 
-      // Should show warning instead of reloading page
+      // Preference is still applied/saved
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
+      expect(mockManager.reloadLang).toHaveBeenCalledWith('es');
+
+      // Should show warning instead of reloading the page
       const warning = document.getElementById('preferences-reload-warning');
       expect(warning).not.toBeNull();
+      expect(warning.className).toBe('alert alert-warning');
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
+
+      // No automatic reload in static/offline/Electron mode
+      expect(window.location.reload).not.toHaveBeenCalled();
 
       // Cleanup
+      window.location = originalLocation;
       document.body.removeChild(mockModal);
     });
   });

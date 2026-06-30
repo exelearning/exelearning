@@ -1055,6 +1055,16 @@ describe('ModalStyleManager', () => {
             expect(exportAction).not.toBeNull();
             expect(infoAction).not.toBeNull();
         });
+
+        it('keeps export action enabled even when downloadable is false (issue #1893)', () => {
+            const exportTd = modal.makeActionExportThemeTd({
+                dirName: 'non-dl',
+                name: 'Non Downloadable',
+                downloadable: false,
+            });
+
+            expect(exportTd.getAttribute('downloadable')).toBe('true');
+        });
     });
 
     describe('makeElementEditTheme', () => {

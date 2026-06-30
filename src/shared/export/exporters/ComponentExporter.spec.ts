@@ -378,6 +378,134 @@ describe('ComponentExporter', () => {
         });
     });
 
+    describe('Component Structure Properties (issue #1991)', () => {
+        // Pages whose iDevices carry structure properties (visibility, teacherOnly, cssClass).
+        // These must survive a single-block / single-iDevice export the same way they do in a
+        // full-page ELPX export, otherwise re-importing the exported .block/.idevice loses them.
+        const pagesWithStructureProps: ExportPage[] = [
+            {
+                id: 'page-sp',
+                title: 'Structure Props Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-sp',
+                        name: 'Block With Props',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'idevice-sp-1',
+                                type: 'FreeTextIdevice',
+                                order: 0,
+                                content: '<p>Hidden teacher-only idevice.</p>',
+                                properties: {},
+                                structureProperties: {
+                                    visibility: false,
+                                    teacherOnly: true,
+                                    cssClass: 'my-custom-class another-class',
+                                },
+                            },
+                            {
+                                id: 'idevice-sp-2',
+                                type: 'FreeTextIdevice',
+                                order: 1,
+                                content: '<p>Default idevice without structure props.</p>',
+                                properties: {},
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        beforeEach(() => {
+            document = new MockDocument({}, pagesWithStructureProps);
+            exporter = new ComponentExporter(document, resources, assets, zip);
+        });
+
+        it('should preserve iDevice structure properties when exporting a whole block', async () => {
+            await exporter.exportComponent('block-sp', null);
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>false</value>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>my-custom-class another-class</value>');
+            // The empty placeholder must no longer be emitted.
+            expect(contentXml).not.toContain('<odeComponentsProperties></odeComponentsProperties>');
+        });
+
+        it('should preserve structure properties when exporting a single iDevice', async () => {
+            await exporter.exportComponent('block-sp', 'idevice-sp-1');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>false</value>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>my-custom-class another-class</value>');
+        });
+
+        it('should default to visibility=true when a component has no structure properties', async () => {
+            await exporter.exportComponent('block-sp', 'idevice-sp-2');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).not.toContain('<key>teacherOnly</key>');
+            expect(contentXml).not.toContain('<odeComponentsProperties></odeComponentsProperties>');
+        });
+
+        it('should escape XML special characters in structure property values', async () => {
+            const pagesWithSpecialCss: ExportPage[] = [
+                {
+                    id: 'page-css',
+                    title: 'Special CSS Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-css',
+                            name: 'CSS Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'idevice-css',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Test</p>',
+                                    properties: {},
+                                    structureProperties: {
+                                        visibility: true,
+                                        cssClass: 'a&b <c> "d"',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithSpecialCss);
+            exporter = new ComponentExporter(document, resources, assets, zip);
+
+            await exporter.exportComponent('block-css', null);
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<value>a&amp;b &lt;c&gt; &quot;d&quot;</value>');
+            // The raw, unescaped value must never appear.
+            expect(contentXml).not.toContain('<value>a&b <c> "d"</value>');
+        });
+    });
+
     describe('Asset Handling', () => {
         it('should include referenced assets in ZIP', async () => {
             assets.setAssets([

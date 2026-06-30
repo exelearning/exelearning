@@ -7,6 +7,7 @@ import IdeviceNode from './content/ideviceNode.js';
 import IdeviceBlockNode from './content/blockNode.js';
 import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
 import { sanitizeCollaborativeHtml } from '../../../utils/sanitizeHtml.js';
+import { startInlineTitleEdit } from './inlineTitleEditor.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -70,6 +71,8 @@ export default class IdevicesEngine {
         eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
         // Initialize iDevice presence tracking for collaborative editing
         this.initIdevicePresence();
+        // Enable double-click rename of the workspace page title
+        this.initPageTitleInlineRename();
     }
 
     /**
@@ -1054,12 +1057,8 @@ export default class IdevicesEngine {
      * @returns
      */
     async createIdeviceInContent(ideviceData, container, ideviceOnEdit = null) {
-        // Check if current page is document root
+        // Check if current page is document root (panel is visually disabled, guard kept as safety net)
         if (container.getAttribute('node-selected') == 'root') {
-            eXeLearning.app.modals.alert.show({
-                title: _('Problem adding iDevice'),
-                body: _("You can't add an iDevice on the root page"),
-            });
             return false;
         }
 
@@ -2037,6 +2036,150 @@ export default class IdevicesEngine {
         }
 
         return {};
+    }
+
+    /**
+     * Wire up inline renaming of the workspace page title.
+     *
+     * Mirrors the box/iDevice title affordance: wraps the page title in a
+     * .content-editable-title container and adds a pencil "Edit title" button.
+     * A single click on the title or the pencil enters inline edit mode and
+     * renames the current page through the same canonical data path as the
+     * structure-tree rename. Runs once (the page title heading is stable across
+     * page-content re-renders).
+     */
+    initPageTitleInlineRename() {
+        const container = this.nodeContainerElement;
+        if (!container) return;
+        const titleElement = container.querySelector(
+            '#page-title-node-content'
+        );
+        // Wire once: skip if the title is already wrapped with the edit control.
+        if (!titleElement || titleElement.closest('.content-editable-title')) {
+            return;
+        }
+
+        // Wrap the title and add a pencil edit button (same markup as box titles).
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('content-editable-title');
+        titleElement.parentNode.insertBefore(wrapper, titleElement);
+        wrapper.appendChild(titleElement);
+
+        const editButton = document.createElement('button');
+        editButton.classList.add(
+            'auto-icon',
+            'btn',
+            'btn-ternary',
+            'btn-edit-title',
+            'exe-app-tooltip'
+        );
+        editButton.title = _('Edit title');
+        editButton.setAttribute('aria-label', _('Edit title'));
+        const icon = document.createElement('span');
+        icon.classList.add('small-icon', 'edit-icon');
+        editButton.appendChild(icon);
+        wrapper.appendChild(editButton);
+        this.pageTitleEditButton = editButton;
+
+        // A single click on the title or the pencil enters edit mode.
+        const startEdit = () => this.startPageTitleInlineEdit(titleElement);
+        titleElement.addEventListener('click', startEdit);
+        editButton.addEventListener('click', startEdit);
+
+        if (eXeLearning?.app?.common?.initTooltips) {
+            eXeLearning.app.common.initTooltips(wrapper);
+        }
+    }
+
+    /**
+     * Enter inline edit mode on the workspace page title.
+     *
+     * "Edit what you see": when the heading shows the node name (default), the
+     * edit renames the node through the canonical structure-tree path so the
+     * tree stays in sync; when the heading shows a page-specific title
+     * (editableInPage), only that title is updated, leaving the node name
+     * untouched. Hidden titles are not editable from here.
+     *
+     * @param {HTMLElement} titleElement - The #page-title-node-content heading.
+     */
+    startPageTitleInlineEdit(titleElement) {
+        if (
+            !titleElement ||
+            titleElement.getAttribute('contenteditable') === 'true'
+        ) {
+            return;
+        }
+        // Do not interfere with an open iDevice editor.
+        if (this.project?.checkOpenIdevice && this.project.checkOpenIdevice()) {
+            return;
+        }
+
+        const structure = this.project?.structure;
+        const pageId = structure?.getSelectNodeNavId?.();
+        if (!pageId) return;
+
+        const props = this.getPageTitleProperties(pageId);
+        // Hidden titles have no visible heading to edit.
+        if (props.hidePageTitle === true || props.hidePageTitle === 'true') {
+            return;
+        }
+
+        const editableInPage =
+            props.editableInPage === true || props.editableInPage === 'true';
+        const rawText = editableInPage
+            ? props.titlePage || ''
+            : props.titleNode || '';
+
+        // Hide the pencil button while editing (restored when editing finishes).
+        const editButton = this.pageTitleEditButton;
+        if (editButton) editButton.style.display = 'none';
+        const restoreEditButton = () => {
+            if (editButton) editButton.style.display = '';
+        };
+
+        startInlineTitleEdit(titleElement, {
+            rawText,
+            ariaLabel: _('Page title'),
+            selection: 'end',
+            onCommit: (newTitle) => {
+                restoreEditButton();
+                if (editableInPage) {
+                    // Update only the page-specific title (does not rename the node).
+                    const node = structure?.getNode?.(pageId);
+                    if (node && typeof node.apiSaveProperties === 'function') {
+                        node.apiSaveProperties({ titlePage: newTitle });
+                    }
+                } else {
+                    // Rename the node via the canonical structure-tree path so the
+                    // navigation tree and underlying model stay synchronized.
+                    structure?.renameNodeAndReload?.(pageId, newTitle);
+                }
+                this.applyPageTitleText(titleElement, newTitle);
+            },
+            onCancel: () => {
+                restoreEditButton();
+                this.applyPageTitleText(titleElement, rawText);
+            },
+        });
+    }
+
+    /**
+     * Render plain title text into the page title heading and typeset LaTeX when
+     * present. Mirrors the display logic of setNodeContentPageTitle().
+     *
+     * @param {HTMLElement} titleElement
+     * @param {string} text
+     */
+    applyPageTitleText(titleElement, text) {
+        titleElement.innerText = text;
+        titleElement.classList.toggle('hidden', !text);
+        if (text && /(?:\\\(|\\\[|\\begin\{)/.test(text)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([titleElement]).catch((err) => {
+                    Logger.log('[IdevicesEngine] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**

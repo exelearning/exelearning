@@ -77,7 +77,7 @@ make up                         # Docker dev environment
 | **Test** | `make test-coverage` | Tests with coverage report |
 | **Lint** | `make fix` | Autofix lint + check — **always run after changes** |
 | **Lint** | `make lint` | Lint without fixing |
-| **i18n** | `make translations` | Extract new translation keys |
+| **i18n** | `make translations` | Extract new translation keys — **never run by agents; managed by a separate process** |
 | **CLI** | `make create-user` | Create a user account |
 | **CLI** | `make export-*` | Export via CLI (html5, scorm12, scorm2004, epub3, ims) |
 
@@ -202,7 +202,7 @@ Key rules:
 ### 7.4 Frontend Patterns
 
 - **i18n:** `_()` for GUI strings, `c_()` for content strings, `| trans` in Nunjucks templates. Avoid hardcoded English. See [i18n skill](.agents/skills/i18n/SKILL.md).
-  - **Never write or edit translated values under `translations/`.** Wrap user-facing strings in `_()` / `c_()` / `| trans`; running `make translations` to register the new (empty) keys is expected, but leave every target/translated value blank. The translation team owns `translations/**` and fills in the actual translations later — do not hand-write, copy, or machine-translate target strings in a PR.
+  - **Never modify any file under `translations/`.** Wrap user-facing strings in `_()` / `c_()` / `| trans` in source code and stop there. Do **not** run `make translations`, do not add keys, do not write or edit any `<target>` value. Translation key extraction and all changes to XLF files are managed by a dedicated separate process — they must never appear in a code PR. PRs that touch `translations/**` will be rejected.
 - **Styles:** Prefer SCSS classes in `assets/styles/` over inline styles. See [doc/development/styles.md](doc/development/styles.md).
 - **No framework:** Vanilla JavaScript in `public/app/`.
 
@@ -314,6 +314,8 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | [e2e-test](.agents/skills/e2e-test/SKILL.md) | Writing Playwright E2E tests |
 | [websocket-yjs](.agents/skills/websocket-yjs/SKILL.md) | Real-time collaboration code |
 | [i18n](.agents/skills/i18n/SKILL.md) | Adding/modifying translations |
+| [xlf-translate](.agents/skills/xlf-translate/SKILL.md) | Filling empty `<target>` elements in XLF files with `~`-prefixed translations |
+| [mkdocs-nav](.agents/skills/mkdocs-nav/SKILL.md) | Sync `mkdocs.yml` nav with the actual contents of `doc/` |
 | [api-v1](.agents/skills/api-v1/SKILL.md) | External REST API v1 endpoints |
 
 ## 12. Deep-Dive Documentation

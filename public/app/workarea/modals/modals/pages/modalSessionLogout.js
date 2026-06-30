@@ -24,7 +24,14 @@ export default class ModalSessionLogout extends Modal {
      *
      * @param {Object} data
      * @param {string} [data.title] - Modal title
-     * @param {string} [data.forceOpen] - Label for the "don't save" button
+     * @param {string} [data.body] - Contextual question shown in the body.
+     *   Falls back to "Do you want to save the current project?".
+     * @param {string} [data.saveButtonText] - Label for the "save" button.
+     *   Falls back to "Yes".
+     * @param {string} [data.notSaveButtonText] - Label for the "don't save"
+     *   button. Falls back to {@link data.forceOpen} or "Exit without saving".
+     * @param {string} [data.forceOpen] - Deprecated label for the "don't save"
+     *   button. Kept for backward compatibility; prefer `notSaveButtonText`.
      * @param {Object} [data.pendingAction] - Action descriptor for transitionToProject:
      *   { action: 'new'|'open'|'import', projectUuid?, file? }
      * @param {boolean} [data.offlineExit] - Electron: save-and-close flow
@@ -35,9 +42,12 @@ export default class ModalSessionLogout extends Modal {
         data = data ? data : {};
         let time = this.manager.closeModals() ? this.timeMax : this.timeMin;
         let title = data.title ? data.title : this.titleDefault;
+        let body = data.body
+            ? data.body
+            : _('Do you want to save the current project?');
         setTimeout(() => {
             this.setTitle(title);
-            this.setBody(_('Do you want to save the current project?'));
+            this.setBody(body);
             this.setFooterContent(data);
             this.modal.show();
         }, time);
@@ -65,18 +75,24 @@ export default class ModalSessionLogout extends Modal {
      * setSaveSessionButton
      */
     setSaveSessionButton(saveSessionButton, data) {
-        saveSessionButton.innerHTML = _('Yes');
+        saveSessionButton.innerHTML = data.saveButtonText
+            ? data.saveButtonText
+            : _('Yes');
         this.saveSessionEventListener(saveSessionButton, data);
         return saveSessionButton;
     }
 
     /**
      * setNotSaveSessionButton
+     *
+     * Prefers the contextual `notSaveButtonText`, falling back to the
+     * deprecated `forceOpen` label and finally to "Exit without saving".
      */
     setNotSaveSessionButton(notSaveSessionButton, data) {
-        notSaveSessionButton.innerHTML = data.forceOpen
-            ? data.forceOpen
-            : _('Exit without saving');
+        notSaveSessionButton.innerHTML =
+            data.notSaveButtonText ||
+            data.forceOpen ||
+            _('Exit without saving');
         this.notSaveSessionEventListener(notSaveSessionButton, data);
         return notSaveSessionButton;
     }

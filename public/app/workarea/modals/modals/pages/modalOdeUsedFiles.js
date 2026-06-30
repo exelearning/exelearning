@@ -222,9 +222,12 @@ export default class ModalOdeUsedFiles extends Modal {
         // Check if there are any data rows
         const dataRows = table.querySelectorAll('tbody tr');
         if (dataRows.length === 0) {
-            eXeLearning.app.alerts.showToast({
-                type: 'info',
-                message: _('No resources to export'),
+            eXeLearning.app.toasts.createToast({
+                title: _('Resource Report'),
+                body: _('No resources to export'),
+                icon: 'info',
+                modal: true,
+                remove: 5000,
             });
             return;
         }

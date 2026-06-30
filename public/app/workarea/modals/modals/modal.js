@@ -30,6 +30,10 @@ export default class Modal {
         );
         this.preventCloseModal = false;
         this.tabSelectedLink = null;
+        // Timer id of a deferred show() that has not run yet, so close() can
+        // cancel it (otherwise a show()+close() in quick succession pops up a
+        // blank, never-hidden modal — see close()).
+        this.pendingShowTimeout = null;
         this.modal = new bootstrap.Modal(this.modalElement, {});
         this.timeMax = 500;
         this.timeMin = 50;
@@ -277,7 +281,17 @@ export default class Modal {
      */
     show(data) {
         let time = this.manager.closeModals() ? this.timeMax : this.timeMin;
-        setTimeout(() => {
+        // A previous show() may still be waiting on its deferred timer (the
+        // shared info/alert modal is a singleton and can be reused in quick
+        // succession). Cancel it so only the latest show() runs — otherwise the
+        // stale timer fires afterwards and re-applies its own (older) data over
+        // this one (it can even fire last when the two calls schedule different
+        // delays via timeMax/timeMin).
+        if (this.pendingShowTimeout) {
+            clearTimeout(this.pendingShowTimeout);
+        }
+        this.pendingShowTimeout = setTimeout(() => {
+            this.pendingShowTimeout = null;
             data = data ? data : {};
             let title = data.title ? data.title : this.titleDefault;
             let contentId = data.contentId ? data.contentId : null;
@@ -304,6 +318,14 @@ export default class Modal {
         if (this.preventCloseModal) {
             this.preventCloseModal = false;
             return false;
+        }
+        // Cancel a deferred show() that has not run yet: otherwise it would fire
+        // after this hide(), pop the modal up, and clearAfterClose would blank
+        // its body — leaving a stuck, empty modal. Happens when a "please wait"
+        // modal is shown and closed in quick succession (no/cached async work).
+        if (this.pendingShowTimeout) {
+            clearTimeout(this.pendingShowTimeout);
+            this.pendingShowTimeout = null;
         }
         if (this.intervalCloseCheck) {
             clearInterval(this.intervalCloseCheck);
@@ -657,7 +679,12 @@ export default class Modal {
         downloadLink.click();
         document.body.removeChild(downloadLink);
 
-        URL.revokeObjectURL(url);
+        // Defer revocation so asynchronous download handlers can still read the
+        // blob. In Electron the global click interceptor in asset_url_resolver.js
+        // routes blob: downloads through saveBufferAs, which fetches the blob URL
+        // on a later microtask; revoking synchronously here would invalidate the
+        // URL first and abort the save with ERR_FILE_NOT_FOUND (issue #1947).
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
     /*******************************************************************************
