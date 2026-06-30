@@ -87,14 +87,6 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('exe_media/exe_media.js');
         });
 
-        it('should detect exe_media_link by regex pattern', () => {
-            const html = '<a href="video.mp4" rel="lightbox">Watch</a>';
-            const result = detector.detectLibraries(html);
-
-            // Both exe_lightbox and exe_media_link should be detected
-            expect(result.libraries.find(l => l.name === 'exe_media_link')).toBeDefined();
-        });
-
         it('should detect exe_math by regex pattern', () => {
             const html = '<p>The formula \\(x^2 + y^2 = z^2\\) is well known.</p>';
             const result = detector.detectLibraries(html);

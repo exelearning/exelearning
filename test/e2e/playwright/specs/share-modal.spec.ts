@@ -393,6 +393,73 @@ test.describe('Share Modal', () => {
             const owner = collaborators.find(c => c.isOwner);
             expect(owner).toBeDefined();
         });
+
+        test('should scroll a long people list inside the modal instead of overflowing (issue #1960)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const projectUuid = await createProject(authenticatedPage, 'Overflow People List Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await authenticatedPage.waitForLoadState('networkidle');
+
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
+            await shareButton.click();
+
+            await shareModal.waitForOpen();
+
+            // Reproduce the ">4 people" scenario from issue #1960 by injecting many
+            // rows into the list. Creating that many real cloud collaborators would
+            // require many registered accounts; injecting the rendered rows exercises
+            // the exact CSS path (the people list container) that was overflowing.
+            await authenticatedPage.evaluate(() => {
+                const list = document.querySelector('#share-people-list');
+                if (!list) {
+                    throw new Error('#share-people-list not found');
+                }
+                let html = '';
+                for (let i = 0; i < 12; i++) {
+                    html += `
+                        <div class="share-person-row" data-user-id="injected-${i}">
+                            <div class="share-person-avatar">U${i}</div>
+                            <div class="share-person-info">
+                                <div class="share-person-email">collaborator${i}@example.com
+                                    <span class="share-person-role-badge">Editor</span>
+                                </div>
+                            </div>
+                            <div class="share-person-actions"></div>
+                        </div>`;
+                }
+                list.innerHTML = html;
+            });
+
+            const metrics = await authenticatedPage.evaluate(() => {
+                const list = document.querySelector('#share-people-list') as HTMLElement;
+                const generalAccess = document.querySelector('#share-general-access-section') as HTMLElement;
+                const modalContent = document.querySelector('#modalShare .modal-content') as HTMLElement;
+                const style = window.getComputedStyle(list);
+                return {
+                    overflowY: style.overflowY,
+                    clientHeight: list.clientHeight,
+                    scrollHeight: list.scrollHeight,
+                    listBottom: list.getBoundingClientRect().bottom,
+                    generalAccessTop: generalAccess.getBoundingClientRect().top,
+                    modalContentBottom: modalContent.getBoundingClientRect().bottom,
+                };
+            });
+
+            // The container scrolls its overflow instead of letting rows spill out.
+            expect(['auto', 'scroll']).toContain(metrics.overflowY);
+            // Content is taller than the visible box -> it is genuinely scrollable.
+            expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+            // The box height stays clamped to its max-height (300px) rather than
+            // growing to fit every row.
+            expect(metrics.clientHeight).toBeLessThanOrEqual(301);
+            // The next section starts below the list (no overlap / spill-over).
+            expect(metrics.generalAccessTop).toBeGreaterThanOrEqual(metrics.listBottom - 1);
+            // The whole list stays inside the modal dialog.
+            expect(metrics.listBottom).toBeLessThanOrEqual(metrics.modalContentBottom + 1);
+        });
     });
 
     test.describe('Modal Closing', () => {

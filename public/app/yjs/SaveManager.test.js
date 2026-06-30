@@ -97,6 +97,33 @@ describe('SaveManager', () => {
     delete window.electronAPI;
   });
 
+  describe('collaborative autosave coordination', () => {
+    it('cancels a pending collaborative autosave when a manual save starts', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true; // short-circuit to keep the test focused
+      await manager.save();
+      expect(cancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cancel autosave when the save IS the collaborative autosave', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true;
+      await manager.save({ reason: 'collaborative-autosave' });
+      expect(cancel).not.toHaveBeenCalled();
+    });
+
+    it('tolerates a bridge without a collaborative autosave coordinator', async () => {
+      const manager = new SaveManager(mockBridge); // no collaborativeAutosave
+      manager._isStaticMode = true;
+      const result = await manager.save();
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('constructor', () => {
     it('sets bridge reference', () => {
       const manager = new SaveManager(mockBridge);

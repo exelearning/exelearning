@@ -29,6 +29,14 @@ var $exeDevice = {
     tikzFinishedHandler: null,
     tikzCapturePromise: null,
 
+    // Per-circuit TikZJax compile budget for the AI save flow. The very first
+    // circuit also pays TikZJax's one-time WebAssembly cold start, which on a
+    // slow browser (e.g. Firefox CI) easily exceeds the warm budget, so give it
+    // a much longer window before treating a valid circuit as un-renderable;
+    // every later circuit renders on the warm engine and uses the normal budget.
+    tikzRenderTimeoutMs: 15000,
+    tikzColdStartTimeoutMs: 60000,
+
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -201,6 +209,14 @@ var $exeDevice = {
         );
         msgs.msgIDLenght = _(
             'The report identifier must have at least 5 characters'
+        );
+        msgs.msgGeneratingCircuitsTitle = _('Please wait');
+        msgs.msgGeneratingCircuits = _(
+            'Generating the circuit images, this may take a few minutes, please wait…'
+        );
+        msgs.msgQuestionsAdded = _('The questions have been added successfully');
+        msgs.msgEQuestionsNotAdded = _(
+            'Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.'
         );
     },
 
@@ -527,6 +543,59 @@ var $exeDevice = {
         '⇒': '\\Rightarrow',
     },
 
+    // siunitx/gensymb unit and SI-prefix macros the AI emits but TikZJax's loaded
+    // packages (circuitikz, amsmath, amssymb) do NOT define, so they abort the
+    // compile with "Undefined control sequence" (e.g. \ohm, \volt, \kilo). Mapped
+    // to plain-text/Unicode equivalents: \ohm/\micro flow into the Ω/µ handling
+    // (the Unicode net above and the R=/C= label rules below); the rest are ASCII
+    // unit letters that are always valid inside a label.
+    tikzUnitMacroReplacements: {
+        ohm: 'Ω',
+        kohm: 'kΩ',
+        megohm: 'MΩ',
+        volt: 'V',
+        millivolt: 'mV',
+        kilovolt: 'kV',
+        ampere: 'A',
+        milliampere: 'mA',
+        microampere: 'µA',
+        watt: 'W',
+        milliwatt: 'mW',
+        kilowatt: 'kW',
+        farad: 'F',
+        microfarad: 'µF',
+        nanofarad: 'nF',
+        picofarad: 'pF',
+        henry: 'H',
+        millihenry: 'mH',
+        microhenry: 'µH',
+        hertz: 'Hz',
+        kilohertz: 'kHz',
+        megahertz: 'MHz',
+        siemens: 'S',
+        coulomb: 'C',
+        joule: 'J',
+        kelvin: 'K',
+        newton: 'N',
+        pascal: 'Pa',
+        tesla: 'T',
+        weber: 'Wb',
+        second: 's',
+        metre: 'm',
+        meter: 'm',
+        gram: 'g',
+        // SI prefixes
+        kilo: 'k',
+        milli: 'm',
+        micro: 'µ',
+        mega: 'M',
+        giga: 'G',
+        nano: 'n',
+        pico: 'p',
+        centi: 'c',
+        deci: 'd',
+    },
+
     /**
      * Replace bare Unicode symbols with their LaTeX equivalents wrapped in
      * \ensuremath{} so they compile under TikZJax regardless of whether they
@@ -557,7 +626,25 @@ var $exeDevice = {
 
         return code
             .replace(/\\\\,/g, '\\,')
+            // Drop angle brackets the AI wraps around a unit macro (<\ohm> -> \ohm)
+            // and replace siunitx/gensymb unit/prefix macros TikZJax cannot compile
+            // with plain-text/Unicode equivalents, so the label rules below (and the
+            // Unicode net) render them instead of aborting with "Undefined control
+            // sequence".
+            .replace(/<\s*(\\[a-zA-Z]+)\s*>/g, '$1')
+            .replace(/\\([a-zA-Z]+)\b/g, (match, name) =>
+                Object.hasOwn($exeDevice.tikzUnitMacroReplacements, name)
+                    ? $exeDevice.tikzUnitMacroReplacements[name]
+                    : match
+            )
             .replace(/\bto\s*\[\s*lD\b/g, 'to[leD')
+            // Repair clear circuitikz component-name mistakes the AI makes: the
+            // symbol is unambiguous, only the key is wrong. "open switch" /
+            // "closed switch" are not valid keys (pgfkeys "I do not know the key"
+            // → abort); circuitikz uses "opening switch" / "closing switch". Only
+            // rewrite right after to[ so a {label} mentioning the words is untouched.
+            .replace(/\bto\s*\[\s*open\s+switch\b/gi, 'to[opening switch')
+            .replace(/\bto\s*\[\s*closed\s+switch\b/gi, 'to[closing switch')
             .replace(
                 /\bto\s*\[\s*(battery1|battery2)\s*,\s*l\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*V\s*\]/g,
                 (_match, component, value) =>
@@ -575,7 +662,41 @@ var $exeDevice = {
                 (_match, value) =>
                     `to[C,l={$${formatNumber(value)}\\,\\mu\\mathrm{F}$}]`
             )
-            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,');
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,')
+            // Brace any math label that still holds a *bare* comma so TikZ's
+            // `to[...]` parser stops reading it as an option separator
+            // (e.g. l=$9,V$ -> l={$9\,V$}; otherwise it errors with an unknown
+            // key like '/tikz/V$'). The \, thin space is left alone; a
+            // digit,digit comma stays a {,} thousands separator and any other
+            // bare comma becomes a thin space.
+            .replace(/=\s*\$([^$]*)\$/g, (match, content) => {
+                if (!/(^|[^\\]),/.test(content)) return match;
+                const fixed = content.replace(/\s*,\s*/g, (comma, offset, str) => {
+                    const prev = str[offset - 1];
+                    const next = str[offset + comma.length];
+                    if (prev === '\\') return comma;
+                    if (prev === '{' && next === '}') return comma;
+                    return /\d/.test(prev) && /\d/.test(next) ? '{,}' : '\\,';
+                });
+                return `={$${fixed}$}`;
+            })
+            // Repair logic-gate syntax: the AI emits pgf's shapes.gates.logic
+            // names (node[and gate], anchors .input/.output) from a library that
+            // is not loaded here, while circuitikz uses `... port` shapes with
+            // .in/.out anchors. Rewrite the shape only inside [...] and the
+            // anchors only inside (...), so node labels ({...}), transistor .gate
+            // anchors and any other code are left untouched.
+            .replace(/\[([^\]]*)\]/g, (_match, options) =>
+                '[' +
+                options.replace(
+                    /\b(and|or|not|nand|nor|xnor|xor|buffer)\s+gate\b/g,
+                    '$1 port'
+                ) +
+                ']'
+            )
+            .replace(/\(([^)]*)\)/g, (_match, reference) =>
+                '(' + reference.replace(/\.input\b/g, '.in').replace(/\.output\b/g, '.out') + ')'
+            );
     },
 
     normalizeTikzCode: function (code) {
@@ -1052,7 +1173,9 @@ var $exeDevice = {
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
         tikzScript.dataset.texPackages = JSON.stringify({'circuitikz': '', 'amsmath': '', 'amssymb': ''});
-        tikzScript.dataset.showConsole = 'true';
+        // Keep TikZJax quiet in production: 'true' makes it console.log the raw
+        // TikZ source on every render, which is debug noise for end users.
+        tikzScript.dataset.showConsole = 'false';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
 
         // While compiling, TikZJax inserts a loading-spinner <svg> placeholder
@@ -1078,6 +1201,84 @@ var $exeDevice = {
         preview.addEventListener('tikzjax-load-finished', onFinished);
 
         preview.appendChild(tikzScript);
+    },
+
+    /**
+     * Compile a single TikZ circuit to a sanitized SVG string and resolve with
+     * it (or '' on failure/timeout).
+     *
+     * Used by the AI save flow to pre-render every circuit before inserting its
+     * question. It renders through the exact same proven path as the manual
+     * preview — the persistent #elceTikzPreview element that TikZJax already
+     * compiles reliably — instead of a throwaway container, which TikZJax did
+     * not always finish for back-to-back renders. It does NOT touch the
+     * single-slot SVG cache; addQuestions() re-renders the active question
+     * afterwards, restoring the preview. Resolves '' when the code is empty,
+     * when TikZJax produces no <svg>, or when it does not finish within the
+     * timeout — callers treat an empty result as "this circuit could not be
+     * generated". TikZJax gives no reliable error event, so a circuit that never
+     * compiles relies on that timeout.
+     */
+    renderTikzCodeToSvg: function (code, timeoutMs = $exeDevice.tikzRenderTimeoutMs) {
+        const normalized = $exeDevice.normalizeTikzCode(code);
+        const preview = document.getElementById('elceTikzPreview');
+        if (!normalized || !preview) {
+            return Promise.resolve('');
+        }
+
+        // Drop any listener still pending from a manual preview render so it
+        // does not also fire on our script.
+        if ($exeDevice.tikzFinishedHandler) {
+            preview.removeEventListener(
+                'tikzjax-load-finished',
+                $exeDevice.tikzFinishedHandler
+            );
+            $exeDevice.tikzFinishedHandler = null;
+        }
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (svg) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                preview.removeEventListener('tikzjax-load-finished', onFinished);
+                resolve(svg || '');
+            };
+
+            const timer = setTimeout(() => finish(''), timeoutMs);
+
+            const onFinished = () => {
+                const renderedSvg = preview.querySelector('svg');
+                Promise.resolve(
+                    renderedSvg
+                        ? $exeDevice.convertTikzTextToPaths(renderedSvg)
+                        : null
+                )
+                    .catch(() => {})
+                    .then(() => {
+                        const finalSvg = preview.querySelector('svg');
+                        finish(
+                            finalSvg ? $exeDevice.sanitizeTikzSvg(finalSvg) : ''
+                        );
+                    });
+            };
+
+            preview.innerHTML = '';
+            preview.addEventListener('tikzjax-load-finished', onFinished);
+
+            const tikzScript = document.createElement('script');
+            tikzScript.type = 'text/tikz';
+            tikzScript.dataset.texPackages = JSON.stringify({
+                circuitikz: '',
+                amsmath: '',
+                amssymb: '',
+            });
+            tikzScript.dataset.showConsole = 'false';
+            tikzScript.textContent =
+                '\\begin{document}' + normalized + '\\end{document}';
+            preview.appendChild(tikzScript);
+        });
     },
 
     clearQuestion: function () {
@@ -2218,7 +2419,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             11,
-            $exeDevice.insertQuestions
+            $exeDevice.insertAIQuestions
         );
 
         //eXe 3.0 Dismissible messages
@@ -2474,17 +2675,28 @@ var $exeDevice = {
         $exeDevice.insertQuestions(lines);
     },
 
-    insertQuestions: function (lines) {
+    // Pure parser shared by the file-import path (insertQuestions) and the AI
+    // save path (insertAIQuestions). Returns the parsed question objects, the
+    // source line each one came from (parallel to `questions`, so a question
+    // that later fails to render can be put back verbatim for the user to fix),
+    // and the lines that matched no supported format.
+    parseAIQuestions: function (lines) {
         // Format: Description#TikzCode#Solution#Question#OptionA#OptionB[#OptionC][#OptionD]
         const lineFormat =
                 /^([^#]+)#([^#]+)#([0-3]|[ABCD]{1,4})#([^#]+)#([^#]+)#([^#]+)(#([^#]*))?(#([^#]*))?$/i,
             lineFormat1 = /^([^#]+)#([^#]+)$/;
-        let questions = [];
+        const questions = [],
+            sourceLines = [],
+            invalidLines = [];
 
-        lines.forEach((line) => {
+        (lines || []).forEach((line) => {
+            if (typeof line !== 'string' || line.trim().length === 0) {
+                return;
+            }
+            const trimmed = line.trim();
             const p = $exeDevice.getCuestionDefault();
             if (lineFormat.test(line)) {
-                const linarray = line.trim().split('#'),
+                const linarray = trimmed.split('#'),
                     description = linarray[0],
                     tikzCode = linarray[1],
                     solution = linarray[2];
@@ -2506,19 +2718,103 @@ var $exeDevice = {
                 p.options[3] = $exeDevice.normalizeVisibleCircuitText(linarray[7]);
                 p.numberOptions = linarray.length - 4;
                 questions.push(p);
+                sourceLines.push(trimmed);
             } else if (lineFormat1.test(line)) {
-                const linarray1 = line.trim().split('#');
+                const linarray1 = trimmed.split('#');
                 p.typeSelect = 2;
                 p.solutionQuestion = linarray1[0];
                 p.quextion = linarray1[1];
                 p.percentageShow = 35;
                 if (p.quextion && p.solutionQuestion) {
                     questions.push(p);
+                    sourceLines.push(trimmed);
+                } else {
+                    invalidLines.push(trimmed);
                 }
+            } else {
+                invalidLines.push(trimmed);
             }
         });
 
+        return { questions, lines: sourceLines, invalidLines };
+    },
+
+    insertQuestions: function (lines) {
+        const { questions } = $exeDevice.parseAIQuestions(lines);
         $exeDevice.addQuestions(questions);
+    },
+
+    // Callback for the AI "save questions" button. Unlike insertQuestions (used
+    // by file import), it renders every circuit before inserting: a blocking
+    // "please wait" modal is shown while each TikZ code is compiled to SVG, and a
+    // question whose circuit cannot be generated is discarded. The rejected lines
+    // (verbatim, plus any that had an invalid format) are returned as
+    // `remainingLines` so the shared handler can put them back in the text box
+    // for the user to fix and try again. Returns { handledMessaging: true } so
+    // the shared handler skips its generic alert.
+    insertAIQuestions: async function (validLines, invalidLines = []) {
+        const parsed = $exeDevice.parseAIQuestions(validLines);
+        const remainingLines = [...(invalidLines || []), ...parsed.invalidLines];
+
+        $exeDevice.showCircuitGenerationModal();
+        try {
+            const validQuestions = [];
+            let isFirstRender = true;
+            for (let i = 0; i < parsed.questions.length; i++) {
+                const question = parsed.questions[i];
+                const code = (question.tikzCode || '').trim();
+                if (!code) {
+                    // Word/phrase questions carry no circuit; nothing to render.
+                    validQuestions.push(question);
+                    continue;
+                }
+                // Absorb TikZJax's one-time WASM cold start on the first compiled
+                // circuit so a valid circuit is not wrongly discarded on a slow
+                // browser; the engine is warm for the rest.
+                const timeoutMs = isFirstRender
+                    ? $exeDevice.tikzColdStartTimeoutMs
+                    : $exeDevice.tikzRenderTimeoutMs;
+                isFirstRender = false;
+                const svg = await $exeDevice.renderTikzCodeToSvg(code, timeoutMs);
+                if (svg) {
+                    question.tikzSvg = svg;
+                    validQuestions.push(question);
+                } else {
+                    remainingLines.push(parsed.lines[i]);
+                }
+            }
+
+            if (validQuestions.length > 0) {
+                $exeDevice.addQuestions(validQuestions);
+            }
+        } finally {
+            $exeDevice.hideCircuitGenerationModal();
+        }
+
+        if (remainingLines.length > 0) {
+            $exeDevice.showMessage($exeDevice.msgs.msgEQuestionsNotAdded);
+        } else {
+            $exeDevice.showMessage($exeDevice.msgs.msgQuestionsAdded);
+        }
+
+        return { handledMessaging: true, remainingLines };
+    },
+
+    showCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.show === 'function') {
+            modals.info.show({
+                title: $exeDevice.msgs.msgGeneratingCircuitsTitle,
+                body: $exeDevice.msgs.msgGeneratingCircuits,
+            });
+        }
+    },
+
+    hideCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.close === 'function') {
+            modals.info.close();
+        }
     },
 
     addQuestions: function (questions) {

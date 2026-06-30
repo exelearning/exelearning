@@ -24,6 +24,7 @@ import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
+import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -43,6 +44,35 @@ export function shouldAutoCreateUsers(): boolean {
     if (['false', '0', 'no', 'off'].includes(normalized)) return false;
     // Any other value (true/1/yes/on, or typos) falls back to the documented default.
     return true;
+}
+
+/**
+ * Resolve the effective OIDC endpoints for the current configuration.
+ *
+ * Reads the issuer and the explicit per-endpoint settings (DB setting first,
+ * then the matching `OIDC_*` env var), then runs OpenID Connect Discovery to
+ * fill any endpoint left blank. Explicit configuration always wins; discovery
+ * only fills the gaps and degrades gracefully when the issuer is empty or the
+ * discovery document is unavailable. See `services/oidc-discovery.ts`.
+ */
+export async function getResolvedOidcConfig(db: Kysely<Database>): Promise<ResolvedOidcEndpoints> {
+    const [issuer, authorizationEndpoint, tokenEndpoint, userinfoEndpoint, endSessionEndpoint, jwksUri] =
+        await Promise.all([
+            getSettingString(db, 'OIDC_ISSUER', process.env.OIDC_ISSUER || ''),
+            getSettingString(db, 'OIDC_AUTHORIZATION_ENDPOINT', process.env.OIDC_AUTHORIZATION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_TOKEN_ENDPOINT', process.env.OIDC_TOKEN_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_USERINFO_ENDPOINT', process.env.OIDC_USERINFO_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_END_SESSION_ENDPOINT', process.env.OIDC_END_SESSION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || ''),
+        ]);
+    return resolveOidcEndpoints({
+        issuer,
+        authorizationEndpoint,
+        tokenEndpoint,
+        userinfoEndpoint,
+        endSessionEndpoint,
+        jwksUri,
+    });
 }
 
 /**
@@ -472,8 +502,9 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 if (authMethod === 'openid') {
-                    // OpenID Connect logout - redirect to end_session endpoint
-                    const endSessionEndpoint = process.env.OIDC_END_SESSION_ENDPOINT;
+                    // OpenID Connect logout - redirect to end_session endpoint.
+                    // Resolved from the explicit setting/env first, then OIDC Discovery.
+                    const { endSessionEndpoint } = await getResolvedOidcConfig(db);
                     const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
                     if (endSessionEndpoint) {
@@ -723,11 +754,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Not Found', message: 'OpenID authentication is not enabled.' };
                 }
 
-                const authorizeEndpoint = await getSettingString(
-                    db,
-                    'OIDC_AUTHORIZATION_ENDPOINT',
-                    process.env.OIDC_AUTHORIZATION_ENDPOINT || '',
-                );
+                const { authorizationEndpoint: authorizeEndpoint } = await getResolvedOidcConfig(db);
                 if (!authorizeEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -840,11 +867,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
                 }
 
-                const tokenEndpoint = await getSettingString(
-                    db,
-                    'OIDC_TOKEN_ENDPOINT',
-                    process.env.OIDC_TOKEN_ENDPOINT || '',
-                );
+                const { tokenEndpoint, userinfoEndpoint, jwksUri } = await getResolvedOidcConfig(db);
                 if (!tokenEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -863,11 +886,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         db,
                         'OIDC_CLIENT_SECRET',
                         process.env.OIDC_CLIENT_SECRET || '',
-                    );
-                    const userinfoEndpoint = await getSettingString(
-                        db,
-                        'OIDC_USERINFO_ENDPOINT',
-                        process.env.OIDC_USERINFO_ENDPOINT || '',
                     );
 
                     const tokenResponse = await fetch(tokenEndpoint, {
@@ -889,9 +907,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                     // Decode ID token to get user info.
                     //
-                    // Security: when OIDC_JWKS_URI is configured we verify the
+                    // Security: when a JWKS URI is available we verify the
                     // signature against the provider's published JWKS, which
-                    // is the only way to trust the claims. Without JWKS we
+                    // is the only way to trust the claims. The JWKS URI is
+                    // taken from the explicit OIDC_JWKS_URI setting and, when
+                    // that is blank, from the issuer's discovery document
+                    // (jwks_uri) — so a minimal OIDC_ISSUER-only config still
+                    // verifies signatures. Only when neither is available do we
                     // fall back to decoding (preserves legacy behaviour) but
                     // log a loud warning so the operator notices. The nonce
                     // claim, when our authorize request set one, is always
@@ -901,7 +923,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     let idTokenPayload: Record<string, unknown> | undefined;
 
                     if (idToken) {
-                        const jwksUri = await getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || '');
                         if (jwksUri) {
                             try {
                                 const { jwtVerify, createRemoteJWKSet } = await import('jose');
@@ -920,8 +941,10 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             }
                         } else {
                             console.warn(
-                                '[auth/openid] OIDC_JWKS_URI is not configured; id_token signature is NOT verified. ' +
-                                    'Set OIDC_JWKS_URI to enable signature verification in production.',
+                                '[auth/openid] No JWKS URI is available (neither OIDC_JWKS_URI nor a discovered ' +
+                                    'jwks_uri); id_token signature is NOT verified. Set OIDC_JWKS_URI or configure ' +
+                                    'OIDC_ISSUER so discovery can supply jwks_uri to enable signature verification ' +
+                                    'in production.',
                             );
                             try {
                                 const [, payloadB64] = idToken.split('.');
