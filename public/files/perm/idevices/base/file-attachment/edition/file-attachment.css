@@ -1,0 +1,132 @@
+/**
+ * File attachment iDevice (edition styles)
+ * Released under the GNU AGPL-3.0 License.
+ */
+
+.fileAttachmentForm .fileAttachment-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fileAttachmentForm .fileAttachment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    flex-wrap: wrap;
+    margin: 1em 0;
+}
+
+.fileAttachment-edit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.fileAttachment-edit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75em;
+    padding: 0.75em;
+    margin-bottom: 0.6em;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.015);
+}
+
+.fileAttachment-edit-item--missing {
+    border-color: #c62828;
+    background: rgba(198, 40, 40, 0.05);
+}
+
+.fileAttachment-edit-icon {
+    flex: 0 0 auto;
+}
+
+.fileAttachment-edit-icon .fileAttachment-glyph {
+    width: 36px;
+    height: 44px;
+}
+
+.fileAttachment-edit-icon .fileAttachment-glyph-page {
+    fill: #e9edf2;
+    stroke: #99a3ad;
+    stroke-width: 1.5;
+}
+
+.fileAttachment-edit-icon .fileAttachment-glyph-fold {
+    fill: #c7cfd8;
+}
+
+.fileAttachment-edit-icon .fileAttachment-glyph-label {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    fill: #5a6573;
+}
+
+.fileAttachment-edit-fields {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fileAttachment-edit-filename {
+    margin: 0 0 0.4em 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.fileAttachment-edit-warning {
+    margin: 0 0 0.4em 0;
+    color: #c62828;
+    font-size: 0.9em;
+}
+
+.fileAttachment-edit-fields .property-row {
+    margin-bottom: 0.4em;
+}
+
+.fileAttachment-edit-fields .property-row:last-child {
+    margin-bottom: 0;
+}
+
+.fileAttachment-edit-fields label {
+    display: block;
+    font-size: 0.9em;
+    margin-bottom: 0.15em;
+}
+
+.fileAttachment-edit-fields input,
+.fileAttachment-edit-fields textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fileAttachment-edit-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+}
+
+.fileAttachment-edit-buttons button {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 0.2em 0.35em;
+    line-height: 1;
+}
+
+.fileAttachment-edit-buttons button:hover,
+.fileAttachment-edit-buttons button:focus {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.fileAttachment-edit-empty {
+    font-style: italic;
+    opacity: 0.7;
+}

@@ -368,6 +368,7 @@ window.$exeExport = {
             // 'trueorfalse' added for legacy imports that have empty htmlView.
             const jsonOnlyIdevices = [
                 'casestudy',
+                'file-attachment',
                 'form',
                 'image-gallery',
                 'magnifier',
