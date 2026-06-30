@@ -2,7 +2,8 @@ import { test, expect } from '../fixtures/auth.fixture';
 import {
     waitForAppReady,
     gotoWorkarea,
-    openPreviewPanel,
+    selectFirstPage,
+    addTextIdeviceWithContent,
     getPreviewFrame,
     waitForPreviewContent,
 } from '../helpers/workarea-helpers';
@@ -56,13 +57,20 @@ test.describe('Editor preview is opaque', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await openPreviewPanel(page);
+        // Add real content so the preview has a deterministic, non-empty page to render
+        // (an empty project may produce no <article>). The marker proves the opaque,
+        // Service-Worker-served preview actually rendered the author content.
+        const marker = 'Opaque preview content marker';
+        await selectFirstPage(page);
+        await addTextIdeviceWithContent(page, `<p>${marker}</p>`);
+
         const loaded = await waitForPreviewContent(page);
         expect(loaded).toBe(true);
 
         // Playwright reads frames across origins, so we can confirm the opaque preview is not
-        // a blank frame even though same-origin JS could not.
+        // a blank frame even though same-origin JS could not. The marker must be present.
         const frame = getPreviewFrame(page);
         await expect(frame.locator('body')).not.toBeEmpty();
+        await expect(frame.locator('body')).toContainText(marker);
     });
 });
