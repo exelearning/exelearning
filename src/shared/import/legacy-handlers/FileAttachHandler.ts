@@ -88,7 +88,6 @@ export class FileAttachHandler extends BaseLegacyHandler {
 
         return {
             intro,
-            showIntro: !!intro?.trim(),
             showDescriptions,
             attachments,
         };

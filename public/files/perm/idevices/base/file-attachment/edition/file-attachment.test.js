@@ -180,7 +180,6 @@ describe('file-attachment iDevice edition', () => {
             const data = $exeDevice.save();
             expect(data.ideviceId).toBe('idev-123');
             expect(data).toHaveProperty('intro');
-            expect(data).toHaveProperty('showIntro');
             expect(data).toHaveProperty('showDescriptions');
             expect(Array.isArray(data.attachments)).toBe(true);
             expect(data.attachments[0].url).toBe(asset().url);
@@ -213,7 +212,6 @@ describe('file-attachment iDevice edition', () => {
         it('restores attachments, flags and intro from saved data', () => {
             init({
                 intro: '<p>Read first</p>',
-                showIntro: true,
                 showDescriptions: false,
                 attachments: [
                     asset({ filename: 'one.pdf', title: 'One', description: 'desc one' }),
@@ -221,7 +219,6 @@ describe('file-attachment iDevice edition', () => {
                 ],
             });
 
-            expect(body.querySelector('#fileAttachmentShowIntro').checked).toBe(true);
             expect(body.querySelector('#fileAttachmentShowDescriptions').checked).toBe(false);
 
             const data = $exeDevice.save();
@@ -233,9 +230,16 @@ describe('file-attachment iDevice edition', () => {
             expect(data.attachments[1].filename).toBe('two.png');
         });
 
-        it('leaves showIntro unchecked when there is no intro content', () => {
+        it('expands the instructions panel when there is intro content', () => {
+            init({ intro: '<p>Read first</p>', attachments: [asset()] });
+            const fieldset = body.querySelector('#fileAttachmentIntroFieldset');
+            expect(fieldset.classList.contains('exe-fieldset-closed')).toBe(false);
+        });
+
+        it('keeps the instructions panel collapsed when there is no intro content', () => {
             init({ attachments: [asset()] });
-            expect(body.querySelector('#fileAttachmentShowIntro').checked).toBe(false);
+            const fieldset = body.querySelector('#fileAttachmentIntroFieldset');
+            expect(fieldset.classList.contains('exe-fieldset-closed')).toBe(true);
         });
     });
 

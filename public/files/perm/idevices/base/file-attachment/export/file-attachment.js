@@ -114,7 +114,8 @@ var $fileattachment = {
         const attachments = $fileattachment.getAttachments(data);
         const parts = ['<div class="fileAttachment-IDevice">'];
 
-        if (data.showIntro !== false && data.intro && String(data.intro).trim()) {
+        // Instructions are shown whenever they contain text (no separate toggle).
+        if (data.intro && String(data.intro).trim()) {
             parts.push(`<div class="fileAttachment-intro">${data.intro}</div>`);
         }
 

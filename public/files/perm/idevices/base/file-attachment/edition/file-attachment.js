@@ -40,15 +40,16 @@ var $exeDevice = {
     createForm: function () {
         this.ideviceBody.innerHTML = `
             <div class="fileAttachmentForm">
-                <fieldset class="exe-fieldset fileAttachment-introField">
-                    <legend class="exe-text-legend">
-                        <label class="fileAttachment-toggle">
-                            <input type="checkbox" id="fileAttachmentShowIntro" />
-                            ${_('Show instructions')}
-                        </label>
-                    </legend>
-                    <textarea id="${this.introEditorId}" class="exe-html-editor" aria-label="${_('Instructions')}" rows="4"></textarea>
-                </fieldset>
+                <div class="exe-parent">
+                    <fieldset id="fileAttachmentIntroFieldset" class="exe-advanced exe-fieldset exe-fieldset-closed">
+                        <legend class="exe-text-legend">
+                            <a href="#">${_('Instructions')}</a>
+                        </legend>
+                        <div>
+                            <textarea id="${this.introEditorId}" class="exe-html-editor" aria-label="${_('Instructions')}" rows="4"></textarea>
+                        </div>
+                    </fieldset>
+                </div>
 
                 <fieldset class="exe-fieldset fileAttachment-optionsField">
                     <legend class="exe-text-legend">${_('Options')}</legend>
@@ -82,12 +83,14 @@ var $exeDevice = {
     loadPreviousValues: function () {
         const data = this.idevicePreviousData || {};
 
-        const showIntro = data.showIntro !== false && !!(data.intro && String(data.intro).trim());
-        const showIntroEl = this.ideviceBody.querySelector('#fileAttachmentShowIntro');
-        if (showIntroEl) showIntroEl.checked = showIntro;
-
         const introEl = this.ideviceBody.querySelector(`#${this.introEditorId}`);
         if (introEl) introEl.value = data.intro || '';
+
+        // Expand the (collapsible) instructions panel when it already has content.
+        if (data.intro && String(data.intro).trim()) {
+            const introFieldset = this.ideviceBody.querySelector('#fileAttachmentIntroFieldset');
+            if (introFieldset) introFieldset.classList.remove('exe-fieldset-closed');
+        }
 
         const showDescEl = this.ideviceBody.querySelector('#fileAttachmentShowDescriptions');
         if (showDescEl) showDescEl.checked = data.showDescriptions !== false;
@@ -344,13 +347,11 @@ var $exeDevice = {
      * @returns {Object|false}
      */
     save: function () {
-        const showIntroEl = this.ideviceBody.querySelector('#fileAttachmentShowIntro');
         const showDescEl = this.ideviceBody.querySelector('#fileAttachmentShowDescriptions');
 
         const data = {
             ideviceId: this.ideviceBody.getAttribute('idevice-id'),
             intro: this.getIntro(),
-            showIntro: showIntroEl ? showIntroEl.checked : true,
             showDescriptions: showDescEl ? showDescEl.checked : true,
             attachments: this.collectAttachments(),
         };

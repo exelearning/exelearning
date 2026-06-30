@@ -2698,7 +2698,6 @@ describe('FileAttachHandler', () => {
             const dict = createDomElement(`<dictionary/>`);
             const props = handler.extractProperties(dict);
             expect(props.intro).toBe('');
-            expect(props.showIntro).toBe(false);
             expect(props.showDescriptions).toBe(true);
             expect(props.attachments).toEqual([]);
         });
@@ -2717,7 +2716,6 @@ describe('FileAttachHandler', () => {
             `);
             const props = handler.extractProperties(dict);
             expect(props.intro).toContain('Read me');
-            expect(props.showIntro).toBe(true);
         });
 
         it('should build attachments from fileAttachmentFields with resources/ paths', () => {

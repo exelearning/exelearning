@@ -548,7 +548,6 @@ Source: skeleton based on `public/files/perm/idevices/base/file-attachment/`
   <htmlView/>
   <jsonProperties>{"ideviceId":"20251027202947FILEAT",
     "intro":"&lt;p&gt;Download the materials below.&lt;/p&gt;",
-    "showIntro":true,
     "showDescriptions":true,
     "attachments":[
       {"url":"asset://7f3a1c2e-1111-2222-3333-444455556666.pdf",
@@ -568,7 +567,7 @@ Source: skeleton based on `public/files/perm/idevices/base/file-attachment/`
 </odeComponent>
 ```
 
-The file-attachment iDevice stores all of its state in `jsonProperties`: optional `intro` instructions (with `showIntro`), a `showDescriptions` toggle, and an `attachments` array. Each attachment keeps a stable `asset://<uuid>.<ext>` reference (the Media Library asset is the source of truth) plus a metadata snapshot (`filename`, `mimeType`, `size`) used as a fallback when the live AssetManager is unavailable. The `url` values are rewritten to packaged `content/resources/...` paths on export, and the iDevice renders one accessible download link per attachment from `jsonProperties` at view time (so `htmlView` is empty). Legacy `FileAttachIdevice` / `FileAttachIdeviceInc` / `AttachmentIdevice` import into this type.
+The file-attachment iDevice stores all of its state in `jsonProperties`: optional `intro` instructions (shown only when non-empty), a `showDescriptions` toggle, and an `attachments` array. Each attachment keeps a stable `asset://<uuid>.<ext>` reference (the Media Library asset is the source of truth) plus a metadata snapshot (`filename`, `mimeType`, `size`) used as a fallback when the live AssetManager is unavailable. The `url` values are rewritten to packaged `content/resources/...` paths on export, and the iDevice renders one accessible download link per attachment from `jsonProperties` at view time (so `htmlView` is empty). Legacy `FileAttachIdevice` / `FileAttachIdeviceInc` / `AttachmentIdevice` import into this type.
 
 ---
 

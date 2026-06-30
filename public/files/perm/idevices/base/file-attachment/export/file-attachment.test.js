@@ -149,7 +149,7 @@ describe('file-attachment iDevice export', () => {
             expect(html).not.toContain('Hidden');
         });
 
-        it('renders the intro when showIntro is not false', () => {
+        it('renders the intro when it has text', () => {
             const html = $fa.renderView(
                 { ideviceId: 'x', intro: '<p>Instructions here</p>', attachments: [makeAttachment()] },
                 0,
@@ -159,14 +159,12 @@ describe('file-attachment iDevice export', () => {
             expect(html).toContain('<p>Instructions here</p>');
         });
 
-        it('hides the intro when showIntro is false', () => {
-            const html = $fa.renderView(
-                { ideviceId: 'x', showIntro: false, intro: '<p>Hidden intro</p>', attachments: [makeAttachment()] },
-                0,
-                TEMPLATE,
-            );
-            expect(html).not.toContain('fileAttachment-intro');
-            expect(html).not.toContain('Hidden intro');
+        it('omits the intro when it is empty or whitespace', () => {
+            const empty = $fa.renderView({ ideviceId: 'x', intro: '   ', attachments: [makeAttachment()] }, 0, TEMPLATE);
+            expect(empty).not.toContain('fileAttachment-intro');
+
+            const missing = $fa.renderView({ ideviceId: 'x', attachments: [makeAttachment()] }, 0, TEMPLATE);
+            expect(missing).not.toContain('fileAttachment-intro');
         });
 
         it('renders a safe placeholder for a missing asset instead of a broken link', () => {

@@ -114,7 +114,6 @@ interface ComponentView {
     type: string;
     props: {
         intro?: string;
-        showIntro?: boolean;
         showDescriptions?: boolean;
         attachments?: Array<{ url: string; filename: string; title: string; description: string }>;
     };
@@ -169,7 +168,6 @@ describe('Legacy File Attachment iDevice conversion', () => {
         const { props } = firstComponent(ydoc);
 
         expect(props.intro).toContain('Download the materials below.');
-        expect(props.showIntro).toBe(true);
         expect(props.showDescriptions).toBe(true);
 
         const attachments = props.attachments || [];
