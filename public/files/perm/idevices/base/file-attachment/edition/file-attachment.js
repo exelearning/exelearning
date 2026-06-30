@@ -260,13 +260,18 @@ var $exeDevice = {
                         ? `<p class="fileAttachment-edit-warning">${_('The attached file is missing. Re-add it from the Media Library.')}</p>`
                         : ''
                 }
-                <div class="property-row">
-                    <label for="${titleId}">${_('Title')}:</label>
-                    <input type="text" id="${titleId}" class="fileAttachment-edit-title ideviceTextfield" value="${this.escapeAttr(attachment.title || '')}" />
-                </div>
-                <div class="property-row">
-                    <label for="${descId}">${_('Description')}:</label>
-                    <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${this.escapeHtml(attachment.description || '')}</textarea>
+                <div class="fileAttachment-edit-details fileAttachment-edit-details-closed">
+                    <button type="button" class="fileAttachment-edit-details-toggle" aria-expanded="false">${_('Title and description')}</button>
+                    <div class="fileAttachment-edit-details-body">
+                        <div class="property-row">
+                            <label for="${titleId}">${_('Title')}:</label>
+                            <input type="text" id="${titleId}" class="fileAttachment-edit-title ideviceTextfield" value="${this.escapeAttr(attachment.title || '')}" />
+                        </div>
+                        <div class="property-row">
+                            <label for="${descId}">${_('Description')}:</label>
+                            <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${this.escapeHtml(attachment.description || '')}</textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="fileAttachment-edit-buttons">
@@ -287,6 +292,17 @@ var $exeDevice = {
      * @param {HTMLElement} item
      */
     addRowEvents: function (item) {
+        // Collapsible title/description section (collapsed by default, like the
+        // optional feedback section in the text iDevice).
+        const detailsToggle = item.querySelector('.fileAttachment-edit-details-toggle');
+        if (detailsToggle) {
+            detailsToggle.addEventListener('click', () => {
+                const details = item.querySelector('.fileAttachment-edit-details');
+                const closed = details.classList.toggle('fileAttachment-edit-details-closed');
+                detailsToggle.setAttribute('aria-expanded', String(!closed));
+            });
+        }
+
         const removeBtn = item.querySelector('.fileAttachment-edit-remove');
         if (removeBtn) {
             removeBtn.addEventListener('click', () => {

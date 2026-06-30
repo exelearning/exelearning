@@ -102,6 +102,37 @@ describe('file-attachment iDevice edition', () => {
         });
     });
 
+    describe('collapsible title/description', () => {
+        it('starts collapsed and toggles open/closed', () => {
+            init();
+            $exeDevice.addAttachment(asset());
+            const details = body.querySelector('.fileAttachment-edit-details');
+            const toggle = body.querySelector('.fileAttachment-edit-details-toggle');
+
+            expect(details.classList.contains('fileAttachment-edit-details-closed')).toBe(true);
+            expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+            toggle.click();
+            expect(details.classList.contains('fileAttachment-edit-details-closed')).toBe(false);
+            expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+            toggle.click();
+            expect(details.classList.contains('fileAttachment-edit-details-closed')).toBe(true);
+            expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        });
+
+        it('still saves title/description edited while collapsed', () => {
+            init();
+            $exeDevice.addAttachment(asset());
+            // Fields remain in the DOM even while visually collapsed.
+            body.querySelector('.fileAttachment-edit-title').value = 'Worksheet';
+            body.querySelector('.fileAttachment-edit-description').value = 'Do this first';
+            const data = $exeDevice.save();
+            expect(data.attachments[0].title).toBe('Worksheet');
+            expect(data.attachments[0].description).toBe('Do this first');
+        });
+    });
+
     describe('removing and reordering', () => {
         it('removes a row and restores the empty state when the last is removed', () => {
             init();

@@ -113,17 +113,79 @@
 }
 
 .fileAttachment-edit-buttons button {
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background: #fff;
-    border-radius: 4px;
+    border: none;
+    background: none;
+    color: var(--icon-gray, #6b7280);
+    border-radius: 50%;
     cursor: pointer;
-    padding: 0.2em 0.35em;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     line-height: 1;
+    opacity: 0.8;
+}
+
+.fileAttachment-edit-buttons button i {
+    font-family: var(--icons-ff);
+    font-style: normal;
+    font-size: 20px;
+    vertical-align: middle;
 }
 
 .fileAttachment-edit-buttons button:hover,
 .fileAttachment-edit-buttons button:focus {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.06);
+    opacity: 1;
+}
+
+.fileAttachment-edit-buttons button.fileAttachment-edit-remove:hover {
+    color: var(--remove, #c62828);
+}
+
+/* Collapsible per-attachment title/description (mirrors the text iDevice feedback). */
+.fileAttachment-edit-details {
+    margin-top: 0.4em;
+}
+
+.fileAttachment-edit-details-toggle {
+    position: relative;
+    display: inline-block;
+    border: 1px solid var(--gray-200, rgba(0, 0, 0, 0.12));
+    border-radius: var(--radius, 6px);
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.4em 2.4em 0.4em 0.8em;
+    text-align: left;
+}
+
+.fileAttachment-edit-details-toggle:hover,
+.fileAttachment-edit-details-toggle:focus {
+    background: var(--brand-primary-100, rgba(0, 0, 0, 0.04));
+}
+
+.fileAttachment-edit-details-toggle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0.6em;
+    width: 16px;
+    height: 16px;
+    transform: translateY(-50%);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 16px;
+    /* Chevron, matching the collapsible fieldsets used elsewhere in the editor. */
+    background-image: url("data:image/svg+xml;charset=UTF-8,<svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M7 15L12 20L17 15M7 9L12 4L17 9' stroke='%230BA1A1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+.fileAttachment-edit-details-body {
+    margin-top: 0.6em;
+}
+
+.fileAttachment-edit-details-closed .fileAttachment-edit-details-body {
+    display: none;
 }
 
 .fileAttachment-edit-empty {
