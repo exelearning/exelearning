@@ -31,7 +31,6 @@ Example structure:
   <description>Example style for eXe.
 
 iDevice icons by…</description>
-  <downloadable>1</downloadable>
 </theme>
 ```
 
@@ -43,9 +42,6 @@ iDevice icons by…</description>
 - **`compatibility`**: eXeLearning version the style is compatible with.
 - **`author`**, **`license`**, **`license-url`**: Author and licensing information.
 - **`description`**: Style description (may include line breaks).
-- **`downloadable`**:  
-  - `1` → the style can be imported/downloaded from the interface.  
-  - `0` → the style cannot be downloaded or imported from the application.
 
 ---
 
@@ -143,8 +139,16 @@ Common functionality found in built-in eXe styles:
 - Toggle menu visibility.
 - Remember menu open/closed state between pages.
 - Show/hide the search bar.
-- Custom button to enable/disable the **Teacher mode**:
+- **Teacher mode** visibility. Content marked *teacher only* is **hidden by default** in
+  exports. The self-serve toggle button is **opt-in**: it only appears when the page is opened
+  with `?exe-teacher=1` (alias `?teacher-mode=1`, or the legacy `?exe-teacher-toggler=1`). The
+  toggle is OFF by default — the viewer activates it to add the `mode-teacher` class to
+  `<html>` and reveal teacher content (its state is remembered in `localStorage`). Without the
+  parameter there is no toggle and teacher content stays hidden. eXeLearning's own preview
+  loads with `?exe-teacher=1`, so the toggle is available there. See
+  [Teacher Mode in embedding.md](./embedding.md#teacher-mode).
   ```js
+  // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();
   ```
 

@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Nuovo file</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crea un nuovo file senza salvare il progetto</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Salvataggio del progetto...</target>
@@ -4528,10 +4524,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Non puoi aggiungere un iDevice nella pagina delle Proprietà</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema con l'aggiunta di iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml non trovato nello ZIP</target>
       </trans-unit>
-      <trans-unit id="i1jojwp" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Questo stile non può essere scaricato</target>
-      </trans-unit>
       <trans-unit id="783er8y" resname="Style already exists">
         <source>Style already exists</source>
         <target>Lo stile esiste già</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="09m6xzz" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Verranno reindirizzati automaticamente alla pagina superiore.</target>
-      </trans-unit>
-      <trans-unit id="43fshpx" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Le preferenze verranno applicate dopo aver aggiornato la pagina.</target>
-      </trans-unit>
-      <trans-unit id="erpvvs8" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Le modifiche richiedono il ricaricamento della pagina per avere effetto. Scarica prima il progetto per non perdere il lavoro, poi ricarica la pagina.</target>
       </trans-unit>
       <trans-unit id="enfs0qn" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15356,6 +15336,170 @@
       <trans-unit id="018wjlh" resname="Please render the circuit preview before saving.">
         <source>Please render the circuit preview before saving.</source>
         <target>~Genera l'anteprima del circuito prima di salvare</target>
+      </trans-unit>
+      <trans-unit id="7yld477" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Screenshot</target>
+      </trans-unit>
+      <trans-unit id="wm6h99r" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Anteprima dello screenshot del progetto corrente</target>
+      </trans-unit>
+      <trans-unit id="rhoia8j" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Nessuno screenshot ancora. Verrà generato automaticamente al salvataggio o all'esportazione.</target>
+      </trans-unit>
+      <trans-unit id="81nz9k8" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Carica immagine personalizzata</target>
+      </trans-unit>
+      <trans-unit id="a1op1gs" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Lo screenshot deve essere inferiore a 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="silaac4" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Immagine non valida</target>
+      </trans-unit>
+      <trans-unit id="9lt1r78" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~L'immagine non soddisfa i requisiti minimi: rapporto di aspetto 16:9 e almeno 600 pixel di larghezza.</target>
+      </trans-unit>
+      <trans-unit id="ytq83l5" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Genera dal contenuto</target>
+      </trans-unit>
+      <trans-unit id="81g6cd4" resname="Not available">
+        <source>Not available</source>
+        <target>~Non disponibile</target>
+      </trans-unit>
+      <trans-unit id="avb7s0g" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~La generazione di screenshot non è disponibile.</target>
+      </trans-unit>
+      <trans-unit id="96pu2jt" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Generazione fallita</target>
+      </trans-unit>
+      <trans-unit id="j750z0w" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Impossibile generare lo screenshot dal contenuto. Prova a caricare un'immagine.</target>
+      </trans-unit>
+      <trans-unit id="19drqr7" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Sostituisci screenshot</target>
+      </trans-unit>
+      <trans-unit id="uq99owm" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Questa operazione eliminerà l'immagine corrente. Vuoi continuare?</target>
+      </trans-unit>
+      <trans-unit id="zgr4mxx" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Elimina screenshot</target>
+      </trans-unit>
+      <trans-unit id="uhoxtlx" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Eliminare l'immagine corrente? Questa azione non può essere annullata.</target>
+      </trans-unit>
+      <trans-unit id="92x24yo" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Raccomandazioni</target>
+      </trans-unit>
+      <trans-unit id="y7snk3m" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Usa un'immagine 16:9 (si consigliano 1280×720 px) che rappresenti chiaramente il contenuto principale della risorsa didattica. Evita disordine e testo piccolo, e garantisci un buon contrasto per la leggibilità a dimensioni ridotte.</target>
+      </trans-unit>
+      <trans-unit id="yo1xz25" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~L'immagine sarà utilizzata come anteprima di questa risorsa didattica su diverse piattaforme.</target>
+      </trans-unit>
+      <trans-unit id="1lt2rkz" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Molecola 3D</target>
+      </trans-unit>
+      <trans-unit id="ban05bn" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molecole 3D</target>
+      </trans-unit>
+      <trans-unit id="kcdhukl" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Largh. max. (opzionale)</target>
+      </trans-unit>
+      <trans-unit id="zomf6jx" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Alt. max. (opzionale)</target>
+      </trans-unit>
+      <trans-unit id="umky8mh" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~es. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="sa0c2r8" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~La largh. max. deve essere maggiore di 0 e usare px, em, rem o % (es. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="qkh1mdb" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~L'alt. max. deve essere maggiore di 0 e usare px, em, rem o % (es. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="cajeqsh" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ci dispiace, è sbagliato... La risposta corretta è:</target>
+      </trans-unit>
+      <trans-unit id="rnv1pyk" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stile installato</target>
+      </trans-unit>
+      <trans-unit id="a3fcty0" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Lo stile è stato installato correttamente.</target>
+      </trans-unit>
+      <trans-unit id="qq6g5pb" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Modifica dell'iDevice in corso. Le altre azioni sono disabilitate finché non salvi o annulli le modifiche.</target>
+      </trans-unit>
+      <trans-unit id="gsze0ih" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Hai terminato di modificare l'iDevice.</target>
+      </trans-unit>
+      <trans-unit id="59h7ms4" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Salva o annulla l'iDevice aperto prima di salvare il progetto.</target>
+      </trans-unit>
+      <trans-unit id="iy9trt8" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Tutte le modifiche collaborative sono state salvate.</target>
+      </trans-unit>
+      <trans-unit id="yn11qkw" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Le modifiche collaborative vengono condivise in tempo reale e verranno salvate automaticamente.</target>
+      </trans-unit>
+      <trans-unit id="28zbrst" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Salvataggio delle modifiche collaborative...</target>
+      </trans-unit>
+      <trans-unit id="916efx6" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~Il salvataggio automatico non è riuscito. Fare clic su Salva prima di uscire.</target>
+      </trans-unit>
+      <trans-unit id="7602rj1" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Le modifiche alla lingua potrebbero richiedere il ricaricamento o la riapertura di eXeLearning per aggiornare l'intera interfaccia.</target>
+      </trans-unit>
+      <trans-unit id="h02k6zx" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~La preferenza di lingua è stata salvata. Alcuni testi dell'interfaccia potrebbero non aggiornarsi fino al ricaricamento o alla riapertura di eXeLearning. Salva o scarica il tuo progetto prima di ricaricare o chiudere l'app per evitare di perdere le modifiche.</target>
+      </trans-unit>
+      <trans-unit id="3vqawvm" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Vuoi salvare le modifiche prima di creare un nuovo file?</target>
+      </trans-unit>
+      <trans-unit id="u2vcq3s" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Non salvare</target>
+      </trans-unit>
+      <trans-unit id="awsyyyk" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Alcune modifiche collaborative non sono ancora state salvate. Fai clic su Salva prima di uscire per evitare di perderle.</target>
       </trans-unit>
     </body>
   </file>

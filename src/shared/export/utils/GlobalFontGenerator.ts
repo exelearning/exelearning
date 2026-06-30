@@ -118,6 +118,18 @@ ${FONT_SELECTORS} {
 }
 `;
 
+    // Keep the license footer (#packageLicense) off the author-selected global
+    // font. The Creative Commons license is a legal element and a tall handwriting
+    // font (e.g. Playwrite ES) clips its text. It stays on the theme's default
+    // font via --exe-license-font, falling back to a neutral, legible stack.
+    // This is theme-agnostic: every theme inherits it through preview and export.
+    css += `
+#packageLicense,
+#packageLicense * {
+    font-family: var(--exe-license-font, Arial, Verdana, Helvetica, sans-serif) !important;
+}
+`;
+
     if (fontConfig.attribution) {
         css += `/* ${fontConfig.attribution} */\n`;
     }

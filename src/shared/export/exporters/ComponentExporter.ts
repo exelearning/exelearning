@@ -276,9 +276,49 @@ export class ComponentExporter extends BaseExporter {
         xml += `        <htmlView><![CDATA[${this.escapeCdata(htmlContent)}]]></htmlView>\n`;
         xml += `        <jsonProperties><![CDATA[${this.escapeCdata(propsJson)}]]></jsonProperties>\n`;
         xml += `        <odeComponentsOrder>${comp.order || 0}</odeComponentsOrder>\n`;
-        xml += `        <odeComponentsProperties></odeComponentsProperties>\n`;
+        xml += `        <odeComponentsProperties>\n`;
+        xml += this.generateComponentPropertiesXml(comp);
+        xml += `        </odeComponentsProperties>\n`;
         xml += '      </odeComponent>\n';
         return xml;
+    }
+
+    /**
+     * Generate the <odeComponentsProperty> entries for an iDevice's structure
+     * properties (visibility, teacherOnly, cssClass).
+     *
+     * Mirrors OdeXmlGenerator.generateOdeComponentXml() so a single-block or
+     * single-iDevice export keeps the same component metadata as a full-page
+     * ELPX export (issue #1991). Previously this block was emitted empty, so
+     * "Visible in export", "Teacher only" and custom CSS classes were dropped
+     * when a .block/.idevice was exported and re-imported.
+     *
+     * When a component has no structureProperties we still emit visibility=true,
+     * matching COMPONENT_PROPERTY_DEFAULTS applied on import.
+     *
+     * @param comp - Component data (structureProperties carry the values)
+     */
+    private generateComponentPropertiesXml(comp: ExportComponent): string {
+        const entry = (key: string, value: string): string =>
+            `          <odeComponentsProperty>\n` +
+            `            <key>${this.escapeXml(key)}</key>\n` +
+            `            <value>${this.escapeXml(value)}</value>\n` +
+            `          </odeComponentsProperty>\n`;
+
+        const props = comp.structureProperties;
+        if (props) {
+            let xml = '';
+            const componentPropKeys = ['visibility', 'teacherOnly', 'cssClass'] as const;
+            for (const key of componentPropKeys) {
+                if (props[key] !== undefined) {
+                    xml += entry(key, String(props[key]));
+                }
+            }
+            return xml;
+        }
+
+        // Default visibility if no structure properties (matches full-page export)
+        return entry('visibility', 'true');
     }
 
     /**
