@@ -1,0 +1,139 @@
+/* ---------------------------------------------------------------------------
+ * Experimental: focused full-workarea iDevice edit mode (Refs #1811, #1411)
+ *
+ * Activated by FocusedEditMode (public/app/workarea/interface/focusedEditMode.js),
+ * which adds `body.exe-idevice-focus-editing` and marks the edited node with
+ * `.idevice-node--focused-editing` while an iDevice is in edition.
+ *
+ * Goal: the editor fills the content workarea, the outer workarea stops
+ * scrolling, the iDevice action toolbar stays pinned, and only the editor body
+ * scrolls. All rules are scoped to the body class so the experiment is fully
+ * reversible and never affects normal editing.
+ * ------------------------------------------------------------------------- */
+
+body.exe-idevice-focus-editing {
+    /* Lock the outer workarea scroll; the focused box becomes the viewport. */
+    #node-content-container {
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Hide the bottom quick-toolbar to remove an unrelated save/insert surface. */
+    #idevices-bottom {
+        display: none !important;
+    }
+
+    /* The dev/beta warning banner overlays the top of the content area
+     * (z-index 999). In focused mode the iDevice action toolbar (Save / Discard
+     * / Delete) is pinned to that same top region, so narrow the banner and keep
+     * it left-aligned: this leaves the right-aligned actions visible and
+     * clickable instead of being covered by the full-width banner. */
+    #eXeBetaWarning {
+        width: auto;
+        max-width: calc(100% - 260px);
+        margin-right: auto;
+    }
+
+    /* The block that contains the edited iDevice fills the workarea. It is a
+     * direct child of #node-content (static), so inset:0 resolves to the
+     * positioned #node-content-container regardless of how deep the iDevice is.
+     *
+     * The opaque overlay covers the sibling blocks visually, so we intentionally
+     * do NOT `display:none` them: keeping them in the layout means tooling and
+     * assistive tech that query existing nodes (e.g. "the first text iDevice")
+     * still find them, while the user only sees the focused editor. */
+    #node-content > .box:has(.idevice-node--focused-editing) {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        margin: 0;
+        padding: 0;
+        border: 0 !important;
+        min-height: 0 !important;
+        background: var(--white, #fff);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        /* The block (section) header is not the iDevice being edited — hide it
+         * so the focused surface shows only the iDevice editor. Block-level
+         * actions (incl. the icon) are edited outside iDevice edition mode. */
+        > .box-head {
+            display: none;
+        }
+
+        > .box-content {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    }
+
+    .idevice-node--focused-editing {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        margin: 0 !important;
+        padding: var(--margin-m) !important;
+        box-shadow: none !important;
+
+        /* Toolbar stays at the top, outside the scrolling body. `sticky` is a
+         * belt-and-braces guard in case markup nests it inside the scroller. */
+        > .idevice_actions {
+            flex: 0 0 auto;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--gray-background, #f6f8fa);
+            border-radius: var(--radius, 8px);
+        }
+
+        /* Only the editor body scrolls. */
+        > .idevice_body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        /* Give TinyMCE more vertical room without touching the shared editor
+         * config or relying on a fragile percentage-height chain. The body
+         * still scrolls if content exceeds the available space. */
+        .idevice_body .tox-tinymce {
+            min-height: clamp(300px, 55vh, 640px);
+        }
+    }
+
+    /* Visible + accessible "disabled" affordance for global header controls.
+     * We deliberately do NOT set `pointer-events: none`: the click must still
+     * reach the existing checkOpenIdevice() guard (which explains, via an alert,
+     * that the open iDevice must be saved/discarded first) — the same behaviour
+     * as outside focus mode. Blocking pointer events would also make the
+     * controls unactionable for tooling. This is a visual + a11y cue only. */
+    .exe-disabled-during-focus {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Narrow viewport: a wrapped sticky toolbar can eat too much height, so let
+     * it scroll with the body on small screens. */
+    @media (max-width: 767.98px) {
+        .idevice-node--focused-editing > .idevice_actions {
+            position: static;
+        }
+    }
+}
+
+/* Defensive: when TinyMCE's own fullscreen plugin is active it takes over the
+ * viewport with a fixed overlay. Suspend the focus layout so the two don't
+ * fight; focus styles resume automatically when fullscreen is closed. */
+body.exe-idevice-focus-editing.tox-fullscreen {
+    #node-content-container {
+        overflow: auto;
+    }
+    #node-content > .box:has(.idevice-node--focused-editing) {
+        position: static;
+    }
+}

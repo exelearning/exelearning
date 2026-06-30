@@ -871,7 +871,7 @@ describe('PreviewPanelManager', () => {
 
       // Should derive base path from pathname and construct correct URL
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -897,7 +897,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/app/viewer/index.html',
+        'https://example.com/app/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -922,7 +922,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'http://localhost:8080/viewer/index.html',
+        'http://localhost:8080/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -948,7 +948,7 @@ describe('PreviewPanelManager', () => {
 
       // Should NOT produce double slashes
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -1322,6 +1322,8 @@ describe('PreviewPanelManager', () => {
 
       // happy-dom normalizes URLs, so check for the path
       expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
+      // The authoring preview reveals Teacher Mode content by default.
+      expect(mockElements['preview-iframe'].src).toContain('exe-teacher=1');
     });
 
     it('should force reload when src is already viewer URL', async () => {

@@ -1100,10 +1100,24 @@ class SaveManager {
    * @param {Object} options - Save options
    * @param {boolean} options.showProgress - Show progress modal (default: true)
    * @param {boolean} options.silent - Silent save without notifications (default: false)
+   * @param {string} [options.reason] - Why the save was triggered. The
+   *   collaborative autosave coordinator passes 'collaborative-autosave' so this
+   *   path can tell apart an explicit user save from an automatic one. Any other
+   *   value (including the default) is treated as a manual/explicit save.
    * @returns {Promise<{success: boolean, message?: string, error?: string}>}
    */
   async save(options = {}) {
-    const { showProgress = true, silent = false } = options;
+    const { showProgress = true, silent = false, reason = null } = options;
+
+    // A manual/explicit save supersedes any queued collaborative autosave, so
+    // cancel its pending idle timer. The autosave path itself (reason
+    // 'collaborative-autosave') must not cancel — that would be self-defeating.
+    if (reason !== 'collaborative-autosave') {
+      const autosave = this.bridge && this.bridge.collaborativeAutosave;
+      if (autosave && typeof autosave.cancel === 'function') {
+        autosave.cancel();
+      }
+    }
 
     // Static mode: Show toast and return success (Yjs auto-saves to IndexedDB)
     if (this.isStaticMode()) {

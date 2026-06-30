@@ -466,7 +466,9 @@ export class FileSystemAssetHandler implements AssetHandler {
                         themeName = nameMatch[1].trim();
                     }
 
-                    // Extract downloadable flag
+                    // Extract downloadable flag (informational/diagnostic only since
+                    // issue #1893: styles embedded in an opened/imported .elpx are always
+                    // available, so this value must NOT gate theme extraction or export).
                     const downloadableMatch = configXml.match(/<downloadable>(\d)<\/downloadable>/);
                     if (downloadableMatch) {
                         downloadable = downloadableMatch[1] === '1';

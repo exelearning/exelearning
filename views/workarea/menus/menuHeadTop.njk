@@ -37,6 +37,12 @@
                 <span>{{ 'Finish' | trans }}</span>
             </button>
             {% endif %}
+            {# Collaborative autosave notice (issue #1592): only shown, via JS, in
+               online collaborative sessions to clarify that live shared changes
+               are autosaved, and to warn clearly if autosave fails. #}
+            <div id="exe-collab-save-status" class="collab-save-status exe-online d-none" role="status" aria-live="polite">
+                <span class="content"></span>
+            </div>
             <div id="exe-last-edition" class="btn">
                 <span class="content"></span>
             </div>

@@ -6,6 +6,25 @@
     padding: 0;
 }
 
+// Edit-title button: invisible by default, revealed on hover/focus-within.
+// Kept in the flex flow so the container's hit-area always includes the button
+// space — hovering where the pencil will appear also triggers the reveal.
+.content-editable-title {
+    .btn-edit-title {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    &:hover,
+    &:focus-within {
+        .btn-edit-title {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
+}
+
 // Ensure translated text spans inside buttons inherit the button's own color
 // (e.g., white for .btn-primary, white for .btn-danger) instead of var(--text).
 // Static mode wraps {{ 'Text' | trans }} in <span data-i18n="Text"> for runtime translation.

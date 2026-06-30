@@ -3953,10 +3953,6 @@
         <source>New file</source>
         <target>Fișier nou</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Creează fișier nou fără a salva</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Se salvează proiectul...</target>
@@ -4524,10 +4520,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Nu puteți adăuga un iDevice pe pagina principală</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema la adăugarea iDevice-ului</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -13377,10 +13369,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml nu a fost găsit în ZIP</target>
       </trans-unit>
-      <trans-unit id="cu49yos" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Acest stil nu poate fi descărcat</target>
-      </trans-unit>
       <trans-unit id="x7kouct" resname="Style already exists">
         <source>Style already exists</source>
         <target>Stilul deja există</target>
@@ -13460,14 +13448,6 @@
       <trans-unit id="ujy8vwh" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Vor fi redirecționați automat către pagina de nivel superior.</target>
-      </trans-unit>
-      <trans-unit id="vtiv805" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Preferințele vor fi aplicate după reîmprospătarea paginii.</target>
-      </trans-unit>
-      <trans-unit id="rbvvztp" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Modificările necesită o reîncărcare a paginii pentru a intra în vigoare. Vă rugăm să descărcați mai întâi proiectul pentru a evita pierderea lucrării, apoi reîncărcați pagina.</target>
       </trans-unit>
       <trans-unit id="ho5a2tz" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -15356,6 +15336,170 @@
       <trans-unit id="h6qk5u0" resname="Please render the circuit preview before saving.">
         <source>Please render the circuit preview before saving.</source>
         <target>~Generează previzualizarea circuitului înainte de salvare</target>
+      </trans-unit>
+      <trans-unit id="67oeim1" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captură de ecran</target>
+      </trans-unit>
+      <trans-unit id="egfkd32" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Previzualizare captură de ecran a proiectului curent</target>
+      </trans-unit>
+      <trans-unit id="7gfncu2" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Nu există încă o captură de ecran. Va fi generată automat la salvare sau export.</target>
+      </trans-unit>
+      <trans-unit id="j6qe17o" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Încarcă imagine personalizată</target>
+      </trans-unit>
+      <trans-unit id="du7886u" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Captura de ecran trebuie să fie mai mică de 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="9ghh8cs" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imagine nevalidă</target>
+      </trans-unit>
+      <trans-unit id="fjtviff" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~Imaginea nu îndeplinește cerințele minime: raport de aspect 16:9 și cel puțin 600 de pixeli lățime.</target>
+      </trans-unit>
+      <trans-unit id="jhvmhtj" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Generează din conținut</target>
+      </trans-unit>
+      <trans-unit id="32qsnol" resname="Not available">
+        <source>Not available</source>
+        <target>~Indisponibil</target>
+      </trans-unit>
+      <trans-unit id="6x5jja9" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~Generarea capturii de ecran nu este disponibilă.</target>
+      </trans-unit>
+      <trans-unit id="pa6zoby" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Generare eșuată</target>
+      </trans-unit>
+      <trans-unit id="u8lue0h" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Nu s-a putut genera captura din conținut. Încearcă să încarci o imagine în schimb.</target>
+      </trans-unit>
+      <trans-unit id="8c2d6qj" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Înlocuiește captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="3eqbaf1" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Aceasta va șterge imaginea curentă. Dorești să continui?</target>
+      </trans-unit>
+      <trans-unit id="qziik0s" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Șterge captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="72zdvo8" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Ștergi imaginea curentă? Această acțiune nu poate fi anulată.</target>
+      </trans-unit>
+      <trans-unit id="pxch4ab" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomandări</target>
+      </trans-unit>
+      <trans-unit id="76w0thd" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Folosește o imagine 16:9 (se recomandă 1280×720 px) care să reprezinte clar conținutul principal al resursei de învățare. Evită aglomerarea și textul mic și asigură un contrast bun pentru lizibilitate la dimensiuni mici.</target>
+      </trans-unit>
+      <trans-unit id="bt3odta" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~Imaginea va fi folosită ca previzualizare a acestei resurse educaționale pe diferite platforme.</target>
+      </trans-unit>
+      <trans-unit id="3is1mdt" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Moleculă 3D</target>
+      </trans-unit>
+      <trans-unit id="riup14d" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molecule 3D</target>
+      </trans-unit>
+      <trans-unit id="4bv02yj" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Lăț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="qohgl6u" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Înălț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="uyzr3cq" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="7icorgp" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~Lățimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="gxoq8hj" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~Înălțimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="fbslxqe" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ne pare rău, este incorect... Răspunsul corect este:</target>
+      </trans-unit>
+      <trans-unit id="wtov2pg" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stil instalat</target>
+      </trans-unit>
+      <trans-unit id="safz1qd" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Stilul a fost instalat cu succes.</target>
+      </trans-unit>
+      <trans-unit id="3xzv34q" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Se editează iDevice-ul. Alte acțiuni sunt dezactivate până când salvați sau renunțați.</target>
+      </trans-unit>
+      <trans-unit id="dgzirxb" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Ați terminat de editat iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="wc9vz6h" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
+      </trans-unit>
+      <trans-unit id="xmec942" resname="All collaborative changes are saved.">
+        <source>All collaborative changes are saved.</source>
+        <target>~Toate modificările colaborative au fost salvate.</target>
+      </trans-unit>
+      <trans-unit id="ga8h4a1" resname="Collaborative changes are shared live and will be saved automatically.">
+        <source>Collaborative changes are shared live and will be saved automatically.</source>
+        <target>~Modificările colaborative sunt partajate în timp real și vor fi salvate automat.</target>
+      </trans-unit>
+      <trans-unit id="c33jtnl" resname="Saving collaborative changes...">
+        <source>Saving collaborative changes...</source>
+        <target>~Se salvează modificările colaborative...</target>
+      </trans-unit>
+      <trans-unit id="xsfwqoo" resname="Autosave failed. Please click Save before leaving.">
+        <source>Autosave failed. Please click Save before leaving.</source>
+        <target>~Salvarea automată a eșuat. Faceți clic pe Salvare înainte de a ieși.</target>
+      </trans-unit>
+      <trans-unit id="gowl21n" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Modificările de limbă pot necesita reîncărcarea sau redeschiderea eXeLearning pentru a actualiza întreaga interfață.</target>
+      </trans-unit>
+      <trans-unit id="d794hcn" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Preferința de limbă a fost salvată. Este posibil ca unele texte ale interfeței să nu se actualizeze până când nu reîncărcați sau redeschideți eXeLearning. Salvați sau descărcați proiectul înainte de a reîncărca sau închide aplicația pentru a evita pierderea modificărilor.</target>
+      </trans-unit>
+      <trans-unit id="95dflc0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Doriți să salvați modificările înainte de a crea un fișier nou?</target>
+      </trans-unit>
+      <trans-unit id="y9c5p4t" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Nu salva</target>
+      </trans-unit>
+      <trans-unit id="55qb83u" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Unele modificări colaborative nu au fost încă salvate. Faceți clic pe Salvare înainte de a ieși pentru a evita pierderea lor.</target>
       </trans-unit>
     </body>
   </file>

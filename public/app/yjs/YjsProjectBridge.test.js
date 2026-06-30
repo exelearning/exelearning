@@ -1201,7 +1201,10 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
-    it('should skip theme import when theme is marked as non-downloadable', async () => {
+    it('should still import theme when marked as non-downloadable', async () => {
+      // Regression for issue #1893: a <downloadable>0</downloadable> flag in the embedded
+      // theme config must NOT block importing the style from an opened .elpx. The import
+      // modal is shown like for any other embedded style instead of falling back.
       const mockSelectTheme = mock(() => Promise.resolve());
       const mockShowModal = mock(() => undefined);
 
@@ -1235,9 +1238,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
-      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
-      expect(mockShowModal).not.toHaveBeenCalled();
+      // The style is offered for import (modal shown); selectTheme is left to the modal flow.
+      expect(mockShowModal).toHaveBeenCalledWith('blocked-theme');
+      expect(mockSelectTheme).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
@@ -5284,7 +5287,9 @@ describe('YjsProjectBridge', () => {
         expect(result.displayName).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
-        expect(result.downloadable).toBe('0');
+        // Issue #1893: styles imported from a .elpx are always available, so the legacy
+        // <downloadable>0</downloadable> flag is normalized to '1' instead of being kept.
+        expect(result.downloadable).toBe('1');
       });
 
       it('uses default values when config.xml is missing', () => {
@@ -5875,6 +5880,85 @@ describe('YjsProjectBridge', () => {
 
         // Should not throw even with null dependencies
         await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+    });
+
+    describe('_showThemeImportModal', () => {
+      let mockConfirmShow;
+      let mockCreateToast;
+      let capturedConfirmExec;
+      let capturedCancelExec;
+
+      beforeEach(() => {
+        capturedConfirmExec = null;
+        capturedCancelExec = null;
+        mockConfirmShow = mock(({ confirmExec, cancelExec }) => {
+          capturedConfirmExec = confirmExec;
+          capturedCancelExec = cancelExec;
+        });
+        mockCreateToast = mock(() => {});
+
+        global.eXeLearning.app.modals = {
+          confirm: { show: mockConfirmShow },
+        };
+        global.eXeLearning.app.toasts = {
+          createToast: mockCreateToast,
+        };
+        global.eXeLearning.app.themes.selectTheme = mock(() => Promise.resolve());
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        bridge._extractThemeFilesFromZip = mock(() => ({
+          files: { 'style.css': new Uint8Array([1, 2, 3]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'test-theme',
+          type: 'user',
+          displayName: 'Test Theme',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._copyThemeToYjs = mock(() => Promise.resolve());
+      });
+
+      it('shows confirm modal', () => {
+        bridge._showThemeImportModal('test-theme');
+        expect(mockConfirmShow).toHaveBeenCalledTimes(1);
+        const args = mockConfirmShow.mock.calls[0][0];
+        expect(args.title).toBe('Import style');
+      });
+
+      it('shows success toast after successful installation', async () => {
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.icon).toBe('task_alt');
+        expect(toastData.error).toBeFalsy();
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('shows error toast when installation fails', async () => {
+        bridge._extractThemeFilesFromZip = mock(() => null);
+
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.error).toBe(true);
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('cleans up pending references after cancel', () => {
+        bridge._pendingThemeFile = 'file';
+        bridge._pendingThemeZip = 'zip';
+
+        bridge._showThemeImportModal('test-theme');
+        capturedCancelExec();
+
+        expect(bridge._pendingThemeFile).toBeNull();
+        expect(bridge._pendingThemeZip).toBeNull();
       });
     });
   });
@@ -7453,6 +7537,121 @@ describe('YjsProjectBridge', () => {
       expect(window.html2canvas).toHaveBeenCalled();
       expect(result).toBe('data:image/png;base64,result');
       document.createElement = originalCreateElement;
+    });
+  });
+
+  describe('collaborative autosave integration (issue #1592)', () => {
+    class MockCollaborativeAutosaveManager {
+      constructor(bridgeRef, options) {
+        this.bridgeRef = bridgeRef;
+        this.options = options || {};
+        this.started = false;
+        this.destroyed = false;
+      }
+      start() {
+        this.started = true;
+      }
+      cancel() {}
+      destroy() {
+        this.destroyed = true;
+      }
+    }
+
+    beforeEach(async () => {
+      global.window.CollaborativeAutosaveManager = MockCollaborativeAutosaveManager;
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('creates and starts a collaborative autosave manager on enableAutoSync', () => {
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave).toBeInstanceOf(MockCollaborativeAutosaveManager);
+      expect(bridge.collaborativeAutosave.started).toBe(true);
+      expect(bridge.collaborativeAutosave.bridgeRef).toBe(bridge);
+    });
+
+    it('does not throw when CollaborativeAutosaveManager is unavailable', () => {
+      delete global.window.CollaborativeAutosaveManager;
+      expect(() => bridge.enableAutoSync()).not.toThrow();
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('passes the idle delay override from window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__', () => {
+      global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 1500;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBe(1500);
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+    });
+
+    it('uses the default idle delay when no override is set', () => {
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBeUndefined();
+    });
+
+    it('destroys and clears the autosave manager on disconnect', async () => {
+      bridge.enableAutoSync();
+      const manager = bridge.collaborativeAutosave;
+      await bridge.disconnect();
+      expect(manager.destroyed).toBe(true);
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('routes autosave phase changes to the collaborative status notice', () => {
+      const renderSpy = spyOn(bridge, '_updateCollaborativeSaveStatus').mockImplementation(() => {});
+      bridge.enableAutoSync();
+      bridge.collaborativeAutosave.options.onStatusChange('saving');
+      expect(renderSpy).toHaveBeenCalledWith('saving');
+    });
+  });
+
+  describe('_updateCollaborativeSaveStatus (issue #1592)', () => {
+    function makeFakeStatusEl() {
+      const classes = new Set(['d-none']);
+      const span = { textContent: '' };
+      return {
+        classList: {
+          add: (...c) => c.forEach((x) => classes.add(x)),
+          remove: (...c) => c.forEach((x) => classes.delete(x)),
+          contains: (x) => classes.has(x),
+        },
+        querySelector: () => span,
+        setAttribute: mock(() => undefined),
+        _classes: classes,
+        _span: span,
+      };
+    }
+
+    it('does nothing when the notice element is absent', () => {
+      global.document.getElementById = mock(() => null);
+      expect(() => bridge._updateCollaborativeSaveStatus('pending')).not.toThrow();
+    });
+
+    it('renders the failed message and reveals the notice', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('failed');
+      expect(el._span.textContent).toBe('Autosave failed. Please click Save before leaving.');
+      expect(el._classes.has('collab-save-status--failed')).toBe(true);
+      expect(el._classes.has('d-none')).toBe(false);
+      expect(el.setAttribute).toHaveBeenCalledWith(
+        'title',
+        'Autosave failed. Please click Save before leaving.'
+      );
+    });
+
+    it('renders the clean message', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('clean');
+      expect(el._span.textContent).toBe('All collaborative changes are saved.');
+      expect(el._classes.has('collab-save-status--clean')).toBe(true);
+    });
+
+    it('ignores unknown phases without revealing the notice', () => {
+      const el = makeFakeStatusEl();
+      global.document.getElementById = mock(() => el);
+      bridge._updateCollaborativeSaveStatus('bogus');
+      expect(el._classes.has('d-none')).toBe(true);
     });
   });
 });
