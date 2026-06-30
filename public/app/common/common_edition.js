@@ -842,7 +842,7 @@ var $exeDevicesEdition = {
                                 `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
                             ],
                             allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
-                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.`)
+                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100<\\ohm>).`)
                         },
                     };
 
@@ -1010,7 +1010,7 @@ var $exeDevicesEdition = {
                         window.open(url, '_blank');
                     });
 
-                    $saveButton.on('click', function () {
+                    $saveButton.on('click', async function () {
                         const content = $textQuestionsArea.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
@@ -1018,7 +1018,20 @@ var $exeDevicesEdition = {
                         }
                         const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        // saveQuestions may be async and may own the result messaging
+                        // (e.g. electrical-circuits renders each circuit image before
+                        // inserting). When it returns { handledMessaging: true } the
+                        // callback already informed the user, so skip the generic alert.
+                        // It may also return `remainingLines` (questions it could not
+                        // add): refill the textarea with them, cleared, so the user can
+                        // correct them and save again.
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
@@ -1026,7 +1039,7 @@ var $exeDevicesEdition = {
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
-                    $iaButton.on('click', function () {
+                    $iaButton.on('click', async function () {
                         const content = $textAreaIa.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
@@ -1035,7 +1048,13 @@ var $exeDevicesEdition = {
 
                         const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {

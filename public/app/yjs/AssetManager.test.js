@@ -824,6 +824,68 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('insertImage — folder-sensitive bundles keep duplicates (#1951)', () => {
+    // Self-contained HTML bundles (e.g. Tumult Hype exports) reference their
+    // runtime by relative path from each bundle folder. Two byte-identical
+    // runtime files in different folders MUST stay as separate assets, or
+    // collapsing them by content hash breaks one bundle's relative links.
+    const sameHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    const makeFile = () => ({
+      name: 'HYPE-runtime.js',
+      type: 'text/javascript',
+      size: 3,
+      arrayBuffer: mock(() => undefined).mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    });
+
+    it('keeps byte-identical files at different paths as separate assets with forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'];
+      const originalRandomUUID = global.crypto.randomUUID;
+      let next = 0;
+      global.crypto.randomUUID = mock(() => ids[next++]);
+
+      try {
+        const urlA = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-a/index.hyperesources',
+          forceNewId: true,
+        });
+        const urlB = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-b/index.hyperesources',
+          forceNewId: true,
+        });
+
+        const idA = assetManager.extractAssetId(urlA);
+        const idB = assetManager.extractAssetId(urlB);
+
+        // Distinct asset IDs even though the content (hash) is identical
+        expect(idA).not.toBe(idB);
+
+        const metaA = assetManager.getAssetMetadata(idA);
+        const metaB = assetManager.getAssetMetadata(idB);
+        expect(metaA).toBeTruthy();
+        expect(metaB).toBeTruthy();
+        // Both metadata entries exist with their own distinct folderPath
+        expect(metaA.folderPath).toBe('bundle-a/index.hyperesources');
+        expect(metaB.folderPath).toBe('bundle-b/index.hyperesources');
+        // Content hash is identical, but the asset IDs are different
+        expect(metaA.hash).toBe(metaB.hash);
+      } finally {
+        global.crypto.randomUUID = originalRandomUUID;
+      }
+    });
+
+    it('still deduplicates identical content by hash without forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const urlA = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+      const urlB = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+
+      // Ordinary uploads still collapse to a single content-addressed asset
+      expect(assetManager.extractAssetId(urlA)).toBe(assetManager.extractAssetId(urlB));
+    });
+  });
+
   describe('extractAssetId', () => {
     it('extracts ID from asset:// URL', () => {
       const id = assetManager.extractAssetId('asset://abc123');
@@ -3288,6 +3350,7 @@ describe('getAssetUrlFromBlobUrl', () => {
 describe('extractAssetsFromZip', () => {
   let assetManager;
   let mockDB;
+  let savedCryptoForBlock;
 
   beforeEach(async () => {
     mockDB = {
@@ -3303,6 +3366,21 @@ describe('extractAssetsFromZip', () => {
 
     global.Logger = { log: mock(() => {}) };
 
+    // crypto.randomUUID is now exercised by extractAssetsFromZip for intra-import
+    // duplicates (#1951), so the whole block needs a working crypto regardless of
+    // leftover state from earlier suites. Saved/restored in afterEach to avoid leaks.
+    savedCryptoForBlock = global.crypto;
+    global.crypto = {
+      randomUUID: mock(() => 'mock-uuid-1234-5678-90ab-cdef12345678'),
+      subtle: {
+        digest: mock(async () => {
+          const buf = new Uint8Array(32);
+          for (let i = 0; i < 32; i++) buf[i] = i;
+          return buf.buffer;
+        }),
+      },
+    };
+
     assetManager = new AssetManager('project-123');
     // (In-memory storage - no db initialization needed)
     assetManager.getAsset = mock(() => Promise.resolve(null));
@@ -3314,6 +3392,7 @@ describe('extractAssetsFromZip', () => {
 
   afterEach(() => {
     delete global.Logger;
+    global.crypto = savedCryptoForBlock;
   });
 
   it('extracts image assets from resources/ folder', async () => {
@@ -3465,6 +3544,104 @@ describe('extractAssetsFromZip', () => {
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
 
     expect(assetMap.size).toBe(5);
+  });
+
+  // #1951: Self-contained HTML bundles (e.g. Tumult Hype exports) ship the SAME
+  // byte-identical resource file inside several bundle folders, each linked by a
+  // relative <script src> from its own folder. On .elpx re-import the second copy
+  // must NOT be content-deduped onto the first, or one bundle's relative link 404s.
+  describe('folder-sensitive bundles keep duplicates on import (#1951)', () => {
+    const sameHash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    let randomIds;
+    let randomCallCount;
+
+    beforeEach(() => {
+      // hashToUUID derives from the (constant) hash; crypto.randomUUID hands out
+      // distinct ids per call so intra-import duplicates get verifiably different ids.
+      randomIds = [
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+      ];
+      randomCallCount = 0;
+      global.crypto.randomUUID = mock(() => randomIds[randomCallCount++]);
+      // Every file in these tests is byte-identical, so the hash is constant.
+      assetManager.calculateHash = mock(() => Promise.resolve(sameHash));
+    });
+
+    it('stores two byte-identical bundle files as distinct assets with their own folderPath', async () => {
+      const stored = [];
+      assetManager.putAsset = mock((asset) => {
+        stored.push(asset);
+        return Promise.resolve();
+      });
+
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+        'content/resources/bundle-b/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      // Two distinct PATH keys, each resolving to a DISTINCT asset id.
+      expect(assetMap.size).toBe(2);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      const idB = assetMap.get('content/resources/bundle-b/index.hyperesources/HYPE-runtime.js');
+      expect(idA).toBeTruthy();
+      expect(idB).toBeTruthy();
+      expect(idA).not.toBe(idB);
+
+      // The first occurrence keeps the content-addressed id, the second is forced new.
+      expect(idA).toBe(assetManager.hashToUUID(sameHash));
+      expect(idB).toBe('11111111-1111-4111-8111-111111111111');
+
+      // Both assets are stored, each with its own folderPath (so each bundle keeps a copy).
+      expect(assetManager.putAsset).toHaveBeenCalledTimes(2);
+      const folderA = stored.find((a) => a.id === idA)?.folderPath;
+      const folderB = stored.find((a) => a.id === idB)?.folderPath;
+      expect(folderA).toBe('bundle-a/index.hyperesources');
+      expect(folderB).toBe('bundle-b/index.hyperesources');
+      // Same content (hash) but distinct ids — this is the #1951 fix.
+      expect(stored[0].hash).toBe(stored[1].hash);
+    });
+
+    it('keeps the content-addressed id for a single (non-duplicated) bundle file', async () => {
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      // First (only) occurrence => content-addressed id, NOT a random one.
+      expect(idA).toBe(assetManager.hashToUUID(sameHash));
+      expect(randomCallCount).toBe(0);
+    });
+
+    it('forces a fresh id only for intra-import duplicates, preserving same-project skip on the first occurrence', async () => {
+      // First occurrence resolves to an existing same-project asset => skipped (no putAsset).
+      // Second occurrence (same hash) is an intra-import duplicate => stored as a new asset.
+      const contentId = assetManager.hashToUUID(sameHash);
+      assetManager.getAsset = mock((id) =>
+        Promise.resolve(id === contentId ? { projectId: 'project-123' } : null),
+      );
+
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+        'content/resources/bundle-b/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(2);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      const idB = assetMap.get('content/resources/bundle-b/index.hyperesources/HYPE-runtime.js');
+      expect(idA).toBe(contentId); // existing same-project asset reused, not re-stored
+      expect(idB).toBe('11111111-1111-4111-8111-111111111111'); // forced-new duplicate
+      // Only the forced-new duplicate is stored; the first occurrence was skipped.
+      expect(assetManager.putAsset).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('skips index.html and other root system files', async () => {

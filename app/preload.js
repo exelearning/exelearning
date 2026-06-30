@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   openElp: () => ipcRenderer.invoke('app:openElp'),
+  // Close the current window (File > Close). The existing close guard in the
+  // main process still prompts for unsaved changes.
+  closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),

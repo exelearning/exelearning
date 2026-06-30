@@ -222,17 +222,11 @@ export default class NavbarFile {
             menu.classList.add('theme-menu', 'exe-submenu', 'hidden');
             const ul = document.createElement('ul');
             const liDownload = document.createElement('li');
-            if (theme.downloadable == '1')
-                liDownload.classList.add('theme-action-download');
-            else liDownload.classList.add('disabled');
+            // Issue #1893: every style is downloadable, so the download action
+            // is always enabled regardless of the legacy <downloadable> flag.
+            liDownload.classList.add('theme-action-download');
             const iconDownload = document.createElement('span');
-            if (theme.downloadable == '1')
-                iconDownload.classList.add('small-icon', 'download-icon-green');
-            else
-                iconDownload.classList.add(
-                    'small-icon',
-                    'download-icon-disabled'
-                );
+            iconDownload.classList.add('small-icon', 'download-icon-green');
             liDownload.appendChild(iconDownload);
             liDownload.appendChild(
                 document.createTextNode(` ${_('Download')}`)
@@ -509,28 +503,18 @@ export default class NavbarFile {
 
     makeMenuThemeDownload(theme) {
         const li = document.createElement('li');
-        const isDownloadable = theme.downloadable === '1' || theme.downloadable === 1;
 
-        // Disable if not downloadable
-        if (!isDownloadable) {
-            li.classList.add('disabled');
-        }
-
+        // Issue #1893: every style is downloadable, so the download action is
+        // always enabled regardless of the legacy <downloadable> flag.
         const icon = document.createElement('span');
-        if (isDownloadable) {
-            icon.classList.add('small-icon', 'download-icon-green');
-        } else {
-            icon.classList.add('small-icon', 'download-icon-disabled');
-        }
+        icon.classList.add('small-icon', 'download-icon-green');
         li.appendChild(icon);
         li.appendChild(document.createTextNode(` ${_('Download')}`));
 
         li.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (isDownloadable) {
-                this.downloadThemeZip(theme);
-            }
+            this.downloadThemeZip(theme);
         });
         return li;
     }
@@ -839,16 +823,11 @@ export default class NavbarFile {
 
             // Extract theme name from config.xml
             let themeName = getValue('name') || fileName.replace('.zip', '');
-            const downloadable = getValue('downloadable') || '1';
+            // Issue #1893: every imported style is downloadable. The legacy
+            // <downloadable> flag in config.xml must not block installation.
+            const downloadable = '1';
             // Sanitize theme name for use as directory/key
             const dirName = themeName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-
-            if (downloadable === '0') {
-                this.showElementAlert(_('Failed to install the new style'), {
-                    error: _('This style cannot be downloaded'),
-                });
-                return;
-            }
 
             // Check if theme already exists
             if (eXeLearning.app.themes.list.installed[dirName]) {
@@ -973,12 +952,8 @@ export default class NavbarFile {
      * For server themes: use API to download
      */
     async downloadThemeZip(theme) {
-        // Check downloadable
-        const isDownloadable = theme.downloadable === '1' || theme.downloadable === 1;
-        if (!isDownloadable) {
-            this.showElementAlert(_('This style cannot be downloaded'), {});
-            return;
-        }
+        // Issue #1893: every style is downloadable; the legacy <downloadable>
+        // flag no longer blocks downloading.
 
         // User themes: get from IndexedDB and create ZIP client-side
         if (theme.type === 'user' || theme.isUserTheme) {

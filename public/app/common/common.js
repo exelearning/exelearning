@@ -519,60 +519,81 @@ var $exe = {
                     $exe.hasMultimediaGalleries = true;
                 }
             });
-            lightboxLinks.prettyPhoto({
-                social_tools: "",
-                deeplinking: false,
-                opacity: 0.85,
-                changepicturecallback: function () {
-                    var block = $("#pp_full_res")
-                    var media = $(".exe-media-box-element", block);
-                    if ($exe.loadMediaPlayer != undefined) {
-                        if ($exe.loadMediaPlayer.isReady) {
-                            if (media.length == 1) media.mediaelementplayer();
-                            $exe.loadMediaPlayer.isCalledInBox = true;
+            // Re-query after $exeFX.init() has finished rebuilding exe-fx DOM (e.g. accordion rft()).
+            // Both prettyPhoto and the gallery-error fallback use the same post-FX-init set.
+            setTimeout(function() {
+                var currentLightboxLinks = $("a[rel^='lightbox']");
+                currentLightboxLinks.prettyPhoto({
+                    social_tools: "",
+                    deeplinking: false,
+                    opacity: 0.85,
+                    changepicturecallback: function () {
+                        var block = $("#pp_full_res")
+                        var media = $(".exe-media-box-element", block);
+                        if ($exe.loadMediaPlayer != undefined) {
+                            if ($exe.loadMediaPlayer.isReady) {
+                                // No mediaelementplayer in prettyPhoto
+                                // if (media.length == 1) media.mediaelementplayer();
+                                $exe.loadMediaPlayer.isCalledInBox = true;
+                            }
                         }
-                    }
-                    // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
-                    var cont = $(".pp_content_container");
-                    cont.attr("class", "pp_content_container");
-                    if (media.length == 1 && media[0].hasAttribute('src')) {
-                        if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
-                        var src = media.attr('src');
-                        var ext = src.split("/");
-                        ext = ext[ext.length - 1];
-                        ext = ext.split(".")[1];
-                        if (typeof ext == 'undefined' || ext == 'undefined') ext = $exe_i18n.download;
-                        $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
-                    } else {
-                        // Hide the title at the bottom (we use h2.pp_title instead)
-                        block = $(".pp_inline", block);
-                        if (block.length == 1) $(".pp_description").hide();
-                    }
-                }
-            });
-            // If there are galleries, but lightboxLinks.length==0, there's an error
-            // No links with the rel attribute were selected
-            // This might happen in some ePub readers
-            // See issue #258
-            var eXeGalleries = $('.GalleryIdevice');
-            if (lightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
-                // We execute this code only outside eXe or the Image Gallery edition will fail (see issue #317)
-                $('.exeImageGallery a').each(function () {
-                    this.title += " ~ [" + this.href + "]";
-                    this.href = "#";
-                    this.onclick = function () {
-                        var ul = $(this).parent().parent();
-                        if (ul.length == 1 && ul.attr('id') != "") {
-                            if ($("#" + ul.attr('id') + "-warning").length == 0) {
-                                // Due to G. Chrome's Content Security Policy
-                                var txt = $exe_i18n.dataError;
-                                if ($('body').hasClass('exe-epub3')) txt += '<br /><br />' + $exe_i18n.epubJSerror;
-                                ul.prepend('<div id="' + ul.attr('id') + '-warning">' + txt + '</div>');
+                        // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
+                        var cont = $(".pp_content_container");
+                        cont.attr("class", "pp_content_container");
+                        var src = null;
+                        if (media.length == 1) {
+                            if (media[0].hasAttribute('src')) {
+                                src = media.attr('src');
+                            } else {
+                                var sourceEl = media.find('source[src]').first();
+                                if (sourceEl.length) src = sourceEl.attr('src');
+                            }
+                        }
+                        if (src) {
+                            if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
+                            // Extension = last dot-segment of the filename, without query string or fragment
+                            var fileName = src.split("/").pop().split("?")[0].split("#")[0];
+                            var dotIndex = fileName.lastIndexOf(".");
+                            var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
+                            if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
+                            $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
+                        } else {
+                            // Hide the title at the bottom (we use h2.pp_title instead)
+                            block = $(".pp_inline", block);
+                            if (block.length == 1) $(".pp_description").hide();
+                        }
+                        // Recalculate pp_content height for video elements (screen height + 50px for controls)
+                        var ppVideo = $("#pp_full_res video");
+                        if (ppVideo.length) {
+                            var videoHeight = ppVideo[0].getBoundingClientRect().height;
+                            if (videoHeight > 0) {
+                                $(".pp_content").css('height', videoHeight + 50);
                             }
                         }
                     }
                 });
-            }
+                // If there are galleries but no lightbox links, there's an error (e.g. some ePub readers).
+                // See issue #258
+                var eXeGalleries = $('.GalleryIdevice');
+                if (currentLightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
+                    // We execute this code only outside eXe or the Image Gallery edition will fail (see issue #317)
+                    $('.exeImageGallery a').each(function () {
+                        this.title += " ~ [" + this.href + "]";
+                        this.href = "#";
+                        this.onclick = function () {
+                            var ul = $(this).parent().parent();
+                            if (ul.length == 1 && ul.attr('id') != "") {
+                                if ($("#" + ul.attr('id') + "-warning").length == 0) {
+                                    // Due to G. Chrome's Content Security Policy
+                                    var txt = $exe_i18n.dataError;
+                                    if ($('body').hasClass('exe-epub3')) txt += '<br /><br />' + $exe_i18n.epubJSerror;
+                                    ul.prepend('<div id="' + ul.attr('id') + '-warning">' + txt + '</div>');
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 0);
         }
     },
 

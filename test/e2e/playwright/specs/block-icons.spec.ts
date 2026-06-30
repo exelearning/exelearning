@@ -34,6 +34,31 @@ test.describe('Block Icon Selection Modal', () => {
         await selectFirstPage(page);
         await addTextIdevice(page);
 
+        // The focused full-workarea edit mode shows only the iDevice (the block
+        // header is hidden) while an iDevice is in edition. Block icons are
+        // changed outside edition mode, so add content and save the iDevice to
+        // leave edition before opening the block icon modal.
+        await page.waitForFunction(
+            () => {
+                const ed = (window as any).tinymce?.activeEditor;
+                return ed && ed.initialized;
+            },
+            undefined,
+            { timeout: 15000 },
+        );
+        await page.evaluate(() => {
+            const ed = (window as any).tinymce.activeEditor;
+            ed.setContent('<p>Block icon test</p>');
+            ed.fire('change');
+            ed.setDirty(true);
+        });
+        await page.locator('#node-content .idevice_node[mode="edition"] .btn-save-idevice').click();
+        await page.waitForFunction(
+            () => !document.querySelector('#node-content .idevice_node[mode="edition"]'),
+            undefined,
+            { timeout: 15000 },
+        );
+
         // Wait a moment for the UI to stabilize
         await page.waitForTimeout(500);
 

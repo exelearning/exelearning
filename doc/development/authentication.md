@@ -58,19 +58,70 @@ API_JWT_SECRET=dev_secret_change_me
 - Form Login: Login form at `/login` posts credentials to `/login_check`.
 - CAS: Clicking "CAS" sends the browser to your CAS login. The auth handler extracts the service ticket from the `ticket` query parameter and validates it.
 - OIDC:
-  - The app builds the Authorization URL from `OIDC_AUTHORIZATION_ENDPOINT` and redirects the user to the provider.
-  - The callback `/login/openid/callback` exchanges the `code` for tokens using `OIDC_TOKEN_ENDPOINT`.
+  - The app resolves the provider endpoints (authorization, token, userinfo, end_session) from `OIDC_ISSUER` via OIDC Discovery, falling back to the explicit `OIDC_*_ENDPOINT` variables. See [OIDC endpoint resolution](#oidc-endpoint-resolution-discovery) below.
+  - The app builds the Authorization URL from the resolved authorization endpoint and redirects the user to the provider.
+  - The callback `/login/openid/callback` exchanges the `code` for tokens using the resolved token endpoint.
   - The app forwards the browser to the target page appending `?access_token=...`.
-  - The JWT middleware validates the token and resolves the user via the OIDC UserInfo endpoint.
-  - The UserInfo endpoint URL is discovered automatically from `OIDC_ISSUER` using OIDC Discovery (`/.well-known/openid-configuration`).
+  - The JWT middleware validates the token and resolves the user via the resolved UserInfo endpoint.
 - Logout:
   - CAS: Redirects to `CAS_LOGOUT_PATH` with `service` back to the app.
-  - OIDC: If the provider exposes `end_session_endpoint` (Duende/Keycloak), we redirect there. Google does not expose it; we revoke the access token and return to the app.
+  - OIDC: If the provider exposes `end_session_endpoint` (Duende/Keycloak) — either configured explicitly or discovered — we redirect there. Google does not expose it; we revoke the access token and return to the app.
 
 Notes
 
 - The user identity claim used for matching is `sub` (stable across providers). If user creation is enabled, missing users are created with that `sub` as external identifier and the best email found in claims.
 - Tokens are accepted from: `Authorization: Bearer <token>` header, `?access_token=` query param, and CAS `?ticket=`.
+
+## OIDC endpoint resolution (Discovery)
+
+eXeLearning resolves the OIDC endpoints — `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, `end_session_endpoint`, and `jwks_uri` — by combining your explicit configuration with **OpenID Connect Discovery**.
+
+### Minimal configuration (discovery)
+
+For any standards-compliant provider, the issuer plus client credentials is enough:
+
+```
+OIDC_ISSUER=https://idp.example.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_SCOPE="openid email"
+```
+
+On the first login the backend fetches `${OIDC_ISSUER}/.well-known/openid-configuration` and derives the endpoints it needs. This includes the `jwks_uri`, so **id_token signatures are verified out of the box** without configuring `OIDC_JWKS_URI` by hand.
+
+### Explicit configuration (manual override)
+
+You can still pin any endpoint explicitly. This is useful for providers with non-standard layouts or to avoid the discovery request entirely:
+
+```
+OIDC_AUTHORIZATION_ENDPOINT=https://idp.example.com/connect/authorize
+OIDC_TOKEN_ENDPOINT=https://idp.example.com/connect/token
+OIDC_USERINFO_ENDPOINT=https://idp.example.com/connect/userinfo
+OIDC_END_SESSION_ENDPOINT=https://idp.example.com/connect/endsession
+OIDC_JWKS_URI=https://idp.example.com/.well-known/jwks.json
+```
+
+### Precedence rules
+
+- **Explicit endpoint settings always win.** Discovery never overrides a value you configured.
+- **Discovery only fills the gaps** — endpoints you left blank.
+- **An empty `OIDC_ISSUER` disables discovery.** All required endpoints must then be configured explicitly.
+- If every endpoint is already explicit, no discovery request is made.
+
+### Failure behavior
+
+- If discovery **fails** (issuer unreachable, non-200, malformed/incomplete metadata, or issuer mismatch) the app falls back to whatever endpoints are configured explicitly. Logins still work if those cover the required endpoints; otherwise the route returns a clear "OpenID Connect is misconfigured" error.
+- The discovered `issuer` must match `OIDC_ISSUER` (a trailing-slash difference is tolerated). A mismatched issuer is rejected to prevent metadata substitution.
+- Discovery requires **HTTPS**, except for local development issuers (`http://localhost`, `http://127.0.0.1`, `http://[::1]`).
+- Discovery uses a short timeout and the result is **cached in memory per issuer with a TTL** (one hour), so it does not run on every login but rotated endpoints and signing keys are eventually re-fetched.
+
+### Optional logout endpoint
+
+`end_session_endpoint` is optional. When present in the discovery document it is used for OIDC logout unless `OIDC_END_SESSION_ENDPOINT` is set explicitly (explicit wins). Providers that do not publish it (e.g. Google) fall back to access-token revocation. Because it is optional, a blank `end_session_endpoint` alone does **not** trigger a discovery request — discovery runs only when a required endpoint (authorization, token, userinfo, or jwks_uri) is missing.
+
+### id_token signature verification (JWKS)
+
+The id_token returned from the token endpoint is verified against the provider's published JSON Web Key Set. The JWKS URI is resolved like the other endpoints: an explicit `OIDC_JWKS_URI` wins, otherwise the `jwks_uri` from the discovery document is used. When neither is available the signature **cannot** be verified — the app falls back to decoding the token unverified and logs a loud warning. Configure `OIDC_ISSUER` (so discovery supplies `jwks_uri`) or set `OIDC_JWKS_URI` explicitly to enable verification in production.
 
 ## OpenID Connect: Provider Setup
 
