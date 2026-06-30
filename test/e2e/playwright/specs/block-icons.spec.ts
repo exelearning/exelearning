@@ -1,5 +1,11 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
-import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    addTextIdevice,
+    addTextIdeviceWithContent,
+    selectFirstPage,
+    gotoWorkarea,
+} from '../helpers/workarea-helpers';
 
 /**
  * Block Icon Selection Modal Tests
@@ -133,7 +139,10 @@ test.describe('Block Icon Selection Modal', () => {
         await waitForAppReady(page);
 
         await selectFirstPage(page);
-        await addTextIdevice(page);
+        // Add the iDevice WITH content and save it: the focused full-workarea edit
+        // mode hides the block header (and its icon button) while an iDevice is in
+        // edition, so we must leave edition before the block icon button is visible.
+        await addTextIdeviceWithContent(page, 'Block icon test');
 
         // Open the icon picker for the first block. Wait deterministically for the
         // block's icon button to render rather than sleeping a fixed amount of time.
