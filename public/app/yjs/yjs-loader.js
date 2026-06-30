@@ -100,6 +100,7 @@
     [
       '/app/common/blockIconRuntime.js',
       'SaveManager.js',
+      'CollaborativeAutosaveManager.js',  // Collaborative autosave coordinator (issue #1592), used by the bridge
       'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',

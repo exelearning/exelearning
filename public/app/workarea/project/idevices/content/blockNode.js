@@ -1612,6 +1612,9 @@ export default class IdeviceBlockNode {
         }
         if (currentIcon.source === iconConfig.source && (currentIcon.value || '') === (iconConfig.value || '')) {
             iconElement.setAttribute('selected', 'true');
+            // Mark the originally selected icon so it keeps a subtle outline even
+            // after the user picks a different one (icon selector contrast, #1995).
+            iconElement.classList.add('original-icon-selection');
         }
         return iconElement;
     }
@@ -1813,6 +1816,17 @@ export default class IdeviceBlockNode {
                     { className: 'theme-block-icon' }
                 );
                 option.setAttribute('icon-id', iconValue);
+                // Pre-select the block's current style icon whether it is
+                // identified by its id or its raw value/path (mirrors
+                // resolveThemeIconData's id-or-value resolution, #1995).
+                if (
+                    currentIcon.source === 'theme' &&
+                    currentIcon.value &&
+                    (currentIcon.value === themeIcon.id || currentIcon.value === themeIcon.value)
+                ) {
+                    option.setAttribute('selected', 'true');
+                    option.classList.add('original-icon-selection');
+                }
             }
             appendSectionTitle(_('General icons'));
         }
@@ -1841,7 +1855,12 @@ export default class IdeviceBlockNode {
         emptyIconElement.setAttribute('data-icon-value', '');
         emptyIconElement.title = _('Empty');
         emptyIconElement.innerHTML = this.getEmptyIconSvg();
-        emptyIconElement.setAttribute('selected', !this.iconName ? 'true' : 'false');
+        const emptyIsSelected = !this.iconName;
+        emptyIconElement.setAttribute('selected', emptyIsSelected ? 'true' : 'false');
+        if (emptyIsSelected) {
+            // Emphasize the originally selected (empty) icon (#1995).
+            emptyIconElement.classList.add('original-icon-selection');
+        }
         return emptyIconElement;
     }
 

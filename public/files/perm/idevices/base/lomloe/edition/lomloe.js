@@ -75,7 +75,10 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Extremadura',
             file: '../data/lomloe-ES-EX.json',
-            available: true
+            // Temporarily disabled, awaiting confirmation for reactivation. The
+            // dataset JSON stays in the repo untouched; flip back to true to
+            // re-enable.
+            available: false
         },
         {
             id: 'ES-MD',
@@ -95,7 +98,13 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Galicia',
             file: '../data/lomloe-ES-GA.json',
-            available: true
+            // On hold (#1900 / #1898): the Galicia concretion needs official
+            // spec decisions before it can match the regulatory curriculum —
+            // a hybrid "mandatory + optional" descriptor mode (unsupported
+            // today) and official Galician descriptor labels. Hidden until
+            // those are defined; flip back to true to re-enable. The dataset
+            // JSON stays in the repo untouched.
+            available: false
         },
         {
             id: 'ES-CN',
@@ -112,10 +121,29 @@ var $exeDevice = (function () {
             // descriptor set onto every criterio, so the teacher must pick
             // them explicitly (checkbox mode). See issue #1832.
             descriptorsPerCriterion: true
+        },
+        {
+            id: 'ES-NC',
+            isoCode: 'ES-NC',
+            label: 'LOMLOE — Comunidad Foral de Navarra',
+            labelEn: 'LOMLOE — Chartered Community of Navarre',
+            framework: 'LOMLOE',
+            community: 'Comunidad Foral de Navarra',
+            file: '../data/lomloe-ES-NC.json',
+            available: true
+        },
+        {
+            id: 'ES-VC',
+            isoCode: 'ES-VC',
+            label: 'LOMLOE — Comunitat Valenciana',
+            labelEn: 'LOMLOE — Valencian Community',
+            framework: 'LOMLOE',
+            community: 'Comunitat Valenciana',
+            file: '../data/lomloe-ES-VC.json',
+            available: true
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
-        // { id: 'ES-MD', isoCode: 'ES-MD', label: 'LOMLOE — Comunidad de Madrid', ... }
         // { id: 'ES-CT', isoCode: 'ES-CT', label: 'LOMLOE — Catalunya', ... }
     ];
 
@@ -133,7 +161,7 @@ var $exeDevice = (function () {
      * only the subjects actually taught in the selected course. See issue #1832.
      *
      * Only datasets whose norm fixes a per-course distribution appear here:
-     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V.
+     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V. (unreachable while ES-EX available:false)
      *   - ES-MD:  Decreto 65/2022 (BOCM), Anexo I.
      *   - ES-EFP: Orden EFP/754/2022 (BOE), per-course markers of Anexo II.
      * Datasets absent from this map (ES state floor, ES-CN, ES-GA already
@@ -143,6 +171,8 @@ var $exeDevice = (function () {
      */
     var ESO_COURSE_SUBJECTS = {
         // ES-EX uses the official Extremadura subject codes (see README).
+        // Unreachable while available:false above — getCourseSubjectFilter('ES-EX') is never
+        // called for disabled datasets. Restore together with the available flag above.
         'ES-EX': {
             '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
             '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
@@ -170,8 +200,15 @@ var $exeDevice = (function () {
     }
 
     /**
-     * Display names for each LOMLOE competencia clave code.
-     * Used as tooltip text (title attribute) on cc-tag and cc-badge spans.
+     * Default (Castilian) display names for each LOMLOE competencia clave /
+     * descriptor code. Used as tooltip text (title attribute) on cc-tag and
+     * cc-badge spans.
+     *
+     * This is the SHARED FALLBACK catalogue. A dataset may override any code's
+     * text via its reserved top-level `descriptors` key (e.g. the Comunitat
+     * Valenciana ships its perfil-d'eixida descriptors in Valencian); the
+     * override is resolved per-code by descriptorText() below. See the iDevice
+     * README, "Optional per-dataset descriptor catalogue".
      */
     var CC_DESCRIPTIONS = {
         // Competencia en comunicación lingüística
@@ -193,6 +230,9 @@ var $exeDevice = (function () {
         'STEM3':  'STEM3 — Plantea proyectos de diseño, creando prototipos o modelos para resolver problemas',
         'STEM4':  'STEM4 — Interpreta y transmite elementos relevantes de investigaciones de forma clara y precisa',
         'STEM5':  'STEM5 — Desarrolla proyectos de diseño de forma creativa, evaluando su sostenibilidad e impacto',
+        // Competencia matemática y competencias básicas en ciencia y tecnología
+        // (LOMCE-era family code still used by the Comunitat Valenciana dataset)
+        'CMCT':   'Competencia matemática y competencias básicas en ciencia y tecnología',
         // Competencia digital
         'CD':     'Competencia digital',
         'CD1':    'CD1 — Realiza búsquedas en internet y contrasta información de forma crítica',
@@ -234,6 +274,35 @@ var $exeDevice = (function () {
         'CCEC4.1': 'CCEC4.1 — Conoce y aplica los derechos de autoría y respeta la propiedad intelectual',
         'CCEC4.2': 'CCEC4.2 — Participa de forma comprometida y creativa en proyectos culturales y artísticos'
     };
+
+    /**
+     * Resolves a competencia-clave / descriptor code to its display text.
+     * A dataset may ship its own catalog under the reserved top-level
+     * `descriptors` key (e.g. the Comunitat Valenciana publishes the perfil
+     * d'eixida descriptors in Valencian); when present it overrides the shared
+     * Castilian CC_DESCRIPTIONS default, falling back per-code.
+     */
+    function descriptorText(code) {
+        var ov = rawData && rawData.descriptors;
+        return (ov && ov[code]) || CC_DESCRIPTIONS[code] || code;
+    }
+
+    /**
+     * Denormalizes the active dataset's descriptor overrides for the codes
+     * actually used by the current selections; stored on save so the standalone
+     * export renders the right tooltips even through its fallback path.
+     */
+    function collectUsedDescriptors() {
+        var ov = rawData && rawData.descriptors;
+        if (!ov) return {};
+        var used = {};
+        selections.forEach(function (sel) {
+            (sel.competenciasClave || []).forEach(function (cc) {
+                if (ov[cc] != null) used[cc] = ov[cc];
+            });
+        });
+        return used;
+    }
 
     // ════════════════════════════════════════════════════════════════
     // STATE  (one instance per iDevice node on the page)
@@ -398,20 +467,50 @@ var $exeDevice = (function () {
     // DATA ACCESSORS
     // ════════════════════════════════════════════════════════════════
 
-    var ETAPA_ORDER = ['infantil', 'primaria', 'eso', 'bachillerato'];
+    // Canonical stage order. Each entry lists the substrings that identify the
+    // stage. Matching is lower-cased and accent-insensitive (see foldEtapa), so
+    // the Castilian abbreviation ("ESO"), the full official Castilian name
+    // ("Educación Secundaria Obligatoria") and the co-official-language spelling
+    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària") all resolve
+    // to the same rank. Without the full-name/co-official synonyms a regional
+    // dataset that uses official stage names (e.g. Navarra, Comunitat Valenciana)
+    // would mis-sort — "Educación Secundaria Obligatoria" matched no token and
+    // fell behind "Bachillerato" in the stage selector.
+    var ETAPA_ORDER = [
+        ['infantil'],
+        ['primaria'],
+        ['eso', 'secundaria'],
+        ['bachillerato', 'batxillerat'],
+    ];
+
+    // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
+    // per-dataset `descriptors` override catalog). Keep in sync with the same
+    // list in edition/lomloe.test.js (walkAreas).
+    var RESERVED_DATASET_KEYS = ['descriptors'];
+    function isEtapaKey(k) { return RESERVED_DATASET_KEYS.indexOf(k) === -1; }
+
+    // Lower-case and strip combining diacritics so accented co-official spellings
+    // ("Primària", "Secundària", "Obligatòria") match the ASCII order tokens.
+    function foldEtapa(s) {
+        return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function etapaRank(name) {
+        var folded = foldEtapa(name);
+        for (var i = 0; i < ETAPA_ORDER.length; i++) {
+            var tokens = ETAPA_ORDER[i];
+            for (var j = 0; j < tokens.length; j++) {
+                if (folded.indexOf(tokens[j]) !== -1) return i;
+            }
+        }
+        return ETAPA_ORDER.length;
+    }
 
     function getEtapas() {
         if (!rawData) return [];
-        return Object.keys(rawData).sort(function (a, b) {
-            var al = a.toLowerCase();
-            var bl = b.toLowerCase();
-            var ai = ETAPA_ORDER.length;
-            var bi = ETAPA_ORDER.length;
-            for (var i = 0; i < ETAPA_ORDER.length; i++) {
-                if (al.indexOf(ETAPA_ORDER[i]) !== -1 && ai === ETAPA_ORDER.length) ai = i;
-                if (bl.indexOf(ETAPA_ORDER[i]) !== -1 && bi === ETAPA_ORDER.length) bi = i;
-            }
-            return ai - bi;
+        // Array.prototype.sort is stable, so unknown stages keep insertion order.
+        return Object.keys(rawData).filter(isEtapaKey).sort(function (a, b) {
+            return etapaRank(a) - etapaRank(b);
         });
     }
 
@@ -532,6 +631,11 @@ var $exeDevice = (function () {
             if (top + tr.height > vh - 4 && r.top - gap - tr.height >= 4) {
                 top = r.top - gap - tr.height;
             }
+            // Clamp vertically so a tall tooltip (long criteria definitions) is
+            // never clipped at the bottom edge — pin it just inside the viewport
+            // when it fits neither fully below nor above the target.
+            if (vh && top + tr.height > vh - 4) top = Math.max(4, vh - 4 - tr.height);
+            if (top < 4) top = 4;
             var left = r.left + (r.width / 2) - (tr.width / 2);
             if (left < 4) left = 4;
             if (left + tr.width > vw - 4) left = Math.max(4, vw - 4 - tr.width);
@@ -1213,7 +1317,7 @@ var $exeDevice = (function () {
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
                 var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
-                    var title = CC_DESCRIPTIONS[cc] || cc;
+                    var title = descriptorText(cc);
                     return '<span class="lomloe-cc-tag" title="' + esc(title) + '">' + esc(cc) + '</span>';
                 }).join('');
                 return [
@@ -1306,7 +1410,7 @@ var $exeDevice = (function () {
         if (!options.length) return '';
         var chosen = sel.competenciasClave || [];
         var boxes = options.map(function (cc) {
-            var title = CC_DESCRIPTIONS[cc] || cc;
+            var title = descriptorText(cc);
             var checked = chosen.indexOf(cc) !== -1 ? ' checked' : '';
             return [
                 '<label class="lomloe-desc-cb-label"' + tipAttr(title) + '>',
@@ -1460,7 +1564,7 @@ var $exeDevice = (function () {
                     criterioCell += '</td>';
                     var ccCell = '<td>';
                     (sel.competenciasClave || []).forEach(function (cc) {
-                        var ccTitle = CC_DESCRIPTIONS[cc] || cc;
+                        var ccTitle = descriptorText(cc);
                         ccCell += '<span class="lomloe-cc-badge"' + tipAttr(ccTitle) + '>' + esc(cc) + '</span>';
                     });
                     ccCell += '</td>';
@@ -1625,6 +1729,7 @@ var $exeDevice = (function () {
                 lomloeSelectedNivel:    selectedNivel,
                 lomloeSelectedMateria:  selectedMateria,
                 lomloeSelections:       Array.from(selections.values()),
+                lomloeDescriptors:      collectUsedDescriptors(),
                 lomloeSummaryHtml:      generateSummaryHtml()
             };
         }

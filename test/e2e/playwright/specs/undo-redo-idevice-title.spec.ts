@@ -89,6 +89,12 @@ async function editBlockTitle(page: Page, blockIndex: number, newTitle: string):
     const block = page.locator('#node-content article.box').nth(blockIndex);
     const header = block.locator('header.box-head').first();
 
+    // The pencil "Edit title" button is accessible-hidden by default and only
+    // revealed on hover / focus-within (see assets/styles/components/_buttons.scss).
+    // Hover the title container first so the button becomes actionable.
+    const titleContainer = header.locator('.content-editable-title').first();
+    await titleContainer.hover();
+
     // Find and click the edit button for the title ("Edit title" button with class btn-edit-title)
     const editBtn = header.locator('.btn-edit-title').first();
     await editBtn.click();
