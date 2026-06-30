@@ -125,4 +125,25 @@ describe('buildConfigParams', () => {
             expect(result.USER_PREFERENCES_CONFIG.theme.type).toBe('text');
         });
     });
+
+    describe('teacher-only hint', () => {
+        it('adds a help hint to both teacherOnly definitions warning it is hidden by default', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+            const blockHelp = result.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG.teacherOnly.help;
+            const componentHelp = result.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG.teacherOnly.help;
+
+            expect(blockHelp).toContain('hidden by default');
+            expect(blockHelp).toContain('?exe-teacher=1');
+            // Same hint shown for both block-level and component-level teacher-only.
+            expect(componentHelp).toBe(blockHelp);
+        });
+
+        it('prefixes the hint so it is registered for translation', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const result = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES });
+
+            expect(result.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG.teacherOnly.help.startsWith(T)).toBe(true);
+            expect(result.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG.teacherOnly.help.startsWith(T)).toBe(true);
+        });
+    });
 });

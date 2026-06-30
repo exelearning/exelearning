@@ -454,7 +454,9 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
     }
 
     it('checkbox-mode dataset starts empty with descriptorOptions and hides browse tags', async () => {
-        const sel = await selectCriterio('ES-EX');
+        // ES-MD stands in for any available checkbox-mode (non-Canarias) dataset.
+        // (ES-EX is on hold — available:false — so its loader path is unreachable.)
+        const sel = await selectCriterio('ES-MD');
         expect(sel.competenciasClave).toEqual([]);
         expect(sel.descriptorOptions).toEqual(['CCL1', 'STEM4', 'CD2']);
         // Browse panel must not present descriptors as fixed per-criterio tags.
@@ -550,31 +552,15 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
             .map(li => li.getAttribute('data-codarea'));
     }
 
-    // Extremadura uses official subject codes (BG, FQ…); see README.
-    const EX_SAMPLE = {
-        ESO: {
-            '1º ESO': {
-                BG: area('Biología y Geología'),
-                FQ: area('Física y Química'),
-                GH: area('Geografía e Historia'),
-                EF: area('Educación Física'),
-                DIG: area('Digitalización')
-            }
-        }
-    };
-
-    it('Extremadura 1º ESO hides Física y Química (not taught in 1º)', async () => {
-        const codes = await listedCodAreas('ES-EX', EX_SAMPLE);
-        expect(codes).toContain('BG');
-        expect(codes).not.toContain('FQ');
-        // 4º-only optatives duplicated into the cycle are also filtered out.
-        expect(codes).not.toContain('DIG');
-    });
-
+    // The per-course filter is exercised on Madrid because Extremadura (ES-EX) is
+    // on hold (available:false) and its loader path is unreachable; the filtering
+    // mechanism is dataset-agnostic, so ES-MD covers it equally. See issue #1832.
     it('Madrid 1º ESO hides Física y Química too', async () => {
         const codes = await listedCodAreas('ES-MD');
         expect(codes).toContain('BIG');
         expect(codes).not.toContain('FQX');
+        // 4º-only optatives duplicated into the cycle are also filtered out.
+        expect(codes).not.toContain('DIG');
     });
 
     it('EFP (Ceuta/Melilla) 1º ESO hides Física y Química too', async () => {
@@ -583,11 +569,12 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
 
-    it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        // ES-GA is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
-        // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
-        // ES because the module caches datasets by id across tests.)
-        const codes = await listedCodAreas('ES-GA');
+    it('datasets without a per-course distribution (e.g. Navarra, State) are not filtered', async () => {
+        // ES-NC is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
+        // so the full 1º–3º block is shown unchanged. (Uses ES-NC rather than
+        // ES because the module caches datasets by id across tests, and rather
+        // than ES-GA because that dataset is on hold / unavailable — see #1900.)
+        const codes = await listedCodAreas('ES-NC');
         expect(codes).toContain('BIG');
         expect(codes).toContain('FQX');
         expect(codes).toContain('DIG');
@@ -1903,10 +1890,12 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EFP.json'");
     });
 
-    it('declares ES-EX with available:true and the lomloe-ES-EX.json file', () => {
+    it('declares ES-EX on hold (available:false) with the lomloe-ES-EX.json file', () => {
+        // Temporarily disabled pending confirmation for reactivation. The dataset
+        // file stays in the repo; only the availability flag is flipped off.
         const m = entryFor('ES-EX');
         expect(m, "ES-EX entry missing").not.toBeNull();
-        expect(m[1]).toBe('true');
+        expect(m[1]).toBe('false');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EX.json'");
     });
 
@@ -1917,10 +1906,12 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-MD.json'");
     });
 
-    it('declares ES-GA with available:true and the lomloe-ES-GA.json file', () => {
+    it('declares ES-GA on hold (available:false) with the lomloe-ES-GA.json file', () => {
+        // On hold pending official Galician spec (#1900 / #1898). The dataset
+        // file stays in the repo; only the availability flag is flipped off.
         const m = entryFor('ES-GA');
         expect(m, "ES-GA entry missing").not.toBeNull();
-        expect(m[1]).toBe('true');
+        expect(m[1]).toBe('false');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-GA.json'");
     });
 

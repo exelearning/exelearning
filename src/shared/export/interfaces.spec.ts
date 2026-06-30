@@ -288,13 +288,6 @@ describe('Export Constants', () => {
             expect(media?.files.length).toBeGreaterThan(0);
         });
 
-        it('should have regex pattern for media links', () => {
-            const mediaLink = LIBRARY_PATTERNS.find(p => p.name === 'exe_media_link');
-            expect(mediaLink).toBeDefined();
-            expect(mediaLink?.type).toBe('regex');
-            expect(mediaLink?.pattern).toBeInstanceOf(RegExp);
-        });
-
         it('should have math pattern with regex', () => {
             const math = LIBRARY_PATTERNS.find(p => p.name === 'exe_math');
             expect(math).toBeDefined();

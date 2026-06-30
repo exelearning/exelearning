@@ -6,6 +6,7 @@
 
 import ImportProgress from '../../interface/importProgress.js';
 import { exportPageAndDownload } from './pageExportHelper.js';
+import { startInlineTitleEdit } from '../../project/idevices/inlineTitleEditor.js';
 
 // Use global AppLogger for debug-controlled logging
 // Use global AppLogger for debug-controlled logging
@@ -958,40 +959,27 @@ export default class MenuStructureBehaviour {
         const originalText = node.pageName;
         const textElement = navElement.querySelector('.nav-element-text');
 
-        // Restore raw title text before editing (the span may contain rendered MathJax DOM)
+        // Raw title text used as the editing seed (the span may contain rendered MathJax DOM)
         const rawTitle = textElement?.getAttribute('title') || originalText;
-        textSpan.textContent = rawTitle;
 
-        textSpan.setAttribute('contenteditable', 'true');
-        textSpan.focus();
-
-        const range = document.createRange();
-        range.selectNodeContents(textSpan);
-        range.collapse(false);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-
+        // Disable dragging while editing the title in place.
         if (textElement) {
             textElement.setAttribute('draggable', 'false');
         }
 
-        let finished = false;
-
-        const finishEditing = (save) => {
-            if (finished) return;
-            finished = true;
-
-            const newTitle = textSpan.textContent.trim();
-            textSpan.removeAttribute('contenteditable');
-            textSpan.removeEventListener('blur', onBlur);
-            textSpan.removeEventListener('keydown', onKeydown);
-
+        const restoreDraggable = () => {
             if (textElement) {
                 textElement.setAttribute('draggable', 'true');
             }
+        };
 
-            if (save && newTitle && newTitle !== rawTitle) {
+        // Shared inline-edit lifecycle (Enter/blur commit, Escape cancel, trim, reject
+        // empty/unchanged); tree-specific side effects live in the callbacks below.
+        startInlineTitleEdit(textSpan, {
+            rawText: rawTitle,
+            selection: 'end',
+            onCommit: (newTitle) => {
+                restoreDraggable();
                 this.structureEngine.renameNodeAndReload(navId, newTitle);
                 // Eagerly update in-memory property so the modal shows the new title
                 if (node.properties?.titleNode) {
@@ -1018,29 +1006,16 @@ export default class MenuStructureBehaviour {
                     if (pageTitle && !isEditableInPage) elementsToTypeset.push(pageTitle);
                     MathJax.typesetPromise(elementsToTypeset).catch(() => {});
                 }
-            } else {
+            },
+            onCancel: () => {
+                restoreDraggable();
                 textSpan.textContent = originalText;
                 // Re-typeset nav span to restore rendered LaTeX
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                     MathJax.typesetPromise([textSpan]).catch(() => {});
                 }
-            }
-        };
-
-        const onBlur = () => finishEditing(true);
-
-        const onKeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                finishEditing(true);
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                finishEditing(false);
-            }
-        };
-
-        textSpan.addEventListener('blur', onBlur);
-        textSpan.addEventListener('keydown', onKeydown);
+            },
+        });
     }
 
     showModalPropertiesNode() {

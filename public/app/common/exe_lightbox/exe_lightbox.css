@@ -91,5 +91,5 @@ div.ppt{display:none!important}
 div.with-audio .pp_gallery ul li a{border:1px solid #fff}
 div.with-audio .pp_gallery ul li a:hover,div.with-audio .pp_gallery ul li.selected a,.pp_gallery ul a:hover,div.with-audio .pp_gallery li.selected a{border-color:#aaa}
 .exe-media-audio-box{text-align:center;height:50px;padding:40px 0}
-.exe-media-video-box{text-align:center;min-width:480px;height:385px}
+.exe-media-video-box{text-align:center;min-width:480px;height:auto}
 .exe-media-download{font-weight:normal;float:right}

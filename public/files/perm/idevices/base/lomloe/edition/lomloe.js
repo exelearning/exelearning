@@ -75,7 +75,10 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Extremadura',
             file: '../data/lomloe-ES-EX.json',
-            available: true
+            // Temporarily disabled, awaiting confirmation for reactivation. The
+            // dataset JSON stays in the repo untouched; flip back to true to
+            // re-enable.
+            available: false
         },
         {
             id: 'ES-MD',
@@ -95,7 +98,13 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Galicia',
             file: '../data/lomloe-ES-GA.json',
-            available: true
+            // On hold (#1900 / #1898): the Galicia concretion needs official
+            // spec decisions before it can match the regulatory curriculum —
+            // a hybrid "mandatory + optional" descriptor mode (unsupported
+            // today) and official Galician descriptor labels. Hidden until
+            // those are defined; flip back to true to re-enable. The dataset
+            // JSON stays in the repo untouched.
+            available: false
         },
         {
             id: 'ES-CN',
@@ -152,7 +161,7 @@ var $exeDevice = (function () {
      * only the subjects actually taught in the selected course. See issue #1832.
      *
      * Only datasets whose norm fixes a per-course distribution appear here:
-     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V.
+     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V. (unreachable while ES-EX available:false)
      *   - ES-MD:  Decreto 65/2022 (BOCM), Anexo I.
      *   - ES-EFP: Orden EFP/754/2022 (BOE), per-course markers of Anexo II.
      * Datasets absent from this map (ES state floor, ES-CN, ES-GA already
@@ -162,6 +171,8 @@ var $exeDevice = (function () {
      */
     var ESO_COURSE_SUBJECTS = {
         // ES-EX uses the official Extremadura subject codes (see README).
+        // Unreachable while available:false above — getCourseSubjectFilter('ES-EX') is never
+        // called for disabled datasets. Restore together with the available flag above.
         'ES-EX': {
             '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
             '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
