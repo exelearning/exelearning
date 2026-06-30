@@ -5,7 +5,8 @@
 ### Added
 
 - iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
-- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
+- Page titles can now be renamed directly from the workspace
+- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC), Comunitat Valenciana (ES-VC) and Extremadura (ES-EX)
 - Mermaid iDevice: added configurable maximum diagram width and height
 - Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
 - File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
@@ -16,7 +17,7 @@
 
 ### Changed
 
-- LOMLOE iDevice: the Galicia (ES-GA) dataset is temporarily hidden pending formal definition of its official curriculum requirements (see #1900)
+- LOMLOE iDevice: the Galicia (ES-GA) curriculum dataset is temporarily disabled pending confirmation for reactivation
 
 ### Fixed
 
@@ -30,6 +31,7 @@
 - Share dialog: the people-with-access list now scrolls correctly within the modal
 - Link Validator and Resource Report: Download CSV now works correctly
 - The iDevices panel is now disabled when the selected page is the document root
+- LOMLOE iDevice: improved table header hover contrast for better readability
 - Electrical Circuits iDevice: corrected the AI prompt identifier and fixed rendering of Ω and other Greek and mathematical symbols
 - Electrical Circuits iDevice: fixed iDevice name translations
 - Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
@@ -37,7 +39,7 @@
 - 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
 - 3D Viewer iDevice: fixed a display issue affecting models in exported content
 - Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
-- Tooltips inside accordions and other effects now initialise correctly
+- Tooltips and lightbox links inside accordions and other effects now initialise correctly
 - iDevice icon selector: improved contrast across all styles
 - Styles from `.elpx` projects can now be downloaded from the style manager
 - Nova style: teacher-only iDevices are now highlighted with a yellow border in the work area
@@ -56,6 +58,7 @@
 ### Removed
 
 - Removed the `<downloadable>` option from style `config.xml`; styles are now always downloadable
+- `lightbox` links no longer use the JavaScript media player for video and audio playback
 
 ---
 
