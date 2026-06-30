@@ -496,11 +496,14 @@ The dataset uses Basque stage/level keys (matching the co-official-language
 precedent of `ES-VC`). There is **no Bachillerato** — Decreto 77/2023 only covers
 Educación Básica.
 
-| Etapa key | Niveles | Areas | Code tag |
-|---|---|---|---|
-| `Haur Hezkuntza` | `Lehen zikloa (0-3 urte)`, `Bigarren zikloa (3-6 urte)` | 3 | `INF1`, `INF2` |
-| `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | `PRI1` … `PRI6` |
-| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 24 | `ESO1` … `ESO4` |
+| Etapa key | Niveles | Areas | Competencias | Criterios | Saberes | Code tag |
+|---|---|---|---|---|---|---|
+| `Haur Hezkuntza` | `Lehen zikloa (0-3 urte)`, `Bigarren zikloa (3-6 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
+| `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | 329 | 831 | 1 936 | `PRI1` … `PRI6` |
+| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 25 | 379 | 1 028 | 3 118 | `ESO1` … `ESO4` |
+
+(Competencias/criterios/saberes counted per `(nivel, area)`, i.e. including the
+per-year/per-course duplication.)
 
 Codes follow `ES-PV-{tag}-{AREA}-CE##` (competencia), `…-CR##` (criterio) and
 `ES-PV-{tag}-{AREA}-SB##-###` (saber), with the year/course tag embedded so the
@@ -569,17 +572,18 @@ the Basque source does not make. This decision is locked by a test in
 
 ### Known limitations
 
-- **ESO saberes for some single-column optatives** (`HPIE`, `AAH`, `AE`, `DIG`,
-  `FIL`, `POPP`, `TEK`, `TDH`, and `MAT` in 4.º) are left empty: their saberes use
-  a single-column / per-course layout that the table extractor could not segment
-  reliably, so the bloques were left empty rather than ship mis-split items. Their
-  competencias específicas and criterios de evaluación are complete.
-- **`Balio Zibiko eta Etikoetako Heziketa` in ESO** (1.º) is omitted: its criterios
-  use a non-standard single-materia layout that did not yield competencia blocks.
-  It is present in Primaria (6.º).
+- **ESO saberes for a few materias are left empty**: `Ekonomia eta Ekintzailetza`
+  (`EE`) and `Teknologia eta Digitalizazioa` (`TD`) in every course, and `MAT` in
+  4.º. Their saberes section could not be segmented without bleeding content from
+  the adjacent materia, so the bloques were left empty rather than ship mis-split
+  items. Their competencias específicas and criterios de evaluación are complete,
+  and saberes **are** extracted for every other ESO materia (including the
+  single-column optatives Teknologia, Digitalizazioa, Filosofia, Plastika, etc.).
 - `4.º Matemáticas A/B` is represented as a single `MAT` reusing the 3.º criterios
   the decree publishes (the decree gives no separate 4.º A/B criterios columns in
-  this annex).
+  this annex), and its 4.º saberes are left empty for the same reason.
+- One `Lanbide-jarduerari Aplikatutako Zientziak` (`LAZ`) competencia in 4.º whose
+  criterios column was empty is dropped (no usable criterios).
 
 ### Generator script
 
