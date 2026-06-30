@@ -156,26 +156,6 @@ disable Jetpack's embed/shortcode handling for eXe iframes (it strips `referrerp
 The content iframe stays opaque throughout; the relay only ever switches on the closed action enum and
 reconstructs URLs from validated provider ids.
 
-## eXeLearning core preview is opaque too
-
-The in-app **editor preview** now renders package content with the same opaque-origin sandbox as the
-host plugins: `views/workarea/workarea.njk` serves both preview iframes (`#preview-iframe`,
-`#preview-pinned-iframe`) with `sandbox="allow-scripts allow-popups allow-forms"` — **no**
-`allow-same-origin`, `allow-modals` or `allow-downloads`. So a malicious imported `.elpx` cannot reach
-the editor's DOM, storage or session, matching plugin secure rendering.
-
-This works because the preview Service Worker (`public/preview-sw.js`) serves `/viewer/*` by **URL**,
-not by document origin, and the blob fallback inlines assets; teacher mode is a `?exe-teacher=1` URL
-parameter; and parent↔preview messaging already uses `postMessage` (the only same-origin call,
-`iframe.contentWindow.print()` in the print-preview modal, was replaced by an in-frame
-`postMessage({type:'exe-print'})` bridge, with that modal rendered via `srcdoc` so it stays opaque).
-
-> **Isolation vs. PR #1968.** The media bridge (PR #1968) only makes *external media work* inside an
-> opaque host; it never provided the iframe **isolation** itself. Isolation is enforced by the sandbox
-> policy — now by both the host **and** eXe core preview. SCORM/xAPI and media are supported only
-> through the validated bridges; direct `window.parent.*` DOM/API access is incompatible with opaque
-> mode and must never be "fixed" by re-adding `allow-same-origin`.
-
 ## PDF (deferred)
 
 PDFs share the problem (browser PDF viewers also fail inside sandboxed iframes), and the project already

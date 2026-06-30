@@ -214,13 +214,11 @@ describe('ModalPrintPreview', () => {
             expect(window.generatePrintPreview).toHaveBeenCalled();
         });
 
-        it('should render the preview via srcdoc with an in-frame print bridge', async () => {
+        it('should create blob URL', async () => {
             await modal.generatePreview();
 
-            // The preview renders in an opaque sandboxed iframe via srcdoc (an opaque origin
-            // cannot load a parent-created blob: URL), with a postMessage print bridge.
-            expect(modal.iframe.srcdoc).toContain('exe-print');
-            expect(URL.createObjectURL).not.toHaveBeenCalled();
+            expect(URL.createObjectURL).toHaveBeenCalled();
+            expect(modal.blobUrl).toBe('blob:test-url');
         });
 
         it('should throw error when generation fails', async () => {
@@ -245,19 +243,17 @@ describe('ModalPrintPreview', () => {
     });
 
     describe('print', () => {
-        it('should bridge printing to the opaque iframe via postMessage', () => {
-            const mockPost = vi.fn();
+        it('should call iframe contentWindow.print()', () => {
+            const mockPrint = vi.fn();
             modal.iframe = {
-                contentWindow: { postMessage: mockPost },
+                contentWindow: { print: mockPrint },
                 classList: { toggle: vi.fn(), add: vi.fn() },
                 src: '',
             };
 
             modal.print();
 
-            // The iframe is opaque (no allow-same-origin), so the parent cannot call
-            // contentWindow.print() directly; it posts a message the in-frame bridge handles.
-            expect(mockPost).toHaveBeenCalledWith({ type: 'exe-print' }, '*');
+            expect(mockPrint).toHaveBeenCalled();
         });
 
         it('should not throw when iframe has no contentWindow', () => {

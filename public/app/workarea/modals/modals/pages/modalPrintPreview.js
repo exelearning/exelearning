@@ -128,24 +128,14 @@ export default class ModalPrintPreview {
         // Resolve asset URLs if available
         const html = result.html;
 
-        // Render the (untrusted) author content in an OPAQUE sandboxed iframe via srcdoc.
-        // srcdoc keeps an opaque origin without the cross-origin-blob load problem (a
-        // parent-created blob: URL cannot be loaded by an opaque-origin frame). The parent
-        // cannot call print() across the opaque boundary, so a tiny in-frame bridge triggers
-        // window.print() on a postMessage (the iframe keeps allow-modals only for printing).
+        // Create blob URL and load into iframe
         this.cleanup();
-        const printBridge =
-            '<script>(function(){window.addEventListener("message",function(e){' +
-            'if(e&&e.data&&e.data.type==="exe-print"){try{window.focus();}catch(x){}window.print();}});}());<' +
-            '/script>';
-        const srcdoc = /<\/body>/i.test(html)
-            ? html.replace(/<\/body>/i, printBridge + '</body>')
-            : html + printBridge;
+        const blob = new Blob([html], { type: 'text/html' });
+        this.blobUrl = URL.createObjectURL(blob);
 
         // Load into iframe
         if (this.iframe) {
-            this.iframe.removeAttribute('src');
-            this.iframe.srcdoc = srcdoc;
+            this.iframe.src = this.blobUrl;
             this.iframe.onload = () => {
                 this.showLoading(false);
             };
@@ -156,11 +146,8 @@ export default class ModalPrintPreview {
      * Print the preview content
      */
     print() {
-        // The print-preview iframe is opaque (no allow-same-origin), so the parent cannot
-        // call contentWindow.print() across the boundary. Trigger printing from inside the
-        // frame via the injected bridge (see generatePreview()).
         if (this.iframe?.contentWindow) {
-            this.iframe.contentWindow.postMessage({ type: 'exe-print' }, '*');
+            this.iframe.contentWindow.print();
         }
     }
 
@@ -202,7 +189,6 @@ export default class ModalPrintPreview {
             this.blobUrl = null;
         }
         if (this.iframe) {
-            this.iframe.removeAttribute('srcdoc');
             this.iframe.src = 'about:blank';
             this.iframe.classList.add('hidden');
         }
