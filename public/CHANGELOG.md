@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+### Added
+
+- LOMLOE iDevice: added the official Euskadi / País Vasco (ES-PV) curriculum dataset in Basque (Decreto 75/2023 — Educación Infantil; Decreto 77/2023 — Educación Básica)
+
 ## v4.0.2 – 2026-07-07
 
 ### Added

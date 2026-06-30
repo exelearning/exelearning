@@ -141,6 +141,16 @@ var $exeDevice = (function () {
             community: 'Comunitat Valenciana',
             file: '../data/lomloe-ES-VC.json',
             available: true
+        },
+        {
+            id: 'ES-PV',
+            isoCode: 'ES-PV',
+            label: 'LOMLOE — Euskadi / País Vasco',
+            labelEn: 'LOMLOE — Euskadi / Basque Country',
+            framework: 'LOMLOE',
+            community: 'Euskadi / País Vasco',
+            file: '../data/lomloe-ES-PV.json',
+            available: true
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
@@ -471,16 +481,17 @@ var $exeDevice = (function () {
     // stage. Matching is lower-cased and accent-insensitive (see foldEtapa), so
     // the Castilian abbreviation ("ESO"), the full official Castilian name
     // ("Educación Secundaria Obligatoria") and the co-official-language spelling
-    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària") all resolve
-    // to the same rank. Without the full-name/co-official synonyms a regional
-    // dataset that uses official stage names (e.g. Navarra, Comunitat Valenciana)
-    // would mis-sort — "Educación Secundaria Obligatoria" matched no token and
-    // fell behind "Bachillerato" in the stage selector.
+    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària",
+    // "Haur Hezkuntza", "Lehen Hezkuntza", "Derrigorrezko Bigarren Hezkuntza")
+    // all resolve to the same rank. Without the full-name/co-official synonyms a
+    // regional dataset that uses official stage names (e.g. Navarra, Comunitat
+    // Valenciana, Euskadi) would mis-sort — "Educación Secundaria Obligatoria"
+    // matched no token and fell behind "Bachillerato" in the stage selector.
     var ETAPA_ORDER = [
-        ['infantil'],
-        ['primaria'],
-        ['eso', 'secundaria'],
-        ['bachillerato', 'batxillerat'],
+        ['infantil', 'haur'],
+        ['primaria', 'lehen'],
+        ['eso', 'secundaria', 'bigarren'],
+        ['bachillerato', 'batxillerat', 'batxilergo'],
     ];
 
     // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
@@ -1475,7 +1486,10 @@ var $exeDevice = (function () {
      * Infantil uses "Comp. Clave", Primaria/ESO/Bachillerato use "Descriptores operativos".
      */
     function isInfantil(etapa) {
-        return etapa && etapa.toLowerCase().indexOf('infantil') !== -1;
+        // 'infantil' covers Castilian/Valencian stage names; 'haur' covers the
+        // Basque "Haur Hezkuntza" (Euskadi dataset).
+        var f = etapa ? etapa.toLowerCase() : '';
+        return f.indexOf('infantil') !== -1 || f.indexOf('haur') !== -1;
     }
 
     function getCompClaveHeader(etapa) {
