@@ -6,36 +6,21 @@
     padding: 0;
 }
 
-// Edit-title button: hidden accessibly by default, revealed on hover/focus-within
+// Edit-title button: invisible by default, revealed on hover/focus-within.
+// Kept in the flex flow so the container's hit-area always includes the button
+// space — hovering where the pencil will appear also triggers the reveal.
 .content-editable-title {
     .btn-edit-title {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.2s ease;
     }
 
     &:hover,
     &:focus-within {
         .btn-edit-title {
-            position: static;
-            width: auto;
-            height: auto;
-            padding: 0;
-            margin: 0 0 0 .5em !important;
-            margin-inline-start: 0.25rem;
-            overflow: visible;
-            clip: auto;
-            white-space: normal;
-            border: 0;
             opacity: 1;
+            pointer-events: auto;
         }
     }
 }
