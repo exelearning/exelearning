@@ -695,6 +695,8 @@ export class Epub3Exporter extends BaseExporter {
             hideNavButtons: true,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination === true,
+            // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
+            addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex,
             // Pre-translated labels (resolved from XLF at export time)

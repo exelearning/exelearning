@@ -121,6 +121,51 @@
                         background-color: var(--gray-600);
                     }
                 }
+                // Collaborative autosave notice (issue #1592). Small, muted and
+                // non-intrusive; revealed by JS only in collaborative sessions.
+                #exe-collab-save-status {
+                    display: inline-flex;
+                    align-items: center;
+                    margin-right: 8px;
+                    max-width: 22ch;
+                    font-size: 0.78rem;
+                    line-height: 1.2;
+                    color: var(--gray-600);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+
+                    &.d-none {
+                        display: none;
+                    }
+                    .content {
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                    &:before {
+                        content: "";
+                        flex: 0 0 auto;
+                        width: 8px;
+                        height: 8px;
+                        margin-right: 6px;
+                        border-radius: 50%;
+                        background: var(--gray-500);
+                    }
+                    &.collab-save-status--clean:before {
+                        background: var(--system-green, #2e7d32);
+                    }
+                    &.collab-save-status--pending:before,
+                    &.collab-save-status--saving:before {
+                        background: var(--system-yellow, #f9a825);
+                    }
+                    &.collab-save-status--failed {
+                        color: var(--system-red);
+                        font-weight: 600;
+                    }
+                    &.collab-save-status--failed:before {
+                        background: var(--system-red);
+                    }
+                }
                 .small-icon.image-icon-green {
                     height: 18px;
                     width: 18px;

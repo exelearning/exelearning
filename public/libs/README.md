@@ -11,12 +11,6 @@
 *   ORM: Kysely
     *   Copyright: Sami Koskimäki
     *   License: MIT
-*   Package: @babel/core
-    *   Copyright: The Babel Team
-    *   License: MIT
-*   Package: @babel/preset-env
-    *   Copyright: The Babel Team
-    *   License: MIT
 *   Package: @biomejs/biome
     *   Copyright: Emanuele Stoppa
     *   License: MIT OR Apache-2.0

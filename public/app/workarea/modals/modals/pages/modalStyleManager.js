@@ -655,12 +655,9 @@ export default class ModalStyleManager extends Modal {
         actionExportTd.classList.add('theme-action-export');
         actionExportTd.title = _('Download');
         actionExportTd.innerHTML = 'download';
-        // Downloadable
-        if (theme.downloadable) {
-            actionExportTd.setAttribute('downloadable', true);
-        } else {
-            actionExportTd.setAttribute('downloadable', false);
-        }
+        // Issue #1893: every style is downloadable, so the export action is
+        // always enabled regardless of the legacy <downloadable> flag.
+        actionExportTd.setAttribute('downloadable', true);
         // Click event
         actionExportTd.addEventListener('click', (event) => {
             this.downloadThemeZip(theme);

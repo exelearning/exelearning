@@ -415,6 +415,49 @@ describe('Modal', () => {
       expect(mockBootstrapModal.show).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it('does not show if closed before the deferred show runs (no blank modal)', () => {
+      vi.useFakeTimers();
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', true);
+      modal.show({ body: 'Please wait' });
+      // Close before the deferred show() timer fires.
+      modal.close();
+      vi.advanceTimersByTime(200);
+      expect(mockBootstrapModal.show).not.toHaveBeenCalled();
+      expect(modal.pendingShowTimeout).toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('cancels a still-pending deferred show when show() is called again', () => {
+      vi.useFakeTimers();
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', true);
+      modal.show({ body: 'first' });
+      // Re-show before the first deferred show() timer fires.
+      modal.show({ body: 'second' });
+      vi.advanceTimersByTime(200);
+      // Only the latest show() runs: a single Bootstrap show() with its data,
+      // not the stale earlier timer re-applying 'first' afterwards.
+      expect(mockBootstrapModal.show).toHaveBeenCalledTimes(1);
+      expect(modal.modalElementBody.innerHTML).toBe('second');
+      expect(modal.pendingShowTimeout).toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('lets the latest show() win even when the earlier timer is scheduled later', () => {
+      vi.useFakeTimers();
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', true);
+      // First call schedules the long timeMax delay (a modal was open), the
+      // second the short timeMin delay. Without cancelling the first, it would
+      // fire last and overwrite the body with the stale 'first' value.
+      mockManager.closeModals.mockReturnValueOnce(true);
+      modal.show({ body: 'first' });
+      mockManager.closeModals.mockReturnValueOnce(false);
+      modal.show({ body: 'second' });
+      vi.advanceTimersByTime(modal.timeMax + 100);
+      expect(mockBootstrapModal.show).toHaveBeenCalledTimes(1);
+      expect(modal.modalElementBody.innerHTML).toBe('second');
+      vi.useRealTimers();
+    });
   });
 
   describe('close', () => {
@@ -1160,12 +1203,24 @@ describe('Modal', () => {
       vi.restoreAllMocks();
     });
 
-    it('revokes blob URL after download', () => {
+    it('defers revoking the blob URL so async (Electron) download handlers can read it (issue #1947)', () => {
+      // In Electron the global click interceptor (asset_url_resolver.js) routes
+      // blob: downloads through saveBufferAs, which fetches the blob URL on a
+      // later microtask. Revoking synchronously here would invalidate the URL
+      // before that fetch runs, aborting the save with ERR_FILE_NOT_FOUND.
+      vi.useFakeTimers();
       const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
 
       modal.downloadCSVFile('content', 'test.csv');
 
+      // Not revoked synchronously while async consumers may still read the blob.
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+      // Eventually revoked once pending async work has had a chance to run.
+      vi.runAllTimers();
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+
+      vi.useRealTimers();
     });
   });
 });
