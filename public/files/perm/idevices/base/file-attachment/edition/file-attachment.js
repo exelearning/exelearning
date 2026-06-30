@@ -32,6 +32,7 @@ var $exeDevice = {
         this.idevicePath = path || '';
         this.nextRowId = 0;
         this.createForm();
+        this.observeAssetChanges();
     },
 
     /**
@@ -174,6 +175,129 @@ var $exeDevice = {
     },
 
     /**
+     * Observe the Media Library asset metadata so attachments stay in sync when a
+     * referenced file is renamed or deleted while this iDevice is being edited.
+     * There is no dedicated asset-change event, so we observe the shared Yjs map.
+     */
+    observeAssetChanges: function () {
+        const assetManager = this.getAssetManager();
+        const assetsMap =
+            assetManager && typeof assetManager.getAssetsYMap === 'function' ? assetManager.getAssetsYMap() : null;
+        if (!assetsMap || typeof assetsMap.observe !== 'function') return;
+
+        const body = this.ideviceBody;
+        const handler = () => {
+            // Self-clean once this iDevice's DOM has been torn down.
+            if (typeof document !== 'undefined' && !document.contains(body)) {
+                try {
+                    assetsMap.unobserve(handler);
+                } catch (e) {
+                    // Ignore unobserve errors on already-detached maps.
+                }
+                return;
+            }
+            $exeDevice.refreshAttachmentsFromAssets();
+        };
+
+        assetsMap.observe(handler);
+        this._assetsObserver = { map: assetsMap, handler };
+    },
+
+    /**
+     * Reconcile every attachment row against the live Media Library assets.
+     */
+    refreshAttachmentsFromAssets: function () {
+        const rows = this.ideviceBody.querySelectorAll('#fileAttachmentList .fileAttachment-edit-item');
+        rows.forEach((row) => this.refreshRowFromAsset(row));
+    },
+
+    /**
+     * Reconcile a single row against the live asset: update the filename/icon when
+     * it was renamed, or flag it missing when it was deleted from the Media Library.
+     *
+     * @param {HTMLElement} row
+     */
+    refreshRowFromAsset: function (row) {
+        const assetManager = this.getAssetManager();
+        if (!assetManager || typeof assetManager.getAssetMetadata !== 'function') return;
+
+        const url = row.getAttribute('data-url') || '';
+        if (url.indexOf('asset://') !== 0) return;
+
+        const assetId =
+            typeof assetManager.extractAssetId === 'function' ? assetManager.extractAssetId(url) : null;
+        if (!assetId) return;
+
+        const meta = assetManager.getAssetMetadata(assetId);
+        if (!meta) {
+            // The referenced file was deleted from the Media Library.
+            this.setRowMissing(row, true);
+            return;
+        }
+
+        const filename = meta.filename || row.getAttribute('data-filename') || '';
+        const newUrl =
+            typeof assetManager.getAssetUrl === 'function' ? assetManager.getAssetUrl(assetId, filename) : url;
+        this.updateRowMeta(row, {
+            url: newUrl,
+            filename,
+            mimeType: meta.mime || '',
+            size: typeof meta.size === 'number' ? meta.size : 0,
+        });
+        this.setRowMissing(row, false);
+    },
+
+    /**
+     * Apply refreshed asset metadata to a row's stored data and display.
+     *
+     * @param {HTMLElement} row
+     * @param {Object} meta - { url, filename, mimeType, size }
+     */
+    updateRowMeta: function (row, meta) {
+        if (meta.url) row.setAttribute('data-url', meta.url);
+        row.setAttribute('data-filename', meta.filename || '');
+        row.setAttribute('data-mime', meta.mimeType || '');
+        row.setAttribute('data-size', String(meta.size || 0));
+
+        const filenameEl = row.querySelector('.fileAttachment-edit-filename');
+        if (filenameEl) filenameEl.textContent = meta.filename || _('Unknown file');
+
+        const iconEl = row.querySelector('.fileAttachment-edit-icon');
+        if (iconEl) {
+            const category = this.getFileCategory(meta.mimeType, meta.filename);
+            iconEl.className = `fileAttachment-edit-icon fileAttachment-icon--${category}`;
+            iconEl.innerHTML = this.getFileIconSvg(meta.mimeType, meta.filename);
+        }
+    },
+
+    /**
+     * Toggle the "missing asset" state on a row.
+     *
+     * @param {HTMLElement} row
+     * @param {Boolean} missing
+     */
+    setRowMissing: function (row, missing) {
+        row.classList.toggle('fileAttachment-edit-item--missing', missing);
+        const fields = row.querySelector('.fileAttachment-edit-fields');
+        if (!fields) return;
+
+        let warning = fields.querySelector('.fileAttachment-edit-warning');
+        if (missing && !warning) {
+            warning = document.createElement('p');
+            warning.className = 'fileAttachment-edit-warning';
+            warning.textContent = _('The attached file is missing. Re-add it from the Media Library.');
+            const filenameEl = fields.querySelector('.fileAttachment-edit-filename');
+            if (filenameEl) {
+                filenameEl.insertAdjacentElement('afterend', warning);
+            } else {
+                fields.insertAdjacentElement('afterbegin', warning);
+            }
+        } else if (!missing && warning) {
+            warning.remove();
+        }
+    },
+
+    /**
      * Upload a single File through the AssetManager and add it as an attachment.
      *
      * @param {File} file
@@ -286,6 +410,9 @@ var $exeDevice = {
 
         list.appendChild(item);
         this.addRowEvents(item);
+        // Reconcile against the live Media Library asset (handles a renamed or
+        // deleted asset since this attachment was last saved).
+        this.refreshRowFromAsset(item);
         this.refreshEmptyState();
     },
 

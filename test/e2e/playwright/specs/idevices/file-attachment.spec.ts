@@ -109,6 +109,43 @@ test.describe('File attachment iDevice', () => {
         await expect(link).toHaveAttribute('download', /sample-1\.pdf/);
     });
 
+    test('reflects renaming and deleting a referenced asset in the Media Library', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'File Attachment Sync Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addIdevice(page, FILE_ATTACHMENT_ID);
+        await addFileViaMediaLibrary(page, PDF_FIXTURE);
+
+        const row = page.locator('#fileAttachmentList .fileAttachment-edit-item').first();
+        const storedUrl = await row.getAttribute('data-url');
+        const uuid = (storedUrl || '').replace('asset://', '').split('.')[0];
+        expect(uuid).toBeTruthy();
+
+        // Rename through the real AssetManager (the same path the Media Library uses).
+        await page.evaluate(async (id) => {
+            const am = window.eXeLearning.app.project._yjsBridge.assetManager;
+            await am.renameAsset(id, 'renamed-worksheet.pdf');
+        }, uuid);
+        await expect(row.locator('.fileAttachment-edit-filename')).toHaveText('renamed-worksheet.pdf', {
+            timeout: 10000,
+        });
+
+        // Delete the asset: the attachment must flag itself as missing, not stay stale.
+        await page.evaluate(async (id) => {
+            const am = window.eXeLearning.app.project._yjsBridge.assetManager;
+            await am.deleteAsset(id, { skipServerDelete: true });
+        }, uuid);
+        await expect(row).toHaveClass(/fileAttachment-edit-item--missing/, { timeout: 10000 });
+        await expect(row.locator('.fileAttachment-edit-warning')).toBeVisible();
+    });
+
     test('shows the download link in the preview panel', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 

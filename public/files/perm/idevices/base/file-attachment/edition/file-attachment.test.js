@@ -328,6 +328,122 @@ describe('file-attachment iDevice edition', () => {
         });
     });
 
+    describe('Media Library sync (rename / delete)', () => {
+        // Controllable mock of the AssetManager's asset metadata Yjs map.
+        function installAssetManager(initialMeta = {}) {
+            const meta = new Map(Object.entries(initialMeta));
+            const observers = [];
+            const assetsMap = {
+                observe: (h) => observers.push(h),
+                unobserve: (h) => {
+                    const i = observers.indexOf(h);
+                    if (i >= 0) observers.splice(i, 1);
+                },
+                _fire: () => observers.slice().forEach((h) => h()),
+                _observerCount: () => observers.length,
+            };
+            const assetManager = {
+                getAssetsYMap: () => assetsMap,
+                extractAssetId: (url) => url.replace('asset://', '').split('.')[0],
+                getAssetMetadata: (id) => (meta.has(id) ? { ...meta.get(id), id } : null),
+                getAssetUrl: (id, filename) => {
+                    const ext = filename && filename.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+                    return ext ? `asset://${id}.${ext}` : `asset://${id}`;
+                },
+            };
+            global.eXeLearning.app = { project: { _yjsBridge: { assetManager } } };
+            return { meta, assetsMap };
+        }
+
+        afterEach(() => {
+            delete global.eXeLearning.app;
+        });
+
+        const UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        it('uses the live filename when an asset was renamed since the last save', () => {
+            installAssetManager({ [UUID]: { filename: 'current.pdf', mime: 'application/pdf', size: 100 } });
+            init();
+            // Saved snapshot still has the stale name.
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'stale.pdf' }));
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.getAttribute('data-filename')).toBe('current.pdf');
+            expect(row.querySelector('.fileAttachment-edit-filename').textContent).toBe('current.pdf');
+        });
+
+        it('updates the row when a referenced asset is renamed in the Media Library', () => {
+            const { meta, assetsMap } = installAssetManager({
+                [UUID]: { filename: 'report.pdf', mime: 'application/pdf', size: 100 },
+            });
+            init();
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'report.pdf' }));
+
+            meta.set(UUID, { filename: 'final-report.pdf', mime: 'application/pdf', size: 100 });
+            assetsMap._fire();
+
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.getAttribute('data-filename')).toBe('final-report.pdf');
+            expect(row.querySelector('.fileAttachment-edit-filename').textContent).toBe('final-report.pdf');
+            expect($exeDevice.save().attachments[0].filename).toBe('final-report.pdf');
+        });
+
+        it('updates the stored asset URL when a rename changes the extension', () => {
+            const { meta, assetsMap } = installAssetManager({
+                [UUID]: { filename: 'photo.jpg', mime: 'image/jpeg', size: 100 },
+            });
+            init();
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.jpg`, filename: 'photo.jpg' }));
+
+            meta.set(UUID, { filename: 'photo.png', mime: 'image/png', size: 100 });
+            assetsMap._fire();
+
+            expect($exeDevice.save().attachments[0].url).toBe(`asset://${UUID}.png`);
+        });
+
+        it('flags the row as missing when a referenced asset is deleted', () => {
+            const { meta, assetsMap } = installAssetManager({
+                [UUID]: { filename: 'doc.pdf', mime: 'application/pdf', size: 100 },
+            });
+            init();
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'doc.pdf' }));
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.classList.contains('fileAttachment-edit-item--missing')).toBe(false);
+
+            meta.delete(UUID);
+            assetsMap._fire();
+
+            expect(row.classList.contains('fileAttachment-edit-item--missing')).toBe(true);
+            expect(row.querySelector('.fileAttachment-edit-warning')).not.toBeNull();
+            // The reference is preserved so the author can re-add or remove it.
+            expect($exeDevice.save().attachments[0].url).toBe(`asset://${UUID}.pdf`);
+        });
+
+        it('clears the missing flag when the asset becomes available again', () => {
+            const { meta, assetsMap } = installAssetManager({});
+            init();
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'doc.pdf' }));
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.classList.contains('fileAttachment-edit-item--missing')).toBe(true);
+
+            meta.set(UUID, { filename: 'doc.pdf', mime: 'application/pdf', size: 100 });
+            assetsMap._fire();
+
+            expect(row.classList.contains('fileAttachment-edit-item--missing')).toBe(false);
+            expect(row.querySelector('.fileAttachment-edit-warning')).toBeNull();
+        });
+
+        it('stops observing once the iDevice DOM is detached', () => {
+            const { assetsMap } = installAssetManager({ [UUID]: { filename: 'doc.pdf' } });
+            init();
+            expect(assetsMap._observerCount()).toBe(1);
+
+            body.remove();
+            assetsMap._fire();
+
+            expect(assetsMap._observerCount()).toBe(0);
+        });
+    });
+
     describe('helpers', () => {
         it('classifies file categories', () => {
             expect($exeDevice.getFileCategory('application/pdf', 'x.pdf')).toBe('pdf');
