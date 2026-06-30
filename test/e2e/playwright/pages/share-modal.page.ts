@@ -21,13 +21,12 @@ export class ShareModalPage {
     readonly peopleSection: Locator;
     readonly peopleList: Locator;
 
-    // General access section
-    readonly generalAccessSection: Locator;
+    // Edit access section
+    readonly editAccessSection: Locator;
     readonly visibilitySelect: Locator;
     readonly visibilityHelp: Locator;
 
-    // Link section
-    readonly linkSection: Locator;
+    // Link controls (inside the edit access section)
     readonly linkInput: Locator;
     readonly copyButton: Locator;
 
@@ -58,13 +57,12 @@ export class ShareModalPage {
         this.peopleSection = page.locator('#share-people-section');
         this.peopleList = page.locator('#share-people-list');
 
-        // General access
-        this.generalAccessSection = page.locator('#share-general-access-section');
+        // Edit access
+        this.editAccessSection = page.locator('#share-edit-access-section');
         this.visibilitySelect = page.locator('#share-visibility-select');
         this.visibilityHelp = page.locator('#share-visibility-help');
 
-        // Link section
-        this.linkSection = page.locator('#share-link-section');
+        // Link controls (inside the edit access section)
         this.linkInput = page.locator('#share-link-input');
         this.copyButton = page.locator('#share-copy-button');
 

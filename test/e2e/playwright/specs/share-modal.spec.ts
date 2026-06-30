@@ -435,7 +435,8 @@ test.describe('Share Modal', () => {
 
             const metrics = await authenticatedPage.evaluate(() => {
                 const list = document.querySelector('#share-people-list') as HTMLElement;
-                const generalAccess = document.querySelector('#share-general-access-section') as HTMLElement;
+                // Section immediately following the people list in the redesigned modal.
+                const nextSection = document.querySelector('#share-edit-access-section') as HTMLElement;
                 const modalContent = document.querySelector('#modalShare .modal-content') as HTMLElement;
                 const style = window.getComputedStyle(list);
                 return {
@@ -443,7 +444,7 @@ test.describe('Share Modal', () => {
                     clientHeight: list.clientHeight,
                     scrollHeight: list.scrollHeight,
                     listBottom: list.getBoundingClientRect().bottom,
-                    generalAccessTop: generalAccess.getBoundingClientRect().top,
+                    nextSectionTop: nextSection.getBoundingClientRect().top,
                     modalContentBottom: modalContent.getBoundingClientRect().bottom,
                 };
             });
@@ -456,7 +457,7 @@ test.describe('Share Modal', () => {
             // growing to fit every row.
             expect(metrics.clientHeight).toBeLessThanOrEqual(301);
             // The next section starts below the list (no overlap / spill-over).
-            expect(metrics.generalAccessTop).toBeGreaterThanOrEqual(metrics.listBottom - 1);
+            expect(metrics.nextSectionTop).toBeGreaterThanOrEqual(metrics.listBottom - 1);
             // The whole list stays inside the modal dialog.
             expect(metrics.listBottom).toBeLessThanOrEqual(metrics.modalContentBottom + 1);
         });

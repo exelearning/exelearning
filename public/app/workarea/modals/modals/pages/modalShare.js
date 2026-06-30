@@ -27,7 +27,7 @@ export default class ModalShare extends Modal {
         this.peopleSection = this.modalElement.querySelector('#share-people-section');
         this.peopleList = this.modalElement.querySelector('#share-people-list');
 
-        this.generalAccessSection = this.modalElement.querySelector('#share-general-access-section');
+        this.editAccessSection = this.modalElement.querySelector('#share-edit-access-section');
         this.visibilitySelect = this.modalElement.querySelector('#share-visibility-select');
         this.visibilityIcon = this.modalElement.querySelector('#share-visibility-icon');
         this.visibilityHelp = this.modalElement.querySelector('#share-visibility-help');
