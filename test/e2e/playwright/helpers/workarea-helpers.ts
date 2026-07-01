@@ -1460,22 +1460,37 @@ export async function addPage(page: Page, name: string = 'New Page'): Promise<st
  * @param blockId - The block element ID (without the 'dropdownMenuButton' prefix)
  * @returns The Download object for the exported file
  */
-export async function exportBlock(page: Page, blockId: string): Promise<Download> {
-    // Click on the block's actions dropdown button (three dots)
-    const dropdownBtn = page.locator(`#dropdownMenuButton${blockId}`);
+/**
+ * Open a "three dots" actions dropdown and resolve once the target menu item is
+ * visible. The first toggle click is occasionally missed (notably on Firefox),
+ * leaving the item present-but-hidden, so re-toggle until the menu is actually
+ * open instead of racing a fixed sleep — the flaky export in
+ * component-export-import.
+ */
+async function openActionsDropdown(page: Page, dropdownSelector: string, itemSelector: string): Promise<void> {
+    const dropdownBtn = page.locator(dropdownSelector);
+    const item = page.locator(itemSelector);
     await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
+    for (let attempt = 0; attempt < 5; attempt++) {
+        if (await item.isVisible().catch(() => false)) return;
+        await dropdownBtn.click();
+        const opened = await item
+            .waitFor({ state: 'visible', timeout: 2000 })
+            .then(() => true)
+            .catch(() => false);
+        if (opened) return;
+    }
+    // Surface a clear failure if the menu never opened after retries.
+    await item.waitFor({ state: 'visible', timeout: 5000 });
+}
 
-    // Wait for download event and click export button
+export async function exportBlock(page: Page, blockId: string): Promise<Download> {
+    const exportSelector = `#dropdownBlockMore-button-export${blockId}`;
+    await openActionsDropdown(page, `#dropdownMenuButton${blockId}`, exportSelector);
+
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#dropdownBlockMore-button-export${blockId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
+    await page.locator(exportSelector).click();
+    return await downloadPromise;
 }
 
 /**
@@ -1486,21 +1501,12 @@ export async function exportBlock(page: Page, blockId: string): Promise<Download
  * @returns The Download object for the exported file
  */
 export async function exportIdevice(page: Page, ideviceId: string): Promise<Download> {
-    // Click on the iDevice's actions dropdown button (three dots horizontal)
-    const dropdownBtn = page.locator(`#dropdownMenuButtonIdevice${ideviceId}`);
-    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
+    const exportSelector = `#exportIdevice${ideviceId}`;
+    await openActionsDropdown(page, `#dropdownMenuButtonIdevice${ideviceId}`, exportSelector);
 
-    // Wait for download event and click export button
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#exportIdevice${ideviceId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
+    await page.locator(exportSelector).click();
+    return await downloadPromise;
 }
 
 /**
@@ -1534,6 +1540,25 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
 
     // Wait for the file input to be available
     await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+
+    // The import inserts into the currently-selected page: modalOpenUserOdeFiles
+    // reads the selected nav node's nav-id and ComponentImporter.findPage() must
+    // resolve it in the Yjs structure. On a freshly created project the nav tree
+    // can render before the Yjs document has that page, so importing immediately
+    // failed with "Import error: Target page not found" and nothing rendered
+    // (the flaky component-export-import imports on the DB matrix). Wait for the
+    // selected page to actually exist in Yjs first — a deterministic precondition,
+    // not a fixed sleep or a longer render timeout.
+    await page.waitForFunction(
+        () => {
+            const app = (window as any).eXeLearning?.app;
+            const navId = app?.menus?.menuStructure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+            if (!navId) return false;
+            return !!app?.project?._yjsBridge?.structureBinding?.getPage?.(navId);
+        },
+        undefined,
+        { timeout: 15000 },
+    );
 
     // Set the file - this triggers the import directly
     await fileInput.setInputFiles(filePath);
