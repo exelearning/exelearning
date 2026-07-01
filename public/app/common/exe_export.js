@@ -42,6 +42,11 @@ window.$exeExport = {
             console.error('Error: Failed to initialize box toggle events');
         }
         try {
+            this.keyboardNav.init();
+        } catch (err) {
+            console.error('Error: Failed to initialize keyboard navigation');
+        }
+        try {
             this.setExe();
             this.initExe();
             this.initJsonIdevices();
@@ -600,6 +605,164 @@ window.$exeExport = {
         const params = new URLSearchParams(window.location.search);
         if (params.get('print') === '1' && typeof window.print === 'function') {
             window.print();
+        }
+    },
+
+    /**
+     * Keyboard navigation for exported/previewed content, inspired by the
+     * legacy eXeLearning 2.9 "Presentation" style. Works with any theme that
+     * exposes the standard nav elements (#siteNav, .nav-buttons,
+     * #siteNavToggler, #searchBarTogger) and is a no-op when they are absent.
+     *
+     * Opt-out: `?keyboard-navigation=false` query param, or a
+     * `exeKeyboardNavigationDisabled` value in localStorage.
+     */
+    keyboardNav: {
+        _initialized: false,
+        _boundHandleKeydown: null,
+
+        init: function () {
+            if (this._initialized || this.isShortcutDisabled()) return;
+            this._boundHandleKeydown = this.handleKeydown.bind(this);
+            document.addEventListener('keydown', this._boundHandleKeydown);
+            this._initialized = true;
+        },
+
+        destroy: function () {
+            if (this._boundHandleKeydown) {
+                document.removeEventListener('keydown', this._boundHandleKeydown);
+                this._boundHandleKeydown = null;
+            }
+            this._initialized = false;
+        },
+
+        isShortcutDisabled: function () {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('keyboard-navigation') === 'false') return true;
+            } catch (err) {
+                // Malformed URL: fall through to the localStorage check
+            }
+            try {
+                if (window.localStorage && window.localStorage.getItem('exeKeyboardNavigationDisabled') === 'true') {
+                    return true;
+                }
+            } catch (err) {
+                // localStorage unavailable (privacy mode, sandboxed iframe)
+            }
+            return false;
+        },
+
+        // Never hijack shortcuts while the user is typing or composing text.
+        isTypingTarget: function (target) {
+            if (!target || typeof target.closest !== 'function') return false;
+            return !!target.closest(
+                'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'
+            );
+        },
+
+        getPreviousLink: function () {
+            return document.querySelector('a.nav-button-left');
+        },
+
+        getNextLink: function () {
+            return document.querySelector('a.nav-button-right');
+        },
+
+        getFirstNavLink: function () {
+            return document.querySelector('#siteNav a[href]');
+        },
+
+        getLastNavLink: function () {
+            var links = document.querySelectorAll('#siteNav a[href]');
+            return links.length ? links[links.length - 1] : null;
+        },
+
+        toggleMenu: function () {
+            var toggler = document.getElementById('siteNavToggler');
+            if (!toggler) return false;
+            toggler.click();
+            return true;
+        },
+
+        isHidden: function (el) {
+            if (!el) return true;
+            if (el.hidden) return true;
+            var style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : el.style;
+            return style.display === 'none';
+        },
+
+        focusSearch: function () {
+            var toggler = document.getElementById('searchBarTogger');
+            if (!toggler) return false;
+            var bar = document.getElementById('exe-client-search');
+            if (this.isHidden(bar)) {
+                // Reuse the theme's own toggler handler so it shows the bar
+                // consistently with a real click (state classes, layout, etc.)
+                toggler.click();
+            }
+            var input = document.getElementById('exe-client-search-text');
+            if (input) input.focus();
+            return true;
+        },
+
+        // `m` and Alt+M both toggle the menu: KeyboardEvent.code identifies the
+        // physical M key regardless of layout or whether Alt changes `.key`
+        // (e.g. Option+M produces "µ" on macOS).
+        isMenuToggleShortcut: function (event) {
+            if (event.ctrlKey || event.metaKey) return false;
+            if (event.code) return event.code === 'KeyM';
+            return event.key === 'm' || event.key === 'M';
+        },
+
+        // Alt+/ opens/focuses search without ever shadowing Ctrl/Cmd+F.
+        isSearchShortcut: function (event) {
+            if (!event.altKey || event.ctrlKey || event.metaKey) return false;
+            if (event.code) return event.code === 'Slash';
+            return event.key === '/';
+        },
+
+        activateLink: function (link, event) {
+            if (!link) return;
+            link.click();
+            if (event.cancelable) event.preventDefault();
+        },
+
+        handleKeydown: function (event) {
+            if (event.defaultPrevented || event.isComposing) return;
+            if (this.isTypingTarget(event.target)) return;
+
+            if (this.isMenuToggleShortcut(event)) {
+                if (this.toggleMenu() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            if (this.isSearchShortcut(event)) {
+                if (this.focusSearch() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            // Remaining shortcuts are plain, unmodified arrow keys only, so we
+            // never shadow Alt/Ctrl/Cmd combinations reserved by the browser
+            // (e.g. Alt+Left/Right for browser back/forward history).
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                    this.activateLink(this.getPreviousLink(), event);
+                    break;
+                case 'ArrowRight':
+                    this.activateLink(this.getNextLink(), event);
+                    break;
+                case 'ArrowUp':
+                    this.activateLink(this.getFirstNavLink(), event);
+                    break;
+                case 'ArrowDown':
+                    this.activateLink(this.getLastNavLink(), event);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

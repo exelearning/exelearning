@@ -2812,4 +2812,598 @@ describe('exe_export.js', () => {
       expect(() => window.$exeExport.searchBar.init()).not.toThrow();
     });
   });
+
+  describe('keyboardNav', () => {
+    function makeEvent(overrides) {
+      return Object.assign(
+        {
+          key: '',
+          code: '',
+          ctrlKey: false,
+          metaKey: false,
+          altKey: false,
+          shiftKey: false,
+          isComposing: false,
+          defaultPrevented: false,
+          cancelable: true,
+          target: document.body,
+          preventDefault: vi.fn(),
+        },
+        overrides
+      );
+    }
+
+    afterEach(() => {
+      window.$exeExport.keyboardNav.destroy();
+    });
+
+    describe('isTypingTarget', () => {
+      it('returns false for null/undefined target', () => {
+        expect(window.$exeExport.keyboardNav.isTypingTarget(null)).toBe(false);
+        expect(window.$exeExport.keyboardNav.isTypingTarget(undefined)).toBe(false);
+      });
+
+      it('returns false for a plain element', () => {
+        const div = document.createElement('div');
+        expect(window.$exeExport.keyboardNav.isTypingTarget(div)).toBe(false);
+      });
+
+      it.each(['input', 'textarea', 'select'])('returns true for a %s element', (tag) => {
+        const el = document.createElement(tag);
+        document.body.appendChild(el);
+        expect(window.$exeExport.keyboardNav.isTypingTarget(el)).toBe(true);
+      });
+
+      it('returns true for a contenteditable element', () => {
+        const div = document.createElement('div');
+        div.setAttribute('contenteditable', 'true');
+        document.body.appendChild(div);
+        expect(window.$exeExport.keyboardNav.isTypingTarget(div)).toBe(true);
+      });
+
+      it('returns false for contenteditable="false"', () => {
+        const div = document.createElement('div');
+        div.setAttribute('contenteditable', 'false');
+        document.body.appendChild(div);
+        expect(window.$exeExport.keyboardNav.isTypingTarget(div)).toBe(false);
+      });
+
+      it('returns true for a nested child of an editable region (role=textbox)', () => {
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('role', 'textbox');
+        const span = document.createElement('span');
+        wrapper.appendChild(span);
+        document.body.appendChild(wrapper);
+        expect(window.$exeExport.keyboardNav.isTypingTarget(span)).toBe(true);
+      });
+    });
+
+    describe('getPreviousLink / getNextLink', () => {
+      it('returns the previous/next nav-button links when present', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons">' +
+          '<a href="prev.html" class="nav-button nav-button-left">Previous</a>' +
+          '<a href="next.html" class="nav-button nav-button-right">Next</a>' +
+          '</div>';
+
+        expect(window.$exeExport.keyboardNav.getPreviousLink().getAttribute('href')).toBe('prev.html');
+        expect(window.$exeExport.keyboardNav.getNextLink().getAttribute('href')).toBe('next.html');
+      });
+
+      it('returns null when boundary buttons are disabled spans', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons">' +
+          '<span class="nav-button nav-button-left" aria-hidden="true">Previous</span>' +
+          '<a href="next.html" class="nav-button nav-button-right">Next</a>' +
+          '</div>';
+
+        expect(window.$exeExport.keyboardNav.getPreviousLink()).toBeNull();
+        expect(window.$exeExport.keyboardNav.getNextLink().getAttribute('href')).toBe('next.html');
+      });
+
+      it('returns null when .nav-buttons is entirely absent', () => {
+        document.body.innerHTML = '';
+        expect(window.$exeExport.keyboardNav.getPreviousLink()).toBeNull();
+        expect(window.$exeExport.keyboardNav.getNextLink()).toBeNull();
+      });
+    });
+
+    describe('getFirstNavLink / getLastNavLink', () => {
+      it('returns the first and last links inside #siteNav', () => {
+        document.body.innerHTML =
+          '<nav id="siteNav"><ul>' +
+          '<li><a href="a.html">A</a></li>' +
+          '<li><a href="b.html">B</a></li>' +
+          '<li><a href="c.html">C</a></li>' +
+          '</ul></nav>';
+
+        expect(window.$exeExport.keyboardNav.getFirstNavLink().getAttribute('href')).toBe('a.html');
+        expect(window.$exeExport.keyboardNav.getLastNavLink().getAttribute('href')).toBe('c.html');
+      });
+
+      it('returns null when #siteNav is absent', () => {
+        document.body.innerHTML = '';
+        expect(window.$exeExport.keyboardNav.getFirstNavLink()).toBeNull();
+        expect(window.$exeExport.keyboardNav.getLastNavLink()).toBeNull();
+      });
+    });
+
+    describe('toggleMenu', () => {
+      it('clicks #siteNavToggler and returns true when present', () => {
+        document.body.innerHTML = '<button id="siteNavToggler"></button>';
+        const spy = vi.fn();
+        document.getElementById('siteNavToggler').addEventListener('click', spy);
+
+        expect(window.$exeExport.keyboardNav.toggleMenu()).toBe(true);
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('does nothing and returns false when #siteNavToggler is absent', () => {
+        document.body.innerHTML = '';
+        let result;
+        expect(() => {
+          result = window.$exeExport.keyboardNav.toggleMenu();
+        }).not.toThrow();
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('isHidden', () => {
+      it('returns true for a null element', () => {
+        expect(window.$exeExport.keyboardNav.isHidden(null)).toBe(true);
+      });
+
+      it('returns true for an element with the hidden attribute', () => {
+        const el = document.createElement('div');
+        el.hidden = true;
+        expect(window.$exeExport.keyboardNav.isHidden(el)).toBe(true);
+      });
+
+      it('returns true for an element with inline display:none', () => {
+        const el = document.createElement('div');
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        expect(window.$exeExport.keyboardNav.isHidden(el)).toBe(true);
+      });
+
+      it('returns false for a plain visible element', () => {
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        expect(window.$exeExport.keyboardNav.isHidden(el)).toBe(false);
+      });
+    });
+
+    describe('focusSearch', () => {
+      it('does nothing and returns false when #searchBarTogger is absent', () => {
+        document.body.innerHTML = '<input id="exe-client-search-text">';
+        const input = document.getElementById('exe-client-search-text');
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        let result;
+        expect(() => {
+          result = window.$exeExport.keyboardNav.focusSearch();
+        }).not.toThrow();
+        expect(result).toBe(false);
+        expect(focusSpy).not.toHaveBeenCalled();
+      });
+
+      it('clicks the toggler, focuses the input, and returns true when the search bar is hidden', () => {
+        document.body.innerHTML =
+          '<button id="searchBarTogger"></button>' +
+          '<div id="exe-client-search" style="display:none">' +
+          '<input id="exe-client-search-text">' +
+          '</div>';
+        const toggler = document.getElementById('searchBarTogger');
+        const input = document.getElementById('exe-client-search-text');
+        const clickSpy = vi.fn();
+        toggler.addEventListener('click', clickSpy);
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        expect(window.$exeExport.keyboardNav.focusSearch()).toBe(true);
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(focusSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('only focuses the input, without re-clicking, when the search bar is already visible', () => {
+        document.body.innerHTML =
+          '<button id="searchBarTogger"></button>' +
+          '<div id="exe-client-search">' +
+          '<input id="exe-client-search-text">' +
+          '</div>';
+        const toggler = document.getElementById('searchBarTogger');
+        const input = document.getElementById('exe-client-search-text');
+        const clickSpy = vi.fn();
+        toggler.addEventListener('click', clickSpy);
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        window.$exeExport.keyboardNav.focusSearch();
+
+        expect(clickSpy).not.toHaveBeenCalled();
+        expect(focusSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not throw when the search input is missing', () => {
+        document.body.innerHTML = '<button id="searchBarTogger"></button>';
+        expect(() => window.$exeExport.keyboardNav.focusSearch()).not.toThrow();
+      });
+    });
+
+    describe('isShortcutDisabled', () => {
+      let originalLocation;
+
+      beforeEach(() => {
+        originalLocation = window.location;
+      });
+
+      afterEach(() => {
+        delete window.location;
+        window.location = originalLocation;
+      });
+
+      it('returns false by default', () => {
+        expect(window.$exeExport.keyboardNav.isShortcutDisabled()).toBe(false);
+      });
+
+      it('returns true when ?keyboard-navigation=false is set', () => {
+        delete window.location;
+        window.location = { search: '?keyboard-navigation=false' };
+        expect(window.$exeExport.keyboardNav.isShortcutDisabled()).toBe(true);
+      });
+
+      it('returns true when localStorage exeKeyboardNavigationDisabled is "true"', () => {
+        window.localStorage.setItem('exeKeyboardNavigationDisabled', 'true');
+        expect(window.$exeExport.keyboardNav.isShortcutDisabled()).toBe(true);
+      });
+
+      it('does not throw when localStorage access throws', () => {
+        const original = window.localStorage.getItem;
+        window.localStorage.getItem = () => {
+          throw new Error('blocked');
+        };
+
+        expect(() => window.$exeExport.keyboardNav.isShortcutDisabled()).not.toThrow();
+        expect(window.$exeExport.keyboardNav.isShortcutDisabled()).toBe(false);
+
+        window.localStorage.getItem = original;
+      });
+    });
+
+    describe('isMenuToggleShortcut', () => {
+      it('matches plain "m" via code', () => {
+        expect(window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'm', code: 'KeyM' }))).toBe(true);
+      });
+
+      it('matches Alt+M even when Alt produces a non-letter key value (macOS "µ")', () => {
+        expect(
+          window.$exeExport.keyboardNav.isMenuToggleShortcut(
+            makeEvent({ key: 'µ', code: 'KeyM', altKey: true })
+          )
+        ).toBe(true);
+      });
+
+      it('falls back to event.key when event.code is unavailable', () => {
+        expect(window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'm', code: '' }))).toBe(true);
+        expect(window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'x', code: '' }))).toBe(false);
+      });
+
+      it('is rejected when Ctrl or Cmd is held', () => {
+        expect(
+          window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'm', code: 'KeyM', ctrlKey: true }))
+        ).toBe(false);
+        expect(
+          window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'm', code: 'KeyM', metaKey: true }))
+        ).toBe(false);
+      });
+
+      it('does not match unrelated keys', () => {
+        expect(window.$exeExport.keyboardNav.isMenuToggleShortcut(makeEvent({ key: 'x', code: 'KeyX' }))).toBe(false);
+      });
+    });
+
+    describe('isSearchShortcut', () => {
+      it('matches Alt+/ via code', () => {
+        expect(
+          window.$exeExport.keyboardNav.isSearchShortcut(makeEvent({ altKey: true, code: 'Slash', key: '/' }))
+        ).toBe(true);
+      });
+
+      it('falls back to event.key when event.code is unavailable', () => {
+        expect(window.$exeExport.keyboardNav.isSearchShortcut(makeEvent({ altKey: true, code: '', key: '/' }))).toBe(
+          true
+        );
+      });
+
+      it('requires Alt to be held', () => {
+        expect(window.$exeExport.keyboardNav.isSearchShortcut(makeEvent({ code: 'Slash', key: '/' }))).toBe(false);
+      });
+
+      it('never matches plain Ctrl/Cmd+F', () => {
+        expect(
+          window.$exeExport.keyboardNav.isSearchShortcut(makeEvent({ ctrlKey: true, key: 'f', code: 'KeyF' }))
+        ).toBe(false);
+        expect(
+          window.$exeExport.keyboardNav.isSearchShortcut(makeEvent({ metaKey: true, key: 'f', code: 'KeyF' }))
+        ).toBe(false);
+      });
+
+      it('rejects Alt+/ when Ctrl is also held', () => {
+        expect(
+          window.$exeExport.keyboardNav.isSearchShortcut(
+            makeEvent({ altKey: true, ctrlKey: true, code: 'Slash', key: '/' })
+          )
+        ).toBe(false);
+      });
+    });
+
+    describe('activateLink', () => {
+      it('does nothing when the link is missing', () => {
+        const event = makeEvent({});
+        expect(() => window.$exeExport.keyboardNav.activateLink(null, event)).not.toThrow();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('clicks the link and calls preventDefault when the event is cancelable', () => {
+        const link = document.createElement('a');
+        const clickSpy = vi.fn();
+        link.addEventListener('click', clickSpy);
+        const event = makeEvent({ cancelable: true });
+
+        window.$exeExport.keyboardNav.activateLink(link, event);
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      });
+
+      it('clicks the link but skips preventDefault when the event is not cancelable', () => {
+        const link = document.createElement('a');
+        const clickSpy = vi.fn();
+        link.addEventListener('click', clickSpy);
+        const event = makeEvent({ cancelable: false });
+
+        window.$exeExport.keyboardNav.activateLink(link, event);
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('handleKeydown', () => {
+      it('activates the previous link on ArrowLeft', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="prev.html" class="nav-button-left">Previous</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-left').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowLeft' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('activates the next link on ArrowRight', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('activates the first nav link on ArrowUp', () => {
+        document.body.innerHTML =
+          '<nav id="siteNav"><ul><li><a href="a.html">A</a></li><li><a href="b.html">B</a></li></ul></nav>';
+        const clickSpy = vi.fn();
+        document.querySelector('a[href="a.html"]').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowUp' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('activates the last nav link on ArrowDown', () => {
+        document.body.innerHTML =
+          '<nav id="siteNav"><ul><li><a href="a.html">A</a></li><li><a href="b.html">B</a></li></ul></nav>';
+        const clickSpy = vi.fn();
+        document.querySelector('a[href="b.html"]').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowDown' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('toggles the menu on plain "m"', () => {
+        document.body.innerHTML = '<button id="siteNavToggler"></button>';
+        const clickSpy = vi.fn();
+        document.getElementById('siteNavToggler').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('toggles the menu on Alt+M', () => {
+        document.body.innerHTML = '<button id="siteNavToggler"></button>';
+        const clickSpy = vi.fn();
+        document.getElementById('siteNavToggler').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'µ', code: 'KeyM', altKey: true }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('focuses the search input on Alt+/', () => {
+        document.body.innerHTML =
+          '<button id="searchBarTogger"></button>' +
+          '<div id="exe-client-search" style="display:none"><input id="exe-client-search-text"></div>';
+        const toggler = document.getElementById('searchBarTogger');
+        const input = document.getElementById('exe-client-search-text');
+        const clickSpy = vi.fn();
+        toggler.addEventListener('click', clickSpy);
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ altKey: true, code: 'Slash', key: '/' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(focusSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it.each(['input', 'textarea', 'select'])(
+        'ignores ArrowRight while focus is inside a %s',
+        (tag) => {
+          document.body.innerHTML =
+            '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+          const field = document.createElement(tag);
+          document.body.appendChild(field);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight', target: field }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        }
+      );
+
+      it('ignores ArrowRight while focus is inside a contenteditable element', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+        const editable = document.createElement('div');
+        editable.setAttribute('contenteditable', 'true');
+        document.body.appendChild(editable);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight', target: editable }));
+
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      it('does not throw and does nothing when all optional elements are missing', () => {
+        document.body.innerHTML = '';
+        const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+
+        keys.forEach((key) => {
+          expect(() => window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key }))).not.toThrow();
+        });
+        expect(() =>
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }))
+        ).not.toThrow();
+        expect(() =>
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ altKey: true, code: 'Slash', key: '/' }))
+        ).not.toThrow();
+      });
+
+      it('does not call preventDefault for ArrowLeft when there is no previous link (first page)', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><span class="nav-button-left" aria-hidden="true">Previous</span></div>';
+        const event = makeEvent({ key: 'ArrowLeft' });
+
+        window.$exeExport.keyboardNav.handleKeydown(event);
+
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('does not call preventDefault for an unhandled key', () => {
+        const event = makeEvent({ key: 'a' });
+
+        window.$exeExport.keyboardNav.handleKeydown(event);
+
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('does not call preventDefault for "m" when #siteNavToggler is absent', () => {
+        document.body.innerHTML = '';
+        const event = makeEvent({ key: 'm', code: 'KeyM' });
+
+        window.$exeExport.keyboardNav.handleKeydown(event);
+
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('does not call preventDefault for Alt+/ when #searchBarTogger is absent', () => {
+        document.body.innerHTML = '';
+        const event = makeEvent({ altKey: true, code: 'Slash', key: '/' });
+
+        window.$exeExport.keyboardNav.handleKeydown(event);
+
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('ignores the event when defaultPrevented is already true', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight', defaultPrevented: true }));
+
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      it('ignores the event while composing (IME)', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight', isComposing: true }));
+
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      it('does not hijack Alt+ArrowLeft (reserved for browser back navigation)', () => {
+        document.body.innerHTML =
+          '<div class="nav-buttons"><a href="prev.html" class="nav-button-left">Previous</a></div>';
+        const clickSpy = vi.fn();
+        document.querySelector('.nav-button-left').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowLeft', altKey: true }));
+
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('init / destroy', () => {
+      it('attaches a single keydown listener and is idempotent', () => {
+        const addSpy = vi.spyOn(document, 'addEventListener');
+
+        window.$exeExport.keyboardNav.init();
+        window.$exeExport.keyboardNav.init();
+
+        const keydownCalls = addSpy.mock.calls.filter((call) => call[0] === 'keydown');
+        expect(keydownCalls.length).toBe(1);
+
+        addSpy.mockRestore();
+      });
+
+      it('removes the listener on destroy and allows re-initialization', () => {
+        window.$exeExport.keyboardNav.init();
+        const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+        window.$exeExport.keyboardNav.destroy();
+
+        expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+        removeSpy.mockRestore();
+
+        const addSpy = vi.spyOn(document, 'addEventListener');
+        window.$exeExport.keyboardNav.init();
+        const keydownCalls = addSpy.mock.calls.filter((call) => call[0] === 'keydown');
+        expect(keydownCalls.length).toBe(1);
+        addSpy.mockRestore();
+      });
+
+      it('does not attach a listener when shortcuts are disabled', () => {
+        window.localStorage.setItem('exeKeyboardNavigationDisabled', 'true');
+        const addSpy = vi.spyOn(document, 'addEventListener');
+
+        window.$exeExport.keyboardNav.init();
+
+        const keydownCalls = addSpy.mock.calls.filter((call) => call[0] === 'keydown');
+        expect(keydownCalls.length).toBe(0);
+        addSpy.mockRestore();
+      });
+    });
+  });
 });
