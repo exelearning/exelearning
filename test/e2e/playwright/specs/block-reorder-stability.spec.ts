@@ -9,6 +9,7 @@ import {
     saveProject,
     openElpFile,
     addIdevice,
+    waitForTinyMCEReady,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -326,36 +327,30 @@ test.describe('Block reorder stability — issue #1665', () => {
         await addIdevice(page, 'text');
         await waitForDomAndYjsBlockCount(page, sourcePageId, 2);
 
-        // Newly-added text iDevices auto-enter edition mode. While any
-        // iDevice is in edition, projectManager.checkOpenIdevice() is
-        // truthy and the block arrow click handlers return silently.
-        // Save the open iDevice (if any) so the subsequent arrow clicks
-        // are actually processed. Mirrors what a real user would do
-        // before touching block controls.
-        await page.evaluate(() => {
-            const open = document.querySelector('#node-content div.idevice_node[mode="edition"]');
-            const saveBtn = open?.querySelector('.btn-save-idevice') as HTMLElement | null;
-            saveBtn?.click();
-        });
-        // The idevice save is async: the save button is disabled synchronously
-        // (toogleIdeviceButtonsState(true)) while save() runs and the
-        // [mode="edition"] node — button included — is removed once it resolves.
-        // Wait directly for that terminal state: edition mode gone AND no save
-        // button left stuck in the disabled in-flight state. This alone is both
-        // sufficient and race-free — edition mode is still active when we click
-        // save above, so it resolves exactly when the save completes, whether the
-        // save is instantaneous or in flight. (A previous version first waited for
-        // the transient "button disabled" in-flight state, but a fast save removed
-        // the edition node before that poll ran, so the in-flight wait timed out —
-        // the flaky 10s timeout in regression #1667.)
+        // Newly-added text iDevices auto-enter edition mode with a TinyMCE
+        // editor. While any iDevice is in edition, checkOpenIdevice() is truthy
+        // and the block arrow handlers return silently, so the open iDevice must
+        // be saved (closed) first — as a real user would before touching block
+        // controls.
+        //
+        // This save is the flaky part of regression #1667: on slower runners
+        // (notably the postgres/mariadb E2E matrix) clicking save before the
+        // editor has finished initializing — or while the action buttons are
+        // still disabled by toogleIdeviceButtonsState() — does nothing, so the
+        // iDevice stays stuck in edition mode and the edition-exit wait times
+        // out. Guard both races with the project's own helpers: wait for TinyMCE
+        // to be ready, use a Playwright click (which auto-waits for the button to
+        // be enabled/actionable rather than firing on a disabled one), and give
+        // edition-exit the same 15s budget as waitForIdeviceEditionEnd().
+        await waitForTinyMCEReady(page);
+        await page
+            .locator('#node-content div.idevice_node[mode="edition"] .btn-save-idevice')
+            .first()
+            .click({ timeout: 15000 });
         await page.waitForFunction(
-            () => {
-                const stillEditing = document.querySelector('#node-content div.idevice_node[mode="edition"]');
-                const inFlightSaveBtn = document.querySelector('#node-content .btn-save-idevice[disabled]');
-                return !stillEditing && !inFlightSaveBtn;
-            },
+            () => !document.querySelector('#node-content div.idevice_node[mode="edition"]'),
             undefined,
-            { timeout: 10000 },
+            { timeout: 15000 },
         );
 
         const twoBlocksOrder = await readBlockOrderFromYjs(page, sourcePageId);
