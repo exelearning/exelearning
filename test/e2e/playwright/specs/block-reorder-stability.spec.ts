@@ -337,8 +337,28 @@ test.describe('Block reorder stability — issue #1665', () => {
             const saveBtn = open?.querySelector('.btn-save-idevice') as HTMLElement | null;
             saveBtn?.click();
         });
+        // The idevice save button is disabled synchronously while the async
+        // save() runs, and edition mode only exits once that save fully
+        // resolves. Key off that real lifecycle instead of racing a bare
+        // edition-close timeout: first confirm the save is in flight (the save
+        // button became disabled), then wait for completion — edition mode gone
+        // AND no save button left stuck in the disabled in-flight state.
         await page.waitForFunction(
-            () => !document.querySelector('#node-content div.idevice_node[mode="edition"]'),
+            () => {
+                const saveBtn = document.querySelector(
+                    '#node-content div.idevice_node[mode="edition"] .btn-save-idevice',
+                ) as HTMLButtonElement | null;
+                return !!saveBtn && saveBtn.disabled;
+            },
+            undefined,
+            { timeout: 10000 },
+        );
+        await page.waitForFunction(
+            () => {
+                const stillEditing = document.querySelector('#node-content div.idevice_node[mode="edition"]');
+                const inFlightSaveBtn = document.querySelector('#node-content .btn-save-idevice[disabled]');
+                return !stillEditing && !inFlightSaveBtn;
+            },
             undefined,
             { timeout: 10000 },
         );
