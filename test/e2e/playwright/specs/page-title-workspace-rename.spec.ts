@@ -54,6 +54,12 @@ test.describe('Workspace page title rename', () => {
         await page.evaluate(id => {
             (window as any).eXeLearning.app.project.renamePageViaYjs(id, 'New page');
         }, firstId);
+        // renamePageViaYjs re-renders the structure nav asynchronously, recreating
+        // the page node. Wait for that re-render to settle (the renamed node shows
+        // the new text) before selectFirstPage interacts with it, otherwise the
+        // selection races the re-render. The page name renders in `.node-text-span`
+        // (the `.nav-element-text` container also holds the icon node).
+        await expect(page.locator(`.nav-element[nav-id="${firstId}"] .node-text-span`)).toHaveText('New page');
         await selectFirstPage(page);
         // Force the workspace heading to render from the (updated) model.
         await page.evaluate(id => {
