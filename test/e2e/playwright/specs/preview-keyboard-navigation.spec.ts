@@ -315,4 +315,65 @@ test.describe('Keyboard navigation in preview', () => {
         const navOffAfter = await iframe.locator('body').evaluate(el => el.classList.contains('siteNav-off'));
         expect(navOffAfter).toBe(navOffBefore);
     });
+
+    test('shortcuts are suppressed while a tracked overlay signal is present (synthetic smoke test)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Keyboard Navigation Synthetic Overlay Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await enableKeyboardNavigationOption(page);
+
+        await selectPageByIndex(page, 0);
+        await addTextIdeviceWithContent(page, '<p>KEYNAV_OVERLAY_PAGE_ONE</p>');
+        await cloneCurrentPage(page);
+
+        await selectPageByIndex(page, 1);
+        await editTextIdevice(page, 'KEYNAV_OVERLAY_PAGE_TWO');
+
+        await selectPageByIndex(page, 0);
+        await openPreviewAndWaitForContent(page);
+        const iframe = getPreviewFrame(page);
+
+        await expect(iframe.locator('body')).toContainText('KEYNAV_OVERLAY_PAGE_ONE');
+
+        // These three exercise the real isOverlayActive()/handleKeydown() code
+        // path in a real browser by injecting the exact class name each real
+        // widget uses, without needing to drive the full widget UI (a rel=
+        // "lightbox" gallery, a Games-* magnifier click, or the native
+        // Fullscreen API, which is flaky/permission-gated in headless E2E).
+        // SimpleLightbox is instead covered by a REAL end-to-end test in
+        // image-gallery.spec.ts, since it races a competing keyup handler.
+        const overlayClasses = ['pp_pic_holder', 'Games-OverlayImage', 'mejs-container-fullscreen'];
+
+        for (const overlayClass of overlayClasses) {
+            await iframe.locator('body').evaluate((body, cls) => {
+                const el = document.createElement('div');
+                el.className = cls;
+                body.appendChild(el);
+            }, overlayClass);
+
+            await focusPreviewContent(iframe);
+            await page.keyboard.press('ArrowRight');
+            await page.waitForTimeout(300);
+            await expect(iframe.locator('body')).toContainText('KEYNAV_OVERLAY_PAGE_ONE');
+
+            // Remove the synthetic overlay (still the same document, no
+            // navigation happened yet) and confirm navigation now works —
+            // proves isOverlayActive() is re-checked live, not cached.
+            await iframe.locator(`.${overlayClass}`).evaluate(el => el.remove());
+
+            await pressAndWaitForNav(page, iframe, 'ArrowRight');
+            await expect(iframe.locator('body')).toContainText('KEYNAV_OVERLAY_PAGE_TWO');
+
+            // Back to page one for the next overlay class.
+            await pressAndWaitForNav(page, iframe, 'ArrowLeft');
+            await expect(iframe.locator('body')).toContainText('KEYNAV_OVERLAY_PAGE_ONE');
+        }
+    });
 });

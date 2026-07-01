@@ -2991,6 +2991,68 @@ describe('exe_export.js', () => {
       });
     });
 
+    describe('overlaySignals / isOverlayActive', () => {
+      it('returns false when no tracked overlay is present', () => {
+        document.body.innerHTML = '';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(false);
+      });
+
+      it('returns true when .pp_pic_holder is present and visible', () => {
+        document.body.innerHTML = '<div class="pp_pic_holder"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(true);
+      });
+
+      it('returns false when .pp_pic_holder is present but hidden (closed lightbox)', () => {
+        document.body.innerHTML = '<div class="pp_pic_holder" style="display:none"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(false);
+      });
+
+      it('returns false when .pp_pic_holder has the hidden attribute', () => {
+        document.body.innerHTML = '';
+        const el = document.createElement('div');
+        el.className = 'pp_pic_holder';
+        el.hidden = true;
+        document.body.appendChild(el);
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(false);
+      });
+
+      it('returns true when .sl-wrapper is present, even if hidden (existence-only signal)', () => {
+        document.body.innerHTML = '<div class="sl-wrapper" style="display:none"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(true);
+      });
+
+      it('returns true when .Games-OverlayImage is present, even if hidden (existence-only signal)', () => {
+        document.body.innerHTML = '<div class="Games-OverlayImage" style="display:none"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(true);
+      });
+
+      it('returns true when .mejs-container-fullscreen is present', () => {
+        document.body.innerHTML = '<div class="mejs-container-fullscreen"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(true);
+      });
+
+      it('returns true when multiple overlay signals are present simultaneously', () => {
+        document.body.innerHTML = '<div class="sl-wrapper"></div><div class="Games-OverlayImage"></div>';
+        expect(window.$exeExport.keyboardNav.isOverlayActive()).toBe(true);
+      });
+
+      it('does not throw and still checks remaining signals when one isActive() throws', () => {
+        document.body.innerHTML = '<div class="sl-wrapper"></div>';
+        const original = window.$exeExport.keyboardNav.overlaySignals[0].isActive;
+        window.$exeExport.keyboardNav.overlaySignals[0].isActive = () => {
+          throw new Error('boom');
+        };
+
+        let result;
+        expect(() => {
+          result = window.$exeExport.keyboardNav.isOverlayActive();
+        }).not.toThrow();
+        expect(result).toBe(true);
+
+        window.$exeExport.keyboardNav.overlaySignals[0].isActive = original;
+      });
+    });
+
     describe('focusSearch', () => {
       it('does nothing and returns false when #searchBarTogger is absent', () => {
         document.body.innerHTML = '<input id="exe-client-search-text">';
@@ -3489,6 +3551,115 @@ describe('exe_export.js', () => {
         window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowLeft', altKey: true }));
 
         expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      describe('overlay suppression', () => {
+        it('ignores ArrowRight while .sl-wrapper (SimpleLightbox) is open', () => {
+          document.body.innerHTML =
+            '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>' +
+            '<div class="sl-wrapper"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+          const event = makeEvent({ key: 'ArrowRight' });
+
+          window.$exeExport.keyboardNav.handleKeydown(event);
+
+          expect(clickSpy).not.toHaveBeenCalled();
+          expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('ignores ArrowLeft while .pp_pic_holder (exe_lightbox) is visible', () => {
+          document.body.innerHTML =
+            '<div class="nav-buttons"><a href="prev.html" class="nav-button-left">Previous</a></div>' +
+            '<div class="pp_pic_holder"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('.nav-button-left').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowLeft' }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it('ignores ArrowUp while .Games-OverlayImage is open', () => {
+          document.body.innerHTML =
+            '<nav id="siteNav"><ul><li><a href="a.html">A</a></li></ul></nav>' +
+            '<div class="Games-OverlayImage"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('a[href="a.html"]').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowUp' }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it('ignores ArrowDown while .mejs-container-fullscreen is active', () => {
+          document.body.innerHTML =
+            '<nav id="siteNav"><ul><li><a href="a.html">A</a></li><li><a href="b.html">B</a></li></ul></nav>' +
+            '<div class="mejs-container-fullscreen"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('a[href="b.html"]').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowDown' }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it.each(['m', 't'])('ignores "%s" while an overlay is open', key => {
+          document.body.innerHTML =
+            '<button id="siteNavToggler"></button>' +
+            '<input type="checkbox" id="teacher-mode-toggler">' +
+            '<div class="sl-wrapper"></div>';
+          const menuSpy = vi.fn();
+          const teacherSpy = vi.fn();
+          document.getElementById('siteNavToggler').addEventListener('click', menuSpy);
+          document.getElementById('teacher-mode-toggler').addEventListener('click', teacherSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key, code: key === 'm' ? 'KeyM' : 'KeyT' }));
+
+          expect(menuSpy).not.toHaveBeenCalled();
+          expect(teacherSpy).not.toHaveBeenCalled();
+        });
+
+        it('ignores Alt+/ (search shortcut) while an overlay is open', () => {
+          document.body.innerHTML =
+            '<button id="searchBarTogger"></button>' +
+            '<div id="exe-client-search" style="display:none"><input id="exe-client-search-text"></div>' +
+            '<div class="sl-wrapper"></div>';
+          const clickSpy = vi.fn();
+          document.getElementById('searchBarTogger').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ altKey: true, code: 'Slash', key: '/' }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it('activates ArrowRight normally once .pp_pic_holder is closed (display:none)', () => {
+          document.body.innerHTML =
+            '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>' +
+            '<div class="pp_pic_holder" style="display:none"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight' }));
+
+          expect(clickSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('is re-evaluated on every call, not cached: suppresses then allows once the overlay is removed', () => {
+          document.body.innerHTML =
+            '<div class="nav-buttons"><a href="next.html" class="nav-button-right">Next</a></div>' +
+            '<div class="sl-wrapper"></div>';
+          const clickSpy = vi.fn();
+          document.querySelector('.nav-button-right').addEventListener('click', clickSpy);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight' }));
+          expect(clickSpy).not.toHaveBeenCalled();
+
+          document.querySelector('.sl-wrapper').remove();
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 'ArrowRight' }));
+          expect(clickSpy).toHaveBeenCalledTimes(1);
+        });
       });
     });
 

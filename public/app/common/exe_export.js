@@ -707,6 +707,68 @@ window.$exeExport = {
             return style.display === 'none';
         },
 
+        // Single source of truth for "some overlay/lightbox widget currently
+        // owns the keyboard, so we must not" (an open image-gallery lightbox
+        // must fully prevail over our shortcuts — see PR #2020 review from
+        // @ignaciogros). Add one entry here to cover a future overlay/widget;
+        // nothing else in this module needs to change.
+        overlaySignals: [
+            {
+                name: 'exe_lightbox (prettyPhoto, rel="lightbox[...]")',
+                // public/app/common/exe_lightbox/exe_lightbox.js — the
+                // .pp_pic_holder node is created once on first open and never
+                // removed; open/closed is toggled via jQuery show/hide, so
+                // existence alone is NOT enough — must also check visibility.
+                isActive: function (kbNav) {
+                    var el = document.querySelector('.pp_pic_holder');
+                    return !!el && !kbNav.isHidden(el);
+                }
+            },
+            {
+                name: 'SimpleLightbox (Image Gallery iDevice)',
+                // public/libs/simplelightbox — .sl-wrapper is inserted into
+                // the DOM only while open and removed again on close, so
+                // existence alone is a reliable, sufficient signal. Note:
+                // SimpleLightbox's own nav uses `keyup`, not `keydown` — if
+                // we don't suppress here, our keydown navigates the page
+                // before its keyup handler ever runs.
+                isActive: function () {
+                    return !!document.querySelector('.sl-wrapper');
+                }
+            },
+            {
+                name: 'Fullscreen image overlay (Magnifier + other Games-* iDevices)',
+                // public/app/common/common.js, showFullscreenImage() —
+                // .Games-OverlayImage is appended only while shown and
+                // removed on click-to-close. No keyboard handler of its own,
+                // but a full-screen visual overlay, so still suppress.
+                isActive: function () {
+                    return !!document.querySelector('.Games-OverlayImage');
+                }
+            },
+            {
+                name: 'MediaElement.js fullscreen video (Interactive Video iDevice)',
+                // public/app/common/exe_media/exe_media.js — .mejs-container-
+                // fullscreen is added to the player container only while in
+                // fullscreen and removed on exit.
+                isActive: function () {
+                    return !!document.querySelector('.mejs-container-fullscreen');
+                }
+            }
+        ],
+
+        isOverlayActive: function () {
+            var kbNav = this;
+            return this.overlaySignals.some(function (signal) {
+                try {
+                    return signal.isActive(kbNav);
+                } catch (err) {
+                    // A single broken probe must never mask the others.
+                    return false;
+                }
+            });
+        },
+
         focusSearch: function () {
             var toggler = document.getElementById('searchBarTogger');
             if (!toggler) return false;
@@ -767,6 +829,7 @@ window.$exeExport = {
 
         handleKeydown: function (event) {
             if (event.defaultPrevented || event.isComposing) return;
+            if (this.isOverlayActive()) return;
             if (this.isTypingTarget(event.target)) return;
 
             if (this.isMenuToggleShortcut(event)) {
