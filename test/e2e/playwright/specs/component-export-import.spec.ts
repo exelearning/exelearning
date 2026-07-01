@@ -173,6 +173,10 @@ test.describe('Component Export/Import', () => {
 
     test('should undo imported block and imported iDevice', async ({ authenticatedPage, createProject }, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires Yjs undo manager in dynamic mode');
+        // Two full export→import→undo round-trips; the component import parses a
+        // file and inserts into Yjs before the node renders, which is slow on the
+        // cold postgres/mariadb E2E matrix — give it headroom over the default 45s.
+        test.setTimeout(90000);
         const page = authenticatedPage;
         const localTempDir = fs.mkdtempSync(path.join('/tmp', 'exelearning-e2e-undo-import-'));
 
@@ -218,7 +222,7 @@ test.describe('Component Export/Import', () => {
         await page.waitForFunction(
             () => document.querySelectorAll('#node-content article .idevice_node').length > 0,
             undefined,
-            { timeout: 15000 },
+            { timeout: 30000 },
         );
         await waitForUndoAvailable(page, 15000);
         await pressUndo(page);
@@ -233,7 +237,7 @@ test.describe('Component Export/Import', () => {
         await page.waitForFunction(
             () => document.querySelectorAll('#node-content article .idevice_node').length > 0,
             undefined,
-            { timeout: 15000 },
+            { timeout: 30000 },
         );
         await waitForUndoAvailable(page, 15000);
         await pressUndo(page);
@@ -609,6 +613,10 @@ test.describe('Component Export/Import with Images', () => {
          * Page "Inicio" contains a text iDevice with 1 image (00.jpg)
          */
         const page = authenticatedPage;
+        // Importing a block WITH an image adds an asset upload / resolution step
+        // on top of the parse+Yjs insert, which is slow on the cold
+        // postgres/mariadb E2E matrix — give it headroom over the default 45s.
+        test.setTimeout(90000);
 
         // 1. Open the fixture ELPX file
         console.log('Opening fixture ELPX file with images...');
@@ -663,7 +671,7 @@ test.describe('Component Export/Import with Images', () => {
                 return idevices.length >= 1;
             },
             undefined,
-            { timeout: 15000 },
+            { timeout: 30000 },
         );
 
         // Verify the imported block appears

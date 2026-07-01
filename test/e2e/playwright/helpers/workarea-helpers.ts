@@ -1322,21 +1322,34 @@ export async function enableSearchOption(page: Page): Promise<void> {
  * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
+    const navSelector = '.nav-element:not([nav-id="root"]) > .nav-element-text';
+    const countBefore = await page.locator(navSelector).count();
+
     // Dismiss any blocking alert modal before attempting to click the clone button
     await dismissBlockingAlertModal(page);
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();
-    await page.waitForTimeout(500);
 
-    // Close rename modal by pressing Escape
+    // Cloning opens a rename modal; close it with Escape once it is actually
+    // shown instead of racing a fixed sleep.
+    await page
+        .waitForFunction(() => !!document.querySelector('.modal.show'), undefined, { timeout: 5000 })
+        .catch(() => {});
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
-
-    // Wait for modal to close
     await page
         .waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 })
         .catch(() => {});
+
+    // Wait for the clone to be reflected in the navigation tree before returning.
+    // This previously used fixed 500ms sleeps, so on slow runners the nav was
+    // still re-rendering when the next selectPageByIndex() ran and its target
+    // node detached mid-scroll — the flaky search-preview-navigation failure.
+    await page.waitForFunction(
+        n => document.querySelectorAll('.nav-element:not([nav-id="root"]) > .nav-element-text').length > n,
+        countBefore,
+        { timeout: 15000 },
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1372,7 +1385,12 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
             // Wait for target element to be attached
             await targetNode.waitFor({ state: 'attached', timeout: 5000 });
 
-            await targetNode.scrollIntoViewIfNeeded();
+            // A concurrent nav re-render can detach this node between the
+            // attached-wait and the scroll; the scroll is only a best-effort
+            // pre-step, so ignore a detach here — the force click below
+            // re-resolves and scrolls itself (a detach during the click falls
+            // through to the retry loop).
+            await targetNode.scrollIntoViewIfNeeded().catch(() => {});
             await targetNode.click({ force: true });
 
             // Click succeeded, exit the retry loop
