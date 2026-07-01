@@ -19,12 +19,19 @@ test.describe('Open Project Modal - Tabs', () => {
         await page.goto('/workarea');
         await waitForAppReady(page);
 
-        // Click File menu > Open
+        // Click File menu > Open when the menu is present in this build, else
+        // fall back to the JS event. `waitForOpen()` below is the deterministic
+        // wait for the modal, so this branch only chooses how to trigger it.
         const fileMenu = page.locator('[data-menu="file"], .navbar-file, #navbarFile');
-        await fileMenu.first().waitFor({ state: 'visible', timeout: 5000 });
-        await fileMenu.first().click();
-        const openOption = page.locator('[data-action="open-user-ode-files"], .open-user-ode-files');
-        await openOption.click();
+        if ((await fileMenu.count()) > 0) {
+            await fileMenu.first().click();
+            const openOption = page.locator('[data-action="open-user-ode-files"], .open-user-ode-files');
+            await openOption.click();
+        } else {
+            await page.evaluate(() => {
+                (window as any).eXeLearning?.app?.menus?.navbar?.file?.openUserOdeFilesEvent?.();
+            });
+        }
 
         await openProjectModal.waitForOpen();
     }
