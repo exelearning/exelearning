@@ -337,22 +337,17 @@ test.describe('Block reorder stability — issue #1665', () => {
             const saveBtn = open?.querySelector('.btn-save-idevice') as HTMLElement | null;
             saveBtn?.click();
         });
-        // The idevice save button is disabled synchronously while the async
-        // save() runs, and edition mode only exits once that save fully
-        // resolves. Key off that real lifecycle instead of racing a bare
-        // edition-close timeout: first confirm the save is in flight (the save
-        // button became disabled), then wait for completion — edition mode gone
-        // AND no save button left stuck in the disabled in-flight state.
-        await page.waitForFunction(
-            () => {
-                const saveBtn = document.querySelector(
-                    '#node-content div.idevice_node[mode="edition"] .btn-save-idevice',
-                ) as HTMLButtonElement | null;
-                return !!saveBtn && saveBtn.disabled;
-            },
-            undefined,
-            { timeout: 10000 },
-        );
+        // The idevice save is async: the save button is disabled synchronously
+        // (toogleIdeviceButtonsState(true)) while save() runs and the
+        // [mode="edition"] node — button included — is removed once it resolves.
+        // Wait directly for that terminal state: edition mode gone AND no save
+        // button left stuck in the disabled in-flight state. This alone is both
+        // sufficient and race-free — edition mode is still active when we click
+        // save above, so it resolves exactly when the save completes, whether the
+        // save is instantaneous or in flight. (A previous version first waited for
+        // the transient "button disabled" in-flight state, but a fast save removed
+        // the edition node before that poll ran, so the in-flight wait timed out —
+        // the flaky 10s timeout in regression #1667.)
         await page.waitForFunction(
             () => {
                 const stillEditing = document.querySelector('#node-content div.idevice_node[mode="edition"]');
