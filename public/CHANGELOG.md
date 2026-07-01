@@ -27,6 +27,7 @@
 - Collaboration: shared assets are now identified consistently, preventing image loss
 - Collaboration: fixed data loss affecting collaborative editing across day changes
 - Collaboration: shared and collaborative projects are no longer deleted during session cleanup
+- Collaboration: the file manager no longer loses the current selection when a remote change refreshes the asset list
 - Assets without a file extension are now served with the correct MIME type, preventing unintended PDF downloads
 - Share dialog: the people-with-access list now scrolls correctly within the modal
 - Link Validator and Resource Report: Download CSV now works correctly
