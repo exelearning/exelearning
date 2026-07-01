@@ -231,11 +231,14 @@ export async function checkWebSocketProjectAccess(
     // / not-yet-saved flow). Only the user who created that session may join it.
     const session = deps.sessionManager.getSession(projectUuid);
     if (session) {
-        if (session.userId && session.userId !== userId) {
+        // Fail closed: only the user who created the session may join it. An
+        // ownerless session (userId undefined) must NOT admit an arbitrary
+        // authenticated user — authorization never falls open on optional data.
+        if (!session.userId || session.userId !== userId) {
             if (DEBUG)
                 console.log(
                     `[YjsWebSocket] Access denied to in-memory session ${projectUuid}: ` +
-                        `created by user ${session.userId}, requested by ${userId}`,
+                        `created by user ${session.userId ?? '(none)'}, requested by ${userId}`,
                 );
             return { hasAccess: false, reason: 'ACCESS_DENIED' };
         }
