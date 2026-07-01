@@ -39,11 +39,14 @@ const dynamicServerEnv = {
     APP_AUTH_METHODS: 'password,guest',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
-    // The default .env ships APP_ENV=prod, and the production boot guard now
-    // refuses to start with a missing/default API_JWT_SECRET (security audit).
-    // Provide a real, non-default test secret so the E2E server boots; the value
-    // is irrelevant to the tests (they authenticate through the real API).
+    // Exercise the app in production mode (the default .env now ships APP_ENV=dev
+    // for local onboarding). The production boot guard refuses to start with a
+    // missing/default API_JWT_SECRET or APP_SECRET (security audit), so provide
+    // real, non-default test values — irrelevant to the tests, which authenticate
+    // through the real API.
+    APP_ENV: 'prod',
     API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
+    APP_SECRET: 'e2e-test-app-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
 };
 

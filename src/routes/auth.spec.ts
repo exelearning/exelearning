@@ -16,7 +16,14 @@ import {
 } from '../db/migrations/005_user_id_nullable';
 import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
-import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
+import {
+    createAuthRoutes,
+    verifyToken,
+    verifyUserPassword,
+    getJwtSecret,
+    shouldAutoCreateUsers,
+    type AuthDependencies,
+} from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 
@@ -213,6 +220,54 @@ describe('Auth Routes', () => {
             expect(setCookie).toContain('auth=');
         });
 
+        it('marks the auth cookie Secure in production and not in development', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'securecookie@example.com',
+                    user_id: 'securecookie-user',
+                    password: hashedPw,
+                    roles: '[]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const login = () =>
+                app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: 'securecookie@example.com', password: 'password' }),
+                    }),
+                );
+
+            const prevAppEnv = process.env.APP_ENV;
+            const prevNodeEnv = process.env.NODE_ENV;
+            try {
+                // Production (APP_ENV=prod) → the session cookie must carry Secure.
+                process.env.APP_ENV = 'prod';
+                process.env.NODE_ENV = 'test';
+                const prodCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(prodCookie).toContain('auth=');
+                expect(prodCookie.toLowerCase()).toContain('secure');
+
+                // Development → no Secure flag (cookies work over plain http://localhost).
+                process.env.APP_ENV = 'dev';
+                const devCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(devCookie).toContain('auth=');
+                expect(devCookie.toLowerCase()).not.toContain('secure');
+            } finally {
+                if (prevAppEnv !== undefined) process.env.APP_ENV = prevAppEnv;
+                else delete process.env.APP_ENV;
+                if (prevNodeEnv !== undefined) process.env.NODE_ENV = prevNodeEnv;
+                else delete process.env.NODE_ENV;
+            }
+        });
+
         it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
             const hashedPw = await hashPassword('correct-password');
             await testDb
@@ -301,6 +356,35 @@ describe('Auth Routes', () => {
             } finally {
                 compareSpy.mockRestore();
             }
+        });
+    });
+
+    describe('verifyUserPassword (constant-time helper)', () => {
+        it('returns false for a missing user even if bcrypt.compare would succeed', async () => {
+            // Boolean(user) must gate the result: a non-existent account can never
+            // authenticate, even though a decoy compare runs (timing parity).
+            const compareSpy = spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+            try {
+                expect(await verifyUserPassword(null, 'anything')).toBe(false);
+                expect(await verifyUserPassword(undefined, 'anything')).toBe(false);
+                // The decoy compare still ran (one call per invocation) — timing parity.
+                expect(compareSpy).toHaveBeenCalledTimes(2);
+            } finally {
+                compareSpy.mockRestore();
+            }
+        });
+
+        it('returns true only for an existing user with the correct password', async () => {
+            const hash = await hashPassword('correct-horse');
+            expect(await verifyUserPassword({ password: hash }, 'correct-horse')).toBe(true);
+            expect(await verifyUserPassword({ password: hash }, 'wrong-horse')).toBe(false);
+        });
+
+        it('returns false for a user whose password is null (SSO/guest rows) without throwing', async () => {
+            // A null/empty stored password falls back to the decoy hash, so it can
+            // never match — password login is impossible for password-less accounts.
+            expect(await verifyUserPassword({ password: null }, 'anything')).toBe(false);
+            expect(await verifyUserPassword({ password: '' }, 'anything')).toBe(false);
         });
     });
 

@@ -48,7 +48,10 @@ OIDC_CLIENT_ID=interactive.confidential
 OIDC_CLIENT_SECRET=secret
 
 # API (local JWTs accepted by the backend)
-API_JWT_SECRET=dev_secret_change_me
+# REQUIRED in production: the server refuses to boot when APP_ENV=prod (or
+# NODE_ENV=production) while this is unset or left at the in-repo default.
+# Generate one with `openssl rand -hex 32`. Local development may leave it unset.
+API_JWT_SECRET=
 # API_JWT_ISSUER=exelearning
 # API_JWT_AUDIENCE=exelearning_clients
 ```
@@ -239,7 +242,10 @@ Include `guest` in `APP_AUTH_METHODS` to enable `/login/guest`. It creates a tem
 The backend can accept locally signed JWTs (useful for scripts/internal services).
 
 ```
-API_JWT_SECRET=dev_secret_change_me
+# REQUIRED in production: the server refuses to boot when APP_ENV=prod (or
+# NODE_ENV=production) while this is unset or left at the in-repo default.
+# Generate one with `openssl rand -hex 32`. Local development may leave it unset.
+API_JWT_SECRET=
 # API_JWT_ISSUER=exelearning
 # API_JWT_AUDIENCE=exelearning_clients
 ```

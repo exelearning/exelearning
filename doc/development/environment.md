@@ -43,6 +43,13 @@ The application will be available at [http://localhost:8080](http://localhost:80
 - User: `user@exelearning.net`
 - Password: `1234`
 
+> **Production secrets.** `.env.dist` defaults to `APP_ENV=dev`, so a fresh clone
+> boots for local development as-is. A **production** deployment (`APP_ENV=prod`
+> or `NODE_ENV=production`) **refuses to boot** while `API_JWT_SECRET` **or**
+> `APP_SECRET` are missing or left at their in-repo defaults — set real values
+> (`openssl rand -hex 32`). The Docker image and `doc/deploy/` already run in
+> production mode.
+
 ## Project Structure
 
 ```

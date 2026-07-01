@@ -34,7 +34,7 @@ import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSock
 import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
 import { getAppVersion } from './utils/version';
-import { jwtSecretBootError } from './utils/env';
+import { secretsBootError } from './utils/env';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
@@ -702,16 +702,16 @@ async function syncBuiltinThemes() {
 }
 
 /**
- * Refuse to boot in production if the JWT signing secret is still the
- * insecure default. Catches the case where a deployment forgets to set
- * `API_JWT_SECRET` / `JWT_SECRET` — without this check, tokens would be
- * forgeable by anyone who reads the open-source codebase.
+ * Refuse to boot in production if a security-critical secret is still the
+ * insecure default: the JWT signing secret (`API_JWT_SECRET`/`JWT_SECRET`) OR
+ * `APP_SECRET` (which verifies platform-integration JWTs). Without this check
+ * either would be forgeable by anyone who reads the open-source codebase.
  */
-function assertProductionJwtSecret(): void {
+function assertProductionSecrets(): void {
     // Keyed on BOTH APP_ENV=prod and NODE_ENV=production (see src/utils/env.ts)
     // so the default-secret refusal also fires on non-Docker prod deploys that
     // only set APP_ENV=prod, not just the Docker image that sets NODE_ENV.
-    const error = jwtSecretBootError();
+    const error = secretsBootError();
     if (error) {
         console.error(error);
         process.exit(1);
@@ -720,8 +720,8 @@ function assertProductionJwtSecret(): void {
 
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
-    // 0. Production safety: do not start with the default JWT secret.
-    assertProductionJwtSecret();
+    // 0. Production safety: do not start with a default JWT secret or APP_SECRET.
+    assertProductionSecrets();
 
     // 1. Run migrations
     console.log('[DB] Running migrations...');
