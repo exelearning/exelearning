@@ -1318,6 +1318,55 @@ export async function enableSearchOption(page: Page): Promise<void> {
 }
 
 /**
+ * Enable the "Keyboard navigation" option in project export settings.
+ * Off by default (see PR review from @ignaciogros on #2020): arrow-key page
+ * navigation changes standard browsing behavior and may conflict with other
+ * keyboard-driven content, so authors must opt in explicitly.
+ * Uses the Project Properties button in the top bar to show properties inline.
+ */
+export async function enableKeyboardNavigationOption(page: Page): Promise<void> {
+    const propertiesButton = page.locator('#head-top-settings-button');
+    await propertiesButton.waitFor({ state: 'visible', timeout: 10000 });
+    await propertiesButton.click();
+
+    await page.waitForTimeout(500);
+
+    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
+    await exportTab.scrollIntoViewIfNeeded({ timeout: 10000 });
+
+    const isSelected = (await exportTab.getAttribute('aria-selected')) === 'true';
+    if (!isSelected) {
+        await exportTab.click();
+        await page.waitForTimeout(500);
+    }
+
+    const keyboardNavToggle = page.locator('input[property="pp_addKeyboardNavigation"]');
+    await keyboardNavToggle.scrollIntoViewIfNeeded({ timeout: 10000 });
+
+    const isChecked = await keyboardNavToggle.isChecked();
+    if (!isChecked) {
+        const toggleItem = page.locator('.toggle-item').filter({ has: keyboardNavToggle }).first();
+        if ((await toggleItem.count()) > 0) {
+            await toggleItem.click();
+        } else {
+            await keyboardNavToggle.click({ force: true });
+        }
+        await page.waitForTimeout(500);
+    }
+
+    await page.waitForFunction(
+        () => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const metadata = bridge?.documentManager?.getMetadata();
+            const value = metadata?.get('addKeyboardNavigation');
+            return value === true || value === 'true';
+        },
+        undefined,
+        { timeout: 5000 },
+    );
+}
+
+/**
  * Clone the currently selected page in the navigation tree
  * Handles the rename modal that appears after cloning by pressing Escape
  */

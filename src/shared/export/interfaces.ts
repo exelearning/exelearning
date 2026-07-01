@@ -66,6 +66,7 @@ export interface ExportMetadata {
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
+    addKeyboardNavigation?: boolean; // Arrow-key page navigation, menu/search/teacher-mode shortcuts
     exportSource?: boolean; // Include content.xml for re-editing
     globalFont?: string; // Global font for accessibility
 
@@ -651,6 +652,7 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    addKeyboardNavigation?: boolean;
 
     // Custom head content
     extraHeadContent?: string;

@@ -2835,6 +2835,23 @@ describe('exe_export.js', () => {
 
     afterEach(() => {
       window.$exeExport.keyboardNav.destroy();
+      delete window.exeKeyboardNavEnabled;
+    });
+
+    describe('isEnabled', () => {
+      it('returns false by default (export option not set)', () => {
+        expect(window.$exeExport.keyboardNav.isEnabled()).toBe(false);
+      });
+
+      it('returns false when window.exeKeyboardNavEnabled is falsy', () => {
+        window.exeKeyboardNavEnabled = false;
+        expect(window.$exeExport.keyboardNav.isEnabled()).toBe(false);
+      });
+
+      it('returns true only when window.exeKeyboardNavEnabled === true', () => {
+        window.exeKeyboardNavEnabled = true;
+        expect(window.$exeExport.keyboardNav.isEnabled()).toBe(true);
+      });
     });
 
     describe('isTypingTarget', () => {
@@ -3476,7 +3493,18 @@ describe('exe_export.js', () => {
     });
 
     describe('init / destroy', () => {
-      it('attaches a single keydown listener and is idempotent', () => {
+      it('does not attach a listener by default (export option not enabled)', () => {
+        const addSpy = vi.spyOn(document, 'addEventListener');
+
+        window.$exeExport.keyboardNav.init();
+
+        const keydownCalls = addSpy.mock.calls.filter((call) => call[0] === 'keydown');
+        expect(keydownCalls.length).toBe(0);
+        addSpy.mockRestore();
+      });
+
+      it('attaches a single keydown listener and is idempotent when enabled', () => {
+        window.exeKeyboardNavEnabled = true;
         const addSpy = vi.spyOn(document, 'addEventListener');
 
         window.$exeExport.keyboardNav.init();
@@ -3489,6 +3517,7 @@ describe('exe_export.js', () => {
       });
 
       it('removes the listener on destroy and allows re-initialization', () => {
+        window.exeKeyboardNavEnabled = true;
         window.$exeExport.keyboardNav.init();
         const removeSpy = vi.spyOn(document, 'removeEventListener');
 
@@ -3504,7 +3533,8 @@ describe('exe_export.js', () => {
         addSpy.mockRestore();
       });
 
-      it('does not attach a listener when shortcuts are disabled', () => {
+      it('does not attach a listener when shortcuts are disabled, even if enabled', () => {
+        window.exeKeyboardNavEnabled = true;
         window.localStorage.setItem('exeKeyboardNavigationDisabled', 'true');
         const addSpy = vi.spyOn(document, 'addEventListener');
 

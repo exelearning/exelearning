@@ -619,15 +619,20 @@ window.$exeExport = {
      * already active (i.e. only when #teacher-mode-toggler exists — see
      * teacherMode above); it never shadows Ctrl/Cmd+T (new browser tab).
      *
-     * Opt-out: `?keyboard-navigation=false` query param, or a
-     * `exeKeyboardNavigationDisabled` value in localStorage.
+     * Off by default: it changes standard page navigation and may conflict
+     * with other keyboard-driven content (e.g. lightbox galleries), so
+     * authors must opt in via the "Keyboard navigation" export option
+     * (window.exeKeyboardNavEnabled, set by PageRenderer.renderHead()).
+     *
+     * Opt-out (once enabled by the author): `?keyboard-navigation=false`
+     * query param, or a `exeKeyboardNavigationDisabled` value in localStorage.
      */
     keyboardNav: {
         _initialized: false,
         _boundHandleKeydown: null,
 
         init: function () {
-            if (this._initialized || this.isShortcutDisabled()) return;
+            if (this._initialized || !this.isEnabled() || this.isShortcutDisabled()) return;
             this._boundHandleKeydown = this.handleKeydown.bind(this);
             document.addEventListener('keydown', this._boundHandleKeydown);
             this._initialized = true;
@@ -639,6 +644,11 @@ window.$exeExport = {
                 this._boundHandleKeydown = null;
             }
             this._initialized = false;
+        },
+
+        // Author opt-in via the "Keyboard navigation" export option.
+        isEnabled: function () {
+            return window.exeKeyboardNavEnabled === true;
         },
 
         isShortcutDisabled: function () {

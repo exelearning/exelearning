@@ -8,6 +8,7 @@ import {
     editTextIdevice,
     cloneCurrentPage,
     enableSearchOption,
+    enableKeyboardNavigationOption,
     openPreviewAndWaitForContent,
     getPreviewFrame,
 } from '../helpers/workarea-helpers';
@@ -16,6 +17,10 @@ import {
  * E2E tests for the shared keyboard-navigation module (exe_export.js
  * `keyboardNav`). The preview iframe renders the exact same HTML/JS as a real
  * exported package, so exercising the shortcuts here also covers exports.
+ *
+ * The "Keyboard navigation" export option is OFF by default (see PR review
+ * from @ignaciogros on #2020), so every test that expects the shortcuts to
+ * actually fire must call enableKeyboardNavigationOption() first.
  */
 
 async function getIframeUrl(page: Page): Promise<string> {
@@ -78,6 +83,7 @@ test.describe('Keyboard navigation in preview', () => {
 
         // Search is optional per spec, but we enable it here to also cover the search shortcut.
         await enableSearchOption(page);
+        await enableKeyboardNavigationOption(page);
 
         // Build 3 pages with distinct, greppable content.
         await selectPageByIndex(page, 0);
@@ -152,6 +158,7 @@ test.describe('Keyboard navigation in preview', () => {
         await waitForAppReady(page);
 
         await enableSearchOption(page);
+        await enableKeyboardNavigationOption(page);
 
         await selectPageByIndex(page, 0);
         await addTextIdeviceWithContent(page, '<p>KEYNAV_TYPING_PAGE_ONE</p>');
@@ -191,6 +198,7 @@ test.describe('Keyboard navigation in preview', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
+        await enableKeyboardNavigationOption(page);
         await addTextIdeviceWithContent(page, '<p>KEYNAV_TEACHER_CONTENT</p>');
 
         // Mark the iDevice as teacher-only via its Properties modal (see
@@ -245,6 +253,7 @@ test.describe('Keyboard navigation in preview', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
+        await enableKeyboardNavigationOption(page);
         await addTextIdeviceWithContent(page, '<p>KEYNAV_NO_TEACHER_CONTENT</p>');
 
         await openPreviewAndWaitForContent(page);
@@ -260,5 +269,50 @@ test.describe('Keyboard navigation in preview', () => {
 
         await expect(iframe.locator('html')).not.toHaveClass(/mode-teacher/);
         await expect(iframe.locator('body')).toContainText('KEYNAV_NO_TEACHER_CONTENT');
+    });
+
+    test('shortcuts do nothing when the "Keyboard navigation" export option is not enabled (default off)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Keyboard Navigation Disabled By Default Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        // Enable search so #searchBarTogger exists too, isolating "option not
+        // enabled" as the only reason nothing happens (not a missing element).
+        await enableSearchOption(page);
+
+        await selectPageByIndex(page, 0);
+        await addTextIdeviceWithContent(page, '<p>KEYNAV_DEFAULT_OFF_PAGE_ONE</p>');
+        await cloneCurrentPage(page);
+
+        await selectPageByIndex(page, 1);
+        await editTextIdevice(page, 'KEYNAV_DEFAULT_OFF_PAGE_TWO');
+
+        await selectPageByIndex(page, 0);
+        await openPreviewAndWaitForContent(page);
+        const iframe = getPreviewFrame(page);
+
+        // Sanity check: the export option was never enabled for this project.
+        const isKeyboardNavEnabled = await iframe.locator('body').evaluate(() => (window as any).exeKeyboardNavEnabled);
+        expect(isKeyboardNavEnabled).not.toBe(true);
+
+        await expect(iframe.locator('a.nav-button-right')).toHaveCount(1);
+        const navOffBefore = await iframe.locator('body').evaluate(el => el.classList.contains('siteNav-off'));
+
+        await focusPreviewContent(iframe);
+        await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(300);
+        await expect(iframe.locator('body')).toContainText('KEYNAV_DEFAULT_OFF_PAGE_ONE');
+
+        await focusPreviewContent(iframe);
+        await page.keyboard.press('m');
+        await page.waitForTimeout(300);
+        const navOffAfter = await iframe.locator('body').evaluate(el => el.classList.contains('siteNav-off'));
+        expect(navOffAfter).toBe(navOffBefore);
     });
 });
