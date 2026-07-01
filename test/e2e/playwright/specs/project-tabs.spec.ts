@@ -1,5 +1,6 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { OpenProjectModalPage } from '../pages/open-project-modal.page';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 test.describe('Open Project Modal - Tabs', () => {
     let openProjectModal: OpenProjectModalPage;
@@ -16,29 +17,14 @@ test.describe('Open Project Modal - Tabs', () => {
     async function openModal(page: any): Promise<void> {
         // Navigate to workarea first
         await page.goto('/workarea');
-        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
 
-        // Wait for the app to initialize
-        await page.waitForFunction(
-            () => {
-                return typeof (window as any).eXeLearning !== 'undefined';
-            },
-            undefined,
-            { timeout: 30000 },
-        );
-
-        // Click File menu > Open or use keyboard shortcut
+        // Click File menu > Open
         const fileMenu = page.locator('[data-menu="file"], .navbar-file, #navbarFile');
-        if ((await fileMenu.count()) > 0) {
-            await fileMenu.click();
-            const openOption = page.locator('[data-action="open-user-ode-files"], .open-user-ode-files');
-            await openOption.click();
-        } else {
-            // Fallback: trigger via JS
-            await page.evaluate(() => {
-                (window as any).eXeLearning?.app?.menus?.navbar?.file?.openUserOdeFilesEvent?.();
-            });
-        }
+        await fileMenu.first().waitFor({ state: 'visible', timeout: 5000 });
+        await fileMenu.first().click();
+        const openOption = page.locator('[data-action="open-user-ode-files"], .open-user-ode-files');
+        await openOption.click();
 
         await openProjectModal.waitForOpen();
     }

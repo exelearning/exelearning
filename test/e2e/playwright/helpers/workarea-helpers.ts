@@ -2154,9 +2154,9 @@ export async function reloadPage(page: Page): Promise<void> {
         await waitForAppReady(page);
     } else {
         // Online mode: Full page reload (data is fetched from server)
-        await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
+        await waitForProjectSynced(page);
     }
 }
 
