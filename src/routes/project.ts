@@ -14,7 +14,6 @@ import {
     getSession as getSessionDefault,
     updateSession as updateSessionDefault,
     deleteSession as deleteSessionDefault,
-    getAllSessions as getAllSessionsDefault,
     getSessionsByUser as getSessionsByUserDefault,
     generateSessionId as generateSessionIdDefault,
 } from '../services/session-manager';
@@ -162,7 +161,6 @@ export interface SessionManagerDeps {
     getSession: typeof getSessionDefault;
     updateSession: typeof updateSessionDefault;
     deleteSession: typeof deleteSessionDefault;
-    getAllSessions: typeof getAllSessionsDefault;
     getSessionsByUser: typeof getSessionsByUserDefault;
     generateSessionId: typeof generateSessionIdDefault;
 }
@@ -261,7 +259,6 @@ const defaultSessionManager: SessionManagerDeps = {
     getSession: getSessionDefault,
     updateSession: updateSessionDefault,
     deleteSession: deleteSessionDefault,
-    getAllSessions: getAllSessionsDefault,
     getSessionsByUser: getSessionsByUserDefault,
     generateSessionId: generateSessionIdDefault,
 };

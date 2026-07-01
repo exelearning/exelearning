@@ -71,7 +71,6 @@ function createMockSessionManager(): SessionManagerDeps {
             }
         },
         deleteSession: (id: string) => mockSessions.delete(id),
-        getAllSessions: () => Array.from(mockSessions.values()),
         getSessionsByUser: (userId: number) =>
             Array.from(mockSessions.values()).filter((s: any) => s.userId === userId),
         generateSessionId: () => `session-${Date.now()}-${Math.random().toString(36).substring(7)}`,

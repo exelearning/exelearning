@@ -180,11 +180,17 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     }
 
     /**
-     * Write uploaded file to disk
+     * Write an uploaded file into the per-conversion temp dir under a
+     * server-generated name, so the client-supplied filename can never traverse
+     * out of it. safeJoin validates the segment and asserts containment. Returns
+     * the on-disk path the export pipeline should read.
      */
-    async function writeUploadedFile(file: File | Blob, destPath: string): Promise<void> {
+    async function writeUploadedFile(file: File | Blob, tempDirPath: string): Promise<string> {
+        const ext = sanitizeFileExtension((file as FileWithName).name) || '.elp';
+        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
         const buffer = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(destPath, buffer);
+        await fs.writeFile(uploadPath, buffer);
+        return uploadPath;
     }
 
     /**
@@ -355,13 +361,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        // Generate the on-disk name server-side so the client-supplied
-                        // filename can never traverse out of the per-conversion temp dir.
-                        // safeJoin validates the segment and asserts containment.
-                        const ext = sanitizeFileExtension((data.file as FileWithName).name) || '.elp';
-                        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run ELPX export (conversion)
                         const result = await runExport(uploadPath, 'elpx');
@@ -451,13 +452,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        // Generate the on-disk name server-side so the client-supplied
-                        // filename can never traverse out of the per-conversion temp dir.
-                        // safeJoin validates the segment and asserts containment.
-                        const ext = sanitizeFileExtension((data.file as FileWithName).name) || '.elp';
-                        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run export
                         const result = await runExport(uploadPath, format, { baseUrl, theme });
