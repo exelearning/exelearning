@@ -50,4 +50,58 @@ test.describe('Admin Impersonation', () => {
         await page.waitForURL(/\/admin/);
         await expect(page.locator('#impersonation-banner')).toHaveCount(0);
     });
+
+    test('renders an attacker-controlled user email in the impersonate button without breaking out (stored XSS)', async ({
+        page,
+    }, testInfo) => {
+        if (testInfo.project.name.includes('static')) {
+            test.skip(true, 'Admin users panel requires server routes');
+        }
+
+        const loginResponse = await page.request.post('/api/auth/login', {
+            data: { email: 'admin@exelearning.test', password: 'AdminPass123!' },
+        });
+        expect(loginResponse.ok()).toBeTruthy();
+
+        // A single quote in the email would break out of the single-quoted
+        // `onclick='impersonateUser(...)'` attribute and inject an event handler
+        // unless the argument is HTML-encoded. Real user creation rejects quotes
+        // in emails, so the malicious value is injected by mocking the admin API.
+        const evilEmail = "x'onmouseover='window.__xssImpersonate=1'@evil.test";
+        await page.route('**/api/admin/users?*', route =>
+            route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    users: [
+                        {
+                            id: 999002,
+                            email: evilEmail,
+                            roles: ['ROLE_USER'],
+                            is_active: 1,
+                            quota_mb: null,
+                            storage_used_mb: 0,
+                            created_at: Date.now(),
+                            updated_at: Date.now(),
+                        },
+                    ],
+                    total: 1,
+                }),
+            }),
+        );
+
+        await page.goto('/admin');
+        await page.waitForLoadState('networkidle');
+        await page.locator('.admin-nav-link[data-section="users"]').click();
+
+        const impersonate = page.locator('#usersTableBody button[data-action="impersonate"]').first();
+        await expect(impersonate).toBeVisible();
+
+        // A successful break-out would attach an onmouseover handler to the button.
+        await expect(impersonate).not.toHaveAttribute('onmouseover');
+
+        await impersonate.hover();
+        const flag = await page.evaluate(() => (window as Window & { __xssImpersonate?: number }).__xssImpersonate);
+        expect(flag).toBeUndefined();
+    });
 });

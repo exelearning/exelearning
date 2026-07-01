@@ -2517,12 +2517,18 @@ window.$eXeLearningCustom = {
         // =============================================
         // Custom Assets management
         // =============================================
-        function escapeHtml(str) {
-            return String(str)
+        // Single HTML escaper for this panel. Escapes & < > " ' so it is safe for
+        // BOTH element-content and quoted-attribute sinks (a maintainer can rely on
+        // quotes being escaped). Keeps the falsy-returns-'' behavior of the previous
+        // implementation.
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function copyToClipboard(text) {
@@ -3537,7 +3543,7 @@ window.$eXeLearningCustom = {
             }
         }
 
-        async function downloadProjectElpx(projectId, projectTitle) {
+        async function downloadProjectElpx(projectId) {
             try {
                 const res = await fetch(`${API_BASE}/projects/${projectId}/download`, { credentials: 'include' });
                 if (!res.ok) {
@@ -4069,14 +4075,6 @@ window.$eXeLearningCustom = {
                 e.target.value = '';
             }
         });
-
-        // Utility function for escaping HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
 
         // Notification helper
         function showNotification(message, type = 'info') {
