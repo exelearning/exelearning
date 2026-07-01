@@ -3137,6 +3137,69 @@ describe('exe_export.js', () => {
       });
     });
 
+    describe('toggleTeacherMode', () => {
+      it('clicks #teacher-mode-toggler and returns true when present', () => {
+        document.body.innerHTML = '<input type="checkbox" id="teacher-mode-toggler">';
+        const spy = vi.fn();
+        document.getElementById('teacher-mode-toggler').addEventListener('click', spy);
+
+        expect(window.$exeExport.keyboardNav.toggleTeacherMode()).toBe(true);
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('does nothing and returns false when #teacher-mode-toggler is absent', () => {
+        document.body.innerHTML = '';
+        let result;
+        expect(() => {
+          result = window.$exeExport.keyboardNav.toggleTeacherMode();
+        }).not.toThrow();
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('isTeacherModeShortcut', () => {
+      it('matches plain "t" via code', () => {
+        expect(
+          window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 't', code: 'KeyT' }))
+        ).toBe(true);
+      });
+
+      it('matches plain "T" (shift held) via code', () => {
+        expect(
+          window.$exeExport.keyboardNav.isTeacherModeShortcut(
+            makeEvent({ key: 'T', code: 'KeyT', shiftKey: true })
+          )
+        ).toBe(true);
+      });
+
+      it('falls back to event.key when event.code is unavailable', () => {
+        expect(window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 't', code: '' }))).toBe(true);
+        expect(window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 'x', code: '' }))).toBe(false);
+      });
+
+      it('never matches Ctrl/Cmd+T (new browser tab)', () => {
+        expect(
+          window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 't', code: 'KeyT', ctrlKey: true }))
+        ).toBe(false);
+        expect(
+          window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 't', code: 'KeyT', metaKey: true }))
+        ).toBe(false);
+      });
+
+      it('does not match Alt+T', () => {
+        expect(
+          window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 't', code: 'KeyT', altKey: true }))
+        ).toBe(false);
+      });
+
+      it('does not match unrelated keys', () => {
+        expect(window.$exeExport.keyboardNav.isTeacherModeShortcut(makeEvent({ key: 'x', code: 'KeyX' }))).toBe(
+          false
+        );
+      });
+    });
+
     describe('activateLink', () => {
       it('does nothing when the link is missing', () => {
         const event = makeEvent({});
@@ -3250,6 +3313,50 @@ describe('exe_export.js', () => {
         expect(focusSpy).toHaveBeenCalledTimes(1);
       });
 
+      it('toggles Teacher Mode on "t" when the toggler is active', () => {
+        document.body.innerHTML = '<input type="checkbox" id="teacher-mode-toggler">';
+        const clickSpy = vi.fn();
+        document.getElementById('teacher-mode-toggler').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 't', code: 'KeyT' }));
+
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('does nothing on "t" when Teacher Mode is not active (no toggler)', () => {
+        document.body.innerHTML = '';
+        const event = makeEvent({ key: 't', code: 'KeyT' });
+
+        expect(() => window.$exeExport.keyboardNav.handleKeydown(event)).not.toThrow();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('never hijacks Ctrl+T / Cmd+T (new browser tab), even when the toggler is active', () => {
+        document.body.innerHTML = '<input type="checkbox" id="teacher-mode-toggler">';
+        const clickSpy = vi.fn();
+        document.getElementById('teacher-mode-toggler').addEventListener('click', clickSpy);
+
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 't', code: 'KeyT', ctrlKey: true }));
+        window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 't', code: 'KeyT', metaKey: true }));
+
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      it.each(['input', 'textarea', 'select'])(
+        'ignores "t" while focus is inside a %s',
+        (tag) => {
+          document.body.innerHTML = '<input type="checkbox" id="teacher-mode-toggler">';
+          const clickSpy = vi.fn();
+          document.getElementById('teacher-mode-toggler').addEventListener('click', clickSpy);
+          const field = document.createElement(tag);
+          document.body.appendChild(field);
+
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 't', code: 'KeyT', target: field }));
+
+          expect(clickSpy).not.toHaveBeenCalled();
+        }
+      );
+
       it.each(['input', 'textarea', 'select'])(
         'ignores ArrowRight while focus is inside a %s',
         (tag) => {
@@ -3292,6 +3399,9 @@ describe('exe_export.js', () => {
         ).not.toThrow();
         expect(() =>
           window.$exeExport.keyboardNav.handleKeydown(makeEvent({ altKey: true, code: 'Slash', key: '/' }))
+        ).not.toThrow();
+        expect(() =>
+          window.$exeExport.keyboardNav.handleKeydown(makeEvent({ key: 't', code: 'KeyT' }))
         ).not.toThrow();
       });
 

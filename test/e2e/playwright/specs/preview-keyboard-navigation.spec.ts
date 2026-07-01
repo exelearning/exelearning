@@ -179,4 +179,86 @@ test.describe('Keyboard navigation in preview', () => {
         await expect(iframe.locator('body')).toContainText('KEYNAV_TYPING_PAGE_ONE');
         await expect(searchInput).toBeFocused();
     });
+
+    test('"t" toggles the Teacher Mode content layer when it is active', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Keyboard Navigation Teacher Mode Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdeviceWithContent(page, '<p>KEYNAV_TEACHER_CONTENT</p>');
+
+        // Mark the iDevice as teacher-only via its Properties modal (see
+        // teacher-only-highlight-nova.spec.ts for the same flow).
+        const node = page.locator('#node-content article .idevice_node.text').first();
+        await node.waitFor({ state: 'visible', timeout: 15000 });
+        await node.locator('button[id^="dropdownMenuButtonIdevice"]').click();
+        await node.locator('button[id^="propertiesIdevice"]').first().click();
+
+        const modal = page.locator('#modalProperties');
+        await modal.waitFor({ state: 'visible', timeout: 10000 });
+        const teacherToggle = modal.locator('#teacherOnly input.toggle-input');
+        await teacherToggle.waitFor({ state: 'attached', timeout: 5000 });
+        await teacherToggle.check();
+        await modal.locator('button.btn.btn-primary').first().click();
+        await modal.waitFor({ state: 'hidden', timeout: 10000 });
+
+        // The authoring preview always loads the viewer with ?exe-teacher=1 (see
+        // teacher-mode-url-param.spec.ts), so with teacher-only content present the
+        // self-serve #teacher-mode-toggler becomes available automatically.
+        await openPreviewAndWaitForContent(page);
+        const iframe = getPreviewFrame(page);
+
+        const teacherToggler = iframe.locator('#teacher-mode-toggler');
+        await teacherToggler.waitFor({ state: 'attached', timeout: 15000 });
+        await expect(teacherToggler).not.toBeChecked();
+
+        const isTeacherModeOn = () => iframe.locator('html').evaluate(el => el.classList.contains('mode-teacher'));
+        await expect.poll(isTeacherModeOn).toBe(false);
+
+        // "t" reveals the teacher-only content layer...
+        await focusPreviewContent(iframe);
+        await page.keyboard.press('t');
+        await expect.poll(isTeacherModeOn).toBe(true);
+        await expect(teacherToggler).toBeChecked();
+
+        // ...and pressing it again hides it (real toggle, not one-shot).
+        await focusPreviewContent(iframe);
+        await page.keyboard.press('t');
+        await expect.poll(isTeacherModeOn).toBe(false);
+        await expect(teacherToggler).not.toBeChecked();
+    });
+
+    test('"t" does nothing when Teacher Mode is not active (no teacher-only content)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Keyboard Navigation No Teacher Mode Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdeviceWithContent(page, '<p>KEYNAV_NO_TEACHER_CONTENT</p>');
+
+        await openPreviewAndWaitForContent(page);
+        const iframe = getPreviewFrame(page);
+
+        // No teacher-only content on the page, so the toggler must not exist,
+        // regardless of the preview's default ?exe-teacher=1 parameter.
+        await expect(iframe.locator('#teacher-mode-toggler')).toHaveCount(0);
+
+        await focusPreviewContent(iframe);
+        await page.keyboard.press('t');
+        await page.waitForTimeout(300);
+
+        await expect(iframe.locator('html')).not.toHaveClass(/mode-teacher/);
+        await expect(iframe.locator('body')).toContainText('KEYNAV_NO_TEACHER_CONTENT');
+    });
 });

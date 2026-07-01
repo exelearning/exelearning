@@ -612,7 +612,12 @@ window.$exeExport = {
      * Keyboard navigation for exported/previewed content, inspired by the
      * legacy eXeLearning 2.9 "Presentation" style. Works with any theme that
      * exposes the standard nav elements (#siteNav, .nav-buttons,
-     * #siteNavToggler, #searchBarTogger) and is a no-op when they are absent.
+     * #siteNavToggler, #searchBarTogger, #teacher-mode-toggler) and is a
+     * no-op when they are absent.
+     *
+     * "t" toggles the Teacher Mode content layer, but only where it is
+     * already active (i.e. only when #teacher-mode-toggler exists — see
+     * teacherMode above); it never shadows Ctrl/Cmd+T (new browser tab).
      *
      * Opt-out: `?keyboard-navigation=false` query param, or a
      * `exeKeyboardNavigationDisabled` value in localStorage.
@@ -722,6 +727,28 @@ window.$exeExport = {
             return event.key === '/';
         },
 
+        // Toggle the Teacher Mode content layer by clicking the real
+        // #teacher-mode-toggler checkbox (see teacherMode.init() above), so the
+        // existing change handler stays the single source of truth for the
+        // reveal/hide + localStorage persistence logic. The toggler only exists
+        // in the DOM when Teacher Mode is active on this page (opted in via the
+        // ?exe-teacher URL parameter and the page has teacher-only content), so
+        // this is naturally a no-op — and never calls preventDefault() —
+        // everywhere else.
+        toggleTeacherMode: function () {
+            var toggler = document.getElementById('teacher-mode-toggler');
+            if (!toggler) return false;
+            toggler.click();
+            return true;
+        },
+
+        // Plain "t" only: never matches Ctrl/Cmd+T (new browser tab) or Alt+T.
+        isTeacherModeShortcut: function (event) {
+            if (event.ctrlKey || event.metaKey || event.altKey) return false;
+            if (event.code) return event.code === 'KeyT';
+            return event.key === 't' || event.key === 'T';
+        },
+
         activateLink: function (link, event) {
             if (!link) return;
             link.click();
@@ -739,6 +766,11 @@ window.$exeExport = {
 
             if (this.isSearchShortcut(event)) {
                 if (this.focusSearch() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            if (this.isTeacherModeShortcut(event)) {
+                if (this.toggleTeacherMode() && event.cancelable) event.preventDefault();
                 return;
             }
 
