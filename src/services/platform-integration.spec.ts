@@ -195,6 +195,23 @@ describe('Platform Integration Service', () => {
                 'Failed to fetch ELP from platform: Network error',
             );
         });
+
+        it('refuses to fetch when the platform URL resolves to an internal address (SSRF)', async () => {
+            // The returnurl host resolves to link-local metadata; safeFetch must
+            // reject BEFORE any outbound request is made. Proves the fetch is wired
+            // through the SSRF guard (a revert to raw fetch() would fail this).
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({ lookupFn: async () => [{ address: '169.254.169.254' }] });
+
+            await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
+                'Failed to fetch ELP from platform',
+            );
+            expect(fetchCalls).toBe(0);
+        });
     });
 
     describe('platformPetitionSet', () => {
@@ -274,6 +291,32 @@ describe('Platform Integration Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Platform responded with status 500');
+        });
+
+        it('refuses to upload when the platform URL resolves to an internal address (SSRF)', async () => {
+            const mockSnapshot = createMockSnapshot();
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({
+                lookupFn: async () => [{ address: '169.254.169.254' }],
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => mockSnapshot,
+            });
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            // safeFetch must reject the internal address before any outbound request.
+            expect(result.success).toBe(false);
+            expect(fetchCalls).toBe(0);
         });
 
         it('should return error when platform returns error in JSON response', async () => {
@@ -589,6 +632,27 @@ describe('Platform Integration Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Missing package payload');
+        });
+
+        it('refuses to forward when the platform URL resolves to an internal address (SSRF)', async () => {
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({ lookupFn: async () => [{ address: '169.254.169.254' }] });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                'project-uuid',
+                samplePackage,
+                'package.zip',
+            );
+
+            // safeFetch must reject the internal address before any outbound request.
+            expect(result.success).toBe(false);
+            expect(fetchCalls).toBe(0);
         });
 
         it('forwards a base64-encoded ode_data payload to the platform set_ode URL', async () => {
