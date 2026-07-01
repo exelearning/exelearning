@@ -142,6 +142,9 @@ jobs:
     # Run even if some shards failed so the report still reflects every shard.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # allow deleting the intermediate build/blob artifacts
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -174,3 +177,29 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      # The build-public/build-static/blob-* artifacts are pure run intermediates
+      # (shards consume them, the merge consumes the blobs). Delete them now so
+      # only the merged playwright-report is retained.
+      - name: Delete intermediate artifacts
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+            const intermediate = /^(build-public|build-static|blob-.*)$/;
+            for (const artifact of data.artifacts) {
+              if (intermediate.test(artifact.name)) {
+                core.info(`Deleting artifact ${artifact.name} (#${artifact.id})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }
