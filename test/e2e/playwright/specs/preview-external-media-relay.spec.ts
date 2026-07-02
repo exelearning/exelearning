@@ -15,6 +15,32 @@ import { waitForAppReady, openElpFile, openPreviewPanel, getPreviewFrame } from 
 test.describe('Opaque preview relays external media to the parent (no click)', () => {
     test.skip(({ baseURL }) => !!baseURL && baseURL.includes('3002'), 'HTTP preview session requires the server');
 
+    test('promotes YouTube, Vimeo and PDF embeds and overlays each real player', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Media matrix');
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+        await openElpFile(page, path.join(process.cwd(), 'test/fixtures/external-media-youtube-vimeo-pdf.elpx'));
+        await page.waitForTimeout(1500);
+        await openPreviewPanel(page);
+
+        const frame = getPreviewFrame(page);
+        // All three cross-origin embeds are promoted out of the opaque frame (geometry
+        // placeholders), none left as a raw framed iframe.
+        await expect.poll(async () => frame.locator('[data-exe-embed-id]').count(), { timeout: 15000 }).toBe(3);
+        expect(await frame.locator('iframe[src]').count()).toBe(0);
+
+        // The relay overlaid the real player for each provider in the editor.
+        await expect
+            .poll(async () => page.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
+            .toBeGreaterThan(0);
+        expect(await page.locator('.exe-embed-overlay iframe[src*="vimeo"]').count()).toBeGreaterThan(0);
+        expect(await page.locator('.exe-embed-overlay iframe[src*="pdf"]').count()).toBeGreaterThan(0);
+    });
+
     test('promotes the embed out of the opaque frame and overlays the player in-place, no click', async ({
         authenticatedPage,
         createProject,
