@@ -484,9 +484,32 @@
         }
         /* v8 ignore stop */
 
+        // Tear down every overlay and its players. Used when the host (e.g. the editor
+        // preview panel) hides or closes the content iframe: the overlay lives on the
+        // host's own body, so without this it would linger over the host UI. A later
+        // sync (after the iframe reloads) rebuilds the overlays cleanly.
+        function clear() {
+            for (var i = 0; i < overlays.length; i++) {
+                var entry = overlays[i];
+                var ids = Object.keys(entry.players);
+                for (var j = 0; j < ids.length; j++) {
+                    var player = entry.players[ids[j]];
+                    if (player && player.parentNode) {
+                        player.parentNode.removeChild(player);
+                    }
+                }
+                entry.players = {};
+                if (entry.el && entry.el.parentNode) {
+                    entry.el.parentNode.removeChild(entry.el);
+                }
+            }
+            overlays.length = 0;
+        }
+
         return {
             onMessage: onMessage,
             sync: sync,
+            clear: clear,
             validate: function (raw, contentSrc) {
                 return validate(raw, contentSrc, { strict: strict, whitelist: whitelist });
             },

@@ -45,5 +45,15 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
         await expect
             .poll(async () => page.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
             .toBeGreaterThan(0);
+
+        // Closing the preview must tear the overlay down — no video left floating over the editor.
+        await page.locator('#previewsidenavclose').click();
+        await expect.poll(async () => page.locator('.exe-embed-overlay iframe').count(), { timeout: 10000 }).toBe(0);
+
+        // Reopening rebuilds the overlay (the iframe reloads → shim re-reports).
+        await openPreviewPanel(page);
+        await expect
+            .poll(async () => page.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
+            .toBeGreaterThan(0);
     });
 });

@@ -818,6 +818,15 @@ describe('PreviewPanelManager', () => {
 
       expect(manager._provider.dispose).not.toHaveBeenCalled();
     });
+
+    it('close() tears down the embed overlays so no video lingers over the editor', () => {
+      manager._mediaHost = { hideEmbedOverlays: vi.fn() };
+      manager.isOpen = true;
+
+      manager.close();
+
+      expect(manager._mediaHost.hideEmbedOverlays).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('pin/unpin', () => {
@@ -838,6 +847,18 @@ describe('PreviewPanelManager', () => {
       expect(manager.isPinned).toBe(false);
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(true);
+    });
+
+    it('unpin() and pin() tear down the embed overlays before swapping the active iframe', async () => {
+      vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      manager._mediaHost = { hideEmbedOverlays: vi.fn() };
+
+      manager.isPinned = true;
+      manager.unpin();
+      expect(manager._mediaHost.hideEmbedOverlays).toHaveBeenCalledTimes(1);
+
+      await manager.pin();
+      expect(manager._mediaHost.hideEmbedOverlays).toHaveBeenCalledTimes(2);
     });
 
     it('should reuse the same provider session across pin/unpin', async () => {

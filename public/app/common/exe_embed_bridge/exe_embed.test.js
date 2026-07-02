@@ -263,6 +263,33 @@ describe('exe_embed_relay createRelay() overlays players from messages', () => {
         expect(document.querySelectorAll('.exe-embed-overlay iframe').length).toBe(0);
     });
 
+    it('clear() removes every overlay and player (teardown when the preview closes)', () => {
+        const r = relay.createRelay({ mode: 'open' });
+        r.onMessage({
+            source: iframe.contentWindow,
+            data: {
+                type: 'exe-embed', action: 'sync',
+                embeds: [{ id: 'e1', url: 'https://www.youtube.com/embed/abc123', x: 0, y: 0, w: 480, h: 270 }],
+            },
+        });
+        expect(document.querySelectorAll('.exe-embed-overlay').length).toBe(1);
+        expect(document.querySelectorAll('.exe-embed-overlay iframe').length).toBe(1);
+
+        r.clear();
+        expect(document.querySelectorAll('.exe-embed-overlay').length).toBe(0);
+        expect(document.querySelectorAll('.exe-embed-overlay iframe').length).toBe(0);
+
+        // After clear(), a fresh sync rebuilds cleanly (reopen path).
+        r.onMessage({
+            source: iframe.contentWindow,
+            data: {
+                type: 'exe-embed', action: 'sync',
+                embeds: [{ id: 'e1', url: 'https://www.youtube.com/embed/abc123', x: 0, y: 0, w: 480, h: 270 }],
+            },
+        });
+        expect(document.querySelectorAll('.exe-embed-overlay iframe').length).toBe(1);
+    });
+
     it('replaces the player when a reused embed id navigates to a different URL (no lingering video)', () => {
         const r = relay.createRelay({ mode: 'open' });
         r.onMessage({

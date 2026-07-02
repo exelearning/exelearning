@@ -13,19 +13,21 @@ describe('PreviewMediaHost', () => {
         detachSpy = vi.fn();
         attachSpy = vi.fn().mockReturnValue({ detach: detachSpy });
         win = { document: {}, setTimeout, clearTimeout };
-        const relayInit = vi.fn();
+        const relayClear = vi.fn();
+        const relayInit = vi.fn(() => ({ clear: relayClear }));
         loadScript = vi.fn(async (src) => {
             loadedScripts.push(src);
             // Loading the host bridge script defines window.exeMediaHost.
             if (src.includes('exe-media-host')) {
                 win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
             }
-            // Loading the relay defines window.exeEmbedRelay.
+            // Loading the relay defines window.exeEmbedRelay; init() returns the relay instance.
             if (src.includes('exe_embed_relay')) {
                 win.exeEmbedRelay = { init: relayInit };
             }
         });
         win.__relayInit = relayInit;
+        win.__relayClear = relayClear;
     });
 
     it('loads the bridge + relay scripts once and attaches per iframe', async () => {
@@ -54,6 +56,19 @@ describe('PreviewMediaHost', () => {
         await host.attach({});
         expect(win.__relayInit).toHaveBeenCalledTimes(1);
         expect(win.__relayInit).toHaveBeenCalledWith({ mode: 'open' });
+    });
+
+    it('hideEmbedOverlays() tears down the relay overlays (preview close)', async () => {
+        const host = new PreviewMediaHost({ basePath: '', win, loadScript });
+        await host.attach({});
+        host.hideEmbedOverlays();
+        expect(win.__relayClear).toHaveBeenCalledTimes(1);
+    });
+
+    it('hideEmbedOverlays() is a no-op when the relay never started', () => {
+        const host = new PreviewMediaHost({ basePath: '', win, loadScript });
+        expect(() => host.hideEmbedOverlays()).not.toThrow();
+        expect(win.__relayClear).not.toHaveBeenCalled();
     });
 
     it('skips script loading when the bridge and relay are already present', async () => {

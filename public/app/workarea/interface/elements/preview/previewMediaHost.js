@@ -62,6 +62,7 @@ export class PreviewMediaHost {
         this._sdkLoaders = { ...defaultSdkLoaders(this._win, this._loadScript), ...(options.sdkLoaders || {}) };
         this._bridgeReady = null;
         this._handles = [];
+        this._embedRelay = null;
     }
 
     /**
@@ -77,7 +78,7 @@ export class PreviewMediaHost {
         // click. It discovers content iframes by event.source, so no per-iframe attach.
         if (this._win.exeEmbedRelay && !this._win.__exePreviewEmbedRelayReady) {
             try {
-                this._win.exeEmbedRelay.init({ mode: 'open' });
+                this._embedRelay = this._win.exeEmbedRelay.init({ mode: 'open' });
                 this._win.__exePreviewEmbedRelayReady = true;
             } catch (error) {
                 Logger.warn('[PreviewMediaHost] embed relay init failed:', error);
@@ -89,6 +90,20 @@ export class PreviewMediaHost {
         });
         this._handles.push(handle);
         return handle;
+    }
+
+    /**
+     * Tear down the embed-relay overlays. Called when the preview is hidden/closed:
+     * the overlays live on the editor's own body (the panel only slides away via
+     * transform, so the iframe keeps a live rect), and would otherwise linger over
+     * the editor. They rebuild on the next sync after the iframe reloads on reopen.
+     */
+    hideEmbedOverlays() {
+        try {
+            this._embedRelay?.clear();
+        } catch (error) {
+            Logger.warn('[PreviewMediaHost] embed overlay teardown failed:', error);
+        }
     }
 
     /** Detach every attached relay (panel destroy). */

@@ -834,6 +834,9 @@ export default class PreviewPanelManager {
         this.isOpen = false;
         this.panel?.classList.remove('active');
         this.overlay?.classList.remove('active');
+        // The panel only slides away (transform), so the iframe keeps a live rect and
+        // the relay's video overlay would otherwise stay floating over the editor.
+        this._mediaHost?.hideEmbedOverlays();
 
         Logger.log('[PreviewPanel] Panel closed');
     }
@@ -847,6 +850,9 @@ export default class PreviewPanelManager {
         // Close slide-out panel first
         this.panel?.classList.remove('active');
         this.overlay?.classList.remove('active');
+        // Drop overlays over the slide-out iframe; refresh() rebuilds them over the
+        // pinned iframe once it reloads.
+        this._mediaHost?.hideEmbedOverlays();
 
         // Enable pinned mode
         this.isPinned = true;
@@ -874,6 +880,9 @@ export default class PreviewPanelManager {
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
+        // Drop overlays over the pinned iframe; refresh() rebuilds them over the
+        // slide-out iframe once it reloads.
+        this._mediaHost?.hideEmbedOverlays();
 
         // Open slide-out panel with current content
         this.isOpen = true;
