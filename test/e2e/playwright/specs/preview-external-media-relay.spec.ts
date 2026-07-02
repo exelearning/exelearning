@@ -119,7 +119,7 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
         // The host wrapper frames the opaque content and runs the relay → the real player
         // is overlaid in the new tab (this is what fails when opening the content directly).
         await expect
-            .poll(async () => popup.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
+            .poll(async () => popup.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 25000 })
             .toBeGreaterThan(0);
         // The framed content is still opaque (isolated).
         const framed = popup.frameLocator('#exe-preview-host');

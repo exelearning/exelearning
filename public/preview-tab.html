@@ -52,6 +52,7 @@
             // which attaches the relay after the iframe has content), then (re)ping on every
             // (re)load so the shim re-reports embed geometry and the relay overlays the real
             // player in-place — no click. The ping also re-arms after each srcdoc navigation.
+            var pingTimer = null;
             iframe.addEventListener('load', function () {
                 if (!relayStarted && window.exeEmbedRelay) {
                     try {
@@ -61,11 +62,30 @@
                         /* non-fatal */
                     }
                 }
-                try {
-                    iframe.contentWindow.postMessage({ type: 'exe-embed', action: 'request' }, '*');
-                } catch (e) {
-                    /* opaque content: postMessage is still delivered */
+                // Re-ping a few times rather than once: under load the shim (inside the
+                // framed content) and the relay can initialise in either order, so a single
+                // request can arrive before the shim is listening and be lost — leaving the
+                // player un-overlaid. Poll briefly until the shim re-reports. Restarted on
+                // each (srcdoc) reload.
+                if (pingTimer) {
+                    clearInterval(pingTimer);
                 }
+                var pings = 0;
+                var sendPing = function () {
+                    try {
+                        iframe.contentWindow.postMessage({ type: 'exe-embed', action: 'request' }, '*');
+                    } catch (e) {
+                        /* opaque content: postMessage is still delivered */
+                    }
+                };
+                sendPing();
+                pingTimer = setInterval(function () {
+                    sendPing();
+                    if (++pings >= 12) {
+                        clearInterval(pingTimer);
+                        pingTimer = null;
+                    }
+                }, 400);
             });
 
             var params = new URLSearchParams(window.location.search);
