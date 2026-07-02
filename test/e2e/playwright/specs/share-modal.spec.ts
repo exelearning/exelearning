@@ -1,5 +1,6 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
  * Share Modal Tests
@@ -25,7 +26,7 @@ test.describe('Share Modal', () => {
 
             // Navigate to the project
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             // Click share button (pill button in header)
             const shareButton = authenticatedPage.locator('#head-top-share-button');
@@ -43,7 +44,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, projectTitle);
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -60,7 +61,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Link Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -83,7 +84,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Copy Link Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -115,7 +116,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Feedback Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -141,7 +142,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Visibility Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -157,7 +158,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Toggle Visibility Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -186,7 +187,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Help Text Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -315,7 +316,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Owner Invite Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -330,7 +331,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Invalid Email Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -352,7 +353,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Non-existent User Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -376,7 +377,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'People List Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -401,7 +402,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Overflow People List Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -468,7 +469,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Close Modal Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
