@@ -610,6 +610,8 @@ ${logoCss}
             'libs/bootstrap/bootstrap.min.css': getPath('libs/bootstrap/bootstrap.min.css'),
             'libs/common.js': getPath('app/common/common.js'),
             'libs/common_i18n.js': getPath('app/common/common_i18n.js'),
+            'libs/exe_media_bridge/exe_media_policy.js': getPath('app/common/exe_media_bridge/exe_media_policy.js'),
+            'libs/exe_media_bridge/exe_media_bridge.js': getPath('app/common/exe_media_bridge/exe_media_bridge.js'),
             'libs/exe_export.js': getPath('app/common/exe_export.js'),
             'libs/exe_math/tex-mml-svg.js': getPath('app/common/exe_math/tex-mml-svg.js'),
             'libs/favicon.ico': getPath('favicon.ico'),

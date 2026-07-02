@@ -560,4 +560,61 @@ describe('interactive-video iDevice export', () => {
       expect(typeof $interactivevideo.controls.seek).toBe('function');
     });
   });
+
+  describe('external-media bridge delegation', () => {
+    afterEach(() => {
+      delete global.window.exeMediaBridge;
+    });
+
+    it('bridgeEligible is false when no bridge runtime is present', () => {
+      delete global.window.exeMediaBridge;
+      $interactivevideo.type = 'youtube';
+      expect($interactivevideo.bridgeEligible()).toBe(false);
+    });
+
+    it('bridgeEligible is true for youtube/vimeo when the runtime says to use the bridge', () => {
+      global.window.exeMediaBridge = { shouldUseBridge: () => true };
+      $interactivevideo.type = 'youtube';
+      expect($interactivevideo.bridgeEligible()).toBe(true);
+      $interactivevideo.type = 'vimeo';
+      expect($interactivevideo.bridgeEligible()).toBe(true);
+    });
+
+    it('bridgeEligible is false for local/mediateca even in bridge mode', () => {
+      global.window.exeMediaBridge = { shouldUseBridge: () => true };
+      $interactivevideo.type = 'local';
+      expect($interactivevideo.bridgeEligible()).toBe(false);
+      $interactivevideo.type = 'mediateca';
+      expect($interactivevideo.bridgeEligible()).toBe(false);
+    });
+
+    it('controls.play shows then plays the parent player when a controller is active', () => {
+      const calls = [];
+      $interactivevideo.type = 'youtube';
+      $interactivevideo.mediaController = {
+        show: () => calls.push('show'),
+        play: () => calls.push('play'),
+      };
+      $interactivevideo.controls.play();
+      expect(calls).toEqual(['show', 'play']);
+    });
+
+    it('controls.pause and stop delegate to the controller', () => {
+      let paused = 0;
+      $interactivevideo.type = 'youtube';
+      $interactivevideo.mediaController = { pause: () => { paused += 1; } };
+      $interactivevideo.controls.pause();
+      $interactivevideo.controls.stop();
+      expect(paused).toBe(2);
+    });
+
+    it('controls.seek delegates to the controller and tracks the new position', () => {
+      const calls = [];
+      $interactivevideo.type = 'youtube';
+      $interactivevideo.mediaController = { seek: (t) => calls.push(['seek', t]) };
+      $interactivevideo.track = (t) => calls.push(['track', t]);
+      $interactivevideo.controls.seek(42);
+      expect(calls).toEqual([['seek', 42], ['track', 42]]);
+    });
+  });
 });

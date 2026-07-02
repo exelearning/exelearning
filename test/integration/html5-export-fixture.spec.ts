@@ -146,6 +146,27 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('libs/bootstrap/bootstrap.bundle.min.js');
         });
 
+        it('should include the external-media bridge scripts, with policy before bridge', async () => {
+            if (!exportedIndexHtml) return;
+
+            const policyPos = exportedIndexHtml.indexOf('libs/exe_media_bridge/exe_media_policy.js');
+            const bridgePos = exportedIndexHtml.indexOf('libs/exe_media_bridge/exe_media_bridge.js');
+            expect(policyPos).toBeGreaterThan(-1);
+            expect(bridgePos).toBeGreaterThan(-1);
+            // The policy is a dependency of the bridge, so it must load first.
+            expect(policyPos).toBeLessThan(bridgePos);
+        });
+
+        it('should ship the external-media bridge files inside the export ZIP', async () => {
+            if (!exportedZip) return;
+
+            expect(exportedZip['libs/exe_media_bridge/exe_media_policy.js']).toBeDefined();
+            expect(exportedZip['libs/exe_media_bridge/exe_media_bridge.js']).toBeDefined();
+            // Sanity: the shipped policy exposes its global.
+            const policySrc = new TextDecoder().decode(exportedZip['libs/exe_media_bridge/exe_media_policy.js']);
+            expect(policySrc).toContain('exeMediaPolicy');
+        });
+
         it('should include exe_lightbox because fixture content uses rel="lightbox noopener"', async () => {
             if (!exportedIndexHtml) return;
 

@@ -329,6 +329,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | Real-time/Yjs | [doc/development/real-time.md](doc/development/real-time.md) |
 | REST API v1 | [doc/development/rest-api.md](doc/development/rest-api.md) |
 | Embedding in LMS | [doc/development/embedding.md](doc/development/embedding.md) |
+| External media (opaque iframe) | [doc/development/external-media-bridge.md](doc/development/external-media-bridge.md) |
 | Profiling | [doc/development/profiling.md](doc/development/profiling.md) |
 | Styles/Themes | [doc/development/styles.md](doc/development/styles.md) |
 | Conventions | [doc/conventions.md](doc/conventions.md) |

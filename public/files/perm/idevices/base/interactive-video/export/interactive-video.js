@@ -661,8 +661,47 @@ var $interactivevideo = {
         else return this.randomizeArray(original);
     },
 
+    // True when this video should be driven by the external-media bridge: a provider
+    // video (YouTube/Vimeo) rendered inside an opaque-origin sandboxed iframe, where the
+    // nested player cannot run and must be relayed to the trusted parent.
+    bridgeEligible: function () {
+        if (this.type != 'youtube' && this.type != 'vimeo') return false;
+        var b = typeof window !== 'undefined' && window.exeMediaBridge;
+        return !!(b && typeof b.shouldUseBridge === 'function' && b.shouldUseBridge());
+    },
+
+    // Ask the trusted parent to open the player and relay media events back. The
+    // activity UI is set up immediately (like the local player); time updates feed the
+    // same track() sink that drives question cue points. Falls back gracefully.
+    startBridgePlayer: function () {
+        var self = this;
+        self.complete();
+        window.exeMediaBridge
+            .openMedia({ provider: self.type, videoId: self.id })
+            .then(function (controller) {
+                self.mediaController = controller;
+                self.hasPlayed = true;
+                controller.on('timeupdate', function (e) {
+                    self.track(e.currentTime);
+                    self.checkSlides();
+                });
+                controller.on('error', function () {
+                    self.showYoutubeFallback();
+                });
+            })
+            .catch(function () {
+                self.showYoutubeFallback();
+            });
+    },
+
     controls: {
         play: function () {
+            if ($interactivevideo.mediaController) {
+                // Bridge mode: reveal the parent modal, then resume playback.
+                $interactivevideo.mediaController.show();
+                $interactivevideo.mediaController.play();
+                return;
+            }
             if ($interactivevideo.type == 'mediateca') {
                 if (typeof jwplayer == 'undefined') return;
                 jwplayer().play();
@@ -715,6 +754,10 @@ var $interactivevideo = {
             }
         },
         stop: function () {
+            if ($interactivevideo.mediaController) {
+                $interactivevideo.mediaController.pause();
+                return;
+            }
             if ($interactivevideo.type == 'mediateca') jwplayer().stop();
             else if ($interactivevideo.type == 'youtube')
                 $interactivevideo.player.pauseVideo();
@@ -725,6 +768,10 @@ var $interactivevideo = {
             }
         },
         pause: function () {
+            if ($interactivevideo.mediaController) {
+                $interactivevideo.mediaController.pause();
+                return;
+            }
             if ($interactivevideo.type == 'mediateca') jwplayer().pause(true);
             else if ($interactivevideo.type == 'youtube')
                 $interactivevideo.player.pauseVideo();
@@ -735,6 +782,11 @@ var $interactivevideo = {
             }
         },
         seek: function (sec) {
+            if ($interactivevideo.mediaController) {
+                $interactivevideo.mediaController.seek(sec);
+                $interactivevideo.track(sec);
+                return;
+            }
             if ($interactivevideo.type == 'mediateca') {
                 jwplayer().seek(sec);
             } else if ($interactivevideo.type == 'youtube') {
@@ -953,6 +1005,12 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
+            if ($interactivevideo.bridgeEligible()) {
+                // Opaque-iframe mode: relay to the trusted parent instead of building a
+                // nested YT.Player (which would be blocked by the sandbox).
+                $interactivevideo.startBridgePlayer();
+                return;
+            }
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
@@ -1474,7 +1532,14 @@ var $interactivevideo = {
                 if ($interactivevideo.type != 'local')
                     alert(InteractiveVideo.i18n.fsWarning);
             }
-            if (!e.endTime) $interactivevideo.controls.pause();
+            if (!e.endTime) {
+                $interactivevideo.controls.pause();
+                // Bridge mode: hide the parent video modal so the question (rendered in
+                // this opaque iframe over the #player placeholder) becomes visible.
+                if ($interactivevideo.mediaController) {
+                    $interactivevideo.mediaController.hide();
+                }
+            }
 
             var slide = $('#slide');
             slide.html('');

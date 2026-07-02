@@ -145,6 +145,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
+            // External-media bridge: lets YouTube/Vimeo embeds work when the package is
+            // rendered inside an opaque-origin sandboxed iframe (policy must load first).
+            { src: 'app/common/exe_media_bridge/exe_media_policy.js', dest: 'exe_media_bridge/exe_media_policy.js' },
+            { src: 'app/common/exe_media_bridge/exe_media_bridge.js', dest: 'exe_media_bridge/exe_media_bridge.js' },
             // Always-on xAPI emitter (every export is xAPI-compatible)
             { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon

@@ -2,6 +2,11 @@
 
 This guide covers how to embed the eXeLearning static editor inside an iframe for LMS integrations (WordPress, Moodle, Drupal, Omeka-S, etc.).
 
+> **Rendering exported content in an opaque-origin sandboxed iframe?** External media (YouTube/Vimeo)
+> cannot run inside a sandbox that lacks `allow-same-origin`. See
+> [external-media-bridge.md](external-media-bridge.md) for the eXeLearning-core bridge that opens those
+> players in a trusted parent modal without weakening the sandbox.
+
 ## Overview
 
 The embedded static editor communicates with its parent window via a `postMessage`-based protocol. This allows LMS plugins to:

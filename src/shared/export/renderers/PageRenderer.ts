@@ -302,6 +302,10 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
+        // External-media bridge: makes YouTube/Vimeo embeds work inside opaque-origin
+        // sandboxed iframes. No-op in normal/local use. Policy must load before the bridge.
+        head += `<script src="${basePath}libs/exe_media_bridge/exe_media_policy.js"> </script>`;
+        head += `<script src="${basePath}libs/exe_media_bridge/exe_media_bridge.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
 
         // Always-on xAPI emitter: identity config + emitter library. Present in
@@ -1323,6 +1327,8 @@ ${sectionContent}
 <script src="libs/jquery/jquery.min.js"> </script>
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
+<script src="libs/exe_media_bridge/exe_media_policy.js"> </script>
+<script src="libs/exe_media_bridge/exe_media_bridge.js"> </script>
 <script src="libs/exe_export.js"> </script>
 ${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n` : ''}<script src="libs/xapi/exe_xapi.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
