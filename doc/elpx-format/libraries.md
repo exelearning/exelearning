@@ -99,7 +99,6 @@ const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPag
 | `exe_tooltips` | Tooltips iDevice | `exe_tooltips/jquery.qtip.min.js`, `exe_tooltips/jquery.qtip.min.css` |
 | `exe_magnify` | Image magnifier iDevice | `exe_magnify/exe_magnify.js`, CSS |
 | `exe_media` | Embedded media (audio/video) iDevice | `exe_media/exe_media.js`, CSS |
-| `exe_media_link` | Linked media iDevice | `exe_media_link/exe_media_link.js` |
 | `abcjs` | ABC music notation iDevice | `abcjs/abcjs-basic.js` |
 | `exe_math` | MathJax LaTeX expressions in content **or** `meta.addMathJax === true` | Entire `exe_math/` directory (dynamic extension loading) |
 | `exe_math_datagame` | LaTeX found inside encrypted DataGame div | `exe_math/` directory |

@@ -191,7 +191,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'exe_magnify',
             'exe_highlighter',
             'exe_slidesjs',
-            'exe_media_link',
             'exe_math', // MathJax library
             'mermaid', // Mermaid diagram library
         ]);

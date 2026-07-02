@@ -69,6 +69,9 @@
         margin-right: -5px;
         z-index: 997;
     }
+    #page-title-node-content + .btn-edit-title {
+        margin-left: .5em;
+    }
     #node-content {
         height: auto;
         // Page title with inline rename affordance (single click on the title
