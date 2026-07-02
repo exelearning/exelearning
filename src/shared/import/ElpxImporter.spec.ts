@@ -531,11 +531,13 @@ describe('ElpxImporter', () => {
         it('rejects a per-entry decompression bomb without inflating it', async () => {
             const fflate = await import('fflate');
 
-            // 200 MB of zeros compresses to ~200 KB (a ~1000:1 bomb). With a 5 MB
-            // per-entry cap the importer must refuse it BEFORE inflation. fflate
-            // reads originalSize from the central directory in the filter callback,
-            // so the 200 MB is never materialised.
-            const bombPayload = new Uint8Array(200 * 1024 * 1024);
+            // A 2 MB run of zeros compresses to a few KB (a strong bomb ratio). With a
+            // 1 MB per-entry cap the importer must refuse it BEFORE inflation. fflate
+            // reads originalSize from the central directory in the filter callback, so
+            // the payload is never materialised — the absolute size is irrelevant to the
+            // guard, only originalSize > cap matters, so a small payload exercises the
+            // same code path while keeping zipSync at milliseconds.
+            const bombPayload = new Uint8Array(2 * 1024 * 1024);
             const zip = fflate.zipSync(
                 {
                     'content.xml': new TextEncoder().encode(minimalContentXml),
@@ -544,11 +546,11 @@ describe('ElpxImporter', () => {
                 { level: 6 },
             );
             // Sanity: the crafted archive really is tiny on disk (the DoS vector).
-            expect(zip.length).toBeLessThan(2 * 1024 * 1024);
+            expect(zip.length).toBeLessThan(64 * 1024);
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024,
+                maxEntryBytes: 1 * 1024 * 1024,
             });
 
             await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
@@ -561,19 +563,21 @@ describe('ElpxImporter', () => {
             const fflate = await import('fflate');
 
             // Several individually-acceptable entries that together blow the total cap.
-            const chunk = new Uint8Array(2 * 1024 * 1024); // 2 MB each (compresses small)
+            // Each entry's originalSize is read from the central directory, so small
+            // zeroed chunks keep zipSync at milliseconds while still tripping the guard.
+            const chunk = new Uint8Array(1 * 1024 * 1024); // 1 MB each (compresses small)
             const entries: Record<string, Uint8Array> = {
                 'content.xml': new TextEncoder().encode(minimalContentXml),
             };
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 5; i++) {
                 entries[`pad-${i}.bin`] = chunk;
             }
             const zip = fflate.zipSync(entries, { level: 6 });
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024, // each entry passes
-                maxTotalBytes: 8 * 1024 * 1024, // but the sum does not
+                maxEntryBytes: 2 * 1024 * 1024, // each 1 MB entry passes
+                maxTotalBytes: 4 * 1024 * 1024, // but the 5 MB sum does not
             });
 
             await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
@@ -608,20 +612,22 @@ describe('ElpxImporter', () => {
             const fflate = await import('fflate');
 
             // Inner ELP carries the bomb; the outer ZIP wraps it as a single .elp entry,
-            // exercising the nested-ELP branch in importFromBuffer.
+            // exercising the nested-ELP branch in importFromBuffer. A 2 MB zeroed payload
+            // over a 1 MB cap trips the same guard as a huge one (originalSize is read
+            // from the central directory, never inflated) while staying fast.
             const innerBomb = fflate.zipSync(
                 {
                     'content.xml': new TextEncoder().encode(minimalContentXml),
-                    'bomb.bin': new Uint8Array(200 * 1024 * 1024),
+                    'bomb.bin': new Uint8Array(2 * 1024 * 1024),
                 },
                 { level: 6 },
             );
             const outerZip = fflate.zipSync({ 'project.elp': innerBomb }, { level: 6 });
-            expect(outerZip.length).toBeLessThan(2 * 1024 * 1024);
+            expect(outerZip.length).toBeLessThan(64 * 1024);
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024,
+                maxEntryBytes: 1 * 1024 * 1024,
             });
 
             await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(ZipLimitError);
