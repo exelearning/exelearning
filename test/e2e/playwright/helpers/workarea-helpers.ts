@@ -2270,23 +2270,13 @@ export async function openPreviewAndWaitForContent(page: Page, timeout = 30000):
     const iframe = getPreviewFrame(page);
     await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
 
-    // Wait for meaningful content to appear
-    await page.waitForFunction(
-        () => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            if (!iframe) return false;
-            try {
-                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                if (!doc || !doc.body) return false;
-                const bodyHtml = doc.body.innerHTML || '';
-                return bodyHtml.length > 100 || doc.querySelector('article, .idevice_node, main, nav, .exe-page');
-            } catch {
-                return false;
-            }
-        },
-        undefined,
-        { timeout },
-    );
+    // Wait for meaningful content to appear. The preview iframe is opaque-origin
+    // (no allow-same-origin), so contentDocument is inaccessible from the parent —
+    // wait through the frame locator instead.
+    await iframe
+        .locator('article, .idevice_node, main, nav, .exe-page')
+        .first()
+        .waitFor({ state: 'attached', timeout });
 
     // Additional wait for content to fully render
     await page.waitForTimeout(500);
