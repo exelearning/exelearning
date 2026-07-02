@@ -1044,10 +1044,37 @@ export default class ModalFilemanager extends Modal {
                 });
             }
         } else if (!this.multiSelect) {
-            // Single select mode - reset selection on view change
-            this.selectedAsset = null;
-            this.selectedAssets = [];
-            this.showSidebarEmpty();
+            // Single select mode - preserve the current selection across
+            // re-renders (e.g. a remote Yjs asset change triggers loadAssets ->
+            // applyFiltersAndRender -> renderCurrentView). Only clear when the
+            // selected asset is no longer present in the rendered list.
+            const currentAsset = this.selectedAsset
+                ? this.filteredAssets.find(a => a.id === this.selectedAsset.id)
+                : null;
+            if (currentAsset) {
+                // Refresh the reference to the freshly-rebuilt asset object and
+                // re-apply the visual selection to its grid item / list row.
+                this.selectedAsset = currentAsset;
+                if (this.viewMode === 'grid' && this.grid) {
+                    this.grid.querySelectorAll('.media-library-item').forEach(el => {
+                        if (el.dataset.assetId === currentAsset.id) {
+                            el.classList.add('selected');
+                        }
+                    });
+                } else if (this.listTbody) {
+                    this.listTbody.querySelectorAll('tr').forEach(el => {
+                        if (el.dataset.assetId === currentAsset.id) {
+                            el.classList.add('selected');
+                        }
+                    });
+                }
+                this.showSidebarContent(currentAsset);
+            } else {
+                // Selection is gone - reset and empty the sidebar.
+                this.selectedAsset = null;
+                this.selectedAssets = [];
+                this.showSidebarEmpty();
+            }
         }
     }
 
