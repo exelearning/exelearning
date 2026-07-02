@@ -825,6 +825,7 @@ export default class PreviewPanelManager {
 
         // Generate and load preview
         await this.refresh();
+        this._scheduleEmbedReflow();
 
         Logger.log('[PreviewPanel] Panel opened');
     }
@@ -870,6 +871,7 @@ export default class PreviewPanelManager {
 
         // Refresh content in pinned iframe
         await this.refresh();
+        this._scheduleEmbedReflow();
 
         Logger.log('[PreviewPanel] Preview pinned to layout');
     }
@@ -895,6 +897,7 @@ export default class PreviewPanelManager {
 
         // Refresh content
         this.refresh();
+        this._scheduleEmbedReflow();
 
         Logger.log('[PreviewPanel] Preview unpinned');
     }
@@ -1182,6 +1185,20 @@ export default class PreviewPanelManager {
         };
         window.addEventListener('message', onMessage);
         this._previewTabHandoff = onMessage;
+    }
+
+    /**
+     * Re-place the embed video overlays once the panel finishes sliding/pinning. The
+     * panel moves via a CSS transform, which fires no scroll/resize, so an overlay
+     * placed while the panel is still animating would sit at the wrong X. Reflowing
+     * after the transform settles snaps it back over its embed. Timers (not
+     * transitionend) so it works with reduced motion / no transition too, and a
+     * late-arriving overlay created after the animation is already correctly placed.
+     */
+    _scheduleEmbedReflow() {
+        const run = () => this._mediaHost?.reflowEmbedOverlays();
+        setTimeout(run, 400);
+        setTimeout(run, 900);
     }
 
     /** Remove the preview-host tab handoff listener (popup closed / panel destroyed). */

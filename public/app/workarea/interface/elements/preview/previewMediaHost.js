@@ -106,6 +106,19 @@ export class PreviewMediaHost {
         }
     }
 
+    /**
+     * Re-place the embed overlays over the current preview iframe box. Called after the
+     * panel slides in / pins (a CSS transform that fires no scroll/resize), so an overlay
+     * placed mid-animation snaps back over its embed once the panel settles.
+     */
+    reflowEmbedOverlays() {
+        try {
+            this._embedRelay?.reflow();
+        } catch (error) {
+            Logger.warn('[PreviewMediaHost] embed overlay reflow failed:', error);
+        }
+    }
+
     /** Detach every attached relay (panel destroy). */
     detachAll() {
         for (const handle of this._handles) {

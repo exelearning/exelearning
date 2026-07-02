@@ -55,6 +55,18 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
         await expect
             .poll(async () => page.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
             .toBeGreaterThan(0);
+        // ...and it must be aligned over the preview iframe, not left at a mid-slide X
+        // (regression: the overlay was placed while the panel was still animating in).
+        await expect
+            .poll(
+                async () => {
+                    const ifr = await page.locator('#preview-iframe').boundingBox();
+                    const ov = await page.locator('.exe-embed-overlay').first().boundingBox();
+                    return ifr && ov ? Math.abs(ov.x - ifr.x) : 9999;
+                },
+                { timeout: 5000 },
+            )
+            .toBeLessThan(20);
     });
 
     test('opens the preview in a new tab via the host wrapper and plays the video there', async ({

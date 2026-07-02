@@ -263,6 +263,25 @@ describe('exe_embed_relay createRelay() overlays players from messages', () => {
         expect(document.querySelectorAll('.exe-embed-overlay iframe').length).toBe(0);
     });
 
+    it('reflow() repositions overlays to the current iframe box (host animated the iframe)', () => {
+        const r = relay.createRelay({ mode: 'open' });
+        r.onMessage({
+            source: iframe.contentWindow,
+            data: {
+                type: 'exe-embed', action: 'sync',
+                embeds: [{ id: 'e1', url: 'https://www.youtube.com/embed/abc123', x: 0, y: 0, w: 480, h: 270 }],
+            },
+        });
+        const overlay = document.querySelector('.exe-embed-overlay');
+        // The host (editor panel) slides the iframe via transform after the sync; the
+        // move fires no scroll/resize, so the overlay must be re-placed explicitly.
+        iframe.getBoundingClientRect = () => ({ left: 50, top: 60, width: 400, height: 300, right: 450, bottom: 360 });
+        r.reflow();
+        expect(overlay.style.left).toBe('50px');
+        expect(overlay.style.top).toBe('60px');
+        expect(overlay.style.width).toBe('400px');
+    });
+
     it('clear() removes every overlay and player (teardown when the preview closes)', () => {
         const r = relay.createRelay({ mode: 'open' });
         r.onMessage({

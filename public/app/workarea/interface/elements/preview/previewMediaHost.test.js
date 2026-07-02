@@ -71,6 +71,16 @@ describe('PreviewMediaHost', () => {
         expect(win.__relayClear).not.toHaveBeenCalled();
     });
 
+    it('reflowEmbedOverlays() re-places the overlays via the relay', async () => {
+        const relayReflow = vi.fn();
+        win.exeEmbedRelay = { init: vi.fn(() => ({ clear: vi.fn(), reflow: relayReflow })) };
+        win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
+        const host = new PreviewMediaHost({ basePath: '', win, loadScript });
+        await host.attach({});
+        host.reflowEmbedOverlays();
+        expect(relayReflow).toHaveBeenCalledTimes(1);
+    });
+
     it('skips script loading when the bridge and relay are already present', async () => {
         win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
         win.exeEmbedRelay = { init: vi.fn() };

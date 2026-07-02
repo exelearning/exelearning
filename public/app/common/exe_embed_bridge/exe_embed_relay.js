@@ -506,10 +506,21 @@
             overlays.length = 0;
         }
 
+        // Re-place every overlay over its content iframe's CURRENT box. The host (e.g. the
+        // editor preview panel) can move the iframe with a CSS transform (slide-in), which
+        // fires no scroll/resize, so an overlay placed during the animation would stay at
+        // its sync-time position. The host calls this once the move settles.
+        function reflow() {
+            for (var i = 0; i < overlays.length; i++) {
+                positionOverlay(overlays[i]);
+            }
+        }
+
         return {
             onMessage: onMessage,
             sync: sync,
             clear: clear,
+            reflow: reflow,
             validate: function (raw, contentSrc) {
                 return validate(raw, contentSrc, { strict: strict, whitelist: whitelist });
             },

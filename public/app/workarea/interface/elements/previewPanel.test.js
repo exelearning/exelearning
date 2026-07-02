@@ -827,6 +827,22 @@ describe('PreviewPanelManager', () => {
 
       expect(manager._mediaHost.hideEmbedOverlays).toHaveBeenCalledTimes(1);
     });
+
+    it('open() schedules an embed-overlay reflow (panel slide settles after a transform)', async () => {
+      const spy = vi.spyOn(manager, '_scheduleEmbedReflow');
+      vi.spyOn(manager, 'refresh').mockResolvedValue(undefined);
+      await manager.open();
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('_scheduleEmbedReflow reflows the overlays via the media host after the transition', () => {
+      vi.useFakeTimers();
+      manager._mediaHost = { reflowEmbedOverlays: vi.fn() };
+      manager._scheduleEmbedReflow();
+      vi.advanceTimersByTime(1000);
+      expect(manager._mediaHost.reflowEmbedOverlays).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
   });
 
   describe('pin/unpin', () => {
