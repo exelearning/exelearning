@@ -28,7 +28,7 @@ test.describe('Admin Impersonation', () => {
         expect(createUserResponse.ok()).toBeTruthy();
 
         await page.goto('/admin');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await page.locator('.admin-nav-link[data-section="users"]').click();
         await page.fill('#userSearch', targetEmail);
