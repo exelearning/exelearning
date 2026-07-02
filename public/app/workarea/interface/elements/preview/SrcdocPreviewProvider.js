@@ -28,10 +28,30 @@ export class SrcdocPreviewProvider {
         this._inlineOptions = options.inlineOptions || {};
         this._pdfjsBase = options.pdfjsBase ?? null;
         this._pdfUnavailableMessage = options.pdfUnavailableMessage;
+        this._basePath = options.basePath || '';
+        this._fetchFn = options.fetchFn || ((...args) => window.fetch(...args));
         this._files = null;
         this._session = null;
+        this._embedShimSource = null;
         /** @type {{inlinedBytes: number, skipped: Array}|null} Stats of the last resolvePage call. */
         this.lastRenderStats = null;
+    }
+
+    /**
+     * Fetch the external-embed shim source once (srcdoc has no server, so it is
+     * inlined into every page). Failure is non-fatal: external embeds then keep
+     * their original reference and simply do not render in the opaque frame.
+     * @returns {Promise<string|null>}
+     */
+    async _loadEmbedShim() {
+        if (this._embedShimSource !== null) return this._embedShimSource;
+        try {
+            const response = await this._fetchFn(`${this._basePath}/app/common/exe_embed_bridge/exe_embed_shim.js`);
+            this._embedShimSource = response.ok ? await response.text() : '';
+        } catch {
+            this._embedShimSource = '';
+        }
+        return this._embedShimSource;
     }
 
     /** @returns {import('./providerContract.js').PreviewSession|null} */
@@ -76,6 +96,7 @@ export class SrcdocPreviewProvider {
         if (html == null) {
             throw new Error(`Preview page not found: ${pagePath}`);
         }
+        const embedShimSource = await this._loadEmbedShim();
         const { html: inlined, stats } = inlinePreviewPage(html, this._files, {
             pagePath,
             ...this._inlineOptions,
@@ -85,6 +106,7 @@ export class SrcdocPreviewProvider {
             pagePath,
             pdfjsBase: this._pdfjsBase,
             pdfUnavailableMessage: this._pdfUnavailableMessage,
+            embedShimSource: embedShimSource || undefined,
         });
         return { kind: 'srcdoc', html: decorated };
     }

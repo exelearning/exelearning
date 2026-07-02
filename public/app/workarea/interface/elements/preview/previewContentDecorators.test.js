@@ -51,6 +51,23 @@ describe('previewContentDecorators', () => {
             expect(result).toContain('exe-preview-open-document');
             expect(result).toContain("target', '_blank'");
         });
+
+        it('injects the embed shim as a same-origin <script src> in <head> when a URL is given', () => {
+            const result = decorateForHttp(PAGE, {
+                pdfjsBase: '/p/x/',
+                embedShimUrl: '/app/common/exe_embed_bridge/exe_embed_shim.js',
+            });
+            const shimIndex = result.indexOf('src="/app/common/exe_embed_bridge/exe_embed_shim.js"');
+            const headOpen = result.indexOf('<head>');
+            const bodyOpen = result.indexOf('<body>');
+            expect(shimIndex).toBeGreaterThan(headOpen);
+            expect(shimIndex).toBeLessThan(bodyOpen);
+        });
+
+        it('omits the shim script when no URL is configured', () => {
+            const result = decorateForHttp(PAGE, { pdfjsBase: '/p/x/' });
+            expect(result).not.toContain('exe_embed_shim.js');
+        });
     });
 
     describe('decorateForSrcdoc', () => {
@@ -82,6 +99,18 @@ describe('previewContentDecorators', () => {
             expect(flagIndex).toBeGreaterThan(headOpen);
             // Flag must precede the exe_export.js script tag so it is set first.
             expect(flagIndex).toBeLessThan(exportIndex);
+        });
+
+        it('inlines the embed shim source in <head> when provided (srcdoc has no server)', () => {
+            const result = decorateForSrcdoc(PAGE, {
+                pagePath: 'index.html',
+                embedShimSource: 'window.exeEmbedShim = { marker: true };',
+            });
+            const shimIndex = result.indexOf('window.exeEmbedShim = { marker: true };');
+            const headOpen = result.indexOf('<head>');
+            const bodyOpen = result.indexOf('<body>');
+            expect(shimIndex).toBeGreaterThan(headOpen);
+            expect(shimIndex).toBeLessThan(bodyOpen);
         });
 
         it('escapes closing script sequences in the baked page path', () => {

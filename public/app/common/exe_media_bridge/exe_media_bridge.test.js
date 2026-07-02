@@ -459,6 +459,18 @@ describe('exe_media_bridge', () => {
             expect(container.querySelector('.exe-external-media[data-exe-media-provider="vimeo"]')).toBeTruthy();
         });
 
+        it('defers to the external-embed shim: no click-placeholder when window.exeEmbedShim is present', async () => {
+            const container = document.createElement('div');
+            container.innerHTML = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Lesson"></iframe>';
+            const win = opaqueNoParent();
+            win.exeEmbedShim = {}; // the shim promotes declarative embeds to the parent relay instead
+            const placeholders = await bridge.scanAndReplace(container, { win, timeoutMs: 20 });
+            expect(placeholders).toHaveLength(0);
+            // The bridge leaves the iframe for the shim to promote (no click placeholder).
+            expect(container.querySelector('.exe-external-media')).toBeNull();
+            expect(container.querySelector('iframe[src="https://www.youtube.com/embed/dQw4w9WgXcQ"]')).toBeTruthy();
+        });
+
         it('returns an empty list when there is no external media to replace', async () => {
             const container = document.createElement('div');
             container.innerHTML = '<p>no media here</p>';

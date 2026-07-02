@@ -13,16 +13,22 @@ describe('PreviewMediaHost', () => {
         detachSpy = vi.fn();
         attachSpy = vi.fn().mockReturnValue({ detach: detachSpy });
         win = { document: {}, setTimeout, clearTimeout };
+        const relayInit = vi.fn();
         loadScript = vi.fn(async (src) => {
             loadedScripts.push(src);
             // Loading the host bridge script defines window.exeMediaHost.
             if (src.includes('exe-media-host')) {
                 win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
             }
+            // Loading the relay defines window.exeEmbedRelay.
+            if (src.includes('exe_embed_relay')) {
+                win.exeEmbedRelay = { init: relayInit };
+            }
         });
+        win.__relayInit = relayInit;
     });
 
-    it('loads the bridge scripts once and attaches per iframe', async () => {
+    it('loads the bridge + relay scripts once and attaches per iframe', async () => {
         const host = new PreviewMediaHost({ basePath: '/exe', win, loadScript });
         const iframeA = {};
         const iframeB = {};
@@ -33,6 +39,7 @@ describe('PreviewMediaHost', () => {
         expect(loadedScripts).toEqual([
             '/exe/app/common/exe_media_bridge/exe_media_policy.js',
             '/exe/app/common/exe_media_bridge/exe-media-host.js',
+            '/exe/app/common/exe_embed_bridge/exe_embed_relay.js',
         ]);
         expect(attachSpy).toHaveBeenCalledTimes(2);
         expect(attachSpy.mock.calls[0][0]).toBe(iframeA);
@@ -41,8 +48,17 @@ describe('PreviewMediaHost', () => {
         expect(typeof opts.vimeoFactory).toBe('function');
     });
 
-    it('skips script loading when the bridge is already present', async () => {
+    it('starts the page-global embed relay exactly once', async () => {
+        const host = new PreviewMediaHost({ basePath: '', win, loadScript });
+        await host.attach({});
+        await host.attach({});
+        expect(win.__relayInit).toHaveBeenCalledTimes(1);
+        expect(win.__relayInit).toHaveBeenCalledWith({ mode: 'open' });
+    });
+
+    it('skips script loading when the bridge and relay are already present', async () => {
         win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
+        win.exeEmbedRelay = { init: vi.fn() };
         const host = new PreviewMediaHost({ basePath: '', win, loadScript });
         await host.attach({});
         expect(loadScript).not.toHaveBeenCalled();
@@ -66,6 +82,7 @@ describe('PreviewMediaHost', () => {
         const sdkLoader = vi.fn(() => new Promise((resolve) => (resolveSdk = resolve)));
 
         const host = new PreviewMediaHost({ basePath: '', win, loadScript, sdkLoaders: { youtube: sdkLoader } });
+        win.exeEmbedRelay = { init: vi.fn() };
         win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: realAdapter, _vimeoAdapter: vi.fn() };
         await host.attach({});
 
@@ -94,6 +111,7 @@ describe('PreviewMediaHost', () => {
         const sdkLoader = vi.fn(() => new Promise((resolve) => (resolveSdk = resolve)));
 
         const host = new PreviewMediaHost({ basePath: '', win, loadScript, sdkLoaders: { youtube: sdkLoader } });
+        win.exeEmbedRelay = { init: vi.fn() };
         win.exeMediaHost = { attach: attachSpy, _youtubeAdapter: realAdapter, _vimeoAdapter: vi.fn() };
         await host.attach({});
 
@@ -141,6 +159,7 @@ describe('PreviewMediaHost', () => {
             expect(w.appended.map((el) => el._src)).toEqual([
                 '/exe/app/common/exe_media_bridge/exe_media_policy.js',
                 '/exe/app/common/exe_media_bridge/exe-media-host.js',
+                '/exe/app/common/exe_embed_bridge/exe_embed_relay.js',
             ]);
         });
 
@@ -148,6 +167,7 @@ describe('PreviewMediaHost', () => {
             const w = fakeWin();
             w.YT = { Player: function () {} };
             w.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
+            w.exeEmbedRelay = { init: vi.fn() };
             const host = new PreviewMediaHost({ win: w });
             await host.attach({});
             const { youtubeFactory } = attachSpy.mock.calls[0][1];
@@ -161,6 +181,7 @@ describe('PreviewMediaHost', () => {
         it('default youtube SDK loader resolves via onYouTubeIframeAPIReady after script load', async () => {
             const w = fakeWin();
             w.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
+            w.exeEmbedRelay = { init: vi.fn() };
             const host = new PreviewMediaHost({ win: w });
             await host.attach({});
             const { youtubeFactory } = attachSpy.mock.calls[0][1];
@@ -178,6 +199,7 @@ describe('PreviewMediaHost', () => {
             const w = fakeWin();
             w.Vimeo = { Player: function () {} };
             w.exeMediaHost = { attach: attachSpy, _youtubeAdapter: vi.fn(), _vimeoAdapter: vi.fn() };
+            w.exeEmbedRelay = { init: vi.fn() };
             const host = new PreviewMediaHost({ win: w });
             await host.attach({});
             const { vimeoFactory } = attachSpy.mock.calls[0][1];

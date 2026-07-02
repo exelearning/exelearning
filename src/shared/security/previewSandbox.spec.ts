@@ -32,16 +32,14 @@ describe('previewSandbox', () => {
         expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     });
 
-    it('allows the common video-embed hosts and passive external media only', () => {
+    it('keeps frame-src minimal (embeds are promoted to the parent relay, not framed here)', () => {
         const csp = previewCspHeader();
-        // Authors embed YouTube (standard + nocookie) and Vimeo directly; these
-        // play inside the opaque origin and stay isolated from the editor.
-        expect(csp).toContain(
-            "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
-        );
-        expect(csp).toContain(
-            "child-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
-        );
+        // Only the interactive-video iDevice fallback hosts; plain external embeds
+        // are promoted out to the trusted parent relay by the embed shim.
+        expect(csp).toContain("frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com");
+        expect(csp).toContain("child-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com");
+        // Not the raw youtube.com host — that would let the opaque child frame it inline.
+        expect(csp).not.toContain('https://www.youtube.com ');
         expect(csp).toContain("img-src 'self' data: blob: https:");
         expect(csp).toContain("media-src 'self' data: blob: https:");
         expect(csp).toContain("font-src 'self' data:");

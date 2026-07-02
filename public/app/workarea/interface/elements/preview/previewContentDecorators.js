@@ -327,10 +327,29 @@ function buildPdfEmbedScript(pdfjsBase, unavailableMessage) {
 }
 
 /**
+ * External-embed shim injection. The shim (exe_embed_shim.js) runs inside the
+ * opaque preview iframe and promotes cross-origin/PDF embeds to geometry
+ * placeholders that the editor-side relay overlays with the real player
+ * in-place, automatically (no click). It must run before exe_media_bridge.js
+ * (which checks `window.exeEmbedShim` and defers) → injected into <head>.
+ * @param {{embedShimUrl?: string, embedShimSource?: string}} options
+ * @returns {string} script markup, or '' when no shim is configured
+ */
+function embedShimScript(options) {
+    if (options.embedShimUrl) {
+        return `<script ${INJECTED_MARKER} src="${options.embedShimUrl}"></script>`;
+    }
+    if (options.embedShimSource) {
+        return `<script ${INJECTED_MARKER}>${options.embedShimSource}</script>`;
+    }
+    return '';
+}
+
+/**
  * Decorate a generated preview page for the HTTP session transport. Runs
  * BEFORE hashing/upload so the served bytes match the manifest.
  * @param {string} html
- * @param {{pdfjsBase: string, pdfUnavailableMessage?: string}} options
+ * @param {{pdfjsBase: string, pdfUnavailableMessage?: string, embedShimUrl?: string}} options
  * @returns {string}
  */
 export function decorateForHttp(html, options) {
@@ -339,7 +358,10 @@ export function decorateForHttp(html, options) {
         buildLinkHandlerScript('http', null) +
         buildNavReporterScript('http', null) +
         buildPdfEmbedScript(options.pdfjsBase, options.pdfUnavailableMessage || 'PDF preview is not available here.');
-    return injectBeforeLastBody(html, scripts);
+    let out = injectBeforeLastBody(html, scripts);
+    const shim = embedShimScript(options);
+    if (shim) out = injectIntoHead(out, shim);
+    return out;
 }
 
 /**
@@ -358,7 +380,10 @@ export function decorateForSrcdoc(html, options) {
             options.pdfjsBase || null,
             options.pdfUnavailableMessage || 'PDF preview is not available here.',
         );
-    // Teacher-mode flag goes in <head> (before exe_export.js reads it); the rest
-    // goes before </body>.
-    return injectIntoHead(injectBeforeLastBody(html, scripts), teacherModeFlagScript());
+    // Teacher-mode flag + external-embed shim go in <head> (both must run before
+    // exe_export.js / exe_media_bridge.js); the rest goes before </body>.
+    let out = injectIntoHead(injectBeforeLastBody(html, scripts), teacherModeFlagScript());
+    const shim = embedShimScript(options);
+    if (shim) out = injectIntoHead(out, shim);
+    return out;
 }

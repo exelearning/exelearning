@@ -245,6 +245,9 @@ export class HttpPreviewProvider {
         const processed = {};
         let hasPdf = false;
         const pdfjsBase = `${this._basePath}/preview/${this._session.id}/`;
+        // The shim is served same-origin from the app (not the session), so an
+        // absolute-from-root URL is used; the opaque iframe loads it under CSP 'self'.
+        const embedShimUrl = `${this._basePath}/app/common/exe_embed_bridge/exe_embed_shim.js`;
 
         for (const [path, content] of Object.entries(files)) {
             if (/\.pdf$/i.test(path)) hasPdf = true;
@@ -253,6 +256,7 @@ export class HttpPreviewProvider {
                 processed[path] = decorateForHttp(html, {
                     pdfjsBase,
                     pdfUnavailableMessage: this._pdfUnavailableMessage,
+                    embedShimUrl,
                 });
             } else {
                 processed[path] = content;

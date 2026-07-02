@@ -418,6 +418,11 @@
         // makes that work). Only opaque/sandboxed mode protects each embed via the trusted
         // parent host, because inline players cannot run in an opaque-origin iframe.
         if (!bridgeMode) return Promise.resolve([]);
+        // When the external-embed shim is present it promotes declarative embeds to the
+        // parent relay (in-place overlay, no click). Defer to it so this bridge does not
+        // also turn them into click-to-open placeholders. Programmatic openMedia() (e.g.
+        // the interactive-video iDevice) is a separate path and stays active.
+        if (win.exeEmbedShim) return Promise.resolve([]);
         var nodes = rootEl && rootEl.querySelectorAll ? rootEl.querySelectorAll('iframe[src]') : [];
         var found = [];
         for (var i = 0; i < nodes.length; i++) {

@@ -9,7 +9,13 @@
  */
 const Logger = (typeof window !== 'undefined' && window.AppLogger) || console;
 
-const BRIDGE_SCRIPTS = ['app/common/exe_media_bridge/exe_media_policy.js', 'app/common/exe_media_bridge/exe-media-host.js'];
+const BRIDGE_SCRIPTS = [
+    'app/common/exe_media_bridge/exe_media_policy.js',
+    'app/common/exe_media_bridge/exe-media-host.js',
+    // Parent-side relay: overlays cross-origin embeds (promoted by exe_embed_shim.js
+    // inside the opaque preview) with the real player in-place, automatically, no click.
+    'app/common/exe_embed_bridge/exe_embed_relay.js',
+];
 
 function defaultLoadScript(win) {
     return (src) =>
@@ -66,6 +72,17 @@ export class PreviewMediaHost {
      */
     async attach(iframe) {
         await this._ensureBridge();
+        // Start the page-global embed relay once: it overlays the real player in-place
+        // over embeds the shim promotes from inside the (opaque) preview iframe — no
+        // click. It discovers content iframes by event.source, so no per-iframe attach.
+        if (this._win.exeEmbedRelay && !this._win.__exePreviewEmbedRelayReady) {
+            try {
+                this._win.exeEmbedRelay.init({ mode: 'open' });
+                this._win.__exePreviewEmbedRelayReady = true;
+            } catch (error) {
+                Logger.warn('[PreviewMediaHost] embed relay init failed:', error);
+            }
+        }
         const handle = this._win.exeMediaHost.attach(iframe, {
             youtubeFactory: this._lazyFactory('youtube', '_youtubeAdapter'),
             vimeoFactory: this._lazyFactory('vimeo', '_vimeoAdapter'),
@@ -87,7 +104,7 @@ export class PreviewMediaHost {
     }
 
     _ensureBridge() {
-        if (this._win.exeMediaHost) return Promise.resolve();
+        if (this._win.exeMediaHost && this._win.exeEmbedRelay) return Promise.resolve();
         if (!this._bridgeReady) {
             this._bridgeReady = (async () => {
                 for (const path of BRIDGE_SCRIPTS) {

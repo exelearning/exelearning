@@ -41,21 +41,13 @@ export const PREVIEW_SANDBOX: string = PREVIEW_SANDBOX_TOKENS.join(' ');
  * Resource directives: everything executable/connectable is same-origin only
  * (the whole preview session lives under one URL prefix), while passive media
  * may be hotlinked (`https:`) because authors legitimately embed external
- * images/audio/video. `frame-src` admits the common video-embed hosts authors
- * use directly (YouTube in both its standard and privacy-preserving forms, and
- * Vimeo). These play inside the opaque origin and remain fully isolated from
- * the editor; the external-media bridge additionally relays them to a trusted
- * parent modal in host contexts that block third-party frames.
+ * images/audio/video. `frame-src` deliberately does NOT list YouTube/Vimeo:
+ * the external-embed shim promotes those out of the opaque child to the
+ * trusted parent relay (rendered in-place, no click), so they are never framed
+ * here. Keeping frame-src minimal enforces that model. `youtube-nocookie` /
+ * `player.vimeo.com` remain only as the interactive-video iDevice fallback.
  */
-export const PREVIEW_FRAME_SRC_HOSTS: readonly string[] = [
-    'https://www.youtube.com',
-    'https://youtube.com',
-    'https://www.youtube-nocookie.com',
-    'https://player.vimeo.com',
-];
-
 export function previewCspHeader(): string {
-    const frameHosts = PREVIEW_FRAME_SRC_HOSTS.join(' ');
     return [
         `sandbox ${PREVIEW_SANDBOX}`,
         "default-src 'self'",
@@ -65,8 +57,8 @@ export function previewCspHeader(): string {
         "media-src 'self' data: blob: https:",
         "font-src 'self' data:",
         "connect-src 'self'",
-        `frame-src 'self' ${frameHosts}`,
-        `child-src 'self' ${frameHosts}`,
+        "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
+        "child-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
         "object-src 'none'",
         "base-uri 'none'",
         "form-action 'self'",

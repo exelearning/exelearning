@@ -146,11 +146,31 @@ Relative to the old same-origin preview, the opaque sandbox drops:
 
 ## External media
 
-YouTube/Vimeo cannot embed inside an opaque frame, so the editor attaches the
-external-media relay (`previewMediaHost.js` → `exe-media-host.js`) to its
-preview iframes; the child bridge (shipped in the preview files) plays provider
-media in a trusted parent-side modal over a `MessageChannel`. See
-[external-media-bridge.md](external-media-bridge.md).
+Cross-origin embeds (YouTube, Vimeo, …) cannot render inside an opaque frame, so
+they are relayed to the trusted parent (the editor) — automatically, **with no
+click**, exactly like the host plugins. Two cooperating mechanisms, both with
+their canonical source in eXe core (`public/app/common/exe_embed_bridge/` and
+`.../exe_media_bridge/`); the plugins mirror them:
+
+- **Declarative embeds** (plain `<iframe src="youtube…">` in the content) use the
+  **embed relay**: `exe_embed_shim.js` runs inside the opaque preview iframe and
+  replaces each cross-origin/PDF iframe with a geometry-reporting placeholder;
+  `exe_embed_relay.js` (started once by `previewMediaHost.js` in the editor)
+  overlays the real player positioned over that placeholder, tracking scroll and
+  resize. No click, in-place — the plugin behavior. The shim is injected into
+  preview pages by the decorators (a same-origin `<script src>` for the HTTP
+  transport; inlined for srcdoc). `exe_media_bridge.js` detects the shim
+  (`window.exeEmbedShim`) and defers, so declarative embeds are never turned into
+  click-placeholders.
+- **Programmatic media** (the interactive-video iDevice, which drives question
+  timing) keeps using the **media bridge** (`exe_media_bridge.js` +
+  `exe-media-host.js`) over a `MessageChannel` to a parent-side player. See
+  [external-media-bridge.md](external-media-bridge.md).
+
+Because declarative embeds are promoted OUT of the opaque child to the parent,
+the preview response CSP `frame-src` stays minimal (only the interactive-video
+fallback hosts `youtube-nocookie` / `player.vimeo.com`); the raw embed is never
+framed in the opaque child.
 
 ## Roadmap
 
