@@ -12,6 +12,9 @@ on:
       - main
       - tikismaker
       - 'release/*'
+  # Allow maintainers to trigger extra runs by hand (e.g. to sample for flaky
+  # specs, or to exercise the re-run path) without pushing a new commit.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -48,6 +51,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-public
+          # Overwrite instead of 409-conflicting when a re-run reuploads over the
+          # artifact retained from the failed attempt.
+          overwrite: true
           retention-days: 1
           include-hidden-files: true
           path: |
@@ -63,6 +69,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-static
+          overwrite: true
           retention-days: 1
           path: dist/static/**
 
@@ -134,6 +141,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: blob-${{ matrix.browser }}-${{ matrix.shard }}
+          # A re-run of this shard reuploads its blob over the one retained from
+          # the failed attempt; overwrite rather than 409-conflict.
+          overwrite: true
           path: staged-blob/
           retention-days: 1
 
@@ -165,7 +175,12 @@ jobs:
           merge-multiple: true
 
       - name: Emit GitHub annotations from merged results
-        run: bun x playwright merge-reports --reporter=github ./all-blob-reports
+        # download-artifact creates no directory when zero blob-* match (e.g. a
+        # catastrophic all-shards-fail run); create it so merge-reports surfaces
+        # its own "no reports" message instead of crashing on a missing directory.
+        run: |
+          mkdir -p all-blob-reports
+          bun x playwright merge-reports --reporter=github ./all-blob-reports
 
       - name: Merge into a single HTML report
         run: bun x playwright merge-reports --reporter=html ./all-blob-reports
@@ -175,14 +190,23 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
+          overwrite: true
           path: playwright-report/
           retention-days: 14
 
       # The build-public/build-static/blob-* artifacts are pure run intermediates
-      # (shards consume them, the merge consumes the blobs). Delete them now so
-      # only the merged playwright-report is retained.
+      # (shards consume them, the merge consumes the blobs). Delete them on a
+      # fully-green run so only the merged playwright-report is retained.
+      #
+      # Only delete when the whole E2E matrix passed. On a failed run the
+      # intermediates must survive so "Re-run failed jobs" works: that feature
+      # reuses the already-successful build/shard jobs WITHOUT re-running them, so
+      # if their artifacts were deleted the re-run shard can't download
+      # build-public and the re-run merge finds no blob-* to merge. A step `if:`
+      # without a status function implicitly ANDs success(), so this also skips
+      # (retaining the artifacts) if any earlier merge-report step fails.
       - name: Delete intermediate artifacts
-        if: always()
+        if: ${{ needs.e2e.result == 'success' }}
         uses: actions/github-script@v9
         with:
           script: |
