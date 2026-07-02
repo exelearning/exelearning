@@ -209,6 +209,33 @@ $preview-transition: 0.3s ease;
     }
 }
 
+// Notice shown when the srcdoc transport skips large media that exceed the
+// inline budget (self-contained preview cannot reach the network).
+.preview-skipped-notice {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--gray-100);
+    border-block-start: 1px solid var(--gray-200);
+    color: var(--gray-700);
+    font-size: 0.85rem;
+
+    button {
+        flex: none;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 2px 6px;
+    }
+}
+
 // Indicador de auto-refresco activo
 .preview-auto-refresh-active {
     #preview-refresh-button,

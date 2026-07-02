@@ -1,4 +1,5 @@
 import PreviewPanelManager from './previewPanel.js';
+import { PreviewSessionExpiredError } from './preview/providerContract.js';
 
 /**
  * Create a mock MessageChannel that captures port1.onmessage
@@ -27,7 +28,6 @@ function mockMessageChannel(onPostMessage) {
     }, 0);
   };
 
-  // Call onPostMessage with triggerResponse if provided
   if (onPostMessage) {
     onPostMessage(triggerResponse);
   }
@@ -40,6 +40,33 @@ function mockMessageChannel(onPostMessage) {
   };
 }
 
+/**
+ * Build a fake transport provider matching the PreviewResourceProvider shape.
+ * Defaults to an opaque-safe HTTP provider; override `mode`/`opaqueSafe`/methods
+ * as needed (e.g. `mode: 'service-worker', opaqueSafe: false` for the legacy path).
+ */
+function createFakeProvider(overrides = {}) {
+  return {
+    mode: 'http',
+    opaqueSafe: true,
+    prepare: vi.fn().mockResolvedValue({
+      id: 'sess-1',
+      entryUrl: '/test/preview/sess-1/index.html?exe-teacher=1',
+      mode: 'http',
+      opaqueSafe: true,
+    }),
+    update: vi.fn().mockResolvedValue(undefined),
+    resolvePage: vi.fn().mockResolvedValue({
+      kind: 'url',
+      url: '/test/preview/sess-1/index.html?exe-teacher=1&v=0',
+    }),
+    getFile: vi.fn().mockResolvedValue(null),
+    dispose: vi.fn().mockResolvedValue(undefined),
+    hasPage: vi.fn(() => true),
+    ...overrides,
+  };
+}
+
 describe('PreviewPanelManager', () => {
   let manager;
   let mockElements;
@@ -47,6 +74,8 @@ describe('PreviewPanelManager', () => {
   let mockBridge;
   let mockDocumentManager;
   let mockYdoc;
+  let previewWin;
+  let pinnedWin;
 
   beforeEach(() => {
     // Mock DOM elements
@@ -80,6 +109,22 @@ describe('PreviewPanelManager', () => {
     pinnedBody.appendChild(mockElements['preview-pinned-iframe']);
     mockElements['preview-pinned-container'].appendChild(pinnedBody);
 
+    // Give the iframes stable contentWindow identities so source validation
+    // (event.source === iframe.contentWindow) is testable in happy-dom.
+    previewWin = { name: 'preview-win' };
+    pinnedWin = { name: 'pinned-win' };
+    for (const key of ['preview-iframe', 'preview-pinned-iframe']) {
+      const win = key === 'preview-iframe' ? previewWin : pinnedWin;
+      Object.defineProperty(mockElements[key], 'contentWindow', { value: win, configurable: true });
+      // Back `src` with the attribute so setting a real URL does not trigger
+      // happy-dom's network navigation (which would fire ECONNREFUSED noise).
+      Object.defineProperty(mockElements[key], 'src', {
+        configurable: true,
+        get() { return this.getAttribute('src') || ''; },
+        set(value) { this.setAttribute('src', value); },
+      });
+    }
+
     vi.spyOn(document, 'getElementById').mockImplementation(id => mockElements[id] || null);
 
     // Mock Yjs
@@ -100,33 +145,41 @@ describe('PreviewPanelManager', () => {
       checkOpenIdevice: vi.fn(() => false),
     };
 
-    // Mock eXeLearning global
+    // Mock eXeLearning global. Server mode → HTTP (opaque) preview transport.
     window.eXeLearning = {
       app: {
         project: mockProject,
-        config: {
-          basePath: '/test',
-          version: 'v3',
-        },
+        config: { basePath: '/test', version: 'v3' },
+        getBasePath: () => '/test',
+        runtimeConfig: { mode: 'server', isEmbedded: false, embeddingConfig: null },
+        capabilities: { preview: { transport: 'http', extractToNewTab: true } },
+        themes: { selected: { id: 'base' } },
       },
     };
 
-    // Mock SharedExporters
+    // Mock SharedExporters (the panel generates files then hands them to the provider).
     window.SharedExporters = {
-      generatePreview: vi.fn().mockResolvedValue({
+      generatePreviewForSW: vi.fn().mockResolvedValue({
         success: true,
-        html: '<html><body>Preview</body></html>',
+        files: { 'index.html': new TextEncoder().encode('<!DOCTYPE html><html><body>x</body></html>') },
       }),
+      PREVIEW_SANDBOX: 'allow-scripts allow-popups allow-forms',
     };
 
-    // Mock ResourceFetcher
-    window.ResourceFetcher = vi.fn().mockImplementation(function() {
-      return {};
-    });
+    // Short-circuit the media-bridge loader so _initProvider does not inject scripts.
+    window.exeMediaHost = {
+      attach: vi.fn(() => ({ detach: vi.fn() })),
+      _youtubeAdapter: vi.fn(),
+      _vimeoAdapter: vi.fn(),
+    };
 
     // Mock URL methods
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
+
+    // The panel sets real /preview/... URLs on the iframes; stub fetch so
+    // happy-dom's iframe loader does not attempt (and log) real network calls.
+    window.fetch = vi.fn().mockResolvedValue(new Response('', { status: 200 }));
 
     // Mock i18n function
     globalThis._ = vi.fn((key) => key);
@@ -137,6 +190,7 @@ describe('PreviewPanelManager', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = '';
+    delete window.exeMediaHost;
   });
 
   describe('constructor', () => {
@@ -144,6 +198,8 @@ describe('PreviewPanelManager', () => {
       expect(manager.isOpen).toBe(false);
       expect(manager.isPinned).toBe(false);
       expect(manager.panel).toBe(mockElements.previewsidenav);
+      expect(manager._provider).toBeNull();
+      expect(manager._session).toBeNull();
     });
   });
 
@@ -212,22 +268,95 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('init', () => {
-    it('should bind events and subscribe to changes', () => {
+    it('should select a provider, bind events, subscribe, and set up the dispose lifecycle', () => {
+      const initProviderSpy = vi.spyOn(manager, '_initProvider');
       const bindSpy = vi.spyOn(manager, 'bindEvents');
       const subscribeSpy = vi.spyOn(manager, 'subscribeToChanges');
       const resetSpy = vi.spyOn(manager, 'resetToDefaultState').mockImplementation(() => {});
-      const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler').mockImplementation(() => {});
-      const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener').mockImplementation(() => {});
-      const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener').mockImplementation(() => {});
+      const disposeLifecycleSpy = vi.spyOn(manager, '_setupDisposeLifecycle');
 
       manager.init();
 
+      expect(initProviderSpy).toHaveBeenCalled();
       expect(bindSpy).toHaveBeenCalled();
       expect(subscribeSpy).toHaveBeenCalled();
       expect(resetSpy).toHaveBeenCalled();
+      expect(disposeLifecycleSpy).toHaveBeenCalled();
+      // Server mode → HTTP (opaque) transport: no legacy SW recovery machinery.
+      expect(manager._provider.mode).toBe('http');
+    });
+
+    it('should NOT install SW recovery listeners for an opaque transport', () => {
+      const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler');
+      const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener');
+      const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener');
+
+      manager.init();
+
+      expect(visibilitySpy).not.toHaveBeenCalled();
+      expect(broadcastSpy).not.toHaveBeenCalled();
+      expect(swListenerSpy).not.toHaveBeenCalled();
+    });
+
+    it('should install SW recovery listeners for the legacy Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'legacy-sw' };
+      const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler');
+      const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener');
+      const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener');
+
+      manager.init();
+
+      expect(manager._provider.mode).toBe('service-worker');
       expect(visibilitySpy).toHaveBeenCalled();
       expect(broadcastSpy).toHaveBeenCalled();
       expect(swListenerSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('_initProvider', () => {
+    it('enforces the opaque sandbox on both preview iframes in server mode', () => {
+      manager._initProvider();
+
+      expect(mockElements['preview-iframe'].getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-forms');
+      expect(mockElements['preview-pinned-iframe'].getAttribute('sandbox')).toBe(
+        'allow-scripts allow-popups allow-forms',
+      );
+    });
+
+    it('attaches the media relay to both iframes for opaque transports', async () => {
+      manager._initProvider();
+
+      // Media relay attach is async (lazy bridge load); flush microtasks.
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._mediaHost).not.toBeNull();
+      expect(window.exeMediaHost.attach).toHaveBeenCalledTimes(2);
+    });
+
+    it('hides the extract-to-new-tab buttons when the capability is off', () => {
+      window.eXeLearning.app.capabilities.preview.extractToNewTab = false;
+
+      manager._initProvider();
+
+      expect(mockElements['preview-extract-button'].classList.contains('hidden')).toBe(true);
+      expect(mockElements['preview-pinned-extract-button'].classList.contains('hidden')).toBe(true);
+    });
+
+    it('applies the legacy sandbox (no media relay) for the Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'legacy-sw' };
+
+      manager._initProvider();
+
+      expect(mockElements['preview-iframe'].getAttribute('sandbox')).toContain('allow-same-origin');
+      expect(manager._mediaHost).toBeNull();
+    });
+
+    it('leaves the provider null when selection throws (no silent downgrade)', () => {
+      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'bogus-transport' };
+
+      manager._initProvider();
+
+      expect(manager._provider).toBeNull();
     });
   });
 
@@ -236,21 +365,18 @@ describe('PreviewPanelManager', () => {
       it('should return true when open', () => {
         manager.isOpen = true;
         manager.isPinned = false;
-
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
       it('should return true when pinned', () => {
         manager.isOpen = false;
         manager.isPinned = true;
-
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
       it('should return true when both open and pinned', () => {
         manager.isOpen = true;
         manager.isPinned = true;
-
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
@@ -258,7 +384,6 @@ describe('PreviewPanelManager', () => {
         manager.isOpen = false;
         manager.isPinned = false;
         manager._popupWindow = { closed: false };
-
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
@@ -266,7 +391,6 @@ describe('PreviewPanelManager', () => {
         manager.isOpen = false;
         manager.isPinned = false;
         manager._popupWindow = { closed: true };
-
         expect(manager._isPreviewVisible()).toBe(false);
       });
 
@@ -274,7 +398,6 @@ describe('PreviewPanelManager', () => {
         manager.isOpen = false;
         manager.isPinned = false;
         manager._popupWindow = null;
-
         expect(manager._isPreviewVisible()).toBe(false);
       });
     });
@@ -309,7 +432,6 @@ describe('PreviewPanelManager', () => {
         const checkRecoverSpy = vi.spyOn(manager, '_checkAndRecoverPreview').mockResolvedValue();
         manager._setupVisibilityHandler();
 
-        // Simulate tab becoming visible
         Object.defineProperty(document, 'visibilityState', {
           value: 'visible',
           writable: true,
@@ -412,7 +534,6 @@ describe('PreviewPanelManager', () => {
 
         const resultPromise = manager._checkServiceWorkerContent();
 
-        // Exceed the static timeout constant
         vi.advanceTimersByTime(PreviewPanelManager.SW_STATUS_TIMEOUT + 100);
 
         const result = await resultPromise;
@@ -432,35 +553,39 @@ describe('PreviewPanelManager', () => {
       });
     });
 
-    describe('CONTENT_NEEDED message handling', () => {
-      it('should refresh when CONTENT_NEEDED received and preview is open', async () => {
+    describe('CONTENT_NEEDED message handling (legacy SW transport)', () => {
+      beforeEach(() => {
+        manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
+      });
+
+      it('should refresh when CONTENT_NEEDED received and preview is open', () => {
         vi.useFakeTimers();
         manager.bindEvents();
         manager.isOpen = true;
         const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
 
-        const event = new MessageEvent('message', {
+        window.dispatchEvent(new MessageEvent('message', {
           data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
-        });
-        window.dispatchEvent(event);
+          source: previewWin,
+        }));
 
-        vi.advanceTimersByTime(150); // Debounce timeout
+        vi.advanceTimersByTime(150);
 
         expect(refreshSpy).toHaveBeenCalled();
         vi.useRealTimers();
       });
 
-      it('should not refresh when CONTENT_NEEDED received but preview is closed', async () => {
+      it('should not refresh when CONTENT_NEEDED received but preview is closed', () => {
         vi.useFakeTimers();
         manager.bindEvents();
         manager.isOpen = false;
         manager.isPinned = false;
         const refreshSpy = vi.spyOn(manager, 'refresh');
 
-        const event = new MessageEvent('message', {
+        window.dispatchEvent(new MessageEvent('message', {
           data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
-        });
-        window.dispatchEvent(event);
+          source: previewWin,
+        }));
 
         vi.advanceTimersByTime(150);
 
@@ -468,51 +593,27 @@ describe('PreviewPanelManager', () => {
         vi.useRealTimers();
       });
 
-      it('should debounce multiple CONTENT_NEEDED messages', async () => {
+      it('should be ignored entirely for an opaque (non-SW) transport', () => {
         vi.useFakeTimers();
+        manager._provider = createFakeProvider({ mode: 'http', opaqueSafe: true });
         manager.bindEvents();
-        manager.isPinned = true;
-        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+        manager.isOpen = true;
+        const refreshSpy = vi.spyOn(manager, 'refresh');
 
-        // Send multiple messages rapidly
-        for (let i = 0; i < 5; i++) {
-          const event = new MessageEvent('message', {
-            data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
-          });
-          window.dispatchEvent(event);
-        }
-
-        vi.advanceTimersByTime(150);
-
-        // Should only refresh once due to debouncing
-        expect(refreshSpy).toHaveBeenCalledTimes(1);
-        vi.useRealTimers();
-      });
-    });
-
-    describe('CONTENT_NEEDED with popup open', () => {
-      it('should refresh when CONTENT_NEEDED received and popup is open', async () => {
-        vi.useFakeTimers();
-        manager.bindEvents();
-        manager.isOpen = false;
-        manager.isPinned = false;
-        manager._popupWindow = { closed: false };
-        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
-
-        const event = new MessageEvent('message', {
+        window.dispatchEvent(new MessageEvent('message', {
           data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
-        });
-        window.dispatchEvent(event);
+          source: previewWin,
+        }));
 
         vi.advanceTimersByTime(150);
 
-        expect(refreshSpy).toHaveBeenCalled();
+        expect(refreshSpy).not.toHaveBeenCalled();
         vi.useRealTimers();
       });
     });
 
     describe('BroadcastChannel recovery', () => {
-      it('should setup BroadcastChannel listener on init', () => {
+      it('should setup BroadcastChannel listener', () => {
         const originalBC = globalThis.BroadcastChannel;
         let capturedChannel = null;
         globalThis.BroadcastChannel = class {
@@ -529,8 +630,8 @@ describe('PreviewPanelManager', () => {
         globalThis.BroadcastChannel = originalBC;
       });
 
-      it('should call refreshWithServiceWorker when PREVIEW_CONTENT_LOST received', async () => {
-        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+      it('should refresh when PREVIEW_CONTENT_LOST received', async () => {
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
 
         const originalBC = globalThis.BroadcastChannel;
         let onMessageHandler = null;
@@ -542,13 +643,10 @@ describe('PreviewPanelManager', () => {
         };
 
         manager._setupBroadcastChannelListener();
-
-        // Simulate receiving PREVIEW_CONTENT_LOST
         onMessageHandler({ data: { type: 'PREVIEW_CONTENT_LOST' } });
 
-        // Wait for async call
         await vi.waitFor(() => {
-          expect(swRefreshSpy).toHaveBeenCalled();
+          expect(refreshSpy).toHaveBeenCalled();
         });
 
         globalThis.BroadcastChannel = originalBC;
@@ -582,9 +680,9 @@ describe('PreviewPanelManager', () => {
         Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
       });
 
-      it('should call refreshWithServiceWorker when CONTENT_NEEDED received and popup open', async () => {
+      it('should refresh when CONTENT_NEEDED received and popup open', () => {
         vi.useFakeTimers();
-        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
         manager._popupWindow = { closed: false };
 
         let capturedHandler;
@@ -598,20 +696,18 @@ describe('PreviewPanelManager', () => {
         });
 
         manager._setupServiceWorkerListener();
-
-        // Simulate SW CONTENT_NEEDED
         capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
         vi.advanceTimersByTime(150);
 
-        expect(swRefreshSpy).toHaveBeenCalled();
+        expect(refreshSpy).toHaveBeenCalled();
 
         Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
         vi.useRealTimers();
       });
 
-      it('should not refresh when preview is not visible', async () => {
+      it('should not refresh when preview is not visible', () => {
         vi.useFakeTimers();
-        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
         manager.isOpen = false;
         manager.isPinned = false;
         manager._popupWindow = null;
@@ -630,7 +726,7 @@ describe('PreviewPanelManager', () => {
         capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
         vi.advanceTimersByTime(150);
 
-        expect(swRefreshSpy).not.toHaveBeenCalled();
+        expect(refreshSpy).not.toHaveBeenCalled();
 
         Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
         vi.useRealTimers();
@@ -655,7 +751,6 @@ describe('PreviewPanelManager', () => {
 
         manager._setupPopupMonitor();
 
-        // Simulate popup closing
         popup.closed = true;
         vi.advanceTimersByTime(2500);
 
@@ -714,6 +809,15 @@ describe('PreviewPanelManager', () => {
       expect(manager.isOpen).toBe(false);
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(false);
     });
+
+    it('close() does NOT dispose the provider (fast reopen; TTL owns cleanup)', () => {
+      manager._provider = createFakeProvider();
+      manager.isOpen = true;
+
+      manager.close();
+
+      expect(manager._provider.dispose).not.toHaveBeenCalled();
+    });
   });
 
   describe('pin/unpin', () => {
@@ -735,94 +839,224 @@ describe('PreviewPanelManager', () => {
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(true);
     });
+
+    it('should reuse the same provider session across pin/unpin', async () => {
+      const provider = createFakeProvider();
+      manager._provider = provider;
+      manager.isOpen = true;
+
+      await manager.refresh();
+      const sessionAfterFirst = manager._session;
+      await manager.pin();
+
+      expect(provider.prepare).toHaveBeenCalledTimes(1);
+      expect(provider.update).toHaveBeenCalled();
+      expect(manager._session).toBe(sessionAfterFirst);
+    });
   });
 
   describe('refresh', () => {
-    it('should fall back to blob URL when Service Worker is not available', async () => {
-      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
-      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+    beforeEach(() => {
+      manager._provider = createFakeProvider();
+    });
+
+    it('prepares the session on first run and renders index.html', async () => {
+      await manager.refresh();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
+      expect(manager._provider.prepare).toHaveBeenCalled();
+      expect(manager._session).toEqual(expect.objectContaining({ id: 'sess-1' }));
+      expect(manager._provider.resolvePage).toHaveBeenCalledWith('index.html');
+      expect(mockElements['preview-iframe'].getAttribute('src')).toContain('/test/preview/sess-1/index.html');
+      expect(mockElements['preview-iframe'].dataset.previewPage).toBe('index.html');
+    });
+
+    it('updates the existing session on subsequent runs', async () => {
+      await manager.refresh();
+      await manager.refresh();
+
+      expect(manager._provider.prepare).toHaveBeenCalledTimes(1);
+      expect(manager._provider.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-prepares when the session expired mid-update', async () => {
+      await manager.refresh();
+      manager._provider.update.mockRejectedValueOnce(new PreviewSessionExpiredError('gone'));
 
       await manager.refresh();
 
-      expect(blobSpy).toHaveBeenCalled();
+      expect(manager._provider.prepare).toHaveBeenCalledTimes(2);
     });
 
-    it('should use SW-based preview when available', async () => {
-      // Mock SW availability and refresh method
-      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
-      const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+    it('renders srcdoc targets into the iframe', async () => {
+      manager._provider.resolvePage.mockResolvedValue({ kind: 'srcdoc', html: '<html><body>doc</body></html>' });
 
       await manager.refresh();
 
-      expect(swRefreshSpy).toHaveBeenCalled();
+      expect(mockElements['preview-iframe'].srcdoc).toContain('doc');
+      expect(mockElements['preview-iframe'].hasAttribute('src')).toBe(false);
     });
 
-    it('should handle SW refresh errors', async () => {
-      const error = new Error('SW refresh failed');
-      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
-      vi.spyOn(manager, 'refreshWithServiceWorker').mockRejectedValue(error);
+    it('surfaces provider errors via showError with no fallback transport', async () => {
+      manager._provider.prepare.mockRejectedValue(new Error('sync failed'));
       const errorSpy = vi.spyOn(manager, 'showError').mockImplementation(() => {});
 
       await manager.refresh();
 
-      expect(errorSpy).toHaveBeenCalledWith('SW refresh failed');
+      expect(errorSpy).toHaveBeenCalledWith('sync failed');
+    });
+
+    it('shows an error and returns when there is no provider', async () => {
+      manager._provider = null;
+      const errorSpy = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      await manager.refresh();
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(window.SharedExporters.generatePreviewForSW).not.toHaveBeenCalled();
+    });
+
+    it('preserves the current page across auto-refresh', async () => {
+      manager._currentPagePath = 'html/p2.html';
+
+      await manager.refresh();
+
+      expect(manager._provider.resolvePage).toHaveBeenCalledWith('html/p2.html');
+    });
+
+    it('prevents concurrent refreshes', async () => {
+      manager.isLoading = true;
+
+      await manager.refresh();
+
+      expect(manager._provider.prepare).not.toHaveBeenCalled();
+    });
+
+    it('waits for the Service Worker on the legacy transport when there is no controller', async () => {
+      manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: null },
+        writable: true,
+        configurable: true,
+      });
+      const waitSpy = vi.fn().mockResolvedValue({});
+      window.eXeLearning.app.waitForPreviewServiceWorker = waitSpy;
+
+      await manager.refresh();
+
+      expect(waitSpy).toHaveBeenCalled();
     });
   });
 
-  // NOTE: generatePreviewHtml tests removed - method replaced by SW-based preview
+  describe('_syncProvider', () => {
+    it('prepares when there is no session yet', async () => {
+      const provider = createFakeProvider();
+      manager._provider = provider;
+
+      await manager._syncProvider({ 'index.html': 'x' });
+
+      expect(provider.prepare).toHaveBeenCalled();
+      expect(manager._session).toEqual(expect.objectContaining({ id: 'sess-1' }));
+    });
+
+    it('updates with the file map when a session exists', async () => {
+      const provider = createFakeProvider();
+      manager._provider = provider;
+      manager._session = { id: 'existing' };
+
+      await manager._syncProvider({ 'index.html': 'x' });
+
+      // The provider already owns its session id; update takes the file map ONLY.
+      // Passing (sessionId, files) would make the provider hash the id string as
+      // the file map and drop the real files (regression: reopen/auto-refresh 404).
+      expect(provider.update).toHaveBeenCalledWith({ 'index.html': 'x' });
+      expect(provider.prepare).not.toHaveBeenCalled();
+    });
+
+    it('re-prepares on PreviewSessionExpiredError', async () => {
+      const provider = createFakeProvider();
+      provider.update.mockRejectedValue(new PreviewSessionExpiredError('gone'));
+      manager._provider = provider;
+      manager._session = { id: 'existing' };
+
+      await manager._syncProvider({ 'index.html': 'x' });
+
+      expect(provider.prepare).toHaveBeenCalled();
+    });
+
+    it('rethrows non-expiry errors', async () => {
+      const provider = createFakeProvider();
+      provider.update.mockRejectedValue(new Error('boom'));
+      manager._provider = provider;
+      manager._session = { id: 'existing' };
+
+      await expect(manager._syncProvider({ 'index.html': 'x' })).rejects.toThrow('boom');
+    });
+  });
+
+  describe('_applyRenderTarget', () => {
+    beforeEach(() => {
+      manager._provider = createFakeProvider();
+    });
+
+    it('applies url targets: sets src, clears srcdoc, records page + sandbox', () => {
+      const iframe = mockElements['preview-iframe'];
+      iframe.srcdoc = 'stale';
+
+      manager._applyRenderTarget(iframe, { kind: 'url', url: '/test/preview/sess-1/html/p.html' }, 'html/p.html');
+
+      expect(iframe.getAttribute('src')).toContain('/test/preview/sess-1/html/p.html');
+      expect(iframe.hasAttribute('srcdoc')).toBe(false);
+      expect(iframe.dataset.previewPage).toBe('html/p.html');
+      expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-forms');
+    });
+
+    it('applies srcdoc targets: sets srcdoc, clears src', () => {
+      const iframe = mockElements['preview-iframe'];
+      iframe.src = 'about:blank';
+
+      manager._applyRenderTarget(iframe, { kind: 'srcdoc', html: '<html>x</html>' }, 'index.html');
+
+      expect(iframe.srcdoc).toContain('<html>x</html>');
+      expect(iframe.hasAttribute('src')).toBe(false);
+      expect(iframe.dataset.previewPage).toBe('index.html');
+    });
+
+    it('does not throw when the iframe is missing', () => {
+      expect(() => manager._applyRenderTarget(null, { kind: 'url', url: 'x' }, 'index.html')).not.toThrow();
+    });
+  });
 
   describe('extractToNewTab', () => {
-    it('should open viewer URL in new tab when SW is available', async () => {
-      // Mock SW availability
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+    it('opens the session entry URL in a new tab for the HTTP transport', async () => {
+      manager._provider = createFakeProvider();
+      manager._session = { id: 'sess-1', entryUrl: '/test/preview/sess-1/index.html?exe-teacher=1' };
+      const mockOpen = vi.fn(() => ({ closed: false }));
       global.open = mockOpen;
 
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringContaining('/viewer/index.html'),
-        '_blank'
+        expect.stringContaining('/test/preview/sess-1/index.html'),
+        '_blank',
       );
+      expect(manager._popupWindow).not.toBeNull();
     });
 
-    it('should store popup window reference and start monitor', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockPopup = { closed: false };
-      global.open = vi.fn(() => mockPopup);
-      const monitorSpy = vi.spyOn(manager, '_setupPopupMonitor').mockImplementation(() => {});
+    it('is a no-op for the srcdoc transport', async () => {
+      manager._provider = createFakeProvider({ mode: 'srcdoc', opaqueSafe: true });
+      manager._session = { id: 'sess-1', entryUrl: null };
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
 
       await manager.extractToNewTab();
 
-      expect(manager._popupWindow).toBe(mockPopup);
-      expect(monitorSpy).toHaveBeenCalled();
+      expect(mockOpen).not.toHaveBeenCalled();
     });
 
-    it('should not store popup reference when popup is blocked', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-      global.open = vi.fn(() => null);
-
-      const mockClick = vi.fn();
-      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
-        if (tag === 'a') {
-          return { click: mockClick, href: '', target: '' };
-        }
-        return document.createElement(tag);
-      });
-
-      await manager.extractToNewTab();
-
-      expect(manager._popupWindow).toBeNull();
-    });
-
-    it('should fallback to link click if popup is blocked', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+    it('falls back to a link click when the popup is blocked', async () => {
+      manager._provider = createFakeProvider();
+      manager._session = { id: 'sess-1', entryUrl: '/test/preview/sess-1/index.html' };
       global.open = vi.fn(() => null);
 
       const mockClick = vi.fn();
@@ -836,127 +1070,215 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockClick).toHaveBeenCalled();
-    });
-
-    it('should not open tab if SW is not available', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
-
-      const mockOpen = vi.fn();
-      global.open = mockOpen;
-
-      await manager.extractToNewTab();
-
-      // Should not open a new tab when SW is not available
-      expect(mockOpen).not.toHaveBeenCalled();
-    });
-
-    it('should derive basePath from pathname for subdirectory deployments', async () => {
-      // Mock SW availability
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      // Mock pathname for subdirectory deployment
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/pr-preview/pr-20/workarea',
-      };
-
-      await manager.extractToNewTab();
-
-      // Should derive base path from pathname and construct correct URL
-      expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      // Restore location
-      window.location = originalLocation;
-    });
-
-    it('should handle workarea.html pathname correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/app/workarea.html',
-      };
-
-      await manager.extractToNewTab();
-
-      expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/app/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      window.location = originalLocation;
-    });
-
-    it('should handle root workarea path correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'http://localhost:8080',
-        pathname: '/workarea',
-      };
-
-      await manager.extractToNewTab();
-
-      expect(mockOpen).toHaveBeenCalledWith(
-        'http://localhost:8080/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      window.location = originalLocation;
-    });
-
-    it('should handle pathname with trailing slash correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/pr-preview/pr-20/workarea/',
-      };
-
-      await manager.extractToNewTab();
-
-      // Should NOT produce double slashes
-      expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      window.location = originalLocation;
+      expect(manager._popupWindow).toBeNull();
     });
   });
 
-  // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
+  describe('_generatePreviewFiles', () => {
+    it('should call SharedExporters.generatePreviewForSW with normalized deps', async () => {
+      window.eXeLearning.app.themes = { selected: { name: 'base' } };
+      mockBridge.resourceFetcher = null;
+      mockBridge.assetManager = null;
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
+
+      await manager._generatePreviewFiles();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalledWith(
+        mockDocumentManager,
+        null,
+        null,
+        null,
+        { theme: 'base' },
+      );
+    });
+
+    it('throws when the Yjs document manager is unavailable', async () => {
+      window.eXeLearning.app.project._yjsBridge.documentManager = null;
+
+      await expect(manager._generatePreviewFiles()).rejects.toThrow('Yjs document manager not available');
+    });
+
+    it('throws when SharedExporters.generatePreviewForSW is unavailable', async () => {
+      window.SharedExporters.generatePreviewForSW = undefined;
+
+      await expect(manager._generatePreviewFiles()).rejects.toThrow(
+        'SharedExporters.generatePreviewForSW not available',
+      );
+    });
+  });
+
+  describe('_isPreviewIframeSource', () => {
+    it('rejects a null or undefined source (untrusted content is not trusted by default)', () => {
+      expect(manager._isPreviewIframeSource(null)).toBe(false);
+      expect(manager._isPreviewIframeSource(undefined)).toBe(false);
+    });
+
+    it('rejects a foreign source window', () => {
+      expect(manager._isPreviewIframeSource({})).toBe(false);
+    });
+
+    it('accepts the slide-out and pinned iframe windows', () => {
+      expect(manager._isPreviewIframeSource(previewWin)).toBe(true);
+      expect(manager._isPreviewIframeSource(pinnedWin)).toBe(true);
+    });
+  });
+
+  describe('preview iframe message contract', () => {
+    beforeEach(() => {
+      manager._provider = createFakeProvider();
+      manager.bindEvents();
+    });
+
+    it('updates the current page on a valid exe-preview-nav report', async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-nav', v: 1, page: 'html/page3.html' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._currentPagePath).toBe('html/page3.html');
+      expect(mockElements['preview-iframe'].dataset.previewPage).toBe('html/page3.html');
+    });
+
+    it('ignores messages from a non-preview source', async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-nav', v: 1, page: 'html/page3.html' },
+        source: { hostile: true },
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._currentPagePath).toBeNull();
+    });
+
+    it('rejects hostile page paths in exe-preview-nav', async () => {
+      manager._currentPagePath = 'index.html';
+      for (const page of ['../../secret.html', 'javascript:alert(1)', '//evil.example/x']) {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'exe-preview-nav', v: 1, page },
+          source: previewWin,
+        }));
+      }
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._currentPagePath).toBe('index.html');
+    });
+
+    it('navigates via the provider on exe-preview-navigate when the page exists', async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-navigate', v: 1, href: 'html/page2.html', page: 'index.html' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._provider.resolvePage).toHaveBeenCalledWith('html/page2.html');
+    });
+
+    it('ignores exe-preview-navigate when the target page is unknown', async () => {
+      manager._provider.hasPage.mockReturnValue(false);
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-navigate', v: 1, href: 'missing.html', page: 'index.html' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._provider.resolvePage).not.toHaveBeenCalled();
+    });
+
+    it('opens a document via the provider on exe-preview-open-document', async () => {
+      manager._provider.getFile.mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-open-document', v: 1, href: 'content/resources/doc.pdf', page: 'index.html' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(manager._provider.getFile).toHaveBeenCalledWith('content/resources/doc.pdf');
+      expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('handles the exe-download-elpx request', async () => {
+      const mockExport = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.exportToElpxViaYjs = mockExport;
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(mockExport).toHaveBeenCalledWith({ saveAs: true });
+    });
+
+    it('alerts when exportToElpxViaYjs is unavailable', async () => {
+      window.eXeLearning.app.project.exportToElpxViaYjs = undefined;
+      const originalAlert = window.alert;
+      window.alert = vi.fn();
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(window.alert).toHaveBeenCalled();
+      window.alert = originalAlert;
+    });
+  });
+
+  describe('showLoadingState and hideLoadingState', () => {
+    it('should add preview-loading class when open', () => {
+      manager.isOpen = true;
+      manager.showLoadingState();
+
+      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
+      expect(body.classList.contains('preview-loading')).toBe(true);
+    });
+
+    it('should add preview-loading class when pinned', () => {
+      manager.isPinned = true;
+      manager.showLoadingState();
+
+      const body = mockElements['preview-pinned-container'].querySelector('.preview-pinned-body');
+      expect(body.classList.contains('preview-loading')).toBe(true);
+    });
+
+    it('should remove preview-loading class when open', () => {
+      manager.isOpen = true;
+      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
+      body.classList.add('preview-loading');
+
+      manager.hideLoadingState();
+
+      expect(body.classList.contains('preview-loading')).toBe(false);
+    });
+  });
+
+  describe('showError', () => {
+    beforeEach(() => {
+      manager._provider = createFakeProvider();
+    });
+
+    it('renders the error via srcdoc (not a blob URL) and enforces the sandbox', () => {
+      manager.showError('Test error message');
+
+      const iframe = mockElements['preview-iframe'];
+      expect(iframe.srcdoc).toContain('Test error message');
+      expect(iframe.hasAttribute('src')).toBe(false);
+      expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-forms');
+      expect(global.URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('escapes HTML in the error message', () => {
+      manager.showError('<script>alert(1)</script>');
+
+      const html = mockElements['preview-iframe'].srcdoc;
+      expect(html).toContain('&lt;script&gt;');
+      expect(html).not.toContain('<script>alert(1)</script>');
+    });
+  });
 
   describe('utility methods', () => {
     it('should escape HTML', () => {
@@ -965,28 +1287,20 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  // NOTE: The following test sections have been removed as part of Phase 4 cleanup:
-  // - resolveHtmlIframeAssets (method removed - SW serves content via HTTP)
-  // - injectPdfBlobUrlConverter (method removed - SW eliminates blob:// context issues)
-  // - postMessage handling for PDF blobs (handlers removed)
-  // - injectHtmlLinkHandler (method removed - SW serves content via HTTP)
-  // - postMessage handling for HTML link resolution (handlers removed)
-  // - resolveHtmlIframeAssetsForStandalone (method removed - SW approach doesn't need it)
-
   describe('auto-refresh', () => {
     it('should schedule refresh on structure change', () => {
       vi.useFakeTimers();
       manager.subscribeToChanges();
       manager.isOpen = true;
-      
+
       const structureCallback = mockBridge.onStructureChange.mock.calls[0][0];
       structureCallback();
 
       expect(manager.refreshDebounceTimer).not.toBeNull();
-      
+
       const refreshSpy = vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
       vi.advanceTimersByTime(500);
-      
+
       expect(refreshSpy).toHaveBeenCalled();
       vi.useRealTimers();
     });
@@ -995,7 +1309,7 @@ describe('PreviewPanelManager', () => {
       vi.useFakeTimers();
       manager.subscribeToChanges();
       manager.isPinned = true;
-      
+
       const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
       updateCallback(new Uint8Array(), 'user');
 
@@ -1005,20 +1319,40 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('destroy', () => {
-    it('should cleanup resources', () => {
+    it('should cleanup Yjs subscriptions', () => {
       manager.subscribeToChanges();
       const unsubscribeSpy = vi.fn();
       manager._unsubscribeStructure = unsubscribeSpy;
-
-      // Setup blobUrl to test revocation
-      mockElements['preview-iframe']._blobUrl = 'blob:test-1';
-      mockElements['preview-pinned-iframe']._blobUrl = 'blob:test-2';
 
       manager.destroy();
 
       expect(unsubscribeSpy).toHaveBeenCalled();
       expect(mockYdoc.off).toHaveBeenCalledWith('update', expect.any(Function));
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(2);
+    });
+
+    it('should dispose the provider and detach the media host', () => {
+      const provider = createFakeProvider();
+      const detachAll = vi.fn();
+      manager._provider = provider;
+      manager._session = { id: 'sess-1' };
+      manager._mediaHost = { detachAll };
+
+      manager.destroy();
+
+      expect(provider.dispose).toHaveBeenCalled();
+      expect(detachAll).toHaveBeenCalled();
+      expect(manager._mediaHost).toBeNull();
+      expect(manager._session).toBeNull();
+    });
+
+    it('should remove the pagehide handler', () => {
+      const removeSpy = vi.spyOn(window, 'removeEventListener');
+      manager._setupDisposeLifecycle();
+
+      manager.destroy();
+
+      expect(removeSpy).toHaveBeenCalledWith('pagehide', expect.any(Function));
+      expect(manager._pageHideHandler).toBeNull();
     });
 
     it('should remove visibility change handler', () => {
@@ -1039,16 +1373,6 @@ describe('PreviewPanelManager', () => {
 
       expect(manager._contentNeededRefreshTimer).toBeNull();
       vi.useRealTimers();
-    });
-
-    it('should revoke PDF embed blob URLs', () => {
-      manager._pdfEmbedBlobUrls = ['blob:pdf-1', 'blob:pdf-2'];
-
-      manager.destroy();
-
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-1');
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-2');
-      expect(manager._pdfEmbedBlobUrls).toBeNull();
     });
 
     it('should clean up popup tracking, recovery channel, and SW listener', () => {
@@ -1082,9 +1406,17 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  // NOTE: Tests for blobToDataUrl and processUserThemeCssUrls have been removed
-  // as part of Phase 4 cleanup. These methods were used for the legacy blob URL
-  // approach and are no longer needed with the Service Worker-based preview.
+  describe('dispose lifecycle', () => {
+    it('disposes the session with keepalive on pagehide', () => {
+      const provider = createFakeProvider();
+      manager._provider = provider;
+      manager._setupDisposeLifecycle();
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(provider.dispose).toHaveBeenCalledWith({ keepalive: true });
+    });
+  });
 
   describe('resetToDefaultState', () => {
     it('should close preview and clear pinned state', () => {
@@ -1141,9 +1473,20 @@ describe('PreviewPanelManager', () => {
 
       vi.advanceTimersByTime(500);
 
-      // Should only call refresh once due to debouncing
       expect(refreshSpy).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
+    });
+  });
+
+  describe('scheduleRefresh edge cases', () => {
+    it('should not schedule when auto-refresh disabled', () => {
+      manager.autoRefreshEnabled = false;
+      const refreshSpy = vi.spyOn(manager, 'refresh');
+
+      manager.scheduleRefresh();
+
+      expect(manager.refreshDebounceTimer).toBeNull();
+      expect(refreshSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1165,6 +1508,15 @@ describe('PreviewPanelManager', () => {
 
       expect(closeSpy).toHaveBeenCalled();
     });
+
+    it('should unpin when toggling while pinned', async () => {
+      manager.isPinned = true;
+      const unpinSpy = vi.spyOn(manager, 'unpin');
+
+      await manager.toggle();
+
+      expect(unpinSpy).toHaveBeenCalled();
+    });
   });
 
   describe('keyboard shortcuts', () => {
@@ -1173,8 +1525,7 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = true;
       const closeSpy = vi.spyOn(manager, 'close');
 
-      const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(event);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
       expect(closeSpy).toHaveBeenCalled();
     });
@@ -1184,8 +1535,7 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = false;
       const closeSpy = vi.spyOn(manager, 'close');
 
-      const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(event);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
       expect(closeSpy).not.toHaveBeenCalled();
     });
@@ -1196,755 +1546,32 @@ describe('PreviewPanelManager', () => {
       manager.isPinned = true;
       const closeSpy = vi.spyOn(manager, 'close');
 
-      const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(event);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
       expect(closeSpy).not.toHaveBeenCalled();
     });
 
-    it('should toggle on Ctrl+Shift+P', async () => {
+    it('should toggle on Ctrl+Shift+P', () => {
       manager.bindEvents();
       const toggleSpy = vi.spyOn(manager, 'toggle').mockResolvedValue();
 
-      const event = new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true });
-      document.dispatchEvent(event);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
 
       expect(toggleSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('isServiceWorkerPreviewAvailable', () => {
-    it('returns falsy when serviceWorker not in navigator', () => {
-      const originalSW = navigator.serviceWorker;
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: undefined,
-        writable: true,
-        configurable: true,
-      });
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
-
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: originalSW,
-        writable: true,
-        configurable: true,
-      });
-    });
-
-    it('returns falsy when getPreviewServiceWorker returns null', () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: null },
-        writable: true,
-        configurable: true,
-      });
-      // Mock getPreviewServiceWorker to return null (no SW available)
-      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(null);
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
-    });
-
-    it('returns truthy when controller is null but getPreviewServiceWorker returns registration.active', () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: null },
-        writable: true,
-        configurable: true,
-      });
-      // Mock getPreviewServiceWorker to return registration.active (fallback for BASE_PATH)
-      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({ state: 'activated' });
-      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
-      window.SharedExporters.generatePreviewForSW = vi.fn();
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeTruthy();
-    });
-
-    it('returns falsy when sendContentToPreviewSW not available', () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: {} },
-        writable: true,
-        configurable: true,
-      });
-      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
-      window.eXeLearning.app.sendContentToPreviewSW = undefined;
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
-    });
-
-    it('returns falsy when SharedExporters.generatePreviewForSW not available', () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: {} },
-        writable: true,
-        configurable: true,
-      });
-      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
-      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
-      window.SharedExporters.generatePreviewForSW = undefined;
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
-    });
-
-    it('returns truthy when all conditions are met', () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: {} },
-        writable: true,
-        configurable: true,
-      });
-      // Mock getPreviewServiceWorker to return a truthy value (used by isServiceWorkerPreviewAvailable)
-      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
-      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
-      window.SharedExporters.generatePreviewForSW = vi.fn();
-
-      expect(manager.isServiceWorkerPreviewAvailable()).toBeTruthy();
-    });
-  });
-
-  describe('loadPreviewFromServiceWorker', () => {
-    it('should revoke previous blob URL if exists', () => {
-      mockElements['preview-iframe']._blobUrl = 'blob:test-old-url';
-      manager.loadPreviewFromServiceWorker();
-
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-old-url');
-      expect(mockElements['preview-iframe']._blobUrl).toBeNull();
-    });
-
-    it('should use pinned iframe when pinned', () => {
-      manager.isPinned = true;
-      mockElements['preview-pinned-iframe']._blobUrl = 'blob:pinned-url';
-
-      manager.loadPreviewFromServiceWorker();
-
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pinned-url');
-    });
-
-    it('should set iframe src to viewer URL', () => {
-      window.eXeLearning.app.getBasePath = () => '/myapp';
-
-      manager.loadPreviewFromServiceWorker();
-
-      // happy-dom normalizes URLs, so check for the path
-      expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
-      // The authoring preview reveals Teacher Mode content by default.
-      expect(mockElements['preview-iframe'].src).toContain('exe-teacher=1');
-    });
-
-    it('should force reload when src is already viewer URL', async () => {
-      vi.useFakeTimers();
-      mockElements['preview-iframe'].src = 'http://localhost/viewer/index.html';
-      window.eXeLearning.app.getBasePath = () => '';
-
-      manager.loadPreviewFromServiceWorker();
-
-      // First set to about:blank
-      expect(mockElements['preview-iframe'].src).toContain('about:blank');
-
-      // After timeout, set to viewer URL
-      vi.advanceTimersByTime(60);
-      expect(mockElements['preview-iframe'].src).toContain('/viewer/index.html');
-
-      vi.useRealTimers();
-    });
-
-    it('should not throw when no iframe available', () => {
-      // Create manager with no iframe
-      vi.spyOn(document, 'getElementById').mockImplementation(id => {
-        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
-        return mockElements[id] || null;
-      });
-
-      const newManager = new PreviewPanelManager();
-
-      // Should not throw - just silently return
-      expect(() => newManager.loadPreviewFromServiceWorker()).not.toThrow();
-    });
-  });
-
-  describe('injectHtmlToIframe', () => {
-    it('should revoke previous blob URL', () => {
-      mockElements['preview-iframe']._blobUrl = 'blob:previous-url';
-
-      manager.injectHtmlToIframe('<html></html>');
-
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:previous-url');
-    });
-
-    it('should create new blob URL and set iframe src', () => {
-      manager.injectHtmlToIframe('<html><body>Test</body></html>');
-
-      expect(global.URL.createObjectURL).toHaveBeenCalled();
-      expect(mockElements['preview-iframe'].src).toBe('blob:test-url');
-      expect(mockElements['preview-iframe']._blobUrl).toBe('blob:test-url');
-    });
-
-    it('should use pinned iframe when pinned', () => {
-      manager.isPinned = true;
-
-      manager.injectHtmlToIframe('<html></html>');
-
-      expect(mockElements['preview-pinned-iframe'].src).toBe('blob:test-url');
-    });
-
-    it('should not throw when no iframe available', () => {
-      vi.spyOn(document, 'getElementById').mockImplementation(id => {
-        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
-        return mockElements[id] || null;
-      });
-
-      const newManager = new PreviewPanelManager();
-
-      // Should not throw - just silently return
-      expect(() => newManager.injectHtmlToIframe('<html></html>')).not.toThrow();
-    });
-  });
-
-  describe('refreshWithBlobUrl', () => {
-    beforeEach(() => {
-      window.eXeLearning.app.themes = { selected: { id: 'base' } };
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: true,
-        files: {
-          'index.html': new TextEncoder().encode('<html><head><link rel="stylesheet" href="style.css"></head><body>Preview</body></html>'),
-          'style.css': new TextEncoder().encode('body { color: red; }'),
-        },
-      });
-      mockBridge.resourceFetcher = {};
-      mockBridge.assetManager = {};
-    });
-
-    it('should generate preview and load via blob URL', async () => {
-      const blobLoadSpy = vi.spyOn(manager, '_loadBlobUrlInIframe').mockImplementation(() => {});
-
-      await manager.refreshWithBlobUrl();
-
-      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(blobLoadSpy).toHaveBeenCalledWith(expect.stringContaining('Preview'));
-    });
-
-    it('should throw when Yjs document manager not available', async () => {
-      window.eXeLearning.app.project._yjsBridge.documentManager = null;
-
-      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('Yjs document manager not available');
-    });
-
-    it('should throw when SharedExporters not available', async () => {
-      window.SharedExporters.generatePreviewForSW = undefined;
-
-      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('SharedExporters.generatePreviewForSW not available');
-    });
-
-    it('should throw when no index.html in generated files', async () => {
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: true,
-        files: { 'other.html': new TextEncoder().encode('<html></html>') },
-      });
-
-      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('No index.html in generated files');
-    });
-
-    it('should throw when generation fails', async () => {
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: false,
-        error: 'Generation failed',
-      });
-
-      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('Generation failed');
-    });
-  });
-
-  describe('_generatePreviewFiles', () => {
-    it('should call SharedExporters.generatePreviewForSW with normalized deps', async () => {
-      window.eXeLearning.app.themes = { selected: { name: 'base' } };
-      mockBridge.resourceFetcher = null;
-      mockBridge.assetManager = null;
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
-
-      await manager._generatePreviewFiles();
-
-      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalledWith(
-        mockDocumentManager,
-        null,
-        null,
-        null,
-        { theme: 'base' },
-      );
-    });
-  });
-
-  describe('_injectBlobNavigationHandler', () => {
-    it('should inject script before closing body tag', () => {
-      const html = '<html><body><p>hello</p></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      expect(result).toContain('exe-blob-navigate');
-      expect(result.indexOf('exe-blob-navigate')).toBeLessThan(result.indexOf('</body>'));
-    });
-
-    it('should append script when body tag is missing', () => {
-      const html = '<html><head></head></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      expect(result).toContain('exe-blob-navigate');
-      expect(result).toMatch(/<\/script>\s*$/);
-    });
-
-    it('should set external links to open directly in new tab', () => {
-      const html = '<html><body></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      expect(result).toContain('setAttribute');
-      expect(result).toContain('noopener noreferrer external');
-      expect(result).not.toContain('exe-preview-open-external');
-    });
-
-    it('should detect non-HTML extensions for document/resource links', () => {
-      const html = '<html><body></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      // Uses extension matching instead of hardcoded regex
-      expect(result).toContain('extMatch');
-      expect(result).toContain('html?');
-      expect(result).toContain('exe-blob-open-document');
-    });
-
-    it('should include the current page in exe-blob-open-document messages', () => {
-      const html = '<html><body></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'html/page2.html');
-
-      expect(result).toContain('"html/page2.html"');
-    });
-  });
-
-  describe('_resolveRelativePath', () => {
-    it('should resolve dot segments', () => {
-      expect(manager._resolveRelativePath('a/b/../c/./d.html')).toBe('a/c/d.html');
-    });
-  });
-
-  describe('_findFileContent', () => {
-    it('should resolve leading ../ segments', () => {
-      const files = { 'content/style.css': 'ok' };
-      expect(manager._findFileContent(files, '../content/style.css')).toBe('ok');
-    });
-
-    it('should resolve content/resources by filename fallback', () => {
-      const files = { 'content/resources/theme/custom/file.png': new Uint8Array([1, 2]) };
-      const content = manager._findFileContent(files, 'https://x.test/content/resources/other/file.png');
-      expect(content).toBeInstanceOf(Uint8Array);
-    });
-  });
-
-  describe('_isPreviewIframeSource', () => {
-    it('should allow missing source for synthetic events', () => {
-      expect(manager._isPreviewIframeSource(undefined)).toBe(true);
-    });
-
-    it('should reject unrelated source objects', () => {
-      expect(manager._isPreviewIframeSource({})).toBe(false);
-    });
-  });
-
-  describe('_decodeFileContent', () => {
-    it('should return null for falsy content', () => {
-      expect(manager._decodeFileContent(null)).toBeNull();
-      expect(manager._decodeFileContent(undefined)).toBeNull();
-    });
-
-    it('should return string content as-is', () => {
-      expect(manager._decodeFileContent('hello')).toBe('hello');
-    });
-
-    it('should decode Uint8Array to string', () => {
-      const encoded = new TextEncoder().encode('hello world');
-      expect(manager._decodeFileContent(encoded)).toBe('hello world');
-    });
-
-    it('should decode ArrayBuffer to string', () => {
-      const encoded = new TextEncoder().encode('test content');
-      expect(manager._decodeFileContent(encoded.buffer)).toBe('test content');
-    });
-  });
-
-  describe('_inlineResources', () => {
-    it('should inline CSS link tags', () => {
-      const html = '<html><head><link rel="stylesheet" href="style.css"></head></html>';
-      const files = { 'style.css': 'body { color: red; }' };
-
-      const result = manager._inlineResources(html, files);
-
-      expect(result).toContain('<style>');
-      expect(result).toContain('body { color: red; }');
-      expect(result).not.toContain('<link');
-    });
-
-    it('should inline CSS link with reversed attribute order', () => {
-      const html = '<html><head><link href="theme.css" rel="stylesheet"></head></html>';
-      const files = { 'theme.css': '.theme { display: block; }' };
-
-      const result = manager._inlineResources(html, files);
-
-      expect(result).toContain('<style>');
-      expect(result).toContain('.theme { display: block; }');
-    });
-
-    it('should inline JS script tags', () => {
-      const html = '<html><body><script src="app.js"></script></body></html>';
-      const files = { 'app.js': 'console.log("hello")' };
-
-      const result = manager._inlineResources(html, files);
-
-      expect(result).toContain('<script>');
-      expect(result).toContain('console.log("hello")');
-      expect(result).not.toContain('src="app.js"');
-    });
-
-    it('should leave tags unchanged when file not found', () => {
-      const html = '<html><head><link rel="stylesheet" href="missing.css"></head></html>';
-      const files = {};
-
-      const result = manager._inlineResources(html, files);
-
-      expect(result).toContain('<link');
-      expect(result).toContain('missing.css');
-    });
-
-    it('should handle files with ArrayBuffer content for CSS/JS', () => {
-      const html = '<html><head><link rel="stylesheet" href="style.css"></head></html>';
-      const files = { 'style.css': new TextEncoder().encode('body { margin: 0; }') };
-
-      const result = manager._inlineResources(html, files);
-
-      expect(result).toContain('<style>');
-      expect(result).toContain('body { margin: 0; }');
-    });
-  });
-
-  describe('_replacePdfEmbedsForBlob', () => {
-    it('should replace <object data="*.pdf"> with blob URL placeholder', () => {
-      const html = '<html><body><object data="content/resources/doc.pdf" type="application/pdf" width="100%" height="600px">fallback</object></body></html>';
-      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
-      expect(result).toContain('width:100%');
-      expect(result).toContain('height:600px');
-      expect(result).not.toContain('<object');
-      expect(result).not.toContain('</object>');
-      expect(global.URL.createObjectURL).toHaveBeenCalled();
-    });
-
-    it('should replace <embed src="*.pdf"> with blob URL placeholder', () => {
-      const html = '<html><body><embed src="content/resources/doc.pdf" width="500" height="400"></body></html>';
-      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
-      expect(result).toContain('width:500');
-      expect(result).toContain('height:400');
-      expect(result).not.toContain('<embed');
-    });
-
-    it('should replace <iframe src="*.pdf"> with blob URL placeholder', () => {
-      const html = '<html><body><iframe src="content/resources/doc.pdf" width="100%" height="500px"></iframe></body></html>';
-      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
-      expect(result).not.toContain('<iframe');
-      expect(result).not.toContain('</iframe>');
-    });
-
-    it('should leave non-PDF embeds unchanged', () => {
-      const html = '<html><body><object data="content/resources/video.mp4" width="100%" height="400px"></object></body></html>';
-      const files = { 'content/resources/video.mp4': new Uint8Array([0x00, 0x00]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('<object');
-      expect(result).not.toContain('data-exe-pdf-src');
-    });
-
-    it('should leave PDF embeds unchanged when file not found', () => {
-      const html = '<html><body><object data="missing.pdf" width="100%" height="600px">fallback</object></body></html>';
-      const files = {};
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('<object');
-      expect(result).toContain('missing.pdf');
-    });
-
-    it('should use default dimensions when not specified', () => {
-      const html = '<html><body><object data="doc.pdf">fallback</object></body></html>';
-      const files = { 'doc.pdf': new Uint8Array([0x25, 0x50]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('width:100%');
-      expect(result).toContain('height:600px');
-    });
-
-    it('should track blob URLs for cleanup', () => {
-      const html = '<html><body><object data="a.pdf">x</object><embed src="b.pdf"></body></html>';
-      const files = {
-        'a.pdf': new Uint8Array([0x25, 0x50]),
-        'b.pdf': new Uint8Array([0x25, 0x50]),
-      };
-
-      manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(manager._pdfEmbedBlobUrls).toBeDefined();
-      expect(manager._pdfEmbedBlobUrls.length).toBe(2);
-    });
-
-    it('should handle PDF with query string in src', () => {
-      const html = '<html><body><object data="doc.pdf?v=1">x</object></body></html>';
-      const files = { 'doc.pdf?v=1': new Uint8Array([0x25, 0x50]) };
-
-      const result = manager._replacePdfEmbedsForBlob(html, files);
-
-      expect(result).toContain('data-exe-pdf-src');
-    });
-  });
-
-  describe('_injectBlobNavigationHandler PDF.js rendering', () => {
-    it('should inject PDF.js embed rendering script', () => {
-      const html = '<html><body></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      expect(result).toContain('initPdfEmbeds');
-      expect(result).toContain('data-exe-pdf-src');
-      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
-      expect(result).toContain("createElement('canvas')");
-    });
-
-    it('should inject toolbar elements in embed rendering script', () => {
-      const html = '<html><body></body></html>';
-      const result = manager._injectBlobNavigationHandler(html, 'index.html');
-
-      expect(result).toContain('exe-pdf-tb');
-      expect(result).toContain('class="ep"');
-      expect(result).toContain('class="en"');
-      expect(result).toContain('class="ezi"');
-      expect(result).toContain('class="ezo"');
-      expect(result).toContain('class="efw"');
-      expect(result).toContain('class="edl"');
-      expect(result).toContain('renderAll(sc');
-      expect(result).toContain('pdf.getData()');
-    });
-  });
-
-  describe('_loadBlobUrlInIframe', () => {
-    it('should revoke previous blob URL', () => {
-      mockElements['preview-iframe']._blobUrl = 'blob:old-url';
-
-      manager._loadBlobUrlInIframe('<html></html>');
-
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:old-url');
-    });
-
-    it('should create blob URL and set iframe src', () => {
-      manager._loadBlobUrlInIframe('<html><body>test</body></html>');
-
-      expect(global.URL.createObjectURL).toHaveBeenCalled();
-      expect(mockElements['preview-iframe'].src).toBe('blob:test-url');
-      expect(mockElements['preview-iframe']._blobUrl).toBe('blob:test-url');
-    });
-
-    it('should use pinned iframe when pinned', () => {
-      manager.isPinned = true;
-
-      manager._loadBlobUrlInIframe('<html></html>');
-
-      expect(mockElements['preview-pinned-iframe'].src).toBe('blob:test-url');
-    });
-
-    it('should not throw when no iframe available', () => {
-      vi.spyOn(document, 'getElementById').mockImplementation(id => {
-        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
-        return mockElements[id] || null;
-      });
-
-      const newManager = new PreviewPanelManager();
-
-      expect(() => newManager._loadBlobUrlInIframe('<html></html>')).not.toThrow();
-    });
-  });
-
-  describe('refreshWithServiceWorker', () => {
-    beforeEach(() => {
-      // Setup complete mock environment
-      window.eXeLearning.app.themes = { selected: { id: 'base' } };
-      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockResolvedValue();
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: true,
-        files: { 'index.html': new Uint8Array([1, 2, 3]) },
-      });
-    });
-
-    it('should throw when Yjs document manager not available', async () => {
-      window.eXeLearning.app.project._yjsBridge.documentManager = null;
-
-      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Yjs document manager not available');
-    });
-
-    it('should throw when SharedExporters.generatePreviewForSW not available', async () => {
-      window.SharedExporters.generatePreviewForSW = undefined;
-
-      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('SharedExporters.generatePreviewForSW not available');
-    });
-
-    it('should throw when preview generation fails', async () => {
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: false,
-        error: 'Generation failed',
-      });
-
-      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Generation failed');
-    });
-
-    it('should throw with generic message when generation fails without error', async () => {
-      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
-        success: false,
-      });
-
-      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Failed to generate preview files');
-    });
-
-    it('should send files to SW and load preview', async () => {
-      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
-
-      await manager.refreshWithServiceWorker();
-
-      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalled();
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('should use theme from eXeLearning.app.themes.selected', async () => {
-      window.eXeLearning.app.themes.selected = { id: 'custom-theme' };
-      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
-
-      await manager.refreshWithServiceWorker();
-
-      // Verify the last argument contains the theme
-      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
-      expect(lastCall[4]).toEqual({ theme: 'custom-theme' });
-    });
-
-    it('should use theme name when id not available', async () => {
-      window.eXeLearning.app.themes.selected = { name: 'theme-name' };
-      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
-
-      await manager.refreshWithServiceWorker();
-
-      // Verify the last argument contains the theme
-      const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
-      expect(lastCall[4]).toEqual({ theme: 'theme-name' });
-    });
-  });
-
-  describe('showLoadingState and hideLoadingState', () => {
-    it('should add preview-loading class when open', () => {
-      manager.isOpen = true;
-      manager.showLoadingState();
-
-      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
-      expect(body.classList.contains('preview-loading')).toBe(true);
-    });
-
-    it('should add preview-loading class when pinned', () => {
-      manager.isPinned = true;
-      manager.showLoadingState();
-
-      const body = mockElements['preview-pinned-container'].querySelector('.preview-pinned-body');
-      expect(body.classList.contains('preview-loading')).toBe(true);
-    });
-
-    it('should remove preview-loading class when open', () => {
-      manager.isOpen = true;
-      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
-      body.classList.add('preview-loading');
-
-      manager.hideLoadingState();
-
-      expect(body.classList.contains('preview-loading')).toBe(false);
-    });
-  });
-
-  describe('showError', () => {
-    it('should inject error HTML into iframe', () => {
-      const injectSpy = vi.spyOn(manager, 'injectHtmlToIframe');
-
-      manager.showError('Test error message');
-
-      expect(injectSpy).toHaveBeenCalled();
-      const html = injectSpy.mock.calls[0][0];
-      expect(html).toContain('Preview Error');
-      expect(html).toContain('Test error message');
-    });
-
-    it('should escape HTML in error message', () => {
-      const injectSpy = vi.spyOn(manager, 'injectHtmlToIframe');
-
-      manager.showError('<script>alert(1)</script>');
-
-      const html = injectSpy.mock.calls[0][0];
-      expect(html).toContain('&lt;script&gt;');
-      expect(html).not.toContain('<script>alert(1)</script>');
-    });
-  });
-
-  describe('pin state persistence', () => {
-    it('should not read or write pin state in localStorage', async () => {
-      const mockLocalStorage = {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-      };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-      vi.spyOn(manager, 'refresh').mockResolvedValue();
-
-      manager.init();
-      await manager.pin();
-      manager.unpin();
-
-      expect(mockLocalStorage.getItem).not.toHaveBeenCalled();
-      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
   });
 
   describe('setAutoRefresh', () => {
     it('should enable auto-refresh', () => {
       manager.autoRefreshEnabled = false;
-
       manager.setAutoRefresh(true);
-
       expect(manager.autoRefreshEnabled).toBe(true);
     });
 
     it('should disable auto-refresh', () => {
       manager.autoRefreshEnabled = true;
-
       manager.setAutoRefresh(false);
-
       expect(manager.autoRefreshEnabled).toBe(false);
-    });
-  });
-
-  describe('scheduleRefresh edge cases', () => {
-    it('should not schedule when auto-refresh disabled', () => {
-      manager.autoRefreshEnabled = false;
-      const refreshSpy = vi.spyOn(manager, 'refresh');
-
-      manager.scheduleRefresh();
-
-      expect(manager.refreshDebounceTimer).toBeNull();
-      expect(refreshSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1963,6 +1590,29 @@ describe('PreviewPanelManager', () => {
       manager.subscribeToChanges();
 
       expect(manager._unsubscribeStructure).toBeNull();
+    });
+
+    it('subscribes later once the bridge is ready (init runs before Yjs is set up)', () => {
+      // init() calls subscribeToChanges() before projectManager.initializeYjs()
+      // has assigned the bridge, so the first call must bail WITHOUT marking
+      // itself subscribed, then succeed when open()/pin() call it again.
+      mockProject._yjsBridge = null;
+      manager.subscribeToChanges();
+      expect(manager._onYdocUpdate).toBeNull();
+      expect(mockBridge.onStructureChange).not.toHaveBeenCalled();
+
+      // Bridge becomes available; a second call (as open()/pin() make) subscribes.
+      mockProject._yjsBridge = mockBridge;
+      manager.subscribeToChanges();
+      expect(mockBridge.onStructureChange).toHaveBeenCalledTimes(1);
+      expect(manager._onYdocUpdate).not.toBeNull();
+    });
+
+    it('is idempotent: does not double-subscribe once established', () => {
+      manager.subscribeToChanges();
+      manager.subscribeToChanges();
+      expect(mockBridge.onStructureChange).toHaveBeenCalledTimes(1);
+      expect(mockYdoc.on).toHaveBeenCalledTimes(1);
     });
 
     it('should not refresh on structure change when not open or pinned', () => {
@@ -1984,9 +1634,8 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = true;
 
       const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
-      updateCallback(new Uint8Array(), 'system'); // System origin
+      updateCallback(new Uint8Array(), 'system');
 
-      // No refresh should be scheduled
       expect(manager.refreshDebounceTimer).toBeNull();
       vi.useRealTimers();
     });
@@ -1997,7 +1646,7 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = true;
 
       const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
-      updateCallback(new Uint8Array(), 'initial'); // Initial origin
+      updateCallback(new Uint8Array(), 'initial');
 
       expect(manager.refreshDebounceTimer).toBeNull();
       vi.useRealTimers();
@@ -2023,18 +1672,7 @@ describe('PreviewPanelManager', () => {
 
       manager.close();
 
-      expect(manager.isOpen).toBe(true); // Still open because pinned
-    });
-  });
-
-  describe('toggle', () => {
-    it('should unpin when toggling while pinned', async () => {
-      manager.isPinned = true;
-      const unpinSpy = vi.spyOn(manager, 'unpin');
-
-      await manager.toggle();
-
-      expect(unpinSpy).toHaveBeenCalled();
+      expect(manager.isOpen).toBe(true);
     });
   });
 
@@ -2043,231 +1681,34 @@ describe('PreviewPanelManager', () => {
       manager.bindEvents();
       const closeSpy = vi.spyOn(manager, 'close');
 
-      // Test Enter key
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
-      mockElements.previewsidenavclose.dispatchEvent(enterEvent);
+      mockElements.previewsidenavclose.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
       expect(closeSpy).toHaveBeenCalled();
 
       closeSpy.mockClear();
 
-      // Test Space key
-      const spaceEvent = new KeyboardEvent('keydown', { key: ' ' });
-      mockElements.previewsidenavclose.dispatchEvent(spaceEvent);
+      mockElements.previewsidenavclose.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
       expect(closeSpy).toHaveBeenCalled();
     });
-
-    it('should handle ELPX download request from preview', async () => {
-      manager.bindEvents();
-      const mockExport = vi.fn().mockResolvedValue();
-      window.eXeLearning.app.project.exportToElpxViaYjs = mockExport;
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-
-      const event = new MessageEvent('message', {
-        data: { type: 'exe-download-elpx' },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(mockExport).toHaveBeenCalledWith({ saveAs: true });
-    });
-
-    it('should show error when exportToElpxViaYjs not available', async () => {
-      manager.bindEvents();
-      window.eXeLearning.app.project.exportToElpxViaYjs = undefined;
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-
-      // Mock alert
-      const originalAlert = window.alert;
-      window.alert = vi.fn();
-
-      const event = new MessageEvent('message', {
-        data: { type: 'exe-download-elpx' },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(window.alert).toHaveBeenCalled();
-
-      window.alert = originalAlert;
-    });
-
-    it('should handle ELPX export error', async () => {
-      manager.bindEvents();
-      window.eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('Export failed'));
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-
-      const originalAlert = window.alert;
-      window.alert = vi.fn();
-
-      const event = new MessageEvent('message', {
-        data: { type: 'exe-download-elpx' },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Export failed'));
-
-      window.alert = originalAlert;
-    });
   });
 
-  describe('exe-blob-open-document message handling', () => {
-    let mockOpen;
-
-    beforeEach(() => {
-      mockOpen = vi.fn();
-      global.open = mockOpen;
-      manager.bindEvents();
-      manager._blobUrlFiles = {
-        'index.html': '<html></html>',
-        'content/resources/document.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+  describe('pin state persistence', () => {
+    it('should not read or write pin state in localStorage', async () => {
+      const mockLocalStorage = {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
       };
-    });
-
-    it('should open PDF in PDF.js viewer wrapper', async () => {
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-      const event = new MessageEvent('message', {
-        data: {
-          type: 'exe-blob-open-document',
-          href: 'content/resources/document.pdf',
-          currentPage: 'index.html',
-        },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      // PDF.js viewer creates two blob URLs: one for PDF blob, one for viewer HTML
-      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(2);
-      // First call: PDF blob
-      const firstCallArg = global.URL.createObjectURL.mock.calls[0][0];
-      expect(firstCallArg).toBeInstanceOf(Blob);
-      expect(firstCallArg.type).toBe('application/pdf');
-      // Second call: PDF.js viewer HTML blob
-      const secondCallArg = global.URL.createObjectURL.mock.calls[1][0];
-      expect(secondCallArg).toBeInstanceOf(Blob);
-      expect(secondCallArg.type).toBe('text/html');
-      // Verify viewer HTML contains PDF.js import (not iframe)
-      const viewerHtml = await secondCallArg.text();
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
-      expect(viewerHtml).toContain('getDocument(');
-      expect(viewerHtml).toContain('createElement("canvas")');
-      expect(viewerHtml).not.toContain('<iframe');
-      // Verify toolbar elements
-      expect(viewerHtml).toContain('id="tb"');
-      expect(viewerHtml).toContain('id="prev"');
-      expect(viewerHtml).toContain('id="next"');
-      expect(viewerHtml).toContain('id="dl"');
-      expect(viewerHtml).toContain('async function render(s)');
-      expect(viewerHtml).toContain('pdf.getData()');
-      // Opens the wrapper URL (last blob URL created)
-      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
-    });
-
-    it('should open non-PDF documents as direct blob URL', async () => {
-      manager._blobUrlFiles['content/resources/spreadsheet.xlsx'] = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
-
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-      const event = new MessageEvent('message', {
-        data: {
-          type: 'exe-blob-open-document',
-          href: 'content/resources/spreadsheet.xlsx',
-          currentPage: 'index.html',
-        },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      // Non-PDF files use a single blob URL directly (no wrapper)
-      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
-      const callArg = global.URL.createObjectURL.mock.calls[0][0];
-      expect(callArg).toBeInstanceOf(Blob);
-      expect(callArg.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
-    });
-
-    it('should resolve relative paths for documents', async () => {
-      manager._blobUrlFiles['content/resources/document.pdf'] = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
-
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-      const event = new MessageEvent('message', {
-        data: {
-          type: 'exe-blob-open-document',
-          href: '../content/resources/document.pdf',
-          currentPage: 'html/page1.html',
-        },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
-    });
-
-    it('should not open when file is not found', async () => {
-      // Clear any previous calls from accumulated listeners
-      mockOpen.mockClear();
-
-      const previewSource = mockElements['preview-iframe'].contentWindow;
-      const event = new MessageEvent('message', {
-        data: {
-          type: 'exe-blob-open-document',
-          href: 'missing.pdf',
-          currentPage: 'index.html',
-        },
-        source: previewSource,
-      });
-      window.dispatchEvent(event);
-
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(mockOpen).not.toHaveBeenCalled();
-    });
-
-    it('should not process document open when _blobUrlFiles is null', () => {
-      manager._blobUrlFiles = null;
-
-      // Verify the guard condition directly: _findFileContent should not be called
-      const findSpy = vi.spyOn(manager, '_findFileContent');
-
-      // Simulate what the message handler does by calling it with null files
-      // The guard `this._blobUrlFiles` prevents processing
-      expect(manager._blobUrlFiles).toBeNull();
-      expect(findSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('refresh with SW wait', () => {
-    it('should wait for SW when no controller but waitForPreviewServiceWorker available', async () => {
-      Object.defineProperty(navigator, 'serviceWorker', {
-        value: { controller: null },
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
         writable: true,
-        configurable: true,
       });
+      vi.spyOn(manager, 'refresh').mockResolvedValue();
 
-      const waitSpy = vi.fn().mockResolvedValue({});
-      window.eXeLearning.app.waitForPreviewServiceWorker = waitSpy;
+      manager.init();
+      await manager.pin();
+      manager.unpin();
 
-      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
-      vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
-
-      await manager.refresh();
-
-      expect(waitSpy).toHaveBeenCalled();
-    });
-
-    it('should prevent concurrent refreshes', async () => {
-      manager.isLoading = true;
-      const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker');
-
-      await manager.refresh();
-
-      expect(swRefreshSpy).not.toHaveBeenCalled();
+      expect(mockLocalStorage.getItem).not.toHaveBeenCalled();
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
   });
-
 });

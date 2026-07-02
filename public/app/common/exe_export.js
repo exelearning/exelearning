@@ -130,7 +130,11 @@ window.$exeExport = {
                 var teacher = params.get('exe-teacher');
                 if (teacher === null) teacher = params.get('teacher-mode'); // documented alias
                 var toggler = params.get('exe-teacher-toggler'); // legacy alias, same effect
-                this._showToggler = this._truthy(teacher) || this._truthy(toggler);
+                // The editor's srcdoc preview (static/PWA, embedded editors) has no URL to
+                // carry ?exe-teacher=1, so it signals teacher mode with a global flag set
+                // before this script runs. Same meaning: makes the toggle available.
+                var flag = typeof window !== 'undefined' && window.__EXE_TEACHER_MODE__ === true;
+                this._showToggler = flag || this._truthy(teacher) || this._truthy(toggler);
                 this._navParams = this._showToggler ? 'exe-teacher=1' : '';
                 if (this._showToggler) {
                     // Restore the viewer's stored choice (OFF by default), flicker-free.
@@ -171,7 +175,14 @@ window.$exeExport = {
             // Reveal is already applied by bootstrap() (flicker-free); here we only carry
             // the params across navigation and manage the optional self-serve toggle.
             this.propagateNavParams();
-            if (typeof(localStorage)!='object') return;
+            // localStorage is optional: it may be genuinely absent, or throw on access inside
+            // an opaque-origin iframe (the editor's secure preview). Neither must suppress the
+            // toggle — persistence is best-effort and every storage access below is guarded.
+            // Only bail when the API is truly missing (a bare `typeof localStorage` would
+            // itself throw in an opaque frame, so probe defensively).
+            var storageMissing = false;
+            try { storageMissing = typeof localStorage === 'undefined'; } catch (e) { storageMissing = false; }
+            if (storageMissing) return;
             if ($(".box.teacher-only").length==0 && $(".idevice_node.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
