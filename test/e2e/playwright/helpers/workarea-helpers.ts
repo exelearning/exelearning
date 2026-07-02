@@ -735,9 +735,15 @@ export function getPreviewFrame(page: Page): FrameLocator {
  * @returns true if content loaded, false if timeout
  */
 export async function waitForPreviewContent(page: Page, timeout = 30000): Promise<boolean> {
-    // Always click preview button to ensure panel opens
-    await page.click('#head-bottom-preview');
+    // Open the panel only if it is not already open. The slide-out panel keeps a live
+    // rect when closed, so gate on the `active` class its open() adds — clicking
+    // #head-bottom-preview while the panel is open is intercepted by the panel header
+    // (mirrors openPreviewPanel's idempotency; callers often open then wait).
     const previewPanel = page.locator('#previewsidenav');
+    const isActive = await previewPanel.evaluate(el => el.classList.contains('active')).catch(() => false);
+    if (!isActive) {
+        await page.click('#head-bottom-preview');
+    }
     await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
 
     // Wait for content to load in iframe

@@ -182,15 +182,20 @@ test.describe('Markdown Text iDevice', () => {
 
         // The toggle uses jQuery fadeIn/fadeOut; the second click is ignored
         // while $markdowntext.working is true. Wait for the animation to settle.
-        await page.waitForFunction(
-            () => {
-                const node = document.querySelector('iframe#preview-iframe') as HTMLIFrameElement | null;
-                const win = node?.contentWindow as (Window & { $markdowntext?: { working?: boolean } }) | null;
-                return win?.$markdowntext?.working === false;
-            },
-            null,
-            { timeout: 10000 },
-        );
+        // The opaque preview blocks contentWindow from the parent, so read the jQuery
+        // animation flag ($markdowntext.working) from inside the frame.
+        await expect
+            .poll(
+                () =>
+                    getPreviewFrame(page)
+                        .locator('body')
+                        .evaluate(
+                            () =>
+                                (window as { $markdowntext?: { working?: boolean } }).$markdowntext?.working === false,
+                        ),
+                { timeout: 10000 },
+            )
+            .toBe(true);
 
         await button.click();
         await expect(feedback).toBeHidden();
