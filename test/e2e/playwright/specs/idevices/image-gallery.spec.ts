@@ -470,9 +470,17 @@ test.describe('Image Gallery iDevice', () => {
             // opaque-origin (no allow-same-origin), so probe its window from inside the
             // frame rather than via contentWindow.
             await expect
-                .poll(() => iframe.locator('body').evaluate(() => typeof (window as { SimpleLightbox?: unknown }).SimpleLightbox !== 'undefined'), {
-                    timeout: 15000,
-                })
+                .poll(
+                    () =>
+                        iframe
+                            .locator('body')
+                            .evaluate(
+                                () => typeof (window as { SimpleLightbox?: unknown }).SimpleLightbox !== 'undefined',
+                            ),
+                    {
+                        timeout: 15000,
+                    },
+                )
                 .toBe(true);
 
             // Wait for renderBehaviour to complete
