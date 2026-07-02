@@ -255,6 +255,23 @@ function inlineMediaAttributes(html, files, state, pageDir) {
 }
 
 /**
+ * Inline href attributes on <a> tags that point to bundled image assets. Some iDevices
+ * (before/after, image gallery, magnifier) carry their images as anchor hrefs and promote
+ * them to <img> at runtime by reading the href. Without a server the relative href cannot
+ * resolve in the opaque srcdoc document, so inline the ones that resolve to an image asset.
+ * Non-image hrefs (page navigation, downloads) resolve to a non-image class and are left
+ * untouched.
+ */
+function inlineAnchorImageHrefs(html, files, state, pageDir) {
+    return html.replace(/<a\b[^>]*>/gi, (tag) => {
+        return tag.replace(/(\shref=)(["'])([^"']+)\2/i, (match, prefix, quote, value) => {
+            const dataUri = inlineRef(value, files, state, pageDir, ['image']);
+            return dataUri ? `${prefix}${quote}${dataUri}${quote}` : match;
+        });
+    });
+}
+
+/**
  * Inline a preview page for srcdoc rendering.
  * @param {string} html Page HTML.
  * @param {Object<string, ArrayBuffer|Uint8Array|string>} files Preview file map.
@@ -274,6 +291,7 @@ export function inlinePreviewPage(html, files, options) {
     html = inlineScripts(html, files, state, pageDir);
     html = inlinePdfEmbeds(html, files, state, pageDir);
     html = inlineMediaAttributes(html, files, state, pageDir);
+    html = inlineAnchorImageHrefs(html, files, state, pageDir);
 
     return {
         html,

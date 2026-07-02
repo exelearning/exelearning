@@ -78,6 +78,20 @@ describe('srcdocInliner', () => {
         expect(out).toContain('2x');
     });
 
+    it('inlines <a> hrefs that point to image assets but leaves page-navigation hrefs alone', () => {
+        // Image iDevices (before/after, gallery, magnifier) carry their images as anchor
+        // hrefs and promote them to <img> at runtime — those must be inlined for srcdoc.
+        const files = { 'content/resources/before.jpg': PNG_BYTES };
+        const html = page(
+            '<a href="content/resources/before.jpg">img</a><a href="html/page2.html">Next page</a>',
+        );
+        const { html: out } = inlinePreviewPage(html, files, { pagePath: 'index.html' });
+        expect(out).toContain('data:image/jpeg;base64,');
+        expect(out).not.toContain('href="content/resources/before.jpg"');
+        // Page-navigation hrefs resolve to a non-image class and stay untouched.
+        expect(out).toContain('href="html/page2.html"');
+    });
+
     it('converts audio/video/source/track/poster references to data URIs', () => {
         const files = {
             'content/resources/a.mp3': new Uint8Array([1]),

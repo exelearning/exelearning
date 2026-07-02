@@ -393,7 +393,7 @@ test.describe('Image Gallery iDevice', () => {
             // Verify the href has been resolved (blob URL or relative path)
             const href = await galleryLink.getAttribute('href');
             // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(href).toMatch(/^(blob:|content\/resources\/)/);
+            expect(href).toMatch(/^(blob:|data:|content\/resources\/)/);
 
             // Click the image to open lightbox
             await galleryLink.click();

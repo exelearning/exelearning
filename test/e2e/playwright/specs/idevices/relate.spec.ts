@@ -440,7 +440,7 @@ test.describe('Relate iDevice', () => {
             const firstImageSrc = await images.first().getAttribute('src');
             expect(firstImageSrc).toBeTruthy();
             // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(firstImageSrc).toMatch(/^(blob:|content\/resources\/)/);
+            expect(firstImageSrc).toMatch(/^(blob:|data:|content\/resources\/)/);
         });
     });
 
