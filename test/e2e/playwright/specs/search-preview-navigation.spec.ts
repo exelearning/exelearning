@@ -15,52 +15,39 @@ import {
  *
  * Tests that search result links work correctly when viewing from a subpage
  * in preview mode. The fix ensures that relative links are properly adjusted
- * when navigating from /viewer/html/subpage.html to avoid incorrect URLs
- * like /viewer/html/html/page.html.
+ * when navigating from a subpage to avoid incorrect nested URLs.
+ *
+ * The preview iframe is opaque (no allow-same-origin), so the parent cannot
+ * read `iframe.contentWindow.location` — that throws SecurityError. Navigation
+ * is tracked instead via the `data-preview-page` attribute the panel stamps on
+ * every rendered page (fed by the in-frame nav reporter), which the browser
+ * exposes to the parent regardless of origin.
  */
 
 /**
- * Wait for the preview iframe to navigate to a new URL and fully load.
- * More reliable than waiting for specific elements, which may briefly appear
- * during transitions.
+ * The page path currently rendered in the preview iframe, read from the
+ * cross-origin-safe `data-preview-page` attribute.
+ */
+async function getPreviewPage(page: import('@playwright/test').Page): Promise<string> {
+    return page.evaluate(() => document.querySelector('#preview-iframe')?.getAttribute('data-preview-page') ?? '');
+}
+
+/**
+ * Wait for the preview to report a different rendered page than `prevPage`.
  */
 async function waitForIframeNavigation(
     page: import('@playwright/test').Page,
-    prevUrl: string,
+    prevPage: string,
     timeout = 15000,
 ): Promise<void> {
     await page.waitForFunction(
         (prev: string) => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            try {
-                const doc = iframe?.contentDocument ?? iframe?.contentWindow?.document;
-                const curr = iframe?.contentWindow?.location?.href ?? '';
-                // URL must change and new document must finish loading.
-                // Do NOT gate on #siteNav: if navigation goes to a "not found" page,
-                // it won't have #siteNav but we still want the function to return
-                // (so the test can assert on the correct error content).
-                return curr !== prev && curr.length > 0 && doc?.readyState === 'complete';
-            } catch {
-                return false;
-            }
+            const curr = document.querySelector('#preview-iframe')?.getAttribute('data-preview-page') ?? '';
+            return curr.length > 0 && curr !== prev;
         },
-        prevUrl,
+        prevPage,
         { timeout },
     );
-}
-
-/**
- * Get current URL of the preview iframe from the main page context.
- */
-async function getIframeUrl(page: import('@playwright/test').Page): Promise<string> {
-    return page.evaluate(() => {
-        const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-        try {
-            return iframe?.contentWindow?.location?.href ?? '';
-        } catch {
-            return '';
-        }
-    });
 }
 
 test.describe('Search in preview - subpage navigation', () => {
@@ -143,50 +130,27 @@ test.describe('Search in preview - subpage navigation', () => {
         const previewIframe = page.locator('#preview-iframe');
         await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
-        // Wait for preview content to load
-        await page.waitForFunction(
-            () => {
-                const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-                if (!iframe) return false;
-                try {
-                    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                    return doc?.body && doc.body.innerHTML.length > 200;
-                } catch {
-                    return false;
-                }
-            },
-            undefined,
-            { timeout: 30000 },
-        );
-
-        await page.waitForTimeout(500);
-
+        // Wait for preview content to load (cross-origin-safe: locate the
+        // rendered article inside the opaque frame).
         const iframe = page.frameLocator('#preview-iframe');
+        await iframe.locator('article, #siteNav, nav').first().waitFor({ state: 'attached', timeout: 30000 });
 
         // 7. Navigate to a subpage (page 2) via navigation menu
         const navLinks = iframe.locator('#siteNav a, nav a');
         const navCount = await navLinks.count();
         expect(navCount).toBeGreaterThanOrEqual(2);
 
-        // Capture current URL before navigating so we can detect when navigation completes
-        const urlBeforeNav = await getIframeUrl(page);
+        // Capture current page before navigating so we can detect when navigation completes
+        const pageBeforeNav = await getPreviewPage(page);
 
         // Click on second page link to navigate to subpage
         await navLinks.nth(1).click();
 
-        // Wait for the iframe to fully navigate to the subpage (URL must change and page must be ready)
-        await waitForIframeNavigation(page, urlBeforeNav);
-
-        // Additionally wait for the subpage URL to contain /html/ (confirms we're on a subpage)
+        // Wait for the iframe to report the subpage (page path must change and be under html/)
+        await waitForIframeNavigation(page, pageBeforeNav);
         await page.waitForFunction(
-            () => {
-                const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-                try {
-                    return iframe?.contentWindow?.location?.pathname?.includes('/html/') ?? false;
-                } catch {
-                    return false;
-                }
-            },
+            () =>
+                (document.querySelector('#preview-iframe')?.getAttribute('data-preview-page') ?? '').includes('html/'),
             undefined,
             { timeout: 10000 },
         );
@@ -209,14 +173,14 @@ test.describe('Search in preview - subpage navigation', () => {
         expect(resultsCount).toBeGreaterThanOrEqual(1);
 
         // 11. Click on a search result (first one)
-        // Capture URL before click so we can detect navigation
-        const urlBeforeFirstClick = await getIframeUrl(page);
+        // Capture page before click so we can detect navigation
+        const pageBeforeFirstClick = await getPreviewPage(page);
         await searchResults.first().click();
 
         // 12. Wait for iframe to navigate to the search result page (not just article to appear)
         // The click handler briefly shows .page-content before navigation, so we must
-        // wait for an actual URL change + page load rather than element visibility.
-        await waitForIframeNavigation(page, urlBeforeFirstClick);
+        // wait for an actual page change rather than element visibility.
+        await waitForIframeNavigation(page, pageBeforeFirstClick);
 
         const bodyAfterClick = await iframe.locator('body').innerText();
         expect(bodyAfterClick).not.toContain('File not found');
@@ -242,11 +206,11 @@ test.describe('Search in preview - subpage navigation', () => {
             await searchResults2.first().waitFor({ timeout: 10000 });
 
             // Click on second result
-            const urlBeforeSecondClick = await getIframeUrl(page);
+            const pageBeforeSecondClick = await getPreviewPage(page);
             await searchResults2.nth(1).click();
 
             // Wait for iframe to navigate to the second search result page
-            await waitForIframeNavigation(page, urlBeforeSecondClick);
+            await waitForIframeNavigation(page, pageBeforeSecondClick);
 
             const bodyAfterClick2 = await iframe.locator('body').innerText();
             expect(bodyAfterClick2).not.toContain('File not found');

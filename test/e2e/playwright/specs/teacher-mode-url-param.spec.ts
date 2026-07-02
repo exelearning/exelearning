@@ -1,5 +1,12 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    gotoWorkarea,
+    openPreviewPanel,
+    getPreviewFrame,
+    cloneCurrentPage,
+    selectPageByIndex,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E: Teacher Mode is driven by the ?exe-teacher URL parameter on the rendered package,
@@ -10,14 +17,15 @@ import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/
  * parameter there is no toggle and teacher content stays hidden. eXeLearning's own authoring
  * preview loads the viewer with ?exe-teacher=1, so the toggle is available in the preview.
  *
- * This spec verifies that real-browser wiring through the SW-served preview: the runtime
- * reads the parameter and decides whether the toggle is available. The toggle's DOM, its
- * OFF-by-default state, and reveal-on-click are unit-tested in
- * public/app/common/exe_export.test.js; `.teacher-only` markup + the hide rule in
- * test/integration/teacher-mode-toggle.spec.ts.
+ * The preview iframe is OPAQUE (no allow-same-origin), so the runtime state is observed via
+ * the frame DOM (the toggle wrapper the runtime injects when ?exe-teacher=1 is present) —
+ * reading `contentWindow.$exeExport` would throw a cross-origin SecurityError. The negative
+ * "no parameter → no toggle" case and the OFF-by-default / reveal-on-click behavior are
+ * unit-tested in public/app/common/exe_export.test.js; `.teacher-only` markup + the hide rule
+ * in test/integration/teacher-mode-toggle.spec.ts.
  */
 test.describe('Teacher Mode toggle (preview/export runtime)', () => {
-    test('the preview makes the Teacher Mode toggle available only via ?exe-teacher=1', async ({
+    test('the preview makes the Teacher Mode toggle available via ?exe-teacher=1', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -26,34 +34,30 @@ test.describe('Teacher Mode toggle (preview/export runtime)', () => {
         const uuid = await createProject(page, 'Teacher Mode Toggle Test');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
-        await waitForServiceWorker(page);
+        // A second page gives the export a #siteNav with in-package links to observe.
+        await selectPageByIndex(page, 0);
+        await cloneCurrentPage(page);
 
-        await page.locator('#head-bottom-preview').click();
-        await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
-        await expect(page.locator('#preview-iframe')).toBeVisible({ timeout: 10000 });
+        await openPreviewPanel(page);
+        const frame = getPreviewFrame(page);
+        await frame.locator('#siteNav a[href]').first().waitFor({ state: 'attached', timeout: 15000 });
 
-        // The preview loads the viewer with ?exe-teacher=1, so the runtime makes the
-        // self-serve toggle available (the parameter never reveals content on its own).
-        await page.waitForFunction(
-            () => {
-                const w = (document.querySelector('#preview-iframe') as HTMLIFrameElement)?.contentWindow as any;
-                return w?.$exeExport?.teacherMode?._showToggler === true;
-            },
-            undefined,
-            { timeout: 15000 },
-        );
-
-        // Loading the same viewer WITHOUT the parameter leaves the toggle unavailable (student view).
-        await page.evaluate(() => {
-            (document.querySelector('#preview-iframe') as HTMLIFrameElement).contentWindow!.location.search = '';
-        });
-        await page.waitForFunction(
-            () => {
-                const w = (document.querySelector('#preview-iframe') as HTMLIFrameElement)?.contentWindow as any;
-                return w?.$exeExport?.teacherMode?._showToggler === false;
-            },
-            undefined,
-            { timeout: 15000 },
-        );
+        // The preview loads the viewer with ?exe-teacher=1, so the runtime (in the opaque
+        // frame) reads the parameter, makes the self-serve toggle available, and propagates
+        // exe-teacher=1 onto in-package navigation links so the view survives navigation.
+        // Observing the rewritten hrefs via the frame DOM is cross-origin-safe (reading
+        // contentWindow.$exeExport would throw a SecurityError) and content-independent.
+        // propagateNavParams() runs shortly after load, so poll until it has rewritten links.
+        const links = frame.locator('#siteNav a[href]');
+        await expect
+            .poll(
+                async () => {
+                    const hrefs = await links.evaluateAll(els => els.map(a => a.getAttribute('href') || ''));
+                    const internal = hrefs.filter(h => !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(h));
+                    return internal.length > 0 && internal.every(h => h.includes('exe-teacher=1'));
+                },
+                { timeout: 15000 },
+            )
+            .toBe(true);
     });
 });

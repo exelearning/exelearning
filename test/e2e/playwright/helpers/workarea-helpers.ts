@@ -673,29 +673,20 @@ export async function selectFirstPage(page: Page): Promise<void> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Open the preview panel
+ * Open the preview panel.
+ *
+ * Transport-agnostic: waits for the panel, the iframe, and the first render
+ * (signalled by the `data-preview-page` attribute the panel sets on every
+ * render target) rather than for a Service Worker, so it works for the opaque
+ * HTTP/srcdoc transports and the legacy SW transport alike.
  */
 export async function openPreviewPanel(page: Page): Promise<void> {
-    // Wait for Service Worker to be ready first
-    await page
-        .waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return (
-                    app?._previewSwRegistration?.active?.state === 'activated' ||
-                    navigator.serviceWorker?.controller !== null
-                );
-            },
-            undefined,
-            { timeout: 15000 },
-        )
-        .catch(() => {
-            // Continue even if SW check times out
-        });
-
+    // The slide-out panel sits off-screen (translated) when closed, so
+    // Playwright's isVisible() reports true even then. Gate on the `active`
+    // class the panel's open() adds, so the click reliably triggers a render.
     const previewPanel = page.locator('#previewsidenav');
-    const isVisible = await previewPanel.isVisible();
-    if (!isVisible) {
+    const isActive = await previewPanel.evaluate(el => el.classList.contains('active')).catch(() => false);
+    if (!isActive) {
         await page.click('#head-bottom-preview');
         await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
     }
@@ -704,8 +695,16 @@ export async function openPreviewPanel(page: Page): Promise<void> {
     const previewIframe = page.locator('#preview-iframe');
     await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
-    // Give time for preview generation
-    await page.waitForTimeout(500);
+    // Wait for the first render (the panel stamps the rendered page path).
+    await page
+        .waitForFunction(
+            () => document.querySelector('#preview-iframe')?.hasAttribute('data-preview-page'),
+            undefined,
+            { timeout: 15000 },
+        )
+        .catch(() => {
+            // Continue even if the render signal times out.
+        });
 }
 
 /**
