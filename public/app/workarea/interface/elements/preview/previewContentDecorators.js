@@ -371,6 +371,40 @@ export function decorateForHttp(html, options) {
  * @param {{pagePath: string, pdfjsBase?: string|null, pdfUnavailableMessage?: string}} options
  * @returns {string}
  */
+/**
+ * Runtime asset resolver for the server-less srcdoc preview. JS-driven iDevices (magnifier,
+ * image gallery, before/after) set <img> src at runtime from relative paths they construct,
+ * which cannot resolve without a server and which the build-time inliner cannot rewrite
+ * (the widget overwrites the src after parse). This patches the img.src setter and
+ * Element.setAttribute synchronously so those relative paths are swapped for the inlined
+ * data URI from the injected map before the browser tries to load them — no request, no race.
+ */
+function assetResolverScript(options) {
+    const map = options.assetMap;
+    if (!map || Object.keys(map).length === 0) return '';
+    const json = JSON.stringify(map).replace(/</g, '\\u003c');
+    return `<script ${INJECTED_MARKER}>(function(){
+var MAP=${json};
+function r(v){
+  if(typeof v!=='string'||!v)return v;
+  if(/^(data:|blob:|https?:|\\/\\/|#|mailto:|tel:|javascript:)/i.test(v))return v;
+  var k=v.split('?')[0].split('#')[0].replace(/^\\.?\\//,'').replace(/^\\/+/,'');
+  return MAP[k]||MAP[v]||v;
+}
+var d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
+if(d&&d.set){Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:function(){return d.get.call(this);},set:function(v){d.set.call(this,r(v));}});}
+var sa=Element.prototype.setAttribute;
+Element.prototype.setAttribute=function(n,v){
+  if(v&&(n==='src'||n==='href')){var t=this.tagName;if(t==='IMG'||t==='A'||t==='SOURCE')return sa.call(this,n,r(v));}
+  return sa.call(this,n,v);
+};
+function fix(el){if(el.tagName==='IMG'){var s=el.getAttribute('src');if(s){var x=r(s);if(x!==s)sa.call(el,'src',x);}}}
+function scan(root){if(root.querySelectorAll){var e=root.querySelectorAll('img[src]');for(var i=0;i<e.length;i++)fix(e[i]);}}
+function start(){scan(document);if(window.MutationObserver){new MutationObserver(function(m){for(var i=0;i<m.length;i++){var z=m[i];if(z.type==='attributes')fix(z.target);else for(var j=0;j<z.addedNodes.length;j++){var a=z.addedNodes[j];if(a.nodeType===1){fix(a);scan(a);}}}}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();</script>`;
+}
+
 export function decorateForSrcdoc(html, options) {
     if (html.includes(INJECTED_MARKER)) return html;
     const scripts =
@@ -385,5 +419,9 @@ export function decorateForSrcdoc(html, options) {
     let out = injectIntoHead(injectBeforeLastBody(html, scripts), teacherModeFlagScript());
     const shim = embedShimScript(options);
     if (shim) out = injectIntoHead(out, shim);
+    // Inject last so it lands first in <head> and its prototype patches are in place before
+    // any iDevice script sets an <img> src.
+    const resolver = assetResolverScript(options);
+    if (resolver) out = injectIntoHead(out, resolver);
     return out;
 }

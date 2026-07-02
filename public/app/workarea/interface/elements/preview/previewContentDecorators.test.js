@@ -113,6 +113,24 @@ describe('previewContentDecorators', () => {
             expect(shimIndex).toBeLessThan(bodyOpen);
         });
 
+        it('injects the runtime asset resolver in <head> when an asset map is provided', () => {
+            const result = decorateForSrcdoc(PAGE, {
+                pagePath: 'index.html',
+                assetMap: { 'idevices/magnifier/hood.jpg': 'data:image/jpeg;base64,AAAA' },
+            });
+            const resolverIndex = result.indexOf('idevices/magnifier/hood.jpg');
+            expect(result).toContain('data:image/jpeg;base64,AAAA');
+            expect(result).toContain("Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src')");
+            // Runs in <head>, before the body, so its prototype patches precede iDevice scripts.
+            expect(resolverIndex).toBeGreaterThan(result.indexOf('<head>'));
+            expect(resolverIndex).toBeLessThan(result.indexOf('<body>'));
+        });
+
+        it('omits the resolver when no asset map is given', () => {
+            const result = decorateForSrcdoc(PAGE, { pagePath: 'index.html' });
+            expect(result).not.toContain("Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src')");
+        });
+
         it('escapes closing script sequences in the baked page path', () => {
             const hostile = 'a</script><script>alert(1)</script>.html';
             const result = decorateForSrcdoc(PAGE, { pagePath: hostile });

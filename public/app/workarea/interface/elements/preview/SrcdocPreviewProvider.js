@@ -97,7 +97,7 @@ export class SrcdocPreviewProvider {
             throw new Error(`Preview page not found: ${pagePath}`);
         }
         const embedShimSource = await this._loadEmbedShim();
-        const { html: inlined, stats } = inlinePreviewPage(html, this._files, {
+        const { html: inlined, stats, assetMap } = inlinePreviewPage(html, this._files, {
             pagePath,
             ...this._inlineOptions,
         });
@@ -107,6 +107,7 @@ export class SrcdocPreviewProvider {
             pdfjsBase: this._pdfjsBase,
             pdfUnavailableMessage: this._pdfUnavailableMessage,
             embedShimSource: embedShimSource || undefined,
+            assetMap,
         });
         return { kind: 'srcdoc', html: decorated };
     }

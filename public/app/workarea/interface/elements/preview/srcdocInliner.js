@@ -272,6 +272,29 @@ function inlineAnchorImageHrefs(html, files, state, pageDir) {
 }
 
 /**
+ * Build a path → data-URI map of image assets for the runtime resolver injected into the
+ * srcdoc. JS-driven iDevices (magnifier, image gallery, before/after) set <img> src at
+ * runtime from paths they construct (e.g. `idevicePath + 'hood.jpg'`), which the build-time
+ * inliner cannot rewrite because the widget overwrites the src after parse. The resolver
+ * swaps those relative paths for the inlined data URI using this map.
+ * @param {Object<string, ArrayBuffer|Uint8Array|string>} files
+ * @param {number} budget Total byte budget for the map.
+ * @returns {Object<string, string>} path → data URI
+ */
+function buildImageAssetMap(files, budget) {
+    const map = {};
+    let remaining = budget;
+    for (const key of Object.keys(files || {})) {
+        if (assetClassOf(key) !== 'image') continue;
+        const bytes = toUint8Array(files[key]);
+        if (!bytes || bytes.length > DEFAULT_PER_ASSET_CAPS.image || bytes.length > remaining) continue;
+        map[key] = dataUriFor(key, bytes);
+        remaining -= bytes.length;
+    }
+    return map;
+}
+
+/**
  * Inline a preview page for srcdoc rendering.
  * @param {string} html Page HTML.
  * @param {Object<string, ArrayBuffer|Uint8Array|string>} files Preview file map.
@@ -296,5 +319,6 @@ export function inlinePreviewPage(html, files, options) {
     return {
         html,
         stats: { inlinedBytes: totalBudget - state.remaining, skipped: state.skipped },
+        assetMap: buildImageAssetMap(files, options.assetMapBudget ?? DEFAULT_TOTAL_BUDGET),
     };
 }

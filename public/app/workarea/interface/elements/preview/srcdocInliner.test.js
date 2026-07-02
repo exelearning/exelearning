@@ -92,6 +92,20 @@ describe('srcdocInliner', () => {
         expect(out).toContain('href="html/page2.html"');
     });
 
+    it('returns an image asset map for the runtime resolver (JS-set srcs)', () => {
+        // Widgets that set <img> src at runtime (magnifier default image, gallery) need the
+        // path → data URI map since the build-time inliner cannot rewrite a runtime-set src.
+        const files = {
+            'idevices/magnifier/hood.jpg': PNG_BYTES,
+            'content/resources/photo.png': PNG_BYTES,
+            'html/page.html': '<p>not an image</p>',
+        };
+        const { assetMap } = inlinePreviewPage(page(''), files, { pagePath: 'index.html' });
+        expect(assetMap['idevices/magnifier/hood.jpg']).toMatch(/^data:image\/jpeg;base64,/);
+        expect(assetMap['content/resources/photo.png']).toMatch(/^data:image\/png;base64,/);
+        expect(assetMap['html/page.html']).toBeUndefined();
+    });
+
     it('converts audio/video/source/track/poster references to data URIs', () => {
         const files = {
             'content/resources/a.mp3': new Uint8Array([1]),
