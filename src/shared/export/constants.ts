@@ -197,23 +197,6 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         ],
     },
 
-    // Media player via audio/video file links with lightbox
-    {
-        name: 'exe_media_link',
-        type: 'regex',
-        pattern: /href="[^"]*\.(mp3|mp4|flv|ogg|ogv)"[^>]*rel="[^"]*lightbox/i,
-        files: [
-            'exe_media/exe_media.js',
-            'exe_media/exe_media.css',
-            'exe_media/exe_media_background.png',
-            'exe_media/exe_media_bigplay.png',
-            'exe_media/exe_media_bigplay.svg',
-            'exe_media/exe_media_controls.png',
-            'exe_media/exe_media_controls.svg',
-            'exe_media/exe_media_loading.gif',
-        ],
-    },
-
     // ABC Music notation (abcjs)
     {
         name: 'abcjs',
