@@ -266,13 +266,28 @@ test.describe('Collaborative File Manager', () => {
                 await cancelBtnA.click();
             }
 
-            // Wait for WebSocket sync (asset-renamed message)
-            await pageA.waitForTimeout(500);
+            // Wait for the rename to actually propagate into Client B's Yjs
+            // document — the renamed asset appearing in B's assets map is the real
+            // cross-client sync signal. The previous version raced the File
+            // Manager DOM render against A→server→B WebSocket propagation with a
+            // 15s DOM poll, which timed out under CI load; key off the synced
+            // state directly (per-test budget is 90s).
+            await pageB.waitForFunction(
+                (expected: string) => {
+                    const app = (window as any).eXeLearning?.app;
+                    const assets = app?.project?._yjsBridge?.assetManager?.getAllAssetsMetadata?.() || [];
+                    const base = expected.replace('.jpg', '');
+                    return assets.some((a: { filename?: string }) => (a?.filename || '').includes(base));
+                },
+                newFilename,
+                { timeout: 45000 },
+            );
 
-            // Client B opens File Manager to verify the renamed file
+            // Client B opens File Manager; the synced asset is already in B's Yjs
+            // map, so the initial load renders it without an observer-timing race.
             await openFileManager(pageB);
 
-            // Wait for file to appear in Client B's file manager
+            // Confirm the file is rendered in Client B's file manager.
             await pageB.waitForFunction(
                 () => {
                     const items = document.querySelectorAll(

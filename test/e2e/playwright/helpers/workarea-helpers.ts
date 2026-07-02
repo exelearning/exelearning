@@ -357,9 +357,12 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
         return; // CRITICAL: return here to prevent server mode code from executing
     }
 
-    // Server mode: navigate to workarea with project UUID
-    await page.goto(`/workarea?project=${projectUuid}`);
-    await page.waitForLoadState('networkidle');
+    // Server mode: navigate to workarea with project UUID.
+    // Use 'domcontentloaded' and a deterministic readiness signal instead of
+    // 'networkidle': the app holds a long-lived Yjs WebSocket, so the network
+    // never goes idle, making networkidle both slow and flaky. The _yjsEnabled
+    // wait below plus waitForLoadingScreen are the real readiness signals.
+    await page.goto(`/workarea?project=${projectUuid}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, undefined, {
         timeout: 30000,
     });
@@ -429,7 +432,7 @@ export async function navigateToPageByTitle(page: Page, title: string): Promise<
     await navItem.scrollIntoViewIfNeeded();
     await navItem.click({ force: true });
 
-    // Wait for content to load
+    // Wait for content to load (deterministic — no trailing fixed sleep needed)
     await page.waitForFunction(
         () => {
             const nodeContent = document.querySelector('#node-content');
@@ -438,7 +441,6 @@ export async function navigateToPageByTitle(page: Page, title: string): Promise<
         undefined,
         { timeout: 10000 },
     );
-    await page.waitForTimeout(500);
 }
 
 /**
@@ -519,8 +521,7 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
                 );
 
                 if (found) {
-                    // Small buffer for any remaining DOM settling
-                    await page.waitForTimeout(200);
+                    // The waitForFunction above already proved the page rendered.
                     return true;
                 }
             } catch {}
@@ -595,6 +596,20 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
 }
 
 /**
+ * Wait until the navigation node with the given nav-id carries the `selected`
+ * class. `waitForFunction` re-queries the DOM on each poll, so this survives the
+ * Yjs-driven structure re-render that recreates nav elements: the app's
+ * `setNodeSelected()` re-applies `selected` by nav-id after every re-render, so a
+ * held element handle would go stale, but this selector-based check does not.
+ */
+async function waitForNavNodeSelected(page: Page, navId: string, timeout = 10000): Promise<void> {
+    await page.waitForFunction(id => !!document.querySelector(`.nav-element[nav-id="${id}"].selected`), navId, {
+        timeout,
+        polling: 100,
+    });
+}
+
+/**
  * Select a node in the navigation tree by ID
  *
  * @param page - Playwright page
@@ -605,9 +620,13 @@ export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
         const navItem = page.locator(`.nav-element[nav-id="${nodeId}"] > .nav-element-text`).first();
         try {
             await navItem.waitFor({ state: 'visible', timeout: 5000 });
-            await navItem.scrollIntoViewIfNeeded();
-            await navItem.click({ force: true, timeout: 5000 });
-            await page.waitForTimeout(500);
+            // Auto-waiting click() scrolls into view and re-resolves/retries on
+            // detach; an explicit scrollIntoViewIfNeeded + force click defeat that
+            // retry and widen the detach race, so they are intentionally dropped.
+            await navItem.click({ timeout: 5000 });
+            // Deterministic post-condition instead of a fixed sleep: the node is
+            // actually selected once it carries the `selected` class.
+            await waitForNavNodeSelected(page, nodeId);
             return;
         } catch {
             await page.waitForTimeout(250);
@@ -625,13 +644,28 @@ export async function selectFirstPage(page: Page): Promise<void> {
         const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
         return !!selected;
     });
-
-    if (!isPageSelected) {
-        const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-        await pageNode.scrollIntoViewIfNeeded();
-        await pageNode.click({ force: true });
-        await page.waitForTimeout(500);
+    if (isPageSelected) {
+        return;
     }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const firstNode = page.locator('.nav-element:not([nav-id="root"])').first();
+        try {
+            const navId = await firstNode.getAttribute('nav-id');
+            if (!navId) {
+                throw new Error('first non-root page node has no nav-id yet');
+            }
+            // Auto-waiting click() handles scroll + re-resolution on detach, so
+            // scrollIntoViewIfNeeded + force (which defeat that retry) are dropped.
+            await firstNode.locator(':scope > .nav-element-text').click();
+            // Deterministic post-condition instead of a fixed sleep.
+            await waitForNavNodeSelected(page, navId);
+            return;
+        } catch {
+            await page.waitForTimeout(250);
+        }
+    }
+    throw new Error('selectFirstPage: could not select the first non-root page');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1288,21 +1322,34 @@ export async function enableSearchOption(page: Page): Promise<void> {
  * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
+    const navSelector = '.nav-element:not([nav-id="root"]) > .nav-element-text';
+    const countBefore = await page.locator(navSelector).count();
+
     // Dismiss any blocking alert modal before attempting to click the clone button
     await dismissBlockingAlertModal(page);
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();
-    await page.waitForTimeout(500);
 
-    // Close rename modal by pressing Escape
+    // Cloning opens a rename modal; close it with Escape once it is actually
+    // shown instead of racing a fixed sleep.
+    await page
+        .waitForFunction(() => !!document.querySelector('.modal.show'), undefined, { timeout: 5000 })
+        .catch(() => {});
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
-
-    // Wait for modal to close
     await page
         .waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 })
         .catch(() => {});
+
+    // Wait for the clone to be reflected in the navigation tree before returning.
+    // This previously used fixed 500ms sleeps, so on slow runners the nav was
+    // still re-rendering when the next selectPageByIndex() ran and its target
+    // node detached mid-scroll — the flaky search-preview-navigation failure.
+    await page.waitForFunction(
+        n => document.querySelectorAll('.nav-element:not([nav-id="root"]) > .nav-element-text').length > n,
+        countBefore,
+        { timeout: 15000 },
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1338,10 +1385,12 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
             // Wait for target element to be attached
             await targetNode.waitFor({ state: 'attached', timeout: 5000 });
 
-            // Small delay to let any DOM mutations settle
-            await page.waitForTimeout(100);
-
-            await targetNode.scrollIntoViewIfNeeded();
+            // A concurrent nav re-render can detach this node between the
+            // attached-wait and the scroll; the scroll is only a best-effort
+            // pre-step, so ignore a detach here — the force click below
+            // re-resolves and scrolls itself (a detach during the click falls
+            // through to the retry loop).
+            await targetNode.scrollIntoViewIfNeeded().catch(() => {});
             await targetNode.click({ force: true });
 
             // Click succeeded, exit the retry loop
@@ -1365,9 +1414,7 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
         throw lastError;
     }
 
-    await page.waitForTimeout(500);
-
-    // Wait for page content area to be ready
+    // Wait for page content area to be ready (deterministic — no fixed sleep)
     await page
         .waitForFunction(
             () => {
@@ -1413,22 +1460,37 @@ export async function addPage(page: Page, name: string = 'New Page'): Promise<st
  * @param blockId - The block element ID (without the 'dropdownMenuButton' prefix)
  * @returns The Download object for the exported file
  */
-export async function exportBlock(page: Page, blockId: string): Promise<Download> {
-    // Click on the block's actions dropdown button (three dots)
-    const dropdownBtn = page.locator(`#dropdownMenuButton${blockId}`);
+/**
+ * Open a "three dots" actions dropdown and resolve once the target menu item is
+ * visible. The first toggle click is occasionally missed (notably on Firefox),
+ * leaving the item present-but-hidden, so re-toggle until the menu is actually
+ * open instead of racing a fixed sleep — the flaky export in
+ * component-export-import.
+ */
+async function openActionsDropdown(page: Page, dropdownSelector: string, itemSelector: string): Promise<void> {
+    const dropdownBtn = page.locator(dropdownSelector);
+    const item = page.locator(itemSelector);
     await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
+    for (let attempt = 0; attempt < 5; attempt++) {
+        if (await item.isVisible().catch(() => false)) return;
+        await dropdownBtn.click();
+        const opened = await item
+            .waitFor({ state: 'visible', timeout: 2000 })
+            .then(() => true)
+            .catch(() => false);
+        if (opened) return;
+    }
+    // Surface a clear failure if the menu never opened after retries.
+    await item.waitFor({ state: 'visible', timeout: 5000 });
+}
 
-    // Wait for download event and click export button
+export async function exportBlock(page: Page, blockId: string): Promise<Download> {
+    const exportSelector = `#dropdownBlockMore-button-export${blockId}`;
+    await openActionsDropdown(page, `#dropdownMenuButton${blockId}`, exportSelector);
+
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#dropdownBlockMore-button-export${blockId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
+    await page.locator(exportSelector).click();
+    return await downloadPromise;
 }
 
 /**
@@ -1439,21 +1501,12 @@ export async function exportBlock(page: Page, blockId: string): Promise<Download
  * @returns The Download object for the exported file
  */
 export async function exportIdevice(page: Page, ideviceId: string): Promise<Download> {
-    // Click on the iDevice's actions dropdown button (three dots horizontal)
-    const dropdownBtn = page.locator(`#dropdownMenuButtonIdevice${ideviceId}`);
-    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
+    const exportSelector = `#exportIdevice${ideviceId}`;
+    await openActionsDropdown(page, `#dropdownMenuButtonIdevice${ideviceId}`, exportSelector);
 
-    // Wait for download event and click export button
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#exportIdevice${ideviceId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
+    await page.locator(exportSelector).click();
+    return await downloadPromise;
 }
 
 /**
@@ -1487,6 +1540,25 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
 
     // Wait for the file input to be available
     await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+
+    // The import inserts into the currently-selected page: modalOpenUserOdeFiles
+    // reads the selected nav node's nav-id and ComponentImporter.findPage() must
+    // resolve it in the Yjs structure. On a freshly created project the nav tree
+    // can render before the Yjs document has that page, so importing immediately
+    // failed with "Import error: Target page not found" and nothing rendered
+    // (the flaky component-export-import imports on the DB matrix). Wait for the
+    // selected page to actually exist in Yjs first — a deterministic precondition,
+    // not a fixed sleep or a longer render timeout.
+    await page.waitForFunction(
+        () => {
+            const app = (window as any).eXeLearning?.app;
+            const navId = app?.menus?.menuStructure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+            if (!navId) return false;
+            return !!app?.project?._yjsBridge?.structureBinding?.getPage?.(navId);
+        },
+        undefined,
+        { timeout: 15000 },
+    );
 
     // Set the file - this triggers the import directly
     await fileInput.setInputFiles(filePath);
@@ -2154,9 +2226,9 @@ export async function reloadPage(page: Page): Promise<void> {
         await waitForAppReady(page);
     } else {
         // Online mode: Full page reload (data is fetched from server)
-        await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
+        await waitForProjectSynced(page);
     }
 }
 
