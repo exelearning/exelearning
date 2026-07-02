@@ -214,5 +214,12 @@ export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = default
         .get('/:previewId/*', ({ params }) => serve(params.previewId, params['*'] ?? ''));
 }
 
+// The "preview host" wrapper page for opening a preview in a new tab is a plain
+// same-origin static asset — public/preview-tab.html — served here by the static
+// plugin (and copied into static/PWA builds). It frames the opaque content in a
+// sandboxed iframe and runs the embed relay so external video plays in the new tab
+// (a top-level opaque document has no parent, so the shim self-disables and the
+// media is blocked). See public/preview-tab.html.
+
 export const previewSessionApiRoutes = createPreviewSessionApiRoutes();
 export const previewServeRoutes = createPreviewServeRoutes();

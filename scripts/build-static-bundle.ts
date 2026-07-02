@@ -991,6 +991,7 @@ const CACHE_NAME = 'exelearning-static-${version}-${hash}';
 const STATIC_ASSETS = [
     './',
     './index.html',
+    './preview-tab.html',
     './app/app.bundle.js',
     './app/yjs/exporters.bundle.js',
     './libs/yjs/yjs.min.js',
@@ -1312,6 +1313,14 @@ async function buildStaticBundle() {
     if (fs.existsSync(faviconIco)) {
         fs.copyFileSync(faviconIco, path.join(outputDir, 'favicon.ico'));
         console.log('  Copied favicon.ico');
+    }
+
+    // Copy preview-tab.html — the opaque "preview host" page for opening a preview
+    // in a new tab (srcdoc transport: the editor pushes rendered page HTML to it).
+    const previewTabHtml = path.join(projectRoot, 'public/preview-tab.html');
+    if (fs.existsSync(previewTabHtml)) {
+        fs.copyFileSync(previewTabHtml, path.join(outputDir, 'preview-tab.html'));
+        console.log('  Copied preview-tab.html');
     }
 
     // Copy CHANGELOG.md

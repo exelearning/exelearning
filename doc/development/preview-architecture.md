@@ -172,6 +172,34 @@ the preview response CSP `frame-src` stays minimal (only the interactive-video
 fallback hosts `youtube-nocookie` / `player.vimeo.com`); the raw embed is never
 framed in the opaque child.
 
+## Open preview in a new tab
+
+Opening the opaque preview **content** directly as a top-level document breaks
+external media: the embed shim only runs when it has a parent
+(`window.parent !== window`), so a standalone tab leaves the raw cross-origin
+iframe (CSP-blocked) and, for srcdoc, has no URL to open at all. So "open in new
+tab" instead opens a same-origin **preview-host page** — `public/preview-tab.html`,
+served at root by the static plugin and copied into static/PWA builds — that
+frames the opaque content in one sandboxed iframe and runs the embed relay,
+becoming the trusted parent that overlays the real player in-place (same topology
+as the editor panel). Being a plain app page it carries **no CSP**, so the relay
+frames the player freely; the framed content stays opaque via its own response CSP
+(HTTP) or the iframe `sandbox` (srcdoc). Selection mirrors the transport
+(`previewPanel.extractToNewTab`):
+
+- **HTTP** (server): `preview-tab.html?session={previewId}` — the page frames the
+  capability URL `preview/{previewId}/index.html` directly (session lives server-side).
+- **srcdoc** (static / embedded): the new tab has no project in memory, so the
+  editor (opener) pushes the rendered page HTML over `postMessage`
+  (`exe-preview-tab:render`); navigation and document-open requests are forwarded
+  back to the editor (`exe-preview-tab:forward`), which owns the preview provider
+  and resolves the target page. Same-origin messaging only.
+- **Electron** (legacy service-worker): not opaque — video plays inline — so it
+  keeps opening its `/viewer` entry URL.
+
+The relay is started on the framed iframe's first `load` (like the panel, which
+attaches the relay after the iframe has content) and re-pinged on every (re)load.
+
 ## Roadmap
 
 - **Phase 2**: flip the static bundle sandbox and the `phase2SrcdocDefault`

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>eXeLearning preview</title>
+    <!--
+      Opaque "preview host" page for opening a preview in a NEW TAB.
+
+      Opening the opaque preview content directly as a top-level document breaks
+      external media: the embed shim only runs when it has a parent
+      (`window.parent !== window`), so a standalone tab leaves the raw cross-origin
+      iframe (blocked by the content CSP) and, for srcdoc, has no URL at all. This
+      same-origin page frames the opaque content in one sandboxed iframe and runs
+      the embed relay, becoming the trusted parent that overlays the real player
+      in-place — exactly like the editor panel.
+
+      Two modes, chosen by the URL:
+      - `?session=<uuid>` (server / HTTP transport): frame the capability URL
+        `preview/<uuid>/index.html` directly. The session lives on the server.
+      - no query (static / embedded / srcdoc transport): the new tab has no project
+        in memory, so the opener (editor) hands the rendered page HTML over via
+        postMessage; navigation is forwarded back to the opener, which owns the
+        preview provider and resolves the target page.
+
+      Served same-origin as a plain app page (no CSP), so the relay may frame the
+      real player freely; the framed content stays opaque via its own response CSP
+      (HTTP) or the iframe sandbox (srcdoc). All URLs are relative so it works
+      unchanged under a BASE_PATH prefix.
+    -->
+    <style>
+        html, body { margin: 0; height: 100%; }
+        body { overflow: hidden; background: #fff; }
+        #exe-preview-host { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+    </style>
+</head>
+<body>
+    <iframe id="exe-preview-host" title="Preview" referrerpolicy="no-referrer" allow="fullscreen"
+        sandbox="allow-scripts allow-popups allow-forms"></iframe>
+    <script src="app/common/exe_media_bridge/exe_media_policy.js"></script>
+    <script src="app/common/exe_media_bridge/exe-media-host.js"></script>
+    <script src="app/common/exe_embed_bridge/exe_embed_relay.js"></script>
+    <script>
+        (function () {
+            var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            var iframe = document.getElementById('exe-preview-host');
+            var opener = window.opener;
+            var ORIGIN = window.location.origin;
+            var relayStarted = false;
+
+            // Start the embed relay once the framed content exists (like the editor panel,
+            // which attaches the relay after the iframe has content), then (re)ping on every
+            // (re)load so the shim re-reports embed geometry and the relay overlays the real
+            // player in-place — no click. The ping also re-arms after each srcdoc navigation.
+            iframe.addEventListener('load', function () {
+                if (!relayStarted && window.exeEmbedRelay) {
+                    try {
+                        window.exeEmbedRelay.init({ mode: 'open' });
+                        relayStarted = true;
+                    } catch (e) {
+                        /* non-fatal */
+                    }
+                }
+                try {
+                    iframe.contentWindow.postMessage({ type: 'exe-embed', action: 'request' }, '*');
+                } catch (e) {
+                    /* opaque content: postMessage is still delivered */
+                }
+            });
+
+            var params = new URLSearchParams(window.location.search);
+            var session = params.get('session');
+
+            if (session && UUID_RE.test(session)) {
+                // HTTP transport: frame the same-origin opaque capability URL directly.
+                iframe.src = 'preview/' + session + '/index.html?exe-teacher=1';
+                return;
+            }
+
+            // srcdoc transport: the editor (opener) pushes rendered page HTML and resolves
+            // navigation, since this tab has no project in memory.
+            if (!opener) { return; }
+
+            window.addEventListener('message', function (e) {
+                if (e.origin !== ORIGIN) { return; }
+                // Rendered page HTML from the editor.
+                if (e.source === opener && e.data && e.data.type === 'exe-preview-tab:render') {
+                    if (typeof e.data.html === 'string') { iframe.srcdoc = e.data.html; }
+                    return;
+                }
+                // Navigation / open-document requests bubble up from the opaque content
+                // iframe; forward them to the editor, which owns the preview provider.
+                if (e.source === iframe.contentWindow && e.data && typeof e.data.type === 'string') {
+                    var t = e.data.type;
+                    if (t === 'exe-preview-navigate' || t === 'exe-preview-open-document') {
+                        opener.postMessage({ type: 'exe-preview-tab:forward', payload: e.data }, ORIGIN);
+                    }
+                }
+            });
+
+            // Tell the editor we are ready to receive the first page.
+            opener.postMessage({ type: 'exe-preview-tab:ready' }, ORIGIN);
+        })();
+    </script>
+</body>
+</html>

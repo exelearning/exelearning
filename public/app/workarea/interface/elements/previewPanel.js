@@ -69,11 +69,13 @@ export default class PreviewPanelManager {
         this._session = null;
         this._currentPagePath = null;
         this._mediaHost = null;
+        this._basePath = '';
         this._pageHideHandler = null;
 
         // Popup window tracking
         this._popupWindow = null;
         this._popupMonitorTimer = null;
+        this._previewTabHandoff = null;
         this._recoveryChannel = null;
     }
 
@@ -105,6 +107,7 @@ export default class PreviewPanelManager {
     _initProvider() {
         const app = eXeLearning?.app;
         const basePath = app?.getBasePath?.() || '';
+        this._basePath = basePath;
         try {
             this._provider = selectPreviewProvider({
                 runtimeConfig: app?.runtimeConfig || null,
@@ -331,6 +334,7 @@ export default class PreviewPanelManager {
             if (!this._isPopupOpen()) {
                 Logger.log('[PreviewPanel] Popup window closed');
                 this._popupWindow = null;
+                this._teardownPreviewTabHandoff();
                 this._clearPopupMonitor();
             }
         }, 2000);
@@ -1068,8 +1072,8 @@ export default class PreviewPanelManager {
      */
     async extractToNewTab() {
         try {
-            if (!this._provider || this._provider.mode === 'srcdoc' || !this._session?.entryUrl) {
-                Logger.warn('[PreviewPanel] Extract-to-new-tab is unavailable for this transport');
+            if (!this._provider || !this._session) {
+                Logger.warn('[PreviewPanel] Extract-to-new-tab is unavailable: no active preview');
                 return;
             }
 
@@ -1079,21 +1083,112 @@ export default class PreviewPanelManager {
                 await this._syncProvider(result.files);
             }
 
-            const url = new URL(this._session.entryUrl, window.location.href).href;
+            // Open the same-origin "preview host" page (public/preview-tab.html) rather
+            // than the content directly. A top-level opaque document has no parent, so the
+            // embed shim self-disables and external video is blocked; the host page frames
+            // the opaque content and runs the relay as the trusted parent, so video plays
+            // in-place. HTTP frames the capability URL via ?session; srcdoc has no URL, so
+            // the editor pushes rendered page HTML to the host tab (handoff below). The
+            // legacy service-worker transport is not opaque and keeps its /viewer URL.
+            const base = this._basePath || '';
+            const mode = this._provider.mode;
+            let target;
+            if (mode === 'http') {
+                target = `${base}/preview-tab.html?session=${encodeURIComponent(this._session.id)}`;
+            } else if (mode === 'srcdoc') {
+                target = `${base}/preview-tab.html`;
+            } else {
+                target = this._session.entryUrl;
+            }
+            if (!target) {
+                Logger.warn('[PreviewPanel] Extract-to-new-tab is unavailable for this transport');
+                return;
+            }
+
+            const url = new URL(target, window.location.href).href;
             const newTab = window.open(url, '_blank');
             if (newTab) {
                 this._popupWindow = newTab;
+                if (mode === 'srcdoc') {
+                    this._startPreviewTabHandoff(newTab);
+                }
                 this._setupPopupMonitor();
                 Logger.log('[PreviewPanel] Preview opened in new tab');
-            } else {
+            } else if (mode !== 'srcdoc') {
+                // Only the self-sufficient URL transports can fall back to a link click;
+                // srcdoc needs the window handle to push content.
                 Logger.warn('[PreviewPanel] Popup blocked - trying fallback');
                 const a = document.createElement('a');
                 a.href = url;
                 a.target = '_blank';
                 a.click();
+            } else {
+                Logger.warn('[PreviewPanel] Popup blocked - cannot open the preview in a new tab');
             }
         } catch (error) {
             Logger.error('[PreviewPanel] Error extracting to new tab:', error);
+        }
+    }
+
+    /**
+     * Feed the opaque preview-host tab (srcdoc transport) with rendered page HTML.
+     * The tab has no project in memory, so this editor — which owns the preview
+     * provider — resolves each page and pushes the HTML; the tab forwards navigation
+     * and document-open requests back here. Same-origin postMessage only.
+     * @param {Window} popup
+     */
+    _startPreviewTabHandoff(popup) {
+        this._teardownPreviewTabHandoff();
+        const origin = window.location.origin;
+        let popupPage = this._currentPagePath || 'index.html';
+
+        const sendRender = async (page) => {
+            try {
+                const target = await this._provider?.resolvePage(page);
+                if (target?.kind === 'srcdoc' && popup && !popup.closed) {
+                    popup.postMessage({ type: 'exe-preview-tab:render', html: target.html }, origin);
+                }
+            } catch (error) {
+                Logger.warn('[PreviewPanel] Preview-tab render failed:', error);
+            }
+        };
+
+        const onMessage = (event) => {
+            if (event.origin !== origin || event.source !== popup) return;
+            const data = event.data;
+            if (!data || typeof data.type !== 'string') return;
+            if (data.type === 'exe-preview-tab:ready') {
+                sendRender(popupPage);
+                return;
+            }
+            if (data.type === 'exe-preview-tab:forward' && data.payload && typeof data.payload.type === 'string') {
+                const payload = data.payload;
+                if (payload.type === MSG.NAVIGATE) {
+                    const targetPage = this._resolvePreviewHref(
+                        payload.href,
+                        sanitizePagePath(payload.page) || popupPage,
+                    );
+                    if (
+                        targetPage &&
+                        (typeof this._provider?.hasPage !== 'function' || this._provider.hasPage(targetPage))
+                    ) {
+                        popupPage = targetPage;
+                        sendRender(targetPage);
+                    }
+                } else if (payload.type === MSG.OPEN_DOC) {
+                    this._handlePreviewOpenDocument(payload);
+                }
+            }
+        };
+        window.addEventListener('message', onMessage);
+        this._previewTabHandoff = onMessage;
+    }
+
+    /** Remove the preview-host tab handoff listener (popup closed / panel destroyed). */
+    _teardownPreviewTabHandoff() {
+        if (this._previewTabHandoff) {
+            window.removeEventListener('message', this._previewTabHandoff);
+            this._previewTabHandoff = null;
         }
     }
 
@@ -1229,6 +1324,7 @@ export default class PreviewPanelManager {
         // Clean up popup tracking
         this._popupWindow = null;
         this._clearPopupMonitor();
+        this._teardownPreviewTabHandoff();
 
         // Close recovery BroadcastChannel
         if (this._recoveryChannel) {

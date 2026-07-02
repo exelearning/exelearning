@@ -135,8 +135,12 @@ export class Capabilities {
             transport: previewTransport,
             /** Whether the transport works inside an opaque-origin sandbox */
             opaqueSafe: previewTransport !== 'service-worker',
-            /** Whether "open preview in new tab" is available (needs a real URL) */
-            extractToNewTab: previewTransport !== 'srcdoc',
+            /**
+             * Whether "open preview in new tab" is available. All transports open the
+             * same-origin preview-host page (public/preview-tab.html): HTTP frames the
+             * capability URL, srcdoc receives the rendered page HTML from the editor.
+             */
+            extractToNewTab: true,
             /** Whether the legacy same-origin Service Worker preview is active */
             legacyServiceWorker: previewTransport === 'service-worker',
         });

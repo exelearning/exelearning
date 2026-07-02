@@ -56,4 +56,35 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
             .poll(async () => page.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
             .toBeGreaterThan(0);
     });
+
+    test('opens the preview in a new tab via the host wrapper and plays the video there', async ({
+        authenticatedPage,
+        createProject,
+        context,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Media relay new tab');
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+        await openElpFile(page, path.join(process.cwd(), 'test/fixtures/opaque-preview-external-media.elpx'));
+        await page.waitForTimeout(1500);
+        await openPreviewPanel(page);
+
+        // Extract to a new tab — must open the same-origin /preview-tab host page, not the
+        // raw opaque content URL.
+        const popupPromise = context.waitForEvent('page');
+        await page.locator('#preview-extract-button').click();
+        const popup = await popupPromise;
+        await popup.waitForLoadState('domcontentloaded');
+        expect(popup.url()).toContain('/preview-tab.html?session=');
+
+        // The host wrapper frames the opaque content and runs the relay → the real player
+        // is overlaid in the new tab (this is what fails when opening the content directly).
+        await expect
+            .poll(async () => popup.locator('.exe-embed-overlay iframe[src*="youtube"]').count(), { timeout: 15000 })
+            .toBeGreaterThan(0);
+        // The framed content is still opaque (isolated).
+        const framed = popup.frameLocator('#exe-preview-host');
+        expect(await framed.locator('body').evaluate(() => String(window.origin))).toBe('null');
+    });
 });

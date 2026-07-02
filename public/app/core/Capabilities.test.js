@@ -225,7 +225,7 @@ describe('Capabilities', () => {
             expect(Object.isFrozen(capabilities.preview)).toBe(true);
         });
 
-        it('uses srcdoc in embedded mode, without extract-to-new-tab', () => {
+        it('uses srcdoc in embedded mode, with extract-to-new-tab via the preview-host page', () => {
             const config = new RuntimeConfig({
                 mode: 'embedded',
                 baseUrl: '.',
@@ -235,7 +235,8 @@ describe('Capabilities', () => {
             });
             const capabilities = new Capabilities(config);
             expect(capabilities.preview.transport).toBe('srcdoc');
-            expect(capabilities.preview.extractToNewTab).toBe(false);
+            // srcdoc now opens the preview-host page (editor pushes rendered HTML).
+            expect(capabilities.preview.extractToNewTab).toBe(true);
         });
 
         it('uses opaque srcdoc for standalone static/PWA, and keeps Electron on the legacy SW (interim)', () => {

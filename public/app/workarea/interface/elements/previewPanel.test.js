@@ -1049,30 +1049,100 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('extractToNewTab', () => {
-    it('opens the session entry URL in a new tab for the HTTP transport', async () => {
-      manager._provider = createFakeProvider();
-      manager._session = { id: 'sess-1', entryUrl: '/test/preview/sess-1/index.html?exe-teacher=1' };
+    it('opens the same-origin preview-host wrapper (not the raw opaque URL) for the HTTP transport', async () => {
+      manager._basePath = '/test';
+      manager._provider = createFakeProvider({ mode: 'http' });
+      manager._session = { id: 'sess-1', entryUrl: '/test/preview/sess-1/index.html?exe-teacher=1', mode: 'http' };
       const mockOpen = vi.fn(() => ({ closed: false }));
       global.open = mockOpen;
 
       await manager.extractToNewTab();
 
-      expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringContaining('/test/preview/sess-1/index.html'),
-        '_blank',
-      );
+      const url = mockOpen.mock.calls[0][0];
+      expect(url).toContain('/test/preview-tab.html?session=sess-1');
+      // Opening the raw opaque content URL directly would leave the shim parentless → video blocked.
+      expect(url).not.toContain('/preview/sess-1/index.html');
       expect(manager._popupWindow).not.toBeNull();
     });
 
-    it('is a no-op for the srcdoc transport', async () => {
-      manager._provider = createFakeProvider({ mode: 'srcdoc', opaqueSafe: true });
-      manager._session = { id: 'sess-1', entryUrl: null };
-      const mockOpen = vi.fn();
+    it('keeps opening the legacy /viewer entry URL for the service-worker transport', async () => {
+      manager._basePath = '';
+      manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
+      manager._session = { id: 'sw-1', entryUrl: '/viewer/index.html?exe-teacher=1', mode: 'service-worker' };
+      const mockOpen = vi.fn(() => ({ closed: false }));
       global.open = mockOpen;
 
       await manager.extractToNewTab();
 
-      expect(mockOpen).not.toHaveBeenCalled();
+      expect(mockOpen.mock.calls[0][0]).toContain('/viewer/index.html');
+    });
+
+    it('opens the preview-host page and hands off rendered HTML for the srcdoc transport', async () => {
+      manager._basePath = '/test';
+      manager._currentPagePath = 'index.html';
+      const popup = { closed: false, postMessage: vi.fn() };
+      const provider = createFakeProvider({
+        mode: 'srcdoc',
+        opaqueSafe: true,
+        resolvePage: vi.fn().mockResolvedValue({ kind: 'srcdoc', html: '<html>page</html>' }),
+      });
+      manager._provider = provider;
+      manager._session = { id: 'sess-1', entryUrl: null, mode: 'srcdoc' };
+      global.open = vi.fn(() => popup);
+
+      await manager.extractToNewTab();
+
+      expect(global.open.mock.calls[0][0]).toContain('/test/preview-tab.html');
+      expect(global.open.mock.calls[0][0]).not.toContain('?session=');
+
+      // The host tab announces readiness → the editor resolves and pushes the page HTML.
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          source: popup,
+          origin: window.location.origin,
+          data: { type: 'exe-preview-tab:ready' },
+        }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(provider.resolvePage).toHaveBeenCalledWith('index.html');
+      expect(popup.postMessage).toHaveBeenCalledWith(
+        { type: 'exe-preview-tab:render', html: '<html>page</html>' },
+        window.location.origin,
+      );
+    });
+
+    it('resolves forwarded navigation from the srcdoc host tab', async () => {
+      manager._basePath = '';
+      manager._currentPagePath = 'index.html';
+      const popup = { closed: false, postMessage: vi.fn() };
+      const provider = createFakeProvider({
+        mode: 'srcdoc',
+        opaqueSafe: true,
+        resolvePage: vi.fn().mockResolvedValue({ kind: 'srcdoc', html: '<html>p2</html>' }),
+        hasPage: vi.fn(() => true),
+      });
+      manager._provider = provider;
+      manager._session = { id: 'sess-1', entryUrl: null, mode: 'srcdoc' };
+      global.open = vi.fn(() => popup);
+      await manager.extractToNewTab();
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          source: popup,
+          origin: window.location.origin,
+          data: { type: 'exe-preview-tab:forward', payload: { type: 'exe-preview-navigate', href: 'html/page2.html', page: 'index.html' } },
+        }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(provider.resolvePage).toHaveBeenCalledWith('html/page2.html');
+      expect(popup.postMessage).toHaveBeenCalledWith(
+        { type: 'exe-preview-tab:render', html: '<html>p2</html>' },
+        window.location.origin,
+      );
     });
 
     it('falls back to a link click when the popup is blocked', async () => {
