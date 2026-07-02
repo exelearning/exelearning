@@ -760,6 +760,98 @@ it('should filter by accept=3d for 3D models', () => {
     });
   });
 
+  describe('renderCurrentView - single-select preservation (collaborative Yjs refresh)', () => {
+    it('preserves the single-select selection when the asset survives a re-render', () => {
+      const asset = { id: 'a1', filename: 'keep.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = asset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      modal.filteredAssets = [asset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+      const showEmptySpy = vi.spyOn(modal, 'showSidebarEmpty');
+
+      modal.renderCurrentView();
+
+      // Selection reference is kept (points at the freshly-rendered asset).
+      expect(modal.selectedAsset).toBe(asset);
+      // Sidebar shows the asset details instead of being emptied.
+      expect(showContentSpy).toHaveBeenCalledWith(asset);
+      expect(showEmptySpy).not.toHaveBeenCalled();
+      // Visual selection is re-applied to the matching grid item.
+      const item = modal.grid.querySelector('.media-library-item[data-asset-id="a1"]');
+      expect(item).not.toBeNull();
+      expect(item.classList.contains('selected')).toBe(true);
+      // Single selection keeps the rename button enabled.
+      expect(modal.renameBtn.disabled).toBe(false);
+    });
+
+    it('re-applies the selection to the matching list row in list view', () => {
+      const asset = { id: 'a1', filename: 'keep.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'list';
+      modal.selectedAsset = asset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      modal.filteredAssets = [asset];
+
+      vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+
+      modal.renderCurrentView();
+
+      expect(modal.selectedAsset).toBe(asset);
+      const row = modal.listTbody.querySelector('tr[data-asset-id="a1"]');
+      expect(row).not.toBeNull();
+      expect(row.classList.contains('selected')).toBe(true);
+    });
+
+    it('refreshes the selection reference to the rebuilt asset object with the same id', () => {
+      const oldAsset = { id: 'a1', filename: 'old.png', mime: 'image/png', blob: new Blob(['x']) };
+      const rebuiltAsset = { id: 'a1', filename: 'renamed.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = oldAsset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      // The remote refresh rebuilt the list with a new object instance.
+      modal.filteredAssets = [rebuiltAsset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+
+      modal.renderCurrentView();
+
+      // The reference is updated to the freshly-rebuilt object, not the stale one.
+      expect(modal.selectedAsset).toBe(rebuiltAsset);
+      expect(showContentSpy).toHaveBeenCalledWith(rebuiltAsset);
+    });
+
+    it('clears the single-select selection when the asset is gone after a re-render', () => {
+      const removedAsset = { id: 'a1', filename: 'gone.png', mime: 'image/png', blob: new Blob(['x']) };
+      const otherAsset = { id: 'a2', filename: 'other.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = removedAsset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      // The removed asset is no longer in the rendered list.
+      modal.filteredAssets = [otherAsset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+      const showEmptySpy = vi.spyOn(modal, 'showSidebarEmpty');
+
+      modal.renderCurrentView();
+
+      expect(modal.selectedAsset).toBeNull();
+      expect(modal.selectedAssets).toEqual([]);
+      expect(showEmptySpy).toHaveBeenCalled();
+      expect(showContentSpy).not.toHaveBeenCalledWith(removedAsset);
+      // With nothing selected the rename button is disabled again.
+      expect(modal.renameBtn.disabled).toBe(true);
+    });
+  });
+
   describe('showEmptyState/hideEmptyState', () => {
     it('should show empty state and hide grid/list', () => {
       modal.showEmptyState();
