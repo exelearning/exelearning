@@ -2015,5 +2015,27 @@ describe('BaseExporter', () => {
             expect(writtenText).toContain('WEBVTT');
             expect(writtenText).toContain('Already valid VTT');
         });
+
+        it('falls back to the original asset bytes without throwing when the .srt asset data cannot be decoded as text', async () => {
+            // Not a real Buffer/TypedArray -- TextDecoder.decode() throws on this,
+            // exercising resolveAssetExportData's catch-and-fall-back branch.
+            const undecodable = {} as unknown as Buffer;
+            assets.addAsset(
+                '55555555-5555-5555-5555-555555555555',
+                'broken-subtitle.srt',
+                'application/x-subrip',
+                undecodable,
+            );
+
+            // Resolves without throwing -- if resolveAssetExportData's catch branch
+            // didn't swallow the decode error, this await would reject and fail the test.
+            await exporter.addAssetsToZipWithResourcePath();
+
+            // Export path is still renamed to .vtt (filename-driven, independent of
+            // the data itself), but the written bytes are the untouched original
+            // since conversion failed -- graceful degradation, not data loss.
+            expect(zip.hasFile('content/resources/broken-subtitle.vtt')).toBe(true);
+            expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe(undecodable);
+        });
     });
 });
