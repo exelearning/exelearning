@@ -24,6 +24,7 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
 /**
  * Abstract base class for exporters
@@ -534,7 +535,8 @@ export abstract class BaseExporter {
                 if (this.zip.hasFile(zipPath)) {
                     return;
                 }
-                this.zip.addFile(zipPath, asset.data);
+                const data = await this.resolveAssetExportData(asset);
+                this.zip.addFile(zipPath, data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
             };
@@ -600,6 +602,63 @@ export abstract class BaseExporter {
      */
     getExtensionFromMime(mime: string): string {
         return getExtensionFromMimeType(mime, true);
+    }
+
+    // =========================================================================
+    // Subtitle Track Conversion (issue #2034)
+    // =========================================================================
+
+    /** MIME types used for raw SubRip (`.srt`) subtitle files. */
+    private static readonly SRT_MIME_TYPES = new Set(['application/x-subrip', 'application/srt', 'text/srt']);
+
+    /**
+     * Whether an asset is a raw SubRip (`.srt`) subtitle file, detected from
+     * its filename extension or MIME type. Native `<video><track>` only
+     * understands WebVTT, so these assets must be converted before they are
+     * written into an export or preview file set (see
+     * {@link resolveAssetExportData} and {@link buildAssetExportPathMap}).
+     */
+    protected isSrtSubtitleAsset(filename: string | undefined, mime: string | undefined): boolean {
+        const normalizedFilename = (filename || '').toLowerCase();
+        const normalizedMime = (mime || '').toLowerCase();
+        return normalizedFilename.endsWith('.srt') || BaseExporter.SRT_MIME_TYPES.has(normalizedMime);
+    }
+
+    /** Decode asset binary data (Uint8Array or Blob) to a UTF-8 string. */
+    protected async readAssetDataAsText(data: Uint8Array | Blob): Promise<string> {
+        if (typeof Blob !== 'undefined' && data instanceof Blob) {
+            return data.text();
+        }
+        return new TextDecoder('utf-8').decode(data as Uint8Array);
+    }
+
+    /**
+     * Resolve the data that should actually be written for an asset in the
+     * export/preview file set. `.srt` subtitle assets are converted to
+     * WebVTT text on the fly (their export path is renamed `.srt` -> `.vtt`
+     * by {@link buildAssetExportPathMap}, so the written bytes must match).
+     * Every other asset passes through unchanged.
+     *
+     * Shared by {@link addAssetsToZipWithResourcePath} (real exports) and
+     * `Html5Exporter.addAssetsToPreviewFiles` (Preview panel), so the same
+     * conversion always applies regardless of which surface is rendering.
+     */
+    protected async resolveAssetExportData(asset: {
+        filename?: string;
+        mime?: string;
+        data: Uint8Array | Blob;
+    }): Promise<Uint8Array | Blob | string> {
+        if (!this.isSrtSubtitleAsset(asset.filename, asset.mime)) {
+            return asset.data;
+        }
+        try {
+            const text = await this.readAssetDataAsText(asset.data);
+            const { vtt } = convertSrtToVtt(text);
+            return vtt;
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to convert .srt subtitle asset to WebVTT:', e);
+            return asset.data;
+        }
     }
 
     /**
@@ -681,7 +740,17 @@ export abstract class BaseExporter {
                 // Ensure the export name carries an extension. Assets saved as
                 // `asset-<uuid>` (no extension) would otherwise be re-imported as
                 // application/octet-stream and force-downloaded (PDF iframes).
-                const filename = this._ensureFilenameExtension(rawFilename, item.mime);
+                let filename = this._ensureFilenameExtension(rawFilename, item.mime);
+
+                // Raw .srt subtitle assets are always exported/previewed as WebVTT
+                // (native <video><track> never understood .srt) -- see issue #2034.
+                // Rewriting the export path here keeps the ZIP file and every HTML
+                // <track src> reference in sync automatically, since both derive
+                // from this same map (addAssetsToZipWithResourcePath /
+                // addFilenamesToAssetUrls / Html5Exporter.addAssetsToPreviewFiles).
+                if (this.isSrtSubtitleAsset(filename, item.mime)) {
+                    filename = filename.replace(/\.srt$/i, '.vtt');
+                }
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")

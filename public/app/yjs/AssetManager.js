@@ -3909,6 +3909,9 @@ class AssetManager {
       json: 'application/json',
       csv: 'text/csv',
       rtf: 'application/rtf',
+      // Subtitles
+      srt: 'application/x-subrip',
+      vtt: 'text/vtt',
       // Open Document
       odt: 'application/vnd.oasis.opendocument.text',
       ods: 'application/vnd.oasis.opendocument.spreadsheet',
@@ -5429,6 +5432,14 @@ window.simplifyMediaElements = function(html) {
     newVideo.style.maxWidth = '100%';
     newVideo.style.height = 'auto';
 
+    // Preserve <track> children (subtitles/captions) -- dropping them here
+    // silently loses subtitles wherever this simplified markup is rendered
+    // (issue #2034). Keep this symmetric with the isomorphic twin in
+    // src/shared/utils/media-helpers.ts simplifyMediaElements().
+    video.querySelectorAll('track').forEach((track) => {
+      newVideo.appendChild(track.cloneNode(true));
+    });
+
     // Replace the old video with the new simple one
     video.parentNode.replaceChild(newVideo, video);
     modified++;
@@ -5459,6 +5470,11 @@ window.simplifyMediaElements = function(html) {
 
     if (type) newAudio.setAttribute('type', type);
     if (className) newAudio.className = className;
+
+    // Preserve <track> children (subtitles/captions), same as for video.
+    audio.querySelectorAll('track').forEach((track) => {
+      newAudio.appendChild(track.cloneNode(true));
+    });
 
     audio.parentNode.replaceChild(newAudio, audio);
     modified++;

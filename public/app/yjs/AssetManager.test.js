@@ -1472,6 +1472,14 @@ describe('AssetManager', () => {
     it('returns application/octet-stream for unknown extensions', () => {
       expect(assetManager.getMimeType('file.unknown')).toBe('application/octet-stream');
     });
+
+    it('returns correct MIME types for subtitle files (.srt / .vtt) -- issue #2034', () => {
+      // Falls back to application/octet-stream today, which is why uploaded
+      // subtitle assets are force-downloaded / mis-typed instead of being
+      // usable as <track> resources.
+      expect(assetManager.getMimeType('subtitles.srt')).toBe('application/x-subrip');
+      expect(assetManager.getMimeType('subtitles.vtt')).toBe('text/vtt');
+    });
   });
 
   describe('generatePlaceholder', () => {
@@ -5941,6 +5949,38 @@ describe('window.simplifyMediaElements global function', () => {
     expect(result).toContain('src="asset://uuid/video.mp4"');
     // Should not add controls (not processed by simplify)
     expect(result).not.toContain('controls');
+  });
+
+  // Issue #2034: dropping <track> children here silently loses subtitles
+  // wherever this simplified markup is rendered (ideviceNode.js exportHtmlView()).
+  it('preserves <track> subtitle children on video elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4">' +
+      '<track kind="subtitles" srclang="es" label="Español" src="asset://uuid2/subtitles.vtt" default></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="subtitles"');
+    expect(result).toContain('srclang="es"');
+    expect(result).toContain('src="asset://uuid2/subtitles.vtt"');
+  });
+
+  it('preserves <track> subtitle children on audio elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<audio><source src="asset://uuid/audio.mp3" type="audio/mpeg">' +
+      '<track kind="captions" srclang="en" src="asset://uuid2/captions.vtt"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="captions"');
+    expect(result).toContain('src="asset://uuid2/captions.vtt"');
+  });
+
+  it('does not add a <track> element when the source video has none', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).not.toContain('<track');
   });
 });
 

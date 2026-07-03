@@ -627,12 +627,16 @@ var $exe = {
                         this.height = r
                     }
                 }
-                // Disable the JavaScript player if the video has no .srt subtitles
+                // Disable the JavaScript player if the video has no .srt/.vtt subtitles.
+                // Exported/previewed subtitle tracks are always converted to WebVTT
+                // (issue #2034 -- native <video><track> never understood raw .srt),
+                // so a track pointing at a converted .vtt file must still trigger the
+                // compatible player, not just the original literal .srt upload.
                 if ($("track", this).length > 0) {
                     var hasSrt = false;
                     $("track", this).each(function() {
                         if (typeof(this.src) == 'string') {
-                            if (this.src.endsWith('.srt')) {
+                            if (this.src.endsWith('.srt') || this.src.endsWith('.vtt')) {
                                 hasSrt = true;
                             }
                         }

@@ -362,6 +362,47 @@ describe('common.js $exe helpers', () => {
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
+      // Issue #2034: the export/preview pipeline now converts subtitle assets
+      // to WebVTT and rewrites <track src> to end in .vtt (native <video><track>
+      // never understood raw .srt). The literal `.endsWith('.srt')` sniff in
+      // common.js:635 must not gate the compatible ("jsplayer") player on the
+      // subtitle file's extension -- it must trigger on the presence of any
+      // <track> under a `.mediaelement` video/audio element, same as it already
+      // does for .srt today.
+      it('processes video elements whose subtitle track is a converted .vtt file (issue #2034)', () => {
+        const video = document.createElement('video');
+        video.className = 'mediaelement';
+        video.src = 'test.mp4';
+        const track = document.createElement('track');
+        track.src = 'subtitles.vtt';
+        track.kind = 'subtitles';
+        video.appendChild(track);
+        document.body.appendChild(video);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // Exported/previewed tracks are always .vtt now -- the compatible
+        // player must still be activated, not just for literal .srt files.
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('processes audio elements whose subtitle track is a converted .vtt file (issue #2034)', () => {
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        const track = document.createElement('track');
+        track.src = 'subtitles.vtt';
+        track.kind = 'subtitles';
+        audio.appendChild(track);
+        document.body.appendChild(audio);
+
+        global.$exe.loadMediaPlayer.init();
+
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
       it('handles video elements and resizes them if needed', () => {
         // Create a wide video element
         const video = document.createElement('video');

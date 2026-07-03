@@ -1929,4 +1929,91 @@ describe('BaseExporter', () => {
             expect(processed[0].blocks[0].components[0].content).toBe('<p>No properties</p>');
         });
     });
+
+    describe('Subtitle track SRT to VTT conversion (issue #2034)', () => {
+        // Real fixture text (test/fixtures/subtitles/test-subtitle.srt), byte-identical
+        // to the file attached to the GitHub issue.
+        const srtBytes = Buffer.from(
+            '1\n00:00:02,360 --> 00:00:05,760\nEste es un vídeo de prueba para\nprobar los subtítulos en EXeLearning.\n',
+            'utf-8',
+        );
+
+        it('rewrites a .srt subtitle asset export path to .vtt', async () => {
+            assets.addAsset(
+                '11111111-1111-1111-1111-111111111111',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            const exportPath = pathMap.get('11111111-1111-1111-1111-111111111111');
+
+            expect(exportPath).toBeDefined();
+            expect(exportPath?.endsWith('.vtt')).toBe(true);
+            expect(exportPath?.endsWith('.srt')).toBe(false);
+        });
+
+        it('rewrites <track src="asset://...srt"> HTML references to the .vtt export path and keeps other track attributes intact', async () => {
+            assets.addAsset(
+                '22222222-2222-2222-2222-222222222222',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            const html =
+                '<video controls><source src="video.mp4" type="video/mp4" />' +
+                '<track kind="subtitles" srclang="es" label="Español" default ' +
+                'src="asset://22222222-2222-2222-2222-222222222222.srt" />' +
+                '</video>';
+
+            const result = await exporter.addFilenamesToAssetUrls(html);
+
+            expect(result).toContain('content/resources/test-subtitle.vtt');
+            expect(result).not.toContain('.srt');
+            expect(result).toContain('kind="subtitles"');
+            expect(result).toContain('srclang="es"');
+            expect(result).toContain('label="Español"');
+            expect(result).toContain('default');
+        });
+
+        it('writes converted WebVTT bytes into the ZIP under the .vtt path (not the raw .srt bytes)', async () => {
+            assets.addAsset(
+                '33333333-3333-3333-3333-333333333333',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            await exporter.addAssetsToZipWithResourcePath();
+
+            expect(zip.hasFile('content/resources/test-subtitle.vtt')).toBe(true);
+            expect(zip.hasFile('content/resources/test-subtitle.srt')).toBe(false);
+
+            const written = zip.files.get('content/resources/test-subtitle.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).toContain('00:00:02.360 --> 00:00:05.760');
+            expect(writtenText).not.toContain(',360');
+            // UTF-8 accented text must survive the conversion
+            expect(writtenText).toContain('vídeo');
+            expect(writtenText).toContain('subtítulos');
+        });
+
+        it('leaves an already-.vtt subtitle asset untouched (no double conversion, no .srt path)', async () => {
+            const vttBytes = Buffer.from('WEBVTT\n\n00:00:02.360 --> 00:00:05.760\nAlready valid VTT\n', 'utf-8');
+            assets.addAsset('44444444-4444-4444-4444-444444444444', 'already-valid.vtt', 'text/vtt', vttBytes);
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            expect(pathMap.get('44444444-4444-4444-4444-444444444444')).toBe('already-valid.vtt');
+
+            await exporter.addAssetsToZipWithResourcePath();
+            const written = zip.files.get('content/resources/already-valid.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+            expect(writtenText).toContain('WEBVTT');
+            expect(writtenText).toContain('Already valid VTT');
+        });
+    });
 });
