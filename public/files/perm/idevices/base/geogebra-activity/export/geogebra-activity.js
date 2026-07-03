@@ -192,10 +192,17 @@ var $geogebraactivity = {
             let c = e.className;
             c = c.split(' ');
             for (let i = 0; i < c.length; i++) {
-                if (c[i].indexOf('auto-geogebra-width-') == 0)
-                    w = c[i].replace('auto-geogebra-width-', '');
-                else if (c[i].indexOf('auto-geogebra-height-') == 0)
-                    h = c[i].replace('auto-geogebra-height-', '');
+                if (c[i].indexOf('auto-geogebra-width-') == 0) {
+                    let parsedWidth = parseInt(
+                        c[i].replace('auto-geogebra-width-', '')
+                    );
+                    if (!isNaN(parsedWidth) && parsedWidth > 0) w = parsedWidth;
+                } else if (c[i].indexOf('auto-geogebra-height-') == 0) {
+                    let parsedHeight = parseInt(
+                        c[i].replace('auto-geogebra-height-', '')
+                    );
+                    if (!isNaN(parsedHeight) && parsedHeight > 0) h = parsedHeight;
+                }
             }
             return [w, h];
         },
