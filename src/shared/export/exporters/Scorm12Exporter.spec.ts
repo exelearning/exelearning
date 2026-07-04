@@ -612,17 +612,17 @@ describe('Scorm12Exporter', () => {
 
                 listeners['win:pagehide']({ persisted: false });
 
-                // The sandbox window has no $exeExport, so leaving only picks the resume mode and
-                // does not recompute lesson_status (the real bundle recomputes it — see below).
+                // Leaving only picks the resume mode and does not write lesson_status: exit is
+                // read-only (the iDevice owns the status).
                 expect(sets.some(([key]) => key === 'cmi.core.lesson_status')).toBe(false);
                 expect(sets).toContainEqual(['cmi.core.exit', 'suspend']);
             });
 
-            it('recomputes the page status on exit via window.$exeExport.updateScormPageStatus', () => {
+            it('does NOT recompute the page status on exit even with the exe_export bundle', () => {
                 const sandbox = instantiateScoTemplate(exporter.getScoFunctions());
                 const recomputed: boolean[] = [];
-                // The real export bundles exe_export.js as window.$exeExport; leaving a page then
-                // recomputes the SCO status from the iDevices' final states (same rule as on entry).
+                // Leaving a page must NOT write a page-level status: that interferes with the LMS
+                // per-attempt score tracking. The iDevice owns the status; exit only reads it.
                 (sandbox.win as any).$exeExport = {
                     updateScormPageStatus: (isSCORM: boolean) => recomputed.push(isSCORM),
                 };
@@ -630,7 +630,7 @@ describe('Scorm12Exporter', () => {
 
                 sandbox.listeners['win:pagehide']({ persisted: false });
 
-                expect(recomputed).toEqual([true]);
+                expect(recomputed).toEqual([]);
                 expect(sandbox.counters.quit).toBe(1);
             });
 

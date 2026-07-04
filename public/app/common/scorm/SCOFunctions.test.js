@@ -392,7 +392,7 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
-    it('recomputes the page status on exit via window.$exeExport.updateScormPageStatus', () => {
+    it('does NOT write the page status on exit (the iDevice owns it); only reads it', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       const updateScormPageStatus = vi.fn();
@@ -401,9 +401,10 @@ describe('SCOFunctions.js', () => {
       try {
         globalThis.unloadPage(true);
 
-        // The real export bundles exe_export.js as window.$exeExport; leaving the page recomputes
-        // the SCO status from the iDevices' final states before the session is closed.
-        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        // Leaving a page must NOT recompute/write the SCO status: writing a page-level status
+        // around the lifecycle interferes with the LMS per-attempt score tracking. unloadPage
+        // only reads the status the iDevice already set, then closes the session.
+        expect(updateScormPageStatus).not.toHaveBeenCalled();
         expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
       } finally {
         delete globalThis.window.$exeExport;

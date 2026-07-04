@@ -635,13 +635,9 @@ function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
     scormLifecycleState.finalized = true;
-    // Recompute the page status from the iDevices' final states before leaving (same rule
-    // as on entry); see exe_export.js updateScormPageStatus.
-    if (window.$exeExport && typeof window.$exeExport.updateScormPageStatus == "function") {
-      window.$exeExport.updateScormPageStatus(isSCORM);
-    }
-    // Read the (now up-to-date) status to pick the resume mode, then close the session.
-    // A finished SCO exits "" (no resume); anything else stays resumable.
+    // Leaving a page must NOT change the status: the iDevice owns it and only changes it
+    // through learner interaction. Read the status (read-only) to pick the resume mode, then
+    // close the session. A finished SCO exits "" (no resume); anything else stays resumable.
     var status = scorm.get("cmi.core.lesson_status");
     var isTerminal = status === "passed" || status === "failed" || status === "completed";
     scorm.set("cmi.core.exit", isTerminal ? "" : "suspend");

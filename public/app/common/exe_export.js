@@ -198,10 +198,10 @@ window.$exeExport = {
                 }
             })
             window.loadPage();
-            // Derive and write the SCO (page) status on entry. The SAME computation runs on exit
-            // (unloadPage calls window.$exeExport.updateScormPageStatus), so a page keeps a status
-            // that matches its iDevices' final states and weighted average.
-            this.updateScormPageStatus(isSCORM);
+            // Entering a page must NOT write the SCO status: the iDevice owns it and only
+            // changes it through learner interaction (sendScore -> showFinalScore). Writing a
+            // page-level status on load interferes with the LMS per-attempt tracking and stops
+            // the in-game scores from being recorded in Moodle. loadPage only opens the session.
             if (typeof window.registerScormLifecycleHandlers == 'function') {
                 window.registerScormLifecycleHandlers(isSCORM);
             } else if (typeof window.addEventListener == 'function') {
