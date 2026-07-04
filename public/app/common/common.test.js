@@ -403,6 +403,44 @@ describe('common.js $exe helpers', () => {
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
+      // Issue #2034 follow-up: the exemedia TinyMCE plugin never sets a
+      // `srclang` attribute on the <track> elements it generates. The
+      // vendored MediaElement.js fork (exe_media.js) builds caption-button
+      // selectors like `input[value=<srclang>]`; an empty, unquoted value
+      // ([value=]) is invalid CSS/Sizzle syntax and throws, silently
+      // aborting caption loading. common.js must default it before handing
+      // off to the player.
+      it('defaults a missing srclang attribute on subtitle tracks before handing off to the player', () => {
+        const video = document.createElement('video');
+        video.className = 'mediaelement';
+        video.src = 'test.mp4';
+        const track = document.createElement('track');
+        track.src = 'subtitles.vtt';
+        track.kind = 'subtitles';
+        video.appendChild(track);
+        document.body.appendChild(video);
+
+        global.$exe.loadMediaPlayer.init();
+
+        expect(track.getAttribute('srclang')).toBeTruthy();
+      });
+
+      it('does not override an existing srclang attribute on subtitle tracks', () => {
+        const video = document.createElement('video');
+        video.className = 'mediaelement';
+        video.src = 'test.mp4';
+        const track = document.createElement('track');
+        track.src = 'subtitles.vtt';
+        track.kind = 'subtitles';
+        track.srclang = 'es';
+        video.appendChild(track);
+        document.body.appendChild(video);
+
+        global.$exe.loadMediaPlayer.init();
+
+        expect(track.getAttribute('srclang')).toBe('es');
+      });
+
       it('handles video elements and resizes them if needed', () => {
         // Create a wide video element
         const video = document.createElement('video');

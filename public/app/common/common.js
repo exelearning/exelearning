@@ -640,6 +640,19 @@ var $exe = {
                                 hasSrt = true;
                             }
                         }
+                        // The exemedia TinyMCE plugin never sets a `srclang`
+                        // attribute on the <track> elements it generates. The
+                        // vendored MediaElement.js fork (exe_media.js) builds
+                        // caption-button selectors like `input[value=<srclang>]`;
+                        // an empty, unquoted attribute value ([value=]) is
+                        // invalid CSS/Sizzle syntax and throws, silently
+                        // aborting caption loading entirely (issue #2034
+                        // follow-up). Default it here, before handing off to
+                        // the player, so the vendored library never receives
+                        // an empty value.
+                        if (!this.getAttribute('srclang')) {
+                            this.setAttribute('srclang', 'subtitles');
+                        }
                     });
                     if (hasSrt) $(this).mediaelementplayer();
                 }

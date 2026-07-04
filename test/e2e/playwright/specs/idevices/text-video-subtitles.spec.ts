@@ -45,8 +45,14 @@ const EXPECTED_CUE_TEXT = 'Este es un vídeo de prueba para';
  * upload-and-select flow below would "pass" even with a broken accept
  * attribute; the explicit attribute assertion is what actually catches that
  * bug.
+ *
+ * When `enableJsPlayer` is set, also ticks the "Player compatible with .srt
+ * subtitles" (jsplayer) checkbox in the Subtitles tab, switching the video to
+ * the vendored MediaElement.js fork (`public/app/common/exe_media/exe_media.js`)
+ * instead of the native `<video><track>` engine.
  */
-async function insertVideoWithSrtSubtitle(page: Page): Promise<void> {
+async function insertVideoWithSrtSubtitle(page: Page, options: { enableJsPlayer?: boolean } = {}): Promise<void> {
+    const { enableJsPlayer = false } = options;
     await addTextIdevice(page);
 
     const block = page.locator('#node-content article .idevice_node.text').last();
@@ -104,6 +110,20 @@ async function insertVideoWithSrtSubtitle(page: Page): Promise<void> {
     const subtitlesTab = page.locator('.tox-dialog__body-nav-item', { hasText: /Subtitles|Subt[ií]tulos/i }).first();
     await expect(subtitlesTab).toBeVisible({ timeout: 5000 });
     await subtitlesTab.click();
+
+    if (enableJsPlayer) {
+        // TinyMCE's Silver UI renders the real <input> in a way Playwright's
+        // pointer-based actionability check considers "outside of the
+        // viewport" (even with force: true), so dispatch a native click via
+        // the DOM directly -- still a real user-equivalent click/change
+        // event, just not routed through Playwright's synthetic mouse input.
+        const jsPlayerCheckbox = page
+            .getByRole('checkbox', { name: /Player compatible with \.srt subtitles/i })
+            .first();
+        await expect(jsPlayerCheckbox).toBeVisible({ timeout: 5000 });
+        await jsPlayerCheckbox.evaluate(el => (el as HTMLInputElement).click());
+        await expect(jsPlayerCheckbox).toBeChecked();
+    }
 
     // Browse for the subtitle file (only the active tab's browse button is visible).
     const subtitleBrowseBtn = page.locator('.tox-dialog .tox-browse-url:visible').first();
@@ -282,6 +302,82 @@ test.describe('Text iDevice video subtitles (issue #2034)', () => {
         expect(cue?.text).toContain(EXPECTED_CUE_TEXT);
         expect(cue?.startTime).toBeCloseTo(CUE_START_SECONDS, 1);
         expect(cue?.endTime).toBeCloseTo(CUE_END_SECONDS, 1);
+    });
+
+    test('renders captions when "Player compatible with .srt subtitles" (jsplayer) is enabled', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Regression test for a follow-up report on issue #2034: the native
+        // <track> fix (above) works, but the vendored MediaElement.js fork
+        // (public/app/common/exe_media/exe_media.js) that this checkbox
+        // switches the player to has its own, independent caption-loading
+        // engine, which must also actually render captions.
+        const pageErrors: string[] = [];
+        page.on('pageerror', error => pageErrors.push(error.message));
+        const consoleErrors: string[] = [];
+        page.on('console', message => {
+            if (message.type() === 'error') consoleErrors.push(message.text());
+        });
+
+        const projectUuid = await createProject(page, 'Text Video Subtitles JS Player Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await insertVideoWithSrtSubtitle(page, { enableJsPlayer: true });
+
+        const previewLoaded = await waitForPreviewContent(page, 30000);
+        expect(previewLoaded, 'Preview panel must render article content').toBe(true);
+        const previewFrame = getPreviewFrame(page);
+
+        const video = previewFrame.locator('video').first();
+        await expect(video).toBeVisible({ timeout: 15000 });
+
+        // The checkbox must have actually switched the player: a `mediaelement`
+        // class on the <video> and a MEJS wrapper container around it.
+        await expect(video).toHaveClass(/mediaelement/, { timeout: 10000 });
+        const mejsContainer = previewFrame.locator('.mejs-container').first();
+        await expect(mejsContainer).toBeVisible({ timeout: 10000 });
+
+        // The MediaElement.js fork keeps its own track state (independent of
+        // the browser's native TextTrack API) directly on the <video> DOM
+        // node as `.player`. Poll it instead of seeking the video: the
+        // Preview panel's Service Worker doesn't support HTTP Range requests,
+        // making seeking unreliable here (see the native-track test above).
+        const trackState = await video.evaluate(async (el: HTMLVideoElement) => {
+            type MejsTrack = { isLoaded: boolean; entries?: { text: string[] } };
+            const getPlayer = () => (el as unknown as { player?: { tracks?: MejsTrack[] } }).player;
+
+            const deadline = Date.now() + 10000;
+            let track: MejsTrack | undefined;
+            while (Date.now() < deadline) {
+                track = getPlayer()?.tracks?.[0];
+                if (track?.isLoaded) break;
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return { isLoaded: !!track?.isLoaded, text: track?.entries?.text?.[0] ?? null };
+        });
+
+        expect(
+            trackState.isLoaded,
+            'jsplayer subtitle track must finish loading (regression guard for issue #2034 follow-up)',
+        ).toBe(true);
+        expect(trackState.text).toContain(EXPECTED_CUE_TEXT);
+
+        // The captions selector radio must be enabled, not stuck on "(loading)".
+        const subtitleRadio = previewFrame.locator('.mejs-captions-button input[type="radio"]').last();
+        await expect(subtitleRadio).toBeEnabled({ timeout: 10000 });
+        const subtitleLabel = previewFrame.locator('.mejs-captions-button label').last();
+        await expect(subtitleLabel).not.toContainText('(loading)');
+
+        // Regression guard for the exact defect: an empty `srclang` used to
+        // produce an invalid `[value=]` jQuery/Sizzle selector inside
+        // exe_media.js's addTrackButton()/enableTrackButton(), throwing and
+        // silently aborting the whole caption pipeline.
+        const relevantErrors = [...pageErrors, ...consoleErrors].filter(msg => /unrecognized expression/i.test(msg));
+        expect(relevantErrors).toEqual([]);
     });
 
     test('ships a valid .vtt subtitle track in the Web Site export', async ({ authenticatedPage, createProject }) => {
