@@ -228,38 +228,39 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
-  describe('SCORM setup (init gating fix)', () => {
-    it('registers the activity even when scorm.init() returns false (session already open)', () => {
+  describe('SCORM setup (delegates to shared initSession)', () => {
+    it('binds the session and registers even when scorm.init() returns false', () => {
       const scormHelpers = $exeDevices.iDevice.gamification.scorm;
       const prevRegister = scormHelpers.registerActivity;
-      const prevGetUser = scormHelpers.getUserName;
-      const prevGetPrev = scormHelpers.getPreviousScore;
+      const prevInitSession = scormHelpers.initSession;
       const prevWinScorm = window.scorm;
 
       const registerActivity = vi.fn();
+      const initSession = vi.fn();
       scormHelpers.registerActivity = registerActivity;
-      scormHelpers.getUserName = () => '';
-      scormHelpers.getPreviousScore = () => '0';
+      scormHelpers.initSession = initSession;
       // init() returns FALSE on purpose: the SCORM session is already open (e.g. the page's
-      // loadPage opened it). Setup/registration must NOT be skipped in that case.
-      const scormMock = {
-        init: vi.fn(() => false),
-        SetScoreMax: vi.fn(),
-        SetScoreMin: vi.fn(),
-      };
+      // loadPage opened it). Binding + registration must NOT be skipped in that case.
+      const scormMock = { init: vi.fn(() => false) };
       window.scorm = scormMock;
 
       try {
-        $scrambledlist.initSCORM({ id: 'sl-1', isScorm: 1, weighted: 100 });
+        const data = { id: 'sl-1', isScorm: 1, weighted: 100 };
+        $scrambledlist.initSCORM(data);
 
         expect(scormMock.init).toHaveBeenCalled();
-        expect(registerActivity).toHaveBeenCalledTimes(1);
+        expect(initSession).toHaveBeenCalledWith($scrambledlist);
+        expect(registerActivity).toHaveBeenCalledWith(data);
       } finally {
         scormHelpers.registerActivity = prevRegister;
-        scormHelpers.getUserName = prevGetUser;
-        scormHelpers.getPreviousScore = prevGetPrev;
+        scormHelpers.initSession = prevInitSession;
         window.scorm = prevWinScorm;
       }
+    });
+
+    it('drops the bespoke bootstrap now provided by the shared helper', () => {
+      expect($scrambledlist.initScormData).toBeUndefined();
+      expect($scrambledlist.endScorm).toBeUndefined();
     });
   });
 

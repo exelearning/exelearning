@@ -1660,7 +1660,10 @@ var $adaptativequiz = {
 
         if (document.body.classList.contains('exe-scorm')) {
             if (opts) opts.scormReady = false;
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
+            if (typeof window.scorm !== 'undefined') {
+                // Do NOT gate on init()'s return value: it is false when the session is already
+                // active (opened by the page's loadPage), and gating used to skip the setup.
+                window.scorm.init();
                 this.initScormData(id);
             } else {
                 this.loadScormApiWrapper(id);
@@ -1690,28 +1693,27 @@ var $adaptativequiz = {
     },
 
     initSCORM: function (id) {
-        $adaptativequiz.mScorm = typeof scorm !== 'undefined' ? scorm : window.scorm;
-        if ($adaptativequiz.mScorm && $adaptativequiz.mScorm.init()) {
-            $adaptativequiz.initScormData(id);
-        } else {
-            // SCORM could not be initialised: start the game anyway so it stays
+        const s = typeof scorm !== 'undefined' ? scorm : window.scorm;
+        if (typeof s === 'undefined' || !s) {
+            // SCORM API genuinely unavailable: start the game anyway so it stays
             // playable (the score just won't be reported to the LMS).
             const opts = $adaptativequiz.options[id];
             if (opts) opts.scormReady = true;
             $adaptativequiz.maybeStartAfterScorm(id);
+            return;
         }
+        // Do NOT gate on init()'s return value (false when the session is already active).
+        s.init();
+        $adaptativequiz.initScormData(id);
     },
 
     initScormData: function (id) {
         const opts = $adaptativequiz.options[id];
         if (!opts) return;
         const scormApi = $exeDevices.iDevice.gamification.scorm;
-        $adaptativequiz.mScorm = window.scorm;
-        $adaptativequiz.userName = scormApi.getUserName($adaptativequiz.mScorm);
-        if ($adaptativequiz.mScorm && typeof $adaptativequiz.mScorm.SetScoreMax === 'function') {
-            $adaptativequiz.mScorm.SetScoreMax(100);
-            $adaptativequiz.mScorm.SetScoreMin(0);
-        }
+        // Bind the SCORM session (learner name, score bounds) via the shared helper instead of
+        // duplicating the setup here.
+        scormApi.initSession($adaptativequiz);
         opts.scormReady = true;
         scormApi.registerActivity(opts);
         $adaptativequiz.maybeStartAfterScorm(id);

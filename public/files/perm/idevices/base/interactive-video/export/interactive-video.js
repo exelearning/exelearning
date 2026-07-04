@@ -135,33 +135,11 @@ var $interactivevideo = {
     },
 
     initSCORM: function () {
-        $interactivevideo.mScorm = scorm;
-        const callSucceeded = $interactivevideo.mScorm.init();
-        if (!callSucceeded) {
-            this.enable();
-            return;
-        }
-
-        $interactivevideo.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $interactivevideo.mScorm
-            );
-        $interactivevideo.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $interactivevideo.mScorm
-            );
-
-        if (typeof $interactivevideo.mScorm.SetScoreMax === 'function') {
-            $interactivevideo.mScorm.SetScoreMax(100);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.max', '100');
-        }
-        if (typeof $interactivevideo.mScorm.SetScoreMin === 'function') {
-            $interactivevideo.mScorm.SetScoreMin(0);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.min', '0');
-        }
-
+        // Open the session (no-op if already active) and bind it via the shared helper. Do NOT
+        // gate on init()'s return value: it is false when the session is already active (opened
+        // by the page's loadPage), and gating used to skip the learner name / score bounds setup.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($interactivevideo);
         this.enable();
     },
 

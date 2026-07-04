@@ -871,20 +871,16 @@ var $exeDevices = {
                 }
 
                 function initScorm() {
-                    if (typeof scorm !== "undefined" && scorm.init()) {
-                        $game.mScorm = scorm;
-                        $game.userName = $exeDevices.iDevice.gamification.scorm.getUserName(scorm);
-                        $game.previousScore = $exeDevices.iDevice.gamification.scorm.getPreviousScore(scorm);
-                        if (typeof scorm.SetScoreMax === "function") {
-                            scorm.SetScoreMax(100);
-                            scorm.SetScoreMin(0);
-                        } else {
-                            scorm.set("cmi.core.score.max", "100");
-                            scorm.set("cmi.core.score.min", "0");
-                        }
-                    } else {
-                        console.warn("La inicialización SCORM devolvió false o scorm no está definido");
+                    if (typeof scorm === "undefined") {
+                        console.warn("La inicialización SCORM falló: scorm no está definido");
+                        return;
                     }
+                    // Do NOT gate on init()'s return value: it is false when the SCO session is
+                    // already active (opened by the page's loadPage), which used to skip the setup
+                    // below and lose the learner name and score bounds. The connection stays active
+                    // either way, so bind the session unconditionally via the shared helper.
+                    scorm.init();
+                    $exeDevices.iDevice.gamification.scorm.initSession($game);
                 }
 
                 function loadAndInitScorm() {
@@ -933,6 +929,27 @@ var $exeDevices = {
                         return scormgame.GetScoreRaw() || '0';
                     } else {
                         return '0';
+                    }
+                },
+
+                // Bind the open SCORM session onto the iDevice: learner name, previous score and
+                // the score bounds (cmi.core.score.max/min = 100/0). The CALLER opens the session
+                // (scorm.init()); this must NOT gate on init()'s return value, which is false when
+                // the session is already active (e.g. opened by the page's loadPage) and used to
+                // skip this setup, losing the learner name and score bounds. Single source of truth
+                // reused by both initGame and the form iDevice.
+                initSession: function (game) {
+                    const s = window.scorm;
+                    if (typeof s === 'undefined' || !s) return;
+                    game.mScorm = s;
+                    game.userName = this.getUserName(s);
+                    game.previousScore = this.getPreviousScore(s);
+                    if (typeof s.SetScoreMax === 'function') {
+                        s.SetScoreMax(100);
+                        s.SetScoreMin(0);
+                    } else if (typeof s.set === 'function') {
+                        s.set('cmi.core.score.max', '100');
+                        s.set('cmi.core.score.min', '0');
                     }
                 },
 

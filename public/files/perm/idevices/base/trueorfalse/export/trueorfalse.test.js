@@ -79,25 +79,23 @@ describe('trueorfalse iDevice export', () => {
   });
 
   describe('SCORM session binding', () => {
-    it('binds to a live SCO session even when init() returns false', () => {
+    it('renderBehaviour binds the live session via initSCORM (not the wrapper) when scorm exists', () => {
       // init() returns false when the SCO session is already active; renderBehaviour
-      // must still load the SCORM data (bind to the live session) instead of
-      // falling through to reloading the wrapper.
+      // must still bind the live session (initSCORM) instead of reloading the wrapper.
       const ldata = { id: 'tof-1', isScorm: 1, gameStarted: true };
       vi.spyOn($trueorfalse, 'updateConfig').mockReturnValue(ldata);
       vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('');
       vi.spyOn($trueorfalse, 'addEvents').mockImplementation(() => {});
       vi.spyOn($trueorfalse, 'updateLatexInView').mockImplementation(() => {});
-      const initScormData = vi
-        .spyOn($trueorfalse, 'initScormData')
+      const initSCORM = vi
+        .spyOn($trueorfalse, 'initSCORM')
         .mockImplementation(() => {});
       const loadWrapper = vi
         .spyOn($trueorfalse, 'loadSCORM_API_wrapper')
         .mockImplementation(() => {});
 
       document.body.className = 'exe-scorm';
-      const init = vi.fn(() => false);
-      window.scorm = { init };
+      window.scorm = { init: vi.fn(() => false) };
 
       try {
         $trueorfalse.renderBehaviour(
@@ -111,9 +109,42 @@ describe('trueorfalse iDevice export', () => {
         vi.restoreAllMocks();
       }
 
-      expect(init).toHaveBeenCalled();
-      expect(initScormData).toHaveBeenCalledWith(ldata);
+      expect(initSCORM).toHaveBeenCalledWith(ldata);
       expect(loadWrapper).not.toHaveBeenCalled();
+    });
+
+    it('initSCORM binds via the shared initSession and seeds the non-repeat lock', () => {
+      const scorm = $exeDevices.iDevice.gamification.scorm;
+      const prevInitSession = scorm.initSession;
+      const prevRegister = scorm.registerActivity;
+      const prevWinScorm = window.scorm;
+
+      // initSession sets previousScore; initSCORM must seed initialScore from it.
+      const initSession = vi.fn(() => {
+        $trueorfalse.previousScore = '7';
+      });
+      const registerActivity = vi.fn();
+      scorm.initSession = initSession;
+      scorm.registerActivity = registerActivity;
+      window.scorm = { init: vi.fn(() => false) };
+
+      try {
+        const data = { id: 'tof-1', isScorm: 1 };
+        $trueorfalse.initSCORM(data);
+
+        expect(window.scorm.init).toHaveBeenCalled();
+        expect(initSession).toHaveBeenCalledWith($trueorfalse);
+        expect($trueorfalse.initialScore).toBe('7');
+        expect(registerActivity).toHaveBeenCalledWith(data);
+      } finally {
+        scorm.initSession = prevInitSession;
+        scorm.registerActivity = prevRegister;
+        window.scorm = prevWinScorm;
+      }
+    });
+
+    it('drops the bespoke initScormData now provided by the shared helper', () => {
+      expect($trueorfalse.initScormData).toBeUndefined();
     });
   });
 

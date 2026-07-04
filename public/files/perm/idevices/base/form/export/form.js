@@ -298,14 +298,9 @@ var $form = {
             ldata.isScorm > 0
         ) {
             if (typeof window.scorm !== 'undefined') {
-                // Open the SCORM session if it is not open yet. Do NOT gate the setup on
-                // init()'s return value: connection.initialize() returns false when the
-                // session is already active (e.g. opened by the page's loadPage), which used
-                // to skip registration/score wiring and prevent the live LMSCommit. The
-                // connection stays active either way, so registration must always run.
-                window.scorm.init();
-                $form.initScormData(ldata);
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -640,31 +635,6 @@ var $form = {
                 }, 1000);
             }
         }
-    },
-
-    initScormData: function (ldata) {
-        $form.mScorm = window.scorm;
-        $form.userName = $exeDevices.iDevice.gamification.scorm.getUserName(
-            $form.mScorm
-        );
-        $form.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $form.mScorm
-            );
-        if (typeof $form.mScorm.SetScoreMax === 'function') {
-            $form.mScorm.SetScoreMax(100);
-        } else {
-            $form.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $form.mScorm.SetScoreMin === 'function') {
-            $form.mScorm.SetScoreMin(0);
-        } else {
-            $form.mScorm.SetScoreMin(0);
-        }
-
-        $form.initialScore = $form.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
 
     init: function (data, accesibility) {},
@@ -1817,15 +1787,13 @@ var $form = {
         }
     },
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $form.mScorm = scorm;
-        // Open the session if needed; do NOT gate setup on init()'s return value (it returns
-        // false when the session is already active), so registration always runs.
-        $form.mScorm.init();
-        $form.initScormData(parsedData);
-    },
-    endScorm: function () {
-        if ($form.mScorm && typeof $form.mScorm.quit == 'function') {
-        }
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper, then
+        // register this instance. initSession sets $form.userName / previousScore / score bounds
+        // without gating on init()'s return value.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($form);
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 };

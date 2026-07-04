@@ -206,13 +206,9 @@ var $scrambledlist = {
             ldata.isScorm > 0
         ) {
             if (typeof window.scorm !== 'undefined') {
-                // Do NOT gate the setup on init()'s return value: connection.initialize()
-                // returns false when the session is already active (e.g. opened by the page's
-                // loadPage), which used to skip registration and prevent the live LMSCommit on
-                // "Comprobar". Open the session if needed, then always register.
-                window.scorm.init();
-                this.initScormData(ldata);
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -247,32 +243,6 @@ var $scrambledlist = {
         }
     },
 
-    initScormData: function (ldata) {
-        $scrambledlist.mScorm = window.scorm;
-        $scrambledlist.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $scrambledlist.mScorm
-            );
-        $scrambledlist.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $scrambledlist.mScorm
-            );
-
-        if (typeof $scrambledlist.mScorm.SetScoreMax === 'function') {
-            $scrambledlist.mScorm.SetScoreMax(100);
-        } else {
-            $scrambledlist.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $scrambledlist.mScorm.SetScoreMin === 'function') {
-            $scrambledlist.mScorm.SetScoreMin(0);
-        } else {
-            $scrambledlist.mScorm.SetScoreMin(0);
-        }
-        $scrambledlist.initialScore = $scrambledlist.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
-    },
-
     escapeForCallback: function (obj) {
         let json = JSON.stringify(obj);
         json = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -294,12 +264,14 @@ var $scrambledlist = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $scrambledlist.mScorm = window.scorm;
-        // Open the session if needed; do NOT gate setup on init()'s return value (it returns
-        // false when the session is already active), so registration always runs.
-        $scrambledlist.mScorm.init();
-        this.initScormData(parsedData);
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper, then
+        // register this instance. initSession sets userName / previousScore / score bounds
+        // without gating on init()'s return value.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($scrambledlist);
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 
     /**
@@ -859,18 +831,6 @@ var $scrambledlist = {
         var wrapper = $('<div></div>');
         wrapper.html(str);
         return wrapper.text();
-    },
-
-    /**
-     *
-     */
-    endScorm: function () {
-        if (
-            $scrambledlist.mScorm &&
-            typeof $scrambledlist.mScorm.quit == 'function'
-        ) {
-            //$scrambledlist.mScorm.quit();
-        }
     },
 
     /**

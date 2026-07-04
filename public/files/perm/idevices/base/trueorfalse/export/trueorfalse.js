@@ -86,12 +86,9 @@ var $trueorfalse = {
             ldata.isScorm > 0
         ) {
             if (typeof window.scorm !== 'undefined') {
-                // Do not gate on init()'s return: it is false when the SCO
-                // session is already active, which would wrongly fall through to
-                // reloading the wrapper instead of binding to the live session.
-                window.scorm.init();
-                this.initScormData(ldata);
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -124,32 +121,6 @@ var $trueorfalse = {
         if (math.hasLatex(container.innerHTML)) {
             math.updateLatex(container);
         }
-    },
-
-    initScormData: function (ldata) {
-        $trueorfalse.mScorm = window.scorm;
-        $trueorfalse.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $trueorfalse.mScorm
-            );
-        $trueorfalse.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $trueorfalse.mScorm
-            );
-
-        if (typeof $trueorfalse.mScorm.SetScoreMax === 'function') {
-            $trueorfalse.mScorm.SetScoreMax(100);
-        } else {
-            $trueorfalse.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $trueorfalse.mScorm.SetScoreMin === 'function') {
-            $trueorfalse.mScorm.SetScoreMin(0);
-        } else {
-            $trueorfalse.mScorm.SetScoreMin(0);
-        }
-        $trueorfalse.initialScore = $trueorfalse.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
 
     updateConfig: function (odata, ideviceId) {
@@ -332,12 +303,14 @@ var $trueorfalse = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $trueorfalse.mScorm = scorm;
-        if ($trueorfalse.mScorm.init());
-        {
-            $trueorfalse.initScormData(parsedData);
-        }
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($trueorfalse);
+        // Seed the non-repeat "already scored" lock from the restored LMS score.
+        $trueorfalse.initialScore = $trueorfalse.previousScore;
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 
     escapeForCallback: function (obj) {

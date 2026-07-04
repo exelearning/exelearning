@@ -594,4 +594,32 @@ describe('interactive-video iDevice export', () => {
       expect(typeof $interactivevideo.controls.seek).toBe('function');
     });
   });
+
+  describe('SCORM setup', () => {
+    it('binds via the shared initSession without gating on init(), then enables', () => {
+      const scorm = $exeDevices.iDevice.gamification.scorm;
+      const prevInitSession = scorm.initSession;
+      const prevWinScorm = window.scorm;
+
+      // init() returns false (session already active); the setup must NOT be skipped.
+      const initSession = vi.fn();
+      scorm.initSession = initSession;
+      window.scorm = { init: vi.fn(() => false) };
+      const enable = vi
+        .spyOn($interactivevideo, 'enable')
+        .mockImplementation(() => {});
+
+      try {
+        $interactivevideo.initSCORM();
+
+        expect(window.scorm.init).toHaveBeenCalled();
+        expect(initSession).toHaveBeenCalledWith($interactivevideo);
+        expect(enable).toHaveBeenCalled();
+      } finally {
+        scorm.initSession = prevInitSession;
+        window.scorm = prevWinScorm;
+        enable.mockRestore();
+      }
+    });
+  });
 });

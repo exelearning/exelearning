@@ -1179,6 +1179,21 @@ describe('common.js $exeDevices', () => {
       // All 5 activities are found (no guard that only checks first)
       expect(mockGame.activities.length).toBe(5);
     });
+
+    it('opens the session and delegates to initSession without gating on init()', () => {
+      // Contract: the old buggy gate (`... && scorm.init()`) is gone, so the session setup is
+      // no longer skipped when init() returns false (session already active). initGame now opens
+      // the session and delegates to the shared initSession helper (whose no-gate binding is
+      // covered by the gamification.scorm > initSession tests above).
+      const fs = require('fs');
+      const path = require('path');
+      const code = fs.readFileSync(path.join(__dirname, 'common.js'), 'utf-8');
+
+      expect(code).not.toMatch(/typeof scorm !== "undefined" && scorm\.init\(\)/);
+      expect(code).toMatch(
+        /scorm\.init\(\);\s*\$exeDevices\.iDevice\.gamification\.scorm\.initSession\(\$game\)/,
+      );
+    });
   });
 
   describe('gamification.helpers', () => {
@@ -1546,6 +1561,55 @@ describe('common.js $exeDevices', () => {
       const scorm = getScorm();
       const mockScorm = { GetScoreRaw: vi.fn().mockReturnValue('85') };
       expect(scorm.getPreviousScore(mockScorm)).toBe('85');
+    });
+
+    describe('initSession', () => {
+      let prevWinScorm;
+
+      beforeEach(() => {
+        prevWinScorm = global.window.scorm;
+      });
+
+      afterEach(() => {
+        global.window.scorm = prevWinScorm;
+      });
+
+      it('binds learner name, previous score and score bounds (no gating on init())', () => {
+        const scormMock = {
+          GetLearnerName: () => 'Ada',
+          GetScoreRaw: () => '42',
+          SetScoreMax: vi.fn(),
+          SetScoreMin: vi.fn(),
+        };
+        global.window.scorm = scormMock;
+        const game = {};
+
+        getScorm().initSession(game);
+
+        expect(game.mScorm).toBe(scormMock);
+        expect(game.userName).toBe('Ada');
+        expect(game.previousScore).toBe('42');
+        expect(scormMock.SetScoreMax).toHaveBeenCalledWith(100);
+        expect(scormMock.SetScoreMin).toHaveBeenCalledWith(0);
+      });
+
+      it('falls back to cmi.core.score.max/min when SetScoreMax is absent', () => {
+        const set = vi.fn();
+        global.window.scorm = { set };
+        const game = {};
+
+        getScorm().initSession(game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
+        expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+      });
+
+      it('is a no-op when window.scorm is undefined', () => {
+        global.window.scorm = undefined;
+        const game = {};
+        expect(() => getScorm().initSession(game)).not.toThrow();
+        expect(game.mScorm).toBeUndefined();
+      });
     });
 
     it('parseJSONSafe returns empty object for invalid JSON', () => {
