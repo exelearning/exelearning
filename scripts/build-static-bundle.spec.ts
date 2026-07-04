@@ -16,7 +16,7 @@ import {
     generateServiceWorkerContent,
     appendVersionToUrls,
     shouldCompressJson,
-    gzipBuffer,
+    zstdCompressBuffer,
     COMPRESS_JSON_DIRS,
     LOCALES,
     LOCALE_NAMES,
@@ -960,7 +960,7 @@ describe('Config parameter parity between static and server', () => {
 });
 
 // =============================================================================
-// iDevice JSON gzip helpers
+// iDevice JSON zstd compression helpers
 // =============================================================================
 
 describe('shouldCompressJson', () => {
@@ -970,21 +970,21 @@ describe('shouldCompressJson', () => {
     });
 
     it('returns false for non-json files', () => {
-        expect(shouldCompressJson('lomloe-ES.json.gz')).toBe(false);
+        expect(shouldCompressJson('lomloe-ES.json.zst')).toBe(false);
         expect(shouldCompressJson('readme.md')).toBe(false);
         expect(shouldCompressJson('script.js')).toBe(false);
         expect(shouldCompressJson('data.JSON')).toBe(false);
     });
 });
 
-describe('gzipBuffer', () => {
-    it('produces output that round-trips via gunzip', () => {
+describe('zstdCompressBuffer', () => {
+    it('produces output that round-trips via zstdDecompressSync', () => {
         const original = Buffer.from(
             JSON.stringify({ a: 1, b: [2, 3, 4], c: 'lorem ipsum dolor sit amet' }),
         );
-        const gz = gzipBuffer(original);
-        expect(gz.length).toBeGreaterThan(0);
-        const restored = zlib.gunzipSync(gz);
+        const compressed = zstdCompressBuffer(original);
+        expect(compressed.length).toBeGreaterThan(0);
+        const restored = zlib.zstdDecompressSync(compressed);
         expect(restored.equals(original)).toBe(true);
     });
 
@@ -997,9 +997,9 @@ describe('gzipBuffer', () => {
             })),
         });
         const original = Buffer.from(repetitive);
-        const gz = gzipBuffer(original);
+        const compressed = zstdCompressBuffer(original);
         // Highly repetitive JSON should compress to under 25% of original.
-        expect(gz.length).toBeLessThan(original.length * 0.25);
+        expect(compressed.length).toBeLessThan(original.length * 0.25);
     });
 });
 
