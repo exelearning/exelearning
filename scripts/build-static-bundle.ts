@@ -1134,11 +1134,11 @@ function compressJsonInDir(absDir: string): { count: number; origTotal: number; 
  * @param exclude - Directory/file names to exclude (exact match)
  * @param excludePatterns - File patterns to exclude (e.g., '.test.js', '.spec.js')
  */
-function copyDirRecursive(
+export function copyDirRecursive(
     src: string,
     dest: string,
     exclude: string[] = [],
-    excludePatterns: string[] = ['.test.js', '.spec.js'],
+    excludePatterns: string[] = ['.test.js', '.spec.js', '.map', '.d.ts'],
 ) {
     if (!fs.existsSync(src)) {
         console.warn(`Source not found: ${src}`);
@@ -1258,8 +1258,11 @@ async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
     console.log('  Copied bundles/');
 
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    // Copy files/perm (themes, iDevices, favicon). Excludes `src`: the `slide`
+    // iDevice keeps its hand-maintained TS source alongside the built JS it
+    // actually loads (public/files/perm/idevices/base/slide/src), which is a
+    // dev-only reference never fetched at runtime.
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'), ['src']);
     console.log('  Copied files/perm/');
 
     // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).

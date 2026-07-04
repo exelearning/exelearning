@@ -5,7 +5,7 @@
  * correct parsing, transformation, and generation of static bundle assets.
  */
 
-import { describe, it, expect, beforeAll } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 
 import {
     parseXlfContent,
@@ -17,6 +17,7 @@ import {
     appendVersionToUrls,
     shouldCompressJson,
     gzipBuffer,
+    copyDirRecursive,
     COMPRESS_JSON_DIRS,
     LOCALES,
     LOCALE_NAMES,
@@ -27,6 +28,7 @@ import {
 } from './build-static-bundle';
 import { buildConfigParams } from '../src/routes/config-params';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as zlib from 'zlib';
 
@@ -1007,5 +1009,72 @@ describe('COMPRESS_JSON_DIRS', () => {
     it('lists the LOMLOE and DIGCOMPEDU data directories', () => {
         expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/lomloe/data');
         expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/digcompedu/data');
+    });
+});
+
+// =============================================================================
+// copyDirRecursive
+// =============================================================================
+
+describe('copyDirRecursive', () => {
+    let srcDir: string;
+    let destDir: string;
+
+    beforeAll(() => {
+        srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exe-copy-src-'));
+        destDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exe-copy-dest-'));
+
+        fs.writeFileSync(path.join(srcDir, 'app.js'), 'console.log(1)');
+        fs.writeFileSync(path.join(srcDir, 'app.js.map'), '{"version":3}');
+        fs.writeFileSync(path.join(srcDir, 'types.d.ts'), 'export type X = number;');
+        fs.writeFileSync(path.join(srcDir, 'app.test.js'), 'test stub');
+        fs.writeFileSync(path.join(srcDir, 'README.md'), '# readme');
+
+        const ideviceDir = path.join(srcDir, 'idevice');
+        fs.mkdirSync(ideviceDir);
+        fs.writeFileSync(path.join(ideviceDir, 'idevice.js'), 'console.log(2)');
+        const srcSubDir = path.join(ideviceDir, 'src');
+        fs.mkdirSync(srcSubDir);
+        fs.writeFileSync(path.join(srcSubDir, 'source.ts'), 'export const x = 1;');
+
+        copyDirRecursive(srcDir, destDir, ['src']);
+    });
+
+    afterAll(() => {
+        fs.rmSync(srcDir, { recursive: true, force: true });
+        fs.rmSync(destDir, { recursive: true, force: true });
+    });
+
+    it('copies regular files', () => {
+        expect(fs.existsSync(path.join(destDir, 'app.js'))).toBe(true);
+        expect(fs.existsSync(path.join(destDir, 'idevice', 'idevice.js'))).toBe(true);
+    });
+
+    it('excludes source maps by default', () => {
+        expect(fs.existsSync(path.join(destDir, 'app.js.map'))).toBe(false);
+    });
+
+    it('excludes TypeScript type declarations by default', () => {
+        expect(fs.existsSync(path.join(destDir, 'types.d.ts'))).toBe(false);
+    });
+
+    it('still excludes .test.js/.spec.js by default', () => {
+        expect(fs.existsSync(path.join(destDir, 'app.test.js'))).toBe(false);
+    });
+
+    it('keeps non-excluded documentation files', () => {
+        expect(fs.existsSync(path.join(destDir, 'README.md'))).toBe(true);
+    });
+
+    it('excludes directories passed in the exclude list, at any depth', () => {
+        expect(fs.existsSync(path.join(destDir, 'idevice', 'src'))).toBe(false);
+        expect(fs.existsSync(path.join(destDir, 'idevice', 'src', 'source.ts'))).toBe(false);
+    });
+
+    it('warns and no-ops when the source directory does not exist', () => {
+        const missingSrc = path.join(srcDir, 'does-not-exist');
+        const emptyDest = path.join(destDir, 'from-missing');
+        expect(() => copyDirRecursive(missingSrc, emptyDest)).not.toThrow();
+        expect(fs.existsSync(emptyDest)).toBe(false);
     });
 });
