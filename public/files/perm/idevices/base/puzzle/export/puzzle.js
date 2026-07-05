@@ -962,6 +962,12 @@ var $eXePuzzle = {
             // pre-increment hits, and the increment happened later in showCompletedWindows, so
             // the score lagged one puzzle behind ("shows 0 on the first solve"). updateScore is
             // the single source of truth for the count.
+            // Solving the last puzzle completes the activity. Mark it synchronized
+            // so the score sent by updateScore->sendScore records state 2, and an unload
+            // before the next/close button still finalizes the SCO as completed. (#1831)
+            if (mOptions.active >= mOptions.puzzlesGame.length - 1) {
+                mOptions.gameOver = true;
+            }
             $eXePuzzle.updateScore(true, instance);
             clearInterval(mOptions.counterClock);
         }

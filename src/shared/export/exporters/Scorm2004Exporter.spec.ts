@@ -630,12 +630,37 @@ describe('Scorm2004Exporter', () => {
             it('exits normally when the iDevice already completed the SCO', () => {
                 const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
                 sandbox.store['cmi.completion_status'] = 'completed'; // already set by the iDevice
+                sandbox.api.registerScormLifecycleHandlers(true); // isSCORM=true: page has a scored iDevice
 
                 sandbox.listeners['win:pagehide']({ persisted: false });
 
                 expect(sandbox.sets.some(([key]) => key === 'cmi.completion_status')).toBe(false);
                 expect(sandbox.sets.some(([key]) => key === 'cmi.success_status')).toBe(false);
                 expect(sandbox.sets).toContainEqual(['cmi.exit', 'normal']);
+            });
+
+            it('marks a content-only page (no iDevices) completed on exit in SCORM 2004', () => {
+                const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+                // No evaluable entries in suspend_data
+                sandbox.api.registerScormLifecycleHandlers(false); // isSCORM=false: content-only
+
+                sandbox.listeners['win:pagehide']({ persisted: false });
+
+                // A content-only page should be marked completed on exit if no iDevice results exist.
+                expect(sandbox.sets).toContainEqual(['cmi.completion_status', 'completed']);
+                expect(sandbox.counters.quit).toBe(1);
+            });
+
+            it('does NOT mark completed if the page has iDevice results in suspend_data (SCORM 2004)', () => {
+                const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+                sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%;'; // has entries
+                sandbox.api.registerScormLifecycleHandlers(false);
+
+                sandbox.listeners['win:pagehide']({ persisted: false });
+
+                // A page with iDevice results should NOT be forcibly marked completed.
+                expect(sandbox.sets.some(([key]) => key === 'cmi.completion_status')).toBe(false);
+                expect(sandbox.counters.quit).toBe(1);
             });
         });
 

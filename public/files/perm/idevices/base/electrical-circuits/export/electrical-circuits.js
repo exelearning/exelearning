@@ -1478,6 +1478,12 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(correct, instance);
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if ((mOptions.activeQuestion + 1 >= mOptions.numberQuestions) || (mOptions.useLives && mOptions.livesLeft <= 0)) {
+            mOptions.gameOver = true;
+        }
         $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -1544,6 +1550,12 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(value, instance);
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if ((mOptions.activeQuestion + 1 >= mOptions.numberQuestions) || (mOptions.useLives && mOptions.livesLeft <= 0)) {
+            mOptions.gameOver = true;
+        }
         $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution

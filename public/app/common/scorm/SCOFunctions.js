@@ -232,6 +232,18 @@ function unloadPage(isSCORM) {
     isSCORM = false;
   }
   if (exitPageStatus != true) {
+    // Content-only page: mark completed only if no evaluable entries and status is not terminal.
+    // Pages with evaluable iDevices (isSCORM === true) are NEVER touched here — writing page
+    // status around their lifecycle breaks live in-game score commits (see commit 0d60db11).
+    if (isSCORM !== true) {
+      var suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+      var status = pipwerks.SCORM.get("cmi.core.lesson_status") || "";
+      var isTerminal = status === "passed" || status === "failed" || status === "completed";
+      if ((!suspendData || suspendData.trim() === "") && !isTerminal) {
+        pipwerks.SCORM.SetCompletionStatus("completed");
+      }
+    }
+
     // Leaving a page must NOT change completion/success: those are owned by the
     // iDevice and only change through learner interaction. Here we only read the
     // status the iDevice already set (read-only) to pick the resume mode, then

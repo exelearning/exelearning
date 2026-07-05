@@ -46,6 +46,7 @@ describe('SCOFunctions.js', () => {
     globalThis.pipwerks.SCORM.quit = vi.fn(() => true);
     globalThis.pipwerks.SCORM.SetExit = vi.fn();
     globalThis.pipwerks.SCORM.GetMode = vi.fn(() => 'normal');
+    globalThis.pipwerks.SCORM.get = vi.fn(() => ''); // Default: empty suspend_data
     globalThis.pipwerks.SCORM.version = '1.2';
 
     // Mock nav functions
@@ -364,18 +365,15 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).not.toHaveBeenCalled();
     });
 
-    it('does not change completion/success when leaving a non-scored page', () => {
+    it('marks content-only page completed when leaving a non-scored page', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
-      globalThis.unloadPage(false);
+      globalThis.unloadPage(false); // isSCORM=false: no evaluable iDevices
 
-      // Leaving a page never writes status; the iDevice owns it. A non-terminal
-      // page stays resumable.
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+      // Content-only page with no suspend_data should be marked completed at exit.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
     it('does not change completion/success when leaving a scored page', () => {
@@ -383,7 +381,7 @@ describe('SCOFunctions.js', () => {
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
-      globalThis.unloadPage(true);
+      globalThis.unloadPage(true); // isSCORM=true: page has a scored iDevice
 
       expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
@@ -411,46 +409,74 @@ describe('SCOFunctions.js', () => {
       }
     });
 
-    it('does not change status and suspends when called without an isSCORM argument', () => {
+    it('marks a content-only page (no iDevices) completed on exit', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+      // Default mock returns ''; content-only page has no suspend_data
 
-      globalThis.unloadPage(); // No argument
+      globalThis.unloadPage(false); // isSCORM=false: content-only page
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
-      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+      // A content-only page with no suspend_data entries should be marked completed.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
-    it('does not change status if already passed', () => {
+    it('does NOT mark completed if the page has evaluable entries (iDevice results)', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('passed');
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+      globalThis.pipwerks.SCORM.get.mockReturnValue('1. "Quiz"; Score: 75%;'); // has suspend_data
 
-      globalThis.unloadPage();
+      globalThis.unloadPage(false); // isSCORM=false but has evaluable entries
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      // A page with existing iDevice entries should NOT be forcibly marked completed.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalledWith('completed');
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
-    it('does not change status if already failed', () => {
+    it('marks content-only page completed when called without an isSCORM argument', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('failed');
 
-      globalThis.unloadPage();
+      globalThis.unloadPage(); // No argument: isSCORM defaults to false
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      // Content-only page should be marked completed at exit.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
 
-    it('does not change status if already completed', () => {
+    it('does not mark completed if page is already in a terminal state (passed)', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('completed');
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('passed');
 
-      globalThis.unloadPage();
+      globalThis.unloadPage(false);
 
-      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      // Page already in terminal state; should not be overwritten.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalledWith('completed');
+    });
+
+    it('does not mark completed if page is already in a terminal state (failed)', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('failed');
+
+      globalThis.unloadPage(false);
+
+      // Page already in terminal state; should not be overwritten.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalledWith('completed');
+    });
+
+    it('does not mark completed if page is already in a terminal state (completed)', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('completed');
+
+      globalThis.unloadPage(false);
+
+      // Page already in terminal state; should not be overwritten.
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalledWith('completed');
     });
 
     it('exits normally and still saves/quits when the page is already completed', () => {

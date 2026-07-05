@@ -709,6 +709,12 @@ var $eXeSeleccionaMedias = {
                 mOptions.isScorm === 1 &&
                 (mOptions.repeatActivity || !mOptions.initialScore)
             ) {
+                // Answering the last question completes the activity. Mark it synchronized
+                // so the score sent by sendScore records state 2, and an unload during the
+                // delay still finalizes the SCO as completed. (#1831)
+                if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 $eXeSeleccionaMedias.sendScore(true, instance);
                 mOptions.initialScore = $eXeSeleccionaMedias
                     .getScore(instance)
@@ -739,6 +745,12 @@ var $eXeSeleccionaMedias = {
                     mOptions.isScorm === 1 &&
                     (mOptions.repeatActivity || !mOptions.initialScore)
                 ) {
+                    // Answering the last question completes the activity. Mark it synchronized
+                    // so the score sent by sendScore records state 2, and an unload during the
+                    // delay still finalizes the SCO as completed. (#1831)
+                    if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+                        mOptions.gameOver = true;
+                    }
                     $eXeSeleccionaMedias.sendScore(true, instance);
                     mOptions.initialScore = $eXeSeleccionaMedias
                         .getScore(instance)

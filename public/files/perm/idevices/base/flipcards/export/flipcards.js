@@ -1831,6 +1831,12 @@ var $eXeFlipCards = {
         $eXeFlipCards.showMessage(type, message, instance);
 
         if (mOptions.isScorm == 1) {
+            // Answering the last question completes the activity. Mark it synchronized
+            // so the score sent by sendScore records state 2, and an unload during the
+            // delay still finalizes the SCO as completed. (#1831)
+            if (mOptions.active >= mOptions.cardsGame.length - 1) {
+                mOptions.gameOver = true;
+            }
             $eXeFlipCards.sendScore(true, instance);
         }
 

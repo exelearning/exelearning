@@ -2075,6 +2075,12 @@ var $eXe3Dmol = {
         }
 
         $eXe3Dmol.updateScore(correct, instance);
+        // Responding to the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
         $eXe3Dmol.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
@@ -2141,6 +2147,12 @@ var $eXe3Dmol = {
         }
 
         $eXe3Dmol.updateScore(value, instance);
+        // Responding to the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
         $eXe3Dmol.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution

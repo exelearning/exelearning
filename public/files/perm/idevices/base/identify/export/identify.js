@@ -774,6 +774,12 @@ var $eXeIdentifica = {
 
         if (mOptions.isScorm === 1) {
             const score = mOptions.score.toFixed(2);
+            // Answering the last question completes the activity. Mark it synchronized
+            // so the score sent by sendScore records state 2, and an unload during the
+            // delay still finalizes the SCO as completed. (#1831)
+            if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+                mOptions.gameOver = true;
+            }
             $eXeIdentifica.sendScore(true, instance);
             $(`#idfRepeatActivity-${instance}`).text(
                 `${mOptions.msgs.msgYouScore}: ${score}`

@@ -1278,6 +1278,12 @@ var $azquizgame = {
         });
 
         $azquizgame.drawRosco(instance);
+        // Responding to the last word completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
+            mOptions.gameOver = true;
+        }
         $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
@@ -1354,6 +1360,12 @@ var $azquizgame = {
         });
 
         $azquizgame.drawRosco(instance);
+        // Responding to the last word completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
+            mOptions.gameOver = true;
+        }
         $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {

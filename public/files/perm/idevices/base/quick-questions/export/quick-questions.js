@@ -1712,6 +1712,12 @@ var $quickquestions = {
             answord = parseInt(respuesta, 10);
 
         $quickquestions.updateScore(solution === answord, instance);
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if ((mOptions.activeQuestion + 1 >= mOptions.numberQuestions) || (mOptions.useLives && mOptions.livesLeft <= 0)) {
+            mOptions.gameOver = true;
+        }
         $quickquestions.saveScormScore(instance);
 
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;

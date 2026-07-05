@@ -1987,6 +1987,12 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(correct, instance);
         }
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
         $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
@@ -2059,6 +2065,12 @@ var $quickquestionsmultiplechoice = {
             $quickquestionsmultiplechoice.updateScore(value, instance);
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(value, instance);
+        }
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
         }
         $quickquestionsmultiplechoice.saveScormScore(instance);
 

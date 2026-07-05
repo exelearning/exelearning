@@ -637,6 +637,18 @@ function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
     scormLifecycleState.finalized = true;
+    // Content-only page: mark completed only if no evaluable entries and status is not terminal.
+    // Pages with iDevice activities (isSCORM === true) are NEVER touched here — writing
+    // page status around their lifecycle breaks live in-game score commits (see commit 0d60db11).
+    if (isSCORM !== true) {
+      var suspendData = scorm.get("cmi.suspend_data") || "";
+      var status = scorm.get("cmi.core.lesson_status") || "";
+      var isTerminal = status === "passed" || status === "failed" || status === "completed";
+      if ((!suspendData || suspendData.trim() === "") && !isTerminal) {
+        scorm.set("cmi.core.lesson_status", "completed");
+      }
+    }
+
     // Leaving a page must NOT change the status: the iDevice owns it and only changes it
     // through learner interaction. Read the status (read-only) to pick the resume mode, then
     // close the session. A finished SCO exits "" (no resume); anything else stays resumable.
