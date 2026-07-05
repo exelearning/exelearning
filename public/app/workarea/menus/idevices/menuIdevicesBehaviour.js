@@ -11,6 +11,64 @@ export default class MenuIdevicesBehaviour {
         this.addEventClickIdeviceCategory(); // Handles click events
         this.changeAttributePosBehaviour(); //Observes changes in attributes
         this.addResizeListener(); // Handles resize events
+        this.observeRootPageState();
+    }
+
+    /**
+     * Observes changes to the selected node and disables the iDevices panel
+     * when the root page (Project Properties) is active.
+     */
+    observeRootPageState() {
+        const nodeContent = document.querySelector('#node-content');
+        if (!nodeContent) return;
+
+        this.updateIdevicesDisabledState(nodeContent.getAttribute('node-selected'));
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'node-selected') {
+                    this.updateIdevicesDisabledState(
+                        nodeContent.getAttribute('node-selected')
+                    );
+                }
+            });
+        });
+        observer.observe(nodeContent, { attributes: true, attributeFilter: ['node-selected'] });
+    }
+
+    /**
+     * Toggles the disabled state of the iDevices panel and quickbar
+     * based on whether the root page is currently selected.
+     *
+     * @param {string|null} nodeSelected - Value of the node-selected attribute
+     */
+    updateIdevicesDisabledState(nodeSelected) {
+        const isRoot = nodeSelected === 'root';
+        const tooltipText = _("You can't add an iDevice on the root page");
+
+        const listMenuIdevices = document.querySelector('#list_menu_idevices');
+        if (listMenuIdevices) {
+            listMenuIdevices.classList.toggle('disabled', isRoot);
+            if (isRoot) {
+                listMenuIdevices.setAttribute('title', tooltipText);
+                this.parent.categoriesIdevices?.forEach((el) => {
+                    el.classList.remove('on', 'last-open');
+                    el.classList.add('off');
+                });
+            } else {
+                listMenuIdevices.removeAttribute('title');
+            }
+        }
+
+        const idevicesBottom = document.querySelector('#idevices-bottom');
+        if (idevicesBottom) {
+            idevicesBottom.classList.toggle('disabled', isRoot);
+            if (isRoot) {
+                idevicesBottom.setAttribute('title', tooltipText);
+            } else {
+                idevicesBottom.removeAttribute('title');
+            }
+        }
     }
 
     /**

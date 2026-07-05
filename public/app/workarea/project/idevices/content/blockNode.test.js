@@ -706,11 +706,25 @@ describe('IdeviceBlockNode', () => {
             expect(icon.getAttribute('selected')).toBe('true');
         });
 
+        it('adds original-icon-selection class when no iconName', () => {
+            block.iconName = '';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(true);
+        });
+
         it('sets selected to false when iconName exists', () => {
             block.iconName = 'icon1';
             const icon = block.makeEmptyIcon();
 
             expect(icon.getAttribute('selected')).toBe('false');
+        });
+
+        it('does not add original-icon-selection class when iconName exists', () => {
+            block.iconName = 'icon1';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(false);
         });
     });
 
@@ -1569,6 +1583,49 @@ describe('IdeviceBlockNode', () => {
             expect(iconIds).toContain('share');
             expect(iconIds).toContain('download');
         });
+
+        it('marks icon as selected when iconName matches icon.id', () => {
+            block.iconName = 'share';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
+
+            expect(shareEl.getAttribute('selected')).toBe('true');
+            expect(downloadEl.getAttribute('selected')).not.toBe('true');
+        });
+
+        it('adds original-icon-selection class to the matching icon', () => {
+            block.iconName = 'share';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
+
+            expect(shareEl.classList.contains('original-icon-selection')).toBe(true);
+            expect(downloadEl.classList.contains('original-icon-selection')).toBe(false);
+        });
+
+        it('marks icon as selected when iconName matches icon.value', () => {
+            block.iconName = '/path/to/share.svg';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+
+            expect(shareEl.getAttribute('selected')).toBe('true');
+        });
     });
 
     describe('makeIconValueElement', () => {
@@ -2391,6 +2448,1394 @@ describe('IdeviceBlockNode', () => {
 
             expect(() => block.clearIdevicesOfList()).not.toThrow();
             expect(block.idevices).toHaveLength(0);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourChangeIcon
+    // -------------------------------------------------------------------------
+    describe('addBehaviourChangeIcon', () => {
+        let iconEl;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            iconEl = document.createElement('button');
+            block.iconElement = iconEl;
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('calls showModalChangeIcon when component is available', async () => {
+            const showSpy = vi
+                .spyOn(block, 'showModalChangeIcon')
+                .mockImplementation(() => {});
+            block.addBehaviourChangeIcon();
+            iconEl.click();
+            await vi.waitFor(() => {
+                expect(showSpy).toHaveBeenCalled();
+            });
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'iDevice locked' });
+            block.addBehaviourChangeIcon();
+            iconEl.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonDropDown
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonDropDown', () => {
+        let dropdownButton;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            dropdownButton = document.createElement('button');
+            dropdownButton.id = `dropdownMenuButton${block.blockId}`;
+            block.blockButtons.appendChild(dropdownButton);
+        });
+
+        it('calls toggleOn when dropdown has show class and block has hidden-idevices', () => {
+            // For getElementById to work both elements must be in the document.
+            // Appending blockButtons (which contains dropdownButton) keeps the
+            // button findable both via querySelector on blockButtons and via getElementById.
+            document.body.appendChild(block.blockButtons);
+            block.blockContent = document.createElement('article');
+            block.blockContent.id = block.blockId;
+            block.blockContent.classList.add('hidden-idevices');
+            document.body.appendChild(block.blockContent);
+
+            dropdownButton.classList.add('show');
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonDropDown();
+            dropdownButton.click();
+
+            expect(toggleOnSpy).toHaveBeenCalled();
+
+            document.body.removeChild(block.blockButtons);
+            document.body.removeChild(block.blockContent);
+        });
+
+        it('does nothing when dropdown does not have show class', () => {
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonDropDown();
+            dropdownButton.click();
+            expect(toggleOnSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonPropertiesBlock
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonPropertiesBlock', () => {
+        let propertiesButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            propertiesButton = document.createElement('button');
+            propertiesButton.id = `dropdownBlockMore-button-properties${block.blockId}`;
+            block.blockButtons.appendChild(propertiesButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('loads Yjs properties and shows properties modal on OK', async () => {
+            const loadSpy = vi
+                .spyOn(block, 'loadPropertiesFromYjs')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonPropertiesBlock();
+            propertiesButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.properties.show).toHaveBeenCalled();
+            });
+            expect(loadSpy).toHaveBeenCalled();
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourButtonPropertiesBlock();
+            propertiesButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonCloneBlock
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonCloneBlock', () => {
+        it('calls apiCloneBlock when button is clicked', async () => {
+            block.blockButtons = document.createElement('div');
+            const btn = document.createElement('button');
+            btn.id = `dropdownBlockMore-button-clone${block.blockId}`;
+            block.blockButtons.appendChild(btn);
+
+            const cloneSpy = vi
+                .spyOn(block, 'apiCloneBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.addBehaviourButtonCloneBlock();
+            btn.click();
+            await vi.waitFor(() => {
+                expect(cloneSpy).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourMoveToPageBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourMoveToPageBlockButton', () => {
+        let moveButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            moveButton = document.createElement('button');
+            moveButton.id = `dropdownBlockMore-button-move${block.blockId}`;
+            block.blockButtons.appendChild(moveButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('shows confirm modal with correct title on OK', async () => {
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+            const args = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            expect(args.title).toBe('Move box to page');
+            expect(args.confirmButtonText).toBe('Move');
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+
+        it('calls apiUpdatePage with selected page id from confirmExec', async () => {
+            const apiUpdatePageSpy = vi
+                .spyOn(block, 'apiUpdatePage')
+                .mockResolvedValue({ responseMessage: 'OK' });
+
+            // Build the DOM required by confirmExec
+            const main = document.createElement('div');
+            main.id = 'main';
+            const workarea = document.createElement('div');
+            workarea.id = 'workarea';
+            const menuNav = document.createElement('div');
+            menuNav.id = 'menu_nav_content';
+            const pageEl = document.createElement('div');
+            pageEl.setAttribute('nav-id', 'page-2');
+            menuNav.appendChild(pageEl);
+            workarea.appendChild(menuNav);
+            main.appendChild(workarea);
+            document.body.appendChild(main);
+
+            // Build modal body with a select. Append the option first, then
+            // set selectedIndex so select.item(selectedIndex) returns it reliably.
+            const modalBody = document.createElement('div');
+            const select = document.createElement('select');
+            select.classList.add('select-move-to-page');
+            const option = document.createElement('option');
+            option.setAttribute('value', 'page-2');
+            select.appendChild(option);
+            select.selectedIndex = 0;
+            modalBody.appendChild(select);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+
+            const args = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            args.confirmExec();
+
+            await vi.waitFor(() => {
+                expect(apiUpdatePageSpy).toHaveBeenCalledWith('page-2');
+            });
+
+            document.body.removeChild(main);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourExportBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourExportBlockButton', () => {
+        let exportButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            exportButton = document.createElement('button');
+            exportButton.id = `dropdownBlockMore-button-export${block.blockId}`;
+            block.blockButtons.appendChild(exportButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('calls downloadBlockSelected with blockId on OK', async () => {
+            const downloadSpy = vi
+                .spyOn(block, 'downloadBlockSelected')
+                .mockResolvedValue(undefined);
+            block.addBehaviourExportBlockButton();
+            exportButton.click();
+            await vi.waitFor(() => {
+                expect(downloadSpy).toHaveBeenCalledWith(block.blockId);
+            });
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourExportBlockButton();
+            exportButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourToggleBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourToggleBlockButton', () => {
+        let toggleButton;
+        let originalDollar;
+
+        beforeEach(() => {
+            block.headElement = document.createElement('header');
+            toggleButton = document.createElement('button');
+            toggleButton.id = `toggleBox${block.blockId}`;
+            block.headElement.appendChild(toggleButton);
+
+            block.blockContent = document.createElement('article');
+            block.toggleElement = null;
+
+            originalDollar = global.$;
+            global.$ = vi.fn(() => ({
+                attr: vi.fn(() => 'false'),
+                trigger: vi.fn(),
+            }));
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls toggleOff when toggle is currently on', () => {
+            toggleButton.classList.add('box-toggle-on');
+            const toggleOffSpy = vi
+                .spyOn(block, 'toggleOff')
+                .mockImplementation(() => {});
+            block.addBehaviourToggleBlockButton();
+            toggleButton.click();
+            expect(toggleOffSpy).toHaveBeenCalled();
+        });
+
+        it('calls toggleOn when toggle is currently off', () => {
+            toggleButton.classList.add('box-toggle-off');
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourToggleBlockButton();
+            toggleButton.click();
+            expect(toggleOnSpy).toHaveBeenCalled();
+        });
+
+        it('sets this.toggleElement from headElement on call', () => {
+            block.addBehaviourToggleBlockButton();
+            expect(block.toggleElement).toBe(toggleButton);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addTooltips
+    // -------------------------------------------------------------------------
+    describe('addTooltips', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            originalDollar = global.$;
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls initTooltips on blockButtons', () => {
+            global.$ = vi.fn(() => ({ addClass: vi.fn() }));
+            block.addTooltips();
+            expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+                block.blockButtons,
+            );
+        });
+
+        it('adds exe-app-tooltip class via jQuery', () => {
+            const mockAddClass = vi.fn();
+            global.$ = vi.fn(() => ({ addClass: mockAddClass }));
+            block.addTooltips();
+            expect(mockAddClass).toHaveBeenCalledWith('exe-app-tooltip');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addNoTranslateForGoogle
+    // -------------------------------------------------------------------------
+    describe('addNoTranslateForGoogle', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            block.ideviceButtons = document.createElement('div');
+            originalDollar = global.$;
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls jQuery to add notranslate class to auto-icons', () => {
+            const mockAddClass = vi.fn();
+            global.$ = vi.fn(() => ({ addClass: mockAddClass }));
+            block.addNoTranslateForGoogle();
+            expect(mockAddClass).toHaveBeenCalledWith('notranslate');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourToModalChangeIconBody
+    // -------------------------------------------------------------------------
+    describe('addBehaviourToModalChangeIconBody', () => {
+        let modalBody;
+        let icon1;
+        let icon2;
+
+        beforeEach(() => {
+            modalBody = document.createElement('div');
+            modalBody.id = 'change-block-icon-modal-content';
+            icon1 = document.createElement('div');
+            icon1.classList.add('option-block-icon');
+            icon1.setAttribute('selected', 'false');
+            icon2 = document.createElement('div');
+            icon2.classList.add('option-block-icon');
+            icon2.setAttribute('selected', 'false');
+            modalBody.appendChild(icon1);
+            modalBody.appendChild(icon2);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+        });
+
+        it('selects clicked icon and deselects others on click', () => {
+            icon1.setAttribute('selected', 'true');
+            block.addBehaviourToModalChangeIconBody();
+            icon2.click();
+            expect(icon2.getAttribute('selected')).toBe('true');
+            expect(icon1.getAttribute('selected')).toBe('false');
+        });
+
+        it('calls saveIconAction and closes modal on double-click', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+            expect(saveIconSpy).toHaveBeenCalled();
+            expect(eXeLearning.app.modals.confirm.close).toHaveBeenCalled();
+        });
+
+        it('calls saveIconAction and closes modal on Enter key', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(
+                new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }),
+            );
+            expect(saveIconSpy).toHaveBeenCalled();
+            expect(eXeLearning.app.modals.confirm.close).toHaveBeenCalled();
+        });
+
+        it('does not call saveIconAction on non-Enter keyup', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(
+                new KeyboardEvent('keyup', { key: 'Space', bubbles: true }),
+            );
+            expect(saveIconSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiSaveProperties
+    // -------------------------------------------------------------------------
+    describe('apiSaveProperties', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.appendChild(document.createElement('span'));
+            block.headElement = document.createElement('header');
+            mockEngine.getIdeviceById = vi.fn();
+        });
+
+        it('calls putSavePropertiesBlock with correct params', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiSaveProperties({ visibility: 'true' });
+            expect(eXeLearning.app.api.putSavePropertiesBlock).toHaveBeenCalled();
+            const args = eXeLearning.app.api.putSavePropertiesBlock.mock.calls[0][0];
+            expect(args.odePagStructureSyncId).toBe(block.blockId);
+        });
+
+        it('adds updateChildsProperties when inherit is true', async () => {
+            // odePagStructureSync must be present (even if empty) to avoid
+            // accessing .odeComponentsSyncs on undefined inside the source.
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSync: {},
+            });
+            vi.spyOn(block, 'generateBlockContentNode').mockImplementation(() => {});
+            await block.apiSaveProperties({}, true);
+            const args = eXeLearning.app.api.putSavePropertiesBlock.mock.calls[0][0];
+            expect(args.updateChildsProperties).toBe('true');
+        });
+
+        it('calls generateBlockContentNode(false) on success', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            const generateSpy = vi
+                .spyOn(block, 'generateBlockContentNode')
+                .mockImplementation(() => {});
+            await block.apiSaveProperties({});
+            await vi.waitFor(() => {
+                expect(generateSpy).toHaveBeenCalledWith(false);
+            });
+        });
+
+        it('shows alert on error response', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'ERROR',
+            });
+            await block.apiSaveProperties({});
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+
+        it('propagates properties to idevices when inherit=true and odeComponentsSyncs exists', async () => {
+            const mockIdevice = {
+                setProperties: vi.fn(),
+                makeIdeviceContentNode: vi.fn(),
+            };
+            mockEngine.getIdeviceById.mockReturnValue(mockIdevice);
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSync: {
+                    odeComponentsSyncs: [{ odeIdeviceId: 'idevice-1' }],
+                },
+            });
+            vi.spyOn(block, 'generateBlockContentNode').mockImplementation(() => {});
+            await block.apiSaveProperties({}, true);
+            await vi.waitFor(() => {
+                expect(mockIdevice.setProperties).toHaveBeenCalledWith(
+                    block.properties,
+                    true,
+                );
+                expect(mockIdevice.makeIdeviceContentNode).toHaveBeenCalledWith(false);
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdatePage
+    // -------------------------------------------------------------------------
+    describe('apiUpdatePage', () => {
+        it('returns false when target page equals current page', async () => {
+            block.odeNavStructureSyncId = 'page-1';
+            const result = await block.apiUpdatePage('page-1');
+            expect(result).toBe(false);
+        });
+
+        it('routes through moveToPageViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const moveSpy = vi
+                .spyOn(block, 'moveToPageViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.odeNavStructureSyncId = 'page-1';
+            await block.apiUpdatePage('other-page');
+            expect(moveSpy).toHaveBeenCalledWith('other-page');
+        });
+
+        it('legacy path calls apiSendDataService and removes on OK', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.odeNavStructureSyncId = 'page-1';
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            const removeSpy = vi
+                .spyOn(block, 'remove')
+                .mockImplementation(() => {});
+            await block.apiUpdatePage('page-2');
+            expect(apiSendSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path shows error modal on non-OK response', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.odeNavStructureSyncId = 'page-1';
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue(false);
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiUpdatePage('page-2');
+            expect(showModalSpy).toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // deleteBlockViaYjs
+    // -------------------------------------------------------------------------
+    describe('deleteBlockViaYjs', () => {
+        it('returns ERROR when bridge not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('calls deleteBlock with blockId and returns OK on success', async () => {
+            const mockDelete = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: mockDelete },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(mockDelete).toHaveBeenCalledWith(block.pageId, block.blockId);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('retries with this.id when blockId fails and ids differ', async () => {
+            block.id = 'alt-id';
+            block.blockId = 'block-id-1';
+            const mockDelete = vi
+                .fn()
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: mockDelete },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(mockDelete).toHaveBeenCalledTimes(2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns ERROR when all attempts fail', async () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: vi.fn().mockReturnValue(false) },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            warnSpy.mockRestore();
+        });
+
+        it('returns ERROR when an exception is thrown', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    deleteBlock: vi.fn(() => {
+                        throw new Error('delete failed');
+                    }),
+                },
+            };
+            const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            errSpy.mockRestore();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // reorderViaYjs
+    // -------------------------------------------------------------------------
+    describe('reorderViaYjs', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('moving');
+        });
+
+        it('returns ERROR when bridge not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('calls updateBlockOrder with blockId and returns OK on success', async () => {
+            const mockUpdate = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlockOrder: mockUpdate },
+            };
+            block.order = 2;
+            const result = await block.reorderViaYjs();
+            expect(mockUpdate).toHaveBeenCalledWith(block.blockId, 2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('retries with this.id when blockId fails and ids differ', async () => {
+            block.id = 'alt-id';
+            block.blockId = 'block-id-1';
+            const mockUpdate = vi
+                .fn()
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlockOrder: mockUpdate },
+            };
+            const result = await block.reorderViaYjs();
+            expect(mockUpdate).toHaveBeenCalledTimes(2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns ERROR when all attempts fail', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlockOrder: vi.fn().mockReturnValue(false),
+                },
+            };
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('schedules removal of moving class on success', async () => {
+            vi.useFakeTimers();
+            try {
+                eXeLearning.app.project._yjsBridge = {
+                    structureBinding: {
+                        updateBlockOrder: vi.fn().mockReturnValue(true),
+                    },
+                };
+                await block.reorderViaYjs();
+                expect(block.blockContent.classList.contains('moving')).toBe(true);
+                vi.advanceTimersByTime(mockEngine.movingClassDuration + 10);
+                expect(block.blockContent.classList.contains('moving')).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('returns ERROR when exception is thrown', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlockOrder: vi.fn(() => {
+                        throw new Error('reorder error');
+                    }),
+                },
+            };
+            const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            errSpy.mockRestore();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // getFallbackPageOrder
+    // -------------------------------------------------------------------------
+    describe('getFallbackPageOrder', () => {
+        it('returns 1 when components.blocks is not an array', () => {
+            mockEngine.components = {};
+            block.pageId = 'page-1';
+            expect(block.getFallbackPageOrder()).toBe(1);
+        });
+
+        it('returns 1 when no blocks exist', () => {
+            mockEngine.components = { blocks: [] };
+            block.pageId = 'page-1';
+            expect(block.getFallbackPageOrder()).toBe(1);
+        });
+
+        it('returns max order + 1 from blocks on current page', () => {
+            block.pageId = 'page-1';
+            mockEngine.components = {
+                blocks: [
+                    { pageId: 'page-1', order: 3 },
+                    { pageId: 'page-1', order: 7 },
+                    { pageId: 'page-2', order: 10 },
+                ],
+            };
+            expect(block.getFallbackPageOrder()).toBe(8);
+        });
+
+        it('falls back to blockContent.getAttribute when block.order is undefined', () => {
+            block.pageId = 'page-1';
+            const bc = document.createElement('article');
+            bc.setAttribute('order', '5');
+            mockEngine.components = {
+                blocks: [{ pageId: 'page-1', order: undefined, blockContent: bc }],
+            };
+            expect(block.getFallbackPageOrder()).toBe(6);
+        });
+
+        it('returns 1 when exception is thrown', () => {
+            const originalComponents = mockEngine.components;
+            Object.defineProperty(mockEngine, 'components', {
+                get() {
+                    throw new Error('oops');
+                },
+                configurable: true,
+            });
+            expect(block.getFallbackPageOrder()).toBe(1);
+            Object.defineProperty(mockEngine, 'components', {
+                value: originalComponents,
+                configurable: true,
+                writable: true,
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateOrder
+    // -------------------------------------------------------------------------
+    describe('apiUpdateOrder', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('routes through reorderViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const reorderSpy = vi
+                .spyOn(block, 'reorderViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiUpdateOrder();
+            expect(reorderSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path calls putReorderBlock and removes moving class on OK', async () => {
+            vi.useFakeTimers();
+            try {
+                eXeLearning.app.project._yjsEnabled = false;
+                block.blockContent.classList.add('moving');
+                vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                    responseMessage: 'OK',
+                });
+                await block.apiUpdateOrder();
+                vi.advanceTimersByTime(mockEngine.movingClassDuration + 10);
+                expect(block.blockContent.classList.contains('moving')).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('legacy path shows error modal on non-OK response', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue(false);
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiUpdateOrder();
+            expect(showModalSpy).toHaveBeenCalled();
+        });
+
+        it('with getCurrentOrder=true reads order from adjacent blocks first', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const container = document.createElement('div');
+            const prevBlock = document.createElement('article');
+            prevBlock.classList.add('box');
+            prevBlock.setAttribute('order', '5');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiUpdateOrder(true);
+            expect(block.order).toBe(6);
+        });
+
+        it('with getCurrentOrder=true uses getFallbackPageOrder when no adjacent blocks', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            mockEngine.components = { blocks: [] };
+            block.pageId = 'page-1';
+
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiUpdateOrder(true);
+            expect(block.order).toBe(1);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiDeleteBlock
+    // -------------------------------------------------------------------------
+    describe('apiDeleteBlock', () => {
+        beforeEach(() => {
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('calls deleteBlockViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const deleteSpy = vi
+                .spyOn(block, 'deleteBlockViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiDeleteBlock();
+            expect(deleteSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path calls eXeLearning.app.api.deleteBlock', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            eXeLearning.app.api.deleteBlock = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.api.deleteBlock).toHaveBeenCalledWith(block.id);
+            });
+        });
+
+        it('legacy path calls updateComponentsBlocks when odePagStructureSyncs present', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const syncs = [{ id: 'b1', order: 0 }];
+            eXeLearning.app.api.deleteBlock = vi.fn().mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSyncs: syncs,
+            });
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(mockEngine.updateComponentsBlocks).toHaveBeenCalledWith(
+                    syncs,
+                    ['order'],
+                );
+            });
+        });
+
+        it('legacy path shows error modal on failure', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            eXeLearning.app.api.deleteBlock = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'ERROR' });
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(showModalSpy).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiSendDataService
+    // -------------------------------------------------------------------------
+    describe('apiSendDataService', () => {
+        beforeEach(() => {
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('returns response on success', async () => {
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            const result = await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+            ]);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('calls updateComponentsBlocks when odePagStructureSyncs is present', async () => {
+            const syncs = [{ id: 'b1', order: 1 }];
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSyncs: syncs,
+            });
+            await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+                'order',
+            ]);
+            expect(mockEngine.updateComponentsBlocks).toHaveBeenCalledWith(syncs, [
+                'order',
+            ]);
+        });
+
+        it('returns false on non-OK response', async () => {
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'ERROR',
+            });
+            const result = await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+            ]);
+            expect(result).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // generateDataObject
+    // -------------------------------------------------------------------------
+    describe('generateDataObject', () => {
+        it('builds data object from params array', () => {
+            block.id = 'blk-1';
+            block.iconName = 'myIcon';
+            block.blockName = 'My Block';
+            block.order = 3;
+
+            const result = block.generateDataObject([
+                'odePagStructureSyncId',
+                'iconName',
+                'blockName',
+                'order',
+            ]);
+
+            expect(result.odePagStructureSyncId).toBe('blk-1');
+            expect(result.iconName).toBe('myIcon');
+            expect(result.blockName).toBe('My Block');
+            expect(result.order).toBe(3);
+        });
+
+        it('only includes params listed in the array', () => {
+            const result = block.generateDataObject(['odePagStructureSyncId']);
+            expect(Object.keys(result)).toEqual(['odePagStructureSyncId']);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // getDictBaseValuesData
+    // -------------------------------------------------------------------------
+    describe('getDictBaseValuesData', () => {
+        it('returns correct base data dictionary', () => {
+            block.id = 'blk-1';
+            block.iconName = 'icon1';
+            block.blockName = 'Block';
+            block.order = 2;
+            block.odeNavStructureSyncId = 'nav-1';
+            block.pageId = 'page-1';
+
+            const result = block.getDictBaseValuesData();
+
+            expect(result.odePagStructureSyncId).toBe('blk-1');
+            expect(result.iconName).toBe('icon1');
+            expect(result.blockName).toBe('Block');
+            expect(result.order).toBe(2);
+            expect(result.odeVersionId).toBe('v1');
+            expect(result.odeSessionId).toBe('session-123');
+            expect(result.odeNavStructureSyncId).toBe('nav-1');
+            expect(result.odePageId).toBe('page-1');
+        });
+
+        it('uses structure defaults when odeNavStructureSyncId and pageId are unset', () => {
+            block.odeNavStructureSyncId = null;
+            block.pageId = null;
+
+            const result = block.getDictBaseValuesData();
+
+            expect(result.odeNavStructureSyncId).toBe('nav-id-1');
+            expect(result.odePageId).toBe('page-id-1');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // showModalMessageErrorDatabase
+    // -------------------------------------------------------------------------
+    describe('showModalMessageErrorDatabase', () => {
+        it('shows alert with default message after 300ms timeout', async () => {
+            vi.useFakeTimers();
+            try {
+                block.showModalMessageErrorDatabase({}, 'Default error message');
+                vi.advanceTimersByTime(300);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        title: 'Block error',
+                        body: 'Default error message',
+                    }),
+                );
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('shows default message even when response is falsy', async () => {
+            vi.useFakeTimers();
+            try {
+                block.showModalMessageErrorDatabase(false, 'Fallback message');
+                vi.advanceTimersByTime(300);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Fallback message' }),
+                );
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // remove
+    // -------------------------------------------------------------------------
+    describe('remove', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            document.body.appendChild(block.blockContent);
+            mockEngine.removeBlockOfComponentList = vi.fn();
+            mockEngine.updateMode = vi.fn();
+        });
+
+        afterEach(() => {
+            if (document.body.contains(block.blockContent)) {
+                document.body.removeChild(block.blockContent);
+            }
+        });
+
+        it('removes blockContent from the DOM', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(document.body.contains(block.blockContent)).toBe(false);
+        });
+
+        it('calls engine.removeBlockOfComponentList with block id', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(mockEngine.removeBlockOfComponentList).toHaveBeenCalledWith(
+                block.id,
+            );
+        });
+
+        it('calls engine.updateMode', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(mockEngine.updateMode).toHaveBeenCalled();
+        });
+
+        it('calls apiDeleteBlock when bbdd is true', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            const apiDeleteSpy = vi
+                .spyOn(block, 'apiDeleteBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.remove(true);
+            expect(apiDeleteSpy).toHaveBeenCalled();
+        });
+
+        it('does not call apiDeleteBlock when bbdd is false', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            const apiDeleteSpy = vi
+                .spyOn(block, 'apiDeleteBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.remove(false);
+            expect(apiDeleteSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // removeClassLoading
+    // -------------------------------------------------------------------------
+    describe('removeClassLoading', () => {
+        it('removes loading class from blockContent', () => {
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('loading', 'extra-class');
+            block.removeClassLoading();
+            expect(block.blockContent.classList.contains('loading')).toBe(false);
+            expect(block.blockContent.classList.contains('extra-class')).toBe(true);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // updateMode
+    // -------------------------------------------------------------------------
+    describe('updateMode', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.headElement = document.createElement('header');
+            block.headElement.classList.add('draggable');
+            block.headElement.setAttribute('draggable', 'true');
+            block.mode = 'export';
+        });
+
+        it('sets mode attribute on blockContent', () => {
+            block.updateMode('edition');
+            expect(block.blockContent.getAttribute('mode')).toBe('edition');
+        });
+
+        it('edition mode makes headElement non-draggable', () => {
+            block.updateMode('edition');
+            expect(block.headElement.getAttribute('draggable')).toBe('false');
+            expect(block.headElement.classList.contains('draggable')).toBe(false);
+        });
+
+        it('export mode makes headElement draggable', () => {
+            block.mode = 'edition';
+            block.headElement.classList.remove('draggable');
+            block.updateMode('export');
+            expect(block.headElement.getAttribute('draggable')).toBe('true');
+            expect(block.headElement.classList.contains('draggable')).toBe(true);
+        });
+
+        it('uses existing this.mode when no argument is provided', () => {
+            block.mode = 'export';
+            block.updateMode();
+            expect(block.blockContent.getAttribute('mode')).toBe('export');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // updateParam — 'id' and 'order' cases
+    // -------------------------------------------------------------------------
+    describe('updateParam id and order cases', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+        });
+
+        it("updates blockContent sym-id attribute for param 'id'", () => {
+            block.updateParam('id', 'new-block-id');
+            expect(block.id).toBe('new-block-id');
+            expect(block.blockContent.getAttribute('sym-id')).toBe('new-block-id');
+        });
+
+        it("updates blockContent order attribute for param 'order'", () => {
+            block.updateParam('order', 7);
+            expect(block.order).toBe(7);
+            expect(block.blockContent.getAttribute('order')).toBe('7');
+        });
+
+        it('updates arbitrary property without DOM side-effect for other params', () => {
+            block.updateParam('blockName', 'Hello');
+            expect(block.blockName).toBe('Hello');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // resetWindowHash
+    // -------------------------------------------------------------------------
+    describe('resetWindowHash', () => {
+        afterEach(() => {
+            window.location.hash = '';
+        });
+
+        it('sets window.location.hash to node-content', () => {
+            block.resetWindowHash();
+            expect(window.location.hash).toContain('node-content');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // focusTextInput
+    // -------------------------------------------------------------------------
+    describe('focusTextInput', () => {
+        it('focuses the input element', () => {
+            const input = document.createElement('input');
+            input.value = 'test';
+            document.body.appendChild(input);
+            const focusSpy = vi.spyOn(input, 'focus');
+            block.focusTextInput(input);
+            expect(focusSpy).toHaveBeenCalled();
+            document.body.removeChild(input);
+        });
+
+        it('clears and restores the input value to move caret to end', () => {
+            const input = document.createElement('input');
+            input.value = 'original value';
+            document.body.appendChild(input);
+            block.focusTextInput(input);
+            expect(input.value).toBe('original value');
+            document.body.removeChild(input);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // sendPublishedNotification
+    // -------------------------------------------------------------------------
+    describe('sendPublishedNotification', () => {
+        it('does nothing when offlineInstallation is true', () => {
+            block.offlineInstallation = true;
+            block.realTimeEventNotifier = { notify: vi.fn() };
+            block.sendPublishedNotification();
+            expect(block.realTimeEventNotifier.notify).not.toHaveBeenCalled();
+        });
+
+        it('calls realTimeEventNotifier.notify when not offline', () => {
+            block.offlineInstallation = false;
+            const notifySpy = vi.fn();
+            block.realTimeEventNotifier = { notify: notifySpy };
+            block.sendPublishedNotification();
+            expect(notifySpy).toHaveBeenCalledWith(
+                eXeLearning.app.project.odeSession,
+                { name: 'new-content-published' },
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // makeIconValueElement — static / offline mode branch
+    // -------------------------------------------------------------------------
+    describe('makeIconValueElement static mode branch', () => {
+        it('converts absolute path to relative when isStaticMode is true', () => {
+            const savedConfig = eXeLearning.config;
+            eXeLearning.config = { isStaticMode: true, isOfflineInstallation: false };
+
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+
+            expect(img.getAttribute('src')).toBe('./themes/theme/icons/star.svg');
+            eXeLearning.config = savedConfig;
+        });
+
+        it('converts absolute path to relative when isOfflineInstallation is true', () => {
+            const savedConfig = eXeLearning.config;
+            eXeLearning.config = { isStaticMode: false, isOfflineInstallation: true };
+
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+
+            expect(img.getAttribute('src')).toBe('./themes/theme/icons/star.svg');
+            eXeLearning.config = savedConfig;
+        });
+
+        it('leaves path unchanged in server mode', () => {
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+            expect(img.getAttribute('src')).toBe('/themes/theme/icons/star.svg');
+        });
+
+        it('leaves relative path unchanged', () => {
+            const icon = { value: 'relative/path/icon.svg', title: 'Icon' };
+            const img = block.makeIconValueElement(icon);
+            expect(img.getAttribute('src')).toBe('relative/path/icon.svg');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // loadPropertiesFromYjs — null yjsProperties
+    // -------------------------------------------------------------------------
+    describe('loadPropertiesFromYjs null yjsProperties', () => {
+        it('does nothing when getBlockProperties returns null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => null),
+                },
+            };
+            const originalValue = block.properties.visibility.value;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.visibility.value).toBe(originalValue);
+        });
+
+        it('handles getBlockProperties returning undefined gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => undefined),
+                },
+            };
+            const originalValue = block.properties.visibility.value;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.visibility.value).toBe(originalValue);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateIcon — no id branch
+    // -------------------------------------------------------------------------
+    describe('apiUpdateIcon no id branch', () => {
+        it('does not call apiSendDataService when id is null', () => {
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.id = null;
+            block.apiUpdateIcon('new-icon');
+            expect(apiSendSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateTitle — no id branch
+    // -------------------------------------------------------------------------
+    describe('apiUpdateTitle no id branch', () => {
+        it('does not call apiSendDataService when id is null', () => {
+            block.blockNameElementText = document.createElement('h1');
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.id = null;
+            block.apiUpdateTitle('New Title');
+            expect(apiSendSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // generateBlockContentNode — no id branch
+    // -------------------------------------------------------------------------
+    describe('generateBlockContentNode no id branch', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            // The addBehaviourButtonDeleteBlock tests in this file delete global.$
+            // via `delete global.$`. Restore a minimal stub so addTooltips does
+            // not throw when generateBlockContentNode drives the full chain.
+            originalDollar = global.$;
+            if (typeof global.$ !== 'function') {
+                global.$ = vi.fn(() => ({ addClass: vi.fn() }));
+            }
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('does not set sym-id attribute when block has no id', () => {
+            block.id = null;
+            const node = block.generateBlockContentNode(true);
+            expect(node.hasAttribute('sym-id')).toBe(false);
         });
     });
 

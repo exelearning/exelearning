@@ -174,7 +174,7 @@ get isStatic() {
 
 getComboRemap() {
   const isStatic = this.isStatic;
-  return {
+  const map = {
     'mod+alt+n'   : 'navbar-button-new',
     'mod+o'       : isStatic ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
     'mod+s'       : isStatic ? 'navbar-button-save-offline'    : 'navbar-button-save',
@@ -184,6 +184,18 @@ getComboRemap() {
     'mod+p'       : 'navbar-button-preview',
     'mod+k'       : 'navbar-button-global-search',
   };
+
+  // File -> Close (Cmd/Ctrl+W). This closes the current window, so the
+  // standard accelerator is Cmd+W / Ctrl+W (not Q, which is reserved for
+  // quitting the app). macOS already provides a native Cmd+W via the Window
+  // menu role, so we only wire the in-app binding on Windows/Linux. Gating on
+  // the Electron bridge keeps the browser/PWA build from swallowing Ctrl+W
+  // (which natively closes the browser tab there).
+  if (!this.isMac && typeof window?.electronAPI?.closeCurrentWindow === 'function') {
+    map['mod+w'] = 'navbar-button-close-file';
+  }
+
+  return map;
 }
 
 resolveTarget(combo) {

@@ -1044,10 +1044,37 @@ export default class ModalFilemanager extends Modal {
                 });
             }
         } else if (!this.multiSelect) {
-            // Single select mode - reset selection on view change
-            this.selectedAsset = null;
-            this.selectedAssets = [];
-            this.showSidebarEmpty();
+            // Single select mode - preserve the current selection across
+            // re-renders (e.g. a remote Yjs asset change triggers loadAssets ->
+            // applyFiltersAndRender -> renderCurrentView). Only clear when the
+            // selected asset is no longer present in the rendered list.
+            const currentAsset = this.selectedAsset
+                ? this.filteredAssets.find(a => a.id === this.selectedAsset.id)
+                : null;
+            if (currentAsset) {
+                // Refresh the reference to the freshly-rebuilt asset object and
+                // re-apply the visual selection to its grid item / list row.
+                this.selectedAsset = currentAsset;
+                if (this.viewMode === 'grid' && this.grid) {
+                    this.grid.querySelectorAll('.media-library-item').forEach(el => {
+                        if (el.dataset.assetId === currentAsset.id) {
+                            el.classList.add('selected');
+                        }
+                    });
+                } else if (this.listTbody) {
+                    this.listTbody.querySelectorAll('tr').forEach(el => {
+                        if (el.dataset.assetId === currentAsset.id) {
+                            el.classList.add('selected');
+                        }
+                    });
+                }
+                this.showSidebarContent(currentAsset);
+            } else {
+                // Selection is gone - reset and empty the sidebar.
+                this.selectedAsset = null;
+                this.selectedAssets = [];
+                this.showSidebarEmpty();
+            }
         }
     }
 
@@ -2168,8 +2195,18 @@ export default class ModalFilemanager extends Modal {
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
-                // Upload to current folder
-                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                // Upload to current folder.
+                // #1951: a byte-identical file dropped into a DIFFERENT folder must keep its
+                // own folderPath instead of collapsing onto an existing asset and overwriting
+                // its folderPath (which broke self-contained HTML bundles, e.g. Hype exports).
+                // That overwrite only happens for non-root uploads (at root the folderPath is
+                // empty, so insertImage never rewrites it), so opt out of content-hash dedup
+                // ONLY for subfolder uploads. Root uploads keep dedup so cross-project content
+                // reuse (the same image shared across projects) still resolves to one asset.
+                const url = await this.assetManager.insertImage(file, {
+                    folderPath: this.currentPath,
+                    forceNewId: Boolean(this.currentPath),
+                });
                 uploadedCount++;
                 lastUploadedUrl = url;
             } catch (err) {
@@ -3339,8 +3376,13 @@ export default class ModalFilemanager extends Modal {
                     // Create a File object with the correct name
                     const file = new File([fileBlob], basename, { type: mimeType });
 
-                    // Upload to asset manager with folder path
-                    await this.assetManager.insertImage(file, { folderPath });
+                    // Upload to asset manager with folder path.
+                    // forceNewId opts out of content-hash dedup: files extracted
+                    // from a ZIP belong to a folder-sensitive bundle (e.g. a
+                    // Tumult Hype export), where byte-identical files in different
+                    // relative paths must stay separate assets so each bundle's
+                    // relative links keep resolving. See #1951.
+                    await this.assetManager.insertImage(file, { folderPath, forceNewId: true });
                     extractedCount++;
                     Logger.log(`[MediaLibrary] Extracted: ${folderPath}/${basename}`);
                 } catch (err) {

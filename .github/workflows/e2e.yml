@@ -12,6 +12,9 @@ on:
       - main
       - tikismaker
       - 'release/*'
+  # Allow maintainers to trigger extra runs by hand (e.g. to sample for flaky
+  # specs, or to exercise the re-run path) without pushing a new commit.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,16 +24,14 @@ permissions:
   contents: read
 
 jobs:
-  e2e:
+  # Build every asset once and share it with the test shards. Previously each of
+  # the 3 browser jobs rebuilt CSS + bundles independently (3x build); now the
+  # build is paid a single time and downloaded by the shards.
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        browser: [chromium, firefox, static]
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -40,11 +41,78 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Build CSS (prod)
-        run: make css
+      # build:static == build:all (css:node + every bundle) + dist/static, so it
+      # produces both the public/ bundles served by the dynamic server and the
+      # self-contained dist/static used by the static project.
+      - name: Build all assets once
+        run: bun run build:static
 
-      - name: Bundle JavaScript
-        run: make bundle
+      - name: Upload dynamic bundles (chromium/firefox)
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-public
+          # Overwrite instead of 409-conflicting when a re-run reuploads over the
+          # artifact retained from the failed attempt.
+          overwrite: true
+          retention-days: 1
+          include-hidden-files: true
+          path: |
+            public/app/app.bundle.js
+            public/app/yjs/exporters.bundle.js
+            public/app/yjs/importers.bundle.js
+            public/app/common/i18n/**
+            public/bundles/**
+            public/style/workarea/main.css
+            public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+
+      - name: Upload static distribution (static project)
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-static
+          overwrite: true
+          retention-days: 1
+          path: dist/static/**
+
+  e2e:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      # Let every shard finish so the merged report is complete; with fail-fast
+      # a single failing shard would cancel its siblings and hide other results.
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, static]
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      # Overlay the prebuilt bundles onto the checked-out tree instead of
+      # rebuilding. The dynamic server (bun src/index.ts) serves public/ via
+      # staticPlugin, so chromium/firefox need build-public; the static project
+      # serves dist/static.
+      - name: Download dynamic bundles
+        if: matrix.browser != 'static'
+        uses: actions/download-artifact@v8
+        with:
+          name: build-public
+          path: public
+
+      - name: Download static distribution
+        if: matrix.browser == 'static'
+        uses: actions/download-artifact@v8
+        with:
+          name: build-static
+          path: dist/static
 
       - name: Install Playwright Browsers
         run: |
@@ -54,12 +122,108 @@ jobs:
             npx playwright install --with-deps ${{ matrix.browser }}
           fi
 
-      - name: E2E Tests (${{ matrix.browser }})
-        run: make test-e2e-${{ matrix.browser }}
+      # Invoke Playwright directly (not the make targets) so the build-once
+      # bundles are not rebuilt: test-e2e-firefox/static carry bundle/build-static
+      # prerequisites that would negate the shared build.
+      - name: E2E Tests (${{ matrix.browser }} ${{ matrix.shard }}/4)
+        run: bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob
 
-      - name: Upload Playwright Report
+      # Give each shard's blob a unique name so cross-project shards (e.g.
+      # chromium-1 and firefox-1, both report-1.zip) don't collide when merged.
+      - name: Stage blob report
+        if: always()
+        run: |
+          mkdir -p staged-blob
+          cp blob-report/*.zip "staged-blob/report-${{ matrix.browser }}-${{ matrix.shard }}.zip"
+
+      - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: blob-${{ matrix.browser }}-${{ matrix.shard }}
+          # A re-run of this shard reuploads its blob over the one retained from
+          # the failed attempt; overwrite rather than 409-conflict.
+          overwrite: true
+          path: staged-blob/
+          retention-days: 1
+
+  merge-report:
+    needs: e2e
+    # Run even if some shards failed so the report still reflects every shard.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # allow deleting the intermediate build/blob artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Download all blob reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: blob-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Emit GitHub annotations from merged results
+        # download-artifact creates no directory when zero blob-* match (e.g. a
+        # catastrophic all-shards-fail run); create it so merge-reports surfaces
+        # its own "no reports" message instead of crashing on a missing directory.
+        run: |
+          mkdir -p all-blob-reports
+          bun x playwright merge-reports --reporter=github ./all-blob-reports
+
+      - name: Merge into a single HTML report
+        run: bun x playwright merge-reports --reporter=html ./all-blob-reports
+
+      - name: Upload merged HTML report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          overwrite: true
           path: playwright-report/
+          retention-days: 14
+
+      # The build-public/build-static/blob-* artifacts are pure run intermediates
+      # (shards consume them, the merge consumes the blobs). Delete them on a
+      # fully-green run so only the merged playwright-report is retained.
+      #
+      # Only delete when the whole E2E matrix passed. On a failed run the
+      # intermediates must survive so "Re-run failed jobs" works: that feature
+      # reuses the already-successful build/shard jobs WITHOUT re-running them, so
+      # if their artifacts were deleted the re-run shard can't download
+      # build-public and the re-run merge finds no blob-* to merge. A step `if:`
+      # without a status function implicitly ANDs success(), so this also skips
+      # (retaining the artifacts) if any earlier merge-report step fails.
+      - name: Delete intermediate artifacts
+        if: ${{ needs.e2e.result == 'success' }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+            const intermediate = /^(build-public|build-static|blob-.*)$/;
+            for (const artifact of data.artifacts) {
+              if (intermediate.test(artifact.name)) {
+                core.info(`Deleting artifact ${artifact.name} (#${artifact.id})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }

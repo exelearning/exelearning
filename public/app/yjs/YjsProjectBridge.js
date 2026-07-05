@@ -28,6 +28,7 @@ class YjsProjectBridge {
     this.resourceCache = null; // ResourceCache for persistent IndexedDB storage (themes, libs, iDevices)
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
+    this.collaborativeAutosave = null; // CollaborativeAutosaveManager (issue #1592), only in online collaborative sessions
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
@@ -2408,7 +2409,74 @@ class YjsProjectBridge {
       this.updateSaveStatus('saved');
     }
 
+    // Collaborative autosave (issue #1592): persist the shared Yjs state after
+    // an idle period so live collaborative changes are not lost when the last
+    // editor closes without saving. The manager gates itself to genuine online
+    // collaborative sessions (remote storage + collaboration + a collaborator
+    // present), so this is a no-op in single-user, static or offline modes.
+    if (typeof window !== 'undefined' && window.CollaborativeAutosaveManager && !this.collaborativeAutosave) {
+      // Optional runtime override for the idle debounce (ms). Mirrors the
+      // existing window.__EXE_STATIC_MODE__ override convention; used by E2E
+      // tests and deployments that want a different cadence. Falls back to the
+      // manager's conservative default when unset.
+      const idleOverride = window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+      const idleDelayMs = typeof idleOverride === 'number' && idleOverride >= 0 ? idleOverride : undefined;
+      this.collaborativeAutosave = new window.CollaborativeAutosaveManager(this, {
+        idleDelayMs,
+        onStatusChange: (phase) => this._updateCollaborativeSaveStatus(phase),
+      });
+      this.collaborativeAutosave.start();
+    }
+
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
+  }
+
+  /**
+   * Render the collaborative save-status notice (issue #1592).
+   *
+   * Updates the persistent toolbar notice (#exe-collab-save-status) so users in
+   * a collaborative session understand that live shared changes still need to be
+   * persisted, and are warned clearly if autosave fails. This complements — and
+   * does not replace — the red/green save button.
+   *
+   * @param {('clean'|'pending'|'saving'|'failed')} phase
+   */
+  _updateCollaborativeSaveStatus(phase) {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+      return;
+    }
+    const el = document.getElementById('exe-collab-save-status');
+    if (!el) return;
+
+    const messages = {
+      clean: _('All collaborative changes are saved.'),
+      pending: _('Collaborative changes are shared live and will be saved automatically.'),
+      saving: _('Saving collaborative changes...'),
+      failed: _('Autosave failed. Please click Save before leaving.'),
+    };
+
+    el.classList.remove(
+      'collab-save-status--clean',
+      'collab-save-status--pending',
+      'collab-save-status--saving',
+      'collab-save-status--failed'
+    );
+
+    const message = messages[phase];
+    if (!message) {
+      // Unknown phase: keep the notice hidden rather than showing an empty pill.
+      return;
+    }
+
+    el.classList.add('collab-save-status--' + phase);
+    el.classList.remove('d-none');
+
+    const textEl = typeof el.querySelector === 'function' ? el.querySelector('.content') : null;
+    const target = textEl || el;
+    target.textContent = message;
+    if (typeof el.setAttribute === 'function') {
+      el.setAttribute('title', message);
+    }
   }
 
   /**
@@ -3503,19 +3571,9 @@ class YjsProjectBridge {
         return;
       }
 
-      const configXml = new TextDecoder().decode(themeConfig);
-      const getValue = (tag) => {
-        const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-        return match ? match[1].trim() : '';
-      };
-      const downloadable = getValue('downloadable');
-      if (downloadable === '0') {
-        Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
-        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
-        // (user defaultTheme preference -> admin default -> base).
-        eXeLearning.app.themes.selectTheme(themeName, true);
-        return;
-      }
+      // Styles embedded in an opened/imported .elpx are always available. The legacy
+      // <downloadable>0</downloadable> flag must not block importing the style (issue #1893):
+      // the package has a theme folder, so offer it for import like any other embedded style.
 
       // Store file reference for later extraction
       this._pendingThemeFile = file;
@@ -3599,14 +3657,22 @@ class YjsProjectBridge {
           // Select the theme and save to metadata
           await eXeLearning.app.themes.selectTheme(themeName, true);
           Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
+          eXeLearning.app.toasts.createToast({
+            title: _('Style installed'),
+            body: _('The style has been installed successfully.'),
+            icon: 'task_alt',
+            remove: 4000,
+          });
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
-          eXeLearning.app.modals.alert.show({
+          eXeLearning.app.toasts.createToast({
             title: _('Error'),
             body: _('Failed to import style'),
+            error: true,
+            remove: 5000,
           });
         }
       },
@@ -3708,7 +3774,9 @@ class YjsProjectBridge {
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
         config.description = getValue('description') || '';
-        config.downloadable = getValue('downloadable') || '1';
+        // Styles imported from a .elpx are always available, so the legacy
+        // <downloadable> flag is intentionally ignored and stays normalized to '1'
+        // (issue #1893). config.downloadable keeps its default value above.
       }
 
       // Scan for CSS files
@@ -4188,6 +4256,13 @@ class YjsProjectBridge {
     }
     if (this._pendingAssetRefreshIds) {
       this._pendingAssetRefreshIds.clear();
+    }
+
+    // Stop collaborative autosave (issue #1592) before tearing down the document
+    // manager it listens to, so no timer fires against a destroyed document.
+    if (this.collaborativeAutosave) {
+      this.collaborativeAutosave.destroy();
+      this.collaborativeAutosave = null;
     }
 
     if (this.documentManager) {
