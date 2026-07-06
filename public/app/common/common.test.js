@@ -4205,5 +4205,38 @@ describe('common.js $exeDevices', () => {
       expect(container.style.opacity).toBe('1');
       expect(container.style.transform).toBe('none');
     });
+
+    it('accepts class selectors (e.g., .exe-interactive-video)', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div class="exe-interactive-video"></div>';
+      const container = document.querySelector('.exe-interactive-video');
+
+      fn('.exe-interactive-video');
+
+      expect(container.style.opacity).toBe('0.99');
+      expect(container.style.transform).toBe('translateZ(0)');
+    });
+
+    it('accepts ID selectors with # prefix', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-id"></div>';
+      const container = document.getElementById('test-id');
+
+      fn('#test-id');
+
+      expect(container.style.opacity).toBe('0.99');
+      expect(container.style.transform).toBe('translateZ(0)');
+    });
+
+    it('accepts bare ID strings (without # prefix)', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="bare-id"></div>';
+      const container = document.getElementById('bare-id');
+
+      fn('bare-id');
+
+      expect(container.style.opacity).toBe('0.99');
+      expect(container.style.transform).toBe('translateZ(0)');
+    });
   });
 });

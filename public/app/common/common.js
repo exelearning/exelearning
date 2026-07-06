@@ -1533,12 +1533,17 @@ var $exeDevices = {
                 //
                 // Usage: $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection(mainContainerId)
                 //
-                // @param {string} mainContainerId - the id of the iDevice main container (e.g., 'frmMainContainer-xyz')
+                // @param {string} mainContainerId - the id or selector of the iDevice main container
+                //   Can be a bare ID ('frmMainContainer-xyz'), an ID selector ('#frmMainContainer-xyz'),
+                //   or a class selector ('.exe-interactive-video')
                 triggerMoodleDetection: function (mainContainerId) {
                     if (typeof mainContainerId !== 'string' || !mainContainerId) {
                         return;
                     }
-                    const $container = $(`#${mainContainerId}`);
+                    const selector = mainContainerId.startsWith('#') || mainContainerId.startsWith('.')
+                        ? mainContainerId
+                        : `#${mainContainerId}`;
+                    const $container = $(selector);
                     if (!$container.length) {
                         return;
                     }
