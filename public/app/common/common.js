@@ -627,31 +627,14 @@ var $exe = {
                         this.height = r
                     }
                 }
-                // Disable the JavaScript player if the video has no .srt/.vtt subtitles.
-                // Exported/previewed subtitle tracks are always converted to WebVTT
-                // (issue #2034 -- native <video><track> never understood raw .srt),
-                // so a track pointing at a converted .vtt file must still trigger the
-                // compatible player, not just the original literal .srt upload.
+                // Disable the JavaScript player if the video has no .srt subtitles
                 if ($("track", this).length > 0) {
                     var hasSrt = false;
                     $("track", this).each(function() {
                         if (typeof(this.src) == 'string') {
-                            if (this.src.endsWith('.srt') || this.src.endsWith('.vtt')) {
+                            if (this.src.endsWith('.srt')) {
                                 hasSrt = true;
                             }
-                        }
-                        // The exemedia TinyMCE plugin never sets a `srclang`
-                        // attribute on the <track> elements it generates. The
-                        // vendored MediaElement.js fork (exe_media.js) builds
-                        // caption-button selectors like `input[value=<srclang>]`;
-                        // an empty, unquoted attribute value ([value=]) is
-                        // invalid CSS/Sizzle syntax and throws, silently
-                        // aborting caption loading entirely (issue #2034
-                        // follow-up). Default it here, before handing off to
-                        // the player, so the vendored library never receives
-                        // an empty value.
-                        if (!this.getAttribute('srclang')) {
-                            this.setAttribute('srclang', 'subtitles');
                         }
                     });
                     if (hasSrt) $(this).mediaelementplayer();
