@@ -23,6 +23,7 @@ var $geogebraactivity = {
     optionsScorm: [],
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
+    hasBeenCompleted: false,
 
     init: function () {
         this.isInExe = eXe.app.isInExe();
@@ -543,9 +544,13 @@ var $geogebraactivity = {
         }
         const mOptions = JSON.parse(JSON.stringify(options));
         mOptions.gameStarted = true;
-        // sendScore only runs from the manual "save/send" button, so pressing it finalizes
-        // the activity (SCORM state -> completed) even on the first save.
-        mOptions.gameOver = true;
+        // Mark as game over only on first save. Subsequent saves update score without
+        // changing the terminal state. This prevents Moodle from re-evaluating passed/failed
+        // status on each manual save (#1831 pattern).
+        mOptions.gameOver = !$geogebraactivity.hasBeenCompleted;
+        if (mOptions.gameOver) {
+            $geogebraactivity.hasBeenCompleted = true;
+        }
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
         const SCORE_RAW = 'SCORMRawScore';

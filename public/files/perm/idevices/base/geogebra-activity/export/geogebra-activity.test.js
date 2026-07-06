@@ -265,7 +265,7 @@ describe('geogebra-activity iDevice (export)', () => {
     }
   });
 
-  it('sends complete on every save press (manual save is repeatable)', () => {
+  it('only finalizes on first save; subsequent saves update score without changing state', () => {
     const originalPipwerks = global.pipwerks;
     const originalGgb = global.ggbApplet;
     const originalScorm = $exeDevices.iDevice.gamification.scorm;
@@ -276,17 +276,24 @@ describe('geogebra-activity iDevice (export)', () => {
 
     try {
       const options = { main: '#x', ideviceNumber: 1, weighted: 100, msgs: {} };
-      // Press save twice: each press must finalize (gameOver) as a manual save.
+      // First save: gameOver = true (marks activity as completed)
       $geogebraactivity.sendScore(options);
+      // Second save: gameOver = false (just updates score, doesn't change terminal state)
       $geogebraactivity.sendScore(options);
 
       expect(sendScoreNew).toHaveBeenCalledTimes(2);
-      for (const call of sendScoreNew.mock.calls) {
-        expect(call[0]).toBe(false); // auto === false -> manual save
-        expect(call[1]).toEqual(
-          expect.objectContaining({ gameStarted: true, gameOver: true }),
-        );
-      }
+
+      // First call should finalize
+      expect(sendScoreNew.mock.calls[0][0]).toBe(false); // auto === false -> manual save
+      expect(sendScoreNew.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ gameStarted: true, gameOver: true }),
+      );
+
+      // Second call should not finalize (prevent re-evaluation in Moodle)
+      expect(sendScoreNew.mock.calls[1][0]).toBe(false); // auto === false -> manual save
+      expect(sendScoreNew.mock.calls[1][1]).toEqual(
+        expect.objectContaining({ gameStarted: true, gameOver: false }),
+      );
     } finally {
       global.pipwerks = originalPipwerks;
       global.ggbApplet = originalGgb;
