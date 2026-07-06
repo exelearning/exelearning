@@ -380,20 +380,30 @@ describe('preview-session routes', () => {
             }
         });
 
-        it('adds the sandbox CSP to HTML responses only', async () => {
+        it('adds the sandbox CSP to every scriptable document type (HTML, SVG, XML), not just HTML', async () => {
             const previewId = await servedSession({
                 'index.html': '<html></html>',
                 'html/page2.html': '<html>2</html>',
+                // The SVG case is the security-critical one: opened top-level it
+                // would run its inline <script> same-origin without the CSP.
+                'img/logo.svg': '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>',
+                'data/feed.xml': '<?xml version="1.0"?><root/>',
                 'theme/style.css': 'body{}',
+                'libs/app.js': 'console.log(1);',
+                'img/i.png': 'binarypng',
             });
-            for (const htmlPath of ['index.html', 'html/page2.html']) {
-                const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/${htmlPath}`));
+            // Scriptable documents MUST carry the sandbox-first CSP.
+            for (const scriptable of ['index.html', 'html/page2.html', 'img/logo.svg', 'data/feed.xml']) {
+                const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/${scriptable}`));
                 const csp = res.headers.get('content-security-policy') ?? '';
                 expect(csp.startsWith('sandbox allow-scripts allow-popups allow-forms')).toBe(true);
                 expect(csp).not.toContain('allow-same-origin');
             }
-            const css = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/theme/style.css`));
-            expect(css.headers.get('content-security-policy')).toBeNull();
+            // Passive resource types get no CSP (it would be wasted).
+            for (const passive of ['theme/style.css', 'libs/app.js', 'img/i.png']) {
+                const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/${passive}`));
+                expect(res.headers.get('content-security-policy')).toBeNull();
+            }
         });
 
         it('serves index.html for the bare session URL without redirecting', async () => {

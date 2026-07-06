@@ -73,3 +73,24 @@ export function previewCspHeader(): string {
 export function previewPermissionsPolicy(): string {
     return ['camera=()', 'microphone=()', 'geolocation=()', 'payment=()'].join(', ');
 }
+
+/**
+ * Scriptable document types that MUST carry the sandbox-first CSP so they stay
+ * opaque even when the capability URL is opened directly (new tab / raw URL).
+ *
+ * Not just `text/html`: an author-supplied `image/svg+xml` (or XML with an
+ * `xml-stylesheet` PI) served without the sandbox CSP executes its inline
+ * `<script>` **same-origin** when opened top-level ("open image in new tab").
+ * `X-Content-Type-Options: nosniff` does not help — `image/svg+xml` is already a
+ * scriptable document type. So the CSP must be emitted on all of these, not only
+ * HTML.
+ */
+export function isScriptableDocumentType(contentType: string): boolean {
+    const base = contentType.split(';')[0].trim().toLowerCase();
+    return (
+        base === 'text/html' ||
+        base === 'image/svg+xml' ||
+        base === 'application/xml' ||
+        base === 'application/xhtml+xml'
+    );
+}

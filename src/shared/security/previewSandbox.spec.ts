@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test';
-import { PREVIEW_SANDBOX, PREVIEW_SANDBOX_TOKENS, previewCspHeader, previewPermissionsPolicy } from './previewSandbox';
+import {
+    isScriptableDocumentType,
+    PREVIEW_SANDBOX,
+    PREVIEW_SANDBOX_TOKENS,
+    previewCspHeader,
+    previewPermissionsPolicy,
+} from './previewSandbox';
 
 describe('previewSandbox', () => {
     it('exposes exactly the ecosystem-wide opaque token set', () => {
@@ -50,5 +56,34 @@ describe('previewSandbox', () => {
 
     it('denies powerful features via Permissions-Policy', () => {
         expect(previewPermissionsPolicy()).toBe('camera=(), microphone=(), geolocation=(), payment=()');
+    });
+
+    describe('isScriptableDocumentType', () => {
+        it('flags every scriptable document type — HTML, SVG and XML, not just HTML', () => {
+            // The SVG case is the security-critical one: an author SVG opened
+            // top-level runs its inline <script> same-origin without the CSP.
+            expect(isScriptableDocumentType('text/html')).toBe(true);
+            expect(isScriptableDocumentType('text/html; charset=utf-8')).toBe(true);
+            expect(isScriptableDocumentType('image/svg+xml')).toBe(true);
+            expect(isScriptableDocumentType('image/svg+xml; charset=utf-8')).toBe(true);
+            expect(isScriptableDocumentType('application/xml')).toBe(true);
+            expect(isScriptableDocumentType('application/xhtml+xml')).toBe(true);
+        });
+
+        it('is case- and whitespace-insensitive on the media type', () => {
+            expect(isScriptableDocumentType('IMAGE/SVG+XML')).toBe(true);
+            expect(isScriptableDocumentType('  text/html ; charset=utf-8')).toBe(true);
+        });
+
+        it('does not flag passive resource types (no CSP wasted on them)', () => {
+            expect(isScriptableDocumentType('text/css')).toBe(false);
+            expect(isScriptableDocumentType('application/javascript')).toBe(false);
+            expect(isScriptableDocumentType('image/png')).toBe(false);
+            expect(isScriptableDocumentType('image/jpeg')).toBe(false);
+            expect(isScriptableDocumentType('application/json')).toBe(false);
+            expect(isScriptableDocumentType('font/woff2')).toBe(false);
+            expect(isScriptableDocumentType('application/pdf')).toBe(false);
+            expect(isScriptableDocumentType('application/octet-stream')).toBe(false);
+        });
     });
 });

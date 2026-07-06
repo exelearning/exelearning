@@ -16,7 +16,11 @@
  */
 import { Elysia } from 'elysia';
 import * as previewSessionManager from '../services/preview-session-manager';
-import { previewCspHeader, previewPermissionsPolicy } from '../shared/security/previewSandbox';
+import {
+    isScriptableDocumentType,
+    previewCspHeader,
+    previewPermissionsPolicy,
+} from '../shared/security/previewSandbox';
 import { requireAuth } from '../utils/guards';
 import { withJwtAuth } from '../utils/route-auth';
 
@@ -203,7 +207,11 @@ export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = default
         const file = manager.getFile(session, relPath);
         if (!file) return notFound();
         const headers: Record<string, string> = { ...baseServeHeaders(), 'Content-Type': file.contentType };
-        if (file.isHtml) {
+        // Emit the sandbox-first CSP on every scriptable document type (HTML, SVG,
+        // XML), not just HTML: an author SVG opened top-level would otherwise run
+        // its inline <script> same-origin (nosniff does not help — SVG is already
+        // a scriptable type).
+        if (isScriptableDocumentType(file.contentType)) {
             headers['Content-Security-Policy'] = previewCspHeader();
         }
         return new Response(file.bytes, { headers });
