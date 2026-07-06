@@ -370,4 +370,103 @@ describe('map iDevice export score saving', () => {
         $eXeMapa.showPointNone(1, 0);
         expect($eXeMapa.options[0].gameOver).toBe(true);
     });
+
+    it('marks questionnaire complete on the last answer (mode 4) before setTimeout (#1831)', () => {
+        vi.useFakeTimers();
+        document.body.innerHTML = '<span id="mapaRepeatActivity-0"></span>';
+        $eXeMapa.options[0] = {
+            activeQuestion: 1, // 0-indexed, so answering question 2 of 2
+            errors: 0,
+            evaluationG: 4,
+            gameActived: true,
+            hits: 1,
+            isScorm: 1,
+            msgs: {
+                msgPoints: 'points',
+                msgSuccesses: 'Correct',
+                msgFailures: 'Incorrect',
+                msgYouScore: 'Your score',
+            },
+            numberQuestions: 2,
+            respuesta: 'B',
+            selectsGame: [
+                {
+                    msgError: '',
+                    msgHit: '',
+                    quextion: 'Question 1',
+                    solution: 'A',
+                    typeSelect: 0,
+                },
+                {
+                    msgError: '',
+                    msgHit: '',
+                    quextion: 'Question 2',
+                    solution: 'B',
+                    typeSelect: 0,
+                },
+            ],
+            showSolution: false,
+            score: 0,
+        };
+        $eXeMapa.showClue = vi.fn();
+        $eXeMapa.showMessage = vi.fn();
+        $eXeMapa.newQuestion = vi.fn();
+        $eXeMapa.sendScore = vi.fn();
+        $eXeMapa.saveEvaluation = vi.fn();
+
+        $eXeMapa.answerQuestion(0);
+
+        // gameOver must be true BEFORE sendScore is called
+        expect($eXeMapa.options[0].gameOver).toBe(true);
+        expect($eXeMapa.sendScore).toHaveBeenCalledWith(true, 0);
+
+        // The setTimeout newQuestion still runs and would call gameOver for UI
+        vi.runOnlyPendingTimers();
+        expect($eXeMapa.newQuestion).toHaveBeenCalledWith(0, true, false);
+    });
+
+    it('does not mark questionnaire complete mid-quiz (mode 4, not last answer)', () => {
+        vi.useFakeTimers();
+        document.body.innerHTML = '<span id="mapaRepeatActivity-0"></span>';
+        $eXeMapa.options[0] = {
+            activeQuestion: 0, // question 1 of 2, not the last
+            errors: 0,
+            evaluationG: 4,
+            gameActived: true,
+            hits: 1,
+            isScorm: 1,
+            msgs: {
+                msgPoints: 'points',
+                msgSuccesses: 'Correct',
+                msgFailures: 'Incorrect',
+                msgYouScore: 'Your score',
+            },
+            numberQuestions: 2,
+            respuesta: 'A',
+            selectsGame: [
+                {
+                    msgError: '',
+                    msgHit: '',
+                    quextion: 'Question 1',
+                    solution: 'A',
+                    typeSelect: 0,
+                },
+            ],
+            showSolution: false,
+            score: 0,
+        };
+        $eXeMapa.showClue = vi.fn();
+        $eXeMapa.showMessage = vi.fn();
+        $eXeMapa.newQuestion = vi.fn();
+        $eXeMapa.sendScore = vi.fn();
+        $eXeMapa.saveEvaluation = vi.fn();
+
+        $eXeMapa.answerQuestion(0);
+
+        // gameOver must still be false (not the last question)
+        expect($eXeMapa.options[0].gameOver).toBeFalsy();
+        expect($eXeMapa.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+
 });

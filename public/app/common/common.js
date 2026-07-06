@@ -1385,6 +1385,8 @@ var $exeDevices = {
                             message = game.msgs.msgYouScore + ': ' + formattedScore;
                             $repeatActivity.text(message).show();
                         }
+                        // Trigger Moodle SCORM detection after updating activity state
+                        this.triggerMoodleDetection(game.main);
 
                     } else {
                         message = game.msgs.msgEndGameScore;
@@ -1517,6 +1519,60 @@ var $exeDevices = {
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
 
+                },
+
+                // Trigger Moodle SCORM detection via multiple mechanisms:
+                // 1. Force DOM reflow (MutationObserver detection)
+                // 2. Multiple CSS changes across browsers
+                // 3. Optional SCORM re-save to force Moodle polling
+                //
+                // Moodle detects SCORM changes via:
+                // - MutationObserver on DOM mutations (primary)
+                // - Periodic polling of cmi.* values (fallback)
+                // This function triggers both mechanisms.
+                //
+                // Usage: $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection(mainContainerId)
+                //
+                // @param {string} mainContainerId - the id of the iDevice main container (e.g., 'frmMainContainer-xyz')
+                triggerMoodleDetection: function (mainContainerId) {
+                    if (typeof mainContainerId !== 'string' || !mainContainerId) {
+                        return;
+                    }
+                    const $container = $(`#${mainContainerId}`);
+                    if (!$container.length) {
+                        return;
+                    }
+                    const containerEl = $container.get(0);
+                    if (!containerEl) {
+                        return;
+                    }
+
+                    // Mechanism 1: Force browser reflow via offsetHeight (triggers layout recalculation)
+                    const _ = containerEl.offsetHeight;
+
+                    // Mechanism 2: Apply multiple CSS changes to ensure MutationObserver fires
+                    $container.css({ 'opacity': '0.99', 'transform': 'translateZ(0)' });
+
+                    // Mechanism 3: Force another reflow in next frame
+                    setTimeout(() => {
+                        const __ = containerEl.offsetHeight;
+                        $container.css({ 'opacity': '1', 'transform': 'none' });
+
+                        // Mechanism 4: Optional - attempt SCORM re-save to trigger Moodle polling
+                        // This forces Moodle's polling mechanism if MutationObserver didn't work
+                        if (typeof pipwerks !== 'undefined' && pipwerks.SCORM && typeof pipwerks.SCORM.save === 'function') {
+                            try {
+                                pipwerks.SCORM.save();
+                            } catch (e) {
+                                // Silently fail - SCORM API might not be in a saveable state
+                            }
+                        }
+                    }, 50);
+
+                    // Mechanism 5: Final reflow to ensure all changes propagated
+                    setTimeout(() => {
+                        const ___ = containerEl.offsetHeight;
+                    }, 150);
                 },
             },
 

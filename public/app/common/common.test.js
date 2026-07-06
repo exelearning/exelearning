@@ -4088,4 +4088,122 @@ describe('common.js $exeDevices', () => {
       });
     });
   });
+
+  describe('$exeDevices.iDevice.gamification.scorm.triggerMoodleDetection', () => {
+    const getTriggerMoodleDetection = () => global.$exeDevices.iDevice.gamification.scorm.triggerMoodleDetection;
+
+    let originalPipwerks;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { save: vi.fn() },
+      };
+      document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      global.pipwerks = originalPipwerks;
+      document.body.innerHTML = '';
+    });
+
+    it('returns early when mainContainerId is not a string', () => {
+      const fn = getTriggerMoodleDetection();
+      expect(() => fn(123)).not.toThrow();
+      expect(() => fn(null)).not.toThrow();
+      expect(() => fn(undefined)).not.toThrow();
+      expect(() => fn({})).not.toThrow();
+    });
+
+    it('returns early when mainContainerId is empty string', () => {
+      const fn = getTriggerMoodleDetection();
+      expect(() => fn('')).not.toThrow();
+    });
+
+    it('returns early when container does not exist in DOM', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="other"></div>';
+      expect(() => fn('nonexistent')).not.toThrow();
+      expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+    });
+
+    it('applies CSS opacity changes when container exists', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      const container = document.getElementById('test-container');
+
+      fn('test-container');
+
+      expect(container.style.opacity).toBe('0.99');
+      expect(container.style.transform).toBe('translateZ(0)');
+    });
+
+    it('reverts CSS changes after 50ms', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      const container = document.getElementById('test-container');
+
+      fn('test-container');
+      expect(container.style.opacity).toBe('0.99');
+
+      vi.advanceTimersByTime(50);
+
+      expect(container.style.opacity).toBe('1');
+      expect(container.style.transform).toBe('none');
+    });
+
+    it('calls pipwerks.SCORM.save at 50ms to trigger Moodle polling', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+
+      fn('test-container');
+      expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(50);
+
+      expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+    });
+
+    it('silently fails when pipwerks.SCORM.save throws', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      global.pipwerks.SCORM.save = vi.fn(() => {
+        throw new Error('SCORM not available');
+      });
+
+      expect(() => {
+        fn('test-container');
+        vi.advanceTimersByTime(50);
+      }).not.toThrow();
+    });
+
+    it('handles container without pipwerks globally available', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      delete global.pipwerks;
+
+      expect(() => {
+        fn('test-container');
+        vi.advanceTimersByTime(50);
+      }).not.toThrow();
+    });
+
+    it('applies multiple CSS properties to ensure MutationObserver fires', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      const container = document.getElementById('test-container');
+
+      fn('test-container');
+
+      expect(container.style.opacity).toBe('0.99');
+      expect(container.style.transform).toBe('translateZ(0)');
+
+      vi.advanceTimersByTime(50);
+
+      expect(container.style.opacity).toBe('1');
+      expect(container.style.transform).toBe('none');
+    });
+  });
 });
