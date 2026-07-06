@@ -51,10 +51,13 @@
 - Export: the license footer no longer inherits the global content font
 - Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
 - Export: duplicate assets are no longer included in self-contained HTML exports
+- Desktop: fixed a duplicate Save As dialog when downloading PDF files generated from HTML assets in Electron
 
 ### Upgraded
 
+- electron: 42.5.2 → 43.0.0
 - esbuild: 0.27.7 → 0.28.1
+- pdfjs-dist: 6.0.227 → 6.1.200
 
 ### Removed
 
