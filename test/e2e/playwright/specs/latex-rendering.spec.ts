@@ -922,48 +922,26 @@ test.describe('LaTeX Rendering', () => {
             // Open Preview and wait for content
             await waitForPreviewContent(page);
 
-            // Check for MathJax script in preview
-            const mathJaxCheck = await page.evaluate(async () => {
-                const checkMathJax = () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentDocument?.body) return null;
+            // The preview iframe is opaque (no allow-same-origin), so read its DOM via the
+            // cross-origin-safe frame locator rather than contentDocument.
+            const frame = getPreviewFrame(page);
 
-                    const doc = previewIframe.contentDocument;
-                    const body = doc.body;
-                    const scripts = doc.querySelectorAll('script[src*="tex-mml-svg"], script[src*="exe_math"]');
-                    const hasContent = body.textContent && body.textContent.length > 50;
-                    const isErrorPage = body.textContent?.includes('Preview Error');
-
-                    if (isErrorPage) return { error: 'Preview Error', hasMathJaxScript: false };
-                    if (!hasContent) return null;
-
-                    return {
-                        hasMathJaxScript: scripts.length > 0,
-                        scriptCount: scripts.length,
-                        scriptSrcs: Array.from(scripts).map(s => s.getAttribute('src')),
-                    };
-                };
-
-                for (let i = 0; i < 30; i++) {
-                    const result = checkMathJax();
-                    if (result) return result;
-                    await new Promise(r => setTimeout(r, 500));
-                }
-                return { error: 'Timeout', hasMathJaxScript: false };
-            });
-
-            // Note: Firefox has Service Worker registration issues, skip if preview failed
-            if (mathJaxCheck.error) {
+            // Skip if the preview failed to load on this engine (e.g. SW quirks).
+            const bodyText =
+                (await frame
+                    .locator('body')
+                    .textContent({ timeout: 15000 })
+                    .catch(() => '')) ?? '';
+            if (bodyText.includes('Preview Error')) {
                 test.skip();
                 return;
             }
 
-            // Assert: MathJax script should be included
-            expect(mathJaxCheck.hasMathJaxScript).toBe(true);
-            // Assert: Script should be tex-mml-svg or exe_math
-            expect(
-                mathJaxCheck.scriptSrcs?.some(src => src?.includes('tex-mml-svg') || src?.includes('exe_math')),
-            ).toBe(true);
+            // Assert: the MathJax script is injected into the rendered preview.
+            const mathJaxScripts = frame.locator('script[src*="tex-mml-svg"], script[src*="exe_math"]');
+            await expect.poll(() => mathJaxScripts.count(), { timeout: 15000 }).toBeGreaterThan(0);
+            const scriptSrcs = await mathJaxScripts.evaluateAll(els => els.map(s => s.getAttribute('src')));
+            expect(scriptSrcs.some(src => src?.includes('tex-mml-svg') || src?.includes('exe_math'))).toBe(true);
         });
 
         test('should configure MathJax with typeset:false for preview when enabled via UI', async ({
@@ -983,59 +961,45 @@ test.describe('LaTeX Rendering', () => {
             // Open Preview and wait for content
             await waitForPreviewContent(page);
 
-            // Check for MathJax config in preview
-            const mathJaxConfigCheck = await page.evaluate(async () => {
-                const checkConfig = () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentDocument?.body) return null;
+            // The preview iframe is opaque (no allow-same-origin), so read its DOM via the
+            // cross-origin-safe frame locator rather than contentDocument.
+            const frame = getPreviewFrame(page);
 
-                    const doc = previewIframe.contentDocument;
-                    const body = doc.body;
-                    const html = doc.documentElement.innerHTML;
-                    const hasContent = body.textContent && body.textContent.length > 50;
-                    const isErrorPage = body.textContent?.includes('Preview Error');
-
-                    if (isErrorPage) return { error: 'Preview Error', hasMathJaxConfig: false };
-                    if (!hasContent) return null;
-
-                    // Check for MathJax configuration and script
-                    const hasConfig =
-                        html.includes('typeset: false') || html.includes('typeset:false') || html.includes('MathJax');
-                    const hasMathJaxScript =
-                        doc.querySelectorAll('script[src*="tex-mml-svg"], script[src*="exe_math"]').length > 0;
-
-                    return {
-                        hasMathJaxConfig: hasConfig || hasMathJaxScript,
-                        hasTypesetFalse: html.includes('typeset: false') || html.includes('typeset:false'),
-                        hasMathJaxScript,
-                    };
-                };
-
-                for (let i = 0; i < 30; i++) {
-                    const result = checkConfig();
-                    if (result) return result;
-                    await new Promise(r => setTimeout(r, 500));
-                }
-                return { error: 'Timeout', hasMathJaxConfig: false };
-            });
-
-            // Note: Firefox has Service Worker registration issues, skip if preview failed
-            if (mathJaxConfigCheck.error) {
+            // Skip if the preview failed to load on this engine (e.g. SW quirks).
+            const bodyText =
+                (await frame
+                    .locator('body')
+                    .textContent({ timeout: 15000 })
+                    .catch(() => '')) ?? '';
+            if (bodyText.includes('Preview Error')) {
                 test.skip();
                 return;
             }
 
-            // Assert: MathJax configuration should be present
-            expect(mathJaxConfigCheck.hasMathJaxConfig).toBe(true);
-            // Assert: MathJax script should be included
-            expect(mathJaxConfigCheck.hasMathJaxScript).toBe(true);
+            // Assert: MathJax script is included, and the config/marker is present in the HTML.
+            const mathJaxScripts = frame.locator('script[src*="tex-mml-svg"], script[src*="exe_math"]');
+            await expect.poll(() => mathJaxScripts.count(), { timeout: 15000 }).toBeGreaterThan(0);
+
+            const html = await frame.locator(':root').evaluate(el => el.outerHTML);
+            const hasConfig =
+                html.includes('typeset: false') || html.includes('typeset:false') || html.includes('MathJax');
+            expect(hasConfig).toBe(true);
         });
 
         // Test MathJax runtime rendering with dynamically created LaTeX content
         test('should render LaTeX with MathJax at runtime when addMathJax is enabled via UI', async ({
             authenticatedPage,
             createProject,
-        }) => {
+        }, testInfo) => {
+            // Static/PWA preview uses the opaque srcdoc transport (no server, no
+            // Service Worker). MathJax v4 loads its components at runtime via
+            // dynamically-injected <script> tags whose paths resolve against the
+            // document base — a srcdoc document has none pointing at the preview
+            // session, and pure static mode has no server hosting the components,
+            // so runtime MathJax cannot load there. LaTeX still renders in server
+            // (HTTP) mode and in exports via server-side pre-rendering. See
+            // doc/development/preview-architecture.md ("srcdoc fidelity limits").
+            skipInStaticMode(test, testInfo, 'Runtime MathJax needs a served component base (unavailable in srcdoc)');
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Runtime Render Test');

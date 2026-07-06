@@ -106,6 +106,7 @@
         var listeners = {};
         var pending = {};
         var reqSeq = 0;
+        var retired = false;
 
         function emit(evt, payload) {
             var arr = listeners[evt];
@@ -184,6 +185,7 @@
                 return request('getDuration', 'duration');
             },
             handleEvent: function (data) {
+                if (retired) return;
                 if (!policy.validateEvent(data)) return;
                 if (data.action === 'state') {
                     var r = pending[data.reqId];
@@ -197,17 +199,45 @@
             },
         };
 
+        // Retire this controller when a newer media supersedes it: notify its listeners
+        // ('closed') so the owning iDevice stops driving (otherwise its question clock would
+        // keep reading a frozen time), then detach it from the shared port.
+        ctl._supersede = function () {
+            if (retired) return;
+            emit('closed', { type: policy.TYPE, v: policy.VERSION, action: 'closed', superseded: true });
+            retired = true;
+            listeners = {};
+            pending = {};
+        };
+
+        // One active media per iframe: the parent relay drives a single <dialog>/adapter over
+        // this one transferred port. A new controller becomes the active one and supersedes
+        // the previous, with a single dispatcher routing inbound events to whichever controller
+        // is current — instead of each controller overwriting the port's one onmessage (which
+        // silently froze every earlier controller, breaking pages with >1 bridged video).
         if (port) {
-            port.onmessage = function (e) {
-                ctl.handleEvent(e.data);
-            };
-            if (typeof port.start === 'function') port.start();
+            if (activeController && activeController !== ctl && activeController._supersede) {
+                activeController._supersede();
+            }
+            activeController = ctl;
+            if (!port.__exeMediaBound) {
+                port.__exeMediaBound = true;
+                port.onmessage = function (e) {
+                    if (activeController) activeController.handleEvent(e.data);
+                };
+                if (typeof port.start === 'function') port.start();
+            }
         }
         return ctl;
     }
 
     // One shared handshake per page: many embeds, one parent bridge.
     var sessionPromise = null;
+
+    // The single active media controller per page. A newer controller supersedes the previous
+    // one (the parent relay drives a single player), so events over the shared port always
+    // reach the current media and the retired controller is notified rather than left frozen.
+    var activeController = null;
 
     /**
      * Announce to the parent and wait for a `welcome` carrying a transferred port.
@@ -388,6 +418,11 @@
         // makes that work). Only opaque/sandboxed mode protects each embed via the trusted
         // parent host, because inline players cannot run in an opaque-origin iframe.
         if (!bridgeMode) return Promise.resolve([]);
+        // When the external-embed shim is present it promotes declarative embeds to the
+        // parent relay (in-place overlay, no click). Defer to it so this bridge does not
+        // also turn them into click-to-open placeholders. Programmatic openMedia() (e.g.
+        // the interactive-video iDevice) is a separate path and stays active.
+        if (win.exeEmbedShim) return Promise.resolve([]);
         var nodes = rootEl && rootEl.querySelectorAll ? rootEl.querySelectorAll('iframe[src]') : [];
         var found = [];
         for (var i = 0; i < nodes.length; i++) {
@@ -434,6 +469,7 @@
 
     function resetForTests() {
         sessionPromise = null;
+        activeController = null;
     }
 
     /**

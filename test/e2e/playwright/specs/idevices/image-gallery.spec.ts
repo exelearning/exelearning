@@ -393,7 +393,7 @@ test.describe('Image Gallery iDevice', () => {
             // Verify the href has been resolved (blob URL or relative path)
             const href = await galleryLink.getAttribute('href');
             // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(href).toMatch(/^(blob:|content\/resources\/)/);
+            expect(href).toMatch(/^(blob:|data:|content\/resources\/)/);
 
             // Click the image to open lightbox
             await galleryLink.click();
@@ -466,16 +466,22 @@ test.describe('Image Gallery iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            // Wait for SimpleLightbox to be available in iframe
-            await page.waitForFunction(
-                () => {
-                    const previewIframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentWindow) return false;
-                    return typeof (previewIframe.contentWindow as any).SimpleLightbox !== 'undefined';
-                },
-                undefined,
-                { timeout: 15000 },
-            );
+            // Wait for SimpleLightbox to be available in iframe. The preview iframe is
+            // opaque-origin (no allow-same-origin), so probe its window from inside the
+            // frame rather than via contentWindow.
+            await expect
+                .poll(
+                    () =>
+                        iframe
+                            .locator('body')
+                            .evaluate(
+                                () => typeof (window as { SimpleLightbox?: unknown }).SimpleLightbox !== 'undefined',
+                            ),
+                    {
+                        timeout: 15000,
+                    },
+                )
+                .toBe(true);
 
             // Wait for renderBehaviour to complete
             await page.waitForTimeout(500);
@@ -504,7 +510,7 @@ test.describe('Image Gallery iDevice', () => {
             const imgSrc = await lightboxImage.getAttribute('src');
             expect(imgSrc).toBeTruthy();
             // With SW-based preview, assets may be relative paths
-            expect(imgSrc).toMatch(/^(blob:|content\/resources\/)/);
+            expect(imgSrc).toMatch(/^(blob:|data:|content\/resources\/)/);
 
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');

@@ -197,6 +197,37 @@ describe('exe-media-host', () => {
             expect(events.find((e) => e.action === 'state' && e.reqId === 7 && e.currentTime === 42)).toBeTruthy();
             expect(events.find((e) => e.action === 'state' && e.reqId === 8 && e.duration === 100)).toBeTruthy();
         });
+
+        it('on a second open, tears down the previous adapter and modal (single active media)', () => {
+            const win = makeWin();
+            const iframe = makeIframe();
+            const ch = makeFakeChannel();
+            const adapters = [];
+            const factory = (container, videoId, cb) => {
+                const a = {
+                    destroyed: false,
+                    play() {},
+                    pause() {},
+                    seek() {},
+                    getCurrentTime() { return 0; },
+                    getDuration() { return 0; },
+                    destroy() { this.destroyed = true; },
+                };
+                adapters.push(a);
+                return a;
+            };
+            host.attach(iframe, { win, genId: () => 'N1', channelFactory: () => ch, youtubeFactory: factory, document });
+            win._emit({ source: iframe.contentWindow, data: { type: TYPE, v: V, action: 'hello', helloId: 'H1' } });
+            const send = (cmd) => ch.port2.postMessage(Object.assign({ type: TYPE, v: V, exelearningBridge: 'N1' }, cmd));
+            send({ action: 'open', reqId: 1, provider: 'youtube', videoId: 'dQw4w9WgXcQ' });
+            send({ action: 'open', reqId: 2, provider: 'youtube', videoId: 'oHg5SJYRHA0' });
+            // The previous player and its <dialog> are discarded before the new one opens, so
+            // repeated 'open' commands cannot stack modals or orphan provider players. (audit L-2)
+            expect(adapters.length).toBe(2);
+            expect(adapters[0].destroyed).toBe(true);
+            expect(adapters[1].destroyed).toBe(false);
+            expect(document.querySelectorAll('dialog.exe-media-modal').length).toBe(1);
+        });
     });
 
     describe('adapter event mapping', () => {

@@ -153,6 +153,29 @@ describe('exe_media_bridge', () => {
             expect(calls).toEqual([]);
         });
 
+        it('supersedes the previous controller on a shared port (single active media)', () => {
+            bridge._resetForTests();
+            const port = makeFakePort();
+            const aTimes = [];
+            let aClosed = false;
+            const ctlA = bridge.createBridgeController({ port, nonce: 'N1' });
+            ctlA.on('timeupdate', (e) => aTimes.push(e.currentTime));
+            ctlA.on('closed', () => {
+                aClosed = true;
+            });
+            // A second media opens on the same transferred port → it supersedes A.
+            const bTimes = [];
+            const ctlB = bridge.createBridgeController({ port, nonce: 'N1' });
+            ctlB.on('timeupdate', (e) => bTimes.push(e.currentTime));
+            // A is notified it was retired (so its iDevice can stop driving) ...
+            expect(aClosed).toBe(true);
+            // ... and inbound port events reach ONLY the active controller B (no silent freeze,
+            // no double delivery) — the regression that broke pages with >1 bridged video.
+            port._deliver({ type: 'exe-media', v: 1, action: 'timeupdate', currentTime: 7, duration: 100 });
+            expect(bTimes).toEqual([7]);
+            expect(aTimes).toEqual([]);
+        });
+
         it('getCurrentTime() resolves via the matching state reqId', async () => {
             const port = makeFakePort();
             const ctl = bridge.createBridgeController({ port, nonce: 'N1' });
@@ -434,6 +457,18 @@ describe('exe_media_bridge', () => {
             const placeholders = await bridge.scanAndReplace(container, { win: opaqueNoParent(), timeoutMs: 20 });
             expect(placeholders).toHaveLength(1);
             expect(container.querySelector('.exe-external-media[data-exe-media-provider="vimeo"]')).toBeTruthy();
+        });
+
+        it('defers to the external-embed shim: no click-placeholder when window.exeEmbedShim is present', async () => {
+            const container = document.createElement('div');
+            container.innerHTML = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Lesson"></iframe>';
+            const win = opaqueNoParent();
+            win.exeEmbedShim = {}; // the shim promotes declarative embeds to the parent relay instead
+            const placeholders = await bridge.scanAndReplace(container, { win, timeoutMs: 20 });
+            expect(placeholders).toHaveLength(0);
+            // The bridge leaves the iframe for the shim to promote (no click placeholder).
+            expect(container.querySelector('.exe-external-media')).toBeNull();
+            expect(container.querySelector('iframe[src="https://www.youtube.com/embed/dQw4w9WgXcQ"]')).toBeTruthy();
         });
 
         it('returns an empty list when there is no external media to replace', async () => {

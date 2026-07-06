@@ -208,4 +208,52 @@ describe('Capabilities', () => {
             expect(capabilities.fileManager.localBacked).toBe(true);
         });
     });
+
+    describe('preview transport', () => {
+        it('uses opaque HTTP preview sessions in server mode', () => {
+            const config = new RuntimeConfig({
+                mode: 'server',
+                baseUrl: 'http://localhost:8080',
+                wsUrl: 'ws://localhost:8080',
+                staticDataPath: null,
+            });
+            const capabilities = new Capabilities(config);
+            expect(capabilities.preview.transport).toBe('http');
+            expect(capabilities.preview.opaqueSafe).toBe(true);
+            expect(capabilities.preview.extractToNewTab).toBe(true);
+            expect(capabilities.preview.legacyServiceWorker).toBe(false);
+            expect(Object.isFrozen(capabilities.preview)).toBe(true);
+        });
+
+        it('uses srcdoc in embedded mode, with extract-to-new-tab via the preview-host page', () => {
+            const config = new RuntimeConfig({
+                mode: 'embedded',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: 'data/bundle.json',
+                isEmbedded: true,
+            });
+            const capabilities = new Capabilities(config);
+            expect(capabilities.preview.transport).toBe('srcdoc');
+            // srcdoc now opens the preview-host page (editor pushes rendered HTML).
+            expect(capabilities.preview.extractToNewTab).toBe(true);
+        });
+
+        it('uses opaque srcdoc for standalone static/PWA, and keeps Electron on the legacy SW (interim)', () => {
+            const config = new RuntimeConfig({
+                mode: 'static',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: 'data/bundle.json',
+            });
+            const staticCaps = new Capabilities(config);
+            expect(staticCaps.preview.transport).toBe('srcdoc');
+            expect(staticCaps.preview.opaqueSafe).toBe(true);
+            expect(staticCaps.preview.legacyServiceWorker).toBe(false);
+
+            const electronCaps = new Capabilities(config, { hasElectronApi: true });
+            expect(electronCaps.preview.transport).toBe('service-worker');
+            expect(electronCaps.preview.opaqueSafe).toBe(false);
+        });
+    });
 });

@@ -673,29 +673,20 @@ export async function selectFirstPage(page: Page): Promise<void> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Open the preview panel
+ * Open the preview panel.
+ *
+ * Transport-agnostic: waits for the panel, the iframe, and the first render
+ * (signalled by the `data-preview-page` attribute the panel sets on every
+ * render target) rather than for a Service Worker, so it works for the opaque
+ * HTTP/srcdoc transports and the legacy SW transport alike.
  */
 export async function openPreviewPanel(page: Page): Promise<void> {
-    // Wait for Service Worker to be ready first
-    await page
-        .waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return (
-                    app?._previewSwRegistration?.active?.state === 'activated' ||
-                    navigator.serviceWorker?.controller !== null
-                );
-            },
-            undefined,
-            { timeout: 15000 },
-        )
-        .catch(() => {
-            // Continue even if SW check times out
-        });
-
+    // The slide-out panel sits off-screen (translated) when closed, so
+    // Playwright's isVisible() reports true even then. Gate on the `active`
+    // class the panel's open() adds, so the click reliably triggers a render.
     const previewPanel = page.locator('#previewsidenav');
-    const isVisible = await previewPanel.isVisible();
-    if (!isVisible) {
+    const isActive = await previewPanel.evaluate(el => el.classList.contains('active')).catch(() => false);
+    if (!isActive) {
         await page.click('#head-bottom-preview');
         await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
     }
@@ -704,8 +695,16 @@ export async function openPreviewPanel(page: Page): Promise<void> {
     const previewIframe = page.locator('#preview-iframe');
     await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
-    // Give time for preview generation
-    await page.waitForTimeout(500);
+    // Wait for the first render (the panel stamps the rendered page path).
+    await page
+        .waitForFunction(
+            () => document.querySelector('#preview-iframe')?.hasAttribute('data-preview-page'),
+            undefined,
+            { timeout: 15000 },
+        )
+        .catch(() => {
+            // Continue even if the render signal times out.
+        });
 }
 
 /**
@@ -736,9 +735,15 @@ export function getPreviewFrame(page: Page): FrameLocator {
  * @returns true if content loaded, false if timeout
  */
 export async function waitForPreviewContent(page: Page, timeout = 30000): Promise<boolean> {
-    // Always click preview button to ensure panel opens
-    await page.click('#head-bottom-preview');
+    // Open the panel only if it is not already open. The slide-out panel keeps a live
+    // rect when closed, so gate on the `active` class its open() adds — clicking
+    // #head-bottom-preview while the panel is open is intercepted by the panel header
+    // (mirrors openPreviewPanel's idempotency; callers often open then wait).
     const previewPanel = page.locator('#previewsidenav');
+    const isActive = await previewPanel.evaluate(el => el.classList.contains('active')).catch(() => false);
+    if (!isActive) {
+        await page.click('#head-bottom-preview');
+    }
     await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
 
     // Wait for content to load in iframe
@@ -2271,23 +2276,13 @@ export async function openPreviewAndWaitForContent(page: Page, timeout = 30000):
     const iframe = getPreviewFrame(page);
     await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
 
-    // Wait for meaningful content to appear
-    await page.waitForFunction(
-        () => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            if (!iframe) return false;
-            try {
-                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                if (!doc || !doc.body) return false;
-                const bodyHtml = doc.body.innerHTML || '';
-                return bodyHtml.length > 100 || doc.querySelector('article, .idevice_node, main, nav, .exe-page');
-            } catch {
-                return false;
-            }
-        },
-        undefined,
-        { timeout },
-    );
+    // Wait for meaningful content to appear. The preview iframe is opaque-origin
+    // (no allow-same-origin), so contentDocument is inaccessible from the parent —
+    // wait through the frame locator instead.
+    await iframe
+        .locator('article, .idevice_node, main, nav, .exe-page')
+        .first()
+        .waitFor({ state: 'attached', timeout });
 
     // Additional wait for content to fully render
     await page.waitForTimeout(500);

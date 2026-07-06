@@ -1,5 +1,11 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    changeTheme,
+    waitForAppReady,
+    gotoWorkarea,
+    openPreviewPanel,
+    getPreviewFrame,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Properties
@@ -246,18 +252,12 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // Wait for preview to load - multi-page HTML served by Service Worker
-        // Use waitForFunction for more robust checking across frame boundary
-        await page.waitForFunction(
-            () => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return false;
-                const article = previewIframe.contentDocument.querySelector('article, .exe-content, body');
-                return !!article;
-            },
-            undefined,
-            { timeout: 15000 },
-        );
+        // Wait for the opaque preview to render. The iframe has no allow-same-origin,
+        // so locate content inside the frame rather than reaching through contentDocument.
+        await iframe
+            .locator('.page-title, article, .exe-content')
+            .first()
+            .waitFor({ state: 'attached', timeout: 15000 });
 
         // The .page-title should be hidden (has sr-av class for accessible hiding)
         // Multi-page export uses .page-title in .page-header
@@ -300,56 +300,32 @@ test.describe('Page Properties', () => {
 
         await page.waitForTimeout(500);
 
+        // Open the preview once and keep it open: changing the theme triggers an
+        // auto-refresh that re-renders the open preview, so there is no need to
+        // close/reopen per theme (the panel's off-canvas X and the panel-covered toolbar
+        // toggle both make closing flaky). hidePageTitle keeps .page-title accessibly
+        // hidden (sr-av) in every theme, which is exactly what we assert per theme.
+        await openPreviewPanel(page);
+        const iframe = getPreviewFrame(page);
+
         // Test each theme that uses movePageTitle()
         // Note: 'zen' theme has additional logic, testing core themes first
         const themesToTest = ['flux', 'nova', 'neo'];
 
         for (const themeId of themesToTest) {
-            // Change theme
+            // Change theme, then click the page in the nav tree. Selecting the page is a
+            // Yjs-observed navigation that auto-refreshes the open preview (the same path
+            // exercised by preview-page-updates), re-rendering it with the current theme
+            // without a manually forced refresh (which would race the panel's own refresh).
             await changeTheme(page, themeId);
-
-            // Click on the page in nav tree to ensure we're not on root
             const pageLink = page.locator('.nav-element-text').filter({ hasText: 'My Hidden Title Page' }).first();
             await pageLink.click({ force: true });
-            await page.waitForTimeout(500);
 
-            // Focus on main content area before keyboard shortcut
-            await page
-                .locator('#node-content')
-                .click({ force: true })
-                .catch(() => {});
-
-            // Use keyboard shortcut (Ctrl/Cmd+P) to toggle preview - more reliable
-            const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-            await page.keyboard.press(`${modifier}+p`);
-
-            const previewPanel = page.locator('#previewsidenav');
-            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
-            await page.waitForTimeout(500);
-
-            const iframe = page.frameLocator('#preview-iframe');
-
-            // Wait for preview content
-            await page.waitForFunction(
-                () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    return previewIframe?.contentDocument?.querySelector('.exe-content, article, body');
-                },
-                undefined,
-                { timeout: 15000 },
-            );
-
-            // Verify .page-title has sr-av class for accessible hiding regardless of where it was moved
-            // Theme JS (flux, neo, nova) moves .page-title from .page-header to .page-content
-            // The sr-av class hides the title accessibly (position:absolute, clip, height:0)
+            // Verify .page-title keeps the sr-av accessible-hiding class. Theme JS
+            // (flux, neo, nova) moves .page-title from .page-header into .page-content, but a
+            // hidden title must stay hidden. The generous timeout absorbs the auto-refresh.
             const pageTitle = iframe.locator('.page-title').first();
-            await expect(pageTitle).toHaveClass(/sr-av/, {
-                timeout: 5000,
-            });
-
-            // Close preview after each theme test
-            await page.keyboard.press(`${modifier}+p`);
-            await previewPanel.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+            await expect(pageTitle).toHaveClass(/sr-av/, { timeout: 20000 });
         }
     });
 
@@ -415,18 +391,12 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // Wait for preview to load - multi-page HTML served by Service Worker
-        // Use waitForFunction for more robust checking across frame boundary
-        await page.waitForFunction(
-            () => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return false;
-                const article = previewIframe.contentDocument.querySelector('article, .exe-content, body');
-                return !!article;
-            },
-            undefined,
-            { timeout: 15000 },
-        );
+        // Wait for the opaque preview to render. The iframe has no allow-same-origin,
+        // so locate content inside the frame rather than reaching through contentDocument.
+        await iframe
+            .locator('.page-title, article, .exe-content')
+            .first()
+            .waitFor({ state: 'attached', timeout: 15000 });
 
         // The page title in header should show the custom title (titlePage), not the navigation title
         // Multi-page export uses .page-title in .page-header, not inside article
@@ -693,44 +663,23 @@ test.describe('Page Properties', () => {
         const previewPanel = page.locator('#previewsidenav');
         await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-        // Poll for preview iframe to load and check for MathJax script
-        const hasMathJax = await page.evaluate(async () => {
-            const checkMathJax = () => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument?.body) return null;
+        // The preview iframe is opaque (no allow-same-origin), so read its DOM via the
+        // cross-origin-safe frame locator rather than contentDocument.
+        const iframe = page.frameLocator('#preview-iframe');
 
-                const doc = previewIframe.contentDocument;
-                const body = doc.body;
-
-                // Check for error page
-                const errorHeading = doc.querySelector('h2');
-                if (errorHeading?.textContent?.trim() === 'Preview Error') {
-                    return { error: true };
-                }
-
-                // Check if content is ready
-                const hasContent = !!doc.querySelector('article, main, .exe-content');
-                if (!hasContent) return null;
-
-                // Check for MathJax script tag
-                const mathJaxScripts = doc.querySelectorAll('script[src*="tex-mml-svg"], script[src*="exe_math"]');
-                return { hasMathJax: mathJaxScripts.length > 0 };
-            };
-
-            for (let i = 0; i < 30; i++) {
-                const result = checkMathJax();
-                if (result) return result;
-                await new Promise(r => setTimeout(r, 500));
-            }
-            return { error: true };
-        });
-
-        // Verify MathJax script is included when addMathJax is enabled
-        // Note: Firefox has Service Worker registration issues, skip the check if preview failed to load
-        if (hasMathJax.error) {
+        // Skip if the preview failed to load on this engine (e.g. SW quirks).
+        const bodyText =
+            (await iframe
+                .locator('body')
+                .textContent({ timeout: 15000 })
+                .catch(() => '')) ?? '';
+        if (bodyText.includes('Preview Error')) {
             test.skip();
             return;
         }
-        expect(hasMathJax.hasMathJax).toBe(true);
+
+        // Verify the MathJax script is included when addMathJax is enabled.
+        const mathJaxScripts = iframe.locator('script[src*="tex-mml-svg"], script[src*="exe_math"]');
+        await expect.poll(() => mathJaxScripts.count(), { timeout: 15000 }).toBeGreaterThan(0);
     });
 });

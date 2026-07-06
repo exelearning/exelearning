@@ -244,8 +244,8 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
 
     // With SW-based preview, assets are served via relative paths (content/resources/...)
     // rather than blob URLs. Both approaches are valid for asset resolution.
-    expect(beforeSrc).toMatch(/^(blob:|content\/resources\/)/);
-    expect(afterSrc).toMatch(/^(blob:|content\/resources\/)/);
+    expect(beforeSrc).toMatch(/^(blob:|data:|content\/resources\/)/);
+    expect(afterSrc).toMatch(/^(blob:|data:|content\/resources\/)/);
 }
 
 test.describe('BeforeAfter iDevice', () => {

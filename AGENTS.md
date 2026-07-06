@@ -215,7 +215,7 @@ Key rules:
 
 ### 7.6 Preview System
 
-Service Worker (`public/preview-sw.js`) intercepts `/viewer/*` requests. `Html5Exporter.generateForPreview()` generates files in memory, sends to SW via `postMessage`, iframe loads from SW cache.
+The preview renders **untrusted authored content** in an **opaque-origin** iframe (`sandbox="allow-scripts allow-popups allow-forms"`, no `allow-same-origin`), same-origin, no subdomain. `Html5Exporter.generateForPreview()` generates files in memory; a transport **provider** (`public/app/workarea/interface/elements/preview/`) delivers them to the iframe: `HttpPreviewProvider` (server mode — ephemeral same-origin session at `/preview/{id}/*`), `SrcdocPreviewProvider` (static/embedded — self-contained `srcdoc`), or the **legacy** `ServiceWorkerPreviewProvider` (`public/preview-sw.js`, `/viewer/*` — Electron interim / explicit opt-in only; a Service Worker **cannot** serve an opaque iframe). Selection is deterministic (`public/app/core/previewTransport.js`), never silently downgrades. See [doc/development/preview-architecture.md](doc/development/preview-architecture.md).
 
 ### 7.7 ELP File Format
 

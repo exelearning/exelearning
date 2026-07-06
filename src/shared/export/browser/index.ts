@@ -36,6 +36,7 @@ import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
 import { PageElpxExporter } from '../exporters/PageElpxExporter';
+import { PREVIEW_SANDBOX, PREVIEW_SANDBOX_TOKENS } from '../../security/previewSandbox';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -838,6 +839,10 @@ export {
 // Export types for TypeScript consumers
 export type { PrintPreviewOptions, PrintPreviewResult };
 
+// Re-export the preview isolation policy so the iframe `sandbox` attribute
+// (frontend) and the serving route's CSP (backend) share one token source.
+export { PREVIEW_SANDBOX, PREVIEW_SANDBOX_TOKENS };
+
 // Expose to window for browser use
 if (typeof window !== 'undefined') {
     const windowExports = {
@@ -847,6 +852,9 @@ if (typeof window !== 'undefined') {
         exportAndDownload,
         // SW-based preview functions
         generatePreviewForSW,
+        // Preview isolation policy (single token source for iframe sandbox attrs)
+        PREVIEW_SANDBOX,
+        PREVIEW_SANDBOX_TOKENS,
         // Print preview functions
         generatePrintPreview,
         createPrintPreviewExporter,

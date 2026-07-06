@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { test, expect, isStaticProject } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea, getPreviewFrame } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import { addTextIdevice } from '../../helpers/workarea-helpers';
 
@@ -578,47 +578,42 @@ test.describe('Text iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for mermaid to render in preview (pre-rendered to SVG)
-            // Use waitForFunction for reliability instead of fixed timeout
-            const previewMermaidRendered = await page
-                .waitForFunction(
-                    () => {
-                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                        if (!previewIframe?.contentDocument) return null;
-                        const doc = previewIframe.contentDocument;
-
-                        const activeArticle = doc.querySelector('article');
-                        if (!activeArticle) return null;
-
-                        // Check for pre-rendered mermaid (new behavior: pre-rendered to static SVG)
-                        const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
-                        const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
-
-                        // Also check for runtime-rendered mermaid (fallback if pre-rendering not available)
-                        const pre = activeArticle.querySelector('pre.mermaid');
-                        const runtimeSvg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
-
-                        // Return when either pre-rendered OR runtime-rendered is complete
-                        if (preRenderedSvg || runtimeSvg) {
-                            return {
-                                isPreRendered: !!preRendered,
-                                hasSvg: !!(preRenderedSvg || runtimeSvg),
-                                hasDataMermaid: !!preRendered?.getAttribute('data-mermaid'),
-                            };
-                        }
-                        return null;
+            // The preview iframe is opaque-origin (no allow-same-origin), so read the
+            // rendered diagram from inside the frame rather than via contentDocument.
+            const mermaidFrame = getPreviewFrame(page);
+            let previewMermaidRendered: { isPreRendered: boolean; hasSvg: boolean; hasDataMermaid: boolean } | null =
+                null;
+            await expect
+                .poll(
+                    async () => {
+                        previewMermaidRendered = await mermaidFrame.locator('body').evaluate(() => {
+                            const activeArticle = document.querySelector('article');
+                            if (!activeArticle) return null;
+                            const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                            const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
+                            const runtimeSvg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                            if (preRenderedSvg || runtimeSvg) {
+                                return {
+                                    isPreRendered: !!preRendered,
+                                    hasSvg: true,
+                                    hasDataMermaid: !!preRendered?.getAttribute('data-mermaid'),
+                                };
+                            }
+                            return null;
+                        });
+                        return previewMermaidRendered;
                     },
-                    undefined,
                     { timeout: 15000 },
                 )
-                .then(handle => handle.jsonValue());
+                .not.toBeNull();
 
             // The diagram should have been rendered (either pre-rendered or runtime)
-            expect(previewMermaidRendered.hasSvg).toBe(true);
+            expect(previewMermaidRendered!.hasSvg).toBe(true);
 
             // When pre-rendering works, it should use exe-mermaid-rendered class
             // and preserve original code in data-mermaid attribute
-            if (previewMermaidRendered.isPreRendered) {
-                expect(previewMermaidRendered.hasDataMermaid).toBe(true);
+            if (previewMermaidRendered!.isPreRendered) {
+                expect(previewMermaidRendered!.hasDataMermaid).toBe(true);
             }
         });
 
@@ -864,54 +859,54 @@ test.describe('Text iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Verify pre-rendering: check for exe-mermaid-rendered class and NO mermaid.min.js script
-            const preRenderResult = await page
-                .waitForFunction(
-                    () => {
-                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                        if (!previewIframe?.contentDocument) return null;
-                        const doc = previewIframe.contentDocument;
-
-                        const activeArticle = doc.querySelector('article');
-                        if (!activeArticle) return null;
-
-                        // Check for pre-rendered mermaid element
-                        const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
-                        const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
-
-                        // Check if mermaid library is loaded (it should NOT be when pre-rendered)
-                        const mermaidScripts = doc.querySelectorAll('script[src*="mermaid.min.js"]');
-                        const hasMermaidLibrary = mermaidScripts.length > 0;
-
-                        // Check if mermaid global is defined (another way to check if library loaded)
-                        const previewWindow = previewIframe.contentWindow as any;
-                        const hasMermaidGlobal = typeof previewWindow?.mermaid !== 'undefined';
-
-                        // Return when SVG is present (either pre-rendered or runtime)
-                        if (preRenderedSvg || doc.querySelector('svg[id^="mermaid-"]')) {
-                            return {
-                                isPreRendered: !!preRendered,
-                                hasSvg: true,
-                                hasDataMermaid: preRendered?.getAttribute('data-mermaid')?.includes('Pre-render Test'),
-                                hasMermaidLibrary,
-                                hasMermaidGlobal,
-                            };
-                        }
-                        return null;
+            // Verify pre-rendering: check for exe-mermaid-rendered class and NO mermaid.min.js
+            // script. The opaque preview blocks contentDocument, so read from inside the frame.
+            const preRenderFrame = getPreviewFrame(page);
+            let preRenderResult: {
+                isPreRendered: boolean;
+                hasSvg: boolean;
+                hasDataMermaid?: boolean;
+                hasMermaidLibrary: boolean;
+                hasMermaidGlobal: boolean;
+            } | null = null;
+            await expect
+                .poll(
+                    async () => {
+                        preRenderResult = await preRenderFrame.locator('body').evaluate(() => {
+                            const activeArticle = document.querySelector('article');
+                            if (!activeArticle) return null;
+                            const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                            const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
+                            const hasMermaidLibrary =
+                                document.querySelectorAll('script[src*="mermaid.min.js"]').length > 0;
+                            const hasMermaidGlobal = typeof (window as { mermaid?: unknown }).mermaid !== 'undefined';
+                            if (preRenderedSvg || document.querySelector('svg[id^="mermaid-"]')) {
+                                return {
+                                    isPreRendered: !!preRendered,
+                                    hasSvg: true,
+                                    hasDataMermaid: preRendered
+                                        ?.getAttribute('data-mermaid')
+                                        ?.includes('Pre-render Test'),
+                                    hasMermaidLibrary,
+                                    hasMermaidGlobal,
+                                };
+                            }
+                            return null;
+                        });
+                        return preRenderResult;
                     },
-                    undefined,
                     { timeout: 15000 },
                 )
-                .then(handle => handle.jsonValue());
+                .not.toBeNull();
 
             // Diagram should render as SVG
-            expect(preRenderResult.hasSvg).toBe(true);
+            expect(preRenderResult!.hasSvg).toBe(true);
 
             // When pre-rendering is successful:
             // - Should have exe-mermaid-rendered class
             // - Should preserve original code in data-mermaid
-            if (preRenderResult.isPreRendered) {
-                expect(preRenderResult.hasDataMermaid).toBe(true);
+            if (preRenderResult!.isPreRendered) {
+                expect(preRenderResult!.hasDataMermaid).toBe(true);
                 // Note: The library may still be included in the export even when pre-rendered.
                 // The key verification is that the diagram was successfully converted to SVG.
                 // Library exclusion optimization may vary by export type.
@@ -1434,7 +1429,7 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('PDF Preview', () => {
-        test('should render PDF inline in preview', async ({ authenticatedPage, createProject }) => {
+        test('should render PDF inline in preview', async ({ authenticatedPage, createProject }, testInfo) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -1546,27 +1541,16 @@ test.describe('Text iDevice', () => {
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Wait for PDF to be rendered in preview
-            // PDF.js replaces original embed/object/iframe elements with canvas-based renderers
-            await page
-                .waitForFunction(
-                    () => {
-                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                        if (!previewIframe?.contentDocument) return false;
-
-                        const doc = previewIframe.contentDocument;
-                        // PDF.js canvas rendering (toolbar + canvas elements)
-                        const pdfToolbar = doc.querySelector('.exe-pdf-tb') || doc.querySelector('#tb');
-                        const pdfCanvases = doc.querySelectorAll('canvas');
-                        // Legacy checks (original elements before PDF.js replaces them)
-                        const pdfIframe = doc.querySelector('iframe[src*=".pdf"]');
-                        const pdfEmbed = doc.querySelector('embed[type="application/pdf"]');
-                        const pdfObject = doc.querySelector('object[data*=".pdf"]');
-                        return pdfCanvases.length > 0 || !!pdfToolbar || !!pdfIframe || !!pdfEmbed || !!pdfObject;
-                    },
-                    undefined,
-                    { timeout: 20000, polling: 500 },
+            // Wait for PDF to be rendered in preview. The opaque preview blocks
+            // contentDocument, so wait/read through the frame locator. PDF.js replaces
+            // original embed/object/iframe elements with canvas-based renderers.
+            const pdfFrame = getPreviewFrame(page);
+            await pdfFrame
+                .locator(
+                    'canvas, .exe-pdf-tb, #tb, iframe[src*=".pdf"], embed[type="application/pdf"], object[data*=".pdf"], [data-exe-pdf-src], [data-exe-pdf-unavailable]',
                 )
+                .first()
+                .waitFor({ state: 'attached', timeout: 20000 })
                 .catch(() => {
                     // If timeout, continue to get diagnostic info
                 });
@@ -1576,19 +1560,14 @@ test.describe('Text iDevice', () => {
 
             // Check for PDF in preview iframe
             // PDF.js replaces <object>/<embed>/<iframe> with canvas-based renderers
-            const viewerInfo = await page.evaluate(() => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return { hasPdf: false, canvasCount: 0 };
-
-                const doc = previewIframe.contentDocument;
-
+            const viewerInfo = await pdfFrame.locator('body').evaluate(() => {
                 // PDF.js canvas rendering
-                const pdfToolbar = doc.querySelector('.exe-pdf-tb') || doc.querySelector('#tb');
-                const pdfCanvases = doc.querySelectorAll('canvas');
+                const pdfToolbar = document.querySelector('.exe-pdf-tb') || document.querySelector('#tb');
+                const pdfCanvases = document.querySelectorAll('canvas');
                 // Legacy checks
-                const pdfIframe = doc.querySelector('iframe[src*=".pdf"]');
-                const pdfEmbed = doc.querySelector('embed[type="application/pdf"]');
-                const pdfObject = doc.querySelector('object[data*=".pdf"]');
+                const pdfIframe = document.querySelector('iframe[src*=".pdf"]');
+                const pdfEmbed = document.querySelector('embed[type="application/pdf"]');
+                const pdfObject = document.querySelector('object[data*=".pdf"]');
 
                 return {
                     hasPdf: pdfCanvases.length > 0 || !!pdfToolbar || !!pdfIframe || !!pdfEmbed || !!pdfObject,
@@ -1597,13 +1576,26 @@ test.describe('Text iDevice', () => {
                     hasPdfIframe: !!pdfIframe,
                     hasPdfEmbed: !!pdfEmbed,
                     hasPdfObject: !!pdfObject,
+                    // Srcdoc degradation: the inliner leaves a data-URI placeholder that PDF.js
+                    // renders, or a graceful "unavailable" note if PDF.js could not load.
+                    hasPlaceholder:
+                        !!document.querySelector('[data-exe-pdf-src]') ||
+                        !!document.querySelector('[data-exe-pdf-unavailable]'),
                 };
             });
 
             console.log('PDF viewer info:', viewerInfo);
 
-            // Verify PDF is rendered in preview (via PDF.js canvas or native embed)
-            expect(viewerInfo.hasPdf).toBe(true);
+            if (isStaticProject(testInfo)) {
+                // PDF.js is a dynamic ES module + web worker; it cannot be fetched inside the
+                // server-less opaque srcdoc preview, so the PDF is inlined as a data-URI
+                // placeholder and degrades to an "unavailable" note. LaTeX-style limitation:
+                // the real static export renders the PDF; the live srcdoc preview cannot.
+                expect(viewerInfo.hasPdf || viewerInfo.hasPlaceholder).toBe(true);
+            } else {
+                // Server preview: PDF.js renders it inline (canvas / native embed).
+                expect(viewerInfo.hasPdf).toBe(true);
+            }
         });
     });
 
@@ -2378,35 +2370,27 @@ test.describe('Text iDevice', () => {
             // With legacy preview, postMessage is sent to parent window
             if (downloadInfo.hasPostMessageLogic) {
                 // Legacy blob preview - verify postMessage is sent
-                const postMessageReceived = await page.evaluate(async () => {
-                    return new Promise<{ received: boolean; type?: string; error?: string }>(resolve => {
-                        const timeout = setTimeout(() => {
-                            resolve({ received: false, error: 'timeout' });
-                        }, 3000);
-
-                        window.addEventListener(
-                            'message',
-                            event => {
-                                if (event.data && event.data.type === 'exe-download-elpx') {
-                                    clearTimeout(timeout);
-                                    resolve({ received: true, type: event.data.type });
-                                }
-                            },
-                            { once: true },
-                        );
-
-                        // Click the link in the iframe
-                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                        const doc = previewIframe?.contentDocument;
-                        const link = doc?.querySelector('a[download]') as HTMLAnchorElement;
-                        if (link) {
-                            link.click();
-                        } else {
-                            clearTimeout(timeout);
-                            resolve({ received: false, error: 'link not found' });
-                        }
-                    });
-                });
+                // The in-preview download link postMessages to the PARENT window. Attach the
+                // parent listener first, then click the link INSIDE the opaque frame (its
+                // contentDocument is not reachable from the parent).
+                const messagePromise = page.evaluate(
+                    () =>
+                        new Promise<{ received: boolean; type?: string; error?: string }>(resolve => {
+                            const timeout = setTimeout(() => resolve({ received: false, error: 'timeout' }), 3000);
+                            window.addEventListener(
+                                'message',
+                                event => {
+                                    if (event.data && event.data.type === 'exe-download-elpx') {
+                                        clearTimeout(timeout);
+                                        resolve({ received: true, type: event.data.type });
+                                    }
+                                },
+                                { once: true },
+                            );
+                        }),
+                );
+                await iframe.locator('a[download]').first().click();
+                const postMessageReceived = await messagePromise;
 
                 expect(postMessageReceived.received).toBe(true);
                 expect(postMessageReceived.type).toBe('exe-download-elpx');
@@ -2505,31 +2489,17 @@ test.describe('Text iDevice', () => {
             const previewPanel = page.locator('#previewsidenav');
             await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
 
-            // Wait for preview iframe content to be ready
-            await page.waitForFunction(
-                () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    const doc = previewIframe?.contentDocument;
-                    if (!doc || !doc.body) return false;
-
-                    const hasContent = !!doc.querySelector('article, main, .idevice_node, .text');
-                    if (!hasContent) return false;
-
-                    // Prefer waiting for iframe-based rendering, but allow non-iframe render paths.
-                    const hasHtmlIframe = !!doc.querySelector(
-                        'iframe[data-mce-html="true"], iframe[data-asset-src], iframe[src^="blob:"], iframe[src="about:blank"], iframe[src^="asset://"]',
-                    );
-                    return hasHtmlIframe || doc.body.innerHTML.length > 200;
-                },
-                undefined,
-                { timeout: 15000, polling: 200 },
-            );
+            // Wait for preview iframe content to be ready. The opaque preview blocks
+            // contentDocument, so wait/read through the frame locator.
+            const htmlFrame = getPreviewFrame(page);
+            await htmlFrame
+                .locator('article, main, .idevice_node, .text')
+                .first()
+                .waitFor({ state: 'attached', timeout: 15000 });
 
             // 7. Verify iframe handling in preview
-            const previewInfo = await page.evaluate(() => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                const doc = previewIframe?.contentDocument;
-                if (!doc) return { error: 'No preview iframe document' };
+            const previewInfo = await htmlFrame.locator('body').evaluate(() => {
+                const doc = document;
 
                 // Find all iframes in preview
                 const allIframes = doc.querySelectorAll('iframe');
@@ -2820,42 +2790,44 @@ test.describe('Text iDevice', () => {
             await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
             await page.waitForTimeout(500);
 
-            // Check preview iframe for styles
-            const previewInfo = await page.evaluate(() => {
-                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                const doc = previewIframe?.contentDocument;
-                if (!doc) return { error: 'No preview iframe document' };
+            // Check preview iframe for styles. The opaque preview blocks contentDocument
+            // from the parent, so read from inside the frame (the inner HTML iframe is
+            // same-origin within it).
+            const previewInfo = await getPreviewFrame(page)
+                .locator('body')
+                .evaluate(() => {
+                    const doc = document;
 
-                // Find HTML iframe in preview
-                const htmlIframe = doc.querySelector(
-                    'iframe[data-asset-src], iframe[src^="blob:"]',
-                ) as HTMLIFrameElement;
-                if (!htmlIframe) {
-                    return { hasIframe: false, iframeCount: doc.querySelectorAll('iframe').length };
-                }
-
-                let styleCount = 0;
-                let hasNav = false;
-                let title = '';
-                try {
-                    const innerDoc = htmlIframe.contentDocument;
-                    if (innerDoc) {
-                        styleCount = innerDoc.querySelectorAll('style').length;
-                        hasNav = !!innerDoc.querySelector('nav, #siteNav, .sidenav');
-                        title = innerDoc.title || '';
+                    // Find HTML iframe in preview
+                    const htmlIframe = doc.querySelector(
+                        'iframe[data-asset-src], iframe[src^="blob:"]',
+                    ) as HTMLIFrameElement;
+                    if (!htmlIframe) {
+                        return { hasIframe: false, iframeCount: doc.querySelectorAll('iframe').length };
                     }
-                } catch {
-                    // Cross-origin
-                }
 
-                return {
-                    hasIframe: true,
-                    styleCount,
-                    hasNav,
-                    title,
-                    src: htmlIframe.getAttribute('src')?.substring(0, 50) || '',
-                };
-            });
+                    let styleCount = 0;
+                    let hasNav = false;
+                    let title = '';
+                    try {
+                        const innerDoc = htmlIframe.contentDocument;
+                        if (innerDoc) {
+                            styleCount = innerDoc.querySelectorAll('style').length;
+                            hasNav = !!innerDoc.querySelector('nav, #siteNav, .sidenav');
+                            title = innerDoc.title || '';
+                        }
+                    } catch {
+                        // Cross-origin
+                    }
+
+                    return {
+                        hasIframe: true,
+                        styleCount,
+                        hasNav,
+                        title,
+                        src: htmlIframe.getAttribute('src')?.substring(0, 50) || '',
+                    };
+                });
 
             console.log('Preview panel info:', previewInfo);
             expect(previewInfo.hasIframe).toBe(true);

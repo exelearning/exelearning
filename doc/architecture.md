@@ -413,9 +413,9 @@ const exporter = ExportFactory.create('scorm12');
 const zipPath = await exporter.export(session, options);
 ```
 
-## 8. Preview System (Service Worker Architecture)
+## 8. Preview System (Opaque-Origin Transports)
 
-The workarea preview uses a **Service Worker** to serve exported HTML files directly, ensuring the preview exactly matches the exported output.
+The workarea preview renders **untrusted authored content** in an **opaque-origin** sandboxed iframe (`sandbox="allow-scripts allow-popups allow-forms"`, no `allow-same-origin`), same-origin, no subdomain. `Html5Exporter.generateForPreview()` produces the files (so the preview exactly matches the exported output) and a transport **provider** delivers them: an ephemeral same-origin HTTP session (server mode), a self-contained `srcdoc` (static/embedded), or — **legacy only** — the Service Worker below (Electron interim / explicit opt-in; a Service Worker cannot serve an opaque iframe). See **[doc/development/preview-architecture.md](development/preview-architecture.md)** for the full design and the browser evidence. The Service-Worker description that follows documents the legacy transport.
 
 ### 8.1 Architecture Overview
 

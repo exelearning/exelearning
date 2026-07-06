@@ -6,14 +6,20 @@
  *   // BAD: if (this.app.isStaticMode()) { ... }
  *   // GOOD: if (!this.app.capabilities.collaboration.enabled) { ... }
  */
+import { resolvePreviewTransport } from './previewTransport.js';
+
 export class Capabilities {
     /**
      * @param {import('./RuntimeConfig').RuntimeConfig} config
+     * @param {{hasElectronApi?: boolean}} [environment] Injectable for tests;
+     *   defaults to detecting the Electron preload API on window.
      */
-    constructor(config) {
+    constructor(config, environment = {}) {
         const isServer = config.mode === 'server';
         const isStatic = config.mode === 'static';
         const isEmbedded = config.isEmbedded || false;
+        const hasElectronApi =
+            environment.hasElectronApi ?? (typeof window !== 'undefined' && !!window.electronAPI);
 
         /**
          * Collaboration features (presence, real-time sync)
@@ -116,6 +122,27 @@ export class Capabilities {
             showUserMenu: !hideUI.userMenu,
             showDownloadButton: !hideUI.downloadButton,
             showHelpMenu: !hideUI.helpMenu,
+        });
+
+        /**
+         * Preview transport (see core/previewTransport.js). The preview
+         * renders untrusted authored content: opaque-safe transports run it
+         * in an opaque-origin sandbox (no allow-same-origin).
+         */
+        const previewTransport = resolvePreviewTransport(config, { hasElectronApi });
+        this.preview = Object.freeze({
+            /** Which transport serves preview content */
+            transport: previewTransport,
+            /** Whether the transport works inside an opaque-origin sandbox */
+            opaqueSafe: previewTransport !== 'service-worker',
+            /**
+             * Whether "open preview in new tab" is available. All transports open the
+             * same-origin preview-host page (public/preview-tab.html): HTTP frames the
+             * capability URL, srcdoc receives the rendered page HTML from the editor.
+             */
+            extractToNewTab: true,
+            /** Whether the legacy same-origin Service Worker preview is active */
+            legacyServiceWorker: previewTransport === 'service-worker',
         });
 
         /**

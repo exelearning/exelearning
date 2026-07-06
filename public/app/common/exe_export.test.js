@@ -763,6 +763,35 @@ describe('exe_export.js', () => {
       document.body.classList.remove('exe-single-page');
     });
 
+    it('still creates the toggler when localStorage access throws (opaque-origin preview)', () => {
+      // In the editor's opaque-origin preview iframe, ANY localStorage access throws a
+      // SecurityError - even `typeof localStorage`. The toggle must still render
+      // (persistence is best-effort); it must not be suppressed by the storage probe.
+      const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError');
+        },
+      });
+      try {
+        const box = document.createElement('div');
+        box.className = 'box teacher-only';
+        document.body.appendChild(box);
+        const header = document.createElement('header');
+        header.className = 'page-header';
+        document.body.appendChild(header);
+
+        window.$exeExport.teacherMode._showToggler = true;
+        expect(() => window.$exeExport.teacherMode.init()).not.toThrow();
+
+        expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
+        expect(document.getElementById('teacher-mode-toggler-wrapper')).not.toBeNull();
+      } finally {
+        if (original) Object.defineProperty(window, 'localStorage', original);
+      }
+    });
+
     it('creates toggler for single-page mode with div.package-header (new structure)', () => {
       document.body.classList.add('exe-single-page');
       const box = document.createElement('div');
@@ -877,6 +906,21 @@ describe('exe_export.js', () => {
         window.$exeExport.teacherMode.bootstrap();
         expect(window.$exeExport.teacherMode._showToggler).toBe(false);
         restore();
+      });
+
+      it('shows the toggle via window.__EXE_TEACHER_MODE__ (srcdoc preview, no URL param)', () => {
+        // The editor's srcdoc preview has no URL to carry ?exe-teacher=1, so it
+        // sets this flag before exe_export.js runs. Same effect as the parameter.
+        const restore = mockSearchParams({});
+        window.__EXE_TEACHER_MODE__ = true;
+        try {
+          window.$exeExport.teacherMode.bootstrap();
+          expect(window.$exeExport.teacherMode._showToggler).toBe(true);
+          expect(window.$exeExport.teacherMode._navParams).toBe('exe-teacher=1');
+        } finally {
+          delete window.__EXE_TEACHER_MODE__;
+          restore();
+        }
       });
 
       it('restores the revealed state from localStorage when the toggle is available', () => {
