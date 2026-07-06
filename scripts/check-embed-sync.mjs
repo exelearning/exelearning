@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 const CORE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Parse --mod / --wp / --omeka / --procomun flags, falling back to env vars. */
+/** Parse --mod / --wp / --omeka / --procomun / --nextcloud flags, falling back to env vars. */
 function resolveMirrors() {
     const args = process.argv.slice(2);
     const get = (flag) => {
@@ -38,6 +38,7 @@ function resolveMirrors() {
         wp: get('--wp') || process.env.WP_EXE_DIR || null,
         omeka: get('--omeka') || process.env.OMEKA_EXE_DIR || null,
         procomun: get('--procomun') || process.env.PROCOMUN_EXE_DIR || null,
+        nextcloud: get('--nextcloud') || process.env.NEXTCLOUD_EXE_DIR || null,
     };
 }
 
@@ -100,6 +101,7 @@ const FILES = {
         wp: 'assets/js/exe-embed-relay.js',
         omeka: 'asset/js/exe-embed-relay.js',
         procomun: 'apps/frontend/public/elpx/exe_embed_relay.js',
+        nextcloud: 'src/embed/exe_embed_relay.js',
         invariants: RELAY_INVARIANTS,
     },
     shim: {
@@ -108,6 +110,7 @@ const FILES = {
         wp: 'assets/js/exe-embed-shim.js',
         omeka: 'asset/js/exe-embed-shim.js',
         procomun: 'apps/api/static/elpx/embed-shim.js',
+        nextcloud: 'src/embed/exe_embed_shim.js',
         invariants: SHIM_INVARIANTS,
     },
     php: {
@@ -122,6 +125,7 @@ const FILES = {
         wp: 'assets/js/exe-media-policy.js',
         omeka: 'asset/js/exe-media-policy.js',
         procomun: 'apps/frontend/public/elpx/exe_media_policy.js',
+        nextcloud: 'src/embed/exe_media_policy.js',
         invariants: MEDIA_POLICY_INVARIANTS,
     },
     mediahost: {
@@ -129,6 +133,7 @@ const FILES = {
         wp: 'assets/js/exe-media-host.js',
         omeka: 'asset/js/exe-media-host.js',
         procomun: 'apps/frontend/public/elpx/exe_media_host.js',
+        nextcloud: 'src/embed/exe_media_host.js',
         invariants: MEDIA_HOST_INVARIANTS,
     },
 };
@@ -146,11 +151,11 @@ function check(label, absPath, invariants) {
 
 function main() {
     const mirrors = resolveMirrors();
-    const roots = { core: CORE_ROOT, mod: mirrors.mod, wp: mirrors.wp, omeka: mirrors.omeka, procomun: mirrors.procomun };
+    const roots = { core: CORE_ROOT, mod: mirrors.mod, wp: mirrors.wp, omeka: mirrors.omeka, procomun: mirrors.procomun, nextcloud: mirrors.nextcloud };
     const results = [];
 
     for (const [kind, spec] of Object.entries(FILES)) {
-        for (const repo of ['core', 'mod', 'wp', 'omeka', 'procomun']) {
+        for (const repo of ['core', 'mod', 'wp', 'omeka', 'procomun', 'nextcloud']) {
             if (!roots[repo] || !spec[repo]) {
                 continue;
             }
