@@ -345,12 +345,57 @@ The editor sends `EXELEARNING_EVENT` messages for state changes:
 
 ## Preview
 
-The editor preview works in two modes:
+The editor preview renders **untrusted author HTML/JS** (an imported `.elpx` can
+carry arbitrary scripts). To keep that content from reaching the editor session
+or the host LMS/CMS **admin origin**, the preview runs in an **opaque origin**: a
+sandboxed iframe *without* `allow-same-origin`. The transport is selected
+deterministically (`public/app/core/previewTransport.js`), with **no silent
+downgrade** to a same-origin document:
 
-1. **Service Worker** (default): When the editor can register a Service Worker, preview files are served via the SW for accurate rendering.
-2. **Blob URL fallback** (embedded): When SW registration fails (cross-origin iframes), the preview generates a self-contained HTML file with inlined CSS/JS/images and loads it via a blob URL.
+| Runtime | Transport | Notes |
+|---|---|---|
+| Cloud / server editor | **HTTP opaque** | Ephemeral same-origin capability URL `/preview/{id}/*`, opaque via a response-level `Content-Security-Policy: sandbox` header. Full fidelity: real per-page URLs → working intra-content navigation and open-in-new-tab. |
+| Embedded editor (this doc) | **HTTP opaque, served by the host** *(recommended)* → **`srcdoc`** *(zero-config fallback)* | See below. |
+| Static / PWA standalone | **`srcdoc`** | Self-contained opaque iframe; no server. Lower fidelity (parent-bridged navigation, no open-in-new-tab). |
 
-The fallback is automatic and requires no configuration.
+See [preview-architecture.md](preview-architecture.md) for the full model and why
+a Service Worker **cannot** back an opaque iframe.
+
+### Recommended: serve the preview from the host (HTTP opaque)
+
+By default an embedded editor uses the `srcdoc` transport — **zero configuration,
+opaque-safe, works everywhere** — but with `srcdoc`'s fidelity limits (intra-page
+navigation is bridged through the parent, and open-in-new-tab is unavailable
+because there is no URL).
+
+For a first-class preview (working page-to-page navigation and open-in-new-tab)
+the host should **serve the preview over HTTP** from its own cookieless serving
+primitive (Moodle `tokenpluginfile.php`, WordPress public REST, Omeka S
+`ContentController`, Nextcloud public `Controller`, Procomún capability URL) and
+activate the HTTP transport:
+
+```jsonc
+{
+  "embeddingConfig": {
+    "previewTransport": "http",
+    "previewBasePath": "/mod/exelearning/preview"   // host endpoint (example)
+  }
+}
+```
+
+The host implements the **[Preview Serving Contract](preview-serving-contract.md)**
+— the exact endpoints, capability-URL model, and the sandbox-first CSP/headers
+(emitted **verbatim** from core's `previewCspHeader()`, on every scriptable
+document type incl. `image/svg+xml`). The editor's preview **client is reused
+byte-for-byte**; only the server side is host-specific. This is the same opaque
+model the plugins already use to isolate **published** content — extended to the
+authoring preview. A reference endpoint for each plugin ships on its
+`feature/secure-iframe-*` branch.
+
+> **Never** serve the preview same-origin (no `allow-same-origin`, no Service
+> Worker serving preview files). Same-origin author JS in an embedded editor can
+> reach the LMS/CMS admin session — the exact compromise the opaque origin
+> prevents.
 
 ## Teacher Mode
 
