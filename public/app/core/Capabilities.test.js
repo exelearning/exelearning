@@ -251,9 +251,13 @@ describe('Capabilities', () => {
             expect(staticCaps.preview.opaqueSafe).toBe(true);
             expect(staticCaps.preview.legacyServiceWorker).toBe(false);
 
+            // Electron now serves the preview opaquely over app://localhost/preview
+            // (protocol.handle → electron-preview-handler), same as cloud HTTP —
+            // NOT the legacy same-origin Service Worker preview.
             const electronCaps = new Capabilities(config, { hasElectronApi: true });
-            expect(electronCaps.preview.transport).toBe('service-worker');
-            expect(electronCaps.preview.opaqueSafe).toBe(false);
+            expect(electronCaps.preview.transport).toBe('http');
+            expect(electronCaps.preview.opaqueSafe).toBe(true);
+            expect(electronCaps.preview.legacyServiceWorker).toBe(false);
         });
     });
 });

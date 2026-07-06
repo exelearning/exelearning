@@ -31,11 +31,16 @@ export function resolvePreviewTransport(runtimeConfig, { hasElectronApi = false 
     }
 
     if (runtimeConfig?.mode === 'server') return 'http';
-    // Electron interim: renderer is app://localhost with contextIsolation and
-    // is never LMS-embedded; it keeps the SW preview until the app:// preview
-    // protocol lands (phase 3).
-    if (hasElectronApi) return 'service-worker';
+    // Electron: opaque HTTP preview served by the main process at
+    // app://localhost/preview/{id}/* (protocol.handle → electron-preview-handler).
+    // Same opaque transport as cloud, so the preview is cross-origin to the
+    // app://localhost renderer and untrusted author JS cannot reach
+    // window.top.electronAPI (arbitrary readFile) — the hole the legacy
+    // same-origin Service Worker preview left open.
+    if (hasElectronApi) return 'http';
     // Everything else (embedded editors AND static/PWA standalone) is
     // opaque-safe srcdoc: a Service Worker cannot serve an opaque iframe.
+    // (Embedded hosts may opt into 'http' with their own serving endpoint —
+    // see doc/development/preview-serving-contract.md.)
     return 'srcdoc';
 }

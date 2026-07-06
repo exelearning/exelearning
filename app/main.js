@@ -1,4 +1,15 @@
-const { app, protocol, net, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell } = require('electron');
+const {
+    app,
+    protocol,
+    net,
+    BrowserWindow,
+    dialog,
+    session,
+    ipcMain,
+    Menu,
+    systemPreferences,
+    shell,
+} = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { pathToFileURL } = require('url');
 
@@ -14,17 +25,19 @@ const contextMenu = require('electron-context-menu').default;
 // Register custom protocol BEFORE app.whenReady()
 // CRITICAL: This must be called before any window is created
 // Enables Service Workers with custom protocols (supported in Electron 10.x+)
-protocol.registerSchemesAsPrivileged([{
-    scheme: 'app',
-    privileges: {
-        standard: true,           // URLs follow RFC 3986
-        secure: true,             // Treated as HTTPS (required for SW)
-        allowServiceWorkers: true, // CRITICAL: Enables Service Workers
-        supportFetchAPI: true,    // Allows fetch() requests
-        corsEnabled: true,        // Allows CORS
-        stream: true,             // Enables streaming for media
-    }
-}]);
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'app',
+        privileges: {
+            standard: true, // URLs follow RFC 3986
+            secure: true, // Treated as HTTPS (required for SW)
+            allowServiceWorkers: true, // CRITICAL: Enables Service Workers
+            supportFetchAPI: true, // Allows fetch() requests
+            corsEnabled: true, // Allows CORS
+            stream: true, // Enables streaming for media
+        },
+    },
+]);
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
@@ -100,7 +113,35 @@ function registerProtocolHandler() {
 
     const staticDir = getStaticPath();
 
-    protocol.handle('app', async (request) => {
+    // app:// opaque preview transport. Serves /api/preview-session* and
+    // /preview/{id}/* from an in-process content-addressed store, emitting the
+    // sandbox-first CSP so the preview runs in an OPAQUE origin (cross-origin to
+    // this app://localhost renderer) — which severs the untrusted author JS from
+    // window.top.electronAPI (arbitrary readFile). Bundled from
+    // src/services/electron-preview-handler.ts by `bun run bundle:electron-preview`.
+    let previewHandler = null;
+    try {
+        previewHandler = require('./preview/electron-preview.cjs');
+    } catch (error) {
+        log.warn(
+            '[Preview] app:// preview handler not built; run "bun run bundle:electron-preview". Preview will 404 until built.',
+            error?.message,
+        );
+    }
+
+    protocol.handle('app', async request => {
+        // Route preview transport requests first; null → fall through to static.
+        if (previewHandler) {
+            try {
+                const previewResponse = await previewHandler.handlePreviewRequest(request);
+                if (previewResponse) {
+                    return previewResponse;
+                }
+            } catch (error) {
+                console.error('[Preview] app:// preview handler error:', error);
+            }
+        }
+
         const url = new URL(request.url);
         let pathname = decodeURIComponent(url.pathname);
 
@@ -455,9 +496,7 @@ function determineDevMode() {
  */
 function shouldDisableAutoUpdate() {
     // CLI flags
-    const disableFlag = process.argv.some(arg =>
-        arg === '--no-update-check' || arg === '--disable-updates'
-    );
+    const disableFlag = process.argv.some(arg => arg === '--no-update-check' || arg === '--disable-updates');
     if (disableFlag) {
         return { disabled: true, reason: 'CLI flag (--no-update-check or --disable-updates)' };
     }
@@ -499,7 +538,6 @@ function applyCombinedEnvToProcess() {
     // Ensure the spawned backend sees the combined env variables.
     Object.assign(process.env, env || {});
 }
-
 
 // Detecta si una URL es externa (debe abrirse en navegador del sistema)
 function isExternalUrl(url) {
@@ -561,7 +599,7 @@ function attachOpenHandler(win) {
     });
 
     // Attach open handler to child windows when they're created
-    win.webContents.on('did-create-window', (childWindow) => {
+    win.webContents.on('did-create-window', childWindow => {
         attachOpenHandler(childWindow);
     });
 
@@ -597,10 +635,7 @@ function configureYouTubeEmbedHeaders() {
         const referer = headers.Referer || headers.referer || '';
 
         // app:// and file:// referers are not accepted by YouTube embed checks.
-        const hasInvalidReferer =
-            !referer ||
-            referer.startsWith('app://') ||
-            referer.startsWith('file://');
+        const hasInvalidReferer = !referer || referer.startsWith('app://') || referer.startsWith('file://');
 
         if (hasInvalidReferer) {
             headers.Referer = 'https://localhost/';
@@ -660,9 +695,7 @@ function getUnsavedChangesCloseCopy() {
         ),
         message: tOrDefault(
             'desktop.unsavedChanges.message',
-            defaultLocale === 'es'
-                ? 'Hay cambios sin guardar en este proyecto.'
-                : 'This project has unsaved changes.',
+            defaultLocale === 'es' ? 'Hay cambios sin guardar en este proyecto.' : 'This project has unsaved changes.',
         ),
         detail: tOrDefault(
             'desktop.unsavedChanges.detail',
@@ -670,10 +703,7 @@ function getUnsavedChangesCloseCopy() {
                 ? 'Si cierras ahora, se perderán los cambios más recientes. Puedes quedarte para guardar el proyecto primero.'
                 : 'If you close now, your latest changes will be lost. Stay to save the project first.',
         ),
-        stayButtonLabel: tOrDefault(
-            'desktop.unsavedChanges.stay',
-            defaultLocale === 'es' ? 'Permanecer' : 'Stay',
-        ),
+        stayButtonLabel: tOrDefault('desktop.unsavedChanges.stay', defaultLocale === 'es' ? 'Permanecer' : 'Stay'),
         discardButtonLabel: tOrDefault(
             'desktop.unsavedChanges.discard',
             defaultLocale === 'es' ? 'Cerrar sin guardar' : 'Close without saving',
@@ -703,7 +733,7 @@ async function getCloseCopyFromRenderer(win) {
         return null;
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         const timeout = setTimeout(() => {
             console.warn('[Electron] Renderer did not respond with close copy in time, using fallback');
             resolve(null);
@@ -725,7 +755,7 @@ async function getCloseCopyFromRenderer(win) {
  * @returns {void}
  */
 function attachEditorWindowCloseGuard(win) {
-    win.on('close', async (event) => {
+    win.on('close', async event => {
         if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
         if (windowsCheckingUnsavedChanges.has(win)) {
             event.preventDefault();
@@ -744,8 +774,7 @@ function attachEditorWindowCloseGuard(win) {
                 return;
             }
 
-            const copy = (await getCloseCopyFromRenderer(win)) 
-                      || getUnsavedChangesCloseCopy();
+            const copy = (await getCloseCopyFromRenderer(win)) || getUnsavedChangesCloseCopy();
 
             const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
 
@@ -894,11 +923,7 @@ async function createWindow() {
         try {
             // Use the filename from the request or our override
             const wc =
-                webContents && !webContents.isDestroyed?.()
-                    ? webContents
-                    : mainWindow
-                      ? mainWindow.webContents
-                      : null;
+                webContents && !webContents.isDestroyed?.() ? webContents : mainWindow ? mainWindow.webContents : null;
             const wcId = wc && !wc.isDestroyed?.() ? wc.id : null;
             // Deduplicate same-URL downloads triggered within a short window
             try {
@@ -996,7 +1021,6 @@ async function createWindow() {
     handleAppExit();
 }
 
-
 /**
  * Stream a URL to a file path using Node http/https, preserving Electron session cookies.
  * Sends 'download-progress' and 'download-done' events to the given webContents when available.
@@ -1014,7 +1038,8 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
             // and cannot be fetched via Node.js http/https modules.
             // Use saveBuffer/saveBufferAs for client-generated data instead.
             if (typeof downloadUrl === 'string' && downloadUrl.startsWith('blob:')) {
-                const errorMsg = 'blob: URLs not supported in streamToFile. Use saveBuffer/saveBufferAs for client-side data.';
+                const errorMsg =
+                    'blob: URLs not supported in streamToFile. Use saveBuffer/saveBufferAs for client-side data.';
                 console.error('[streamToFile]', errorMsg);
                 if (wc && !wc.isDestroyed?.()) {
                     wc.send('download-done', { ok: false, error: errorMsg });
@@ -1230,7 +1255,7 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
 // base64-encoded zip the renderer can feed into importFromElpxViaYjs.
 // The folder layout is the same one that lives inside an .elpx — this
 // handler is the inverse of app:exportBufferToFolder.
-ipcMain.handle('app:openProjectFolder', async (e) => {
+ipcMain.handle('app:openProjectFolder', async e => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     const lastUsedDir = getLastUsedDir();
     const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
@@ -1257,7 +1282,7 @@ ipcMain.handle('app:openProjectFolder', async (e) => {
     }
 
     const entries = {};
-    const walk = (currentDir) => {
+    const walk = currentDir => {
         const items = fs.readdirSync(currentDir, { withFileTypes: true });
         for (const item of items) {
             // Skip OS noise that would bloat the zip without belonging to the project.
@@ -1518,7 +1543,7 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     }
 });
 
-ipcMain.handle('app:getMemoryUsage', async (e) => {
+ipcMain.handle('app:getMemoryUsage', async e => {
     let renderer = null;
     try {
         if (e?.sender?.getProcessMemoryInfo) {
@@ -1537,7 +1562,7 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
 // Close the window that initiated the request (File > Close). The unsaved
 // changes confirmation is handled by the close guard attached in
 // attachEditorWindowCloseGuard(), so we only trigger the close here.
-ipcMain.handle('app:closeCurrentWindow', async (e) => {
+ipcMain.handle('app:closeCurrentWindow', async e => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (win && !win.isDestroyed()) {
         win.close();
@@ -1674,7 +1699,6 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
 ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
 
-
 /**
  * Create a new window for a project file
  * @param {string} filePath - Path to the .elpx file to open
@@ -1732,7 +1756,7 @@ function createNewProjectWindow(filePath) {
     return newWindow;
 }
 
-ipcMain.on('app:renderer-ready-for-open-file', (event) => {
+ipcMain.on('app:renderer-ready-for-open-file', event => {
     const wcId = event.sender.id;
     const filePath = pendingOpenFileByWebContentsId.get(wcId);
     if (!filePath) return;

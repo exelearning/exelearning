@@ -29,14 +29,24 @@ describe('selectPreviewProvider', () => {
         expect(provider).toBeInstanceOf(SrcdocPreviewProvider);
     });
 
-    it('keeps Electron on the legacy Service Worker transport (documented interim)', () => {
+    it('selects the opaque HTTP provider in Electron (app://localhost/preview), not the legacy SW', () => {
         const provider = selectPreviewProvider({
             runtimeConfig: config('static'),
             hasElectronApi: true,
             deps,
         });
-        expect(provider).toBeInstanceOf(ServiceWorkerPreviewProvider);
-        expect(provider.opaqueSafe).toBe(false);
+        expect(provider).toBeInstanceOf(HttpPreviewProvider);
+        expect(provider.opaqueSafe).toBe(true);
+    });
+
+    it('only selects the legacy Service Worker provider via an explicit legacy-sw override', () => {
+        const legacy = selectPreviewProvider({
+            runtimeConfig: config('static', { previewTransport: 'legacy-sw' }),
+            hasElectronApi: true,
+            deps,
+        });
+        expect(legacy).toBeInstanceOf(ServiceWorkerPreviewProvider);
+        expect(legacy.opaqueSafe).toBe(false);
     });
 
     it('uses the srcdoc provider for standalone static/PWA', () => {
