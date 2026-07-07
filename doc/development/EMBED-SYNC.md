@@ -9,10 +9,11 @@ plugins so each can ship self-contained assets. To stop the copies from drifting
 
 | Bridge | Files | Canonical | Mirrors |
 |---|---|---|---|
-| Embed relay + shim | `exe_embed_relay.js`, `exe_embed_shim.js` | **eXe core** (`public/app/common/exe_embed_bridge/`) | mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun |
-| Media policy | `exe_media_policy.js` | **eXe core** (`public/app/common/exe_media_bridge/`) | mod, wp, omeka, procomun |
-| Media host | `exe_media_host.js` (raw-postMessage) | **mod_exelearning** | wp, omeka, procomun (core ships a separate SDK-based host fork) |
+| Embed relay + shim | `exe_embed_relay.js`, `exe_embed_shim.js` | **eXe core** (`public/app/common/exe_embed_bridge/`) | mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun, nextcloud-exelearning |
+| Media policy | `exe_media_policy.js` | **eXe core** (`public/app/common/exe_media_bridge/`) | mod, wp, omeka, procomun, nextcloud |
+| Media host | `exe_media_host.js` (raw-postMessage) | **mod_exelearning** | wp, omeka, procomun, nextcloud (core ships a separate SDK-based host fork) |
 | Sandbox PHP | `player_iframe.php` / `class-iframe-sandbox.php` / `IframeSandbox.php` | **mod_exelearning** | wp, omeka |
+| Preview-serving CSP | the preview endpoint's CSP (`class-preview-proxy.php` / `preview.php` / `PreviewController.php` / `preview.ts`) | **eXe core** (`src/shared/security/previewSandbox.ts` `previewCspHeader()`) | mod, wp, omeka, procomun, nextcloud |
 
 Changes flow **from core outward**: edit the canonical file, then propagate to the
 mirrors (only the export wrapper and each repo's code style — tabs/Yoda for WP/Omeka,
@@ -25,15 +26,31 @@ node scripts/check-embed-sync.mjs \
   --mod <mod_exelearning> \
   --wp <wp-exelearning> \
   --omeka <omeka-s-exelearning> \
-  --procomun <procomun>
+  --procomun <procomun> \
+  --nextcloud <nextcloud-exelearning>
 ```
 
 Mirror paths may also come from `MOD_EXE_DIR` / `WP_EXE_DIR` / `OMEKA_EXE_DIR` /
-`PROCOMUN_EXE_DIR`. With no mirror paths it only sanity-checks the core files. It
-normalises whitespace and quote style, so tabs-vs-spaces and the IIFE-vs-`module.exports`
-wrapper never count as drift — only a missing behavioural invariant does. Exit code is
-non-zero on drift. It is a local pre-/post-change check, not a CI gate (there is no shared
-CI across the repos yet).
+`PROCOMUN_EXE_DIR` / `NEXTCLOUD_EXE_DIR`. With no mirror paths it only sanity-checks the
+core files. It normalises whitespace and quote style, so tabs-vs-spaces and the
+IIFE-vs-`module.exports` wrapper never count as drift — only a missing behavioural
+invariant does. Exit code is non-zero on drift. It is a local pre-/post-change check, not
+a CI gate (there is no shared CI across the repos yet).
+
+### The `serving-contract` kind
+
+Besides the bridge JS and sandbox PHP, the checker asserts a **`serving-contract`**
+invariant set: every host's preview endpoint must emit a Content-Security-Policy
+**byte-identical to core's `previewCspHeader()`** (`src/shared/security/previewSandbox.ts`).
+The invariants are the individual CSP directives (`default-src 'self'`,
+`script-src 'self' 'unsafe-inline' 'unsafe-eval'`, `img-src 'self' data: blob: https:`,
+`frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com`,
+`object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'self'`, …). The joined
+`sandbox allow-scripts allow-popups allow-forms` token line is intentionally **not** a
+`serving-contract` invariant because core and Moodle build the `sandbox` directive
+compositionally (`sandbox ${PREVIEW_SANDBOX}` / `'sandbox ' . $sandbox`); those tokens are
+covered by the sandbox-PHP `embedmode`/token invariants instead. If you change
+`previewCspHeader()`, update `SERVING_CONTRACT_INVARIANTS` in the checker to match.
 
 ## Not covered
 

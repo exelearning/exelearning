@@ -111,6 +111,33 @@ These are inherent to a server-less, opaque, self-contained document. The HTTP
 transport (server mode) has none of them because every resource is served
 same-origin under the session prefix.
 
+### Serverless & php-wasm Playgrounds (demo environments)
+
+Plugin **Playgrounds** — WordPress / Moodle / Omeka S / Nextcloud running the whole
+CMS in the browser via **php-wasm** — are the extreme serverless case: there is **no
+real HTTP server at all**; the entire site (including any plugin serving route) is
+emulated by a **Service Worker**. Since a Service Worker cannot serve or control an
+opaque-origin document or its subresources (the same limitation as §"Why the Service
+Worker preview cannot serve an opaque iframe"), an opaque iframe pointed at a
+capability URL simply **bypasses the SW and 404s** against the static host.
+
+The environment map is therefore:
+
+- **Editor preview** — unaffected: embedded editors already select the opaque
+  `SrcdocPreviewProvider` (no server needed), so preview stays opaque in a Playground.
+- **Published content** — the CMS flows point an iframe at a server URL (not a
+  client-inlined `srcdoc`), which the Playground cannot serve opaquely. For the demo
+  only, Playgrounds fall back to a **dev-only escape hatch**
+  (`EXELEARNING_UNSAFE_LEGACY_IFRAME`) that renders same-origin. It **must** be off by
+  default, never a normal admin/UI setting, loudly documented as unsafe, and covered by
+  a test proving it is not enabled by default. Every real deployment (cloud, Electron,
+  embedded LMS, static/PWA) stays opaque and never uses it.
+
+See the host contract and hatch policy in
+[preview-serving-contract.md](preview-serving-contract.md); the shared preview CSP is
+drift-checked across every host by the `serving-contract` kind in
+[EMBED-SYNC.md](EMBED-SYNC.md).
+
 ## Script-injection parity
 
 The Service Worker injected external-link/PDF/navigation scripts at serve time.

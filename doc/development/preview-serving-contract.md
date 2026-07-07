@@ -217,8 +217,11 @@ to this contract on its own cookieless serving primitive:
 - **Procomún** — `/api/v1/elpx/:hash/*`-style capability serving with the same
   headers.
 
-Keep the emitted CSP string **byte-identical** to `previewCspHeader()` (add a
-drift check, like `tools/check-embed-sync.mjs`).
+Keep the emitted CSP string **byte-identical** to `previewCspHeader()`. This is
+enforced by the **`serving-contract`** kind in
+[`scripts/check-embed-sync.mjs`](../../scripts/check-embed-sync.mjs) (see
+[EMBED-SYNC.md](EMBED-SYNC.md)), which asserts every host's preview endpoint carries
+the canonical CSP directives.
 
 ## What stays on `srcdoc`
 
@@ -229,6 +232,24 @@ so it keeps the self-contained `iframe.srcdoc` transport
 (parent-bridged intra-content navigation, no open-in-new-tab) is confined to that
 one context. Every context with a server (cloud, Electron, embedded LMS) uses
 this HTTP contract instead.
+
+## php-wasm Playgrounds (demo environments) — the dev-only escape hatch
+
+Plugin **Playgrounds** (WordPress / Moodle / Omeka S / Nextcloud running the whole
+CMS in the browser via php-wasm) are a special serverless case: there is **no real
+HTTP server** — the entire site is emulated by a **Service Worker**. An opaque iframe
+bypasses that SW (opaque origins are not SW-controlled — the same reason a SW cannot
+serve preview), so neither this HTTP contract nor a plugin's real serving route can
+deliver opaque content there.
+
+For **published-content** demos, whose flows point an iframe at a server URL (not a
+client-inlined `srcdoc`), Playgrounds therefore fall back to a **dev-only escape
+hatch** — `EXELEARNING_UNSAFE_LEGACY_IFRAME`, which renders same-origin. This hatch
+**must**: be off by default, never be exposed as a normal admin/UI setting, be loudly
+documented as unsafe, and be covered by a test proving it is not enabled by default.
+It exists **only** for php-wasm demo environments; every real deployment (cloud,
+Electron, embedded LMS, static/PWA) stays opaque. Editor *preview* is unaffected —
+embedded editors already pick the opaque `srcdoc` transport, which needs no server.
 
 See also: [embedding.md](embedding.md),
 [preview-architecture.md](preview-architecture.md),

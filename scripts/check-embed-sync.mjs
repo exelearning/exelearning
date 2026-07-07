@@ -94,6 +94,31 @@ const MEDIA_HOST_INVARIANTS = [
     'exe-media-modal', // the accessible <dialog> class
 ];
 
+// The preview-serving CSP every host's preview endpoint MUST emit, byte-identical to
+// eXe core `previewCspHeader()` (src/shared/security/previewSandbox.ts). Checked as
+// normalised substrings against each host's preview CSP source. These are the
+// *individual directives*, not the whole joined string: core (`sandbox ${PREVIEW_SANDBOX}`
+// + array join) and Moodle (`'sandbox ' . $sandbox`) build the sandbox directive
+// compositionally, so the joined `sandbox allow-scripts allow-popups allow-forms` literal
+// is not present everywhere (that token set is already covered by PHP_INVARIANTS). Every
+// resource directive below IS a literal in all six sources. Keep these in sync with
+// previewCspHeader(); update here if that function changes.
+const SERVING_CONTRACT_INVARIANTS = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
+    "child-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+];
+
 const FILES = {
     relay: {
         core: 'public/app/common/exe_embed_bridge/exe_embed_relay.js',
@@ -135,6 +160,18 @@ const FILES = {
         procomun: 'apps/frontend/public/elpx/exe_media_host.js',
         nextcloud: 'src/embed/exe_media_host.js',
         invariants: MEDIA_HOST_INVARIANTS,
+    },
+    'serving-contract': {
+        // The preview-serving CSP each host emits must not drift from core's
+        // previewCspHeader(). core builds it compositionally; the hosts carry it
+        // (a literal string or an array of the same directives) in these files.
+        core: 'src/shared/security/previewSandbox.ts',
+        mod: 'preview.php',
+        wp: 'includes/class-preview-proxy.php',
+        omeka: 'src/Controller/PreviewController.php',
+        procomun: 'apps/api/src/routes/preview.ts',
+        nextcloud: 'lib/Controller/PreviewController.php',
+        invariants: SERVING_CONTRACT_INVARIANTS,
     },
 };
 
