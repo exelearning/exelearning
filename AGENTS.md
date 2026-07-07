@@ -317,6 +317,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | [xlf-translate](.agents/skills/xlf-translate/SKILL.md) | Filling empty `<target>` elements in XLF files with `~`-prefixed translations |
 | [mkdocs-nav](.agents/skills/mkdocs-nav/SKILL.md) | Sync `mkdocs.yml` nav with the actual contents of `doc/` |
 | [api-v1](.agents/skills/api-v1/SKILL.md) | External REST API v1 endpoints |
+| [changelog](.agents/skills/changelog/SKILL.md) | Drafting or updating `public/CHANGELOG.md` from merged PRs |
 
 ## 12. Deep-Dive Documentation
 
