@@ -236,6 +236,10 @@ const {
     pickStoredSaveInfo,
     clearSavedNameCache,
     resolveSaveDir,
+    buildStagingPath,
+    moveStagedFile,
+    safeUnlink,
+    finalizeStagedDownload,
 } = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
@@ -369,6 +373,8 @@ const nextDownloadKeyByWC = new Map();
 const nextDownloadNameByWC = new Map();
 // Deduplicate bursts of downloads for the same WC/URL (prevents double pickers)
 const lastDownloadByWC = new Map(); // wcId -> { url: string, time: number }
+// Monotonic id for temp staging filenames (issue #2039)
+let nextDownloadStagingId = 0;
 
 /**
  * Perform "run-once per version" maintenance.
@@ -889,8 +895,21 @@ async function createWindow() {
         }
     });
 
-    // Intercept downloads: first time ask path, then overwrite same path
-    session.defaultSession.on('will-download', async (event, item, webContents) => {
+    // Intercept downloads and route them through a single native save dialog.
+    //
+    // The bytes are streamed to a temp *staging* file whose path is set
+    // synchronously below; setting a save path before this handler yields
+    // suppresses Electron's own default save dialog. Once the download is on
+    // disk we prompt exactly once and move the file to the user-chosen path.
+    // This is the root-cause fix for the duplicate save dialog seen when a
+    // client-side download (e.g. jsPDF `doc.save()` inside an asset:// iframe)
+    // reaches will-download instead of the saveBufferAs bypass (issue #2039;
+    // same race previously patched per-flow in #1594/#1875/#1818).
+    //
+    // NOTE: this handler must stay synchronous up to `item.setSavePath()` — do
+    // not `await` before it, or Electron will show its default dialog.
+    session.defaultSession.on('will-download', (event, item, webContents) => {
+        let stagingPath = null;
         try {
             // Use the filename from the request or our override
             const wc =
@@ -917,30 +936,22 @@ async function createWindow() {
             const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
             if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
             const suggestedName = overrideName || item.getFilename() || 'document.elpx';
-            // Determine a safe target WebContents (can be null in some cases)
-            // Allow renderer to define a project key (optional)
-            let projectKey = 'default';
+            // Consume any per-download project-key hint synchronously; the
+            // renderer fallback (executeJavaScript) is resolved later, on 'done'.
+            let projectKeyHint = null;
             if (wcId && nextDownloadKeyByWC.has(wcId)) {
-                projectKey = nextDownloadKeyByWC.get(wcId) || 'default';
+                projectKeyHint = nextDownloadKeyByWC.get(wcId) || 'default';
                 nextDownloadKeyByWC.delete(wcId);
-            } else if (wc) {
-                try {
-                    projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
-                } catch (_e) {
-                    // ignore, fallback to default
-                }
             }
 
-            // Always prompt — no silent overwrite
-            const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-            const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
-            const targetPath = await promptSave(owner, suggestedName, lastDir);
-            if (!targetPath) {
-                event.preventDefault();
-                return;
-            }
-            setLastSaveDir(projectKey, path.dirname(targetPath));
-            item.setSavePath(targetPath);
+            // Stage the download to a temp file synchronously (suppresses the
+            // Electron default dialog). We prompt + move once it completes.
+            stagingPath = buildStagingPath(
+                app.getPath('temp'),
+                suggestedName,
+                `${Date.now()}-${nextDownloadStagingId++}`,
+            );
+            item.setSavePath(stagingPath);
 
             // Progress feedback and auto-resume on interruption
             item.on('updated', (_e, state) => {
@@ -957,30 +968,62 @@ async function createWindow() {
                 }
             });
 
-            item.once('done', (_e, state) => {
+            item.once('done', async (_e, state) => {
                 const send = payload => {
                     if (wc && !wc.isDestroyed?.()) wc.send('download-done', payload);
                     else if (mainWindow && !mainWindow.isDestroyed())
                         mainWindow.webContents.send('download-done', payload);
                 };
-                if (state === 'completed') {
-                    send({ ok: true, path: targetPath });
-                    return;
-                }
-                if (state === 'interrupted') {
-                    try {
-                        const total = item.getTotalBytes() || 0;
-                        const exists = fs.existsSync(targetPath);
-                        const size = exists ? fs.statSync(targetPath).size : 0;
-                        if (exists && (total === 0 || size >= total)) {
-                            send({ ok: true, path: targetPath });
-                            return;
+                try {
+                    // Resolve the project key for the dialog default dir + persistence.
+                    let projectKey = projectKeyHint || 'default';
+                    if (!projectKeyHint && wc && !wc.isDestroyed?.()) {
+                        try {
+                            projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+                        } catch (_e) {
+                            // ignore, fallback to default
                         }
-                    } catch (_err) {}
+                    }
+                    const owner = wc && !wc.isDestroyed?.() ? BrowserWindow.fromWebContents(wc) : mainWindow;
+                    const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
+                    const result = await finalizeStagedDownload({
+                        state,
+                        stagingPath,
+                        suggestedName,
+                        owner,
+                        lastDir,
+                        projectKey,
+                        promptSave,
+                        setLastSaveDir,
+                        move: (src, dest) => moveStagedFile(fs, src, dest),
+                        cleanup: p => safeUnlink(fs, p),
+                        stagedLooksComplete: () => {
+                            try {
+                                const total = item.getTotalBytes() || 0;
+                                const exists = fs.existsSync(stagingPath);
+                                const size = exists ? fs.statSync(stagingPath).size : 0;
+                                return exists && (total === 0 || size >= total);
+                            } catch (_err) {
+                                return false;
+                            }
+                        },
+                    });
+                    if (result.ok) {
+                        send({ ok: true, path: result.path });
+                    } else if (!result.canceled) {
+                        // A user cancel stays silent (matches the prior behavior);
+                        // only genuine failures surface an error.
+                        send({ ok: false, error: result.error });
+                    }
+                } catch (err) {
+                    safeUnlink(fs, stagingPath);
+                    send({ ok: false, error: err.message });
                 }
-                send({ ok: false, error: state });
             });
         } catch (err) {
+            // Staging failed before the download started: cancel it so Electron
+            // does not fall back to its own dialog, and clean up any temp file.
+            safeUnlink(fs, stagingPath);
             event.preventDefault();
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('download-done', { ok: false, error: err.message });

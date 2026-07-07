@@ -27,6 +27,7 @@
 - Collaboration: shared assets are now identified consistently, preventing image loss
 - Collaboration: fixed data loss affecting collaborative editing across day changes
 - Collaboration: shared and collaborative projects are no longer deleted during session cleanup
+- Collaboration: the file manager no longer loses the current selection when a remote change refreshes the asset list
 - Assets without a file extension are now served with the correct MIME type, preventing unintended PDF downloads
 - Share dialog: the people-with-access list now scrolls correctly within the modal
 - Link Validator and Resource Report: Download CSV now works correctly
@@ -50,10 +51,13 @@
 - Export: the license footer no longer inherits the global content font
 - Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
 - Export: duplicate assets are no longer included in self-contained HTML exports
+- Desktop: fixed a duplicate Save As dialog when downloading PDF files generated from HTML assets in Electron
 
 ### Upgraded
 
+- electron: 42.5.2 → 43.0.0
 - esbuild: 0.27.7 → 0.28.1
+- pdfjs-dist: 6.0.227 → 6.1.200
 
 ### Removed
 
