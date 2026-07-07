@@ -1,17 +1,90 @@
 ---
 name: changelog
-description: Generate a draft CHANGELOG entry for the next release from merged GitHub pull requests. Asks the user for the target version before starting.
+description: Generate a draft CHANGELOG entry for the next release from merged GitHub pull requests, or update the existing draft block with PRs merged since one already incorporated. Asks the user which mode to run before starting.
 ---
 
-# Skill: Generate CHANGELOG draft
+# Skill: Generate or update CHANGELOG draft
 
 > **This skill produces a working draft, not a finished changelog.** The output is a starting point to make the task easier — the maintainer must review, edit and refine every entry before committing.
 
-Generate a draft entry for `public/CHANGELOG.md` based on the pull requests merged since the last published release, then insert it at the top of the file.
+Two modes are available:
+
+- **Mode A — Update existing draft** (use this most of the time, e.g. "check for new PRs since we last updated the changelog"): reviews PRs merged after a given already-incorporated PR, and appends new entries to the draft block already at the top of `public/CHANGELOG.md`.
+- **Mode B — New version block**: generates a brand-new version block from all PRs merged since the last *published* GitHub release. Use this only when starting the draft for a release that has no block yet.
 
 ---
 
-## 0. Ask for the target version
+## 0. Ask which mode to run
+
+**Before doing anything else**, ask the user:
+
+> Do you want to (A) update the existing draft at the top of the CHANGELOG with PRs merged since one that's already in there, or (B) start a brand-new version block from the last published release?
+
+If the user doesn't know or this is a recurring "check for new PRs" task, default to **Mode A**.
+
+---
+
+## Mode A — Update the existing draft
+
+### A.1 Ask for the last incorporated PR
+
+Ask the user:
+
+> What's the number of the last PR that's already reflected in the current CHANGELOG draft?
+
+Wait for the PR number (e.g. `2012`). Don't try to guess it by matching changelog text back to PR titles — it's ambiguous and error-prone; asking is more reliable.
+
+### A.2 Get the cut-off timestamp
+
+```
+gh pr view <N> --repo exelearning/exelearning --json number,title,mergedAt
+```
+
+Record `mergedAt` as the cut-off.
+
+### A.3 List PRs merged after the cut-off
+
+```
+gh pr list \
+  --repo exelearning/exelearning \
+  --state merged \
+  --search "merged:>YYYY-MM-DDTHH:MM:SSZ" \
+  --json number,title,body,labels,mergedAt \
+  --limit 200
+```
+
+Sort by `mergedAt` ascending. For each PR, read `title` and the full `body` (the primary source — a PR title alone often hides a real fix mixed in with test changes, or vice versa).
+
+### A.4 Filter out non-user-facing PRs
+
+Skip PRs that only touch tests, CI, linting, or internal tooling with no behavioral change described in the body — typically titled `test(...)`, `chore(...)`, `ci(...)`. Read the body carefully: a `test(...)`-titled PR can still describe a real bug it fixed in application code (check for phrasing like "real bug", "underlying app race", "actual fix") — in that case extract just the user-facing fix as an entry and drop the test-only parts.
+
+### A.5 Classify and write entries
+
+Apply the same classification table and style rules as Mode B (see [B.3](#b3-classify-each-change) and [B.4](#b4-write-the-entries) above) to whatever survives the filter in A.4.
+
+### A.6 Insert into the existing top block
+
+Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost one — this is the active draft). For each new entry:
+
+- Insert it as a new bullet under the matching `### Added` / `### Changed` / `### Fixed` / `### Upgraded` / `### Removed` subsection of that block.
+- If the subsection doesn't exist yet in the block, create it in the standard order (Added, Changed, Fixed, Upgraded, Removed).
+- Do not create a new `## vX.Y.Z` block, and do not touch any block below the top one.
+- Check for semantic duplicates (not just exact string matches) before adding — skip anything already effectively covered.
+
+### A.7 Report back
+
+Tell the user, per PR reviewed:
+- Which PRs were added to the changelog and which bullet/section they landed in.
+- Which PRs were skipped, and why (e.g. "test-only, no user-facing change").
+
+Then give the same draft reminder as in [B.7](#b7-remind-the-user-this-is-a-draft) above.
+
+---
+
+## Mode B — New version block
+
+### B.0 Ask for the target version
 
 **Before doing anything else**, ask the user:
 
@@ -24,7 +97,7 @@ The release date is **today's date** in `yyyy-mm-dd` format.
 
 ---
 
-## 1. Find the latest published release on GitHub
+### B.1 Find the latest published release on GitHub
 
 Fetch the latest release to get the cut-off timestamp:
 
@@ -38,7 +111,7 @@ Record:
 
 ---
 
-## 2. Collect all merged PRs since the last release
+### B.2 Collect all merged PRs since the last release
 
 ```
 gh pr list \
@@ -64,7 +137,7 @@ gh issue view NNN --repo exelearning/exelearning --json title,body
 
 ---
 
-## 3. Classify each change
+### B.3 Classify each change
 
 Map every individual change (one PR may yield several entries) to one of four sections:
 
@@ -85,7 +158,7 @@ When a PR body mixes additions and fixes, split them into separate entries under
 
 ---
 
-## 4. Write the entries
+### B.4 Write the entries
 
 Follow the **exact style** of the existing changelog entries in `public/CHANGELOG.md`:
 
@@ -111,7 +184,7 @@ Follow the **exact style** of the existing changelog entries in `public/CHANGELO
 
 ---
 
-## 5. Assemble the block
+### B.5 Assemble the block
 
 ```markdown
 ## vX.Y.Z-type – YYYY-MM-DD
@@ -139,7 +212,7 @@ Omit any section that has no entries.
 
 ---
 
-## 6. Insert into `public/CHANGELOG.md`
+### B.6 Insert into `public/CHANGELOG.md`
 
 Insert the new block **immediately after the `# CHANGELOG` heading** and before the previous version's `## v…` entry.
 
@@ -158,7 +231,7 @@ Do **not** modify any existing content below the insertion point.
 
 ---
 
-## 7. Remind the user this is a draft
+### B.7 Remind the user this is a draft
 
 After inserting the block, tell the user:
 
