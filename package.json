@@ -130,7 +130,7 @@
     "sass": "^1.97.3",
     "showdown": "^2.1.0",
     "simplelightbox": "^2.14.3",
-    "typescript": "^6.0.2",
+    "typescript": "^7.0.2",
     "vite": "^8.0.0",
     "vitest": "^4.0.18",
     "wait-on": "^9.0.4"
