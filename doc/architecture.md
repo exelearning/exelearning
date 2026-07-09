@@ -781,8 +781,25 @@ This design follows the same pattern as other user-specific data (like favorite 
 
 ---
 
+## Architecture Decision Records and Software Design Documents
+
+Durable architecture decisions are tracked as **ADRs** under `doc/architecture/adr/`.
+
+Significant technical designs and design-gated proposals are tracked as **SDDs** under `doc/architecture/sdd/`.
+
+ADRs and SDDs complement each other: an SDD describes the design and implementation plan for a change, while an ADR records a specific decision and its rationale. When an SDD contains a durable decision, that decision should link to an existing ADR or propose a new one.
+
+See:
+
+- [Architecture Decision Records](architecture/adr/README.md)
+- [Software Design Documents](architecture/sdd/README.md)
+
+---
+
 ## Further Reading
 
+- [Architecture Decision Records](architecture/adr/README.md) - Durable decisions and their rationale
+- [Software Design Documents](architecture/sdd/README.md) - Design gates for significant changes
 - [Real-Time Collaboration](development/real-time.md) - WebSocket and Yjs details
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage
