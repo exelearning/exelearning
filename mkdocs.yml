@@ -28,7 +28,14 @@ nav:
   - Deployment: deployment.md
   - High Availability: high-availability.md
   - "Deploy: Sample Configs": deploy/README.md
-  - Architecture: architecture.md
+  - Architecture:
+      - Overview: architecture.md
+      - Architecture Decision Records: architecture/adr/README.md
+      - ADR Index: architecture/adr/records.md
+      - ADR Template: architecture/adr/ADR-0000-template.md
+      - Software Design Documents: architecture/sdd/README.md
+      - SDD Index: architecture/sdd/records.md
+      - SDD Template: architecture/sdd/SDD-0000-template.md
   - Conventions: conventions.md
   - Development:
       - Environment: development/environment.md
