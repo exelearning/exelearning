@@ -2903,14 +2903,24 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.deleteBtn?.disabled).toBe(false);
     });
 
-    it('should enable insert button when file is selected', () => {
-      // Insert button is enabled based on file selection, not callback
+    it('should enable insert button when file is selected and an iDevice is being edited', () => {
+      window.eXeLearning.app.idevices = { getIdeviceActive: vi.fn(() => ({ id: 'idevice-1' })) };
       modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
       modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
 
       modal.updateButtonStates();
 
       expect(modal.insertBtn?.disabled).toBe(false);
+    });
+
+    it('should disable insert button when file is selected but no iDevice is being edited', () => {
+      window.eXeLearning.app.idevices = { getIdeviceActive: vi.fn(() => null) };
+      modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
+
+      modal.updateButtonStates();
+
+      expect(modal.insertBtn?.disabled).toBe(true);
     });
 
     it('should disable insert button when no file is selected', () => {
