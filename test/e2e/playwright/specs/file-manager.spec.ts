@@ -1197,6 +1197,52 @@ test.describe('File Manager', () => {
         });
     });
 
+    test.describe('Insert Button Disabled Outside iDevice Edit Mode (#2030)', () => {
+        /**
+         * Verifies the fix for issue #2030: the "Insert" button in the File Manager
+         * must stay disabled while no iDevice is open in edit mode, since insertion
+         * would otherwise have no valid target. Once an iDevice enters edit mode,
+         * Insert must become enabled and actually insert the selected file.
+         */
+        test('disables Insert without an edited iDevice and enables it once editing starts', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'File Manager - Insert Button iDevice State Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Step 1: Open File Manager from Utilities with no iDevice being edited
+            await openFileManagerFromUtilitiesMenu(page);
+            await uploadFile(page, 'test/fixtures/sample-2.jpg');
+            await selectFirstFile(page);
+
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeDisabled();
+
+            await closeFileManager(page);
+
+            // Step 2: Start editing a text iDevice
+            await addTextIdeviceFromPanel(page);
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Step 3: Re-open File Manager from Utilities while the iDevice is being edited
+            await openFileManagerFromUtilitiesMenu(page);
+            await selectFirstFile(page);
+            await expect(insertBtn).toBeEnabled();
+
+            // Step 4: Insert must still actually work now that it's enabled.
+            // The modal only closes when insertSelectedAsset() reaches a real
+            // insertion branch (callback or active editor) — the disabled no-op
+            // path never calls close(). A closed modal is therefore proof that
+            // clicking Insert actually inserted into the editor.
+            await insertBtn.click();
+            await page.waitForSelector('#modalFileManager[data-open="false"]', { state: 'attached', timeout: 10000 });
+        });
+    });
+
     test.describe('Recursive Search', () => {
         /**
          * Helper to type in search input and wait for results
