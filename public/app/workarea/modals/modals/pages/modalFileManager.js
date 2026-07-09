@@ -1079,6 +1079,14 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Whether an iDevice is currently open in edit mode.
+     * Insert only has somewhere to place a file while editing an iDevice.
+     */
+    hasEditableIdeviceContext() {
+        return Boolean(window.eXeLearning?.app?.idevices?.getIdeviceActive?.());
+    }
+
+    /**
      * Update footer button states based on current selection
      */
     updateButtonStates() {
@@ -1089,7 +1097,7 @@ export default class ModalFilemanager extends Modal {
         const hasFolderSelection = this.selectedFolder !== null;
         const hasSelection = hasFileSelection || hasFolderSelection;
         const hasSingleSelection = (selectedFilesCount === 1 && !hasFolderSelection) || (!hasFileSelection && hasFolderSelection);
-        const canInsert = this.multiSelect ? hasFileSelection : selectedFilesCount === 1;
+        const canInsert = (this.multiSelect ? hasFileSelection : selectedFilesCount === 1) && this.hasEditableIdeviceContext();
         const isZip = hasFileSelection && (
             this.selectedAsset?.mime === 'application/zip' ||
             this.selectedAsset?.mime === 'application/x-zip-compressed' ||
