@@ -495,6 +495,80 @@ describe('trueorfalse iDevice export', () => {
         expect.objectContaining({ gameOver: true, scorerp: 10 }),
       );
     });
+
+    it('practice mode: completes (gameOver) only once every question has been answered', () => {
+      // Practice mode (isTest=false) has no "Comprobar" button: each answer
+      // auto-saves. The activity must reach gameOver=true when the LAST question
+      // is answered so the SCORM save records state 2 (completed); otherwise the
+      // SCO page never aggregates to passed/failed. (#1831)
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+
+      document.body.innerHTML = `
+        <input id="tofPSendScore-tof-1" />
+        <button id="tofPStartGame-tof-1"></button>
+        <button id="tofPCheckTest-tof-1"></button>
+        <button id="tofRebootTest-tof-1"></button>
+        <div id="tofPMultimedia-tof-1"></div>
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv" data-number="0">
+            <label><input class="TOFP-Answer" type="radio" name="tofanswer-tof-1-0" value="1" /></label>
+            <label><input class="TOFP-Answer" type="radio" name="tofanswer-tof-1-0" value="0" /></label>
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+          <div class="TOFP-QuestionDiv" data-number="1">
+            <label><input class="TOFP-Answer" type="radio" name="tofanswer-tof-1-1" value="1" /></label>
+            <label><input class="TOFP-Answer" type="radio" name="tofanswer-tof-1-1" value="0" /></label>
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        questionsGame: [{ solution: 1 }, { solution: 0 }],
+        numberQuestions: 2,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isScorm: 1,
+        isTest: false,
+        showSlider: false,
+        idevicePath: '/idevices/trueorfalse/',
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isInExe: false,
+        gameStarted: true,
+        gameOver: false,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+
+        // Answer only the first question: 1 of 2 answered -> still in progress.
+        const q0 = document.querySelector(
+          '[data-number="0"] .TOFP-Answer[value="1"]',
+        );
+        q0.checked = true;
+        $(q0).trigger('click');
+
+        expect(options.gameOver).toBe(false);
+        expect(sendScoreNew).toHaveBeenCalledTimes(1);
+
+        // Answer the second (last) question: every question answered -> completed.
+        const q1 = document.querySelector(
+          '[data-number="1"] .TOFP-Answer[value="0"]',
+        );
+        q1.checked = true;
+        $(q1).trigger('click');
+
+        expect(options.gameOver).toBe(true);
+        expect(sendScoreNew).toHaveBeenCalledTimes(2);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+    });
   });
 
   describe('attempts (retries)', () => {

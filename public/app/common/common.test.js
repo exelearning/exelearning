@@ -1789,6 +1789,133 @@ describe('common.js $exeDevices', () => {
       expect(parsed[3].state).toBe(1);
     });
 
+    it('parseSuspendData drops a phantom entry with an invalid index 0', () => {
+      const scorm = getScorm();
+      // index 0 means the iDevice node could not be resolved at registration
+      // (ideviceNumber is 1-based). Such an empty-title/state-0 phantom must be
+      // dropped so it cannot block the SCO page from completing.
+      const data =
+        '0. ""; Puntuación: 0%; Peso: 100%; Estado: 0.\t' +
+        '1. "Real"; Puntuación: 100%; Peso: 100%; Estado: 2';
+      const parsed = scorm.parseSuspendData(data);
+
+      expect(parsed[0]).toBeUndefined();
+      expect(parsed[1]).toEqual({
+        title: 'Real',
+        score: 100,
+        weighted: 100,
+        state: 2,
+      });
+    });
+
+    it('a phantom index-0 entry does not block completion and is self-healed on the next save', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+
+      try {
+        // Reproduce the reported corrupted suspend_data: a phantom "0" entry plus
+        // three real iDevices already completed (state 2).
+        global.pipwerks.SCORM.set(
+          'cmi.suspend_data',
+          '0. ""; Puntuación: 0%; Peso: 100%; Estado: 0.\t' +
+            '1. "Imagen oculta"; Puntuación: 100%; Peso: 100%; Estado: 2.\t' +
+            '2. "Verdadero o falso"; Puntuación: 0%; Peso: 100%; Estado: 2.\t' +
+            '3. "Lista desordenada"; Puntuación: 25%; Peso: 100%; Estado: 2',
+        );
+
+        // The parser drops the phantom, so the page aggregates to completed (2).
+        const lmsData = scorm.parseSuspendData(
+          global.pipwerks.SCORM.get('cmi.suspend_data'),
+        );
+        expect(lmsData[0]).toBeUndefined();
+        expect(scorm.getActivityState(lmsData)).toBe(2);
+
+        // Re-completing any iDevice writes the page status AND re-serializes
+        // suspend_data without the phantom (self-heal).
+        scorm.updateActivity(
+          {
+            main: '#g',
+            ideviceNumber: 3,
+            title: 'Lista desordenada',
+            scorerp: '2.5',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: true,
+            msgs,
+          },
+          lmsData,
+        );
+
+        // Every real iDevice is finished, so the page reaches a TERMINAL status
+        // instead of staying "incomplete". With these scores (avg ~42 < 50) that
+        // terminal status is "failed" — which is exactly what the learner expects
+        // after completing all three activities (passed OR failed, not incomplete).
+        expect(store['cmi.core.lesson_status']).toBe('failed');
+        expect(store['cmi.core.lesson_status']).not.toBe('incomplete');
+        expect(store['cmi.suspend_data']).not.toContain('0. ""');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('registerActivity writes no phantom entry when the iDevice node cannot be resolved', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      const store = { 'cmi.suspend_data': '' };
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = ''; // no .idevice_node matches the game's main
+
+      try {
+        // The main container is not in the DOM -> ideviceNumber resolves to 0.
+        // registerActivity must bail out instead of writing a "0" phantom entry.
+        expect(() =>
+          scorm.registerActivity({
+            main: 'missing-container',
+            weighted: 100,
+            msgs: { msgYouScore: 'Score', msgScore: 'Score', msgWeight: 'Weight' },
+          }),
+        ).not.toThrow();
+
+        expect(store['cmi.suspend_data']).toBe('');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
     it('getActivityState aggregates the per-iDevice states into the page state', () => {
       const scorm = getScorm();
       // All unattempted -> 0
@@ -1802,6 +1929,79 @@ describe('common.js $exeDevices', () => {
       // No entries / missing state default to unattempted
       expect(scorm.getActivityState({})).toBe(0);
       expect(scorm.getActivityState({ 1: {} })).toBe(0);
+    });
+
+    it('marks the SCO passed once three iDevices are completed in sequence (full suspend_data round-trip)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      // Stateful pipwerks mock: really stores CMI values, so cmi.suspend_data
+      // round-trips through convertToLineFormat/parseSuspendData exactly like a
+      // real LMS would between each iDevice save.
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+
+      try {
+        // On load every evaluable iDevice registers with state 0.
+        const initial = scorm.convertToLineFormat(
+          {
+            1: { title: 'HiddenImage', score: 0, weighted: 100, state: 0 },
+            2: { title: 'Scrambled', score: 0, weighted: 100, state: 0 },
+            3: { title: 'TrueFalse', score: 0, weighted: 100, state: 0 },
+          },
+          { msgs },
+        );
+        global.pipwerks.SCORM.set('cmi.suspend_data', initial);
+
+        // Each completion reads the current suspend_data, parses it and saves,
+        // exactly like sendScoreNew -> updateActivity does at runtime.
+        const complete = (ideviceNumber, title, scorerp) => {
+          const lmsData = scorm.parseSuspendData(
+            global.pipwerks.SCORM.get('cmi.suspend_data'),
+          );
+          scorm.updateActivity(
+            {
+              main: '#g',
+              ideviceNumber,
+              title,
+              scorerp,
+              weighted: 100,
+              gameStarted: true,
+              gameOver: true,
+              msgs,
+            },
+            lmsData,
+          );
+        };
+
+        complete(1, 'HiddenImage', 8);
+        complete(2, 'Scrambled', 9);
+        complete(3, 'TrueFalse', 10);
+
+        const finalData = scorm.parseSuspendData(
+          global.pipwerks.SCORM.get('cmi.suspend_data'),
+        );
+        expect(scorm.getActivityState(finalData)).toBe(2);
+        expect(store['cmi.core.lesson_status']).toBe('passed');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
     });
 
     it('normalizeMode coerces legacy manual mode (2) to automatic (1)', () => {
@@ -2402,6 +2602,31 @@ describe('common.js $exeDevices', () => {
         expect(updateScormPageStatus).toHaveBeenCalledWith(true);
         expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
       } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('restartActivity nudges Moodle to redraw the TOC (deferred retry commit)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const completed = scorm.convertToLineFormat({ 1: { title: 'A', score: 80, weighted: 100, state: 2 } }, game);
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => completed), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus: vi.fn() };
+      vi.useFakeTimers();
+      try {
+        scorm.restartActivity(game);
+        // The synchronous commit is the guarantee.
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+        // triggerMoodleDetection schedules a deferred retry commit so Moodle redraws
+        // the SCO status in its TOC, just like the completion path does.
+        vi.advanceTimersByTime(50);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
         if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
         else global.pipwerks = originalPipwerks;
         window.$exeExport = previousExeExport;
@@ -4109,134 +4334,59 @@ describe('common.js $exeDevices', () => {
       document.body.innerHTML = '';
     });
 
-    it('returns early when mainContainerId is not a string', () => {
+    it('schedules a single deferred retry commit (LMSCommit) at 50ms', () => {
       const fn = getTriggerMoodleDetection();
-      expect(() => fn(123)).not.toThrow();
-      expect(() => fn(null)).not.toThrow();
-      expect(() => fn(undefined)).not.toThrow();
-      expect(() => fn({})).not.toThrow();
-    });
 
-    it('returns early when mainContainerId is empty string', () => {
-      const fn = getTriggerMoodleDetection();
-      expect(() => fn('')).not.toThrow();
-    });
-
-    it('returns early when container does not exist in DOM', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="other"></div>';
-      expect(() => fn('nonexistent')).not.toThrow();
-      expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
-    });
-
-    it('applies CSS opacity changes when container exists', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-container"></div>';
-      const container = document.getElementById('test-container');
-
-      fn('test-container');
-
-      expect(container.style.opacity).toBe('0.99');
-      expect(container.style.transform).toBe('translateZ(0)');
-    });
-
-    it('reverts CSS changes after 50ms', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-container"></div>';
-      const container = document.getElementById('test-container');
-
-      fn('test-container');
-      expect(container.style.opacity).toBe('0.99');
-
-      vi.advanceTimersByTime(50);
-
-      expect(container.style.opacity).toBe('1');
-      expect(container.style.transform).toBe('none');
-    });
-
-    it('calls pipwerks.SCORM.save at 50ms to trigger Moodle polling', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-container"></div>';
-
-      fn('test-container');
+      fn();
+      // Nothing synchronous: the synchronous commit already happened in updateActivity.
       expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(50);
 
-      expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
     });
 
-    it('silently fails when pipwerks.SCORM.save throws', () => {
+    it('does not touch the DOM (Moodle reacts to LMSCommit, not to SCO DOM changes)', () => {
       const fn = getTriggerMoodleDetection();
       document.body.innerHTML = '<div id="test-container"></div>';
+      const container = document.getElementById('test-container');
+
+      fn();
+      vi.advanceTimersByTime(50);
+
+      // The old reflow/CSS "mechanisms" were cargo-cult: the container is untouched.
+      expect(container.style.opacity).toBe('');
+      expect(container.style.transform).toBe('');
+    });
+
+    it('returns early when pipwerks.SCORM.save is unavailable (no timer scheduled)', () => {
+      const fn = getTriggerMoodleDetection();
+      global.pipwerks = { SCORM: {} };
+
+      expect(() => fn()).not.toThrow();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('returns early when pipwerks is not globally available', () => {
+      const fn = getTriggerMoodleDetection();
+      delete global.pipwerks;
+
+      expect(() => {
+        fn();
+        vi.advanceTimersByTime(50);
+      }).not.toThrow();
+    });
+
+    it('silently fails when the deferred pipwerks.SCORM.save throws', () => {
+      const fn = getTriggerMoodleDetection();
       global.pipwerks.SCORM.save = vi.fn(() => {
         throw new Error('SCORM not available');
       });
 
       expect(() => {
-        fn('test-container');
+        fn();
         vi.advanceTimersByTime(50);
       }).not.toThrow();
-    });
-
-    it('handles container without pipwerks globally available', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-container"></div>';
-      delete global.pipwerks;
-
-      expect(() => {
-        fn('test-container');
-        vi.advanceTimersByTime(50);
-      }).not.toThrow();
-    });
-
-    it('applies multiple CSS properties to ensure MutationObserver fires', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-container"></div>';
-      const container = document.getElementById('test-container');
-
-      fn('test-container');
-
-      expect(container.style.opacity).toBe('0.99');
-      expect(container.style.transform).toBe('translateZ(0)');
-
-      vi.advanceTimersByTime(50);
-
-      expect(container.style.opacity).toBe('1');
-      expect(container.style.transform).toBe('none');
-    });
-
-    it('accepts class selectors (e.g., .exe-interactive-video)', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div class="exe-interactive-video"></div>';
-      const container = document.querySelector('.exe-interactive-video');
-
-      fn('.exe-interactive-video');
-
-      expect(container.style.opacity).toBe('0.99');
-      expect(container.style.transform).toBe('translateZ(0)');
-    });
-
-    it('accepts ID selectors with # prefix', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="test-id"></div>';
-      const container = document.getElementById('test-id');
-
-      fn('#test-id');
-
-      expect(container.style.opacity).toBe('0.99');
-      expect(container.style.transform).toBe('translateZ(0)');
-    });
-
-    it('accepts bare ID strings (without # prefix)', () => {
-      const fn = getTriggerMoodleDetection();
-      document.body.innerHTML = '<div id="bare-id"></div>';
-      const container = document.getElementById('bare-id');
-
-      fn('bare-id');
-
-      expect(container.style.opacity).toBe('0.99');
-      expect(container.style.transform).toBe('translateZ(0)');
     });
   });
 });

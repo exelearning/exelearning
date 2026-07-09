@@ -715,6 +715,16 @@ var $trueorfalse = {
                             ? ''
                             : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
+                    // In practice mode the activity has no "Comprobar" button:
+                    // it is finished once every question has been answered.
+                    // updateScoreData counts hits + errors = answered questions,
+                    // so mark it gameOver here to persist state 2 (completed).
+                    // Otherwise it stays state 1 and the SCO page never
+                    // aggregates to passed/failed. (#1831)
+                    const answered = mOptions.hits + mOptions.errors;
+                    if (answered >= mOptions.questionsGame.length) {
+                        mOptions.gameOver = true;
+                    }
                     $trueorfalse.sendScore(true, mOptions);
                     $trueorfalse.initialScore = mOptions.scorerp;
                 }

@@ -1226,6 +1226,16 @@ var $exeDevices = {
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
+                    // A real evaluable iDevice always resolves to a .idevice_node, giving a
+                    // 1-based index. If it does not (index -1 -> ideviceNumber 0), the main
+                    // container was not in the DOM at registration time. Registering here
+                    // would write a phantom "0" entry (empty title, state 0) that can never
+                    // reach state 2, permanently blocking the SCO page from completing and
+                    // dragging the weighted score down. Skip it at the source. (#1831)
+                    if (game.ideviceNumber < 1) {
+                        return;
+                    }
+
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
@@ -1309,7 +1319,15 @@ var $exeDevices = {
 
                         const activityData = $exeDevices.iDevice.gamification.scorm.parseActivity(line);
 
-                        if (activityData) {
+                        // ideviceNumber is 1-based ($('.idevice_node').index(node) + 1), so a
+                        // stored index < 1 (i.e. 0) is a phantom: it was registered when its
+                        // main container could not be resolved in the DOM, giving an empty
+                        // title and state 0 that can never reach state 2. Keeping it would
+                        // block the SCO page from ever completing (getActivityState requires
+                        // every entry finished) and drag the weighted score down. Dropping it
+                        // here also self-heals corrupted suspend_data: the next save
+                        // re-serializes (convertToLineFormat) without it. (#1831)
+                        if (activityData && activityData.index >= 1) {
                             const { index, title, score, weighted, state } = activityData;
                             obj[index] = {
                                 title: title.trim(),
@@ -1385,8 +1403,9 @@ var $exeDevices = {
                             message = game.msgs.msgYouScore + ': ' + formattedScore;
                             $repeatActivity.text(message).show();
                         }
-                        // Trigger Moodle SCORM detection after updating activity state
-                        this.triggerMoodleDetection(game.main);
+                        // Nudge Moodle to redraw the SCO status in its TOC (deferred retry
+                        // commit; the synchronous commit already ran inside updateActivity).
+                        this.triggerMoodleDetection();
 
                     } else {
                         message = game.msgs.msgEndGameScore;
@@ -1470,6 +1489,13 @@ var $exeDevices = {
                     if (typeof pipwerks.SCORM.save === "function") {
                         pipwerks.SCORM.save();
                     }
+
+                    // Nudge Moodle to redraw the SCO status in its TOC after a restart drops
+                    // the page back to incomplete (deferred retry commit; the synchronous
+                    // commit above is the guarantee). Mirrors the completion path, where
+                    // sendScoreNew nudges Moodle after updateActivity, so the menu icon
+                    // updates consistently on every SCO state change, not only on completion.
+                    $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection();
                 },
 
                 showFinalScore: function (lmsData, game) {
@@ -1521,63 +1547,32 @@ var $exeDevices = {
 
                 },
 
-                // Trigger Moodle SCORM detection via multiple mechanisms:
-                // 1. Force DOM reflow (MutationObserver detection)
-                // 2. Multiple CSS changes across browsers
-                // 3. Optional SCORM re-save to force Moodle polling
+                // Nudge Moodle to persist and redraw the SCO status in its left-hand TOC.
                 //
-                // Moodle detects SCORM changes via:
-                // - MutationObserver on DOM mutations (primary)
-                // - Periodic polling of cmi.* values (fallback)
-                // This function triggers both mechanisms.
+                // Moodle's SCORM player reacts ONLY to LMSCommit: the commit triggers an AJAX
+                // round-trip that stores the tracking (scorm_scoes_track) and rewrites the
+                // <li> status classes (scorm_notattempted -> scorm_completed/passed/failed).
+                // It does NOT observe the DOM inside the SCO iframe, so mutating the iDevice
+                // container is a no-op for detection — the previous reflow/CSS "mechanisms"
+                // were cargo-cult and only caused flicker.
                 //
-                // Usage: $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection(mainContainerId)
-                //
-                // @param {string} mainContainerId - the id or selector of the iDevice main container
-                //   Can be a bare ID ('frmMainContainer-xyz'), an ID selector ('#frmMainContainer-xyz'),
-                //   or a class selector ('.exe-interactive-video')
-                triggerMoodleDetection: function (mainContainerId) {
-                    if (typeof mainContainerId !== 'string' || !mainContainerId) {
+                // updateActivity/showFinalScore already commit synchronously right before
+                // this runs (that is the guarantee). This schedules a single deferred retry
+                // commit so a status written just as the UI settles still reaches Moodle. A
+                // deferred-only commit is intentionally NOT the guarantee: it would be lost
+                // if the learner navigates within the delay.
+                triggerMoodleDetection: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM
+                        || typeof pipwerks.SCORM.save !== 'function') {
                         return;
                     }
-                    const selector = mainContainerId.startsWith('#') || mainContainerId.startsWith('.')
-                        ? mainContainerId
-                        : `#${mainContainerId}`;
-                    const $container = $(selector);
-                    if (!$container.length) {
-                        return;
-                    }
-                    const containerEl = $container.get(0);
-                    if (!containerEl) {
-                        return;
-                    }
-
-                    // Mechanism 1: Force browser reflow via offsetHeight (triggers layout recalculation)
-                    const _ = containerEl.offsetHeight;
-
-                    // Mechanism 2: Apply multiple CSS changes to ensure MutationObserver fires
-                    $container.css({ 'opacity': '0.99', 'transform': 'translateZ(0)' });
-
-                    // Mechanism 3: Force another reflow in next frame
                     setTimeout(() => {
-                        const __ = containerEl.offsetHeight;
-                        $container.css({ 'opacity': '1', 'transform': 'none' });
-
-                        // Mechanism 4: Optional - attempt SCORM re-save to trigger Moodle polling
-                        // This forces Moodle's polling mechanism if MutationObserver didn't work
-                        if (typeof pipwerks !== 'undefined' && pipwerks.SCORM && typeof pipwerks.SCORM.save === 'function') {
-                            try {
-                                pipwerks.SCORM.save();
-                            } catch (e) {
-                                // Silently fail - SCORM API might not be in a saveable state
-                            }
+                        try {
+                            pipwerks.SCORM.save();
+                        } catch (e) {
+                            // SCORM API might not be in a saveable state.
                         }
                     }, 50);
-
-                    // Mechanism 5: Final reflow to ensure all changes propagated
-                    setTimeout(() => {
-                        const ___ = containerEl.offsetHeight;
-                    }, 150);
                 },
             },
 
