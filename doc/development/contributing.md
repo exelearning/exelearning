@@ -35,6 +35,27 @@ Access http://localhost:8080 and log in with the default credentials shown in `.
 
 Details: [development/version-control.md](version-control.md)
 
+## Architecture Decisions & Design Documents
+
+Significant technical work is documented before or alongside the code:
+
+- Write a **Software Design Document (SDD)** for large feature proposals, major
+  refactors, design gates and multi-step implementations. SDDs live under
+  [`doc/architecture/sdd/`](../architecture/sdd/README.md).
+- Write an **Architecture Decision Record (ADR)** for durable decisions likely to
+  affect future work. ADRs live under
+  [`doc/architecture/adr/`](../architecture/adr/README.md).
+- An ADR is expected for changes affecting architecture, storage model, file
+  formats, database migrations, import/export behavior, the collaboration model,
+  security/sandboxing, accessibility strategy, public API contracts, or
+  AI-assisted generation policy.
+- When an SDD contains a durable decision, link it to an existing ADR or propose
+  a new one — don't bury the decision in the design.
+- Mention any ADRs or SDDs your PR creates or updates in the PR description.
+
+See the [ADR](../architecture/adr/README.md) and
+[SDD](../architecture/sdd/README.md) guides for templates, IDs and statuses.
+
 ## Coding Standards
 
 - Run linters and fix style before pushing:
