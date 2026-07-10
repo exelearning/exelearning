@@ -859,6 +859,10 @@
                 }
                 attempts += 1;
                 const correct = gradeSingleChoiceLocal(q, chosen.value);
+                // Notify the host (e.g. SCORM scoring) of the graded result.
+                if (typeof hooks.onQuestionAnswered === 'function') {
+                    try { hooks.onQuestionAnswered(marker.id, correct); } catch (_) { /* noop */ }
+                }
                 if (correct) {
                     feedback.className = 'tdv-q-feedback tdv-q-feedback--correct';
                     feedback.textContent = q.feedbackCorrect || t('Correct');

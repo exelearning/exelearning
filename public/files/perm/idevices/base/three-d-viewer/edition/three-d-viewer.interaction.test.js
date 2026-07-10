@@ -184,7 +184,31 @@ describe('three-d-viewer interaction schema (edition)', () => {
         });
     });
 
+    describe('normalizeScorm', () => {
+        it('defaults to disabled scoring', () => {
+            expect(dev.__normalizeScorm(undefined)).toEqual({ isScorm: 0, weighted: 100, textButtonScorm: '' });
+        });
+        it('clamps isScorm to 0..2 and weighted to 1..100', () => {
+            expect(dev.__normalizeScorm({ isScorm: 5 }).isScorm).toBe(2);
+            expect(dev.__normalizeScorm({ isScorm: -1 }).isScorm).toBe(0);
+            expect(dev.__normalizeScorm({ isScorm: '1' }).isScorm).toBe(1);
+            expect(dev.__normalizeScorm({ weighted: 0 }).weighted).toBe(1);
+            expect(dev.__normalizeScorm({ weighted: 250 }).weighted).toBe(100);
+            expect(dev.__normalizeScorm({ weighted: 50 }).weighted).toBe(50);
+        });
+    });
+
     describe('state migration via set/get JSON', () => {
+        it('round-trips SCORM scoring config', () => {
+            dev.set3DViewerJSON({ src: 'asset://m.glb', isScorm: 1, weighted: 80, textButtonScorm: 'Save' });
+            expect(dev.state.isScorm).toBe(1);
+            expect(dev.state.weighted).toBe(80);
+            const out = dev.get3DViewerJSON();
+            expect(out.isScorm).toBe(1);
+            expect(out.weighted).toBe(80);
+            expect(out.textButtonScorm).toBe('Save');
+        });
+
         it('migrates legacy state (no version) to v2 with a disabled interaction', () => {
             dev.set3DViewerJSON({ src: 'asset://m.glb', alt: 'A model' });
             expect(dev.state.version).toBe(2);

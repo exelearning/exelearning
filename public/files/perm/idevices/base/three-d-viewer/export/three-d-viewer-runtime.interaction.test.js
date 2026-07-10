@@ -488,6 +488,21 @@ describe('three-d-viewer interaction layer', () => {
             expect(placed.camera.orbit).toBe('30deg 75deg 105%');
         });
 
+        it('calls onQuestionAnswered with the graded result', () => {
+            const answered = [];
+            const { wrapper, ctrl } = mvSetup(IX(), 'view', undefined, {
+                onQuestionAnswered: (id, correct) => answered.push({ id, correct }),
+            });
+            ctrl.focusMarker('m2'); // question marker
+            // wrong answer first
+            const radios = wrapper.querySelectorAll('.tdv-question input[type="radio"]');
+            radios[1].checked = true;
+            wrapper.querySelector('.tdv-q-check').click();
+            expect(answered).toEqual([{ id: 'm2', correct: false }]);
+            // Note: attemptsAllowed=1 disables further checks; correctness path
+            // is covered by the model-viewer question test above.
+        });
+
         it('sanitizer strips form action and javascript URLs', () => {
             const out = runtime.__sanitizeHtmlDom('<form action="javascript:evil()"><button formaction="javascript:x()">go</button></form><a href="javascript:bad()">l</a>');
             expect(out).not.toContain('<form');

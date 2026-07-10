@@ -51,6 +51,16 @@
         return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
     }
     function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:|javascript:|vbscript:)/i.test(s) ? '' : s.trim(); }
+    function tdInt(v, fallback) { var n = parseInt(v, 10); return Number.isFinite(n) ? n : fallback; }
+    /** Normalize the SCORM scoring config (mirror edition/export). */
+    function normalizeScorm(data) {
+        var o = data && typeof data === 'object' ? data : {};
+        return {
+            isScorm: tdClamp(tdInt(o.isScorm, 0), 0, 2),
+            weighted: tdClamp(tdNum(o.weighted, 100), 1, 100),
+            textButtonScorm: tdStr(o.textButtonScorm, ''),
+        };
+    }
     function normalizeVec3(v, dflt) {
         var o = v && typeof v === 'object' ? v : {};
         return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
@@ -222,9 +232,9 @@
      * @param {object} interaction - already normalized
      * @returns {string}
      */
-    function buildInteractionMarkup(interaction) {
+    function buildInteractionMarkup(interaction, scorm) {
         if (!interaction || !interaction.enabled) return '';
-        var payload = Object.assign({}, interaction, { i18n: buildRuntimeI18n() });
+        var payload = Object.assign({}, interaction, { i18n: buildRuntimeI18n(), scorm: normalizeScorm(scorm) });
         // Escape < so a payload value can never terminate the <script>.
         var json = JSON.stringify(payload).replace(/</g, '\\u003c');
         var script = '<script type="application/json" class="tdv-interaction-data">' + json + '</' + 'script>';
@@ -258,6 +268,63 @@
         }
     }
 
+    /** The shared SCORM export helper, or null when the framework is absent. */
+    function getScormRuntime() {
+        var g = globalScope.$exeDevices
+            && globalScope.$exeDevices.iDevice
+            && globalScope.$exeDevices.iDevice.gamification
+            && globalScope.$exeDevices.iDevice.gamification.scorm;
+        return g || null;
+    }
+
+    /**
+     * Wire SCORM scoring for question markers onto the interaction hooks.
+     * No-op unless this is a SCORM export, scoring is enabled, the framework is
+     * present, and there is at least one question marker.
+     * @param {HTMLElement} wrapper
+     * @param {object} interaction - normalized interaction state
+     * @param {object} rawScorm - the persisted SCORM config
+     * @param {object} hooks - interaction hooks to augment (onQuestionAnswered)
+     */
+    function setupScormScoring(wrapper, interaction, rawScorm, hooks) {
+        var cfg = normalizeScorm(rawScorm);
+        if (cfg.isScorm <= 0) return;
+        var inScormExport = typeof document !== 'undefined'
+            && document.body && document.body.classList
+            && document.body.classList.contains('exe-scorm');
+        if (!inScormExport) return;
+        var scorm = getScormRuntime();
+        if (!scorm) return;
+        var questionMarkers = (interaction.markers || []).filter(function (m) {
+            return m.action && m.action.type === 'question';
+        });
+        if (!questionMarkers.length) return;
+
+        var correctIds = {};
+        var game = {
+            main: wrapper.id,
+            idevice: 'three-d-viewer',
+            isScorm: cfg.isScorm,
+            weighted: cfg.weighted,
+            scorerp: 0,
+            gameStarted: true,
+            msgs: {},
+        };
+        try {
+            if (typeof scorm.registerActivity === 'function') scorm.registerActivity(game);
+        } catch (e) { /* framework not fully available — degrade silently */ }
+
+        hooks.onQuestionAnswered = function (markerId, correct) {
+            if (correct) correctIds[markerId] = true;
+            var right = Object.keys(correctIds).length;
+            game.scorerp = (right * 10) / questionMarkers.length;
+            game.gameOver = right >= questionMarkers.length;
+            try {
+                if (typeof scorm.sendScoreNew === 'function') scorm.sendScoreNew(true, game);
+            } catch (e) { /* degrade silently */ }
+        };
+    }
+
     /**
      * Attach the shared interaction layer to a booted wrapper. Resolves the
      * right handle per render path (native model-viewer hotspots vs. STL
@@ -279,6 +346,12 @@
                 try { return resolveRuntimeSrc(u, wrapper.id) || u; } catch (e) { return u; }
             },
         };
+        // Optional SCORM scoring for question markers. Reuses the shared
+        // gamification.scorm framework (registerActivity + sendScoreNew). Only
+        // active in a SCORM export (body.exe-scorm), when configured, and when
+        // there is at least one question to score. Score is the fraction of
+        // question markers answered correctly, on the 0..10 convention.
+        setupScormScoring(wrapper, interaction, raw.scorm, hooks);
         var type = ds.modelType || detectModelTypeFromSrc(ds.modelSrc || '');
         ds._tdvInteractionBooted = '1';
         if (type === 'stl') {
@@ -1501,6 +1574,7 @@
 
             // Optional interaction layer (markers / guided nav / questions).
             const interaction = normalizeInteraction(data.interaction);
+            const scorm = normalizeScorm(data);
 
             // Flat data-* attributes — exposed to grep/inspect and picked
             // up by IdeviceRenderer.fixAssetUrls during export.
@@ -1511,7 +1585,7 @@
                     <span class="sr-only" data-live aria-live="polite"></span>
                     <div class="viewer-empty" data-empty>${translate('viewer.empty_state')}</div>
                     ${buildControlsMarkup(cfg)}
-                    ${buildInteractionMarkup(interaction)}
+                    ${buildInteractionMarkup(interaction, scorm)}
                 </div>
             `;
             return template.replace('{content}', content);
@@ -1679,6 +1753,8 @@
     globalScope.$threedviewer.__buildInteractionMarkup = buildInteractionMarkup;
     globalScope.$threedviewer.__parseInteractionData = parseInteractionData;
     globalScope.$threedviewer.__attachInteractionLayer = attachInteractionLayer;
+    globalScope.$threedviewer.__normalizeScorm = normalizeScorm;
+    globalScope.$threedviewer.__setupScormScoring = setupScormScoring;
     globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
     globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
     globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;

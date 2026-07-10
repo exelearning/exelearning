@@ -12,6 +12,11 @@ var $exeDevice = (function () {
         autoRotateSpeed: 30,
         showNavControls: false,
         animation: { enabled: false, name: '', speed: 1 },
+        // SCORM scoring for question markers (0 = off, 1 = auto-save,
+        // 2 = save button). Reuses the shared gamification.scorm framework.
+        isScorm: 0,
+        weighted: 100,
+        textButtonScorm: '',
         interaction: {
             enabled: false,
             guidedMode: false,
@@ -76,6 +81,16 @@ var $exeDevice = (function () {
         return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
     }
     function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:|javascript:|vbscript:)/i.test(s) ? '' : s.trim(); }
+    function tdInt(v, fallback) { var n = parseInt(v, 10); return Number.isFinite(n) ? n : fallback; }
+    /** Normalize the SCORM scoring config (mirror edition/export). */
+    function normalizeScorm(data) {
+        var o = data && typeof data === 'object' ? data : {};
+        return {
+            isScorm: tdClamp(tdInt(o.isScorm, 0), 0, 2),
+            weighted: tdClamp(tdNum(o.weighted, 100), 1, 100),
+            textButtonScorm: tdStr(o.textButtonScorm, ''),
+        };
+    }
     function normalizeVec3(v, dflt) {
         var o = v && typeof v === 'object' ? v : {};
         return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
@@ -181,6 +196,7 @@ var $exeDevice = (function () {
         __normalizeAction: normalizeAction,
         __normalizeQuestion: normalizeQuestion,
         __gradeSingleChoice: gradeSingleChoice,
+        __normalizeScorm: normalizeScorm,
 
         /**
          * Check if running in static mode (PWA/offline build).
@@ -505,6 +521,10 @@ var $exeDevice = (function () {
                                 <button type="button" class="btn btn-secondary btn-sm mb-2" id="threeDAddMarker">${_('Add marker')}</button>
                                 <p class="form-text text-muted" id="threeDPlacementHint" hidden>${_('Click on the model to place the marker.')}</p>
                                 <ul class="tdv-marker-list list-unstyled mb-0" id="threeDMarkerList"></ul>
+                                <div class="tdv-scorm mt-3" id="threeDScormSection" hidden>
+                                    <h4 class="h6">${_('Assessment (SCORM)')}</h4>
+                                    <div id="threeDScormTab"></div>
+                                </div>
                             </div>
                         </fieldset>
                         <div class="tdv-marker-editor-host" id="threeDMarkerEditorHost"></div>
@@ -541,6 +561,8 @@ var $exeDevice = (function () {
             this.placementHint = this.ideviceBody.querySelector('#threeDPlacementHint');
             this.markerListEl = this.ideviceBody.querySelector('#threeDMarkerList');
             this.markerEditorHost = this.ideviceBody.querySelector('#threeDMarkerEditorHost');
+            this.scormSection = this.ideviceBody.querySelector('#threeDScormSection');
+            this.scormTabHost = this.ideviceBody.querySelector('#threeDScormTab');
         },
 
         set3DViewerJSON: function (data) {
@@ -592,6 +614,10 @@ var $exeDevice = (function () {
             // pre-interaction projects reopen unchanged. Idempotent.
             merged.version = STATE_VERSION;
             merged.interaction = normalizeInteraction(data && data.interaction);
+            var scorm = normalizeScorm(data);
+            merged.isScorm = scorm.isScorm;
+            merged.weighted = scorm.weighted;
+            merged.textButtonScorm = scorm.textButtonScorm;
             this.state = merged;
         },
 
@@ -630,6 +656,10 @@ var $exeDevice = (function () {
             // preview, and guarantees a stable, idempotent serialized shape.
             clone.version = STATE_VERSION;
             clone.interaction = normalizeInteraction(clone.interaction);
+            var scorm = normalizeScorm(clone);
+            clone.isScorm = scorm.isScorm;
+            clone.weighted = scorm.weighted;
+            clone.textButtonScorm = scorm.textButtonScorm;
             return clone;
         },
 
@@ -664,6 +694,7 @@ var $exeDevice = (function () {
             if (this.formElements.guidedMode) this.formElements.guidedMode.checked = !!it.guidedMode;
             if (this.formElements.wrapNavigation) this.formElements.wrapNavigation.checked = !!it.wrapNavigation;
             if (this.formElements.showMarkerLabels) this.formElements.showMarkerLabels.checked = it.showMarkerLabels !== false;
+            this._scormRendered = false;
             this.updateInteractionVisibility();
             this.renderMarkerList();
         },
@@ -693,6 +724,7 @@ var $exeDevice = (function () {
                 // it here — otherwise a display-option change would wipe every
                 // authored marker.
                 interaction: (this.state && this.state.interaction) || cloneState().interaction,
+                ...this.readScormValues(),
             };
             // previewBlobUrl is an instance field — it survives state
             // rebuilds without any preserve dance.
@@ -786,6 +818,7 @@ var $exeDevice = (function () {
             const enabled = !!(this.state.interaction && this.state.interaction.enabled);
             if (this.interactionsBody) this.interactionsBody.hidden = !enabled;
             if (this.addMarkerButton) this.addMarkerButton.disabled = !this.state.src;
+            this.updateScormVisibility();
         },
 
         /**
@@ -907,6 +940,9 @@ var $exeDevice = (function () {
                 li.appendChild(mkBtn('tdv-delete-marker', '✕', _('Delete'), () => this.deleteMarker(m.id)));
                 this.markerListEl.appendChild(li);
             });
+            // A question marker may have just appeared/disappeared — the SCORM
+            // section is only relevant when there is something to score.
+            this.updateScormVisibility();
         },
 
         /** Swap a marker with its neighbour and re-index order. */
@@ -1120,6 +1156,58 @@ var $exeDevice = (function () {
             this.editingMarkerId = null;
             this.markerEditorDraft = null;
             if (this.markerEditorHost) this.markerEditorHost.innerHTML = '';
+        },
+
+        /** The shared SCORM edition helper, or null when the framework is absent. */
+        getScormEdition: function () {
+            return (typeof $exeDevicesEdition !== 'undefined'
+                && $exeDevicesEdition.iDevice
+                && $exeDevicesEdition.iDevice.gamification
+                && $exeDevicesEdition.iDevice.gamification.scorm) || null;
+        },
+
+        /** Whether the interaction has at least one question marker. */
+        hasQuestionMarkers: function () {
+            return ((this.state.interaction && this.state.interaction.markers) || [])
+                .some((m) => m.action && m.action.type === 'question');
+        },
+
+        /** Show the SCORM section only when there is a question to score. */
+        updateScormVisibility: function () {
+            if (!this.scormSection) return;
+            const show = !!(this.state.interaction && this.state.interaction.enabled) && this.hasQuestionMarkers();
+            this.scormSection.hidden = !show;
+            if (show && !this._scormRendered) this.renderScormTab();
+        },
+
+        /** Inject the standard SCORM tab and reflect the saved config. */
+        renderScormTab: function () {
+            const scorm = this.getScormEdition();
+            if (!scorm || !this.scormTabHost || typeof scorm.getTab !== 'function') return;
+            try {
+                this.scormTabHost.innerHTML = scorm.getTab(false, false);
+                if (typeof scorm.init === 'function') scorm.init();
+                if (typeof scorm.setValues === 'function') {
+                    scorm.setValues(this.state.isScorm || 0, this.state.textButtonScorm || _('Save score'), true, this.state.weighted || 100);
+                }
+                this._scormRendered = true;
+            } catch (e) {
+                console.warn('[3D Viewer] SCORM tab unavailable:', e);
+            }
+        },
+
+        /** Read the SCORM config from the tab, or preserve the stored values. */
+        readScormValues: function () {
+            const scorm = this.getScormEdition();
+            if (scorm && this._scormRendered && typeof scorm.getValues === 'function') {
+                try {
+                    const v = scorm.getValues();
+                    return normalizeScorm({ isScorm: v.isScorm, weighted: v.weighted, textButtonScorm: v.textButtonScorm });
+                } catch (e) {
+                    /* fall through to preserve stored values */
+                }
+            }
+            return normalizeScorm(this.state);
         },
 
         updateAutoRotateSpeedState: function () {

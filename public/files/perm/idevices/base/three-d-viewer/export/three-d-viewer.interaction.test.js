@@ -173,5 +173,62 @@ describe('three-d-viewer interaction schema (export)', () => {
             expect(html).toContain('"i18n"');
             expect(html).toContain('Check');
         });
+
+        it('embeds the SCORM scoring config in the data block', () => {
+            const data = Object.assign(dataWith(enabled()), { isScorm: 1, weighted: 80 });
+            const html = $tdv.renderView(data, null, '{content}');
+            expect(html).toContain('"scorm"');
+            expect(html).toContain('"isScorm":1');
+            expect(html).toContain('"weighted":80');
+        });
+    });
+
+    describe('normalizeScorm + setupScormScoring', () => {
+        it('clamps the SCORM config', () => {
+            expect($tdv.__normalizeScorm({ isScorm: 9, weighted: 0 })).toEqual({ isScorm: 2, weighted: 1, textButtonScorm: '' });
+        });
+
+        it('registers the activity and reports the fraction correct in a SCORM export', () => {
+            const events = [];
+            globalThis.$exeDevices = { iDevice: { gamification: { scorm: {
+                registerActivity: (g) => events.push(['register', g.main, g.isScorm, g.weighted]),
+                sendScoreNew: (auto, g) => events.push(['send', g.scorerp, !!g.gameOver]),
+            } } } };
+            const savedDoc = globalThis.document;
+            globalThis.document = { body: { classList: { contains: (c) => c === 'exe-scorm' } } };
+            try {
+                const interaction = $tdv.__normalizeInteraction({ enabled: true, markers: [
+                    { id: 'q1', action: { type: 'question', payload: { options: [{ text: 'a', correct: true }, { text: 'b' }] } } },
+                    { id: 'q2', action: { type: 'question', payload: { options: [{ text: 'a', correct: true }, { text: 'b' }] } } },
+                    { id: 'i1', action: { type: 'information', payload: { html: '' } } },
+                ] });
+                const hooks = {};
+                $tdv.__setupScormScoring({ id: 'viewer-1' }, interaction, { isScorm: 1, weighted: 100 }, hooks);
+                expect(events).toContainEqual(['register', 'viewer-1', 1, 100]);
+                expect(typeof hooks.onQuestionAnswered).toBe('function');
+                hooks.onQuestionAnswered('q1', true); // 1 of 2 questions → 5/10
+                expect(events).toContainEqual(['send', 5, false]);
+                hooks.onQuestionAnswered('q2', true); // 2 of 2 → 10/10, complete
+                expect(events).toContainEqual(['send', 10, true]);
+            } finally {
+                globalThis.document = savedDoc;
+                delete globalThis.$exeDevices;
+            }
+        });
+
+        it('does not wire scoring outside a SCORM export', () => {
+            const savedDoc = globalThis.document;
+            globalThis.document = { body: { classList: { contains: () => false } } };
+            try {
+                const hooks = {};
+                const interaction = $tdv.__normalizeInteraction({ enabled: true, markers: [
+                    { id: 'q', action: { type: 'question', payload: {} } },
+                ] });
+                $tdv.__setupScormScoring({ id: 'v' }, interaction, { isScorm: 1 }, hooks);
+                expect(hooks.onQuestionAnswered).toBeUndefined();
+            } finally {
+                globalThis.document = savedDoc;
+            }
+        });
     });
 });
