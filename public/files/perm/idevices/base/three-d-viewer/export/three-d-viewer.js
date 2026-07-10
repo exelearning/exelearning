@@ -33,6 +33,114 @@
     const YAW_STEP = (15 * Math.PI) / 180;
     const PITCH_STEP = (10 * Math.PI) / 180;
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Interaction schema (mirror edition/three-d-viewer.js). These pure
+    // helpers must stay byte-identical with the edition copy — see
+    // doc/architecture/sdd/SDD-0001. Used by renderView/renderBehaviour and
+    // consumed by the shared runtime (three-d-viewer-runtime.js).
+    // ─────────────────────────────────────────────────────────────────────
+    var STATE_VERSION = 2;
+    var MARKER_ICONS = ['circle', 'pin', 'info', 'question', 'star'];
+    var INTERACTION_ACTION_TYPES = ['information', 'image', 'video', 'link', 'question'];
+
+    function tdNum(v, fallback) { var n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : fallback; }
+    function tdClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+    function tdStr(v, fallback) { return typeof v === 'string' ? v : (fallback || ''); }
+    function tdId(prefix, existing) {
+        if (typeof existing === 'string' && existing) return existing;
+        return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    }
+    function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:)/i.test(s) ? '' : s.trim(); }
+    function normalizeVec3(v, dflt) {
+        var o = v && typeof v === 'object' ? v : {};
+        return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
+    }
+    function normalizeAnchor(a) {
+        var o = a && typeof a === 'object' ? a : {};
+        return {
+            position: normalizeVec3(o.position, { x: 0, y: 0, z: 0 }),
+            normal: normalizeVec3(o.normal, { x: 0, y: 1, z: 0 }),
+            surface: tdStr(o.surface, ''),
+        };
+    }
+    function normalizeCamera(c) {
+        var o = c && typeof c === 'object' ? c : {};
+        return { orbit: tdStr(o.orbit, ''), target: tdStr(o.target, ''), fieldOfView: tdStr(o.fieldOfView, '') };
+    }
+    function normalizeQuestion(p) {
+        var o = p && typeof p === 'object' ? p : {};
+        var rawOpts = Array.isArray(o.options) ? o.options : [];
+        var seenCorrect = false;
+        var options = rawOpts.slice(0, 10).map(function (opt) {
+            var oo = opt && typeof opt === 'object' ? opt : {};
+            var correct = !!oo.correct && !seenCorrect;
+            if (correct) seenCorrect = true;
+            return { id: tdId('option', oo.id), text: tdStr(oo.text, ''), correct: correct };
+        });
+        if (options.length === 0) {
+            options = [{ id: tdId('option'), text: '', correct: true }, { id: tdId('option'), text: '', correct: false }];
+        } else if (!seenCorrect) {
+            options[0].correct = true;
+        }
+        return {
+            prompt: tdStr(o.prompt, ''),
+            type: 'single-choice',
+            options: options,
+            feedbackCorrect: tdStr(o.feedbackCorrect, ''),
+            feedbackIncorrect: tdStr(o.feedbackIncorrect, ''),
+            attemptsAllowed: tdClamp(Math.round(tdNum(o.attemptsAllowed, 0)), 0, 20),
+        };
+    }
+    function normalizeAction(a) {
+        var o = a && typeof a === 'object' ? a : {};
+        var type = INTERACTION_ACTION_TYPES.indexOf(o.type) >= 0 ? o.type : 'information';
+        var pin = o.payload && typeof o.payload === 'object' ? o.payload : {};
+        var payload;
+        switch (type) {
+            case 'image': payload = { src: tdStripUnsafeUrl(pin.src), alt: tdStr(pin.alt, ''), caption: tdStr(pin.caption, '') }; break;
+            case 'video': payload = { src: tdStripUnsafeUrl(pin.src), poster: tdStripUnsafeUrl(pin.poster) }; break;
+            case 'link': payload = { url: tdStr(pin.url, '').trim(), newTab: pin.newTab !== false }; break;
+            case 'question': payload = normalizeQuestion(pin); break;
+            default: payload = { html: tdStr(pin.html, '') }; break;
+        }
+        return { type: type, payload: payload };
+    }
+    function normalizeMarker(m, index) {
+        var o = m && typeof m === 'object' ? m : {};
+        var order = tdNum(o.order, NaN);
+        return {
+            id: tdId('marker', o.id),
+            label: tdStr(o.label, ''),
+            description: tdStr(o.description, ''),
+            icon: MARKER_ICONS.indexOf(o.icon) >= 0 ? o.icon : 'circle',
+            order: Number.isFinite(order) ? order : index,
+            anchor: normalizeAnchor(o.anchor),
+            camera: normalizeCamera(o.camera),
+            action: normalizeAction(o.action),
+        };
+    }
+    function normalizeInteraction(it) {
+        var o = it && typeof it === 'object' ? it : {};
+        var markers = (Array.isArray(o.markers) ? o.markers : []).map(normalizeMarker);
+        markers.sort(function (a, b) { return a.order - b.order; });
+        markers.forEach(function (mk, i) { mk.order = i; });
+        var ids = markers.map(function (mk) { return mk.id; });
+        return {
+            enabled: !!o.enabled,
+            guidedMode: !!o.guidedMode,
+            wrapNavigation: !!o.wrapNavigation,
+            showMarkerLabels: o.showMarkerLabels !== false,
+            activeMarkerId: ids.indexOf(o.activeMarkerId) >= 0 ? o.activeMarkerId : '',
+            markers: markers,
+        };
+    }
+    /** Pure single-choice grading — chosen option id → correct? */
+    function gradeSingleChoice(question, selectedOptionId) {
+        var q = normalizeQuestion(question);
+        var chosen = q.options.filter(function (op) { return op.id === selectedOptionId; })[0];
+        return !!(chosen && chosen.correct);
+    }
+
     /**
      * Build the toolbar markup (fullscreen button + 4-direction nav pad).
      * Rendered once into the wrapper so it ships with the static export.
@@ -1375,6 +1483,14 @@
     globalScope.$threedviewer.resolveAssetUrl = resolveAssetUrl;
     globalScope.$threedviewer.__migrateLegacyConfig = migrateLegacyConfig;
     globalScope.$threedviewer.__detectModelTypeFromSrc = detectModelTypeFromSrc;
+    // Interaction schema helpers (mirror edition) — exposed for unit tests.
+    globalScope.$threedviewer.__normalizeInteraction = normalizeInteraction;
+    globalScope.$threedviewer.__normalizeMarker = normalizeMarker;
+    globalScope.$threedviewer.__normalizeAnchor = normalizeAnchor;
+    globalScope.$threedviewer.__normalizeCamera = normalizeCamera;
+    globalScope.$threedviewer.__normalizeAction = normalizeAction;
+    globalScope.$threedviewer.__normalizeQuestion = normalizeQuestion;
+    globalScope.$threedviewer.__gradeSingleChoice = gradeSingleChoice;
     globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
     globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
     globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;
