@@ -138,6 +138,17 @@ describe('three-d-viewer interaction editor (edition)', () => {
         expect(dev.markerEditorHost.querySelector('.tdv-marker-editor')).toBeNull();
     });
 
+    it('preserves interaction markers when readFormState rebuilds state', () => {
+        const dev = setupEditor({ src: 'asset://m.glb', interaction: { enabled: true, markers: [
+            { id: 'm', label: 'Keep me', action: { type: 'information', payload: { html: '<p>x</p>' } } },
+        ] } });
+        // A display-option change triggers readFormState — markers must survive.
+        dev.readFormState();
+        expect(dev.state.interaction.enabled).toBe(true);
+        expect(dev.state.interaction.markers).toHaveLength(1);
+        expect(dev.state.interaction.markers[0].label).toBe('Keep me');
+    });
+
     it('round-trips edited markers through get3DViewerJSON', () => {
         const dev = setupEditor({ src: 'asset://m.glb', interaction: { enabled: true, guidedMode: true, markers: [
             { id: 'm', label: 'Peak', icon: 'pin', action: { type: 'information', payload: { html: '<p>x</p>' } } },

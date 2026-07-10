@@ -673,6 +673,7 @@ var $exeDevice = (function () {
             const modelColor = normalizeHex(this.formElements.modelColor?.value, '#888888');
             const showNavControls = !!this.formElements.showNavControls?.checked;
             this.state = {
+                version: STATE_VERSION,
                 src: this.resolveModelPath(this.formElements.src.value.trim()),
                 alt: this.formElements.alt.value.trim(),
                 modelColor,
@@ -687,6 +688,11 @@ var $exeDevice = (function () {
                     name: this.formElements.animationName.value || '',
                     speed: Math.min(Math.max(parseFloat(this.formElements.animationSpeed.value) || 1, 0.1), 3),
                 },
+                // Interaction state is managed by the dedicated interaction
+                // controls (not read from the model/display form), so preserve
+                // it here — otherwise a display-option change would wipe every
+                // authored marker.
+                interaction: (this.state && this.state.interaction) || cloneState().interaction,
             };
             // previewBlobUrl is an instance field — it survives state
             // rebuilds without any preserve dance.
@@ -704,8 +710,15 @@ var $exeDevice = (function () {
             // are handled by a dedicated listener below so we can flip the
             // sibling checkbox BEFORE readFormState runs — otherwise the
             // generic onChange would observe stale form values.
+            const interactionKeys = ['interactionsEnable', 'guidedMode', 'wrapNavigation', 'showMarkerLabels'];
             Object.entries(this.formElements).forEach(([key, element]) => {
                 if (!element || key === 'src' || key === 'autoRotate' || key === 'showNavControls') {
+                    return;
+                }
+                // Interaction toggles have their own handlers (see
+                // registerInteractionBehaviours) and must not run the generic
+                // readFormState/updatePreview path.
+                if (interactionKeys.indexOf(key) !== -1) {
                     return;
                 }
                 const events = new Set(['change']);
