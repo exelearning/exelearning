@@ -88,6 +88,10 @@ describe('three-d-viewer interaction layer', () => {
         delete globalThis.__threedViewerCleanupBound;
         delete globalThis.THREE;
         globalThis.eXeLearning = { app: { project: {} } };
+        // happy-dom reports no WebGL context; simulate a WebGL-capable browser
+        // by default so the fallback-hiding path is exercised. Individual
+        // tests flip this to false to check the no-WebGL fallback.
+        globalThis.__tdvForceWebGL = true;
         runtime = loadRuntime();
         document.body.innerHTML = '';
     });
@@ -98,6 +102,7 @@ describe('three-d-viewer interaction layer', () => {
         globalThis.__threedViewerCleanupBound = originalGlobals.__threedViewerCleanupBound;
         globalThis.THREE = originalGlobals.THREE;
         globalThis.eXeLearning = originalGlobals.eXeLearning;
+        delete globalThis.__tdvForceWebGL;
     });
 
     describe('pure helpers', () => {
@@ -350,6 +355,143 @@ describe('three-d-viewer interaction layer', () => {
             ctrl.destroy();
             expect(inst.onFrame.length).toBe(0);
             expect(wrapper.querySelector('.tdv-marker-layer')).toBeNull();
+        });
+    });
+
+    // ── Regression coverage for the adversarial-review findings ──────────
+    describe('review hardening', () => {
+        function mvSetup(interaction, mode, extraMv, hooks) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'three-d-viewer-wrapper';
+            const fb = document.createElement('ul');
+            fb.className = 'tdv-fallback';
+            fb.hidden = true;
+            wrapper.appendChild(fb);
+            const mv = Object.assign(document.createElement('model-viewer'), extraMv || {});
+            wrapper.appendChild(mv);
+            document.body.appendChild(wrapper);
+            const ctrl = runtime.createInteractionLayer({ wrapper, type: 'glb', modelViewer: mv }, interaction, mode || 'view', hooks || {});
+            return { wrapper, mv, ctrl };
+        }
+
+        it('keeps the fallback visible when WebGL is unavailable', () => {
+            globalThis.__tdvForceWebGL = false;
+            const { wrapper } = mvSetup(IX());
+            expect(wrapper.querySelector('.tdv-fallback').hidden).toBe(false);
+        });
+
+        it('advances exactly one step after repeated setState (no duplicate nav handlers)', () => {
+            const { wrapper, ctrl } = mvSetup(IX({ guidedMode: true }), 'view');
+            // Simulate the editor re-rendering several times.
+            ctrl.setState(IX({ guidedMode: true }));
+            ctrl.setState(IX({ guidedMode: true }));
+            const nextBtn = wrapper.querySelector('.tdv-nav-next');
+            nextBtn.click();
+            expect(ctrl.getActiveId()).toBe('m1'); // first marker, not jumped past
+            nextBtn.click();
+            expect(ctrl.getActiveId()).toBe('m2');
+        });
+
+        it('wraps navigation and keeps both buttons enabled when wrap is on', () => {
+            const { wrapper, ctrl } = mvSetup(IX({ guidedMode: true, wrapNavigation: true }), 'view');
+            ctrl.next(); // → m1 (first)
+            const nav = wrapper.querySelector('.tdv-guided-nav');
+            expect(nav.querySelector('.tdv-nav-prev').disabled).toBe(false);
+            expect(nav.querySelector('.tdv-nav-next').disabled).toBe(false);
+            ctrl.prev(); // wrap back to last
+            expect(ctrl.getActiveId()).toBe('m2');
+            ctrl.next(); // wrap forward to first
+            expect(ctrl.getActiveId()).toBe('m1');
+        });
+
+        it('clears the active marker when setState drops it', () => {
+            const { ctrl } = mvSetup(IX(), 'view');
+            ctrl.focusMarker('m1');
+            expect(ctrl.getActiveId()).toBe('m1');
+            ctrl.setState({ enabled: true, guidedMode: false, wrapNavigation: false, showMarkerLabels: true, activeMarkerId: '', markers: [
+                { id: 'zzz', label: 'Other', icon: 'circle', order: 0,
+                  anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 }, surface: '' },
+                  camera: { orbit: '', target: '', fieldOfView: '' },
+                  action: { type: 'information', payload: { html: '' } } },
+            ] });
+            expect(ctrl.getActiveId()).toBe('');
+        });
+
+        it('opens a safe link in a new tab and refuses javascript: links', () => {
+            const opened = [];
+            const origOpen = window.open;
+            window.open = (url, target, feats) => { opened.push({ url, target, feats }); return null; };
+            try {
+                const linkIx = IX({ markers: [
+                    { id: 'l', label: 'Docs', icon: 'circle', order: 0,
+                      anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 }, surface: '' },
+                      camera: { orbit: '', target: '', fieldOfView: '' },
+                      action: { type: 'link', payload: { url: 'https://exelearning.net', newTab: true } } },
+                    { id: 'bad', label: 'Bad', icon: 'circle', order: 1,
+                      anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 }, surface: '' },
+                      camera: { orbit: '', target: '', fieldOfView: '' },
+                      action: { type: 'link', payload: { url: 'javascript:alert(1)', newTab: true } } },
+                ] });
+                const { ctrl } = mvSetup(linkIx, 'view');
+                ctrl.focusMarker('l');
+                expect(opened).toHaveLength(1);
+                expect(opened[0].url).toBe('https://exelearning.net');
+                expect(opened[0].feats).toContain('noopener');
+                ctrl.focusMarker('bad');
+                expect(opened).toHaveLength(1); // javascript: refused, no navigation
+            } finally {
+                window.open = origOpen;
+            }
+        });
+
+        it('resolves media URLs for image markers via the hook', () => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'three-d-viewer-wrapper';
+            const mv = document.createElement('model-viewer');
+            wrapper.appendChild(mv);
+            document.body.appendChild(wrapper);
+            const imgIx = IX({ markers: [
+                { id: 'img', label: 'Pic', icon: 'circle', order: 0,
+                  anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 }, surface: '' },
+                  camera: { orbit: '', target: '', fieldOfView: '' },
+                  action: { type: 'image', payload: { src: 'asset://p.png', alt: 'a pic', caption: 'cap' } } },
+            ] });
+            const ctrl = runtime.createInteractionLayer({ wrapper, type: 'glb', modelViewer: mv }, imgIx, 'view', {
+                resolveMediaUrl: (u) => 'RESOLVED:' + u,
+            });
+            ctrl.focusMarker('img');
+            const img = wrapper.querySelector('.tdv-dialog-figure img');
+            expect(img.getAttribute('src')).toBe('RESOLVED:asset://p.png');
+            expect(img.getAttribute('alt')).toBe('a pic');
+            expect(wrapper.querySelector('figcaption').textContent).toBe('cap');
+        });
+
+        it('captures model-viewer camera and places via positionAndNormalFromPoint', () => {
+            const mvStub = {
+                getCameraOrbit: () => ({ toString: () => '30deg 75deg 105%' }),
+                getCameraTarget: () => ({ toString: () => '0m 0m 0m' }),
+                getFieldOfView: () => 45,
+                positionAndNormalFromPoint: () => ({ position: { toString: () => '1 2 3' }, normal: { toString: () => '0 1 0' } }),
+            };
+            let placed = null;
+            const { mv, ctrl } = mvSetup(IX({ markers: [] }), 'edit', mvStub, { onPlaced: (a) => { placed = a; } });
+            const cam = ctrl.captureCamera();
+            expect(cam.orbit).toBe('30deg 75deg 105%');
+            expect(cam.target).toBe('0m 0m 0m');
+            expect(cam.fieldOfView).toBe('45deg');
+
+            ctrl.enterPlacementMode();
+            mv.dispatchEvent(new window.MouseEvent('click', { clientX: 10, clientY: 20, bubbles: true }));
+            expect(placed).toBeTruthy();
+            expect(placed.position).toEqual({ x: 1, y: 2, z: 3 });
+            expect(placed.normal).toEqual({ x: 0, y: 1, z: 0 });
+            expect(placed.camera.orbit).toBe('30deg 75deg 105%');
+        });
+
+        it('sanitizer strips form action and javascript URLs', () => {
+            const out = runtime.__sanitizeHtmlDom('<form action="javascript:evil()"><button formaction="javascript:x()">go</button></form><a href="javascript:bad()">l</a>');
+            expect(out).not.toContain('<form');
+            expect(out).not.toContain('javascript:');
         });
     });
 });

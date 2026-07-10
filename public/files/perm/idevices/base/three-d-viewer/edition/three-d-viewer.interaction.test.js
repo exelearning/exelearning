@@ -143,6 +143,13 @@ describe('three-d-viewer interaction schema (edition)', () => {
             expect(dev.__normalizeAction({ type: 'link', payload: { url: 'https://x' } }).payload.newTab).toBe(true);
             expect(dev.__normalizeAction({ type: 'link', payload: { url: 'https://x', newTab: false } }).payload.newTab).toBe(false);
         });
+
+        it('strips dangerous schemes from link URLs at normalize time', () => {
+            expect(dev.__normalizeAction({ type: 'link', payload: { url: 'javascript:alert(1)' } }).payload.url).toBe('');
+            expect(dev.__normalizeAction({ type: 'link', payload: { url: 'blob:http://x/y' } }).payload.url).toBe('');
+            expect(dev.__normalizeAction({ type: 'link', payload: { url: 'https://ok.org' } }).payload.url).toBe('https://ok.org');
+            expect(dev.__normalizeAction({ type: 'link', payload: { url: '/relative/path' } }).payload.url).toBe('/relative/path');
+        });
     });
 
     describe('normalizeQuestion + gradeSingleChoice', () => {

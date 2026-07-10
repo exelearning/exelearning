@@ -609,7 +609,8 @@
         if (typeof document === 'undefined' || !document.createElement) return escapeHtml(src);
         const tpl = document.createElement('template');
         tpl.innerHTML = src;
-        const banned = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, LINK: 1, META: 1, BASE: 1 };
+        const banned = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, LINK: 1, META: 1, BASE: 1, FORM: 1 };
+        const urlAttrs = { href: 1, src: 1, 'xlink:href': 1, action: 1, formaction: 1, poster: 1, ping: 1, data: 1, background: 1 };
         const walk = (node) => {
             const children = Array.prototype.slice.call(node.childNodes || []);
             children.forEach((child) => {
@@ -618,7 +619,7 @@
                     Array.prototype.slice.call(child.attributes || []).forEach((attr) => {
                         const name = attr.name.toLowerCase();
                         if (name.indexOf('on') === 0) { child.removeAttribute(attr.name); return; }
-                        if ((name === 'href' || name === 'src' || name === 'xlink:href') && !safeUrl(attr.value)) {
+                        if (urlAttrs[name] && !safeUrl(attr.value)) {
                             child.removeAttribute(attr.name);
                         }
                     });
@@ -628,6 +629,23 @@
         };
         walk(tpl.content);
         return tpl.innerHTML;
+    }
+
+    /** Memoized WebGL availability probe (drives the a11y fallback). */
+    let _webglAvailable = null;
+    function hasWebGL() {
+        // Test override (see __setWebGLForTests): deterministic in happy-dom,
+        // which reports no WebGL context.
+        if (typeof globalScope.__tdvForceWebGL === 'boolean') return globalScope.__tdvForceWebGL;
+        if (_webglAvailable !== null) return _webglAvailable;
+        try {
+            if (typeof document === 'undefined' || !document.createElement) { _webglAvailable = true; return true; }
+            const canvas = document.createElement('canvas');
+            _webglAvailable = !!(canvas.getContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+        } catch (_) {
+            _webglAvailable = false;
+        }
+        return _webglAvailable;
     }
 
     /** Default media resolver: resolve asset:// via AssetManager when live. */
@@ -957,9 +975,14 @@
             const i = currentIndex();
             const prevBtn = guidedNav.querySelector('.tdv-nav-prev');
             const nextBtn = guidedNav.querySelector('.tdv-nav-next');
-            if (!state.wrapNavigation) {
-                if (prevBtn) prevBtn.disabled = i <= 0;
-                if (nextBtn) nextBtn.disabled = i >= markers.length - 1;
+            const noMarkers = markers.length === 0;
+            if (state.wrapNavigation && !noMarkers) {
+                // Wrap: both directions are always available.
+                if (prevBtn) prevBtn.disabled = false;
+                if (nextBtn) nextBtn.disabled = false;
+            } else {
+                if (prevBtn) prevBtn.disabled = noMarkers || i <= 0;
+                if (nextBtn) nextBtn.disabled = noMarkers || i >= markers.length - 1;
             }
             if (guidedStatus) {
                 const shown = i < 0 ? 0 : i + 1;
@@ -986,8 +1009,15 @@
             if (prevBtn && !prevBtn.textContent) prevBtn.textContent = t('Previous');
             if (nextBtn && !nextBtn.textContent) nextBtn.textContent = t('Next');
             guidedStatus = guidedNav.querySelector('.tdv-guided-status');
-            if (prevBtn) on(prevBtn, 'click', () => go(-1));
-            if (nextBtn) on(nextBtn, 'click', () => go(1));
+            // Bind the click handlers exactly once — setupGuided() runs on
+            // every render()/setState(), but the nav element persists, so
+            // re-binding here would stack duplicate handlers and make one
+            // click advance several steps.
+            if (!guidedNav.dataset.tdvBound) {
+                guidedNav.dataset.tdvBound = '1';
+                if (prevBtn) on(prevBtn, 'click', () => go(-1));
+                if (nextBtn) on(nextBtn, 'click', () => go(1));
+            }
             updateGuided();
         }
 
@@ -1003,7 +1033,10 @@
             markers = Array.isArray(state.markers) ? state.markers : [];
             if (adapter && adapter.renderMarkers) {
                 adapter.renderMarkers(markers, { showLabels: state.showMarkerLabels !== false, activeId });
-                revealFallback(false);
+                // Keep the text fallback visible when WebGL is unavailable so
+                // assistive-tech / no-WebGL users still reach marker content
+                // even though the interactive overlay cannot render.
+                revealFallback(!hasWebGL());
             } else {
                 revealFallback(true);
             }
@@ -1112,7 +1145,10 @@
                         btn.appendChild(label);
                     }
                     if (opts.activeId === m.id) { btn.classList.add('tdv-marker--active'); btn.setAttribute('aria-current', 'true'); }
-                    env.on(btn, 'click', () => controller.focusMarker(m.id));
+                    // Bind directly: marker buttons are rebuilt on every render
+                    // and removed on destroy, so their listeners die with them —
+                    // no need to grow the controller's lifetime listener array.
+                    btn.addEventListener('click', () => controller.focusMarker(m.id));
                     modelViewer.appendChild(btn);
                 });
             },
@@ -1237,7 +1273,9 @@
                         btn.appendChild(label);
                     }
                     if (opts.activeId === m.id) { btn.classList.add('tdv-marker--active'); btn.setAttribute('aria-current', 'true'); }
-                    env.on(btn, 'click', () => controller.focusMarker(m.id));
+                    // Bind directly (see model-viewer adapter): buttons are
+                    // rebuilt each render and removed on destroy.
+                    btn.addEventListener('click', () => controller.focusMarker(m.id));
                     layer.appendChild(btn);
                     return {
                         el: btn,

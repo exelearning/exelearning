@@ -75,7 +75,7 @@ var $exeDevice = (function () {
         if (typeof existing === 'string' && existing) return existing;
         return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
     }
-    function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:)/i.test(s) ? '' : s.trim(); }
+    function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:|javascript:|vbscript:)/i.test(s) ? '' : s.trim(); }
     function normalizeVec3(v, dflt) {
         var o = v && typeof v === 'object' ? v : {};
         return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
@@ -124,7 +124,7 @@ var $exeDevice = (function () {
         switch (type) {
             case 'image': payload = { src: tdStripUnsafeUrl(pin.src), alt: tdStr(pin.alt, ''), caption: tdStr(pin.caption, '') }; break;
             case 'video': payload = { src: tdStripUnsafeUrl(pin.src), poster: tdStripUnsafeUrl(pin.poster) }; break;
-            case 'link': payload = { url: tdStr(pin.url, '').trim(), newTab: pin.newTab !== false }; break;
+            case 'link': payload = { url: tdStripUnsafeUrl(pin.url), newTab: pin.newTab !== false }; break;
             case 'question': payload = normalizeQuestion(pin); break;
             default: payload = { html: tdStr(pin.html, '') }; break;
         }
