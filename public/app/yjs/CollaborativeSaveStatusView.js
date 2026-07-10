@@ -36,15 +36,21 @@ const LIVE_REGION_ID = 'exe-collab-save-status';
 const BADGE_SELECTOR = '.collab-autosave-badge';
 
 /**
- * Per-phase visual badge configuration. `glyph` is a Material Icons Round
- * ligature (rendered through --icons-ff by the SCSS); the shapes are distinct
- * so the phase is legible without relying on colour. `busy` drives aria-busy on
- * the Save button while a collaborative save is in flight.
+ * Per-phase configuration for the compact status dot on the Save button. The
+ * dot reuses the familiar "unsaved" red-dot placement and is coloured per
+ * phase, but colour is never the only cue (WCAG 1.4.1):
+ *   - pending: plain red dot (the familiar "unsaved" marker),
+ *   - saving:  amber dot that pulses (motion cue),
+ *   - clean:   green dot with a check glyph (shape cue),
+ *   - failed:  red dot with an exclamation glyph (shape cue).
+ * `glyph` is a Material Icons Round ligature (rendered through --icons-ff) or an
+ * empty string for the plain dots. `busy` drives aria-busy on the Save button
+ * while a collaborative save is in flight.
  */
 const PHASE_BADGES = {
     clean: { glyph: 'check', busy: false },
-    pending: { glyph: 'cloud_upload', busy: false },
-    saving: { glyph: 'sync', busy: true },
+    pending: { glyph: '', busy: false },
+    saving: { glyph: '', busy: true },
     failed: { glyph: 'priority_high', busy: false },
 };
 
@@ -122,6 +128,16 @@ class CollaborativeSaveStatusView {
             button.setAttribute('aria-busy', 'true');
         } else {
             button.removeAttribute('aria-busy');
+        }
+
+        // While a collaborative autosave status is showing, the status dot
+        // stands in for the manual "unsaved" dot, so the button shows a single
+        // marker instead of two overlapping dots. The SCSS hides
+        // `.unsaved:before` when this class is present.
+        if (badge) {
+            button.classList.add('collab-autosave-active');
+        } else {
+            button.classList.remove('collab-autosave-active');
         }
 
         const el = typeof button.querySelector === 'function' ? button.querySelector(BADGE_SELECTOR) : null;

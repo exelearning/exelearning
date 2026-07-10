@@ -72,25 +72,25 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(createToast).not.toHaveBeenCalled();
         });
 
-        it('renders the pending phase as a cloud_upload badge, without a toast', () => {
+        it('renders the pending phase as a plain (glyph-less) red dot, without a toast', () => {
             const { view, createToast } = makeView();
             view.setPhase('pending');
 
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('pending');
-            expect(badge.textContent).toBe('cloud_upload');
+            expect(badge.textContent).toBe(''); // plain dot: colour + placement, no glyph
             expect(getLiveText()).toBe('Collaborative changes are shared live and will be saved automatically.');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
             expect(createToast).not.toHaveBeenCalled();
         });
 
-        it('renders the saving phase with a spinner glyph and sets aria-busy, without a toast', () => {
+        it('renders the saving phase as a glyph-less dot (pulse is CSS) and sets aria-busy, without a toast', () => {
             const { view, createToast } = makeView();
             view.setPhase('saving');
 
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('saving');
-            expect(badge.textContent).toBe('sync');
+            expect(badge.textContent).toBe(''); // motion cue comes from the CSS pulse
             expect(getLiveText()).toBe('Saving collaborative changes...');
             expect(getButton().getAttribute('aria-busy')).toBe('true');
             expect(createToast).not.toHaveBeenCalled();
@@ -145,6 +145,17 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(getButton().getAttribute('aria-busy')).toBe('true');
             view.setPhase('clean');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
+        });
+
+        it('takes over the manual unsaved dot while showing a status, and releases it on reset', () => {
+            const { view } = makeView();
+            view.setPhase('pending');
+            // The SCSS hides #head-top-save-button.collab-autosave-active .unsaved:before,
+            // so the status dot stands in for the manual dot (no double marker).
+            expect(getButton().classList.contains('collab-autosave-active')).toBe(true);
+
+            view.setPhase('bogus'); // unknown/reset
+            expect(getButton().classList.contains('collab-autosave-active')).toBe(false);
         });
     });
 

@@ -113,6 +113,12 @@
                         left: 7px;
                         border: 2px solid #fff;
                     }
+                    // While a collaborative autosave status dot is showing it
+                    // stands in for the manual "unsaved" dot, so the button
+                    // never shows two overlapping markers.
+                    &.collab-autosave-active.unsaved:before {
+                        display: none;
+                    }
                     &.saving {
                         opacity: 0.7;
                         pointer-events: none;
@@ -121,23 +127,25 @@
                         background-color: var(--gray-600);
                     }
 
-                    // Compact collaborative autosave badge (issue #1592).
-                    // Overlaid on the Save button so it never changes the button
-                    // width; each phase uses a distinct glyph shape (not only a
-                    // colour) so the state is perceivable without colour.
+                    // Compact collaborative autosave status dot (issue #1592).
+                    // Reuses the familiar "unsaved" red-dot placement and is
+                    // coloured per phase; colour is never the only cue — saving
+                    // pulses (motion) and clean/failed carry a glyph (shape) — so
+                    // the state is perceivable without colour (WCAG 1.4.1). It is
+                    // absolutely positioned, so the button width never changes.
                     .collab-autosave-badge {
                         position: absolute;
-                        top: -3px;
-                        right: -3px;
+                        bottom: 3px;
+                        left: 5px;
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
-                        width: 15px;
-                        height: 15px;
+                        width: 14px;
+                        height: 14px;
                         border-radius: 50%;
                         border: 2px solid #fff;
                         font-family: var(--icons-ff);
-                        font-size: 11px;
+                        font-size: 10px;
                         line-height: 1;
                         color: #fff;
                         background: var(--gray-500);
@@ -145,15 +153,15 @@
                         &.d-none {
                             display: none;
                         }
-                        &[data-collab-phase="clean"] {
-                            background: var(--system-green, #2e7d32);
-                        }
                         &[data-collab-phase="pending"] {
-                            background: var(--system-yellow, #f9a825);
+                            background: var(--system-red);
                         }
                         &[data-collab-phase="saving"] {
-                            background: var(--gray-500);
-                            animation: exe-collab-save-spin 0.9s linear infinite;
+                            background: var(--system-yellow, #f9a825);
+                            animation: exe-collab-save-pulse 1.1s ease-in-out infinite;
+                        }
+                        &[data-collab-phase="clean"] {
+                            background: var(--system-green, #2e7d32);
                         }
                         &[data-collab-phase="failed"] {
                             background: var(--system-red);
@@ -475,15 +483,21 @@
     }
 }
 
-// Spinner for the collaborative autosave badge "saving" phase (issue #1592).
-@keyframes exe-collab-save-spin {
-    to {
-        transform: rotate(360deg);
+// Pulse for the collaborative autosave status dot "saving" phase (issue #1592).
+// The motion is a non-colour cue distinguishing "saving" from the static dots.
+@keyframes exe-collab-save-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
     }
 }
 
-// Respect reduced-motion preferences: keep the sync glyph static instead of
-// spinning; the glyph shape and colour still convey the "saving" phase.
+// Respect reduced-motion preferences: keep the dot static. The amber colour
+// still marks the "saving" phase, and the surrounding states remain
+// distinguishable by their glyphs (clean/failed) and the live region.
 @media (prefers-reduced-motion: reduce) {
     #head-top-save-button .collab-autosave-badge[data-collab-phase="saving"] {
         animation: none;
