@@ -282,13 +282,18 @@
         var type = ds.modelType || detectModelTypeFromSrc(ds.modelSrc || '');
         ds._tdvInteractionBooted = '1';
         if (type === 'stl') {
-            var tries = 0;
+            // Wait (time-based, tolerant of a cold Three.js module load + STL
+            // fetch/parse) for the shared runtime to finish booting the STL
+            // scene before attaching markers. A fixed frame budget was too
+            // short and fell back to the text list even though the model
+            // eventually rendered.
+            var deadline = Date.now() + 20000;
             var poll = function () {
                 var inst = runtime.getInstance(wrapper);
                 if (inst && inst.mesh) {
                     inst.interaction = runtime.createInteractionLayer(
                         { wrapper: wrapper, type: 'stl', instance: inst }, interaction, 'view', hooks);
-                } else if (tries++ < 300) {
+                } else if (Date.now() < deadline) {
                     (globalScope.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(poll);
                 } else {
                     // STL never produced a mesh (no WebGL / load failure):

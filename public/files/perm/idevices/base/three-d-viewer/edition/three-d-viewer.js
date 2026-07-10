@@ -810,7 +810,8 @@ var $exeDevice = (function () {
                 resolveMediaUrl: (u) => this.getModelViewerUrl(u) || u,
             };
             if (type === 'stl') {
-                const inst = await this.waitForStlInstance(3000);
+                // Tolerate a cold Three.js module load + STL fetch/parse.
+                const inst = await this.waitForStlInstance(20000);
                 if (!inst) return null;
                 inst.interaction = this.interactionLayer = runtime.createInteractionLayer(
                     { wrapper: this.previewContainer, type: 'stl', instance: inst }, it, 'edit', hooks);

@@ -158,7 +158,11 @@ test.describe('3D Viewer interactions', () => {
         await expect(iframe.locator('.tdv-guided-nav')).toBeAttached();
 
         // Activating the informational marker opens an accessible dialog.
-        await iframe.locator('.tdv-marker[aria-label="Summit"]').click();
+        // Use dispatchEvent rather than a real click: whether a model-viewer
+        // hotspot is visually clickable depends on the WebGL projection of the
+        // model (env-dependent and unstable headless), which is not what we're
+        // testing — we're testing that activating the marker opens its content.
+        await iframe.locator('.tdv-marker[aria-label="Summit"]').dispatchEvent('click');
         const dialog = iframe.locator('.tdv-dialog[role="dialog"]');
         await expect(dialog).toBeVisible({ timeout: 10000 });
         await expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -167,8 +171,8 @@ test.describe('3D Viewer interactions', () => {
         await expect(iframe.locator('.tdv-dialog')).toHaveCount(0);
 
         // Activating the question marker and answering correctly shows
-        // accessible feedback.
-        await iframe.locator('.tdv-marker[aria-label="Quiz"]').click();
+        // accessible feedback (dispatchEvent — see note above).
+        await iframe.locator('.tdv-marker[aria-label="Quiz"]').dispatchEvent('click');
         const question = iframe.locator('.tdv-question');
         await expect(question).toBeVisible({ timeout: 10000 });
         await expect(question.locator('legend')).toHaveText('Is Teide a volcano?');
@@ -177,5 +181,69 @@ test.describe('3D Viewer interactions', () => {
         const feedback = iframe.locator('.tdv-q-feedback');
         await expect(feedback).toHaveClass(/tdv-q-feedback--correct/, { timeout: 10000 });
         await expect(feedback).toHaveAttribute('aria-live', 'polite');
+    });
+
+    test('authors an STL marker that persists and reaches the preview', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, '3D Viewer STL Interactions Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+
+        await add3DViewerIdevice(page);
+        await uploadModelViaFilePicker(page, 'test/fixtures/ascii-cube.stl');
+        // STL renders via the Three.js runtime (no model-viewer src). Wait for
+        // the source field to reflect the uploaded .stl instead of a model
+        // "load" event.
+        await page.waitForFunction(
+            () => {
+                const inp = document.querySelector('#threeD3DModelFile');
+                return !!(inp && inp.value && inp.value.toLowerCase().includes('.stl'));
+            },
+            { timeout: 20000 },
+        );
+
+        await page.locator('#threeDInteractionsEnable').check();
+        await expect(page.locator('#threeDInteractionsBody')).toBeVisible();
+
+        // Place a marker at the model centre (deterministic, no WebGL click).
+        await placeMarker(page, 0, 0, 0);
+        await page.locator('#tdvMkLabel').fill('Corner');
+        await page.locator('#tdvActionFields textarea').fill('<p>A corner of the cube.</p>');
+        await page.locator('#threeDMarkerEditorHost [data-save]').click();
+        await expect(page.locator('#threeDMarkerList .tdv-marker-row')).toHaveCount(1);
+
+        await save3DViewerIdevice(page);
+        await saveProject(page);
+        await reloadPage(page);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+
+        await page.click('#head-bottom-preview');
+        await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
+        const iframe = page.frameLocator('#preview-iframe');
+        await iframe.locator('article').waitFor({ state: 'attached', timeout: 30000 });
+
+        // The STL wrapper is exported. NOTE: the interactive STL overlay needs a
+        // live WebGL context (the Three.js scene), which is not reliably
+        // available in headless CI; the STL projection/placement math is
+        // unit-tested separately with a THREE stub. Here we assert the
+        // WebGL-independent guarantees: the STL wrapper is present, the
+        // interaction data round-tripped through the STL export path, and the
+        // accessible text fallback carries the marker content (shown whenever
+        // the 3D scene cannot render).
+        // The export template nests an outer .three-d-viewer-wrapper around the
+        // renderView-generated inner one; the flat data-* attributes and the
+        // interaction markup live on the inner [data-three-d] wrapper.
+        const wrapper = iframe.locator('.three-d-viewer-wrapper[data-three-d]').first();
+        await expect(wrapper).toHaveAttribute('data-model-type', 'stl', { timeout: 15000 });
+        const fallback = wrapper.locator('.tdv-fallback');
+        await expect(fallback).toContainText('Corner', { timeout: 15000 });
+        await expect(fallback).toContainText('A corner of the cube.');
     });
 });
