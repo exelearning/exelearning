@@ -149,6 +149,10 @@
                         line-height: 1;
                         color: #fff;
                         background: var(--gray-500);
+                        // A colour transition forces a repaint when the phase
+                        // changes, so the dot never stays a stale colour until a
+                        // hover (it also softens the state change visually).
+                        transition: background-color 0.2s ease;
 
                         &.d-none {
                             display: none;
