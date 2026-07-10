@@ -126,20 +126,21 @@ jobs:
       # bundles are not rebuilt: test-e2e-firefox/static carry bundle/build-static
       # prerequisites that would negate the shared build.
       #
-      # Firefox runs at half the worker count of chromium/static. Firefox is
-      # heavier per content-process, and the opaque preview (PR #1968) adds
-      # per-preview server work (blob upload + server-side SHA-256 re-hash of
+      # Firefox runs one worker per shard; chromium/static keep workers:'100%'.
+      # Firefox is heavier per content-process, and the opaque preview (PR #1968)
+      # adds per-preview server work (blob upload + server-side SHA-256 re-hash of
       # every file). At workers:'100%' the runner is fully saturated with no
       # headroom for the single app server, so the heaviest preview specs
-      # (runtime MathJax, udl-content, three-sixty) intermittently time out on
-      # Firefox only. Halving Firefox workers gives the server headroom and
-      # removes the contention; chromium/static keep 100%. This is a deliberate
-      # concurrency fix, not a timeout bump — the specs pass deterministically
-      # once the runner is not oversubscribed.
+      # (runtime MathJax, udl-content, three-sixty, external-media relay) time out
+      # on Firefox only. Reproduced deterministically: firefox shard 3 fails at
+      # 8/4/2 workers and passes fully at 1; each spec also passes in isolation.
+      # Two workers cleared shards 1/2/4 but not shard 3, which concentrates the
+      # heaviest preview specs — so Firefox runs serially. chromium/static are
+      # lighter and stay parallel. A concurrency fix, not a timeout bump.
       - name: E2E Tests (${{ matrix.browser }} ${{ matrix.shard }}/4)
         run: |
           WORKERS_FLAG=""
-          if [ "${{ matrix.browser }}" = "firefox" ]; then WORKERS_FLAG="--workers=50%"; fi
+          if [ "${{ matrix.browser }}" = "firefox" ]; then WORKERS_FLAG="--workers=1"; fi
           bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob $WORKERS_FLAG
 
       # Give each shard's blob a unique name so cross-project shards (e.g.
