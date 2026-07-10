@@ -120,51 +120,61 @@
                     &:disabled {
                         background-color: var(--gray-600);
                     }
-                }
-                // Collaborative autosave notice (issue #1592). Small, muted and
-                // non-intrusive; revealed by JS only in collaborative sessions.
-                #exe-collab-save-status {
-                    display: inline-flex;
-                    align-items: center;
-                    margin-right: 8px;
-                    max-width: 22ch;
-                    font-size: 0.78rem;
-                    line-height: 1.2;
-                    color: var(--gray-600);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
 
-                    &.d-none {
-                        display: none;
-                    }
-                    .content {
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                    }
-                    &:before {
-                        content: "";
-                        flex: 0 0 auto;
-                        width: 8px;
-                        height: 8px;
-                        margin-right: 6px;
+                    // Compact collaborative autosave badge (issue #1592).
+                    // Overlaid on the Save button so it never changes the button
+                    // width; each phase uses a distinct glyph shape (not only a
+                    // colour) so the state is perceivable without colour.
+                    .collab-autosave-badge {
+                        position: absolute;
+                        top: -3px;
+                        right: -3px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 15px;
+                        height: 15px;
                         border-radius: 50%;
+                        border: 2px solid #fff;
+                        font-family: var(--icons-ff);
+                        font-size: 11px;
+                        line-height: 1;
+                        color: #fff;
                         background: var(--gray-500);
+
+                        &.d-none {
+                            display: none;
+                        }
+                        &[data-collab-phase="clean"] {
+                            background: var(--system-green, #2e7d32);
+                        }
+                        &[data-collab-phase="pending"] {
+                            background: var(--system-yellow, #f9a825);
+                        }
+                        &[data-collab-phase="saving"] {
+                            background: var(--gray-500);
+                            animation: exe-collab-save-spin 0.9s linear infinite;
+                        }
+                        &[data-collab-phase="failed"] {
+                            background: var(--system-red);
+                        }
                     }
-                    &.collab-save-status--clean:before {
-                        background: var(--system-green, #2e7d32);
-                    }
-                    &.collab-save-status--pending:before,
-                    &.collab-save-status--saving:before {
-                        background: var(--system-yellow, #f9a825);
-                    }
-                    &.collab-save-status--failed {
-                        color: var(--system-red);
-                        font-weight: 600;
-                    }
-                    &.collab-save-status--failed:before {
-                        background: var(--system-red);
-                    }
+                }
+                // Collaborative autosave live region (issue #1592): visually
+                // hidden so it consumes no horizontal toolbar space while staying
+                // in the accessibility tree. Screen readers still announce state
+                // transitions; the visible, compact state lives in the
+                // Save-button badge above.
+                #exe-collab-save-status {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
                 }
                 .small-icon.image-icon-green {
                     height: 18px;
@@ -465,3 +475,17 @@
     }
 }
 
+// Spinner for the collaborative autosave badge "saving" phase (issue #1592).
+@keyframes exe-collab-save-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// Respect reduced-motion preferences: keep the sync glyph static instead of
+// spinning; the glyph shape and colour still convey the "saving" phase.
+@media (prefers-reduced-motion: reduce) {
+    #head-top-save-button .collab-autosave-badge[data-collab-phase="saving"] {
+        animation: none;
+    }
+}
