@@ -212,6 +212,14 @@ var $exeDevice = (function () {
             if (this.previewContainer && window.eXe3DViewer) {
                 window.eXe3DViewer.destroy(this.previewContainer);
             }
+            // Tear down any prior interaction layer (GLB has no runtime
+            // instance so eXe3DViewer.destroy above won't reach it).
+            if (this.interactionLayer) {
+                try { this.interactionLayer.destroy(); } catch (_) { /* noop */ }
+            }
+            this.interactionLayer = null;
+            this.editingMarkerId = null;
+            this.markerEditorDraft = null;
             this.previewBlobUrl = null;
             this.ideviceBody = element;
             this.renderEditor();
@@ -461,6 +469,45 @@ var $exeDevice = (function () {
                                 </div>
                             </div>
                         </fieldset>
+
+                        <!-- Interactions (markers / guided navigation / questions) -->
+                        <fieldset class="mb-3 tdv-interactions" data-interactions>
+                            <legend class="h6 mb-3">${_('Interactions')}</legend>
+                            <div class="toggle-item mb-2">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="threeDInteractionsEnable" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label for="threeDInteractionsEnable" class="toggle-label">${_('Enable interactions')}</label>
+                            </div>
+                            <div id="threeDInteractionsBody" hidden>
+                                <div class="toggle-item mb-2">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="threeDGuidedMode" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label for="threeDGuidedMode" class="toggle-label">${_('Guided navigation (previous / next)')}</label>
+                                </div>
+                                <div class="toggle-item mb-2">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="threeDWrapNavigation" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label for="threeDWrapNavigation" class="toggle-label">${_('Wrap around at the ends')}</label>
+                                </div>
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="threeDShowMarkerLabels" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label for="threeDShowMarkerLabels" class="toggle-label">${_('Show marker labels')}</label>
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-2" id="threeDAddMarker">${_('Add marker')}</button>
+                                <p class="form-text text-muted" id="threeDPlacementHint" hidden>${_('Click on the model to place the marker.')}</p>
+                                <ul class="tdv-marker-list list-unstyled mb-0" id="threeDMarkerList"></ul>
+                            </div>
+                        </fieldset>
+                        <div class="tdv-marker-editor-host" id="threeDMarkerEditorHost"></div>
                     </div>
                     <div class="sr-only" id="threeDAnimationLive" aria-live="polite"></div>
                 </div>
@@ -484,7 +531,16 @@ var $exeDevice = (function () {
                 animationToggle: this.ideviceBody.querySelector('#threeDAnimationToggle'),
                 animationName: this.ideviceBody.querySelector('#threeDAnimationName'),
                 animationSpeed: this.ideviceBody.querySelector('#threeDAnimationSpeed'),
+                interactionsEnable: this.ideviceBody.querySelector('#threeDInteractionsEnable'),
+                guidedMode: this.ideviceBody.querySelector('#threeDGuidedMode'),
+                wrapNavigation: this.ideviceBody.querySelector('#threeDWrapNavigation'),
+                showMarkerLabels: this.ideviceBody.querySelector('#threeDShowMarkerLabels'),
             };
+            this.interactionsBody = this.ideviceBody.querySelector('#threeDInteractionsBody');
+            this.addMarkerButton = this.ideviceBody.querySelector('#threeDAddMarker');
+            this.placementHint = this.ideviceBody.querySelector('#threeDPlacementHint');
+            this.markerListEl = this.ideviceBody.querySelector('#threeDMarkerList');
+            this.markerEditorHost = this.ideviceBody.querySelector('#threeDMarkerEditorHost');
         },
 
         set3DViewerJSON: function (data) {
@@ -602,6 +658,14 @@ var $exeDevice = (function () {
             this.formElements.animationToggle.disabled = true;
             this.formElements.animationName.disabled = true;
             this.formElements.animationSpeed.disabled = true;
+            // Interaction controls
+            const it = s.interaction || {};
+            if (this.formElements.interactionsEnable) this.formElements.interactionsEnable.checked = !!it.enabled;
+            if (this.formElements.guidedMode) this.formElements.guidedMode.checked = !!it.guidedMode;
+            if (this.formElements.wrapNavigation) this.formElements.wrapNavigation.checked = !!it.wrapNavigation;
+            if (this.formElements.showMarkerLabels) this.formElements.showMarkerLabels.checked = it.showMarkerLabels !== false;
+            this.updateInteractionVisibility();
+            this.renderMarkerList();
         },
 
         readFormState: function () {
@@ -670,6 +734,378 @@ var $exeDevice = (function () {
 
             this.formElements.autoRotate.addEventListener('change', () => handleBehaviorChange('autoRotate'));
             this.formElements.showNavControls?.addEventListener('change', () => handleBehaviorChange('showNavControls'));
+
+            this.registerInteractionBehaviours();
+        },
+
+        /**
+         * Wire the Interactions section: enable toggle, guided/labels/wrap
+         * flags, and the "Add marker" placement button. Live-updates both the
+         * persisted state and the preview interaction layer.
+         */
+        registerInteractionBehaviours: function () {
+            const fe = this.formElements;
+            const syncFlag = (key, el, onChange) => {
+                if (!el) return;
+                el.addEventListener('change', () => {
+                    this.state.interaction[key] = !!el.checked;
+                    if (onChange) onChange();
+                    if (this.interactionLayer) this.interactionLayer.setState(this.state.interaction);
+                });
+            };
+            if (fe.interactionsEnable) {
+                fe.interactionsEnable.addEventListener('change', () => {
+                    this.state.interaction.enabled = !!fe.interactionsEnable.checked;
+                    this.updateInteractionVisibility();
+                    this.attachInteractionPreview();
+                });
+            }
+            syncFlag('guidedMode', fe.guidedMode);
+            syncFlag('wrapNavigation', fe.wrapNavigation);
+            syncFlag('showMarkerLabels', fe.showMarkerLabels);
+            if (this.addMarkerButton) {
+                this.addMarkerButton.addEventListener('click', () => this.startMarkerPlacement());
+            }
+        },
+
+        /** Show/hide the interaction body and gate the Add-marker button. */
+        updateInteractionVisibility: function () {
+            const enabled = !!(this.state.interaction && this.state.interaction.enabled);
+            if (this.interactionsBody) this.interactionsBody.hidden = !enabled;
+            if (this.addMarkerButton) this.addMarkerButton.disabled = !this.state.src;
+        },
+
+        /**
+         * (Re)create the preview interaction layer via the shared runtime.
+         * Resolves the correct handle per render path and returns the layer
+         * (or null). Async because the runtime and the STL mesh load lazily.
+         */
+        attachInteractionPreview: async function () {
+            if (this.interactionLayer) {
+                try { this.interactionLayer.destroy(); } catch (_) { /* noop */ }
+                this.interactionLayer = null;
+            }
+            const it = this.state.interaction;
+            if (!it || !it.enabled || !this.state.src) return null;
+            await this.ensureRuntimeLoaded();
+            const runtime = window.eXe3DViewer;
+            if (!runtime || typeof runtime.createInteractionLayer !== 'function') return null;
+            const type = detectType(this.state.src);
+            const hooks = {
+                t: (k) => _(k),
+                onPlaced: (anchor) => this.handleMarkerPlaced(anchor),
+                resolveMediaUrl: (u) => this.getModelViewerUrl(u) || u,
+            };
+            if (type === 'stl') {
+                const inst = await this.waitForStlInstance(3000);
+                if (!inst) return null;
+                inst.interaction = this.interactionLayer = runtime.createInteractionLayer(
+                    { wrapper: this.previewContainer, type: 'stl', instance: inst }, it, 'edit', hooks);
+            } else {
+                this.interactionLayer = runtime.createInteractionLayer(
+                    { wrapper: this.previewContainer, type, modelViewer: this.modelViewer }, it, 'edit', hooks);
+            }
+            return this.interactionLayer;
+        },
+
+        /** Poll the runtime for a booted STL instance with a ready mesh. */
+        waitForStlInstance: function (timeoutMs) {
+            return new Promise((resolve) => {
+                const start = Date.now();
+                const poll = () => {
+                    const inst = window.eXe3DViewer?.getInstance?.(this.previewContainer);
+                    if (inst && inst.mesh) { resolve(inst); return; }
+                    if (Date.now() - start > timeoutMs) { resolve(inst || null); return; }
+                    (window.requestAnimationFrame || ((cb) => setTimeout(cb, 16)))(poll);
+                };
+                poll();
+            });
+        },
+
+        /** Enter marker placement mode; auto-enables interactions if needed. */
+        startMarkerPlacement: async function () {
+            if (!this.state.src) return;
+            if (!this.state.interaction.enabled) {
+                this.state.interaction.enabled = true;
+                if (this.formElements.interactionsEnable) this.formElements.interactionsEnable.checked = true;
+                this.updateInteractionVisibility();
+            }
+            const layer = await this.attachInteractionPreview();
+            if (!layer) return;
+            layer.enterPlacementMode();
+            if (this.placementHint) this.placementHint.hidden = false;
+        },
+
+        /** Called by the layer when the author clicks the model in place mode. */
+        handleMarkerPlaced: function (anchor) {
+            if (this.placementHint) this.placementHint.hidden = true;
+            const idx = this.state.interaction.markers.length;
+            const marker = normalizeMarker({
+                label: '',
+                icon: 'circle',
+                order: idx,
+                anchor: { position: anchor.position, normal: anchor.normal, surface: anchor.surface || '' },
+                camera: anchor.camera || { orbit: '', target: '', fieldOfView: '' },
+                action: { type: 'information', payload: { html: '' } },
+            }, idx);
+            this.state.interaction.markers.push(marker);
+            this.renderMarkerList();
+            if (this.interactionLayer) this.interactionLayer.setState(this.state.interaction);
+            this.openMarkerEditor(marker.id);
+        },
+
+        /** Human-readable action-type label for the marker list. */
+        actionTypeLabel: function (type) {
+            const map = {
+                information: _('Information'), image: _('Image'), video: _('Video'),
+                link: _('Link'), question: _('Question'),
+            };
+            return map[type] || type;
+        },
+
+        /** Render the editable marker list rows (label, reorder, edit, delete). */
+        renderMarkerList: function () {
+            if (!this.markerListEl) return;
+            const markers = (this.state.interaction && this.state.interaction.markers) || [];
+            this.markerListEl.innerHTML = '';
+            markers.forEach((m, i) => {
+                const li = document.createElement('li');
+                li.className = 'tdv-marker-row d-flex align-items-center gap-1 mb-1';
+                li.dataset.markerId = m.id;
+                const name = document.createElement('span');
+                name.className = 'tdv-marker-row-label flex-grow-1';
+                name.textContent = `${i + 1}. ${m.label || _('Marker') + ' ' + (i + 1)} — ${this.actionTypeLabel(m.action.type)}`;
+                li.appendChild(name);
+                const mkBtn = (cls, glyph, title, handler, disabled) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = `btn btn-sm btn-outline-secondary ${cls}`;
+                    b.textContent = glyph;
+                    b.title = title;
+                    b.setAttribute('aria-label', `${title}: ${m.label || _('Marker') + ' ' + (i + 1)}`);
+                    if (disabled) b.disabled = true;
+                    b.addEventListener('click', handler);
+                    return b;
+                };
+                li.appendChild(mkBtn('tdv-move-up', '↑', _('Move up'), () => this.moveMarker(m.id, -1), i === 0));
+                li.appendChild(mkBtn('tdv-move-down', '↓', _('Move down'), () => this.moveMarker(m.id, 1), i === markers.length - 1));
+                li.appendChild(mkBtn('tdv-edit-marker', '✎', _('Edit'), () => this.openMarkerEditor(m.id)));
+                li.appendChild(mkBtn('tdv-delete-marker', '✕', _('Delete'), () => this.deleteMarker(m.id)));
+                this.markerListEl.appendChild(li);
+            });
+        },
+
+        /** Swap a marker with its neighbour and re-index order. */
+        moveMarker: function (id, delta) {
+            const markers = this.state.interaction.markers;
+            const i = markers.findIndex((m) => m.id === id);
+            const j = i + delta;
+            if (i < 0 || j < 0 || j >= markers.length) return;
+            const tmp = markers[i]; markers[i] = markers[j]; markers[j] = tmp;
+            markers.forEach((m, k) => { m.order = k; });
+            this.renderMarkerList();
+            if (this.interactionLayer) this.interactionLayer.setState(this.state.interaction);
+        },
+
+        /** Remove a marker and re-index order. */
+        deleteMarker: function (id) {
+            this.state.interaction.markers = this.state.interaction.markers.filter((m) => m.id !== id);
+            this.state.interaction.markers.forEach((m, k) => { m.order = k; });
+            this.renderMarkerList();
+            if (this.interactionLayer) this.interactionLayer.setState(this.state.interaction);
+            if (this.editingMarkerId === id) this.closeMarkerEditor();
+        },
+
+        /** Open the accessible marker editor panel for a marker. */
+        openMarkerEditor: function (id) {
+            const marker = this.state.interaction.markers.find((m) => m.id === id);
+            if (!marker || !this.markerEditorHost) return;
+            this.editingMarkerId = id;
+            const draft = normalizeMarker(JSON.parse(JSON.stringify(marker)), marker.order);
+            this.markerEditorDraft = draft;
+            const host = this.markerEditorHost;
+            host.innerHTML = `
+                <div class="tdv-marker-editor" role="dialog" aria-modal="false" aria-label="${_('Edit marker')}">
+                    <div class="tdv-marker-editor-head d-flex justify-content-between align-items-center mb-2">
+                        <h3 class="h6 mb-0">${_('Edit marker')}</h3>
+                        <button type="button" class="btn-close" data-close aria-label="${_('Close')}"></button>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="tdvMkLabel">${_('Label')}</label>
+                        <input type="text" class="form-control" id="tdvMkLabel" maxlength="120" />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col">
+                            <label class="form-label" for="tdvMkIcon">${_('Icon')}</label>
+                            <select class="form-select" id="tdvMkIcon"></select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label" for="tdvMkType">${_('Action type')}</label>
+                            <select class="form-select" id="tdvMkType"></select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="tdvMkDesc">${_('Short description')}</label>
+                        <input type="text" class="form-control" id="tdvMkDesc" maxlength="200" />
+                    </div>
+                    <div class="tdv-action-fields mb-2" id="tdvActionFields"></div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-capture-camera>${_('Capture current camera')}</button>
+                        <span class="form-text text-muted mb-0" data-camera-note></span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-delete>${_('Delete marker')}</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-cancel>${_('Cancel')}</button>
+                            <button type="button" class="btn btn-primary btn-sm" data-save>${_('Save marker')}</button>
+                        </div>
+                    </div>
+                </div>`;
+            const iconSel = host.querySelector('#tdvMkIcon');
+            ['circle', 'pin', 'info', 'question', 'star'].forEach((ic) => {
+                const o = document.createElement('option'); o.value = ic; o.textContent = ic; iconSel.appendChild(o);
+            });
+            const typeSel = host.querySelector('#tdvMkType');
+            [['information', _('Information')], ['image', _('Image')], ['video', _('Video')], ['link', _('Link')], ['question', _('Question')]].forEach(([v, l]) => {
+                const o = document.createElement('option'); o.value = v; o.textContent = l; typeSel.appendChild(o);
+            });
+            host.querySelector('#tdvMkLabel').value = draft.label;
+            host.querySelector('#tdvMkDesc').value = draft.description;
+            iconSel.value = draft.icon;
+            typeSel.value = draft.action.type;
+            const cameraNote = host.querySelector('[data-camera-note]');
+            if (draft.camera && (draft.camera.orbit || draft.camera.target)) cameraNote.textContent = _('Camera captured');
+            const renderActionFields = () => this.renderMarkerActionFields(host.querySelector('#tdvActionFields'), draft);
+            renderActionFields();
+            typeSel.addEventListener('change', () => {
+                draft.action = normalizeAction({ type: typeSel.value, payload: {} });
+                iconSel.value = typeSel.value === 'question' ? 'question' : iconSel.value;
+                renderActionFields();
+            });
+            host.querySelector('[data-capture-camera]').addEventListener('click', () => {
+                if (this.interactionLayer) {
+                    draft.camera = this.interactionLayer.captureCamera();
+                    cameraNote.textContent = _('Camera captured');
+                }
+            });
+            host.querySelector('[data-close]').addEventListener('click', () => this.closeMarkerEditor());
+            host.querySelector('[data-cancel]').addEventListener('click', () => this.closeMarkerEditor());
+            host.querySelector('[data-delete]').addEventListener('click', () => this.deleteMarker(id));
+            host.querySelector('[data-save]').addEventListener('click', () => this.saveMarkerEditor());
+            host.querySelector('#tdvMkLabel').focus();
+        },
+
+        /** Render the action-specific fields into the marker editor. */
+        renderMarkerActionFields: function (container, draft) {
+            container.innerHTML = '';
+            const type = draft.action.type;
+            const p = draft.action.payload;
+            const addField = (labelText, input, id) => {
+                const w = document.createElement('div'); w.className = 'mb-2';
+                const lb = document.createElement('label'); lb.className = 'form-label';
+                if (id) { lb.setAttribute('for', id); input.id = id; }
+                lb.textContent = labelText;
+                w.appendChild(lb); w.appendChild(input); container.appendChild(w);
+                return input;
+            };
+            const textInput = (val) => { const i = document.createElement('input'); i.type = 'text'; i.className = 'form-control'; i.value = val || ''; return i; };
+            const textarea = (val) => { const t = document.createElement('textarea'); t.className = 'form-control'; t.rows = 3; t.value = val || ''; return t; };
+            if (type === 'information') {
+                const ta = addField(_('Content (HTML allowed)'), textarea(p.html), 'tdvMkHtml');
+                ta.addEventListener('input', () => { p.html = ta.value; });
+            } else if (type === 'image') {
+                const s = addField(_('Image URL'), textInput(p.src), 'tdvMkImgSrc'); s.addEventListener('input', () => { p.src = s.value; });
+                const a = addField(_('Alternative text'), textInput(p.alt), 'tdvMkImgAlt'); a.addEventListener('input', () => { p.alt = a.value; });
+                const c = addField(_('Caption'), textInput(p.caption), 'tdvMkImgCap'); c.addEventListener('input', () => { p.caption = c.value; });
+            } else if (type === 'video') {
+                const s = addField(_('Video URL'), textInput(p.src), 'tdvMkVidSrc'); s.addEventListener('input', () => { p.src = s.value; });
+                const po = addField(_('Poster URL'), textInput(p.poster), 'tdvMkVidPoster'); po.addEventListener('input', () => { p.poster = po.value; });
+            } else if (type === 'link') {
+                const u = addField(_('Link URL'), textInput(p.url), 'tdvMkLinkUrl'); u.addEventListener('input', () => { p.url = u.value; });
+                const nt = document.createElement('div'); nt.className = 'form-check';
+                const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'form-check-input'; cb.id = 'tdvMkNewTab'; cb.checked = p.newTab !== false;
+                const l = document.createElement('label'); l.className = 'form-check-label'; l.setAttribute('for', 'tdvMkNewTab'); l.textContent = _('Open in a new tab');
+                nt.append(cb, l); container.appendChild(nt);
+                cb.addEventListener('change', () => { p.newTab = cb.checked; });
+            } else if (type === 'question') {
+                this.renderQuestionFields(container, p);
+            }
+        },
+
+        /** Render single-choice question authoring fields. */
+        renderQuestionFields: function (container, p) {
+            const prompt = document.createElement('textarea');
+            prompt.className = 'form-control mb-2'; prompt.rows = 2; prompt.value = p.prompt || '';
+            prompt.setAttribute('aria-label', _('Question prompt')); prompt.placeholder = _('Question prompt');
+            prompt.addEventListener('input', () => { p.prompt = prompt.value; });
+            container.appendChild(prompt);
+            const optsWrap = document.createElement('div'); optsWrap.className = 'tdv-q-options';
+            container.appendChild(optsWrap);
+            const renderOpts = () => {
+                optsWrap.innerHTML = '';
+                p.options.forEach((opt, idx) => {
+                    const row = document.createElement('div'); row.className = 'input-group input-group-sm mb-1';
+                    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'tdvMkCorrect';
+                    radio.className = 'form-check-input mt-2 me-2'; radio.checked = !!opt.correct;
+                    radio.setAttribute('aria-label', `${_('Correct answer')} ${idx + 1}`);
+                    radio.addEventListener('change', () => { p.options.forEach((o) => { o.correct = false; }); opt.correct = true; });
+                    const txt = document.createElement('input'); txt.type = 'text'; txt.className = 'form-control';
+                    txt.value = opt.text || ''; txt.placeholder = `${_('Option')} ${idx + 1}`;
+                    txt.addEventListener('input', () => { opt.text = txt.value; });
+                    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn btn-outline-secondary';
+                    rm.textContent = '✕'; rm.setAttribute('aria-label', `${_('Remove option')} ${idx + 1}`);
+                    rm.disabled = p.options.length <= 2;
+                    rm.addEventListener('click', () => {
+                        p.options = p.options.filter((o) => o !== opt);
+                        if (!p.options.some((o) => o.correct) && p.options[0]) p.options[0].correct = true;
+                        renderOpts();
+                    });
+                    row.append(radio, txt, rm); optsWrap.appendChild(row);
+                });
+            };
+            renderOpts();
+            const addOpt = document.createElement('button'); addOpt.type = 'button';
+            addOpt.className = 'btn btn-outline-secondary btn-sm mb-2'; addOpt.textContent = _('Add option');
+            addOpt.addEventListener('click', () => {
+                if (p.options.length >= 8) return;
+                p.options.push({ id: 'option-' + Math.random().toString(36).slice(2), text: '', correct: false });
+                renderOpts();
+            });
+            container.appendChild(addOpt);
+            const fc = document.createElement('input'); fc.type = 'text'; fc.className = 'form-control mb-2';
+            fc.value = p.feedbackCorrect || ''; fc.placeholder = _('Feedback when correct');
+            fc.addEventListener('input', () => { p.feedbackCorrect = fc.value; }); container.appendChild(fc);
+            const fi = document.createElement('input'); fi.type = 'text'; fi.className = 'form-control mb-2';
+            fi.value = p.feedbackIncorrect || ''; fi.placeholder = _('Feedback when incorrect');
+            fi.addEventListener('input', () => { p.feedbackIncorrect = fi.value; }); container.appendChild(fi);
+            const atWrap = document.createElement('div'); atWrap.className = 'mb-1';
+            const atl = document.createElement('label'); atl.className = 'form-label'; atl.setAttribute('for', 'tdvMkAttempts');
+            atl.textContent = _('Attempts allowed (0 = unlimited)');
+            const at = document.createElement('input'); at.type = 'number'; at.className = 'form-control'; at.id = 'tdvMkAttempts';
+            at.min = '0'; at.max = '20'; at.value = p.attemptsAllowed || 0;
+            at.addEventListener('input', () => { p.attemptsAllowed = parseInt(at.value, 10) || 0; });
+            atWrap.append(atl, at); container.appendChild(atWrap);
+        },
+
+        /** Persist the marker editor draft back into state. */
+        saveMarkerEditor: function () {
+            const draft = this.markerEditorDraft;
+            if (!draft) return;
+            draft.label = this.markerEditorHost.querySelector('#tdvMkLabel').value || '';
+            draft.description = this.markerEditorHost.querySelector('#tdvMkDesc').value || '';
+            draft.icon = this.markerEditorHost.querySelector('#tdvMkIcon').value;
+            const idx = this.state.interaction.markers.findIndex((m) => m.id === this.editingMarkerId);
+            if (idx >= 0) this.state.interaction.markers[idx] = normalizeMarker(draft, idx);
+            this.renderMarkerList();
+            if (this.interactionLayer) this.interactionLayer.setState(this.state.interaction);
+            this.closeMarkerEditor();
+        },
+
+        /** Close and clear the marker editor panel. */
+        closeMarkerEditor: function () {
+            this.editingMarkerId = null;
+            this.markerEditorDraft = null;
+            if (this.markerEditorHost) this.markerEditorHost.innerHTML = '';
         },
 
         updateAutoRotateSpeedState: function () {
@@ -724,6 +1160,9 @@ var $exeDevice = (function () {
                 this.applyAnimationState();
                 this.toggleEmptyState();
                 this.previewRetryCount = 0;
+                // Attach the interaction layer once the model is ready so
+                // hotspots can position against real geometry.
+                this.attachInteractionPreview();
             });
             this.modelViewer.addEventListener('error', () => {
                 if (!this.state?.src) {
@@ -860,6 +1299,9 @@ var $exeDevice = (function () {
             });
 
             this.toggleEmptyState();
+            // Attach the interaction layer once the STL instance mesh is
+            // ready (attachInteractionPreview polls the runtime).
+            this.attachInteractionPreview();
         },
 
         /**
