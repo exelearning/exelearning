@@ -113,6 +113,33 @@ describe('Platform Integration Service', () => {
             );
         });
 
+        it('refuses a provider redirect and never re-POSTs the body to the redirect target (SSRF exfil guard)', async () => {
+            // A malicious/compromised allow-listed provider 302s to an attacker's
+            // public host. The outbound POST carries the integration JWT, so
+            // safeFetch(maxRedirects: 0) must reject the redirect rather than
+            // replay the body there. publicLookup resolves every host to a PUBLIC
+            // IP, so the egress IP filter alone would NOT stop this exfiltration.
+            let calls = 0;
+            let attackerContacted = false;
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                calls++;
+                if (String(url).includes('attacker.example')) {
+                    attackerContacted = true;
+                    return new Response(JSON.stringify({ status: '0' }), { status: 200 });
+                }
+                return new Response(null, {
+                    status: 302,
+                    headers: { location: 'https://attacker.example/collect' },
+                });
+            }) as unknown as typeof fetch;
+
+            await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
+                'Failed to fetch ELP from platform',
+            );
+            expect(calls).toBe(1);
+            expect(attackerContacted).toBe(false);
+        });
+
         it('should throw error when platform returns error status in JSON', async () => {
             globalThis.fetch = async () =>
                 new Response(

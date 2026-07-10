@@ -135,13 +135,18 @@ export async function platformPetitionGet(payload: PlatformJWTPayload, jwtToken:
     formData.append('ode_data', JSON.stringify(postData));
 
     try {
-        // Route through the SSRF guard: redirects are followed manually and every
-        // hop is re-validated against the egress block-list, so an allowed host
-        // cannot 302 the request to an internal address (cloud metadata, loopback,
-        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        // Route through the SSRF guard, and refuse to follow redirects
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
+        // this POST carries the integration JWT (and, for uploads, the full
+        // exported package), so an allow-listed provider that open-redirects to
+        // an attacker's *public* host must NOT have the body replayed there — a
+        // 3xx becomes a clean failure instead. These are POST-to-JSON-API
+        // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
+        // undefined in production (real DNS/fetch).
         const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            maxRedirects: 0,
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });
@@ -294,13 +299,18 @@ export async function platformPetitionSet(
         const formData = new FormData();
         formData.append('ode_data', JSON.stringify(postData));
 
-        // Route through the SSRF guard: redirects are followed manually and every
-        // hop is re-validated against the egress block-list, so an allowed host
-        // cannot 302 the request to an internal address (cloud metadata, loopback,
-        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        // Route through the SSRF guard, and refuse to follow redirects
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
+        // this POST carries the integration JWT (and, for uploads, the full
+        // exported package), so an allow-listed provider that open-redirects to
+        // an attacker's *public* host must NOT have the body replayed there — a
+        // 3xx becomes a clean failure instead. These are POST-to-JSON-API
+        // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
+        // undefined in production (real DNS/fetch).
         const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            maxRedirects: 0,
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });
@@ -418,13 +428,18 @@ export async function platformPetitionSetForward(
         const formData = new FormData();
         formData.append('ode_data', JSON.stringify(postData));
 
-        // Route through the SSRF guard: redirects are followed manually and every
-        // hop is re-validated against the egress block-list, so an allowed host
-        // cannot 302 the request to an internal address (cloud metadata, loopback,
-        // RFC1918). lookupFn/fetchImpl stay undefined in production (real DNS/fetch).
+        // Route through the SSRF guard, and refuse to follow redirects
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
+        // this POST carries the integration JWT (and, for uploads, the full
+        // exported package), so an allow-listed provider that open-redirects to
+        // an attacker's *public* host must NOT have the body replayed there — a
+        // 3xx becomes a clean failure instead. These are POST-to-JSON-API
+        // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
+        // undefined in production (real DNS/fetch).
         const response = await safeFetch(platformUrl, {
             method: 'POST',
             body: formData,
+            maxRedirects: 0,
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });

@@ -95,6 +95,11 @@ All outbound sinks use `safeFetch`.
   host and rejects blocked addresses), and `safeFetch` (manual redirect with
   `redirect: 'manual'`, re-validating each hop up to `maxRedirects`, DI-able
   `lookupFn`/`fetchImpl`).
+- IPv4-mapped IPv6 normalization: `isBlockedAddress` converts a mapped address
+  (`::ffff:1.2.3.4` dotted or `::ffff:hhhh:hhhh` hex) to its dotted IPv4 before
+  the range checks, so the `EXTRA_BLOCKED_V4_CIDRS` controls (which `isIP` gates
+  on v4) also apply to `::ffff:100.64.0.1`, `::ffff:224.0.0.1`, etc. — closing a
+  mapped-address egress bypass.
 - Documented limitation (in the `safeFetch` doc comment): DNS TOCTOU /
   rebinding. `assertUrlAllowed` resolves and checks the host, but the subsequent
   `fetchImpl` resolves DNS again independently; the validated IP is not pinned
@@ -111,8 +116,9 @@ All outbound sinks use `safeFetch`.
   `isSafeReturnUrl` and then `isAllowedProviderUrl` before building the
   integration URL.
 - Outbound sinks routed through the guard:
-  `src/services/platform-integration.ts` (three `safeFetch` calls),
-  `src/services/link-validator.ts` (`safeFetch`).
+  `src/services/platform-integration.ts` (three `safeFetch` calls, each with
+  `maxRedirects: 0` — see Consequences), `src/services/link-validator.ts`
+  (`safeFetch`).
 - IP range helpers: `isPrivateIp` / `isIpInCidr` from `proxy-url.util`.
 - Startup wiring: `src/index.ts` calls `warnIfProviderUrlsMissing()`.
 - Tests: `src/utils/ssrf-guard.spec.ts`, `src/utils/platform-jwt.spec.ts`,
@@ -142,6 +148,12 @@ guarantee.
   requires an explicit `PROVIDER_URLS` allow-list.
 - Parsed-component matching defeats the userinfo and suffix-host bypasses that a
   prefix match allowed.
+- Outbound platform POSTs disable redirect-following (`maxRedirects: 0`), so a
+  compromised or misconfigured allow-listed provider cannot open-redirect the
+  request — which carries the integration JWT and the full exported package — to
+  an attacker-controlled *public* host (the egress IP filter alone does not stop
+  a public→public redirect). `link-validator` (no request body) still follows
+  redirects for reachability checks.
 
 ### Negative
 

@@ -29,6 +29,32 @@ This document describes breaking changes and migration steps between major versi
 
 ---
 
+## Security hardening: platform integration requires a `PROVIDER_URLS` allow-list
+
+**What changed:**
+- `PROVIDER_URLS` moved from optional/permissive to a **required, fail-closed
+  allow-list** for platform integration (Moodle `exescorm`/`exeweb`). When it is
+  empty, **every** platform-integration callback is now rejected — previously an
+  empty value allowed any `returnurl` host, which was an SSRF fail-open.
+- The allow-list is matched on the parsed **protocol + host + port** and, when an
+  entry includes a path, a `/`-boundary **base-path** prefix (so `/moodle` does
+  not also match `/moodleXX`). Embedded credentials (`user:pass@host`) are
+  rejected. A one-time startup warning (`warnIfProviderUrlsMissing`) flags a
+  deployment that sets `PROVIDER_IDS`/`PROVIDER_TOKENS` but leaves `PROVIDER_URLS`
+  empty.
+
+**Impact / action required:**
+- Deployments that use platform integration must set an explicit allow-list, e.g.:
+
+  ```env
+  PROVIDER_URLS=https://moodle.example.org
+  ```
+
+  List several origins comma-separated if needed. Deployments that do not use
+  platform integration need no action.
+
+---
+
 ## Upgrading from 3.x to 4.x
 
 ### Breaking Change: Docker container user

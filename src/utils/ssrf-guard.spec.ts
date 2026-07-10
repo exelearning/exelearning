@@ -33,10 +33,30 @@ describe('ssrf-guard', () => {
             expect(isBlockedAddress('240.0.0.1')).toBe(true);
         });
 
+        it('blocks IPv4-mapped IPv6 forms of the extra (non-RFC1918) ranges', () => {
+            // Node's isIP() reports these as v6, so without mapped-address
+            // normalization the EXTRA_BLOCKED_V4_CIDRS loop is skipped and an
+            // attacker can reach CGNAT / this-host / multicast / reserved /
+            // benchmarking via ::ffff: notation (SSRF egress bypass).
+            expect(isBlockedAddress('::ffff:100.64.0.1')).toBe(true); // CGNAT
+            expect(isBlockedAddress('::ffff:0.0.0.0')).toBe(true); // "this host"
+            expect(isBlockedAddress('::ffff:224.0.0.1')).toBe(true); // multicast
+            expect(isBlockedAddress('::ffff:240.0.0.1')).toBe(true); // reserved
+            expect(isBlockedAddress('::ffff:198.18.0.1')).toBe(true); // benchmarking
+            // Hex form of the same mapped address (::ffff:6440:0001 == 100.64.0.1).
+            expect(isBlockedAddress('::ffff:6440:1')).toBe(true);
+        });
+
         it('allows public addresses', () => {
             expect(isBlockedAddress('8.8.8.8')).toBe(false);
             expect(isBlockedAddress('93.184.216.34')).toBe(false);
             expect(isBlockedAddress('2606:2800:220:1:248:1893:25c8:1946')).toBe(false);
+            // A mapped public address must still be allowed (no over-blocking).
+            expect(isBlockedAddress('::ffff:8.8.8.8')).toBe(false);
+            // A `::ffff:` prefix whose tail is neither dotted IPv4 nor 2-group
+            // hex is not a mapped address; it falls through to the normal path
+            // (unresolvable → not a blocked v4 range).
+            expect(isBlockedAddress('::ffff:not-an-ip')).toBe(false);
         });
 
         it('treats empty input as blocked', () => {
@@ -129,6 +149,31 @@ describe('ssrf-guard', () => {
             await expect(
                 safeFetch('https://loop.example/', { lookupFn: lookupTo('93.184.216.34'), fetchImpl, maxRedirects: 2 }),
             ).rejects.toBeInstanceOf(SsrfBlockedError);
+        });
+
+        it('refuses to follow any redirect when maxRedirects is 0 (no body re-POST)', async () => {
+            // Sensitive POSTs (platform integration carries the JWT + full
+            // package) pass maxRedirects: 0 so a provider open-redirect throws
+            // instead of replaying the body to the redirect target.
+            let calls = 0;
+            const fetchImpl = (async (url: string) => {
+                calls++;
+                if (String(url) === 'https://provider.example/') {
+                    return res(302, 'https://attacker.example/collect');
+                }
+                return res(200);
+            }) as unknown as typeof fetch;
+            await expect(
+                safeFetch('https://provider.example/', {
+                    method: 'POST',
+                    body: 'secret',
+                    lookupFn: lookupTo('93.184.216.34'),
+                    fetchImpl,
+                    maxRedirects: 0,
+                }),
+            ).rejects.toBeInstanceOf(SsrfBlockedError);
+            // The redirect target must never be contacted.
+            expect(calls).toBe(1);
         });
     });
 });
