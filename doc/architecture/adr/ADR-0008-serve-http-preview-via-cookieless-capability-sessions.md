@@ -13,7 +13,7 @@ related:
   sdds: [SDD-0002]
   adrs: [ADR-0006, ADR-0007, ADR-0009, ADR-0011]
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-0013]
 ai_assistance:
   tool: "Claude Code"
   model: "claude-opus-4-8"
@@ -23,7 +23,10 @@ ai_assistance:
 
 ## Status
 
-Proposed
+Superseded by [ADR-0013](ADR-0013-sync-http-preview-as-layered-resources-with-atomic-incremental-revisions.md),
+which keeps the cookieless capability-URL session model and replaces the
+content-addressed manifest protocol with layered resources and atomic
+incremental revisions.
 
 ## Context
 
