@@ -42,6 +42,14 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
         await expect
             .poll(async () => page.locator('.exe-embed-overlay iframe[src*="vimeo"]').count(), { timeout: 25000 })
             .toBeGreaterThan(0);
+        // The PDF is a SAME-ORIGIN package resource (bundled as content/resources/dummy.pdf),
+        // not an external URL. An arbitrary cross-origin PDF cannot be rendered by any
+        // client-side path when its host forbids both framing and CORS (e.g. w3.org sends
+        // `Content-Security-Policy: frame-ancestors 'self'` and no `Access-Control-Allow-Origin`):
+        // the framed player is blocked and the relay's same-origin load guard drops it — this is
+        // the relay's documented best-effort caveat for cross-origin PDFs, and it fails on Firefox
+        // (blocked-frame document is same-origin-readable). Package PDFs are the relay's common
+        // case and render deterministically on every browser. Do not swap this back to a remote URL.
         await expect
             .poll(async () => page.locator('.exe-embed-overlay iframe[src*="pdf"]').count(), { timeout: 25000 })
             .toBeGreaterThan(0);
