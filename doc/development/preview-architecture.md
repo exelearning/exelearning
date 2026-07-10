@@ -58,25 +58,48 @@ surfaces an error instead of silently downgrading to a same-origin preview.
 | Electron | `ServiceWorkerPreviewProvider` (interim) | no | Renderer is `app://localhost` with `contextIsolation`, not LMS-exposed. A future `ElectronPreviewProvider` will serve `app://localhost/preview/{id}/*`. |
 | Explicit override | `embeddingConfig.previewTransport` = `http` \| `srcdoc` \| `legacy-sw` | — | Escape hatch for hosts; `legacy-sw` restores the old same-origin SW preview. |
 
-### HTTP transport — same-origin ephemeral sessions
+### HTTP transport — same-origin ephemeral sessions (protocol v2)
 
-- Authenticated API (`/api/preview-session`): create a session, sync a content
-  manifest (`{path → {sha256, size}}`), upload only the blobs the server is
-  missing, delete on `pagehide`. The content-addressed store means the
-  debounced auto-refresh re-uploads only the edited page (KBs), not the whole
-  theme+libs bundle.
+- The preview is split into **three layers with different lifecycles**
+  ([ADR-0013](../architecture/adr/ADR-0013-sync-http-preview-as-layered-resources-with-atomic-incremental-revisions.md),
+  [preview-serving-contract.md](preview-serving-contract.md)):
+  **fixed installation resources** (official libraries, base themes, base
+  iDevice runtimes, PDF.js) are never uploaded — the serving route resolves
+  them through a build-generated manifest (`preview-fixed-resources.json`) via
+  the revision's `fixedRefs` map; **project assets** upload once per session
+  under an immutable `{assetId}@{hashPrefix}` key taken from the asset
+  metadata the Yjs model already stores (no per-refresh hashing); **generated
+  documents** (page HTML, generated CSS/JS, user themes) are published as
+  atomic incremental revisions (`baseRevision`/`nextRevision`/`writes`/
+  `deletes`) — a text edit transfers roughly the changed page, nothing else.
+- Authenticated API (`/api/preview-session`): create a session
+  (`protocolVersion: 2`), `POST …/assets` (once per new asset key),
+  `POST …/revisions` (delta + full `assetRefs`/`fixedRefs` maps), delete on
+  `pagehide`. Revision conflicts return `409` and the client recovers with a
+  document-layer snapshot — assets are never re-uploaded.
 - Authless serving (`/preview/{previewId}/*`): capability URL (server-minted
-  `crypto.randomUUID()`, idle TTL). Every response carries
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
-  `Cache-Control: no-store`, a `Permissions-Policy` deny-list, and
-  `Access-Control-Allow-Origin: *` (opaque frames make CORS-mode requests with
-  `Origin: null` — the route is already authless/cookieless, so this adds no
-  exposure). HTML responses additionally get
+  `crypto.randomUUID()`, idle TTL) resolving
+  `documents → session assets → manifest-gated fixed files → 404` against the
+  active revision only. Every response carries
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, a
+  `Permissions-Policy` deny-list, and `Access-Control-Allow-Origin: *` (opaque
+  frames make CORS-mode requests with `Origin: null` — the route is already
+  authless/cookieless, so this adds no exposure). `Cache-Control` is tiered:
+  documents `no-store`, assets `no-cache` + `ETag` (with `304` revalidation
+  and `Range` support for media seeking), fixed resources
+  `private, max-age=31536000`. Scriptable responses (HTML, SVG, XML, XHTML)
+  additionally get
   `Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms; …`
   so the document stays opaque even if the capability URL is opened directly.
+- Client-side, refreshes are incremental: Yjs change events are classified
+  (page-content vs structure vs theme vs metadata vs assets) into a dirty
+  scope, only invalidated documents are regenerated (byte-diffed against the
+  previous revision before upload), and the refresh queue is single-flight
+  with coalescing — an edit landing mid-refresh marks a pending rerun instead
+  of being dropped.
 - Sessions are process-local and die on restart; the client transparently
-  recreates a session on any `404`. Under a future multi-instance deployment
-  this requires sticky sessions.
+  recreates a session on any `404` (clearing its uploaded-asset bookkeeping).
+  Under a future multi-instance deployment this requires sticky sessions.
 - The sandbox tokens and CSP live in `src/shared/security/previewSandbox.ts`
   (re-exported into the browser bundle so the iframe attribute and the response
   header never drift). PR #1425 (public viewer) should refactor its
@@ -142,10 +165,11 @@ drift-checked across every host by the `serving-contract` kind in
 
 The Service Worker injected external-link/PDF/navigation scripts at serve time.
 Opaque transports have no Service Worker, so `previewContentDecorators.js`
-bakes the equivalents into the HTML client-side — for HTTP **before** hashing
-(so served bytes match the manifest), for srcdoc at render time (the page path
-is baked per page). The shared `Html5Exporter.generateForPreview` output is
-left untouched, so real exports never carry preview-only scripts.
+bakes the equivalents into the HTML client-side — for HTTP **before** the
+upload diff (decoration only runs for regenerated documents; decorated bytes
+are what the delta compares and the session serves), for srcdoc at render time
+(the page path is baked per page). The shared exporter output is left
+untouched, so real exports never carry preview-only scripts.
 
 ## postMessage contract
 
