@@ -101,16 +101,19 @@
                     position: relative;
                     margin-right: 6px;
 
+                    // Same geometry as the collaborative status dot below
+                    // (14px at bottom:3/left:5) so the marker looks identical
+                    // whether it is the manual "unsaved" dot or the collab dot.
                     &.unsaved:before {
                         content: "";
                         display: block;
-                        width: 10px;
-                        height: 10px;
+                        width: 14px;
+                        height: 14px;
                         background: var(--system-red);
                         position: absolute;
                         border-radius: 50%;
-                        bottom: 5px;
-                        left: 7px;
+                        bottom: 3px;
+                        left: 5px;
                         border: 2px solid #fff;
                     }
                     // While a collaborative autosave status dot is showing it
