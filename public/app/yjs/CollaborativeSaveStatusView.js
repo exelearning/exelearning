@@ -54,6 +54,11 @@ const PHASE_BADGES = {
     failed: { glyph: 'priority_high', busy: false },
 };
 
+// A save can complete in a fraction of a second, so the 'saving' state would
+// otherwise flash by unseen. Keep it on screen for at least this long before a
+// following 'clean'/'pending' is shown, so the "saving" feedback is perceptible.
+const DEFAULT_MIN_SAVING_VISIBLE_MS = 600;
+
 class CollaborativeSaveStatusView {
     /**
      * @param {Object} [deps] - Injectable dependencies (all optional; sensible
@@ -82,17 +87,61 @@ class CollaborativeSaveStatusView {
         // recovery ('clean').
         this._failureToastShown = false;
         this._failureToast = null;
+
+        // Minimum on-screen time for the 'saving' state (see the constant).
+        // Injectable so tests can disable the deferral.
+        this._minSavingVisibleMs =
+            deps.minSavingVisibleMs != null ? deps.minSavingVisibleMs : DEFAULT_MIN_SAVING_VISIBLE_MS;
+        this._savingSince = null;
+        this._savingHoldTimer = null;
     }
 
     /**
      * Render a collaborative autosave phase across every surface.
+     *
+     * A 'clean' or 'pending' arriving very soon after 'saving' is briefly
+     * deferred so the "saving" feedback stays visible for a minimum time; a
+     * 'failed' is never deferred so the warning is prompt.
      * @param {('clean'|'pending'|'saving'|'failed'|string)} phase
      */
     setPhase(phase) {
+        if (this._savingHoldTimer) {
+            clearTimeout(this._savingHoldTimer);
+            this._savingHoldTimer = null;
+        }
+
+        const deferrable = phase === 'clean' || phase === 'pending';
+        if (deferrable && this._savingSince != null) {
+            const remaining = this._minSavingVisibleMs - (this._now() - this._savingSince);
+            if (remaining > 0) {
+                this._savingHoldTimer = setTimeout(() => {
+                    this._savingHoldTimer = null;
+                    this._savingSince = null;
+                    this._applyPhase(phase);
+                }, remaining);
+                return;
+            }
+        }
+
+        this._savingSince = phase === 'saving' ? this._now() : null;
+        this._applyPhase(phase);
+    }
+
+    /**
+     * Apply a phase to every surface immediately (no deferral).
+     * @param {string} phase
+     * @private
+     */
+    _applyPhase(phase) {
         const badge = PHASE_BADGES[phase];
         this._renderLiveRegion(phase);
         this._renderBadge(phase, badge);
         this._handleToast(phase);
+    }
+
+    /** @returns {number} @private */
+    _now() {
+        return Date.now();
     }
 
     /**
@@ -101,6 +150,11 @@ class CollaborativeSaveStatusView {
      * leaves a sticky badge or alert behind.
      */
     destroy() {
+        if (this._savingHoldTimer) {
+            clearTimeout(this._savingHoldTimer);
+            this._savingHoldTimer = null;
+        }
+        this._savingSince = null;
         this._renderBadge(null, undefined);
         this._clearLiveRegion();
         this._dismissFailureToast();

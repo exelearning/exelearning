@@ -44,6 +44,9 @@ function makeView(opts = {}) {
         document,
         translate: (source) => source,
         getToastManager: () => ({ createToast }),
+        // Disable the "saving" minimum-visibility deferral by default so phase
+        // changes apply synchronously; the hold is exercised in its own suite.
+        minSavingVisibleMs: 0,
         ...opts,
     });
     return { view, createToast, remove };
@@ -156,6 +159,67 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
 
             view.setPhase('bogus'); // unknown/reset
             expect(getButton().classList.contains('collab-autosave-active')).toBe(false);
+        });
+    });
+
+    describe('minimum "saving" visibility', () => {
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('defers a fast clean so the saving state stays visible for the minimum time', () => {
+            vi.useFakeTimers();
+            const { view } = makeView({ minSavingVisibleMs: 600 });
+            view.setPhase('saving');
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('saving');
+
+            view.setPhase('clean'); // arrives immediately after saving
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('saving'); // deferred
+
+            vi.advanceTimersByTime(600);
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('clean');
+        });
+
+        it('does not defer clean once the minimum time has already elapsed', () => {
+            vi.useFakeTimers();
+            const { view } = makeView({ minSavingVisibleMs: 600 });
+            view.setPhase('saving');
+            vi.advanceTimersByTime(700); // saving already shown long enough
+            view.setPhase('clean');
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('clean');
+        });
+
+        it('never defers a failure — shows it promptly with its toast', () => {
+            vi.useFakeTimers();
+            const { view, createToast } = makeView({ minSavingVisibleMs: 600 });
+            view.setPhase('saving');
+            view.setPhase('failed');
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('failed');
+            expect(createToast).toHaveBeenCalledTimes(1);
+        });
+
+        it('cancels a deferred transition when a new phase arrives during the hold', () => {
+            vi.useFakeTimers();
+            const { view } = makeView({ minSavingVisibleMs: 600 });
+            view.setPhase('saving');
+            view.setPhase('clean'); // deferred (hold timer pending)
+            view.setPhase('saving'); // cancels the pending hold, re-applies saving
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('saving');
+
+            vi.advanceTimersByTime(600);
+            // The earlier deferred 'clean' was cancelled and must not fire.
+            expect(getBadge().getAttribute('data-collab-phase')).toBe('saving');
+        });
+
+        it('cancels a pending saving-hold timer on destroy', () => {
+            vi.useFakeTimers();
+            const { view } = makeView({ minSavingVisibleMs: 600 });
+            view.setPhase('saving');
+            view.setPhase('clean'); // deferred
+            view.destroy();
+            vi.advanceTimersByTime(1000);
+            // destroy reset the badge; the deferred clean must not resurrect it.
+            expect(getBadge().classList.contains('d-none')).toBe(true);
         });
     });
 
