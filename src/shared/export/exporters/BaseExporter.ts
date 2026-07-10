@@ -535,9 +535,7 @@ export abstract class BaseExporter {
                 if (this.zip.hasFile(zipPath)) {
                     return;
                 }
-                const data = await this.resolveAssetExportData(asset);
-                this.zip.addFile(zipPath, data);
-                if (trackingList) trackingList.push(zipPath);
+                await this.writeAssetToZip(zipPath, asset, trackingList);
                 assetsAdded++;
             };
 
@@ -624,12 +622,24 @@ export abstract class BaseExporter {
         return normalizedFilename.endsWith('.srt') || BaseExporter.SRT_MIME_TYPES.has(normalizedMime);
     }
 
-    /** Decode asset binary data (Uint8Array or Blob) to a UTF-8 string. */
+    /**
+     * Decode asset binary data (Uint8Array or Blob) to text. Subtitle files
+     * are usually UTF-8, but `.srt` files in the wild are very frequently
+     * Windows-1252/Latin-1 (accented characters). A non-fatal UTF-8 decode
+     * would silently replace every high byte with U+FFFD, so we decode UTF-8
+     * strictly first and fall back to Windows-1252 when that fails -- keeping
+     * accented captions readable instead of garbled.
+     */
     protected async readAssetDataAsText(data: Uint8Array | Blob): Promise<string> {
-        if (typeof Blob !== 'undefined' && data instanceof Blob) {
-            return data.text();
+        const bytes =
+            typeof Blob !== 'undefined' && data instanceof Blob
+                ? new Uint8Array(await data.arrayBuffer())
+                : (data as Uint8Array);
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch {
+            return new TextDecoder('windows-1252').decode(bytes);
         }
-        return new TextDecoder('utf-8').decode(data as Uint8Array);
     }
 
     /**
@@ -653,12 +663,61 @@ export abstract class BaseExporter {
         }
         try {
             const text = await this.readAssetDataAsText(asset.data);
-            const { vtt } = convertSrtToVtt(text);
+            const { vtt, error } = convertSrtToVtt(text);
+            if (error) {
+                // The document is still valid (empty) WebVTT, but surface why no
+                // cues were produced -- silent export degradation is a known
+                // anti-pattern in this codebase.
+                console.warn(
+                    `[BaseExporter] SRT->WebVTT conversion produced no cues for subtitle asset "${asset.filename ?? ''}": ${error}`,
+                );
+            }
             return vtt;
         } catch (e) {
             console.warn('[BaseExporter] Failed to convert .srt subtitle asset to WebVTT:', e);
-            return asset.data;
+            // The export path was already renamed .srt -> .vtt, so we must NOT
+            // fall back to the raw SubRip bytes (that would ship a .vtt file
+            // full of SRT text -> zero cues). Degrade to a valid, empty WebVTT
+            // document instead.
+            return 'WEBVTT\n';
         }
+    }
+
+    /**
+     * Write a single asset into the export ZIP at `zipPath`, applying the
+     * shared `.srt` -> WebVTT subtitle conversion via
+     * {@link resolveAssetExportData}.
+     *
+     * ALL exporters (full, filtered page/branch, component, EPUB) must route
+     * their ZIP asset writes through here. {@link buildAssetExportPathMap}
+     * renames `.srt` -> `.vtt` globally, so any writer that bypasses this and
+     * stores the raw asset bytes would emit a `.vtt` file containing SubRip
+     * text -- zero cues, i.e. the exact issue #2034 bug, on that surface.
+     * Single source of truth (AGENTS.md).
+     */
+    protected async writeAssetToZip(
+        zipPath: string,
+        asset: ExportAsset,
+        trackingList?: string[] | null,
+    ): Promise<void> {
+        const data = await this.resolveAssetExportData(asset);
+        this.zip.addFile(zipPath, data);
+        if (trackingList) trackingList.push(zipPath);
+    }
+
+    /**
+     * Force a `.vtt` extension on a subtitle asset's export filename. SRT
+     * assets are always emitted as WebVTT (see {@link resolveAssetExportData}),
+     * and this keeps the ZIP entry name and every `<track src>` reference in
+     * sync even when the asset arrived with a non-canonical MIME (e.g.
+     * `text/srt`) or without a `.srt` extension at all. Already-`.vtt` names
+     * pass through unchanged.
+     */
+    protected toWebVttExportFilename(filename: string): string {
+        if (/\.vtt$/i.test(filename)) return filename;
+        if (/\.srt$/i.test(filename)) return filename.replace(/\.srt$/i, '.vtt');
+        // Detected as SRT by MIME only, with no usable extension: append .vtt.
+        return `${filename}.vtt`;
     }
 
     /**
@@ -749,7 +808,7 @@ export abstract class BaseExporter {
                 // from this same map (addAssetsToZipWithResourcePath /
                 // addFilenamesToAssetUrls / Html5Exporter.addAssetsToPreviewFiles).
                 if (this.isSrtSubtitleAsset(filename, item.mime)) {
-                    filename = filename.replace(/\.srt$/i, '.vtt');
+                    filename = this.toWebVttExportFilename(filename);
                 }
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
@@ -873,8 +932,14 @@ export abstract class BaseExporter {
                 return `{{context_path}}/content/resources/${filenameExportPath}`;
             }
 
-            // Unresolved: use the asset path as-is
-            return `{{context_path}}/content/resources/${assetPath}`;
+            // Unresolved: use the asset path as-is. A legacy filename-form
+            // `.srt` subtitle reference must still point at the `.vtt` name the
+            // asset map writes (buildAssetExportPathMap always renames), or the
+            // <track src> would 404 -- see issue #2034.
+            const asIs = this.isSrtSubtitleAsset(assetPath, undefined)
+                ? this.toWebVttExportFilename(assetPath)
+                : assetPath;
+            return `{{context_path}}/content/resources/${asIs}`;
         });
 
         // Fix duplicated filename patterns in existing content

@@ -146,13 +146,14 @@ async function insertVideoWithSrtSubtitle(page: Page): Promise<void> {
     await saveIdeviceBtn.waitFor({ state: 'visible', timeout: 10000 });
     await saveIdeviceBtn.click();
 
-    // The iDevice must leave edition mode with a <video> element saved. Note:
-    // the workarea's inline "view mode" rendering (ideviceNode.js
-    // exportHtmlView() / simplifyMediaElements()) is a separate code path
-    // from the Preview panel / export pipeline and is not what this test
-    // targets -- it may legitimately drop the <track> child there (a
-    // secondary, cosmetic issue). The Preview panel and export ZIPs below are
-    // what must carry a working subtitle track.
+    // The iDevice must leave edition mode with a <video> element saved. The
+    // workarea's inline "view mode" rendering (ideviceNode.js exportHtmlView():
+    // addMediaTypes -> simplifyMediaElements -> resolveAssetUrls) is a separate
+    // code path from the Preview panel / export pipeline, but it too must carry
+    // a working subtitle track now: simplifyMediaElements preserves the <track>
+    // and AssetManager serves the .srt display blob as WebVTT (issue #2034).
+    // The dedicated edition-view test below asserts that; the Preview panel and
+    // export ZIPs are covered by the other tests.
     await page.waitForFunction(
         () => {
             const idevice = document.querySelector('#node-content article .idevice_node.text');
@@ -279,6 +280,54 @@ test.describe('Text iDevice video subtitles (issue #2034)', () => {
         });
 
         expect(cue).toBeTruthy();
+        expect(cue?.text).toContain(EXPECTED_CUE_TEXT);
+        expect(cue?.startTime).toBeCloseTo(CUE_START_SECONDS, 1);
+        expect(cue?.endTime).toBeCloseTo(CUE_END_SECONDS, 1);
+    });
+
+    test('renders subtitle cues in the workarea edition view (native <track>, issue #2034)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Text Video Subtitles Edition Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await insertVideoWithSrtSubtitle(page);
+
+        // The workarea inline view renders the iDevice via ideviceNode.exportHtmlView()
+        // (addMediaTypes -> simplifyMediaElements -> resolveAssetUrls). The <track>
+        // must survive simplification AND resolve to a WebVTT blob: URL -- AssetManager
+        // converts the raw .srt display blob to WebVTT on the fly (issue #2034) -- so
+        // the browser's native track engine produces cues in edition mode, not only in
+        // Preview/exports.
+        const video = page.locator('#node-content article .idevice_node.text video').first();
+        await expect(video).toBeVisible({ timeout: 15000 });
+
+        const track = page.locator('#node-content article .idevice_node.text video track').first();
+        await expect(track).toBeAttached({ timeout: 10000 });
+
+        const trackSrc = await track.getAttribute('src');
+        expect(trackSrc, `edition-mode <track src> "${trackSrc}" must be a blob: URL`).toMatch(/^blob:/);
+
+        const cue = await video.evaluate(async (el: HTMLVideoElement) => {
+            const tt = el.textTracks[0];
+            if (!tt) return null;
+            tt.mode = 'showing';
+
+            const deadline = Date.now() + 10000;
+            while ((!tt.cues || tt.cues.length === 0) && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            if (!tt.cues || tt.cues.length === 0) return null;
+            const first = tt.cues[0] as VTTCue;
+            return { text: first.text, startTime: first.startTime, endTime: first.endTime };
+        });
+
+        expect(cue, 'native <track> must parse the converted WebVTT into cues in edition mode').toBeTruthy();
         expect(cue?.text).toContain(EXPECTED_CUE_TEXT);
         expect(cue?.startTime).toBeCloseTo(CUE_START_SECONDS, 1);
         expect(cue?.endTime).toBeCloseTo(CUE_END_SECONDS, 1);

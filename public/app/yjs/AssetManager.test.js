@@ -1482,6 +1482,99 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('subtitle SRT -> WebVTT for edition-mode display (issue #2034)', () => {
+    const SRT_TEXT = '1\n00:00:02,360 --> 00:00:05,760\nHola mundo\n';
+
+    describe('window.convertSrtToVtt / window.isWebVtt', () => {
+      it('detects an existing WEBVTT header', () => {
+        expect(window.isWebVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nx')).toBe(true);
+        expect(window.isWebVtt('1\n00:00:01,000 --> 00:00:02,000\nx')).toBe(false);
+        expect(window.isWebVtt('')).toBe(false);
+      });
+
+      it('converts SRT cues to WebVTT (comma -> dot decimals, adds header)', () => {
+        const { vtt, converted } = window.convertSrtToVtt(SRT_TEXT);
+        expect(converted).toBe(true);
+        expect(vtt.startsWith('WEBVTT')).toBe(true);
+        expect(vtt).toContain('00:00:02.360 --> 00:00:05.760');
+        expect(vtt).toContain('Hola mundo');
+        expect(vtt).not.toContain(',360');
+      });
+
+      it('passes through already-valid WebVTT unchanged', () => {
+        const already = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi\n';
+        const { vtt, converted } = window.convertSrtToVtt(already);
+        expect(converted).toBe(false);
+        expect(vtt).toBe(already);
+      });
+
+      it('degrades to a valid empty WebVTT document for unparseable input', () => {
+        const { vtt, error } = window.convertSrtToVtt('not a subtitle at all');
+        expect(vtt).toBe('WEBVTT\n');
+        expect(error).toBeTruthy();
+      });
+    });
+
+    describe('_isSrtSubtitleAsset', () => {
+      it('detects .srt by filename and by MIME, and ignores non-subtitles', () => {
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'application/x-subrip' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'text/srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.vtt', mime: 'text/vtt' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.png', mime: 'image/png' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset(null)).toBe(false);
+      });
+    });
+
+    describe('_displayBlobURLForAsset', () => {
+      it('serves a .srt asset as a text/vtt blob (converted) without mutating the stored blob', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        const asset = { id: 'a1', filename: 'subs.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+
+        expect(served).toBeInstanceOf(Blob);
+        expect(served.type).toBe('text/vtt');
+        const text = await served.text();
+        expect(text.startsWith('WEBVTT')).toBe(true);
+        expect(text).toContain('Hola mundo');
+
+        // The stored asset must stay the raw .srt (round-trips to server / export
+        // pipeline runs its own conversion) -- only the display blob is converted.
+        expect(asset.blob).toBe(srtBlob);
+        expect(await asset.blob.text()).toContain(',360');
+      });
+
+      it('serves a non-subtitle asset as its original blob (no conversion)', async () => {
+        const imgBlob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+        const asset = { id: 'a2', filename: 'p.png', mime: 'image/png', blob: imgBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        expect(mockObjectURLs.get(url)).toBe(imgBlob);
+      });
+    });
+
+    describe('resolveAssetURL', () => {
+      it('caches a text/vtt blob URL for a .srt asset (native <track> shows cues)', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+          id: 'srt-1',
+          filename: 'subs.srt',
+          mime: 'application/x-subrip',
+          blob: srtBlob,
+        });
+
+        const url = await assetManager.resolveAssetURL('asset://srt-1');
+        const served = mockObjectURLs.get(url);
+
+        expect(served.type).toBe('text/vtt');
+        expect((await served.text()).startsWith('WEBVTT')).toBe(true);
+        expect(assetManager.blobURLCache.get('srt-1')).toBe(url);
+      });
+    });
+  });
+
   describe('generatePlaceholder', () => {
     it('generates loading placeholder with animated spinner', () => {
       const placeholder = assetManager.generatePlaceholder('Loading...', 'loading');

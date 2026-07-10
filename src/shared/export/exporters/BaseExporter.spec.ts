@@ -2002,6 +2002,67 @@ describe('BaseExporter', () => {
             expect(writtenText).toContain('subtítulos');
         });
 
+        it('toWebVttExportFilename forces a .vtt extension across all input shapes', () => {
+            const toVtt = (name: string) =>
+                (exporter as unknown as { toWebVttExportFilename(n: string): string }).toWebVttExportFilename(name);
+            expect(toVtt('subs.srt')).toBe('subs.vtt'); // .srt -> .vtt
+            expect(toVtt('subs.vtt')).toBe('subs.vtt'); // already .vtt, unchanged
+            expect(toVtt('asset-noext')).toBe('asset-noext.vtt'); // MIME-detected, no extension -> append
+        });
+
+        it('keeps a legacy filename-form <track src="asset://name.srt"> reference pointing at the .vtt name', async () => {
+            // Filename-form reference (not a 36-char UUID) with no matching asset in
+            // the map -> the "use as-is" fallback. buildAssetExportPathMap always
+            // renames .srt -> .vtt, so the reference must be rewritten too or the
+            // <track src> 404s (issue #2034, /review finding).
+            const html = '<video controls><track kind="subtitles" src="asset://orphan-subtitle.srt" /></video>';
+
+            const result = await exporter.addFilenamesToAssetUrls(html);
+
+            expect(result).toContain('content/resources/orphan-subtitle.vtt');
+            expect(result).not.toContain('orphan-subtitle.srt');
+        });
+
+        it('decodes a Windows-1252/Latin-1 encoded .srt so accented captions survive (not U+FFFD)', async () => {
+            // Same text as the UTF-8 fixture, but encoded as Windows-1252 (latin1
+            // shares byte values for these accents). A non-fatal UTF-8 decode would
+            // turn every accented byte into the replacement character.
+            const win1252Srt = Buffer.from(
+                '1\n00:00:02,360 --> 00:00:05,760\nEste es un vídeo de prueba para\nprobar los subtítulos en EXeLearning.\n',
+                'latin1',
+            );
+            assets.addAsset(
+                '66666666-6666-6666-6666-666666666666',
+                'latin1-subtitle.srt',
+                'application/x-subrip',
+                win1252Srt,
+            );
+
+            await exporter.addAssetsToZipWithResourcePath();
+
+            const written = zip.files.get('content/resources/latin1-subtitle.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).toContain('vídeo');
+            expect(writtenText).toContain('subtítulos');
+            expect(writtenText).not.toContain('�');
+        });
+
+        it('renames and converts a subtitle detected by a non-canonical MIME (text/srt) even without a .srt extension', async () => {
+            assets.addAsset('77777777-7777-7777-7777-777777777777', 'asset-noext', 'text/srt', srtBytes);
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            const exportPath = pathMap.get('77777777-7777-7777-7777-777777777777');
+            expect(exportPath?.endsWith('.vtt')).toBe(true);
+
+            await exporter.addAssetsToZipWithResourcePath();
+            const written = zip.files.get(`content/resources/${exportPath}`);
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).not.toMatch(/\d{2}:\d{2}:\d{2},\d{3}/);
+        });
+
         it('leaves an already-.vtt subtitle asset untouched (no double conversion, no .srt path)', async () => {
             const vttBytes = Buffer.from('WEBVTT\n\n00:00:02.360 --> 00:00:05.760\nAlready valid VTT\n', 'utf-8');
             assets.addAsset('44444444-4444-4444-4444-444444444444', 'already-valid.vtt', 'text/vtt', vttBytes);
@@ -2016,7 +2077,7 @@ describe('BaseExporter', () => {
             expect(writtenText).toContain('Already valid VTT');
         });
 
-        it('falls back to the original asset bytes without throwing when the .srt asset data cannot be decoded as text', async () => {
+        it('degrades to a valid empty WebVTT document (never raw .srt bytes) when the .srt asset data cannot be decoded as text', async () => {
             // Not a real Buffer/TypedArray -- TextDecoder.decode() throws on this,
             // exercising resolveAssetExportData's catch-and-fall-back branch.
             const undecodable = {} as unknown as Buffer;
@@ -2031,11 +2092,13 @@ describe('BaseExporter', () => {
             // didn't swallow the decode error, this await would reject and fail the test.
             await exporter.addAssetsToZipWithResourcePath();
 
-            // Export path is still renamed to .vtt (filename-driven, independent of
-            // the data itself), but the written bytes are the untouched original
-            // since conversion failed -- graceful degradation, not data loss.
+            // The export path is renamed .srt -> .vtt (filename-driven, independent
+            // of the data), so the written bytes MUST also be valid WebVTT. Falling
+            // back to the raw (SRT/undecodable) bytes here would ship a .vtt file the
+            // <track> engine parses to zero cues -- the exact issue #2034 failure.
+            // Graceful degradation = a valid, empty WebVTT document instead.
             expect(zip.hasFile('content/resources/broken-subtitle.vtt')).toBe(true);
-            expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe(undecodable);
+            expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
         });
     });
 });
