@@ -101,4 +101,77 @@ describe('three-d-viewer interaction schema (export)', () => {
         expect($tdv.__gradeSingleChoice(q, 'o1')).toBe(true);
         expect($tdv.__gradeSingleChoice(q, 'o2')).toBe(false);
     });
+
+    describe('renderView interaction markup', () => {
+        const dataWith = (interaction) => ({ ideviceId: 'tdv-1', src: 'asset://m.glb', interaction });
+        const enabled = (over) => Object.assign({
+            enabled: true, guidedMode: false, showMarkerLabels: true, markers: [
+                { id: 'm1', label: 'Crater <peak>', icon: 'pin',
+                  anchor: { position: { x: 1, y: 2, z: 3 }, normal: { x: 0, y: 1, z: 0 } },
+                  action: { type: 'information', payload: { html: '<p>Lava</p>' } } },
+            ],
+        }, over || {});
+
+        it('omits the interaction data block when interactions are disabled', () => {
+            const html = $tdv.renderView(dataWith({ enabled: false, markers: [] }), null, '{content}');
+            expect(html).not.toContain('tdv-interaction-data');
+            expect(html).not.toContain('tdv-fallback');
+        });
+
+        it('embeds a JSON data block and an escaped fallback list when enabled', () => {
+            const html = $tdv.renderView(dataWith(enabled()), null, '{content}');
+            expect(html).toContain('script type="application/json" class="tdv-interaction-data"');
+            expect(html).toContain('<ul class="tdv-fallback" hidden>');
+            // fallback label is HTML-escaped
+            expect(html).toContain('Crater &lt;peak&gt;');
+            expect(html).not.toContain('<peak>');
+        });
+
+        it('escapes < inside the JSON block to prevent </script> breakout', () => {
+            const html = $tdv.renderView(dataWith(enabled({ markers: [
+                { id: 'x', label: 'X', icon: 'circle',
+                  anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 } },
+                  action: { type: 'information', payload: { html: '</script><img src=x onerror=alert(1)>' } } },
+            ] })), null, '{content}');
+            // The data block must not contain a raw closing </script> from the
+            // payload — every leading < is escaped to <.
+            const block = html.slice(html.indexOf('tdv-interaction-data'));
+            const jsonPart = block.slice(0, block.indexOf('</script>'));
+            expect(jsonPart).not.toContain('</script>');
+            expect(jsonPart).toContain('\\u003c/script>');
+        });
+
+        it('keeps asset:// media references in the JSON block for the export rewriter', () => {
+            const html = $tdv.renderView(dataWith(enabled({ markers: [
+                { id: 'i', label: 'Img', icon: 'circle',
+                  anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 } },
+                  action: { type: 'image', payload: { src: 'asset://pic.png', alt: 'p' } } },
+            ] })), null, '{content}');
+            expect(html).toContain('asset://pic.png');
+        });
+
+        it('never emits a blob: URL from marker media', () => {
+            const html = $tdv.renderView(dataWith(enabled({ markers: [
+                { id: 'i', label: 'Img', icon: 'circle',
+                  anchor: { position: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 } },
+                  action: { type: 'image', payload: { src: 'blob:http://x/leak' } } },
+            ] })), null, '{content}');
+            expect(html).not.toContain('blob:');
+        });
+
+        it('renders guided navigation controls only in guided mode', () => {
+            const off = $tdv.renderView(dataWith(enabled({ guidedMode: false })), null, '{content}');
+            expect(off).not.toContain('tdv-guided-nav');
+            const on = $tdv.renderView(dataWith(enabled({ guidedMode: true })), null, '{content}');
+            expect(on).toContain('tdv-guided-nav');
+            expect(on).toContain('tdv-nav-prev');
+            expect(on).toContain('tdv-nav-next');
+        });
+
+        it('bakes a runtime i18n map into the data block', () => {
+            const html = $tdv.renderView(dataWith(enabled()), null, '{content}');
+            expect(html).toContain('"i18n"');
+            expect(html).toContain('Check');
+        });
+    });
 });

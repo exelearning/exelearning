@@ -141,6 +141,158 @@
         return !!(chosen && chosen.correct);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Interaction export markup
+    //
+    // The interaction state ships as an escaped JSON <script> block inside the
+    // wrapper (mirrors three-sixty-viewer's data script). A static, escaped
+    // fallback <ul> lists every marker for the no-WebGL case, and guided-nav
+    // controls are baked when guided mode is on. asset:// media inside the
+    // JSON block is rewritten to content/resources/... by the global export
+    // rewriter (IdeviceRenderer.fixAssetUrls); we never emit blob:.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Content-locale translation, degrading to _() then identity. */
+    function tdT(s) {
+        if (typeof c_ === 'function') return c_(s);
+        if (typeof _ === 'function') return _(s);
+        return s;
+    }
+
+    /** Allow only safe URL schemes (mirror runtime safeUrl). */
+    function tdSafeUrl(url) {
+        var s = typeof url === 'string' ? url.trim() : '';
+        if (!s) return '';
+        if (/^\s*javascript:/i.test(s)) return '';
+        if (/^(https?:|mailto:|tel:|asset:)/i.test(s)) return s;
+        if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) return s;
+        return '';
+    }
+
+    /** Extract plain text from marker HTML for the escaped text fallback. */
+    function stripHtmlToText(html) {
+        return String(html == null ? '' : html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /** Learner-facing micro-strings baked for the runtime controller. */
+    function buildRuntimeI18n() {
+        return {
+            Marker: tdT('Marker'),
+            Close: tdT('Close'),
+            Check: tdT('Check'),
+            Correct: tdT('Correct'),
+            Incorrect: tdT('Incorrect'),
+            Previous: tdT('Previous'),
+            Next: tdT('Next'),
+            'Please select an answer': tdT('Please select an answer'),
+            'No attempts left': tdT('No attempts left'),
+        };
+    }
+
+    /** Build the static, escaped fallback list of markers. */
+    function buildInteractionFallback(interaction) {
+        var items = (interaction.markers || []).map(function (m, i) {
+            var label = m.label || (tdT('Marker') + ' ' + (i + 1));
+            var parts = ['<strong>' + (i + 1) + '. ' + escapeAttr(label) + '</strong>'];
+            if (m.description) parts.push('<p>' + escapeAttr(m.description) + '</p>');
+            var a = m.action || {};
+            var p = a.payload || {};
+            if (a.type === 'information') {
+                var text = stripHtmlToText(p.html);
+                if (text) parts.push('<p>' + escapeAttr(text) + '</p>');
+            } else if (a.type === 'image') {
+                if (p.alt) parts.push('<p>' + escapeAttr(p.alt) + '</p>');
+                if (p.caption) parts.push('<p>' + escapeAttr(p.caption) + '</p>');
+            } else if (a.type === 'link') {
+                var url = tdSafeUrl(p.url);
+                if (url) parts.push('<a href="' + escapeAttr(url) + '" rel="noopener noreferrer">' + escapeAttr(url) + '</a>');
+            } else if (a.type === 'question') {
+                if (p.prompt) parts.push('<p>' + escapeAttr(p.prompt) + '</p>');
+                var opts = (p.options || []).map(function (o) { return '<li>' + escapeAttr(o.text || '') + '</li>'; }).join('');
+                if (opts) parts.push('<ul>' + opts + '</ul>');
+            }
+            return '<li>' + parts.join('') + '</li>';
+        }).join('');
+        return '<ul class="tdv-fallback" hidden>' + items + '</ul>';
+    }
+
+    /**
+     * Build the interaction markup appended inside the wrapper: JSON data
+     * block + fallback list + guided-nav controls. Empty when disabled.
+     * @param {object} interaction - already normalized
+     * @returns {string}
+     */
+    function buildInteractionMarkup(interaction) {
+        if (!interaction || !interaction.enabled) return '';
+        var payload = Object.assign({}, interaction, { i18n: buildRuntimeI18n() });
+        // Escape < so a payload value can never terminate the <script>.
+        var json = JSON.stringify(payload).replace(/</g, '\\u003c');
+        var script = '<script type="application/json" class="tdv-interaction-data">' + json + '</' + 'script>';
+        var nav = '';
+        if (interaction.guidedMode) {
+            nav = '<div class="tdv-guided-nav" data-guided hidden>'
+                + '<button type="button" class="tdv-nav-prev">' + escapeAttr(tdT('Previous')) + '</button>'
+                + '<span class="tdv-guided-status" aria-live="polite"></span>'
+                + '<button type="button" class="tdv-nav-next">' + escapeAttr(tdT('Next')) + '</button>'
+                + '</div>';
+        }
+        return script + buildInteractionFallback(interaction) + nav;
+    }
+
+    /** Read + parse the interaction data block from a booted wrapper. */
+    function parseInteractionData(wrapper) {
+        if (!wrapper || typeof wrapper.querySelector !== 'function') return null;
+        var script = wrapper.querySelector('script.tdv-interaction-data, script[type="application/json"].tdv-interaction-data');
+        if (!script) return null;
+        try {
+            return JSON.parse(script.textContent || script.innerHTML || '{}');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Attach the shared interaction layer to a booted wrapper. Resolves the
+     * right handle per render path (native model-viewer hotspots vs. STL
+     * instance) and is idempotent.
+     * @param {HTMLElement} wrapper
+     */
+    function attachInteractionLayer(wrapper) {
+        var runtime = globalScope.eXe3DViewer;
+        if (!runtime || typeof runtime.createInteractionLayer !== 'function') return;
+        var ds = wrapper.dataset || {};
+        if (ds._tdvInteractionBooted === '1') return;
+        var raw = parseInteractionData(wrapper);
+        if (!raw || !raw.enabled) return;
+        var interaction = normalizeInteraction(raw);
+        var i18nMap = raw.i18n && typeof raw.i18n === 'object' ? raw.i18n : {};
+        var hooks = {
+            t: function (k) { return i18nMap[k] || k; },
+            resolveMediaUrl: function (u) {
+                try { return resolveRuntimeSrc(u, wrapper.id) || u; } catch (e) { return u; }
+            },
+        };
+        var type = ds.modelType || detectModelTypeFromSrc(ds.modelSrc || '');
+        ds._tdvInteractionBooted = '1';
+        if (type === 'stl') {
+            var tries = 0;
+            var poll = function () {
+                var inst = runtime.getInstance(wrapper);
+                if (inst && inst.mesh) {
+                    inst.interaction = runtime.createInteractionLayer(
+                        { wrapper: wrapper, type: 'stl', instance: inst }, interaction, 'view', hooks);
+                } else if (tries++ < 300) {
+                    (globalScope.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(poll);
+                }
+            };
+            poll();
+        } else {
+            var mv = wrapper.querySelector('model-viewer');
+            wrapper.__tdvInteraction = runtime.createInteractionLayer(
+                { wrapper: wrapper, type: type, modelViewer: mv }, interaction, 'view', hooks);
+        }
+    }
+
     /**
      * Build the toolbar markup (fullscreen button + 4-direction nav pad).
      * Rendered once into the wrapper so it ships with the static export.
@@ -1331,6 +1483,9 @@
             // Store current iDevice ID for asset:// resolution
             globalScope.$threedviewer._currentIdeviceId = viewerId;
 
+            // Optional interaction layer (markers / guided nav / questions).
+            const interaction = normalizeInteraction(data.interaction);
+
             // Flat data-* attributes — exposed to grep/inspect and picked
             // up by IdeviceRenderer.fixAssetUrls during export.
             const wrapperAttrs = buildWrapperAttrs(cfg);
@@ -1340,6 +1495,7 @@
                     <span class="sr-only" data-live aria-live="polite"></span>
                     <div class="viewer-empty" data-empty>${translate('viewer.empty_state')}</div>
                     ${buildControlsMarkup(cfg)}
+                    ${buildInteractionMarkup(interaction)}
                 </div>
             `;
             return template.replace('{content}', content);
@@ -1468,6 +1624,19 @@
             };
 
             ensureModelViewerModule(id).then(boot);
+
+            // Attach interaction layers for wrappers that carry an enabled
+            // data block. The shared runtime (three-d-viewer-runtime.js) is
+            // loaded on demand — GLB/GLTF pages don't otherwise need it.
+            const interactive = wrappers.filter((w) => {
+                const raw = parseInteractionData(w);
+                return raw && raw.enabled;
+            });
+            if (interactive.length) {
+                ensureRuntimeLoaded()
+                    .then(() => { interactive.forEach(attachInteractionLayer); })
+                    .catch(() => { /* runtime unavailable — static fallback stays visible */ });
+            }
             return true;
         },
 
@@ -1491,6 +1660,9 @@
     globalScope.$threedviewer.__normalizeAction = normalizeAction;
     globalScope.$threedviewer.__normalizeQuestion = normalizeQuestion;
     globalScope.$threedviewer.__gradeSingleChoice = gradeSingleChoice;
+    globalScope.$threedviewer.__buildInteractionMarkup = buildInteractionMarkup;
+    globalScope.$threedviewer.__parseInteractionData = parseInteractionData;
+    globalScope.$threedviewer.__attachInteractionLayer = attachInteractionLayer;
     globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
     globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
     globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;
