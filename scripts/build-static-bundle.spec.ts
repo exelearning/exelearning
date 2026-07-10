@@ -17,6 +17,7 @@ import {
     appendVersionToUrls,
     shouldCompressJson,
     gzipBuffer,
+    assertPreviewFixedResourcesManifest,
     COMPRESS_JSON_DIRS,
     LOCALES,
     LOCALE_NAMES,
@@ -27,6 +28,7 @@ import {
 } from './build-static-bundle';
 import { buildConfigParams } from '../src/routes/config-params';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as zlib from 'zlib';
 
@@ -1007,5 +1009,41 @@ describe('COMPRESS_JSON_DIRS', () => {
     it('lists the LOMLOE and DIGCOMPEDU data directories', () => {
         expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/lomloe/data');
         expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/digcompedu/data');
+    });
+});
+
+describe('assertPreviewFixedResourcesManifest', () => {
+    function makeOutputDir(manifest: unknown | null): string {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'static-bundle-guard-'));
+        fs.mkdirSync(path.join(dir, 'bundles'), { recursive: true });
+        if (manifest !== null) {
+            fs.writeFileSync(path.join(dir, 'bundles', 'preview-fixed-resources.json'), JSON.stringify(manifest));
+        }
+        return dir;
+    }
+
+    it('passes when the copied bundles contain a valid manifest', () => {
+        const dir = makeOutputDir({
+            schemaVersion: 1,
+            buildVersion: 'v1.0.0',
+            resources: { 'libs/jquery/jquery.min.js': { path: 'libs/jquery/jquery.min.js', size: 10 } },
+        });
+        expect(() => assertPreviewFixedResourcesManifest(dir)).not.toThrow();
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('fails loudly when the manifest is missing', () => {
+        const dir = makeOutputDir(null);
+        expect(() => assertPreviewFixedResourcesManifest(dir)).toThrow(/preview-fixed-resources\.json is missing/);
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('fails loudly on a wrong schemaVersion or an empty resource map', () => {
+        const wrongSchema = makeOutputDir({ schemaVersion: 2, resources: { a: { path: 'a', size: 1 } } });
+        expect(() => assertPreviewFixedResourcesManifest(wrongSchema)).toThrow(/empty or invalid/);
+        fs.rmSync(wrongSchema, { recursive: true, force: true });
+        const empty = makeOutputDir({ schemaVersion: 1, resources: {} });
+        expect(() => assertPreviewFixedResourcesManifest(empty)).toThrow(/empty or invalid/);
+        fs.rmSync(empty, { recursive: true, force: true });
     });
 });

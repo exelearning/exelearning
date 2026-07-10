@@ -1098,6 +1098,27 @@ export function gzipBuffer(input: Buffer): Buffer {
 }
 
 /**
+ * Guard: the static distribution must ship the preview fixed-resource manifest
+ * (bundles/preview-fixed-resources.json) — hosts implementing preview serving
+ * contract v2 resolve fixed resources exclusively through it. It is produced by
+ * scripts/build-resource-bundles.js and rides along when bundles/ is copied;
+ * failing loudly here catches a skipped/ stale resource-bundle build.
+ */
+export function assertPreviewFixedResourcesManifest(outputDir: string): void {
+    const manifestPath = path.join(outputDir, 'bundles', 'preview-fixed-resources.json');
+    if (!fs.existsSync(manifestPath)) {
+        throw new Error(
+            'Static bundle guard failed: bundles/preview-fixed-resources.json is missing. ' +
+                'Run `bun run bundle:resources` (scripts/build-resource-bundles.js) before the static build.',
+        );
+    }
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    if (manifest.schemaVersion !== 1 || !manifest.resources || Object.keys(manifest.resources).length === 0) {
+        throw new Error('Static bundle guard failed: bundles/preview-fixed-resources.json is empty or invalid.');
+    }
+}
+
+/**
  * Walk a directory, gzip every .json into a sibling .json.gz, and delete the
  * raw .json. Returns aggregate stats for logging.
  */
@@ -1255,8 +1276,9 @@ async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
-    // Copy bundles folder (pre-built resource ZIPs)
+    // Copy bundles folder (pre-built resource ZIPs + preview fixed-resource manifest)
     copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
+    assertPreviewFixedResourcesManifest(outputDir);
     console.log('  Copied bundles/');
 
     // Copy files/perm (themes, iDevices, favicon)

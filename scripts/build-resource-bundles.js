@@ -26,6 +26,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { strToU8, zipSync } = require('fflate');
+// Single source of truth for the exporter's library lists (bun transpiles the
+// TS import). BASE_LIBRARIES is the always-included set; LIBRARY_PATTERNS is
+// the content-detected set. Reusing them here keeps the preview fixed-resource
+// manifest from drifting against what the exporters actually reference.
+const { BASE_LIBRARIES, LIBRARY_PATTERNS } = require('../src/shared/export/constants.ts');
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -351,6 +356,188 @@ function buildContentCssBundle(manifest) {
 }
 
 /**
+ * Preview fixed-resource manifest (serving contract v2).
+ *
+ * Emitted as public/bundles/preview-fixed-resources.json, this manifest is the
+ * ONLY authority for what the preview serving route may resolve outside a
+ * session (doc/development/preview-serving-contract.md, "The fixed-resource
+ * manifest"). It enumerates base (repo-shipped) resources exclusively — site
+ * or user themes and user-installed iDevices must never be listed.
+ *
+ * fixedResourceId grammar (matches the paths the exporter emits in preview
+ * output, so client-emitted ids and this manifest agree by construction):
+ *   libs/{libPath}                 BASE_LIBS / BASE_LIBRARIES / LIBRARY_PATTERNS files
+ *                                  (export path `libs/…` in Html5Exporter)
+ *   libs/pdfjs/{file}              PDF.js runtime (public/libs/pdfjs)
+ *   idevices/{type}/{file}         base iDevice export/ files; {type} is the
+ *                                  normalized folder name the exporter uses
+ *   theme:{name}/{relpath}         base theme files ({name}-qualified because the
+ *                                  served path `theme/…` is theme-independent)
+ *   content/css/base.css           public/style/workarea/base.css
+ *   content/img/exe_powered_logo.png  the "powered by" logo
+ *   fonts/global/{id}/{file}       bundled global fonts
+ *
+ * `path` values are relative to public/ (the distribution root). A host that
+ * relocates files rewrites `path` in its manifest copy; ids must not change.
+ */
+
+/** Test-file filter mirroring FileSystemResourceProvider's export exclusions. */
+function isTestFile(relativePath) {
+  return relativePath.endsWith('.test.js') || relativePath.endsWith('.spec.js');
+}
+
+/**
+ * Resolve a library file path (as listed in BASE_LIBRARIES / LIBRARY_PATTERNS)
+ * to its location relative to public/. Mirrors the export pipeline's dual-root
+ * resolution (FileSystemResourceProvider.fetchLibraryFiles): a few generated
+ * commons live in app/common/ under a flat name; library directories live in
+ * either app/common/ (exe_* runtimes) or libs/ (third-party). Existence decides
+ * — no library name exists under both roots (warned about below if one ever
+ * does).
+ */
+function resolveLibrarySource(libPath) {
+  const commonFilesMapping = {
+    'common_i18n.js': 'app/common/common_i18n.js',
+    'common.js': 'app/common/common.js',
+    'exe_export.js': 'app/common/exe_export.js',
+  };
+  if (commonFilesMapping[libPath]) return commonFilesMapping[libPath];
+  const inCommon = `app/common/${libPath}`;
+  const inLibs = `libs/${libPath}`;
+  const commonExists = fs.existsSync(path.join(projectRoot, 'public', inCommon));
+  const libsExists = fs.existsSync(path.join(projectRoot, 'public', inLibs));
+  if (commonExists && libsExists) {
+    console.warn(`  Warning: library path '${libPath}' exists under both app/common/ and libs/; using app/common/`);
+  }
+  if (commonExists) return inCommon;
+  if (libsExists) return inLibs;
+  return null;
+}
+
+/**
+ * Build the preview fixed-resource manifest object from the public/ tree.
+ * Pure enumeration (no writes); exported for the colocated spec.
+ */
+function buildPreviewFixedResourcesManifest() {
+  const resources = {};
+
+  /** Register `id` served from `relSource` (relative to public/); skip missing files. */
+  const add = (id, relSource) => {
+    const fullPath = path.join(projectRoot, 'public', relSource);
+    let stat;
+    try {
+      stat = fs.statSync(fullPath);
+    } catch {
+      console.warn(`  Warning: fixed resource '${id}' not found at public/${relSource}`);
+      return;
+    }
+    if (!stat.isFile()) return;
+    resources[id] = { path: relSource.split(path.sep).join('/'), size: stat.size };
+  };
+
+  /** Walk `relDir` (relative to public/) adding `${idPrefix}/{relpath}` entries. */
+  const addTree = (idPrefix, relDir, { excludeTests = false, extensions = null } = {}) => {
+    const files = scanDirectory(path.join(projectRoot, 'public', relDir));
+    for (const { relativePath } of files) {
+      if (excludeTests && isTestFile(relativePath)) continue;
+      if (extensions && !extensions.includes(path.extname(relativePath).toLowerCase())) continue;
+      add(`${idPrefix}/${relativePath}`, `${relDir}/${relativePath}`);
+    }
+  };
+
+  // 1. Base libraries bundled into libs.zip (the script's own list).
+  for (const lib of BASE_LIBS) {
+    add(`libs/${lib.dest}`, lib.src);
+  }
+
+  // 2. The exporter's always-on library list (adds e.g. xapi/exe_xapi.js).
+  for (const libPath of BASE_LIBRARIES) {
+    const source = resolveLibrarySource(libPath);
+    if (source) add(`libs/${libPath}`, source);
+    else console.warn(`  Warning: base library '${libPath}' not found`);
+  }
+
+  // 3. Content-detected libraries (LIBRARY_PATTERNS). Directory-based patterns
+  //    include their whole tree, exactly like fetchLibraryFiles() does.
+  const libraryDirs = new Set();
+  const libraryFiles = new Set();
+  for (const pattern of LIBRARY_PATTERNS) {
+    for (const file of pattern.files) {
+      if (pattern.isDirectory) libraryDirs.add(file.split('/')[0]);
+      else libraryFiles.add(file);
+    }
+  }
+  for (const dirName of libraryDirs) {
+    const source = resolveLibrarySource(dirName);
+    if (source) addTree(`libs/${dirName}`, source, { excludeTests: true });
+    else console.warn(`  Warning: library directory '${dirName}' not found`);
+  }
+  for (const libPath of libraryFiles) {
+    if (libraryDirs.has(libPath.split('/')[0])) continue; // covered by the tree walk
+    const source = resolveLibrarySource(libPath);
+    if (source) add(`libs/${libPath}`, source);
+    else console.warn(`  Warning: library file '${libPath}' not found`);
+  }
+
+  // 4. PDF.js (referenced by the preview's PDF embed decorator).
+  addTree('libs/pdfjs', 'libs/pdfjs');
+
+  // 5. Base iDevice export runtimes. Folder names ARE the normalized type
+  //    names the exporter uses for its idevices/{type}/ output paths.
+  const idevicesBase = path.join(projectRoot, 'public', 'files/perm/idevices/base');
+  if (fs.existsSync(idevicesBase)) {
+    for (const entry of fs.readdirSync(idevicesBase, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const exportDir = `files/perm/idevices/base/${entry.name}/export`;
+      if (!fs.existsSync(path.join(projectRoot, 'public', exportDir))) continue;
+      addTree(`idevices/${entry.name}`, exportDir, { excludeTests: true });
+    }
+  }
+
+  // 6. Base themes. Ids are theme-qualified because the served path (theme/…)
+  //    does not carry the theme name.
+  const themesBase = path.join(projectRoot, 'public', 'files/perm/themes/base');
+  if (fs.existsSync(themesBase)) {
+    for (const entry of fs.readdirSync(themesBase, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      addTree(`theme:${entry.name}`, `files/perm/themes/base/${entry.name}`);
+    }
+  }
+
+  // 7. Content CSS and the "powered by" logo (fixed export-path ids).
+  add('content/css/base.css', 'style/workarea/base.css');
+  add('content/img/exe_powered_logo.png', 'app/common/exe_powered_logo/exe_powered_logo.png');
+
+  // 8. Global fonts (same extension filter as fetchGlobalFontFiles).
+  const fontsBase = path.join(projectRoot, 'public', 'files/perm/fonts/global');
+  if (fs.existsSync(fontsBase)) {
+    for (const entry of fs.readdirSync(fontsBase, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      addTree(`fonts/global/${entry.name}`, `files/perm/fonts/global/${entry.name}`, {
+        extensions: ['.woff', '.woff2', '.ttf', '.txt'],
+      });
+    }
+  }
+
+  return { schemaVersion: 1, buildVersion, resources };
+}
+
+/**
+ * Build the preview fixed-resource manifest file
+ */
+function buildPreviewFixedResources(manifest) {
+  console.log('\nBuilding preview fixed-resource manifest...');
+
+  const fixedManifest = buildPreviewFixedResourcesManifest();
+  const outputFile = path.join(OUTPUT_PATH, 'preview-fixed-resources.json');
+  fs.writeFileSync(outputFile, JSON.stringify(fixedManifest, null, 2));
+
+  const count = Object.keys(fixedManifest.resources).length;
+  manifest.previewFixedResources = { files: count };
+  console.log(`  ${count} fixed resources`);
+}
+
+/**
  * Main build function
  */
 function build() {
@@ -373,6 +560,7 @@ function build() {
   buildLibsBundle(manifest);
   buildCommonLibsBundle(manifest);
   buildContentCssBundle(manifest);
+  buildPreviewFixedResources(manifest);
 
   // Write manifest
   const manifestPath = path.join(OUTPUT_PATH, 'manifest.json');
@@ -382,5 +570,9 @@ function build() {
   console.log('\nResource bundles built successfully!');
 }
 
-// Run build
-build();
+// Run build only when executed directly (the spec imports the functions above).
+if (require.main === module) {
+  build();
+}
+
+module.exports = { buildPreviewFixedResourcesManifest };
