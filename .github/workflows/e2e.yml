@@ -125,8 +125,22 @@ jobs:
       # Invoke Playwright directly (not the make targets) so the build-once
       # bundles are not rebuilt: test-e2e-firefox/static carry bundle/build-static
       # prerequisites that would negate the shared build.
+      #
+      # Firefox runs at half the worker count of chromium/static. Firefox is
+      # heavier per content-process, and the opaque preview (PR #1968) adds
+      # per-preview server work (blob upload + server-side SHA-256 re-hash of
+      # every file). At workers:'100%' the runner is fully saturated with no
+      # headroom for the single app server, so the heaviest preview specs
+      # (runtime MathJax, udl-content, three-sixty) intermittently time out on
+      # Firefox only. Halving Firefox workers gives the server headroom and
+      # removes the contention; chromium/static keep 100%. This is a deliberate
+      # concurrency fix, not a timeout bump — the specs pass deterministically
+      # once the runner is not oversubscribed.
       - name: E2E Tests (${{ matrix.browser }} ${{ matrix.shard }}/4)
-        run: bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob
+        run: |
+          WORKERS_FLAG=""
+          if [ "${{ matrix.browser }}" = "firefox" ]; then WORKERS_FLAG="--workers=50%"; fi
+          bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob $WORKERS_FLAG
 
       # Give each shard's blob a unique name so cross-project shards (e.g.
       # chromium-1 and firefox-1, both report-1.zip) don't collide when merged.
