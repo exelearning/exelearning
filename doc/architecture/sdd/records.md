@@ -10,10 +10,11 @@ update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | SDD-0000 | Template | Template | — |
+| [SDD-0001](SDD-0001-three-d-viewer-interactions.md) | 3D Viewer interactions: hotspots, guided navigation and questions | Draft | 2026-07-10 |
 
 ## Draft SDDs
 
-_No draft SDDs yet._
+- [SDD-0001](SDD-0001-three-d-viewer-interactions.md) — 3D Viewer interactions: hotspots, guided navigation and questions
 
 ## In Review SDDs
 
