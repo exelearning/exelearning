@@ -490,12 +490,15 @@ describe('preview-session routes', () => {
             expect(responses[1].headers.get('cache-control')).toBe('no-store');
         });
 
-        it('serves nothing before the first revision publishes', async () => {
+        it('serves nothing before the first revision publishes (but the bare root still redirects)', async () => {
             const previewId = await createViaApi();
             const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/index.html`));
             expect(res.status).toBe(404);
+            // The bare root is a stateless redirect to the entry document, which
+            // then 404s until the first revision publishes.
             const bare = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}`));
-            expect(bare.status).toBe(404);
+            expect(bare.status).toBe(302);
+            expect(bare.headers.get('location')).toBe(`${previewId}/index.html`);
         });
 
         it('applies the tiered Cache-Control per resolution layer', async () => {
@@ -606,10 +609,19 @@ describe('preview-session routes', () => {
             expect(suffix.headers.get('content-range')).toBe('bytes 7-9/10');
             expect(await suffix.text()).toBe('789');
 
-            for (const invalid of ['bytes=10-', 'bytes=5-2', 'bytes=-', 'bytes=0-1,3-4', 'items=0-1']) {
-                const res = await previewServeRoutes.handle(new Request(url, { headers: { Range: invalid } }));
+            // Valid-but-unsatisfiable ranges → 416 with the unsatisfied Content-Range.
+            for (const unsat of ['bytes=10-', 'bytes=99-', 'bytes=-0']) {
+                const res = await previewServeRoutes.handle(new Request(url, { headers: { Range: unsat } }));
                 expect(res.status).toBe(416);
                 expect(res.headers.get('content-range')).toBe('bytes */10');
+            }
+            // Syntactically invalid / unsupported specs are IGNORED → full 200 body.
+            // bytes=15-2 is inverted AND out of bounds: structural check wins → 200.
+            for (const ignored of ['bytes=5-2', 'bytes=15-2', 'bytes=-', 'bytes=0-1,3-4', 'items=0-1', 'bytes=a-b']) {
+                const res = await previewServeRoutes.handle(new Request(url, { headers: { Range: ignored } }));
+                expect(res.status).toBe(200);
+                expect(res.headers.get('content-range')).toBeNull();
+                expect(await res.text()).toBe('0123456789');
             }
 
             // Documents ignore Range entirely (full 200 body).
@@ -670,15 +682,21 @@ describe('preview-session routes', () => {
             expect(csp.startsWith('sandbox allow-scripts allow-popups allow-forms')).toBe(true);
         });
 
-        it('serves index.html for the bare session URL without redirecting', async () => {
+        it('redirects the bare session URL to the entry document with a relative Location', async () => {
             const previewId = await servedSession({ 'index.html': '<html>root</html>' });
-            for (const suffix of ['', '/']) {
-                const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}${suffix}`));
-                expect(res.status).toBe(200);
-                expect([301, 302, 303, 307, 308]).not.toContain(res.status);
-                expect(res.headers.get('location')).toBeNull();
-                expect(await res.text()).toBe('<html>root</html>');
-            }
+            // No trailing slash: Location resolves against `/preview/{id}` →
+            // `/preview/{id}/index.html`.
+            const noSlash = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}`));
+            expect(noSlash.status).toBe(302);
+            expect(noSlash.headers.get('location')).toBe(`${previewId}/index.html`);
+            expect(noSlash.headers.get('cache-control')).toBe('no-store');
+            expect(noSlash.headers.get('x-content-type-options')).toBe('nosniff');
+            expect(await noSlash.text()).toBe('');
+            // Trailing slash: Location resolves against `/preview/{id}/` →
+            // `/preview/{id}/index.html`.
+            const trailingSlash = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/`));
+            expect(trailingSlash.status).toBe(302);
+            expect(trailingSlash.headers.get('location')).toBe('index.html');
         });
 
         it('rejects traversal attempts with 404', async () => {

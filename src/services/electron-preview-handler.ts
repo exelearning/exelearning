@@ -117,9 +117,15 @@ export async function handlePreviewRequest(request: Request): Promise<Response |
     const serveMatch = pathname.match(/^\/preview\/([^/]+)(?:\/(.*))?$/);
     if (serveMatch) {
         if (method !== 'GET') return json({ success: false, error: 'Method not allowed' }, 405);
+        // group2 is undefined for the no-slash bare root (`/preview/{id}`) and
+        // '' for the trailing-slash bare root (`/preview/{id}/`). Preserve the
+        // distinction ('' vs '/') so servePreviewFile emits the correct relative
+        // redirect Location for each; a non-empty rest is a real served path.
+        const rest = serveMatch[2];
+        const relPath = rest === undefined ? '' : rest === '' ? '/' : rest;
         return servePreviewFile(
             serveMatch[1],
-            serveMatch[2] ?? '',
+            relPath,
             {
                 ifNoneMatch: request.headers.get('if-none-match'),
                 range: request.headers.get('range'),

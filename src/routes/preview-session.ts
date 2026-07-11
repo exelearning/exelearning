@@ -116,8 +116,16 @@ export function createPreviewSessionApiRoutes(deps: PreviewSessionRouteDeps = bu
 
 /** Authless serving route for the opaque preview iframe (capability URL). */
 export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = buildDefaultDeps()) {
-    const serve = (previewId: string, relPath: string, request: Request): Response =>
-        servePreviewFile(
+    const serve = (previewId: string, rest: string, request: Request): Response => {
+        // Bare root: whether the URL has a trailing slash decides the relative
+        // redirect target, but Elysia normalizes the trailing slash away in the
+        // route match (`/preview/{id}/` lands here with an empty rest), so read
+        // it from the real request pathname. A non-empty rest is a real path.
+        let relPath = rest;
+        if (rest === '') {
+            relPath = new URL(request.url).pathname.endsWith('/') ? '/' : '';
+        }
+        return servePreviewFile(
             previewId,
             relPath,
             {
@@ -126,6 +134,7 @@ export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = buildDe
             },
             deps,
         );
+    };
 
     return new Elysia({ prefix: '/preview' })
         .get('/:previewId', ({ params, request }) => serve(params.previewId, '', request))

@@ -294,31 +294,58 @@ function notFound(): Response {
     });
 }
 
-export type ParsedRange = { start: number; end: number } | 'unsatisfiable' | null;
+export type ParsedRange = { start: number; end: number } | 'unsatisfiable' | 'ignore' | null;
 
 /**
- * Parse a single-range `Range` header against a body of `totalSize` bytes.
- * Returns `null` when no range was requested, an inclusive byte window when it
- * is satisfiable, and `'unsatisfiable'` for anything else (multi-range,
- * malformed, out of bounds) — the contract answers those with 416.
+ * Classify a `Range` request against a body of `totalSize` bytes (canonical
+ * per RFC 9110 §14.1.2). Four outcomes drive the response:
+ *
+ *  - `null` — no `Range` header at all: serve the full body (200).
+ *  - `{ start, end }` — a valid, satisfiable single byte range: serve 206.
+ *  - `'unsatisfiable'` — a valid single range that cannot be met
+ *    (first-byte-pos ≥ length, e.g. `bytes=99-`; or a zero-length suffix
+ *    `bytes=-0`): serve 416 with an unsatisfied-range `Content-Range` header.
+ *  - `'ignore'` — a syntactically INVALID or unsupported spec (non-`bytes`
+ *    unit, multi-range, unparseable garbage, or last-byte-pos < first-byte-pos
+ *    such as `bytes=5-2`): the RFC says an invalid Range MUST be ignored, so
+ *    serve the full body (200).
+ *
+ * Structural validity (`a-b` with a ≤ b) is checked BEFORE satisfiability, so
+ * an inverted spec that is also out of bounds (`bytes=15-2` on a shorter body)
+ * is ignored (200 full), never answered 416.
  */
 export function parseRangeHeader(value: string | null | undefined, totalSize: number): ParsedRange {
     if (!value) return null;
-    const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
-    if (!match) return 'unsatisfiable';
-    const [, rawStart, rawEnd] = match;
-    if (rawStart === '' && rawEnd === '') return 'unsatisfiable';
+    const unit = /^bytes=(.*)$/.exec(value.trim());
+    if (!unit) return 'ignore'; // non-`bytes` unit (or no `=`): ignore → 200 full
+    const spec = unit[1];
+    if (spec.includes(',')) return 'ignore'; // multi-range: unsupported → 200 full
+    const single = /^(\d*)-(\d*)$/.exec(spec);
+    if (!single) return 'ignore'; // unparseable single spec → 200 full
+    const [, rawStart, rawEnd] = single;
+    if (rawStart === '' && rawEnd === '') return 'ignore'; // `bytes=-`: invalid → 200 full
+
     if (rawStart === '') {
-        // Suffix form: last N bytes.
+        // Suffix form (`bytes=-n`): the last n bytes. A zero-length suffix, or
+        // any suffix against an empty body, is unsatisfiable.
         const suffix = Number.parseInt(rawEnd, 10);
-        if (suffix === 0 || totalSize === 0) return 'unsatisfiable';
+        if (suffix === 0) return 'unsatisfiable';
+        if (totalSize === 0) return 'unsatisfiable';
         return { start: Math.max(0, totalSize - suffix), end: totalSize - 1 };
     }
+
     const start = Number.parseInt(rawStart, 10);
-    if (start >= totalSize) return 'unsatisfiable';
-    if (rawEnd === '') return { start, end: totalSize - 1 };
+    if (rawEnd === '') {
+        // `bytes=a-`: satisfiable only when the first byte exists.
+        if (start >= totalSize) return 'unsatisfiable';
+        return { start, end: totalSize - 1 };
+    }
+
     const end = Number.parseInt(rawEnd, 10);
-    if (end < start) return 'unsatisfiable';
+    // Structural check BEFORE satisfiability: an inverted spec is invalid and
+    // MUST be ignored, even when its first-byte-pos is also out of bounds.
+    if (end < start) return 'ignore';
+    if (start >= totalSize) return 'unsatisfiable';
     return { start, end: Math.min(end, totalSize - 1) };
 }
 
@@ -354,6 +381,23 @@ export function servePreviewFile(
     deps: PreviewServingDeps,
 ): Response {
     if (!UUID_RE.test(previewId)) return notFound();
+
+    // Bare capability root (`/preview/{id}` or `/preview/{id}/`) → redirect to
+    // the canonical entry document. Never serve index.html bytes from the bare
+    // URL: a single canonical document URL keeps its relative asset references
+    // resolving. The Location is RELATIVE so it survives BASE_PATH and the
+    // Electron `app://` origin. A trailing slash (`relPath === '/'`) resolves
+    // `index.html` against `/preview/{id}/`; no slash resolves
+    // `{id}/index.html` against `/preview/{id}`. Stateless (before session
+    // lookup): the redirect target answers existence.
+    if (relPath === '' || relPath === '/') {
+        const location = relPath === '/' ? 'index.html' : `${previewId}/index.html`;
+        return new Response(null, {
+            status: 302,
+            headers: { ...baseServeHeaders(), 'Cache-Control': 'no-store', Location: location },
+        });
+    }
+
     const session = deps.manager.getSessionForServing(previewId);
     if (!session) return notFound();
     const file = deps.manager.getFile(session, relPath, deps.fixedResources);
@@ -394,7 +438,9 @@ export function servePreviewFile(
         headers['Content-Range'] = `bytes */${total}`;
         return new Response(null, { status: 416, headers });
     }
-    if (range !== null) {
+    // `null` (no Range) and `'ignore'` (invalid/unsupported spec) both serve the
+    // full body; only a satisfiable window becomes a 206.
+    if (range !== null && range !== 'ignore') {
         const body = file.bytes.slice(range.start, range.end + 1);
         headers['Content-Range'] = `bytes ${range.start}-${range.end}/${total}`;
         headers['Content-Length'] = String(body.length);

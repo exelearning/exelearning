@@ -229,6 +229,25 @@ describe('electron-preview-handler', () => {
         expect(responses[1]!.headers.get('cache-control')).toBe('no-store');
     });
 
+    it('redirects the bare capability root to the entry document with a relative Location', async () => {
+        const previewId = await preparedSession({ 'index.html': '<html>root</html>' });
+        // No trailing slash (regex group2 undefined) → Location relative to
+        // `/preview/{id}`.
+        const noSlash = await handlePreviewRequest(new Request(`${BASE}/preview/${previewId}`));
+        expect(noSlash?.status).toBe(302);
+        expect(noSlash!.headers.get('location')).toBe(`${previewId}/index.html`);
+        expect(noSlash!.headers.get('cache-control')).toBe('no-store');
+        expect(noSlash!.headers.get('x-content-type-options')).toBe('nosniff');
+        // Trailing slash (regex group2 '') → Location relative to `/preview/{id}/`.
+        const trailingSlash = await handlePreviewRequest(new Request(`${BASE}/preview/${previewId}/`));
+        expect(trailingSlash?.status).toBe(302);
+        expect(trailingSlash!.headers.get('location')).toBe('index.html');
+        // A real path still serves bytes (never the redirect).
+        const doc = await handlePreviewRequest(new Request(`${BASE}/preview/${previewId}/index.html`));
+        expect(doc?.status).toBe(200);
+        expect(await doc!.text()).toContain('root');
+    });
+
     it('404s an invalid previewId and an unknown path', async () => {
         const bad = await handlePreviewRequest(new Request(`${BASE}/preview/not-a-uuid/index.html`));
         expect(bad?.status).toBe(404);

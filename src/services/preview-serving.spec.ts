@@ -55,17 +55,25 @@ describe('parseRangeHeader', () => {
         expect(parseRangeHeader(' bytes=0-0 ', 10)).toEqual({ start: 0, end: 0 });
     });
 
-    it('flags malformed, multi-range and out-of-bounds requests as unsatisfiable', () => {
-        expect(parseRangeHeader('bytes=10-', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('bytes=5-2', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('bytes=-', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('bytes=-0', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('bytes=0-1,3-4', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('items=0-1', 10)).toBe('unsatisfiable');
-        expect(parseRangeHeader('bytes=a-b', 10)).toBe('unsatisfiable');
+    it('flags valid-but-unsatisfiable single ranges as unsatisfiable (→ 416)', () => {
+        expect(parseRangeHeader('bytes=10-', 10)).toBe('unsatisfiable'); // first-byte-pos == length
+        expect(parseRangeHeader('bytes=99-', 10)).toBe('unsatisfiable'); // first-byte-pos > length
+        expect(parseRangeHeader('bytes=-0', 10)).toBe('unsatisfiable'); // zero-length suffix
         // Nothing is satisfiable on an empty body.
         expect(parseRangeHeader('bytes=0-', 0)).toBe('unsatisfiable');
         expect(parseRangeHeader('bytes=-1', 0)).toBe('unsatisfiable');
+    });
+
+    it('ignores syntactically invalid / unsupported specs so the full body is served (→ 200)', () => {
+        // last-byte-pos < first-byte-pos is an INVALID spec and MUST be ignored,
+        // and structural validity is checked BEFORE satisfiability so an
+        // inverted-and-out-of-bounds spec (bytes=15-2) is ignored, not 416.
+        expect(parseRangeHeader('bytes=5-2', 10)).toBe('ignore');
+        expect(parseRangeHeader('bytes=15-2', 10)).toBe('ignore');
+        expect(parseRangeHeader('bytes=-', 10)).toBe('ignore');
+        expect(parseRangeHeader('bytes=0-1,3-4', 10)).toBe('ignore'); // multi-range
+        expect(parseRangeHeader('items=0-1', 10)).toBe('ignore'); // non-bytes unit
+        expect(parseRangeHeader('bytes=a-b', 10)).toBe('ignore'); // unparseable
     });
 });
 
