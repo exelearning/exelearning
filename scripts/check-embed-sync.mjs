@@ -166,7 +166,9 @@ const FILES = {
         // previewCspHeader(). core builds it compositionally; the hosts carry it
         // (a literal string or an array of the same directives) in these files.
         core: 'src/shared/security/previewSandbox.ts',
-        mod: 'preview.php',
+        // Moodle's CSP lives in the serving helper since contract v2
+        // (preview.php delegates to it).
+        mod: 'classes/local/preview/serving.php',
         wp: 'includes/class-preview-proxy.php',
         omeka: 'src/Controller/PreviewController.php',
         procomun: 'apps/api/src/routes/preview.ts',
