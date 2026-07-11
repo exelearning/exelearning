@@ -47,6 +47,21 @@ describe('resolvePreviewTransport', () => {
         ).toThrow(/protocolVersion/);
     });
 
+    // WP and Omeka bootstraps set window.__EXE_STATIC_MODE__ = true, so an
+    // embedded editor arrives with mode 'static' AND isEmbedded true. Fail-closed
+    // depends on isEmbedded being ranked ABOVE the static Service-Worker
+    // fallthrough — a static-mode embedded host must never silently downgrade to
+    // the same-origin SW preview.
+    it('fails closed for a static-mode embedded host without previewHttp (isEmbedded outranks the static fallthrough)', () => {
+        expect(() => resolvePreviewTransport(config('static', { isEmbedded: true }))).toThrow(/previewHttp/);
+    });
+
+    it('selects http (not static-service-worker) for a static-mode embedded host with valid previewHttp', () => {
+        expect(
+            resolvePreviewTransport(config('static', { isEmbedded: true, previewHttp: VALID_PREVIEW_HTTP })),
+        ).toBe('http');
+    });
+
     it('uses the static Service Worker transport for standalone static builds', () => {
         expect(resolvePreviewTransport(config('static'))).toBe('static-service-worker');
     });
