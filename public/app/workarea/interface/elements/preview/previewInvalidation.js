@@ -240,11 +240,14 @@ export class PreviewInvalidationTracker {
     }
 
     /**
-     * Assets Y.Map events. Page HTML embeds the collision-suffixed
-     * content/resources/ paths, so anything that can re-suffix ANOTHER
-     * asset's path (adds that collide, deletes, renames/moves) invalidates
-     * everything; a pure content replacement (hash change, same path) only
-     * needs the asset layer synced; bookkeeping flips are ignored.
+     * Assets Y.Map events (correctness-first). An asset ADD invalidates every
+     * page unconditionally: a page may have rendered while the asset's bytes
+     * were still missing (a delayed image showing a placeholder URL), and a new
+     * export path can re-suffix another asset's collision-suffixed path. A
+     * DELETE likewise invalidates everything (dangling refs, un-suffixing). A
+     * rename/move/mime change re-renders all pages and re-syncs the asset; a
+     * pure content replacement (hash change, same path) only needs the asset
+     * layer synced; bookkeeping flips are ignored.
      * @param {Object} event
      * @param {Object} assetsMap
      */
@@ -257,8 +260,12 @@ export class PreviewInvalidationTracker {
         changes.forEach((change, assetId) => {
             const action = change?.action;
             if (action === 'add') {
-                this.markAsset(assetId);
-                if (this._newAssetCollides(assetId, assetsMap)) this.markAll();
+                // A newly added asset can surface on any already-rendered page
+                // (a delayed image finally resolving to its real URL, or a
+                // collision re-suffixing another asset's export path), so
+                // re-render everything. The transport's byte-diff keeps this
+                // cheap when a page's HTML did not actually change.
+                this.markAll();
                 return;
             }
             if (action === 'delete') {
@@ -283,49 +290,5 @@ export class PreviewInvalidationTracker {
             }
             // else: bookkeeping-only update (e.g. 'uploaded' flip) -> ignore
         });
-    }
-
-    /**
-     * Whether a newly added asset could change ANOTHER asset's export path
-     * (BaseExporter.buildAssetExportPathMap suffixes colliding paths). Only a
-     * provable non-collision may skip the full re-render; any doubt (missing
-     * or extension-less filename, folder/filename duplication patterns)
-     * reports a collision.
-     * @param {string} assetId
-     * @param {Object} assetsMap
-     * @returns {boolean}
-     */
-    _newAssetCollides(assetId, assetsMap) {
-        try {
-            if (!assetsMap || typeof assetsMap.forEach !== 'function') return true;
-            const key = this._exportPathKey(assetsMap.get?.(assetId));
-            if (!key) return true;
-            let collides = false;
-            assetsMap.forEach((other, otherId) => {
-                if (collides || otherId === assetId) return;
-                if (this._exportPathKey(other) === key) collides = true;
-            });
-            return collides;
-        } catch {
-            return true;
-        }
-    }
-
-    /**
-     * Conservative mirror of the export path derivation: returns null (i.e.
-     * "cannot prove") whenever the exporter would rewrite the name (unknown
-     * filename, missing extension, duplicated folder/filename).
-     * @param {Object|null|undefined} meta
-     * @returns {string|null}
-     */
-    _exportPathKey(meta) {
-        if (!meta || typeof meta.filename !== 'string' || !meta.filename || meta.filename === 'unknown') {
-            return null;
-        }
-        const filename = meta.filename;
-        if (!/\.[a-z0-9]{1,8}$/i.test(filename)) return null;
-        const folderPath = typeof meta.folderPath === 'string' ? meta.folderPath : '';
-        if (folderPath === filename || folderPath.endsWith(`/${filename}`)) return null;
-        return `${folderPath}/${filename}`.toLowerCase();
     }
 }

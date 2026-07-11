@@ -140,27 +140,22 @@ describe('PreviewInvalidationTracker', () => {
     });
 
     describe('asset classification', () => {
-        it('notes a non-colliding added asset without invalidating pages', () => {
+        it('marks everything on an asset add so a page rendered while it was missing re-renders', () => {
+            // The delayed-image scenario: a page rendered while the asset was
+            // not yet present (placeholder URL); when the asset arrives, every
+            // page must re-render to pick up the real URL.
             bridge.assets.set('asset-1', { filename: 'photo.png', folderPath: '', hash: 'aa' });
             bridge.assets.emit(assetsEvent({ 'asset-1': { action: 'add' } }));
-
-            const scope = tracker.consume();
-            expect(scope.pages).toBeInstanceOf(Set);
-            expect(scope.pages.size).toBe(0);
-            expect([...scope.assetIds]).toEqual(['asset-1']);
-        });
-
-        it('marks everything when an added asset collides with an existing export path', () => {
-            bridge.assets.set('asset-old', { filename: 'photo.png', folderPath: 'img', hash: 'aa' });
-            bridge.assets.set('asset-new', { filename: 'PHOTO.png', folderPath: 'img', hash: 'bb' });
-            bridge.assets.emit(assetsEvent({ 'asset-new': { action: 'add' } }));
 
             expect(tracker.consume().pages).toBe('all');
         });
 
-        it('marks everything for an added asset whose export name cannot be proven (no extension)', () => {
-            bridge.assets.set('asset-1', { filename: 'photo', folderPath: '', hash: 'aa' });
+        it('marks everything on an asset add even when the new export path collides with nothing', () => {
+            // The old collision-only heuristic left pages clean here; the
+            // correctness-first rule invalidates unconditionally.
+            bridge.assets.set('asset-1', { filename: 'unique-name.png', folderPath: 'unique', hash: 'aa' });
             bridge.assets.emit(assetsEvent({ 'asset-1': { action: 'add' } }));
+
             expect(tracker.consume().pages).toBe('all');
         });
 
