@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 // The preview-host wrapper page is a plain static asset (no bundle): assert its
 // structure so the two transports and the isolation contract can't silently break.
-const html = readFileSync(join(process.cwd(), 'public/preview-tab.html'), 'utf8');
+const html = readFileSync(join(process.cwd(), 'public/app/common/preview-tab/preview-tab.html'), 'utf8');
 
 describe('preview-tab.html (opaque preview host page)', () => {
     it('frames the content in an opaque sandboxed iframe (no allow-same-origin)', () => {
