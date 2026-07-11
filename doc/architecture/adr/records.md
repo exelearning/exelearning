@@ -18,6 +18,7 @@ changes status, update the table and the per-status lists below.
 | [ADR-0011](ADR-0011-serve-electron-preview-over-app-opaque-transport.md) | Serve Electron preview over an app:// opaque transport | Proposed | 2026-07-09 |
 | [ADR-0012](ADR-0012-canonical-embed-bridge-and-serving-contract-with-drift-check.md) | Keep eXe core as the canonical source for the embed bridge and preview serving contract, with mirror drift checking | Proposed | 2026-07-09 |
 | [ADR-0013](ADR-0013-sync-http-preview-as-layered-resources-with-atomic-incremental-revisions.md) | Sync the HTTP preview as layered fixed/asset/document resources with atomic incremental revisions | Proposed | 2026-07-11 |
+| [ADR-0014](ADR-0014-accept-known-low-severity-issues-in-preview-v2.md) | Accept a bounded set of known low-severity issues in the preview v2 rollout | Proposed | 2026-07-11 |
 
 ## Proposed ADRs
 
@@ -28,6 +29,7 @@ changes status, update the table and the per-status lists below.
 - [ADR-0011](ADR-0011-serve-electron-preview-over-app-opaque-transport.md) — Serve Electron preview over an app:// opaque transport
 - [ADR-0012](ADR-0012-canonical-embed-bridge-and-serving-contract-with-drift-check.md) — Keep eXe core as the canonical source for the embed bridge and preview serving contract, with mirror drift checking
 - [ADR-0013](ADR-0013-sync-http-preview-as-layered-resources-with-atomic-incremental-revisions.md) — Sync the HTTP preview as layered fixed/asset/document resources with atomic incremental revisions
+- [ADR-0014](ADR-0014-accept-known-low-severity-issues-in-preview-v2.md) — Accept a bounded set of known low-severity issues in the preview v2 rollout
 
 ## Accepted ADRs
 
