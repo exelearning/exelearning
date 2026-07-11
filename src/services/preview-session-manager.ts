@@ -191,6 +191,18 @@ export function getSessionForServing(previewId: string): PreviewSession | null {
     return session;
 }
 
+/**
+ * Whether `session` is still the registered instance for its id. A management
+ * handler holds a `session` reference across an `await` (buffering the upload
+ * body); a concurrent DELETE / TTL sweep / LRU eviction can `removeSession` it
+ * in that window, so the handler must re-assert liveness before the synchronous
+ * mutation — otherwise `storeAssets`/`applyRevision` would add to the global
+ * byte counter for a session no longer in the map, permanently inflating it.
+ */
+export function isRegistered(session: PreviewSession): boolean {
+    return sessions.get(session.id) === session;
+}
+
 export function deleteSession(previewId: string): boolean {
     const session = sessions.get(previewId);
     if (!session) return false;

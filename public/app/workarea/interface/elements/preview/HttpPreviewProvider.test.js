@@ -36,6 +36,7 @@ function createFakeBackend(overrides = {}) {
         assetsStatus: 200,
         revisionStatus: 200,
         rejectKeys: new Set(),
+        rejectReason: 'asset-too-large',
         ...overrides,
     };
 
@@ -67,7 +68,7 @@ function createFakeBackend(overrides = {}) {
             const rejected = [];
             for (const { key } of declared) {
                 if (state.rejectKeys.has(key)) {
-                    rejected.push({ key, reason: 'asset-too-large' });
+                    rejected.push({ key, reason: state.rejectReason });
                     continue;
                 }
                 if (state.assets.has(key)) alreadyStored.push(key);
@@ -359,6 +360,28 @@ describe('HttpPreviewProvider (contract v2)', () => {
             // Never retried: the key is remembered as rejected.
             expect(assetCalls(backend)).toHaveLength(0);
             expect(getAssetBytes).not.toHaveBeenCalled();
+        });
+
+        it('retries a transiently rejected asset (budget) on the next sync instead of blacklisting it', async () => {
+            backend.state.rejectKeys.add(ASSET_KEY);
+            backend.state.rejectReason = 'global-budget-exceeded';
+            const getAssetBytes = vi.fn(async () => new Uint8Array([1]));
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/big.mp4', assetRef()]]),
+                getAssetBytes,
+            });
+            await provider.prepare(input);
+            // Rejected this round → its path is not served yet.
+            expect(revisionCalls(backend)[0].revision.assetRefs).toEqual({});
+
+            // Space frees up server-side; the next sync must ATTEMPT the upload again.
+            backend.state.rejectKeys.clear();
+            backend.calls.length = 0;
+            getAssetBytes.mockClear();
+            await provider.update(input);
+            expect(getAssetBytes).toHaveBeenCalled();
+            expect(assetCalls(backend).length).toBeGreaterThan(0);
+            expect(revisionCalls(backend)[0].revision.assetRefs).toEqual({ 'content/resources/big.mp4': ASSET_KEY });
         });
 
         it('drops asset refs with identities that cannot form a contract key', async () => {

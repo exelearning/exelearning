@@ -38,6 +38,14 @@ const DEFAULT_BATCH_BYTES = 64 * 1024 * 1024;
 const ASSET_KEY_RE = /^[0-9a-fA-F-]{36}@[0-9a-f]{8,64}$/;
 
 /**
+ * Server rejection reasons that are TRANSIENT (space can free up, or a
+ * recreated session starts empty) and must NOT permanently blacklist the key.
+ * Everything else (invalid-key, asset-too-large, size-mismatch) is
+ * deterministic and stays blacklisted for the session.
+ */
+const TRANSIENT_ASSET_REJECTIONS = new Set(['session-budget-exceeded', 'global-budget-exceeded']);
+
+/**
  * PDF.js fixed-resource ids (ids equal the served paths). Added by the
  * provider whenever the preview references a PDF: browsers refuse the native
  * viewer inside the opaque sandbox, so the injected embed script renders
@@ -138,6 +146,7 @@ export class HttpPreviewProvider {
             // Fresh session ⇒ empty server-side stores and a new capability id
             // (the decoration bakes the session-relative pdfjs base).
             this._uploadedAssetKeys = new Set();
+            this._rejectedAssetKeys = new Set();
             this._ackDocuments = new Map();
             this._decorationCache = new Map();
             this._session = Object.freeze({
@@ -206,6 +215,7 @@ export class HttpPreviewProvider {
         this._version = 0;
         this._revision = 0;
         this._uploadedAssetKeys = new Set();
+        this._rejectedAssetKeys = new Set();
         this._ackDocuments = new Map();
         this._decorationCache = new Map();
         if (!session) return;
@@ -231,6 +241,7 @@ export class HttpPreviewProvider {
             this._session = null;
             this._revision = 0;
             this._uploadedAssetKeys = new Set();
+            this._rejectedAssetKeys = new Set();
             this._ackDocuments = new Map();
             this._decorationCache = new Map();
             throw new PreviewSessionExpiredError(`Preview session ${expired?.id ?? ''} expired`);
@@ -549,6 +560,18 @@ export class HttpPreviewProvider {
             }
             for (const rejected of body?.rejected || []) {
                 if (!rejected?.key) continue;
+                // Only DETERMINISTIC rejections are blacklisted for the session:
+                // an invalid key / oversized asset / size mismatch will fail
+                // identically on every retry. Budget rejections are TRANSIENT
+                // (global LRU eviction frees space; a recreated session starts
+                // empty), so leave those keys retryable — the next sync attempts
+                // them again rather than 404-ing the asset for the whole session.
+                if (TRANSIENT_ASSET_REJECTIONS.has(rejected.reason)) {
+                    Logger.warn(
+                        `[HttpPreviewProvider] Asset ${rejected.key} rejected (${rejected.reason}); will retry on the next sync`,
+                    );
+                    continue;
+                }
                 Logger.warn(
                     `[HttpPreviewProvider] Server rejected asset ${rejected.key} (${rejected.reason || 'unknown reason'}); its paths will 404 in the preview`,
                 );

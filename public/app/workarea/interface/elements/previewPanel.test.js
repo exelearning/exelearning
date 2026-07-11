@@ -1147,6 +1147,42 @@ describe('PreviewPanelManager', () => {
       expect(tracker.consume).toHaveBeenCalled();
       expect(manager.refreshDebounceTimer).toBeNull();
     });
+
+    it('extractToNewTab awaits the in-flight refresh instead of starting a concurrent sync', async () => {
+      const tracker = installTracker();
+      tracker.scopes = [
+        { pages: new Set(['page-1']), assetIds: new Set() },
+        { pages: new Set(['page-2']), assetIds: new Set() },
+      ];
+      manager._session = { id: 'sess-1', mode: 'http' };
+      window.open = vi.fn(() => ({ closed: false, focus: vi.fn() }));
+
+      // Hold the first refresh round open.
+      let resolveFirstSync;
+      manager._provider.update.mockImplementationOnce(
+        () => new Promise((resolve) => { resolveFirstSync = resolve; }),
+      );
+
+      const refreshing = manager.refresh();
+      await vi.waitFor(() => expect(resolveFirstSync).toBeDefined());
+      expect(manager.isLoading).toBe(true);
+
+      // Extract fires mid-refresh: it must NOT open the tab yet, and must NOT run
+      // a second concurrent generation (no third generator call appears until the
+      // in-flight cycle — plus the coalesced follow-up round — completes).
+      const extracting = manager.extractToNewTab();
+      expect(window.open).not.toHaveBeenCalled();
+      expect(manager._pendingRefresh).toBe(true);
+
+      resolveFirstSync({ id: 'sess-1', mode: 'http' });
+      await refreshing;
+      await extracting;
+
+      // Exactly the two coalesced rounds ran (no concurrent extra sync), and the
+      // tab opened only after the sync settled.
+      expect(window.SharedExporters.generatePreviewLayered.mock.calls).toHaveLength(2);
+      expect(window.open).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('subscribeToChanges (layered classification for http)', () => {

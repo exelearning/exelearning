@@ -308,6 +308,11 @@
         var strict = config.mode === 'strict';
         var whitelist = buildWhitelist(config.whitelist);
         var overlays = [];
+        // Handles for the listeners/timer init() installs, so dispose() can remove
+        // them and init() can stay idempotent (a second init() must not stack a
+        // second drift interval + duplicate window listeners on the same relay).
+        var driftTimer = null;
+        var started = false;
 
         function findOverlay(iframe) {
             for (var i = 0; i < overlays.length; i++) {
@@ -549,17 +554,43 @@
             }
         }
 
+        // Tear down clear() the overlays AND remove the window listeners + drift
+        // timer that init() installed, so a relay whose host is gone (preview panel
+        // disposed, tab closed) leaves nothing running. Idempotent; init() can run
+        // again afterwards on a reused relay.
+        function dispose() {
+            clear();
+            /* v8 ignore start */
+            if (driftTimer !== null) {
+                window.clearInterval(driftTimer);
+                driftTimer = null;
+            }
+            window.removeEventListener('message', onMessage);
+            window.removeEventListener('resize', scheduleReflow);
+            window.removeEventListener('scroll', scheduleReflow, true);
+            window.removeEventListener('load', pingAll);
+            /* v8 ignore stop */
+            started = false;
+        }
+
         return {
             onMessage: onMessage,
             sync: sync,
             clear: clear,
             reflow: reflow,
             checkDrift: checkDrift,
+            dispose: dispose,
             validate: function (raw, contentSrc) {
                 return validate(raw, contentSrc, { strict: strict, whitelist: whitelist });
             },
             /* v8 ignore start */
             init: function () {
+                // Idempotent: a second init() on the same relay must not stack a
+                // second drift interval and duplicate window listeners.
+                if (started) {
+                    return this;
+                }
+                started = true;
                 window.addEventListener('message', onMessage);
                 window.addEventListener('resize', scheduleReflow);
                 window.addEventListener('scroll', scheduleReflow, true);
@@ -569,7 +600,7 @@
                 // Host layout changes (sidebar toggles, panel slide-ins) move the
                 // content iframe with no scroll/resize event; keep the overlays
                 // pinned to it with a cheap low-frequency drift check.
-                window.setInterval(checkDrift, 300);
+                driftTimer = window.setInterval(checkDrift, 300);
                 return this;
             }
             /* v8 ignore stop */

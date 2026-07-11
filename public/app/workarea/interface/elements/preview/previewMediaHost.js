@@ -129,6 +129,18 @@ export class PreviewMediaHost {
             }
         }
         this._handles = [];
+        // Fully dispose the page-global embed relay (removes its drift interval and
+        // window listeners), and drop the once-guard so a later attach re-inits a
+        // clean relay instead of leaving the old timer running for the page lifetime.
+        try {
+            this._embedRelay?.dispose?.();
+        } catch (error) {
+            Logger.warn('[PreviewMediaHost] embed relay dispose failed:', error);
+        }
+        this._embedRelay = null;
+        if (this._win) {
+            this._win.__exePreviewEmbedRelayReady = false;
+        }
     }
 
     _ensureBridge() {

@@ -118,8 +118,12 @@ export async function handleAssetsUpload(
 
     const limits = manager.getLimits();
     const remainingBudget = limits.maxBytesPerSession - manager.sessionBytes(session);
+    // Budget only the bytes that will actually be stored: an entry whose key the
+    // session already holds is immutable (storeAssets reports it alreadyStored and
+    // charges nothing), so counting it here would spuriously 413 a re-sent batch.
     let declaredBytes = 0;
     for (const entry of entries) {
+        if (session.assets.has(entry.key)) continue;
         declaredBytes += entry.size;
         if (declaredBytes > remainingBudget) {
             return error(413, 'Upload exceeds the preview session byte budget');
@@ -128,13 +132,19 @@ export async function handleAssetsUpload(
 
     const buffered: Uint8Array[] = [];
     let bufferedBytes = 0;
-    for (const file of files) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        bufferedBytes += bytes.length;
+    for (let i = 0; i < files.length; i++) {
+        const bytes = new Uint8Array(await files[i].arrayBuffer());
+        if (!session.assets.has(entries[i].key)) bufferedBytes += bytes.length;
         if (bufferedBytes > remainingBudget) {
             return error(413, 'Upload exceeds the preview session byte budget');
         }
         buffered.push(bytes);
+    }
+
+    // A concurrent DELETE / TTL sweep may have removed the session while the
+    // upload body was buffering; do not mutate global accounting for a dead one.
+    if (!manager.isRegistered(session)) {
+        return error(404, 'Preview session not found');
     }
 
     const result = manager.storeAssets(
@@ -220,6 +230,13 @@ export async function handleRevisionUpload(
             return error(413, 'Revision exceeds the preview session byte budget');
         }
         bufferedWrites.push({ path: writes[i] as string, bytes });
+    }
+
+    // A concurrent DELETE / TTL sweep may have removed the session while the
+    // revision body was buffering; do not mutate global accounting for a dead one
+    // (the client re-creates on 404 and re-seeds a full snapshot).
+    if (!manager.isRegistered(session)) {
+        return error(404, 'Preview session not found');
     }
 
     const result = manager.applyRevision(

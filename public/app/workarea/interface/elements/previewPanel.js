@@ -63,6 +63,10 @@ export default class PreviewPanelManager {
         // Refresh requests arriving while a refresh runs are coalesced into
         // exactly one follow-up round (never dropped).
         this._pendingRefresh = false;
+        // The promise for the in-flight refresh cycle (all coalesced rounds),
+        // or null when idle. extractToNewTab awaits it so it never opens the tab
+        // on stale content nor runs a concurrent sync.
+        this._activeRefresh = null;
 
         // Store unsubscribe function for Yjs observers
         this._unsubscribeStructure = null;
@@ -962,7 +966,10 @@ export default class PreviewPanelManager {
     async refresh() {
         if (this.isLoading) {
             this._pendingRefresh = true;
-            return;
+            // Return the in-flight cycle so a caller that needs the sync to have
+            // settled (extractToNewTab) can await it — the do/while below drains
+            // every coalesced round, including the one this call just requested.
+            return this._activeRefresh ?? undefined;
         }
         if (!this._provider) {
             this.showError(_('Preview is not available in this environment.'));
@@ -972,25 +979,29 @@ export default class PreviewPanelManager {
         this.isLoading = true;
         this.showLoadingState();
 
-        try {
-            do {
-                this._pendingRefresh = false;
-                await this._refreshOnce();
-            } while (this._pendingRefresh);
-        } catch (error) {
-            Logger.error('[PreviewPanel] Error generating preview:', error);
-            this.showError(error.message);
-            // A round that failed merged its scope back (nothing lost). If a
-            // request arrived meanwhile, retry it after the normal debounce
-            // instead of looping on a persistent error.
-            if (this._pendingRefresh) {
-                this._pendingRefresh = false;
-                this.scheduleRefresh();
+        this._activeRefresh = (async () => {
+            try {
+                do {
+                    this._pendingRefresh = false;
+                    await this._refreshOnce();
+                } while (this._pendingRefresh);
+            } catch (error) {
+                Logger.error('[PreviewPanel] Error generating preview:', error);
+                this.showError(error.message);
+                // A round that failed merged its scope back (nothing lost). If a
+                // request arrived meanwhile, retry it after the normal debounce
+                // instead of looping on a persistent error.
+                if (this._pendingRefresh) {
+                    this._pendingRefresh = false;
+                    this.scheduleRefresh();
+                }
+            } finally {
+                this.isLoading = false;
+                this.hideLoadingState();
+                this._activeRefresh = null;
             }
-        } finally {
-            this.isLoading = false;
-            this.hideLoadingState();
-        }
+        })();
+        return this._activeRefresh;
     }
 
     /** One refresh round: generate → sync transport → render current page. */
@@ -1215,15 +1226,21 @@ export default class PreviewPanelManager {
             }
 
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
-            // Sync the latest content first — unless a refresh is already in
-            // flight (it is syncing the same state; a second concurrent sync
-            // would race the provider's single-flight revision counter).
-            if (!this.isLoading) {
-                try {
-                    await this._generateAndSync();
-                } catch (error) {
-                    Logger.warn('[PreviewPanel] Extract sync failed; opening last synced state:', error);
+            // Sync the latest content first, THROUGH the refresh single-flight so
+            // we never run a second concurrent generate/sync that races the
+            // provider's revision counter (which could publish stale content over
+            // a newer edit). If a refresh is already in flight, mark a pending
+            // round so any just-typed edit is included, then await the whole
+            // coalesced cycle; otherwise start (and await) a fresh one.
+            try {
+                if (this.isLoading) {
+                    this._pendingRefresh = true;
+                    await this._activeRefresh;
+                } else {
+                    await this.refresh();
                 }
+            } catch (error) {
+                Logger.warn('[PreviewPanel] Extract sync failed; opening last synced state:', error);
             }
 
             // Open the same-origin "preview host" page (public/preview-tab.html) rather

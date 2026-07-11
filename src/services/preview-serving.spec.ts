@@ -119,6 +119,48 @@ describe('handleAssetsUpload', () => {
             (await handleAssetsUpload(session, [{ key: ASSET_KEY, size: 'big' }], [new Blob(['x'])], manager)).status,
         ).toBe(400);
     });
+
+    it('does not count an already-stored (immutable) key against the declared budget', async () => {
+        // Session budget just above one asset: re-sending the stored asset in a
+        // batch with a new one must not spuriously 413 (the stored one is free).
+        manager.configure({
+            limits: { ...manager.DEFAULT_PREVIEW_SESSION_LIMITS, maxBytesPerSession: 10 },
+        });
+        const session = newSession();
+        const KEY2 = '22222222-3333-4444-8555-666666666666@bbccddee';
+        expect(
+            (await handleAssetsUpload(session, [{ key: ASSET_KEY, size: 6 }], [new Blob([bytesOf('123456')])], manager))
+                .status,
+        ).toBe(200);
+        // Re-send ASSET_KEY (6 B, already stored → free) + KEY2 (4 B): total new = 4 ≤ 10.
+        const result = await handleAssetsUpload(
+            session,
+            [
+                { key: ASSET_KEY, size: 6 },
+                { key: KEY2, size: 4 },
+            ],
+            [new Blob([bytesOf('123456')]), new Blob([bytesOf('data')])],
+            manager,
+        );
+        expect(result.status).toBe(200);
+        expect(result.body).toMatchObject({ alreadyStored: [ASSET_KEY], stored: [KEY2] });
+    });
+
+    it('returns 404 without mutating global bytes when the session was removed mid-buffer', async () => {
+        const session = newSession();
+        const before = manager.getStats().globalBytes;
+        // Simulate a DELETE / TTL sweep landing during the upload-body await.
+        manager.deleteSession(session.id);
+        const result = await handleAssetsUpload(
+            session,
+            [{ key: ASSET_KEY, size: 4 }],
+            [new Blob([bytesOf('data')])],
+            manager,
+        );
+        expect(result.status).toBe(404);
+        expect(manager.getStats().globalBytes).toBe(before);
+        expect(session.assets.has(ASSET_KEY)).toBe(false);
+    });
 });
 
 describe('handleRevisionUpload', () => {
@@ -160,6 +202,17 @@ describe('handleRevisionUpload', () => {
         const meta = JSON.stringify({ baseRevision: 0, nextRevision: 1, writes: ['big.bin'] });
         const result = await handleRevisionUpload(session, meta, [new Blob([bytesOf('123456789')])], manager, NO_FIXED);
         expect(result.status).toBe(413);
+        expect(session.revision).toBe(0);
+    });
+
+    it('returns 404 without mutating global bytes when the session was removed mid-buffer', async () => {
+        const session = newSession();
+        const before = manager.getStats().globalBytes;
+        manager.deleteSession(session.id);
+        const meta = JSON.stringify({ baseRevision: 0, nextRevision: 1, writes: ['index.html'] });
+        const result = await handleRevisionUpload(session, meta, [new Blob([bytesOf('<html/>')])], manager, NO_FIXED);
+        expect(result.status).toBe(404);
+        expect(manager.getStats().globalBytes).toBe(before);
         expect(session.revision).toBe(0);
     });
 });
