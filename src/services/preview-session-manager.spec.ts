@@ -679,6 +679,16 @@ describe('getFile', () => {
         expect(getFile(session, '%2e%2e%2findex.html', NO_FIXED)).toBeNull();
     });
 
+    it('falls past a dangling assetRef whose key left the store (defensive)', () => {
+        const session = ownedSession(createSession(1).previewId, 1);
+        storeAssets(session, [{ key: ASSET_KEY_A, declaredSize: 3, bytes: bytesOf('img') }]);
+        publishDocuments(session, { 'index.html': 'x' }, { assetRefs: { 'a.png': ASSET_KEY_A } });
+        // Assets are never garbage-collected while the session lives, so this
+        // state is unreachable through the public API — simulate it directly.
+        session.assets.delete(ASSET_KEY_A);
+        expect(getFile(session, 'a.png', NO_FIXED)).toBeNull();
+    });
+
     it('returns null when a fixedRef id vanished from the manifest between revisions', () => {
         const session = ownedSession(createSession(1).previewId, 1);
         const fixed = fixedResolver({ 'libs/a.js': 'a' });
