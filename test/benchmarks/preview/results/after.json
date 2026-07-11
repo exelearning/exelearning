@@ -1,0 +1,364 @@
+{
+  "meta": {
+    "label": "after",
+    "date": "2026-07-11T01:00:24.276Z",
+    "gitSha": "fe75c8c460b90db1caf0bc38bd11c07fd85f8b99",
+    "gitBranch": "fix/opaque-iframe-external-media",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M5",
+    "totalMemGiB": 24,
+    "nodeVersion": "v26.4.0"
+  },
+  "fixtures": [
+    {
+      "size": "SMALL",
+      "pages": 3,
+      "images": 0,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 0,
+      "protocol": "v2",
+      "firstManifestFileCount": 4,
+      "firstOpenUploadedBytes": 48045,
+      "memoryUsedJSHeapAfterBuild": 31200000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 235,
+          "refreshMsAll": [
+            235,
+            310,
+            123
+          ],
+          "uploadedBytesMedian": 48045,
+          "manifestBytesMedian": 48045,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 2,
+          "manifestFileCount": 4,
+          "notes": "Full publish of documents + assets (v2 excludes fixed install resources); fresh session each repeat."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 527,
+          "refreshMsAll": [
+            519,
+            571,
+            527
+          ],
+          "uploadedBytesMedian": 17761,
+          "manifestBytesMedian": 17761,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 586,
+          "refreshMsAll": [
+            592,
+            580,
+            586
+          ],
+          "uploadedBytesMedian": 2115803,
+          "manifestBytesMedian": 18285,
+          "blobBytesMedian": 2097518,
+          "requestCountMedian": 2,
+          "manifestFileCount": 2,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 574,
+          "refreshMsAll": [
+            578,
+            568,
+            574
+          ],
+          "uploadedBytesMedian": 18488,
+          "manifestBytesMedian": 18488,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Asset-upload median 0.0 KiB — the 2 MiB image from S3 is NOT re-uploaded (v1 de-dups by hash; v2 uploads assets once per session)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 574,
+          "refreshMsAll": [
+            574,
+            531,
+            575
+          ],
+          "uploadedBytesMedian": 45308,
+          "manifestBytesMedian": 45308,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 3,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": false,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2001",
+          "lostUpdateReproduced": false,
+          "note": "Upload throttled to 12 KiB/s; in-flight observed=true, publish rounds for the 2 overlapping edits=2 (syncCount=2), shown=rev2001. Second edit COALESCED into a follow-up round — final state rev2001 SURVIVED (lossless queue)."
+        }
+      }
+    },
+    {
+      "size": "MEDIUM",
+      "pages": 25,
+      "images": 10,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 0,
+      "protocol": "v2",
+      "firstManifestFileCount": 36,
+      "firstOpenUploadedBytes": 2433871,
+      "memoryUsedJSHeapAfterBuild": 39600000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 227,
+          "refreshMsAll": [
+            227,
+            295,
+            89
+          ],
+          "uploadedBytesMedian": 2433871,
+          "manifestBytesMedian": 383463,
+          "blobBytesMedian": 2050408,
+          "requestCountMedian": 3,
+          "manifestFileCount": 36,
+          "notes": "Full publish of documents + assets (v2 excludes fixed install resources); fresh session each repeat."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 579,
+          "refreshMsAll": [
+            579,
+            530,
+            579
+          ],
+          "uploadedBytesMedian": 20039,
+          "manifestBytesMedian": 20039,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 589,
+          "refreshMsAll": [
+            594,
+            588,
+            589
+          ],
+          "uploadedBytesMedian": 2118244,
+          "manifestBytesMedian": 20726,
+          "blobBytesMedian": 2097518,
+          "requestCountMedian": 2,
+          "manifestFileCount": 2,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 579,
+          "refreshMsAll": [
+            525,
+            579,
+            579
+          ],
+          "uploadedBytesMedian": 20929,
+          "manifestBytesMedian": 20929,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Asset-upload median 0.0 KiB — the 2 MiB image from S3 is NOT re-uploaded (v1 de-dups by hash; v2 uploads assets once per session)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 577,
+          "refreshMsAll": [
+            574,
+            577,
+            578
+          ],
+          "uploadedBytesMedian": 380793,
+          "manifestBytesMedian": 380793,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 25,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": false,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2001",
+          "lostUpdateReproduced": false,
+          "note": "Upload throttled to 12 KiB/s; in-flight observed=true, publish rounds for the 2 overlapping edits=2 (syncCount=2), shown=rev2001. Second edit COALESCED into a follow-up round — final state rev2001 SURVIVED (lossless queue)."
+        }
+      }
+    },
+    {
+      "size": "LARGE",
+      "pages": 50,
+      "images": 30,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 52428800,
+      "protocol": "v2",
+      "firstManifestFileCount": 82,
+      "firstOpenUploadedBytes": 59426256,
+      "memoryUsedJSHeapAfterBuild": 86400000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 314,
+          "refreshMsAll": [
+            314,
+            284,
+            414
+          ],
+          "uploadedBytesMedian": 59426256,
+          "manifestBytesMedian": 846279,
+          "blobBytesMedian": 58579977,
+          "requestCountMedian": 3,
+          "manifestFileCount": 82,
+          "notes": "Full publish of documents + assets (v2 excludes fixed install resources); fresh session each repeat."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 576,
+          "refreshMsAll": [
+            528,
+            576,
+            581
+          ],
+          "uploadedBytesMedian": 23487,
+          "manifestBytesMedian": 23487,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 587,
+          "refreshMsAll": [
+            548,
+            587,
+            591
+          ],
+          "uploadedBytesMedian": 2121767,
+          "manifestBytesMedian": 24249,
+          "blobBytesMedian": 2097518,
+          "requestCountMedian": 2,
+          "manifestFileCount": 2,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 581,
+          "refreshMsAll": [
+            583,
+            581,
+            581
+          ],
+          "uploadedBytesMedian": 24452,
+          "manifestBytesMedian": 24452,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 1,
+          "notes": "Asset-upload median 0.0 KiB — the 2 MiB image from S3 is NOT re-uploaded (v1 de-dups by hash; v2 uploads assets once per session)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 579,
+          "refreshMsAll": [
+            589,
+            579,
+            529
+          ],
+          "uploadedBytesMedian": 843684,
+          "manifestBytesMedian": 843684,
+          "blobBytesMedian": 0,
+          "requestCountMedian": 1,
+          "manifestFileCount": 50,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": false,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2001",
+          "lostUpdateReproduced": false,
+          "note": "Upload throttled to 12 KiB/s; in-flight observed=true, publish rounds for the 2 overlapping edits=2 (syncCount=2), shown=rev2001. Second edit COALESCED into a follow-up round — final state rev2001 SURVIVED (lossless queue)."
+        }
+      }
+    }
+  ]
+}

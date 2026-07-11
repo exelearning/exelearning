@@ -25,6 +25,7 @@ import { PreviewMeter, summarize, median, type WindowMetrics } from './measure';
 import {
     buildMeta,
     writeResults,
+    writeComparison,
     type BenchResults,
     type FixtureResult,
     type ScenarioResult,
@@ -59,10 +60,19 @@ test.describe.configure({ mode: 'serial' });
 
 test.afterAll(async () => {
     if (collected.length === 0) return;
-    const results: BenchResults = { meta: buildMeta(process.env.BENCH_OUT || 'baseline'), fixtures: collected };
+    const label = process.env.BENCH_OUT || 'baseline';
+    const results: BenchResults = { meta: buildMeta(label), fixtures: collected };
     const { jsonPath, mdPath } = writeResults(results);
     // eslint-disable-next-line no-console
-    console.log(`\n[bench] wrote ${jsonPath}\n[bench] wrote ${mdPath}\n`);
+    console.log(`\n[bench] wrote ${jsonPath}\n[bench] wrote ${mdPath}`);
+    // On a non-baseline run, also diff against the committed baseline.
+    if (label !== 'baseline') {
+        const cmp = writeComparison(results);
+        // eslint-disable-next-line no-console
+        console.log(cmp ? `[bench] wrote ${cmp}` : '[bench] no baseline.json found; skipped comparison');
+    }
+    // eslint-disable-next-line no-console
+    console.log('');
 });
 
 /** Current preview provider version (refresh counter), -1 if none. */
@@ -87,20 +97,31 @@ async function waitForVersionAbove(
     );
 }
 
+/** Wait until the preview panel is not mid-refresh (covers any coalesced round). */
+async function waitIdle(page: import('@playwright/test').Page, timeout = 180_000): Promise<void> {
+    await page
+        .waitForFunction(
+            () => !(window as any).eXeLearning?.app?.interface?.previewButton?.getPanel?.()?.isLoading,
+            undefined,
+            { timeout, polling: 25 },
+        )
+        .catch(() => {});
+}
+
 /** Run one triggered refresh and return timing + byte metrics for its window. */
 async function measureRefresh(
     page: import('@playwright/test').Page,
     meter: PreviewMeter,
     trigger: () => Promise<unknown>,
 ): Promise<{ refreshMs: number; metrics: WindowMetrics }> {
-    const mark = meter.mark();
+    const from = await meter.mark();
     const vBefore = await getVersion(page);
     const t0 = Date.now();
     await trigger();
     await waitForVersionAbove(page, vBefore);
     const refreshMs = Date.now() - t0;
-    await meter.waitQuiet(200);
-    const metrics = summarize(meter.since(mark));
+    await waitIdle(page);
+    const metrics = summarize(await meter.collect(from));
     return { refreshMs, metrics };
 }
 
@@ -133,12 +154,19 @@ function aggregate(
         refreshMsMedian: median(refreshMsAll),
         refreshMsAll,
         uploadedBytesMedian: median(samples.map(s => s.metrics.uploadedBytes)),
-        manifestBytesMedian: median(samples.map(s => s.metrics.manifestBytes)),
-        blobBytesMedian: median(samples.map(s => s.metrics.blobBytes)),
+        // bucketA = manifest(v1)/revisions(v2); bucketB = blobs(v1)/assets(v2).
+        manifestBytesMedian: median(samples.map(s => s.metrics.bucketAbytes)),
+        blobBytesMedian: median(samples.map(s => s.metrics.bucketBbytes)),
         requestCountMedian: median(samples.map(s => s.metrics.requestCount)),
-        manifestFileCount: samples[samples.length - 1]?.metrics.manifestFileCount ?? null,
+        manifestFileCount: samples[samples.length - 1]?.metrics.filesUploaded ?? null,
         notes,
     };
+}
+
+/** Wire protocol seen across a fixture's scenarios (v1 = manifest/blobs, v2 = assets/revisions). */
+function detectProtocol(samples: Array<{ metrics: WindowMetrics }>): 'v1' | 'v2' | '?' {
+    for (const s of samples) if (s.metrics.protocol !== '?') return s.metrics.protocol;
+    return '?';
 }
 
 for (const fx of FIXTURES) {
@@ -195,7 +223,7 @@ for (const fx of FIXTURES) {
         );
 
         const meter = new PreviewMeter(page);
-        meter.start();
+        await meter.install();
 
         const scenarios: ScenarioResult[] = [];
         let firstManifestFileCount: number | null = null;
@@ -210,7 +238,7 @@ for (const fx of FIXTURES) {
             });
             s1Samples.push(sample);
             if (r === 0) {
-                firstManifestFileCount = sample.metrics.manifestFileCount;
+                firstManifestFileCount = sample.metrics.filesUploaded;
                 firstOpenUploadedBytes = sample.metrics.uploadedBytes;
             }
             // Confirm the frame actually rendered.
@@ -224,7 +252,7 @@ for (const fx of FIXTURES) {
                 'S1',
                 'initial preview open (cold session)',
                 s1Samples,
-                'Full upload of every file; repeated with a fresh session each time.',
+                'Full publish of documents + assets (v2 excludes fixed install resources); fresh session each repeat.',
             ),
         );
 
@@ -273,13 +301,13 @@ for (const fx of FIXTURES) {
                 ),
             );
         }
-        const s4BlobMedian = median(s4Samples.map(s => s.metrics.blobBytes));
+        const s4AssetMedian = median(s4Samples.map(s => s.metrics.bucketBbytes));
         scenarios.push(
             aggregate(
                 'S4',
                 'text edit after adding image',
                 s4Samples,
-                `Blob upload median ${(s4BlobMedian / KiB).toFixed(1)} KiB — the 2 MiB image from S3 is NOT re-uploaded (manifest-diff de-dups by hash).`,
+                `Asset-upload median ${(s4AssetMedian / KiB).toFixed(1)} KiB — the 2 MiB image from S3 is NOT re-uploaded (v1 de-dups by hash; v2 uploads assets once per session).`,
             ),
         );
 
@@ -310,6 +338,7 @@ for (const fx of FIXTURES) {
             images: fx.images,
             imageBytesEach: fx.imageBytes,
             bigMediaBytes: fx.bigMediaBytes,
+            protocol: detectProtocol(s1Samples),
             firstManifestFileCount,
             firstOpenUploadedBytes,
             memoryUsedJSHeapAfterBuild,
@@ -317,7 +346,6 @@ for (const fx of FIXTURES) {
             lostUpdate,
         });
 
-        meter.stop();
         fs.rmSync(elpxPath, { force: true });
     });
 }
@@ -341,12 +369,12 @@ async function runLostUpdateProbe(
 
     // ---- Part A: rapid burst ----
     const burstBase = 1000;
-    const mark = meter.mark();
+    const from = await meter.mark();
     const vBefore = await getVersion(page);
     const finalRev = await page.evaluate(rapidEdits, { pageIndex: 0, count: 10, baseRev: burstBase });
     await waitForVersionAbove(page, vBefore, 120_000).catch(() => {});
-    await meter.waitQuiet(300);
-    const burstMetrics = summarize(meter.since(mark));
+    await waitIdle(page);
+    const burstMetrics = summarize(await meter.collect(from));
     const burstExpected = `rev${finalRev}`;
     let burstShown: string | null = null;
     try {
@@ -357,15 +385,14 @@ async function runLostUpdateProbe(
 
     // ---- Part B: overlap probe ----
     //
-    // At native speed one refresh's WORK is well under the 500 ms debounce, so a
-    // second edit's refresh never fires while the first is in-flight and nothing
-    // is ever dropped. To engage the `if (this.isLoading) return;` path we
-    // throttle the UPLOAD via CDP: the first refresh snapshots the doc quickly
-    // but then stays in-flight (isLoading true) throughout a slow upload. The
-    // second edit lands during that window — after the snapshot — so its refresh
-    // is dropped with no re-schedule and the edit is genuinely lost. This models
-    // a teacher on a slow uplink, where the bug actually bites.
-    const UPLOAD_BPS = 12 * 1024; // 12 KiB/s
+    // Force a refresh to still be in-flight when the NEXT edit's debounce fires,
+    // by throttling the UPLOAD via CDP: the first refresh snapshots the doc
+    // quickly, then stays `isLoading` throughout its slow upload. The second edit
+    // lands during that window (after A's snapshot). We then count publish rounds
+    // via the provider revision counter:
+    //   - 1 round, preview stuck on revA  ⇒ second refresh DROPPED (pre-v2 bug);
+    //   - ≥2 rounds, preview shows revB    ⇒ second refresh COALESCED (v2 queue).
+    const UPLOAD_BPS = 12 * 1024; // 12 KiB/s — models a slow uplink
     const overlap = {
         attempted: true,
         inFlightObserved: false,
@@ -377,7 +404,7 @@ async function runLostUpdateProbe(
     };
     let cdp: import('@playwright/test').CDPSession | null = null;
     try {
-        await meter.waitQuiet(300);
+        await waitIdle(page);
         cdp = await page.context().newCDPSession(page);
         await cdp.send('Network.emulateNetworkConditions', {
             offline: false,
@@ -388,15 +415,16 @@ async function runLostUpdateProbe(
 
         const revA = 2000;
         const revB = 2001;
-        const probeMark = meter.mark();
+        const probeFrom = await meter.mark();
+        const vPre = await getVersion(page);
 
-        // Edit A → its refresh snapshots the doc, then uploads slowly (isLoading true).
+        // Edit A → refresh snapshots the doc, then uploads slowly (isLoading true).
         await page.evaluate(editText, { pageIndex: 0, rev: revA });
         const sawInFlight = await page
             .waitForFunction(
                 () => !!(window as any).eXeLearning?.app?.interface?.previewButton?.getPanel?.()?.isLoading,
                 undefined,
-                { timeout: DEBOUNCE_MS + 5000, polling: 10 },
+                { timeout: DEBOUNCE_MS + 8000, polling: 10 },
             )
             .then(() => true)
             .catch(() => false);
@@ -405,33 +433,40 @@ async function runLostUpdateProbe(
         // Edit B lands during A's slow upload — after A's snapshot.
         await page.evaluate(editText, { pageIndex: 0, rev: revB });
 
-        // Wait for A's in-flight refresh to finish. B's debounce fires meanwhile;
-        // if it hits the isLoading guard it is dropped with no re-schedule.
-        await page
-            .waitForFunction(
-                () => !(window as any).eXeLearning?.app?.interface?.previewButton?.getPanel?.()?.isLoading,
-                undefined,
-                { timeout: 180_000, polling: 20 },
-            )
-            .catch(() => {});
-        // Give any legitimately re-scheduled follow-up refresh time to run.
-        await page.waitForTimeout(DEBOUNCE_MS + 500);
-        await meter.waitQuiet(400);
+        // Settle: wait until not loading AND the revision counter stops advancing
+        // (covers a coalesced follow-up round that itself uploads slowly).
+        let stable = 0;
+        let lastV = Number.NaN;
+        for (let i = 0; i < 240; i++) {
+            const st = await page.evaluate(readState);
+            if (!st.isLoading && st.version === lastV) {
+                if (++stable >= 2) break;
+            } else {
+                stable = 0;
+            }
+            lastV = st.version;
+            await page.waitForTimeout(300);
+        }
+        const rounds = (await getVersion(page)) - vPre;
 
-        const probeMetrics = summarize(meter.since(probeMark));
+        const probeMetrics = summarize(await meter.collect(probeFrom));
         overlap.finalExpected = `rev${revB}`;
         try {
             overlap.finalShown = (await markerLoc.textContent({ timeout: 10_000 }))?.trim() ?? null;
         } catch {
             overlap.finalShown = null;
         }
-        // Two edits separated by more than the debounce, yet exactly one refresh
-        // fired ⇒ the second was dropped by the isLoading guard.
-        overlap.droppedRefreshObserved = sawInFlight && probeMetrics.manifestCount === 1;
-        overlap.lostUpdateReproduced = overlap.finalShown === `rev${revA}` && overlap.droppedRefreshObserved;
-        overlap.note = overlap.lostUpdateReproduced
-            ? `Upload throttled to ${UPLOAD_BPS / 1024} KiB/s: A stayed in-flight through its upload, B's refresh hit the isLoading guard and was dropped (${probeMetrics.manifestCount} refresh for 2 edits); the preview still shows rev${revA} — rev${revB} LOST until the next edit.`
-            : `Upload throttled to ${UPLOAD_BPS / 1024} KiB/s; in-flight observed=${sawInFlight}, refreshes in window=${probeMetrics.manifestCount}, shown=${overlap.finalShown}. Drop not reproduced this run.`;
+        overlap.droppedRefreshObserved = sawInFlight && rounds <= 1;
+        overlap.lostUpdateReproduced = overlap.finalShown === `rev${revA}` && rounds <= 1;
+        const survived = overlap.finalShown === `rev${revB}`;
+        overlap.note =
+            `Upload throttled to ${UPLOAD_BPS / 1024} KiB/s; in-flight observed=${sawInFlight}, ` +
+            `publish rounds for the 2 overlapping edits=${rounds} (syncCount=${probeMetrics.syncCount}), shown=${overlap.finalShown}. ` +
+            (overlap.lostUpdateReproduced
+                ? `Second edit DROPPED — preview stuck on rev${revA}, rev${revB} LOST (pre-v2 behavior).`
+                : survived
+                  ? `Second edit COALESCED into a follow-up round — final state rev${revB} SURVIVED (lossless queue).`
+                  : 'Inconclusive (could not confirm final state).');
     } catch (err) {
         overlap.note = `overlap probe error: ${(err as Error).message}`;
     } finally {
@@ -450,13 +485,13 @@ async function runLostUpdateProbe(
         const vv = await getVersion(page);
         await page.evaluate(editText, { pageIndex: 0, rev: 2999 }).catch(() => {});
         await waitForVersionAbove(page, vv, 120_000).catch(() => {});
-        await meter.waitQuiet(300);
+        await waitIdle(page);
     }
 
     return {
         burst: {
             editsFired: 10,
-            refreshesFired: burstMetrics.manifestCount,
+            refreshesFired: burstMetrics.syncCount,
             finalExpected: burstExpected,
             finalShown: burstShown,
             finalReflected: burstShown === burstExpected,

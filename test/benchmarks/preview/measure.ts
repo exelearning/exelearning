@@ -1,226 +1,215 @@
 /**
- * Network capture for the preview-refresh benchmark.
+ * Upload measurement for the preview-refresh benchmark.
  *
- * A `PreviewMeter` listens to every request the page makes and keeps only the
- * ones that belong to the HTTP preview transport:
+ * Playwright cannot size a multipart request body (`request.sizes().requestBodySize`
+ * is 0 for form-data, and `postDataBuffer()` is null), and protocol v2 sends BOTH
+ * upload endpoints (`/assets`, `/revisions`) as multipart. So instead of scraping
+ * the network layer we inject a `fetch` shim into the page (harness code, not app
+ * code) that measures the EXACT serialized body of every `/api/preview-session`
+ * request by re-serializing its body (`new Response(body).arrayBuffer()`). This is
+ * the real on-wire payload — protocol-agnostic — for both v1 (manifest/blobs) and
+ * v2 (assets/revisions).
  *
- *   POST /api/preview-session                       → create session
- *   POST /api/preview-session/{id}/manifest         → sync manifest (full file list)
- *   POST /api/preview-session/{id}/blobs            → upload missing blobs
- *   DELETE /api/preview-session/{id}                → dispose session
- *   GET  /preview/{id}/...                          → opaque iframe serving
- *
- * Byte accounting:
- *  - Manifest JSON: the real on-wire body size from `request.sizes()`.
- *  - Blob payload: Chromium does not report the multipart blobs body size to
- *    Playwright, so it is derived from the manifest request (path→{sha,size})
- *    intersected with the manifest response (`missing` hashes) — the exact
- *    content the client must upload, excluding small multipart framing overhead.
- *
- * Scenarios are run serially with a quiescence wait between them, so slicing the
- * buffer by index cleanly attributes requests to one refresh.
+ * The shim records into `window.__exeBench.uploads`; the Node side marks an index
+ * before a scenario and collects the slice after the refresh completes.
  */
-import type { Page, Request } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
-export type PreviewReqKind = 'session-create' | 'manifest' | 'blobs' | 'session-delete' | 'serve' | 'other';
+export type PreviewReqKind =
+    | 'session-create'
+    | 'manifest'
+    | 'blobs'
+    | 'assets'
+    | 'revisions'
+    | 'session-delete'
+    | 'other';
 
-export interface CapturedRequest {
+export interface UploadRecord {
     url: string;
     method: string;
     kind: PreviewReqKind;
-    /** Date.now() when the request started (Node clock). */
-    tStart: number;
-    /** On-wire body size in bytes (0 for GET; unreliable for multipart, see below). */
-    uploadBytes: number;
-    /** For manifest calls: number of files declared in the manifest. */
+    bytes: number;
     manifestFileCount?: number;
-    /**
-     * For manifest calls: the blob PAYLOAD the client must upload for this
-     * refresh = sum of sizes of the hashes the server reported missing.
-     *
-     * Chromium does not report the multipart blob request body size to Playwright
-     * (`sizes().requestBodySize` is 0 for form-data), so blob bytes are derived
-     * here from the manifest request (path→{sha,size}) ∩ the manifest response
-     * (`missing`). This is exact content payload; it excludes the small multipart
-     * framing overhead (~150 B per file).
-     */
-    derivedBlobBytes?: number;
-    /** For manifest calls: number of hashes the server reported missing. */
-    missingCount?: number;
+    writeCount?: number;
+    deleteCount?: number;
+    assetCount?: number;
+    done: boolean;
+    t: number;
 }
 
-const PREVIEW_SESSION_RE = /\/api\/preview-session(\/([0-9a-f-]{36})\/(manifest|blobs))?\/?($|\?)/i;
-const PREVIEW_SERVE_RE = /\/preview\/[0-9a-f-]{36}\//i;
+/**
+ * Installed in the page. Patches `window.fetch` (which the provider calls
+ * dynamically, so a late patch still intercepts) to record the exact serialized
+ * body size of every preview-session request without delaying the real fetch.
+ */
+export function installFetchMeter(): void {
+    const w = window as any;
+    if (w.__exeBench?.installed) return;
+    const uploads: any[] = [];
+    w.__exeBench = { installed: true, uploads };
+    const realFetch = w.fetch.bind(w);
 
-function classify(req: Request): PreviewReqKind {
-    const url = req.url();
-    const method = req.method().toUpperCase();
-    if (/\/api\/preview-session\/[0-9a-f-]{36}\/manifest\b/i.test(url)) return 'manifest';
-    if (/\/api\/preview-session\/[0-9a-f-]{36}\/blobs\b/i.test(url)) return 'blobs';
-    if (/\/api\/preview-session\/?($|\?)/i.test(url) && method === 'POST') return 'session-create';
-    if (/\/api\/preview-session\/[0-9a-f-]{36}\/?($|\?)/i.test(url) && method === 'DELETE') return 'session-delete';
-    if (PREVIEW_SERVE_RE.test(url)) return 'serve';
-    return 'other';
-}
+    const classify = (url: string, method: string): string => {
+        if (/\/api\/preview-session\/[0-9a-f-]{36}\/assets\b/i.test(url)) return 'assets';
+        if (/\/api\/preview-session\/[0-9a-f-]{36}\/revisions\b/i.test(url)) return 'revisions';
+        if (/\/api\/preview-session\/[0-9a-f-]{36}\/manifest\b/i.test(url)) return 'manifest';
+        if (/\/api\/preview-session\/[0-9a-f-]{36}\/blobs\b/i.test(url)) return 'blobs';
+        if (/\/api\/preview-session\/?($|\?)/i.test(url) && method === 'POST') return 'session-create';
+        if (/\/api\/preview-session\/[0-9a-f-]{36}\/?($|\?)/i.test(url) && method === 'DELETE') return 'session-delete';
+        return 'other';
+    };
 
-export class PreviewMeter {
-    private reqs: CapturedRequest[] = [];
-    private lastEventAt = 0;
-    private pending: Promise<void>[] = [];
-    private readonly listener: (req: Request) => void;
+    const measureBytes = async (body: any): Promise<number> => {
+        if (body == null) return 0;
+        if (typeof body === 'string') return new TextEncoder().encode(body).length;
+        try {
+            return (await new Response(body).arrayBuffer()).byteLength;
+        } catch {
+            return 0;
+        }
+    };
 
-    constructor(private readonly page: Page) {
-        // Capture on `requestfinished` so `request.sizes()` is available: the
-        // blob upload is multipart/form-data, for which postDataBuffer() returns
-        // null. `sizes().requestBodySize` is the real body size on the wire
-        // (works for JSON and multipart alike, and never buffers a 50 MiB body).
-        this.listener = (req: Request) => {
-            const url = req.url();
-            const isPreview = PREVIEW_SESSION_RE.test(url) || PREVIEW_SERVE_RE.test(url);
-            if (!isPreview) return;
-            const kind = classify(req);
-            const rec: CapturedRequest = { url, method: req.method(), kind, tStart: Date.now(), uploadBytes: 0 };
-            let shaToSize: Map<string, number> | null = null;
-            if (kind === 'manifest') {
-                try {
-                    const parsed = JSON.parse(req.postData() || '{}');
-                    const files = (parsed?.files ?? {}) as Record<string, { sha256: string; size: number }>;
-                    rec.manifestFileCount = Object.keys(files).length;
-                    shaToSize = new Map();
-                    for (const entry of Object.values(files)) {
-                        if (!shaToSize.has(entry.sha256)) shaToSize.set(entry.sha256, entry.size);
-                    }
-                } catch {
-                    rec.manifestFileCount = undefined;
+    const parseMeta = (kind: string, body: any, rec: any): void => {
+        try {
+            if (kind === 'manifest' && typeof body === 'string') {
+                const j = JSON.parse(body);
+                rec.manifestFileCount = j.files ? Object.keys(j.files).length : 0;
+            } else if (kind === 'revisions' && body && typeof body.get === 'function') {
+                const r = body.get('revision');
+                if (typeof r === 'string') {
+                    const j = JSON.parse(r);
+                    rec.writeCount = (j.writes || []).length;
+                    rec.deleteCount = (j.deletes || []).length;
+                }
+            } else if (kind === 'assets' && body && typeof body.get === 'function') {
+                const a = body.get('assets');
+                if (typeof a === 'string') {
+                    const j = JSON.parse(a);
+                    rec.assetCount = Array.isArray(j) ? j.length : 0;
                 }
             }
-            this.reqs.push(rec);
-            this.lastEventAt = Date.now();
+        } catch {
+            /* metadata best-effort */
+        }
+    };
 
-            // On-wire body size (accurate for JSON manifest; 0 for GET/multipart).
-            this.pending.push(
-                req
-                    .sizes()
-                    .then(s => {
-                        rec.uploadBytes = s.requestBodySize >= 0 ? s.requestBodySize : 0;
+    w.fetch = (input: any, init: any) => {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+        const p = realFetch(input, init);
+        try {
+            if (/\/api\/preview-session/i.test(url)) {
+                const kind = classify(url, method);
+                const body = init && init.body;
+                const rec: any = { url, method, kind, bytes: 0, done: false, t: Date.now() };
+                parseMeta(kind, body, rec);
+                uploads.push(rec);
+                // Measure after kicking off the real fetch so timing is unperturbed.
+                measureBytes(body)
+                    .then((b: number) => {
+                        rec.bytes = b;
+                        rec.done = true;
                     })
-                    .catch(() => {}),
-            );
-
-            // Derive blob payload from manifest request ∩ response(missing).
-            if (kind === 'manifest' && shaToSize) {
-                const map = shaToSize;
-                this.pending.push(
-                    req
-                        .response()
-                        .then(resp => (resp ? resp.json() : null))
-                        .then((body: { missing?: string[] } | null) => {
-                            const missing = Array.isArray(body?.missing) ? body!.missing : [];
-                            let bytes = 0;
-                            for (const h of missing) bytes += map.get(h) ?? 0;
-                            rec.derivedBlobBytes = bytes;
-                            rec.missingCount = missing.length;
-                            if (process.env.BENCH_DEBUG) {
-                                // eslint-disable-next-line no-console
-                                console.error(
-                                    `[meter] manifest files=${rec.manifestFileCount} missing=${rec.missingCount} blobPayload=${bytes}`,
-                                );
-                            }
-                        })
-                        .catch(() => {}),
-                );
+                    .catch(() => {
+                        rec.done = true;
+                    });
             }
-        };
+        } catch {
+            /* never let instrumentation break the app fetch */
+        }
+        return p;
+    };
+}
+
+/** Marks scenario windows and collects the uploads recorded by the page shim. */
+export class PreviewMeter {
+    constructor(private readonly page: Page) {}
+
+    /** Install the in-page shim (idempotent). */
+    async install(): Promise<void> {
+        await this.page.evaluate(installFetchMeter);
     }
 
-    start(): void {
-        this.page.on('requestfinished', this.listener);
-    }
-
-    stop(): void {
-        this.page.off('requestfinished', this.listener);
-    }
-
-    /** Resolve all in-flight size lookups so byte counts are final. */
-    async flush(): Promise<void> {
-        await Promise.all(this.pending);
-    }
-
-    /** Index marking the current end of the buffer (start of the next window). */
-    mark(): number {
-        return this.reqs.length;
-    }
-
-    /** All preview requests captured since `from`. */
-    since(from: number): CapturedRequest[] {
-        return this.reqs.slice(from);
+    /** Current number of recorded uploads — the start of the next window. */
+    async mark(): Promise<number> {
+        return this.page.evaluate(() => (window as any).__exeBench?.uploads.length ?? 0);
     }
 
     /**
-     * Wait until no new preview request has arrived for `idleMs`. Condition-based
-     * (not a fixed sleep): returns as soon as the network for this refresh settles.
+     * All uploads recorded since `from`, once every one has finished measuring.
+     * Byte sizes are filled asynchronously by the shim, so this waits for `done`.
      */
-    async waitQuiet(idleMs = 200, timeoutMs = 120_000): Promise<void> {
-        const deadline = Date.now() + timeoutMs;
-        // Ensure at least one poll interval so an in-flight event is recorded.
-        while (Date.now() < deadline) {
-            const idle = Date.now() - (this.lastEventAt || 0);
-            if (idle >= idleMs) {
-                await this.flush();
-                return;
-            }
-            await new Promise(r => setTimeout(r, 50));
-        }
-        await this.flush();
+    async collect(from: number): Promise<UploadRecord[]> {
+        await this.page.waitForFunction(
+            start => {
+                const u = (window as any).__exeBench?.uploads ?? [];
+                for (let i = start; i < u.length; i++) if (!u[i].done) return false;
+                return true;
+            },
+            from,
+            { timeout: 120_000, polling: 50 },
+        );
+        return this.page.evaluate(start => (window as any).__exeBench.uploads.slice(start), from);
     }
 }
 
-/** Aggregate a window of captured requests into scenario metrics. */
+/** Aggregated metrics for one scenario window. */
 export interface WindowMetrics {
+    /** Upload round-trips (create + manifest/blobs + assets/revisions); excludes delete/serve. */
     requestCount: number;
-    manifestCount: number;
-    blobsCount: number;
-    sessionCreateCount: number;
-    uploadedBytes: number; // manifest JSON + blob bodies
-    manifestBytes: number; // manifest JSON only
-    blobBytes: number; // blob bodies only
-    manifestFileCount: number | null; // files declared in the last manifest of the window
+    /** Total bytes uploaded across those round-trips. */
+    uploadedBytes: number;
+    /** Metadata-and-document upload bucket: manifest (v1) or revisions (v2). */
+    bucketAbytes: number;
+    /** Binary-asset upload bucket: blobs (v1) or assets (v2). */
+    bucketBbytes: number;
+    /** Publish round-trips (manifest or revisions) — used by the S6 probe. */
+    syncCount: number;
+    /** v1: files in the manifest. v2: documents written + new assets uploaded. */
+    filesUploaded: number | null;
+    /** Detected wire protocol for this window. */
+    protocol: 'v1' | 'v2' | '?';
 }
 
-export function summarize(reqs: CapturedRequest[]): WindowMetrics {
-    let manifestBytes = 0;
-    let blobBytes = 0;
-    let manifestCount = 0;
-    let blobsCount = 0;
-    let sessionCreateCount = 0;
+const REQUEST_KINDS = new Set<PreviewReqKind>(['session-create', 'manifest', 'blobs', 'assets', 'revisions']);
+
+export function summarize(records: UploadRecord[]): WindowMetrics {
+    let requestCount = 0;
+    let uploadedBytes = 0;
+    let bucketAbytes = 0;
+    let bucketBbytes = 0;
+    let syncCount = 0;
+    let writeSum = 0;
+    let assetSum = 0;
     let manifestFileCount: number | null = null;
-    let previewReqCount = 0;
-    for (const r of reqs) {
-        if (r.kind === 'serve' || r.kind === 'other') continue;
-        previewReqCount++;
+    let sawRevisions = false;
+    let sawManifest = false;
+
+    for (const r of records) {
+        if (!REQUEST_KINDS.has(r.kind)) continue;
+        requestCount++;
+        uploadedBytes += r.bytes;
         if (r.kind === 'manifest') {
-            manifestCount++;
-            manifestBytes += r.uploadBytes;
-            // Blob payload is derived from this manifest's missing set (Chromium
-            // does not expose the multipart blobs body size to Playwright).
-            blobBytes += r.derivedBlobBytes ?? 0;
+            sawManifest = true;
+            syncCount++;
+            bucketAbytes += r.bytes;
             if (typeof r.manifestFileCount === 'number') manifestFileCount = r.manifestFileCount;
+        } else if (r.kind === 'revisions') {
+            sawRevisions = true;
+            syncCount++;
+            bucketAbytes += r.bytes;
+            writeSum += r.writeCount ?? 0;
         } else if (r.kind === 'blobs') {
-            blobsCount++;
-        } else if (r.kind === 'session-create') {
-            sessionCreateCount++;
+            bucketBbytes += r.bytes;
+        } else if (r.kind === 'assets') {
+            bucketBbytes += r.bytes;
+            assetSum += r.assetCount ?? 0;
         }
     }
-    return {
-        requestCount: previewReqCount,
-        manifestCount,
-        blobsCount,
-        sessionCreateCount,
-        uploadedBytes: manifestBytes + blobBytes,
-        manifestBytes,
-        blobBytes,
-        manifestFileCount,
-    };
+
+    const protocol = sawRevisions ? 'v2' : sawManifest ? 'v1' : '?';
+    const filesUploaded = protocol === 'v2' ? writeSum + assetSum : manifestFileCount;
+    return { requestCount, uploadedBytes, bucketAbytes, bucketBbytes, syncCount, filesUploaded, protocol };
 }
 
 export function median(values: number[]): number {

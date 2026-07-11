@@ -47,11 +47,20 @@ export interface FixtureResult {
     images: number;
     imageBytesEach: number;
     bigMediaBytes: number;
+    /** Wire protocol observed: 'v1' (manifest/blobs) or 'v2' (assets/revisions). */
+    protocol: 'v1' | 'v2' | '?';
     firstManifestFileCount: number | null;
     firstOpenUploadedBytes: number | null;
     memoryUsedJSHeapAfterBuild: number | null;
     scenarios: ScenarioResult[];
     lostUpdate: LostUpdateObservation | null;
+}
+
+/** Column labels for the byte buckets, which differ per protocol. */
+function bucketLabels(protocol: string): { a: string; b: string; files: string } {
+    return protocol === 'v2'
+        ? { a: 'Revision', b: 'Assets', files: 'Docs+assets up' }
+        : { a: 'Manifest', b: 'Blobs', files: 'Files in manifest' };
 }
 
 export interface BenchMeta {
@@ -118,16 +127,20 @@ export function renderMarkdown(results: BenchResults): string {
     lines.push(`- Machine: ${m.platform}/${m.arch}, ${m.cpus}× ${m.cpuModel}, ${m.totalMemGiB} GiB RAM`);
     lines.push(`- Node: ${m.nodeVersion}`);
     lines.push('');
+    const proto = results.fixtures[0]?.protocol ?? '?';
+    lines.push(`Wire protocol: **${proto}** ${proto === 'v2' ? '(assets + revisions)' : '(manifest + blobs)'}.`);
+    lines.push('');
     lines.push(
         'Refresh time is wall-clock from triggering the action to the preview provider ' +
             'completing the sync. S2–S6 are debounced edits, so their time includes the fixed ' +
-            '500 ms debounce; S1 is a direct click-to-open (no debounce). Uploaded bytes = ' +
-            'manifest JSON (real on-wire size) + blob payload (derived from the manifest ∩ the ' +
-            "server's missing set; excludes small multipart framing). Median of the repeats.",
+            '500 ms debounce; S1 is a direct click-to-open (no debounce). Uploaded bytes are the ' +
+            'EXACT serialized request bodies, measured in-page by a fetch shim (works for the ' +
+            'multipart uploads both protocols use). Median of the repeats.',
     );
     lines.push('');
 
     for (const fx of results.fixtures) {
+        const lbl = bucketLabels(fx.protocol);
         lines.push(
             `## ${fx.size} — ${fx.pages} pages, ${fx.images} images (${fmtBytes(fx.imageBytesEach)} each)` +
                 `${fx.bigMediaBytes ? `, 1 media asset ${fmtBytes(fx.bigMediaBytes)}` : ''}`,
@@ -135,14 +148,14 @@ export function renderMarkdown(results: BenchResults): string {
         lines.push('');
         lines.push(
             `First preview open uploaded **${fmtBytes(fx.firstOpenUploadedBytes ?? NaN)}** across ` +
-                `**${fx.firstManifestFileCount ?? 'n/a'}** files.` +
+                `**${fx.firstManifestFileCount ?? 'n/a'}** ${fx.protocol === 'v2' ? 'docs+assets' : 'files'}.` +
                 (fx.memoryUsedJSHeapAfterBuild
                     ? ` JS heap after build: ${fmtBytes(fx.memoryUsedJSHeapAfterBuild)}.`
                     : ''),
         );
         lines.push('');
         lines.push(
-            '| Scenario | Refresh ms (median) | Uploaded (median) | Manifest | Blobs | Requests | Files in manifest |',
+            `| Scenario | Refresh ms (median) | Uploaded (median) | ${lbl.a} | ${lbl.b} | Requests | ${lbl.files} |`,
         );
         lines.push('|---|--:|--:|--:|--:|--:|--:|');
         for (const s of fx.scenarios) {
@@ -188,4 +201,94 @@ export function writeResults(results: BenchResults): { jsonPath: string; mdPath:
     fs.writeFileSync(jsonPath, JSON.stringify(results, null, 2));
     fs.writeFileSync(mdPath, renderMarkdown(results));
     return { jsonPath, mdPath };
+}
+
+/** Signed percentage change from `base` to `after` (negative = reduction). */
+function pct(base: number, after: number): string {
+    if (!isFinite(base) || base === 0) return after === 0 ? '0%' : 'n/a';
+    const p = ((after - base) / base) * 100;
+    const sign = p > 0 ? '+' : p < 0 ? '−' : '';
+    return `${sign}${Math.abs(p) >= 10 ? Math.round(Math.abs(p)) : Math.abs(p).toFixed(1)}%`;
+}
+
+function deltaMs(base: number, after: number): string {
+    return `${fmtMs(base)} → ${fmtMs(after)} (${pct(base, after)})`;
+}
+function deltaBytes(base: number, after: number): string {
+    return `${fmtBytes(base)} → ${fmtBytes(after)} (${pct(base, after)})`;
+}
+function deltaNum(base: number, after: number): string {
+    const d = after - base;
+    return `${base} → ${after}${d === 0 ? '' : ` (${d > 0 ? '+' : ''}${d})`}`;
+}
+
+/** Render a before/after comparison of two runs (matched by fixture size + scenario). */
+export function renderComparison(baseline: BenchResults, after: BenchResults): string {
+    const lines: string[] = [];
+    lines.push('# Preview refresh — baseline vs after');
+    lines.push('');
+    lines.push(
+        `- Baseline: \`${baseline.meta.gitSha.slice(0, 12)}\` (${baseline.meta.gitBranch}), ` +
+            `protocol ${baseline.fixtures[0]?.protocol ?? '?'}, ${baseline.meta.date}`,
+    );
+    lines.push(
+        `- After: \`${after.meta.gitSha.slice(0, 12)}\` (${after.meta.gitBranch}), ` +
+            `protocol ${after.fixtures[0]?.protocol ?? '?'}, ${after.meta.date}`,
+    );
+    lines.push(`- Machine: ${after.meta.platform}/${after.meta.arch}, ${after.meta.cpus}× ${after.meta.cpuModel}`);
+    lines.push('');
+    lines.push('Δ% is (after − baseline) / baseline; negative = improvement. Median of 3 per cell.');
+    lines.push('');
+
+    for (const afterFx of after.fixtures) {
+        const baseFx = baseline.fixtures.find(f => f.size === afterFx.size);
+        if (!baseFx) continue;
+        lines.push(
+            `## ${afterFx.size} — ${afterFx.pages} pages, ${afterFx.images} images` +
+                `${afterFx.bigMediaBytes ? `, ${fmtBytes(afterFx.bigMediaBytes)} media` : ''}`,
+        );
+        lines.push('');
+        lines.push('| Scenario | Refresh ms | Uploaded bytes | Requests |');
+        lines.push('|---|---|---|---|');
+        for (const afterS of afterFx.scenarios) {
+            const baseS = baseFx.scenarios.find(s => s.scenario === afterS.scenario);
+            if (!baseS) continue;
+            lines.push(
+                `| ${afterS.scenario} ${afterS.label} ` +
+                    `| ${deltaMs(baseS.refreshMsMedian, afterS.refreshMsMedian)} ` +
+                    `| ${deltaBytes(baseS.uploadedBytesMedian, afterS.uploadedBytesMedian)} ` +
+                    `| ${deltaNum(baseS.requestCountMedian, afterS.requestCountMedian)} |`,
+            );
+        }
+        lines.push('');
+        lines.push(
+            `First open: ${deltaBytes(baseFx.firstOpenUploadedBytes ?? NaN, afterFx.firstOpenUploadedBytes ?? NaN)} uploaded.`,
+        );
+        if (baseFx.lostUpdate && afterFx.lostUpdate) {
+            lines.push('');
+            lines.push(
+                `**S6 lost-update**: baseline reproduced=${baseFx.lostUpdate.overlap.lostUpdateReproduced} ` +
+                    `(shown \`${baseFx.lostUpdate.overlap.finalShown}\`), ` +
+                    `after reproduced=${afterFx.lostUpdate.overlap.lostUpdateReproduced} ` +
+                    `(shown \`${afterFx.lostUpdate.overlap.finalShown}\`, expected \`${afterFx.lostUpdate.overlap.finalExpected}\`). ` +
+                    `${afterFx.lostUpdate.overlap.note}`,
+            );
+        }
+        lines.push('');
+    }
+    return lines.join('\n');
+}
+
+/**
+ * Write comparison.md by diffing the given run against results/baseline.json.
+ * Returns the path, or null when there is no baseline to compare against.
+ */
+export function writeComparison(after: BenchResults): string | null {
+    const outDir = path.join(__dirname, 'results');
+    const baselinePath = path.join(outDir, 'baseline.json');
+    if (!fs.existsSync(baselinePath)) return null;
+    const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')) as BenchResults;
+    const outPath = path.join(outDir, 'comparison.md');
+    fs.writeFileSync(outPath, renderComparison(baseline, after));
+    return outPath;
 }

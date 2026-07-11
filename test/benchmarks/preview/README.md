@@ -1,13 +1,26 @@
 # Preview refresh benchmark
 
 Reproducible benchmark for the eXeLearning HTTP preview transport. It quantifies
-the cost of the **current** debounced auto-refresh: on every change the client
-regenerates the whole export file map, SHA-256-hashes every file, POSTs a full
-manifest to `/api/preview-session/{id}/manifest`, and uploads the blobs the
-server reports missing to `/api/preview-session/{id}/blobs`.
+the cost of the debounced auto-refresh across two protocols:
 
-Use it to capture a `baseline` today and an `after` once the incremental
-protocol lands, then diff the two.
+- **v1 (manifest/blobs)**: on every change the client regenerates the whole export
+  file map, SHA-256-hashes every file, POSTs a full manifest to
+  `/api/preview-session/{id}/manifest`, and uploads the blobs the server reports
+  missing to `/api/preview-session/{id}/blobs`.
+- **v2 (assets/revisions)**: layered — project assets upload once per session
+  (`/assets`), documents publish as revision **deltas** (`/revisions`), and fixed
+  install resources (libs/theme) are never uploaded.
+
+The harness auto-detects which protocol the running build speaks and labels the
+byte buckets accordingly. Use it to capture a `baseline` on one build and an
+`after` on another, then diff the two.
+
+### How uploads are measured
+
+Playwright cannot size a multipart request body, and both protocols upload
+multipart. So the harness injects a `fetch` shim into the page (test code, not app
+code) that measures the **exact serialized body** of every `/api/preview-session`
+request. This is the real on-wire payload for both protocols.
 
 ## Run
 
@@ -30,8 +43,10 @@ Results are written to:
 BENCH_OUT=after bun x playwright test -c test/benchmarks/preview/playwright.bench.config.ts
 ```
 
-`BENCH_OUT` sets the output basename (default `baseline`). Everything else is
-identical, so `baseline.*` and `after.*` are directly comparable.
+`BENCH_OUT` sets the output basename (default `baseline`). On any non-`baseline`
+run, the harness also writes `results/comparison.md` diffing that run against the
+committed `results/baseline.json` (absolute + % change for refresh ms, uploaded
+bytes, request count per fixture × scenario, plus the S6 outcome).
 
 ### Environment overrides
 
@@ -87,13 +102,20 @@ Two observations:
 
 - **Burst**: 10 edits as fast as possible. The 500 ms debounce should coalesce
   them into a single refresh reflecting the final marker.
-- **Overlap probe**: start a refresh, then edit again while it is still
-  in-flight. `PreviewPanelManager.refresh()` early-returns on `this.isLoading`
-  and nothing re-schedules the dropped refresh, so the last edit can be lost.
-  This reproduces reliably only when a refresh is slow enough to still be running
-  when the next edit's debounce fires (e.g. the LARGE fixture, where every
-  refresh re-hashes the 50 MiB asset). The report records whether an in-flight
-  refresh was observed and whether the loss reproduced on each fixture size.
+- **Overlap probe**: throttle the upload (CDP, 12 KiB/s) so the first refresh
+  stays in-flight, then edit again while it is running — after the first refresh
+  has already snapshotted the doc. The harness counts publish rounds via the
+  provider revision counter:
+  - **1 round, preview stuck on the first edit** ⇒ the second refresh was DROPPED
+    (v1: `refresh()` early-returns on `this.isLoading` and nothing re-schedules) —
+    a genuine lost update.
+  - **≥2 rounds, preview shows the second edit** ⇒ the second refresh was
+    COALESCED into a follow-up round (v2: `refresh()` sets `_pendingRefresh` and a
+    `do…while` loop drains it) — the edit survives.
+
+  The report records which happened per fixture. On the committed baseline (v1)
+  the loss reproduces on all sizes; on v2 it is coalesced and the final state
+  survives.
 
 ## Files
 
