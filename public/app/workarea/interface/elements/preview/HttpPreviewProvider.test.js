@@ -560,6 +560,146 @@ describe('HttpPreviewProvider (contract v2)', () => {
         });
     });
 
+    describe('additional recovery and edge branches', () => {
+        it('update() without a session delegates to prepare()', async () => {
+            await provider.update(layeredInput());
+            expect(provider.session?.id).toBe(PREVIEW_ID);
+            expect(revisionCalls(backend)).toHaveLength(1);
+        });
+
+        it('normalizes ArrayBuffer document values and diffs them byte-exactly', async () => {
+            const bytes = new Uint8Array([1, 2, 3]);
+            const input = layeredInput({
+                documents: new Map([
+                    ['index.html', '<html><body>x</body></html>'],
+                    ['content/data.bin', bytes.buffer.slice(0)],
+                ]),
+            });
+            await provider.prepare(input);
+            backend.calls.length = 0;
+
+            const documents = new Map(input.documents);
+            documents.set('content/data.bin', bytes.buffer.slice(0)); // fresh ArrayBuffer, same bytes
+            await provider.update({ ...input, documents });
+            expect(revisionCalls(backend)[0].revision.writes).toEqual([]);
+        });
+
+        it('evicts decoration cache entries for vanished paths', async () => {
+            const input = layeredInput();
+            await provider.prepare(input);
+            expect(provider._decorationCache.has('index.html')).toBe(true);
+
+            const documents = new Map([['html/other.html', '<html><body>y</body></html>']]);
+            await provider.update({ ...input, documents });
+            expect(provider._decorationCache.has('index.html')).toBe(false);
+        });
+
+        it('requires getAssetBytes when assets must upload', async () => {
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/photo.png', assetRef()]]),
+            });
+            input.getAssetBytes = undefined;
+            await expect(provider.prepare(input)).rejects.toBeInstanceOf(PreviewProviderError);
+        });
+
+        it('throws PreviewProviderError when the asset upload endpoint fails', async () => {
+            backend.state.assetsStatus = 500;
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/photo.png', assetRef()]]),
+            });
+            await expect(provider.prepare(input)).rejects.toBeInstanceOf(PreviewProviderError);
+        });
+
+        it('tolerates a getAssetBytes rejection (asset skipped, retried next refresh)', async () => {
+            const getAssetBytes = vi.fn(async () => {
+                throw new Error('cache gone');
+            });
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/photo.png', assetRef()]]),
+                getAssetBytes,
+            });
+            await provider.prepare(input);
+            expect(revisionCalls(backend)[0].revision.assetRefs).toEqual({});
+        });
+
+        it('drops the ref and retries once when a lost asset is rejected on re-upload', async () => {
+            const getAssetBytes = vi.fn(async () => new Uint8Array([5]));
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/photo.png', assetRef()]]),
+                getAssetBytes,
+            });
+            await provider.prepare(input);
+
+            // Server loses the asset AND refuses the re-upload.
+            backend.state.assets.clear();
+            backend.state.rejectKeys.add(ASSET_KEY);
+            backend.calls.length = 0;
+
+            await provider.update(input);
+
+            const posts = revisionCalls(backend);
+            expect(posts).toHaveLength(2);
+            expect(posts[1].revision.assetRefs).toEqual({});
+            expect(backend.state.revision).toBe(2);
+        });
+
+        it('demotes PDF.js fixed ids with bytes fetched from the app origin', async () => {
+            backend.state.fixedIds.delete('libs/pdfjs/pdf.min.mjs');
+            backend.state.fixedIds.delete('libs/pdfjs/pdf.worker.min.mjs');
+            const input = layeredInput({
+                documents: new Map([
+                    ['index.html', '<html><body>x</body></html>'],
+                    ['content/resources/doc.pdf', new Uint8Array([0x25])],
+                ]),
+                fixedRefs: new Map(),
+            });
+            await provider.prepare(input);
+
+            const posts = revisionCalls(backend);
+            expect(posts).toHaveLength(2);
+            expect(posts[1].revision.writes).toContain('libs/pdfjs/pdf.min.mjs');
+            expect(posts[1].revision.fixedRefs['libs/pdfjs/pdf.min.mjs']).toBeUndefined();
+            const appOriginGet = backend.calls.find(
+                (c) => c.method === 'GET' && c.url === '/exe/libs/pdfjs/pdf.min.mjs',
+            );
+            expect(appOriginGet).toBeDefined();
+        });
+
+        it('decorates demoted fixed HTML like any served page', async () => {
+            const html = '<html><body>fixed page</body></html>';
+            const input = layeredInput({
+                fixedRefs: new Map([['theme/help.html', 'theme:missing-from-manifest/help.html']]),
+                resolveFixedResource: async () => new TextEncoder().encode(html),
+            });
+            await provider.prepare(input);
+
+            const posts = revisionCalls(backend);
+            const retry = posts[1];
+            const index = retry.revision.writes.indexOf('theme/help.html');
+            const uploaded = await retry.files[index].text();
+            expect(uploaded).toContain(INJECTED_MARKER);
+        });
+
+        it('treats a throwing resolveFixedResource as unresolvable (clear error)', async () => {
+            const input = layeredInput({
+                fixedRefs: new Map([['theme/content.css', 'theme:missing-from-manifest/content.css']]),
+                resolveFixedResource: async () => {
+                    throw new Error('nope');
+                },
+            });
+            await expect(provider.prepare(input)).rejects.toBeInstanceOf(PreviewProviderError);
+        });
+
+        it('dispose() swallows DELETE failures (TTL owns cleanup)', async () => {
+            await provider.prepare(layeredInput());
+            provider._fetchFn = async () => {
+                throw new Error('network gone');
+            };
+            await expect(provider.dispose()).resolves.toBeUndefined();
+            expect(provider.session).toBeNull();
+        });
+    });
+
     describe('page resolution and files', () => {
         it('builds page URLs under the session prefix with teacher mode preserved', async () => {
             await provider.prepare(layeredInput());
