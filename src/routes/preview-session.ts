@@ -1,58 +1,65 @@
 /**
- * Editor preview session routes.
+ * Editor preview session routes (serving contract v2 —
+ * doc/development/preview-serving-contract.md).
  *
  * Two deliberately separate plugins:
  *
  * - `previewSessionApiRoutes` (`/api/preview-session`, JWT-authenticated):
- *   create / sync (manifest-diff) / delete preview sessions. Only the session
- *   owner may touch it. Internal editor API — not part of `/api/v1`.
+ *   create sessions, upload assets, publish revisions, delete. Only the
+ *   session owner may touch it. Internal editor API — not part of `/api/v1`.
  *
- * - `previewServeRoutes` (`/preview/:previewId/*`, NO auth): serves the synced
- *   files to the opaque-origin preview iframe. An opaque iframe sends no
- *   SameSite cookies, so this is a capability URL (unguessable UUID + idle
- *   TTL), mirroring the authless `/files/tmp/*` precedent. Every response
- *   carries the hardening headers; HTML additionally gets the `sandbox`-first
- *   CSP so a directly opened preview URL stays opaque (paper R3).
+ * - `previewServeRoutes` (`/preview/:previewId/*`, NO auth): serves the
+ *   session's three layers to the opaque-origin preview iframe. An opaque
+ *   iframe sends no SameSite cookies, so this is a capability URL (unguessable
+ *   UUID + idle TTL), mirroring the authless `/files/tmp/*` precedent. Every
+ *   response carries the hardening headers; scriptable types additionally get
+ *   the `sandbox`-first CSP so a directly opened preview URL stays opaque.
+ *
+ * Protocol semantics live in `src/services/preview-serving.ts`, shared with
+ * the Electron `app://` adapter so the two transports cannot drift.
  */
 import { Elysia } from 'elysia';
 import * as previewSessionManager from '../services/preview-session-manager';
 import {
-    isScriptableDocumentType,
-    previewCspHeader,
-    previewPermissionsPolicy,
-} from '../shared/security/previewSandbox';
+    createSessionResponse,
+    defaultFixedResources,
+    handleAssetsUpload,
+    handleRevisionUpload,
+    servePreviewFile,
+} from '../services/preview-serving';
 import { requireAuth } from '../utils/guards';
 import { withJwtAuth } from '../utils/route-auth';
 
-/**
- * Advertised upper bound for one `/blobs` request. Bun's default request-body
- * cap is 128 MiB and oversized bodies die at the transport layer (connection
- * error, not a clean 413), so clients must batch uploads below it.
- */
-export const RECOMMENDED_BATCH_BYTES = 64 * 1024 * 1024;
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export { PROTOCOL_VERSION, RECOMMENDED_BATCH_BYTES } from '../services/preview-serving';
 
 export interface PreviewSessionRouteDeps {
     manager: typeof previewSessionManager;
+    fixedResources: previewSessionManager.FixedResourceResolver;
 }
 
-const defaultDeps: PreviewSessionRouteDeps = { manager: previewSessionManager };
-
-interface ManifestBody {
-    files?: Record<string, { sha256: string; size: number }>;
+function buildDefaultDeps(): PreviewSessionRouteDeps {
+    return { manager: previewSessionManager, fixedResources: defaultFixedResources() };
 }
 
-interface BlobsBody {
-    manifestId?: string;
+interface AssetsBody {
     /** JSON string in the raw form encoding; Elysia may pre-parse it to an array. */
-    hashes?: string | string[];
+    assets?: unknown;
     files?: Blob | Blob[];
 }
 
+interface RevisionBody {
+    /** JSON string in the raw form encoding; Elysia may pre-parse it to an object. */
+    revision?: unknown;
+    files?: Blob | Blob[];
+}
+
+function toBlobArray(files: Blob | Blob[] | undefined): Blob[] {
+    return files ? (Array.isArray(files) ? files : [files]) : [];
+}
+
 /** Authenticated management API: create, sync and delete preview sessions. */
-export function createPreviewSessionApiRoutes(deps: PreviewSessionRouteDeps = defaultDeps) {
-    const { manager } = deps;
+export function createPreviewSessionApiRoutes(deps: PreviewSessionRouteDeps = buildDefaultDeps()) {
+    const { manager, fixedResources } = deps;
 
     return new Elysia({ prefix: '/api/preview-session' })
         .use(withJwtAuth())
@@ -64,104 +71,37 @@ export function createPreviewSessionApiRoutes(deps: PreviewSessionRouteDeps = de
             }
         })
         .post('/', ({ jwtPayload, set }) => {
-            const { previewId } = manager.createSession(Number(jwtPayload!.sub));
-            const limits = manager.getLimits();
-            set.status = 201;
-            return {
-                previewId,
-                limits: {
-                    maxFilesPerSession: limits.maxFilesPerSession,
-                    maxBytesPerSession: limits.maxBytesPerSession,
-                    recommendedBatchBytes: RECOMMENDED_BATCH_BYTES,
-                },
-            };
+            const result = createSessionResponse(manager, Number(jwtPayload!.sub));
+            set.status = result.status;
+            return result.body;
         })
-        .post('/:previewId/manifest', ({ params, body, jwtPayload, set }) => {
+        .post('/:previewId/assets', async ({ params, body, jwtPayload, set }) => {
             const owned = manager.getOwnedSession(params.previewId, Number(jwtPayload!.sub));
             if ('status' in owned) {
                 set.status = owned.status;
                 return { success: false, error: owned.status === 403 ? 'Access denied' : 'Preview session not found' };
             }
-            const files = (body as ManifestBody | null)?.files;
-            if (!files || typeof files !== 'object' || Array.isArray(files)) {
-                set.status = 400;
-                return { success: false, error: 'Body must be { files: { [path]: { sha256, size } } }' };
-            }
-            const staged = manager.stageManifest(owned.session, files);
-            if ('status' in staged) {
-                set.status = staged.status;
-                return { success: false, error: staged.message };
-            }
-            return staged;
+            const data = (body ?? {}) as AssetsBody;
+            const result = await handleAssetsUpload(owned.session, data.assets, toBlobArray(data.files), manager);
+            set.status = result.status;
+            return result.body;
         })
-        .post('/:previewId/blobs', async ({ params, body, jwtPayload, set }) => {
+        .post('/:previewId/revisions', async ({ params, body, jwtPayload, set }) => {
             const owned = manager.getOwnedSession(params.previewId, Number(jwtPayload!.sub));
             if ('status' in owned) {
                 set.status = owned.status;
                 return { success: false, error: owned.status === 403 ? 'Access denied' : 'Preview session not found' };
             }
-
-            const data = (body ?? {}) as BlobsBody;
-            if (typeof data.manifestId !== 'string' || data.manifestId === '') {
-                set.status = 400;
-                return { success: false, error: 'Missing manifestId' };
-            }
-            // The field is sent as a JSON string, but Elysia's multipart parser
-            // may deliver it pre-parsed — accept both (same duck-typing as the
-            // `metadata` field in upload-session.ts).
-            let hashes: unknown = data.hashes;
-            if (typeof hashes === 'string') {
-                try {
-                    hashes = JSON.parse(hashes);
-                } catch {
-                    set.status = 400;
-                    return { success: false, error: 'Invalid hashes JSON' };
-                }
-            }
-            if (!Array.isArray(hashes) || hashes.some(h => typeof h !== 'string')) {
-                set.status = 400;
-                return { success: false, error: 'hashes must be an array of sha256 strings' };
-            }
-            const files = data.files ? (Array.isArray(data.files) ? data.files : [data.files]) : [];
-            if (files.length !== hashes.length) {
-                set.status = 400;
-                return { success: false, error: 'hashes and files must be index-aligned' };
-            }
-
-            // Enforce the session byte budget on declared Blob sizes BEFORE
-            // buffering anything, so an oversized batch never amplifies memory
-            // (same two-stage pattern as upload-session.ts).
-            const limits = manager.getLimits();
-            const remainingBudget = limits.maxBytesPerSession - owned.session.blobBytes;
-            let declaredBytes = 0;
-            for (const file of files) {
-                declaredBytes += file.size;
-                if (declaredBytes > remainingBudget) {
-                    set.status = 413;
-                    return { success: false, error: 'Upload exceeds the preview session byte budget' };
-                }
-            }
-
-            const blobs: Array<{ declaredSha256: string; bytes: Uint8Array }> = [];
-            let bufferedBytes = 0;
-            for (let i = 0; i < files.length; i++) {
-                const bytes = new Uint8Array(await files[i].arrayBuffer());
-                // Abort as soon as the actual buffered total exceeds the declared
-                // budget, in case a declared `.size` under-reported.
-                bufferedBytes += bytes.length;
-                if (bufferedBytes > remainingBudget) {
-                    set.status = 413;
-                    return { success: false, error: 'Upload exceeds the preview session byte budget' };
-                }
-                blobs.push({ declaredSha256: hashes[i] as string, bytes });
-            }
-
-            const result = await manager.storeBlobs(owned.session, data.manifestId, blobs);
-            if ('status' in result) {
-                set.status = result.status;
-                return { success: false, error: result.message };
-            }
-            return result;
+            const data = (body ?? {}) as RevisionBody;
+            const result = await handleRevisionUpload(
+                owned.session,
+                data.revision,
+                toBlobArray(data.files),
+                manager,
+                fixedResources,
+            );
+            set.status = result.status;
+            return result.body;
         })
         .delete('/:previewId', ({ params, jwtPayload, set }) => {
             const owned = manager.getOwnedSession(params.previewId, Number(jwtPayload!.sub));
@@ -174,52 +114,22 @@ export function createPreviewSessionApiRoutes(deps: PreviewSessionRouteDeps = de
         });
 }
 
-/** Headers applied to every serving response, 404s included. */
-function baseServeHeaders(): Record<string, string> {
-    return {
-        'X-Content-Type-Options': 'nosniff',
-        'Referrer-Policy': 'no-referrer',
-        'Cache-Control': 'no-store',
-        'Permissions-Policy': previewPermissionsPolicy(),
-        // Fonts (@font-face) and module/`fetch()` requests from the opaque
-        // frame are CORS-mode with `Origin: null`; the route is authless and
-        // cookieless, so a wildcard grants nothing beyond what the capability
-        // URL already serves.
-        'Access-Control-Allow-Origin': '*',
-    };
-}
-
-function notFound(): Response {
-    return new Response('Not found', {
-        status: 404,
-        headers: { ...baseServeHeaders(), 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-}
-
 /** Authless serving route for the opaque preview iframe (capability URL). */
-export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = defaultDeps) {
-    const { manager } = deps;
-
-    const serve = (previewId: string, relPath: string): Response => {
-        if (!UUID_RE.test(previewId)) return notFound();
-        const session = manager.getSessionForServing(previewId);
-        if (!session) return notFound();
-        const file = manager.getFile(session, relPath);
-        if (!file) return notFound();
-        const headers: Record<string, string> = { ...baseServeHeaders(), 'Content-Type': file.contentType };
-        // Emit the sandbox-first CSP on every scriptable document type (HTML, SVG,
-        // XML), not just HTML: an author SVG opened top-level would otherwise run
-        // its inline <script> same-origin (nosniff does not help — SVG is already
-        // a scriptable type).
-        if (isScriptableDocumentType(file.contentType)) {
-            headers['Content-Security-Policy'] = previewCspHeader();
-        }
-        return new Response(file.bytes, { headers });
-    };
+export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = buildDefaultDeps()) {
+    const serve = (previewId: string, relPath: string, request: Request): Response =>
+        servePreviewFile(
+            previewId,
+            relPath,
+            {
+                ifNoneMatch: request.headers.get('if-none-match'),
+                range: request.headers.get('range'),
+            },
+            deps,
+        );
 
     return new Elysia({ prefix: '/preview' })
-        .get('/:previewId', ({ params }) => serve(params.previewId, ''))
-        .get('/:previewId/*', ({ params }) => serve(params.previewId, params['*'] ?? ''));
+        .get('/:previewId', ({ params, request }) => serve(params.previewId, '', request))
+        .get('/:previewId/*', ({ params, request }) => serve(params.previewId, params['*'] ?? '', request));
 }
 
 // The "preview host" wrapper page for opening a preview in a new tab is a plain

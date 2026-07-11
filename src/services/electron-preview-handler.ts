@@ -1,5 +1,5 @@
 /**
- * Electron `app://` opaque preview handler.
+ * Electron `app://` opaque preview handler (serving contract v2).
  *
  * In the desktop app the editor renderer is loaded from the privileged custom
  * scheme `app://localhost`, served by `protocol.handle('app', …)` in the main
@@ -21,52 +21,38 @@
  * fixed local owner id, no JWT. `app://` is unreachable by other processes or
  * web pages, so there is nothing to authenticate against.
  *
- * The security-critical logic (content-addressed store, server-side re-hash,
- * atomic swap, budgets, TTL) is REUSED from `preview-session-manager.ts`; the
- * isolation policy (CSP + headers) is REUSED from `previewSandbox.ts`. This file
- * is bundled to CommonJS for the Electron main process by
+ * The security-critical logic (layered store, atomic revisions, budgets, TTL,
+ * tiered headers, ETag/Range) is REUSED from `preview-session-manager.ts` and
+ * `preview-serving.ts`; the isolation policy (CSP + headers) from
+ * `previewSandbox.ts`. Packaged builds must point the fixed-resource resolver
+ * at the installed static distribution via `preview-fixed-resources.configure`
+ * (until then the default public/ root serves dev runs). This file is bundled
+ * to CommonJS for the Electron main process by
  * `scripts/build-electron-preview.ts`.
  */
-import { createHash } from 'node:crypto';
 import * as manager from './preview-session-manager';
 import {
-    isScriptableDocumentType,
-    previewCspHeader,
-    previewPermissionsPolicy,
-} from '../shared/security/previewSandbox';
+    createSessionResponse,
+    defaultFixedResources,
+    handleAssetsUpload,
+    handleRevisionUpload,
+    servePreviewFile,
+} from './preview-serving';
 
 /** Single desktop user — the management API is local-trust, not multi-tenant. */
 const LOCAL_OWNER_ID = 0;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Portable SHA-256 (works under both Node and Bun, unlike `Bun.CryptoHasher`). */
-async function nodeSha256(bytes: Uint8Array): Promise<string> {
-    return createHash('sha256').update(bytes).digest('hex');
-}
-
 let initialized = false;
 
 /**
- * Configure the shared manager with a portable hasher and start the idle-TTL
- * sweeper. Call once from the Electron main process before handling requests.
+ * Start the idle-TTL sweeper. Call once from the Electron main process before
+ * handling requests. (v2 needs no hasher — asset identity is an opaque
+ * client-declared token, never re-hashed.)
  */
 export function initElectronPreview(): void {
     if (initialized) return;
-    manager.configure({ sha256: nodeSha256 });
     manager.startPreviewSessionSweeper();
     initialized = true;
-}
-
-/** Headers applied to every serving response, 404s included. */
-function baseServeHeaders(): Record<string, string> {
-    return {
-        'X-Content-Type-Options': 'nosniff',
-        'Referrer-Policy': 'no-referrer',
-        'Cache-Control': 'no-store',
-        'Permissions-Policy': previewPermissionsPolicy(),
-        'Access-Control-Allow-Origin': '*',
-    };
 }
 
 function json(body: unknown, status = 200): Response {
@@ -76,85 +62,28 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
-function serveNotFound(): Response {
-    return new Response('Not found', {
-        status: 404,
-        headers: { ...baseServeHeaders(), 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-}
-
-function serveFile(previewId: string, relPath: string): Response {
-    if (!UUID_RE.test(previewId)) return serveNotFound();
-    const session = manager.getSessionForServing(previewId);
-    if (!session) return serveNotFound();
-    const file = manager.getFile(session, relPath);
-    if (!file) return serveNotFound();
-    const headers: Record<string, string> = { ...baseServeHeaders(), 'Content-Type': file.contentType };
-    if (isScriptableDocumentType(file.contentType)) {
-        headers['Content-Security-Policy'] = previewCspHeader();
-    }
-    return new Response(file.bytes, { headers });
-}
-
-async function handleManifest(previewId: string, request: Request): Promise<Response> {
-    const owned = manager.getOwnedSession(previewId, LOCAL_OWNER_ID);
-    if ('status' in owned) return json({ success: false, error: 'Preview session not found' }, owned.status);
-    let body: unknown;
-    try {
-        body = await request.json();
-    } catch {
-        return json({ success: false, error: 'Invalid JSON' }, 400);
-    }
-    const files = (body as { files?: Record<string, { sha256: string; size: number }> } | null)?.files;
-    if (!files || typeof files !== 'object' || Array.isArray(files)) {
-        return json({ success: false, error: 'Body must be { files: { [path]: { sha256, size } } }' }, 400);
-    }
-    const staged = manager.stageManifest(owned.session, files);
-    if ('status' in staged) return json({ success: false, error: staged.message }, staged.status);
-    return json(staged);
-}
-
-async function handleBlobs(previewId: string, request: Request): Promise<Response> {
-    const owned = manager.getOwnedSession(previewId, LOCAL_OWNER_ID);
-    if ('status' in owned) return json({ success: false, error: 'Preview session not found' }, owned.status);
-
+/** Extract the JSON field + index-aligned files[] from a multipart body. */
+async function parseUploadForm(request: Request, fieldName: string): Promise<{ field: unknown; files: Blob[] }> {
     const form = await request.formData();
-    const manifestId = form.get('manifestId');
-    if (typeof manifestId !== 'string' || manifestId === '') {
-        return json({ success: false, error: 'Missing manifestId' }, 400);
-    }
-    let hashes: unknown;
-    try {
-        hashes = JSON.parse(String(form.get('hashes') ?? ''));
-    } catch {
-        return json({ success: false, error: 'Invalid hashes JSON' }, 400);
-    }
-    if (!Array.isArray(hashes) || hashes.some(h => typeof h !== 'string')) {
-        return json({ success: false, error: 'hashes must be an array of sha256 strings' }, 400);
-    }
+    const field = form.get(fieldName);
     const files = form.getAll('files').filter((f): f is Blob => f instanceof Blob);
-    if (files.length !== hashes.length) {
-        return json({ success: false, error: 'hashes and files must be index-aligned' }, 400);
-    }
+    return { field, files };
+}
 
-    // Two-stage byte-budget enforcement (mirrors preview-session.ts): declared
-    // sizes before buffering, actual bytes while buffering.
-    const limits = manager.getLimits();
-    const remainingBudget = limits.maxBytesPerSession - owned.session.blobBytes;
-    const blobs: Array<{ declaredSha256: string; bytes: Uint8Array }> = [];
-    let bufferedBytes = 0;
-    for (let i = 0; i < files.length; i++) {
-        const bytes = new Uint8Array(await files[i].arrayBuffer());
-        bufferedBytes += bytes.length;
-        if (bufferedBytes > remainingBudget) {
-            return json({ success: false, error: 'Upload exceeds the preview session byte budget' }, 413);
-        }
-        blobs.push({ declaredSha256: hashes[i] as string, bytes });
-    }
+async function handleAssets(previewId: string, request: Request): Promise<Response> {
+    const owned = manager.getOwnedSession(previewId, LOCAL_OWNER_ID);
+    if ('status' in owned) return json({ success: false, error: 'Preview session not found' }, owned.status);
+    const { field, files } = await parseUploadForm(request, 'assets');
+    const result = await handleAssetsUpload(owned.session, field, files, manager);
+    return json(result.body, result.status);
+}
 
-    const result = await manager.storeBlobs(owned.session, manifestId, blobs);
-    if ('status' in result) return json({ success: false, error: result.message }, result.status);
-    return json(result);
+async function handleRevision(previewId: string, request: Request): Promise<Response> {
+    const owned = manager.getOwnedSession(previewId, LOCAL_OWNER_ID);
+    if ('status' in owned) return json({ success: false, error: 'Preview session not found' }, owned.status);
+    const { field, files } = await parseUploadForm(request, 'revision');
+    const result = await handleRevisionUpload(owned.session, field, files, manager, defaultFixedResources());
+    return json(result.body, result.status);
 }
 
 /**
@@ -172,30 +101,27 @@ export async function handlePreviewRequest(request: Request): Promise<Response |
     const serveMatch = pathname.match(/^\/preview\/([^/]+)(?:\/(.*))?$/);
     if (serveMatch) {
         if (method !== 'GET') return json({ success: false, error: 'Method not allowed' }, 405);
-        return serveFile(serveMatch[1], serveMatch[2] ?? '');
+        return servePreviewFile(
+            serveMatch[1],
+            serveMatch[2] ?? '',
+            {
+                ifNoneMatch: request.headers.get('if-none-match'),
+                range: request.headers.get('range'),
+            },
+            { manager, fixedResources: defaultFixedResources() },
+        );
     }
 
     // --- Management API (local trust) ---
     if (pathname === '/api/preview-session' && method === 'POST') {
-        const { previewId } = manager.createSession(LOCAL_OWNER_ID);
-        const limits = manager.getLimits();
-        return json(
-            {
-                previewId,
-                limits: {
-                    maxFilesPerSession: limits.maxFilesPerSession,
-                    maxBytesPerSession: limits.maxBytesPerSession,
-                    recommendedBatchBytes: 64 * 1024 * 1024,
-                },
-            },
-            201,
-        );
+        const result = createSessionResponse(manager, LOCAL_OWNER_ID);
+        return json(result.body, result.status);
     }
-    const apiMatch = pathname.match(/^\/api\/preview-session\/([^/]+)(?:\/(manifest|blobs))?$/);
+    const apiMatch = pathname.match(/^\/api\/preview-session\/([^/]+)(?:\/(assets|revisions))?$/);
     if (apiMatch) {
         const [, previewId, action] = apiMatch;
-        if (action === 'manifest' && method === 'POST') return handleManifest(previewId, request);
-        if (action === 'blobs' && method === 'POST') return handleBlobs(previewId, request);
+        if (action === 'assets' && method === 'POST') return handleAssets(previewId, request);
+        if (action === 'revisions' && method === 'POST') return handleRevision(previewId, request);
         if (!action && method === 'DELETE') {
             manager.deleteSession(previewId);
             return json({ success: true });
