@@ -486,6 +486,29 @@ const app = new Elysia()
             },
         });
     })
+    // Serve preview-tab.html VERBATIM (never through Bun's HTML bundler). The page
+    // is the new-tab preview host: deliberately self-contained, loading the embed
+    // bridge as CLASSIC scripts. In development (`bun --watch`) Bun's dev server
+    // claims any URL that maps to a real .html file under the static root and
+    // rewrites its script tags into an ES-module chunk whose CommonJS-detected
+    // wrappers (`module.exports` sniffing in the bridge files) are emitted as lazy
+    // factories that nothing invokes — window.exeEmbedRelay never materialises and
+    // external media in the new tab stays a black placeholder. The source file
+    // therefore lives OUTSIDE the URL↔file mapping (public/app/common/preview-tab/)
+    // and this handler serves it byte-exact at the public URL in every server mode.
+    // Static builds copy it to the distribution root (scripts/build-static-bundle.ts).
+    .get('/preview-tab.html', () => {
+        const tabPath = path.join(process.cwd(), 'public', 'app', 'common', 'preview-tab', 'preview-tab.html');
+        if (!fs.existsSync(tabPath)) {
+            return new Response('Not Found', { status: 404 });
+        }
+        return new Response(fs.readFileSync(tabPath), {
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-cache',
+            },
+        });
+    })
     // Maintenance mode check — runs after static file serving
     .onRequest(async ({ request }) => {
         if (!(await isMaintenanceMode(db))) return;

@@ -133,11 +133,13 @@ export function createPreviewServeRoutes(deps: PreviewSessionRouteDeps = buildDe
 }
 
 // The "preview host" wrapper page for opening a preview in a new tab is a plain
-// same-origin static asset — public/preview-tab.html — served here by the static
-// plugin (and copied into static/PWA builds). It frames the opaque content in a
-// sandboxed iframe and runs the embed relay so external video plays in the new tab
-// (a top-level opaque document has no parent, so the shim self-disables and the
-// media is blocked). See public/preview-tab.html.
+// same-origin static asset — public/app/common/preview-tab/preview-tab.html —
+// served VERBATIM at /preview-tab.html by an explicit route in src/index.ts (the
+// Bun dev server would otherwise claim and rewrite its classic bridge scripts)
+// and copied to the distribution root by static/PWA builds. It frames the opaque
+// content in a sandboxed iframe and runs the embed relay so external video plays
+// in the new tab (a top-level opaque document has no parent, so the shim
+// self-disables and the media is blocked).
 
 export const previewSessionApiRoutes = createPreviewSessionApiRoutes();
 export const previewServeRoutes = createPreviewServeRoutes();

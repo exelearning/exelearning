@@ -229,7 +229,9 @@ Opening the opaque preview **content** directly as a top-level document breaks
 external media: the embed shim only runs when it has a parent
 (`window.parent !== window`), so a standalone tab leaves the raw cross-origin
 iframe (CSP-blocked) and, for srcdoc, has no URL to open at all. So "open in new
-tab" instead opens a same-origin **preview-host page** — `public/preview-tab.html`,
+tab" instead opens a same-origin **preview-host page** — `preview-tab.html`
+(source: `public/app/common/preview-tab/preview-tab.html`, served verbatim by an
+explicit route so no dev-server bundler rewrites its classic bridge scripts),
 served at root by the static plugin and copied into static/PWA builds — that
 frames the opaque content in one sandboxed iframe and runs the embed relay,
 becoming the trusted parent that overlays the real player in-place (same topology

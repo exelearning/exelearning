@@ -282,6 +282,28 @@ describe('exe_embed_relay createRelay() overlays players from messages', () => {
         expect(overlay.style.width).toBe('400px');
     });
 
+    it('checkDrift() re-pins an overlay whose content iframe moved without any event', () => {
+        const r = relay.createRelay({ mode: 'open' });
+        r.onMessage({
+            source: iframe.contentWindow,
+            data: {
+                type: 'exe-embed', action: 'sync',
+                embeds: [{ id: 'e1', url: 'https://www.youtube.com/embed/abc123', x: 0, y: 0, w: 480, h: 270 }],
+            },
+        });
+        const overlay = document.querySelector('.exe-embed-overlay');
+        // Nothing moved yet: the drift check must be a no-op.
+        expect(r.checkDrift()).toBe(0);
+        // The host toggles a sidebar: the iframe box shifts with no scroll/resize.
+        iframe.getBoundingClientRect = () => ({ left: 120, top: 30, width: 500, height: 320, right: 620, bottom: 350 });
+        expect(r.checkDrift()).toBe(1);
+        expect(overlay.style.left).toBe('120px');
+        expect(overlay.style.top).toBe('30px');
+        expect(overlay.style.width).toBe('500px');
+        // Settled: a second pass changes nothing.
+        expect(r.checkDrift()).toBe(0);
+    });
+
     it('clear() removes every overlay and player (teardown when the preview closes)', () => {
         const r = relay.createRelay({ mode: 'open' });
         r.onMessage({

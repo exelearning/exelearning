@@ -356,6 +356,39 @@
             entry.el.style.top = (rect.top + scrollY) + 'px';
             entry.el.style.width = rect.width + 'px';
             entry.el.style.height = rect.height + 'px';
+            // Remembered so checkDrift() can detect host-driven moves of the content
+            // iframe (panel toggles, sidebar show/hide) that fire no scroll/resize.
+            entry.lastRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+        }
+
+        /**
+         * Re-position any overlay whose content iframe box moved since it was last
+         * placed. The host page can move or resize the content iframe without any
+         * scroll/resize event firing (editor sidebar toggles, panel slide-ins, CSS
+         * transforms), which would strand the overlay at its old position. Called
+         * from a low-frequency interval in init(); one getBoundingClientRect per
+         * overlay per tick. Returns how many overlays were re-positioned.
+         *
+         * @returns {number}
+         */
+        function checkDrift() {
+            var moved = 0;
+            for (var i = 0; i < overlays.length; i++) {
+                var entry = overlays[i];
+                var rect = entry.iframe.getBoundingClientRect();
+                var last = entry.lastRect;
+                if (
+                    !last ||
+                    rect.left !== last.left ||
+                    rect.top !== last.top ||
+                    rect.width !== last.width ||
+                    rect.height !== last.height
+                ) {
+                    positionOverlay(entry, rect);
+                    moved += 1;
+                }
+            }
+            return moved;
         }
 
         // D1: if a promoted embed lands SAME-ORIGIN to the LMS (e.g. a cross-origin URL
@@ -521,6 +554,7 @@
             sync: sync,
             clear: clear,
             reflow: reflow,
+            checkDrift: checkDrift,
             validate: function (raw, contentSrc) {
                 return validate(raw, contentSrc, { strict: strict, whitelist: whitelist });
             },
@@ -532,6 +566,10 @@
                 window.addEventListener('load', pingAll);
                 pingAll();
                 window.setTimeout(pingAll, 500);
+                // Host layout changes (sidebar toggles, panel slide-ins) move the
+                // content iframe with no scroll/resize event; keep the overlays
+                // pinned to it with a cheap low-frequency drift check.
+                window.setInterval(checkDrift, 300);
                 return this;
             }
             /* v8 ignore stop */

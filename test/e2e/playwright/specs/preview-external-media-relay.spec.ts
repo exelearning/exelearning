@@ -109,6 +109,60 @@ test.describe('Opaque preview relays external media to the parent (no click)', (
             .toBeLessThan(20);
     });
 
+    test('re-pins the overlay when the content nav toggle reflows the page (no scroll/resize)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Media relay nav toggle');
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+        await openElpFile(page, path.join(process.cwd(), 'test/fixtures/opaque-preview-external-media.elpx'));
+        await page.waitForTimeout(1500);
+        await openPreviewPanel(page);
+
+        const player = page.locator('.exe-embed-overlay iframe[src*="youtube"]').first();
+        await expect.poll(async () => player.count(), { timeout: 15000 }).toBeGreaterThan(0);
+        // Wait for the settled (non-zero) placement of the initial sync.
+        await expect
+            .poll(async () => (await player.boundingBox())?.width ?? 0, { timeout: 15000 })
+            .toBeGreaterThan(100);
+        const before = await player.boundingBox();
+
+        // Toggle the exported page's own nav drawer INSIDE the opaque content. This
+        // reflows the content column via a class flip + CSS transition — no childList
+        // mutation, no scroll, no resize — which historically froze the overlay at its
+        // old position (the shim never re-reported the placeholder geometry).
+        const frame = getPreviewFrame(page);
+        await frame.locator('#siteNavToggler').click();
+
+        // The player must follow the placeholder to its post-reflow position.
+        await expect
+            .poll(
+                async () => {
+                    const now = await player.boundingBox();
+                    return now && before ? Math.abs(now.x - before.x) + Math.abs(now.y - before.y) : 0;
+                },
+                { timeout: 10000 },
+            )
+            .toBeGreaterThan(20);
+        const afterOpen = await player.boundingBox();
+
+        // Toggling back reflows again; the player must follow again. (The theme's
+        // post-roundtrip layout is not pixel-identical to first render, so the
+        // invariant is continuous tracking, not restoration to the original spot.)
+        await frame.locator('#siteNavToggler').click();
+        await expect
+            .poll(
+                async () => {
+                    const now = await player.boundingBox();
+                    return now && afterOpen ? Math.abs(now.x - afterOpen.x) + Math.abs(now.y - afterOpen.y) : 0;
+                },
+                { timeout: 10000 },
+            )
+            .toBeGreaterThan(20);
+    });
+
     test('opens the preview in a new tab via the host wrapper and plays the video there', async ({
         authenticatedPage,
         createProject,

@@ -1339,7 +1339,10 @@ async function buildStaticBundle() {
 
     // Copy preview-tab.html — the opaque "preview host" page for opening a preview
     // in a new tab (srcdoc transport: the editor pushes rendered page HTML to it).
-    const previewTabHtml = path.join(projectRoot, 'public/preview-tab.html');
+    // The source lives under app/common/ (NOT at the public/ root) so the Bun dev
+    // server cannot claim and rewrite its classic bridge scripts (src/index.ts
+    // serves it verbatim); static distributions want it at the root as a real file.
+    const previewTabHtml = path.join(projectRoot, 'public/app/common/preview-tab/preview-tab.html');
     if (fs.existsSync(previewTabHtml)) {
         fs.copyFileSync(previewTabHtml, path.join(outputDir, 'preview-tab.html'));
         console.log('  Copied preview-tab.html');

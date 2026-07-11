@@ -249,9 +249,21 @@
         }
         var counter = { n: 0 };
         var scheduled = false;
+        var lastReported = '';
 
-        function report() {
-            window.parent.postMessage({ type: 'exe-embed', action: 'sync', embeds: collect(document) }, '*');
+        // force=true always posts (initial run, load, and parent 'request' pings —
+        // the parent may have just started listening or lost its state); observer
+        // -driven reports skip when the geometry did not actually change, so an
+        // attribute-noisy page (carousel animations, aria flips) cannot spam the
+        // parent with identical syncs.
+        function report(force) {
+            var embeds = collect(document);
+            var serialized = JSON.stringify(embeds);
+            if (!force && serialized === lastReported) {
+                return;
+            }
+            lastReported = serialized;
+            window.parent.postMessage({ type: 'exe-embed', action: 'sync', embeds: embeds }, '*');
         }
         function schedule() {
             if (scheduled) {
@@ -260,24 +272,50 @@
             scheduled = true;
             window.requestAnimationFrame(function () {
                 scheduled = false;
-                report();
+                report(false);
             });
         }
         function run() {
             promote(document, counter);
-            report();
+            report(true);
         }
 
         run();
         if (window.MutationObserver) {
+            // attributes too, not just childList: layout-affecting UI (the exported
+            // page's nav toggle, accordions) usually flips a class/style on an
+            // existing node, which reflows the placeholders without adding or
+            // removing any element. The filter keeps the observer to the
+            // reflow-causing attributes.
             new MutationObserver(function () {
                 promote(document, counter);
                 schedule();
-            }).observe(document.documentElement, { childList: true, subtree: true });
+            }).observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'hidden', 'open'],
+            });
         }
         window.addEventListener('scroll', schedule, true);
         window.addEventListener('resize', schedule);
-        window.addEventListener('load', report);
+        // A class-toggled layout change usually ANIMATES (CSS transition on the nav
+        // drawer): the mutation fires at the start, so re-measure again when the
+        // transition/animation lands to report the settled geometry.
+        window.addEventListener('transitionend', schedule, true);
+        window.addEventListener('animationend', schedule, true);
+        if (window.ResizeObserver) {
+            // Catches content-box changes that fire no window resize (the drawer
+            // pushing the content column, images loading late and growing the page).
+            var resizeObserver = new ResizeObserver(schedule);
+            resizeObserver.observe(document.documentElement);
+            if (document.body) {
+                resizeObserver.observe(document.body);
+            }
+        }
+        window.addEventListener('load', function () {
+            report(true);
+        });
         window.addEventListener('message', function (event) {
             if (event.source !== window.parent) {
                 return;
