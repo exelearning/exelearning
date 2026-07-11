@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ServiceWorkerPreviewProvider } from './ServiceWorkerPreviewProvider.js';
+import { StaticServiceWorkerPreviewProvider } from './StaticServiceWorkerPreviewProvider.js';
 
-describe('ServiceWorkerPreviewProvider', () => {
+describe('StaticServiceWorkerPreviewProvider', () => {
     let app;
     let provider;
 
     beforeEach(() => {
         app = { sendContentToPreviewSW: vi.fn().mockResolvedValue(undefined) };
-        provider = new ServiceWorkerPreviewProvider({ app, basePath: '/exe' });
+        provider = new StaticServiceWorkerPreviewProvider({ app, basePath: '/exe' });
     });
 
-    it('is explicitly NOT opaque-safe (legacy transport)', () => {
-        expect(provider.mode).toBe('service-worker');
+    it('is explicitly NOT opaque-safe (same-origin static/PWA compatibility mode)', () => {
+        expect(provider.mode).toBe('static-service-worker');
         expect(provider.opaqueSafe).toBe(false);
     });
 
@@ -23,6 +23,7 @@ describe('ServiceWorkerPreviewProvider', () => {
         expect(app.sendContentToPreviewSW).toHaveBeenCalledTimes(2);
         expect(app.sendContentToPreviewSW).toHaveBeenCalledWith(files, { openExternalLinksInNewWindow: true });
         expect(session.entryUrl).toBe('/exe/viewer/index.html?exe-teacher=1');
+        expect(session.mode).toBe('static-service-worker');
         expect(session.opaqueSafe).toBe(false);
     });
 

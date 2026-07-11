@@ -9,6 +9,7 @@ import {
     SW_VERSION,
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
+    NAV_REPORTER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
     KEEPALIVE_SCRIPT,
     PDF_EMBED_HANDLER_SCRIPT,
@@ -98,6 +99,16 @@ describe('Preview Service Worker', () => {
             expect(extractFilename('/viewer/content/resources/bad%ZZfile.odt')).toBe('bad%ZZfile.odt');
             // Truncated percent sequence
             expect(extractFilename('/viewer/content/resources/file%2.docx')).toBe('file%2.docx');
+        });
+
+        it('should have NAV_REPORTER_SCRIPT report the /viewer/ page path to the parent', () => {
+            expect(NAV_REPORTER_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
+            // Same message contract as the opaque transports (MSG.NAV_REPORT).
+            expect(NAV_REPORTER_SCRIPT).toContain('exe-preview-nav');
+            expect(NAV_REPORTER_SCRIPT).toContain('window.parent.postMessage');
+            // Derives the page path from the /viewer/ virtual root.
+            expect(NAV_REPORTER_SCRIPT).toContain('viewer');
+            expect(NAV_REPORTER_SCRIPT).toContain("|| 'index.html'");
         });
 
         it('should have PREVIEW_REFRESH_SCRIPT defined', () => {
@@ -418,6 +429,25 @@ describe('Preview Service Worker', () => {
 
             expect(resultHtml).not.toContain("closest('a[href]')");
             expect(resultHtml).toContain('CONTENT_UPDATED'); // Should still have refresh script
+        });
+
+        it('should always include the nav reporter script', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body);
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('exe-preview-nav');
+            expect(resultHtml).toContain('window.parent.postMessage');
+        });
+
+        it('should include the nav reporter even when external links are disabled', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body, { openExternalLinksInNewWindow: false });
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('exe-preview-nav');
         });
 
         it('should always include preview refresh script', () => {

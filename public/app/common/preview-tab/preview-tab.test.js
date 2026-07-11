@@ -27,11 +27,10 @@ describe('preview-tab.html (opaque preview host page)', () => {
         expect(html).toContain("iframe.src = 'preview/' + session + '/index.html?exe-teacher=1'");
     });
 
-    it('srcdoc transport: renders editor-pushed HTML and forwards navigation to the opener', () => {
-        expect(html).toContain('exe-preview-tab:render');
-        expect(html).toContain('exe-preview-tab:ready');
-        expect(html).toContain('exe-preview-tab:forward');
-        // Same-origin postMessage discipline: reject foreign origins.
-        expect(html).toContain('e.origin !== ORIGIN');
+    it('no longer carries the removed srcdoc push protocol', () => {
+        expect(html).not.toContain('exe-preview-tab:render');
+        expect(html).not.toContain('exe-preview-tab:ready');
+        expect(html).not.toContain('exe-preview-tab:forward');
+        expect(html).not.toContain('window.opener');
     });
 });

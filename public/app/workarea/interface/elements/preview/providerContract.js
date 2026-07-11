@@ -2,26 +2,27 @@
  * Shared contract for preview transport providers.
  *
  * A provider owns how generated preview content reaches the sandboxed iframe
- * (HTTP session, srcdoc, legacy Service Worker) and never touches the DOM:
- * it returns render targets the panel applies.
+ * (HTTP session, or the standalone static/PWA Service Worker) and never
+ * touches the DOM: it returns render targets the panel applies.
  *
  * prepare()/update() input shape is EXPLICIT per transport — no duck typing:
  *  - HTTP transport (mode 'http'): the layered shape below
  *    ({@link LayeredPreviewInput}), produced by
  *    `SharedExporters.generatePreviewLayered` (serving contract v2).
- *  - srcdoc and legacy Service Worker transports: a plain object file map
- *    (`Object<string, ArrayBuffer|Uint8Array|string>`) from
+ *  - static Service Worker transport (mode 'static-service-worker'): a plain
+ *    object file map (`Object<string, ArrayBuffer|Uint8Array|string>`) from
  *    `SharedExporters.generatePreviewForSW`, unchanged.
  *
  * @typedef {Object} PreviewSession
  * @property {string} id
- * @property {string|null} entryUrl Absolute-from-basePath URL for URL-based
- *   transports; null when pages render via srcdoc.
- * @property {'http'|'srcdoc'|'service-worker'} mode
+ * @property {string|null} entryUrl Absolute-from-basePath URL for the framed
+ *   preview entry page.
+ * @property {'http'|'static-service-worker'} mode
  * @property {boolean} opaqueSafe Whether the transport works inside an
  *   opaque-origin sandbox (no allow-same-origin).
  *
- * @typedef {{kind: 'url', url: string} | {kind: 'srcdoc', html: string}} RenderTarget
+ * @typedef {{kind: 'url', url: string}} RenderTarget Both remaining transports
+ *   render pages via real URLs; the panel sets iframe.src.
  *
  * @typedef {Object} LayeredPreviewInput Input for the HTTP transport
  *   (serving contract v2 — three layers with different lifecycles).
@@ -45,9 +46,7 @@
 export const MSG = Object.freeze({
     /** child → parent: reports the page path currently rendered (all transports) */
     NAV_REPORT: 'exe-preview-nav',
-    /** child → parent: request navigation to another page (srcdoc transport) */
-    NAVIGATE: 'exe-preview-navigate',
-    /** child → parent: request opening a non-HTML document (srcdoc transport) */
+    /** child → parent: request opening a non-HTML document (PDF, office docs, media) */
     OPEN_DOC: 'exe-preview-open-document',
     /** child → parent: download-source-file iDevice asks for the .elpx (existing) */
     DOWNLOAD_ELPX: 'exe-download-elpx',
@@ -94,7 +93,7 @@ export function sanitizePagePath(value) {
     }
 
     // Strict resolution: a '..' that would climb above the root rejects the
-    // whole path instead of silently clamping (unlike resolveRelativePath).
+    // whole path instead of silently clamping it to the root.
     const resolved = [];
     for (const part of value.split('/')) {
         if (part === '..') {

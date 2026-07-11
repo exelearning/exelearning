@@ -1,17 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { selectPreviewProvider } from './selectPreviewProvider.js';
 import { HttpPreviewProvider } from './HttpPreviewProvider.js';
-import { SrcdocPreviewProvider } from './SrcdocPreviewProvider.js';
-import { ServiceWorkerPreviewProvider } from './ServiceWorkerPreviewProvider.js';
+import { StaticServiceWorkerPreviewProvider } from './StaticServiceWorkerPreviewProvider.js';
+import { PreviewProviderError } from './providerContract.js';
 
 const deps = { basePath: '', app: {} };
 
-function config(mode, { isEmbedded = false, previewTransport = undefined } = {}) {
-    return {
-        mode,
-        isEmbedded,
-        embeddingConfig: previewTransport ? { previewTransport } : null,
-    };
+const VALID_PREVIEW_HTTP = Object.freeze({
+    protocolVersion: 2,
+    managementBaseUrl: '/api/preview-session',
+    servingBaseUrl: '/preview',
+});
+
+function config(mode, { isEmbedded = false, previewTransport = undefined, previewHttp = undefined } = {}) {
+    const embeddingConfig =
+        previewTransport || previewHttp
+            ? { ...(previewTransport ? { previewTransport } : {}), ...(previewHttp ? { previewHttp } : {}) }
+            : null;
+    return { mode, isEmbedded, embeddingConfig };
 }
 
 describe('selectPreviewProvider', () => {
@@ -21,15 +27,7 @@ describe('selectPreviewProvider', () => {
         expect(provider.opaqueSafe).toBe(true);
     });
 
-    it('selects the srcdoc provider for embedded editors', () => {
-        const provider = selectPreviewProvider({
-            runtimeConfig: config('embedded', { isEmbedded: true }),
-            deps,
-        });
-        expect(provider).toBeInstanceOf(SrcdocPreviewProvider);
-    });
-
-    it('selects the opaque HTTP provider in Electron (app://localhost/preview), not the legacy SW', () => {
+    it('selects the opaque HTTP provider in Electron (app://localhost/preview)', () => {
         const provider = selectPreviewProvider({
             runtimeConfig: config('static'),
             hasElectronApi: true,
@@ -39,34 +37,53 @@ describe('selectPreviewProvider', () => {
         expect(provider.opaqueSafe).toBe(true);
     });
 
-    it('only selects the legacy Service Worker provider via an explicit legacy-sw override', () => {
-        const legacy = selectPreviewProvider({
-            runtimeConfig: config('static', { previewTransport: 'legacy-sw' }),
-            hasElectronApi: true,
+    it('selects the HTTP provider for an embedded editor with valid previewHttp', () => {
+        const provider = selectPreviewProvider({
+            runtimeConfig: config('embedded', { isEmbedded: true, previewHttp: VALID_PREVIEW_HTTP }),
             deps,
         });
-        expect(legacy).toBeInstanceOf(ServiceWorkerPreviewProvider);
-        expect(legacy.opaqueSafe).toBe(false);
+        expect(provider).toBeInstanceOf(HttpPreviewProvider);
     });
 
-    it('uses the srcdoc provider for standalone static/PWA', () => {
+    it('fails closed for an embedded editor without previewHttp', () => {
+        expect(() =>
+            selectPreviewProvider({
+                runtimeConfig: config('embedded', { isEmbedded: true }),
+                deps,
+            }),
+        ).toThrow(PreviewProviderError);
+    });
+
+    it('selects the static Service Worker provider for standalone static/PWA', () => {
         const provider = selectPreviewProvider({ runtimeConfig: config('static'), deps });
-        expect(provider).toBeInstanceOf(SrcdocPreviewProvider);
-        expect(provider.opaqueSafe).toBe(true);
+        expect(provider).toBeInstanceOf(StaticServiceWorkerPreviewProvider);
+        expect(provider.opaqueSafe).toBe(false);
     });
 
-    it('honors the explicit previewTransport override from the embedding host', () => {
-        const http = selectPreviewProvider({
+    it('honors the explicit static-service-worker override', () => {
+        const provider = selectPreviewProvider({
+            runtimeConfig: config('embedded', { isEmbedded: true, previewTransport: 'static-service-worker' }),
+            deps,
+        });
+        expect(provider).toBeInstanceOf(StaticServiceWorkerPreviewProvider);
+        expect(provider.opaqueSafe).toBe(false);
+    });
+
+    it('honors the explicit http override from the embedding host', () => {
+        const provider = selectPreviewProvider({
             runtimeConfig: config('embedded', { isEmbedded: true, previewTransport: 'http' }),
             deps,
         });
-        expect(http).toBeInstanceOf(HttpPreviewProvider);
+        expect(provider).toBeInstanceOf(HttpPreviewProvider);
+    });
 
-        const legacy = selectPreviewProvider({
-            runtimeConfig: config('embedded', { isEmbedded: true, previewTransport: 'legacy-sw' }),
-            deps,
-        });
-        expect(legacy).toBeInstanceOf(ServiceWorkerPreviewProvider);
+    it('rejects the removed srcdoc override instead of silently downgrading', () => {
+        expect(() =>
+            selectPreviewProvider({
+                runtimeConfig: config('static', { previewTransport: 'srcdoc' }),
+                deps,
+            }),
+        ).toThrow(PreviewProviderError);
     });
 
     it('rejects unknown transport overrides instead of silently downgrading', () => {

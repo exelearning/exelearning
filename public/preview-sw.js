@@ -128,6 +128,32 @@ const EXTERNAL_LINK_HANDLER_SCRIPT = `
 `;
 
 /**
+ * Report the rendered page path to the parent (workarea) so the preview panel
+ * can track which page is showing after an in-frame navigation. Same contract
+ * as the opaque HTTP transport's nav reporter (MSG.NAV_REPORT): the parent
+ * validates event.source and the payload before stamping data-preview-page.
+ * The page path is derived from the /viewer/ URL prefix (the SW's virtual root).
+ */
+const NAV_REPORTER_SCRIPT = `
+<script data-injected-by="eXeLearning-Preview">
+(function() {
+    function report() {
+        try {
+            var m = window.location.pathname.match(/\\/viewer\\/(.*)$/);
+            var page = (m && m[1]) || 'index.html';
+            window.parent.postMessage({ type: 'exe-preview-nav', v: 1, page: page }, '*');
+        } catch (e) { /* no parent to report to */ }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', report);
+    } else {
+        report();
+    }
+})();
+</script>
+`;
+
+/**
  * Script to handle preview refresh notifications from SW.
  * Also handles CONTENT_NEEDED: when the SW loses content, this relays
  * the event to the main window via BroadcastChannel so it can regenerate.
@@ -540,6 +566,7 @@ function injectScripts(body, options = { openExternalLinksInNewWindow: true }) {
         if (options.openExternalLinksInNewWindow) {
             scriptsToInject += EXTERNAL_LINK_HANDLER_SCRIPT;
         }
+        scriptsToInject += NAV_REPORTER_SCRIPT;
         scriptsToInject += PREVIEW_REFRESH_SCRIPT;
         scriptsToInject += KEEPALIVE_SCRIPT;
         scriptsToInject += PDF_EMBED_HANDLER_SCRIPT;
@@ -756,6 +783,7 @@ if (typeof module !== 'undefined' && module.exports) {
         SW_VERSION,
         MIME_TYPES,
         EXTERNAL_LINK_HANDLER_SCRIPT,
+        NAV_REPORTER_SCRIPT,
         PREVIEW_REFRESH_SCRIPT,
         KEEPALIVE_SCRIPT,
         PDF_EMBED_HANDLER_SCRIPT,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decorateForHttp, decorateForSrcdoc, INJECTED_MARKER } from './previewContentDecorators.js';
+import { decorateForHttp, INJECTED_MARKER } from './previewContentDecorators.js';
 
 /** Extract the body of every injected <script> and assert it parses as JS. */
 function assertInjectedScriptsParse(html) {
@@ -68,77 +68,14 @@ describe('previewContentDecorators', () => {
             const result = decorateForHttp(PAGE, { pdfjsBase: '/p/x/' });
             expect(result).not.toContain('exe_embed_shim.js');
         });
-    });
 
-    describe('decorateForSrcdoc', () => {
-        it('injects syntactically valid marker scripts with the baked page path', () => {
-            const result = decorateForSrcdoc(PAGE, { pagePath: 'html/page2.html' });
-            assertInjectedScriptsParse(result);
-            expect(result).toContain('"html/page2.html"');
-            expect(result).toContain('exe-preview-nav');
-        });
-
-        it('requests page navigation and document opening via postMessage', () => {
-            const result = decorateForSrcdoc(PAGE, { pagePath: 'index.html' });
-            expect(result).toContain('exe-preview-navigate');
-            expect(result).toContain('exe-preview-open-document');
-        });
-
-        it('is idempotent', () => {
-            const once = decorateForSrcdoc(PAGE, { pagePath: 'index.html' });
-            const twice = decorateForSrcdoc(once, { pagePath: 'index.html' });
-            expect(twice).toBe(once);
-        });
-
-        it('sets the teacher-mode flag in <head> before exe_export.js runs', () => {
-            const withHead = '<!DOCTYPE html><html><head><script src="libs/exe_export.js"></script></head><body>x</body></html>';
-            const result = decorateForSrcdoc(withHead, { pagePath: 'index.html' });
-            const flagIndex = result.indexOf('window.__EXE_TEACHER_MODE__ = true');
-            const exportIndex = result.indexOf('libs/exe_export.js');
-            const headOpen = result.indexOf('<head>');
-            expect(flagIndex).toBeGreaterThan(headOpen);
-            // Flag must precede the exe_export.js script tag so it is set first.
-            expect(flagIndex).toBeLessThan(exportIndex);
-        });
-
-        it('inlines the embed shim source in <head> when provided (srcdoc has no server)', () => {
-            const result = decorateForSrcdoc(PAGE, {
-                pagePath: 'index.html',
-                embedShimSource: 'window.exeEmbedShim = { marker: true };',
-            });
-            const shimIndex = result.indexOf('window.exeEmbedShim = { marker: true };');
-            const headOpen = result.indexOf('<head>');
-            const bodyOpen = result.indexOf('<body>');
-            expect(shimIndex).toBeGreaterThan(headOpen);
-            expect(shimIndex).toBeLessThan(bodyOpen);
-        });
-
-        it('injects the runtime asset resolver in <head> when an asset map is provided', () => {
-            const result = decorateForSrcdoc(PAGE, {
-                pagePath: 'index.html',
-                assetMap: { 'idevices/magnifier/hood.jpg': 'data:image/jpeg;base64,AAAA' },
-            });
-            const resolverIndex = result.indexOf('idevices/magnifier/hood.jpg');
-            expect(result).toContain('data:image/jpeg;base64,AAAA');
-            expect(result).toContain("Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src')");
-            // Runs in <head>, before the body, so its prototype patches precede iDevice scripts.
-            expect(resolverIndex).toBeGreaterThan(result.indexOf('<head>'));
-            expect(resolverIndex).toBeLessThan(result.indexOf('<body>'));
-        });
-
-        it('omits the resolver when no asset map is given', () => {
-            const result = decorateForSrcdoc(PAGE, { pagePath: 'index.html' });
+        it('does not carry the removed srcdoc-only artifacts', () => {
+            const result = decorateForHttp(PAGE, { pdfjsBase: '/p/x/' });
+            // srcdoc's teacher-mode global, per-page navigate message and the
+            // runtime asset resolver are gone with the srcdoc transport.
+            expect(result).not.toContain('__EXE_TEACHER_MODE__');
+            expect(result).not.toContain('exe-preview-navigate');
             expect(result).not.toContain("Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src')");
-        });
-
-        it('escapes closing script sequences in the baked page path', () => {
-            const hostile = 'a</script><script>alert(1)</script>.html';
-            const result = decorateForSrcdoc(PAGE, { pagePath: hostile });
-            // The baked value must never terminate the injected script block.
-            const scripts = [...result.matchAll(/<script[^>]*data-injected-by[^>]*>([\s\S]*?)<\/script>/g)];
-            for (const [, body] of scripts) {
-                expect(body).not.toContain('</script>');
-            }
         });
     });
 });

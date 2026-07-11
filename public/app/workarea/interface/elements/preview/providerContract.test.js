@@ -10,10 +10,13 @@ describe('providerContract', () => {
     describe('MSG constants', () => {
         it('defines the preview message types', () => {
             expect(MSG.NAV_REPORT).toBe('exe-preview-nav');
-            expect(MSG.NAVIGATE).toBe('exe-preview-navigate');
             expect(MSG.OPEN_DOC).toBe('exe-preview-open-document');
             expect(MSG.DOWNLOAD_ELPX).toBe('exe-download-elpx');
             expect(MSG.PRINT).toBe('exe-print');
+        });
+
+        it('no longer defines the removed srcdoc-only NAVIGATE message', () => {
+            expect(MSG.NAVIGATE).toBeUndefined();
         });
     });
 

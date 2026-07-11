@@ -1,11 +1,11 @@
 /**
- * Generation-time script injection for the opaque preview transports.
+ * Generation-time script injection for the opaque HTTP preview transport.
  *
  * The legacy Service Worker injected its helper scripts at serve time
  * (public/preview-sw.js); an opaque-origin iframe has no Service Worker, so
- * the equivalent behavior is baked into the HTML before it is uploaded (HTTP
- * transport) or rendered via srcdoc. The exporter output itself stays
- * untouched — real exports must not carry preview-only scripts.
+ * the equivalent behavior is baked into the HTML before it is uploaded. The
+ * exporter output itself stays untouched — real exports must not carry
+ * preview-only scripts.
  *
  * All injected blocks carry the marker attribute so decoration is idempotent
  * and the blocks are identifiable in tests.
@@ -38,9 +38,8 @@ function injectBeforeLastBody(html, scripts) {
 }
 
 /**
- * Insert markup right after the opening <head> so it runs before exe_export.js
- * (which reads the teacher-mode flag during its own <head> execution). Falls
- * back to prepending when there is no <head>.
+ * Insert markup right after the opening <head> so it runs before exe_export.js.
+ * Falls back to prepending when there is no <head>.
  */
 function injectIntoHead(html, markup) {
     const match = html.match(/<head[^>]*>/i);
@@ -52,52 +51,15 @@ function injectIntoHead(html, markup) {
 }
 
 /**
- * Teacher-mode flag for the srcdoc transport. The editor preview always makes
- * the Teacher Mode toggle available (author = teacher); the HTTP transport
- * carries ?exe-teacher=1 in the URL, but srcdoc has no URL, so it sets a global
- * flag exe_export.js reads. Must run before exe_export.js → injected in <head>.
- */
-function teacherModeFlagScript() {
-    return `<script ${INJECTED_MARKER}>window.__EXE_TEACHER_MODE__ = true;</script>`;
-}
-
-/**
  * Link handling inside the opaque frame:
  * - anchors/special protocols: default behavior
  * - external links: open in a new (sandbox-inherited) tab
- * - same-document HTML pages: default navigation (http) or a NAVIGATE
- *   postMessage to the parent (srcdoc has no real URLs)
+ * - same-host HTML pages: default navigation within the session prefix
  * - PDFs and other non-HTML documents: OPEN_DOC postMessage — the trusted
  *   parent opens them (a sandboxed popup cannot render PDFs or download)
  * Images are skipped: lightbox/gallery scripts own them.
- * @param {'http'|'srcdoc'} mode
- * @param {string|null} pagePath Baked page path (srcdoc only).
  */
-function buildLinkHandlerScript(mode, pagePath) {
-    const pageExpr =
-        mode === 'srcdoc'
-            ? js(pagePath || 'index.html')
-            : `(function(){var m=window.location.pathname.match(/\\/preview\\/[^/]+\\/(.*)$/);return (m&&m[1])||'index.html';})()`;
-    const externalCheck =
-        mode === 'srcdoc'
-            ? `if (/^https?:\\/\\//i.test(href)) {
-                link.setAttribute('target', '_blank');
-                link.setAttribute('rel', 'noopener noreferrer external');
-                return;
-            }`
-            : `var url = new URL(href, window.location.href);
-            var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
-            if (isHttp && url.host !== window.location.host) {
-                link.setAttribute('target', '_blank');
-                link.setAttribute('rel', 'noopener noreferrer external');
-                return;
-            }`;
-    const navigateBlock =
-        mode === 'srcdoc'
-            ? `e.preventDefault();
-            window.parent.postMessage({ type: 'exe-preview-navigate', v: 1, href: href, page: currentPage }, '*');`
-            : `// Same-host HTML page: default navigation within the session prefix.`;
-
+function buildLinkHandlerScript() {
     return `
 <script ${INJECTED_MARKER}>
 (function() {
@@ -110,9 +72,15 @@ function buildLinkHandlerScript(mode, pagePath) {
         // Allow anchors, mailto, javascript, blob, data
         if (/^(#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
 
-        var currentPage = ${pageExpr};
+        var currentPage = (function(){var m=window.location.pathname.match(/\\/preview\\/[^/]+\\/(.*)$/);return (m&&m[1])||'index.html';})();
         try {
-            ${externalCheck}
+            var url = new URL(href, window.location.href);
+            var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+            if (isHttp && url.host !== window.location.host) {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer external');
+                return;
+            }
 
             // Non-HTML resources (PDF, documents, media): the parent opens them.
             // Skip images - they may be handled by lightbox/gallery scripts.
@@ -123,7 +91,7 @@ function buildLinkHandlerScript(mode, pagePath) {
                 return;
             }
 
-            ${navigateBlock}
+            // Same-host HTML page: default navigation within the session prefix.
         } catch (err) {
             // Invalid URL: let the browser handle it.
         }
@@ -135,20 +103,15 @@ function buildLinkHandlerScript(mode, pagePath) {
 /**
  * Report the rendered page path to the parent so auto-refresh can reload the
  * SAME page. The parent validates event.source and the payload schema.
- * @param {'http'|'srcdoc'} mode
- * @param {string|null} pagePath Baked page path (srcdoc only).
  */
-function buildNavReporterScript(mode, pagePath) {
-    const pageExpr =
-        mode === 'srcdoc'
-            ? js(pagePath || 'index.html')
-            : `(function(){var m=window.location.pathname.match(/\\/preview\\/[^/]+\\/(.*)$/);return (m&&m[1])||'index.html';})()`;
+function buildNavReporterScript() {
     return `
 <script ${INJECTED_MARKER}>
 (function() {
     function report() {
         try {
-            window.parent.postMessage({ type: 'exe-preview-nav', v: 1, page: ${pageExpr} }, '*');
+            var page = (function(){var m=window.location.pathname.match(/\\/preview\\/[^/]+\\/(.*)$/);return (m&&m[1])||'index.html';})();
+            window.parent.postMessage({ type: 'exe-preview-nav', v: 1, page: page }, '*');
         } catch (e) { /* no parent to report to */ }
     }
     if (document.readyState === 'loading') {
@@ -166,8 +129,8 @@ function buildNavReporterScript(mode, pagePath) {
  * opaque sandbox, so <object>/<embed>/<iframe> PDFs and
  * <div data-exe-pdf-src> placeholders render to canvases instead.
  * @param {string|null} pdfjsBase Base URL for libs/pdfjs (baked); when the
- *   module cannot load (e.g. srcdoc without CORS on the host) placeholders
- *   show a visible notice instead of failing silently.
+ *   module cannot load, placeholders show a visible notice instead of failing
+ *   silently.
  * @param {string} unavailableMessage User-facing fallback text.
  */
 function buildPdfEmbedScript(pdfjsBase, unavailableMessage) {
@@ -355,73 +318,11 @@ function embedShimScript(options) {
 export function decorateForHttp(html, options) {
     if (html.includes(INJECTED_MARKER)) return html;
     const scripts =
-        buildLinkHandlerScript('http', null) +
-        buildNavReporterScript('http', null) +
+        buildLinkHandlerScript() +
+        buildNavReporterScript() +
         buildPdfEmbedScript(options.pdfjsBase, options.pdfUnavailableMessage || 'PDF preview is not available here.');
     let out = injectBeforeLastBody(html, scripts);
     const shim = embedShimScript(options);
     if (shim) out = injectIntoHead(out, shim);
-    return out;
-}
-
-/**
- * Decorate a preview page for the srcdoc transport (static/embedded). Applied
- * at render time because the page path must be baked per page.
- * @param {string} html
- * @param {{pagePath: string, pdfjsBase?: string|null, pdfUnavailableMessage?: string}} options
- * @returns {string}
- */
-/**
- * Runtime asset resolver for the server-less srcdoc preview. JS-driven iDevices (magnifier,
- * image gallery, before/after) set <img> src at runtime from relative paths they construct,
- * which cannot resolve without a server and which the build-time inliner cannot rewrite
- * (the widget overwrites the src after parse). This patches the img.src setter and
- * Element.setAttribute synchronously so those relative paths are swapped for the inlined
- * data URI from the injected map before the browser tries to load them — no request, no race.
- */
-function assetResolverScript(options) {
-    const map = options.assetMap;
-    if (!map || Object.keys(map).length === 0) return '';
-    const json = JSON.stringify(map).replace(/</g, '\\u003c');
-    return `<script ${INJECTED_MARKER}>(function(){
-var MAP=${json};
-function r(v){
-  if(typeof v!=='string'||!v)return v;
-  if(/^(data:|blob:|https?:|\\/\\/|#|mailto:|tel:|javascript:)/i.test(v))return v;
-  var k=v.split('?')[0].split('#')[0].replace(/^\\.?\\//,'').replace(/^\\/+/,'');
-  return MAP[k]||MAP[v]||v;
-}
-var d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
-if(d&&d.set){Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:function(){return d.get.call(this);},set:function(v){d.set.call(this,r(v));}});}
-var sa=Element.prototype.setAttribute;
-Element.prototype.setAttribute=function(n,v){
-  if(v&&(n==='src'||n==='href')){var t=this.tagName;if(t==='IMG'||t==='A'||t==='SOURCE')return sa.call(this,n,r(v));}
-  return sa.call(this,n,v);
-};
-function fix(el){if(el.tagName==='IMG'){var s=el.getAttribute('src');if(s){var x=r(s);if(x!==s)sa.call(el,'src',x);}}}
-function scan(root){if(root.querySelectorAll){var e=root.querySelectorAll('img[src]');for(var i=0;i<e.length;i++)fix(e[i]);}}
-function start(){scan(document);if(window.MutationObserver){new MutationObserver(function(m){for(var i=0;i<m.length;i++){var z=m[i];if(z.type==='attributes')fix(z.target);else for(var j=0;j<z.addedNodes.length;j++){var a=z.addedNodes[j];if(a.nodeType===1){fix(a);scan(a);}}}}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});}}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-})();</script>`;
-}
-
-export function decorateForSrcdoc(html, options) {
-    if (html.includes(INJECTED_MARKER)) return html;
-    const scripts =
-        buildLinkHandlerScript('srcdoc', options.pagePath) +
-        buildNavReporterScript('srcdoc', options.pagePath) +
-        buildPdfEmbedScript(
-            options.pdfjsBase || null,
-            options.pdfUnavailableMessage || 'PDF preview is not available here.',
-        );
-    // Teacher-mode flag + external-embed shim go in <head> (both must run before
-    // exe_export.js / exe_media_bridge.js); the rest goes before </body>.
-    let out = injectIntoHead(injectBeforeLastBody(html, scripts), teacherModeFlagScript());
-    const shim = embedShimScript(options);
-    if (shim) out = injectIntoHead(out, shim);
-    // Inject last so it lands first in <head> and its prototype patches are in place before
-    // any iDevice script sets an <img> src.
-    const resolver = assetResolverScript(options);
-    if (resolver) out = injectIntoHead(out, resolver);
     return out;
 }
