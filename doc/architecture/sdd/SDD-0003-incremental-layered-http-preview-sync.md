@@ -10,7 +10,7 @@ reviewers:
 related:
   issues: []
   prs: [1968]
-  adrs: [ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013]
+  adrs: [ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0011, ADR-0012, ADR-0013, ADR-0015]
   sdds: [SDD-0002]
 supersedes: []
 superseded_by: []
@@ -24,6 +24,19 @@ ai_assistance:
 ## Status
 
 Draft
+
+> **Note — two references predate [ADR-0015](../adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md).**
+> The "Non-goals" mention of `SrcdocPreviewProvider` reflects the transport set
+> at the time of writing; ADR-0015 **removed** `srcdoc` as an authored-content
+> transport (standalone static/PWA now uses the same-origin
+> `static-service-worker` transport, a trusted-content mode). And editor
+> activation is the normalized **`previewHttp`** block
+> (`managementBaseUrl`/`servingBaseUrl`/`managementHeaders`/`managementQuery`),
+> **not** `previewTransport: 'http' + previewBasePath` (`previewBasePath` was
+> never implemented). The design body below is preserved as the original record
+> and is not rewritten; the wire contract in
+> [preview-serving-contract.md](../../development/preview-serving-contract.md) is
+> authoritative.
 
 ## Summary
 
