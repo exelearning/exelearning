@@ -85,6 +85,12 @@ export class HttpPreviewProvider {
      * @param {string} [options.basePath] App base path ('' or '/subdir').
      * @param {typeof fetch} [options.fetchFn] Injectable for tests.
      * @param {string} [options.pdfUnavailableMessage] Translated fallback text.
+     * @param {?{managementBaseUrl: string, servingBaseUrl: string,
+     *   managementHeaders: Object<string,string>, managementQuery: Object<string,string>}}
+     *   [options.previewHttp] Normalized endpoint config an embedding host
+     *   supplies (serving contract v2), already validated by
+     *   validatePreviewHttpConfig. Absent for server/Electron, which derive
+     *   today's same-origin defaults from basePath.
      */
     constructor(options = {}) {
         this.mode = 'http';
@@ -92,6 +98,20 @@ export class HttpPreviewProvider {
         this._basePath = options.basePath || '';
         this._fetchFn = options.fetchFn || ((...args) => window.fetch(...args));
         this._pdfUnavailableMessage = options.pdfUnavailableMessage;
+        // Endpoint configuration. An embedded host supplies a validated
+        // `previewHttp` block (management/serving bases + CSRF headers/query);
+        // server and Electron derive today's same-origin defaults from basePath
+        // (`{bp}/api/preview-session` and `{bp}/preview`) for zero behavior
+        // change. The provider consumes this config with NO host-specific
+        // conditionals — a host adapts its dispatcher to this shape server-side.
+        const http = options.previewHttp || null;
+        const stripTrailingSlash = (url) => url.replace(/\/+$/, '');
+        this._managementBaseUrl = stripTrailingSlash(
+            http ? http.managementBaseUrl : `${this._basePath}/api/preview-session`,
+        );
+        this._servingBaseUrl = stripTrailingSlash(http ? http.servingBaseUrl : `${this._basePath}/preview`);
+        this._managementHeaders = http ? http.managementHeaders : {};
+        this._managementQuery = http ? http.managementQuery : {};
         this._session = null;
         this._limits = null;
         this._version = 0;
@@ -127,7 +147,7 @@ export class HttpPreviewProvider {
      */
     async prepare(input) {
         if (!this._session) {
-            const response = await this._fetch('POST', `${this._basePath}/api/preview-session`);
+            const response = await this._managementFetch('POST', this._managementUrl());
             if (response.status !== 201) {
                 throw new PreviewProviderError(
                     `${t('Could not create the preview session')} (HTTP ${response.status})`,
@@ -151,7 +171,7 @@ export class HttpPreviewProvider {
             this._decorationCache = new Map();
             this._session = Object.freeze({
                 id: body.previewId,
-                entryUrl: `${this._basePath}/preview/${body.previewId}/index.html?exe-teacher=1`,
+                entryUrl: `${this._servingBaseUrl}/${body.previewId}/index.html?exe-teacher=1`,
                 mode: this.mode,
                 opaqueSafe: this.opaqueSafe,
             });
@@ -184,7 +204,7 @@ export class HttpPreviewProvider {
         // `v` changes on every sync so re-setting iframe.src always re-navigates.
         return {
             kind: 'url',
-            url: `${this._basePath}/preview/${this._session.id}/${encoded}?exe-teacher=1&v=${this._version}`,
+            url: `${this._servingBaseUrl}/${this._session.id}/${encoded}?exe-teacher=1&v=${this._version}`,
         };
     }
 
@@ -200,7 +220,7 @@ export class HttpPreviewProvider {
             .split('/')
             .map((segment) => encodeURIComponent(segment))
             .join('/');
-        const response = await this._fetch('GET', `${this._basePath}/preview/${this._session.id}/${encoded}`);
+        const response = await this._servingFetch(`${this._servingBaseUrl}/${this._session.id}/${encoded}`);
         if (!response.ok) return null;
         return new Uint8Array(await response.arrayBuffer());
     }
@@ -220,18 +240,42 @@ export class HttpPreviewProvider {
         this._decorationCache = new Map();
         if (!session) return;
         try {
-            await this._fetchFn(`${this._basePath}/api/preview-session/${session.id}`, {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                keepalive,
-            });
+            await this._managementFetch('DELETE', this._managementUrl(`/${session.id}`), { keepalive });
         } catch (error) {
             Logger.warn('[HttpPreviewProvider] Session delete failed (TTL will reclaim it):', error);
         }
     }
 
-    async _fetch(method, url, options = {}) {
-        return this._fetchFn(url, { method, credentials: 'same-origin', ...options });
+    /** Build a management URL (`{managementBaseUrl}{suffix}` + managementQuery). */
+    _managementUrl(suffix = '') {
+        const url = `${this._managementBaseUrl}${suffix}`;
+        const entries = Object.entries(this._managementQuery);
+        if (entries.length === 0) return url;
+        const qs = entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+        return `${url}${url.includes('?') ? '&' : '?'}${qs}`;
+    }
+
+    /**
+     * Management request (create/assets/revisions/delete): same-origin
+     * credentials plus the host's CSRF/auth headers on EVERY call.
+     */
+    async _managementFetch(method, url, options = {}) {
+        return this._fetchFn(url, {
+            method,
+            credentials: 'same-origin',
+            ...options,
+            headers: { ...this._managementHeaders, ...(options.headers || {}) },
+        });
+    }
+
+    /** Serving request (authless capability URL): never send credentials. */
+    async _servingFetch(url) {
+        return this._fetchFn(url, { method: 'GET', credentials: 'omit' });
+    }
+
+    /** App-origin GET (e.g. the PDF.js runtime): same-origin to the editor. */
+    async _appFetch(url) {
+        return this._fetchFn(url, { method: 'GET', credentials: 'same-origin' });
     }
 
     /** 404 from any session endpoint ⇒ the session vanished: reset and signal. */
@@ -357,7 +401,10 @@ export class HttpPreviewProvider {
      */
     _decorateDocuments(documents) {
         const decorated = new Map();
-        const pdfjsBase = `${this._basePath}/preview/${this._session.id}/`;
+        // PDF.js resolves through the fixed layer, served from the session's
+        // serving base (not the app origin), so the injected base must track
+        // servingBaseUrl for embedded hosts whose serving origin differs.
+        const pdfjsBase = `${this._servingBaseUrl}/${this._session.id}/`;
         // The shim is served same-origin from the app (not the session), so an
         // absolute-from-root URL is used; the opaque iframe loads it under CSP 'self'.
         const embedShimUrl = `${this._basePath}/app/common/exe_embed_bridge/exe_embed_shim.js`;
@@ -503,7 +550,7 @@ export class HttpPreviewProvider {
         if (!/\.html?$/i.test(path)) return bytes;
         const html = new TextDecoder().decode(bytes);
         return decorateForHttp(html, {
-            pdfjsBase: `${this._basePath}/preview/${this._session.id}/`,
+            pdfjsBase: `${this._servingBaseUrl}/${this._session.id}/`,
             pdfUnavailableMessage: this._pdfUnavailableMessage,
             embedShimUrl: `${this._basePath}/app/common/exe_embed_bridge/exe_embed_shim.js`,
         });
@@ -545,9 +592,9 @@ export class HttpPreviewProvider {
             // be collected while the next batch loads.
             batch = [];
             batchBytes = 0;
-            const response = await this._fetch(
+            const response = await this._managementFetch(
                 'POST',
-                `${this._basePath}/api/preview-session/${this._session.id}/assets`,
+                this._managementUrl(`/${this._session.id}/assets`),
                 { body: form },
             );
             this._assertSessionAlive(response.status);
@@ -626,7 +673,7 @@ export class HttpPreviewProvider {
         for (const value of writes.values()) {
             form.append('files', new Blob([value]));
         }
-        return this._fetch('POST', `${this._basePath}/api/preview-session/${this._session.id}/revisions`, {
+        return this._managementFetch('POST', this._managementUrl(`/${this._session.id}/revisions`), {
             body: form,
         });
     }
@@ -637,7 +684,7 @@ export class HttpPreviewProvider {
         const loaded = {};
         for (const path of PDFJS_FIXED_FILES) {
             try {
-                const response = await this._fetch('GET', `${this._basePath}/${path}`);
+                const response = await this._appFetch(`${this._basePath}/${path}`);
                 if (response.ok) {
                     loaded[path] = new Uint8Array(await response.arrayBuffer());
                 }

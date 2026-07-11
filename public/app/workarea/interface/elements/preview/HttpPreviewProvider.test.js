@@ -45,7 +45,9 @@ function createFakeBackend(overrides = {}) {
         const call = { url: String(url), method, opts };
         calls.push(call);
 
-        if (method === 'POST' && call.url.endsWith('/api/preview-session')) {
+        // Create is the only POST that targets the management base directly
+        // (no /assets or /revisions suffix) — robust to a custom managementBaseUrl.
+        if (method === 'POST' && !call.url.includes('/assets') && !call.url.includes('/revisions')) {
             return new Response(
                 JSON.stringify({
                     previewId: PREVIEW_ID,
@@ -753,6 +755,89 @@ describe('HttpPreviewProvider (contract v2)', () => {
             expect(provider.session).toBeNull();
             expect(provider._uploadedAssetKeys.size).toBe(0);
             expect(provider._ackDocuments.size).toBe(0);
+        });
+    });
+
+    describe('normalized previewHttp endpoint configuration', () => {
+        const PREVIEW_HTTP = {
+            protocolVersion: 2,
+            managementBaseUrl: 'https://host.example/mod/exelearning/preview_session.php',
+            servingBaseUrl: 'https://cdn.example/serve',
+            managementHeaders: { 'X-WP-Nonce': 'nonce-123' },
+            managementQuery: { cmid: '5', sesskey: 'abc def' },
+        };
+
+        it('routes management to managementBaseUrl with headers + query on every call and serves from servingBaseUrl', async () => {
+            const httpProvider = new HttpPreviewProvider({
+                basePath: '/exe',
+                fetchFn: backend.fetchFn,
+                previewHttp: PREVIEW_HTTP,
+            });
+            const input = layeredInput({
+                assetRefs: new Map([['content/resources/photo.png', assetRef()]]),
+            });
+            const session = await httpProvider.prepare(input);
+
+            // Serving URLs are built from servingBaseUrl/{id}/…, never basePath/preview.
+            expect(session.entryUrl).toBe(`https://cdn.example/serve/${PREVIEW_ID}/index.html?exe-teacher=1`);
+            expect(httpProvider.resolvePage('html/p2.html').url).toContain(
+                `https://cdn.example/serve/${PREVIEW_ID}/html/p2.html`,
+            );
+
+            // Management create/assets/revisions all hit managementBaseUrl with
+            // the CSRF header and the query string appended (values encoded).
+            const management = backend.calls.filter((c) => c.method === 'POST' || c.method === 'DELETE');
+            const create = backend.calls.find(
+                (c) => c.method === 'POST' && !c.url.includes('/assets') && !c.url.includes('/revisions'),
+            );
+            expect(create.url).toBe(`${PREVIEW_HTTP.managementBaseUrl}?cmid=5&sesskey=abc%20def`);
+            for (const call of management) {
+                expect(call.url.startsWith(PREVIEW_HTTP.managementBaseUrl)).toBe(true);
+                expect(call.url).toContain('cmid=5');
+                expect(call.url).toContain('sesskey=abc%20def');
+                expect(call.opts.headers['X-WP-Nonce']).toBe('nonce-123');
+                expect(call.opts.credentials).toBe('same-origin');
+            }
+            const assetsCall = backend.calls.find((c) => c.method === 'POST' && c.url.includes('/assets'));
+            expect(assetsCall.url).toBe(
+                `${PREVIEW_HTTP.managementBaseUrl}/${PREVIEW_ID}/assets?cmid=5&sesskey=abc%20def`,
+            );
+            const revCall = backend.calls.find((c) => c.method === 'POST' && c.url.includes('/revisions'));
+            expect(revCall.url).toBe(
+                `${PREVIEW_HTTP.managementBaseUrl}/${PREVIEW_ID}/revisions?cmid=5&sesskey=abc%20def`,
+            );
+        });
+
+        it('fetches serving files without credentials (authless capability URL)', async () => {
+            const httpProvider = new HttpPreviewProvider({
+                basePath: '/exe',
+                fetchFn: backend.fetchFn,
+                previewHttp: PREVIEW_HTTP,
+            });
+            await httpProvider.prepare(layeredInput());
+            backend.calls.length = 0;
+            await httpProvider.getFile('content/css/base.css');
+
+            const getCall = backend.calls.find((c) => c.method === 'GET' && c.url.includes('/serve/'));
+            expect(getCall.url).toBe(`https://cdn.example/serve/${PREVIEW_ID}/content/css/base.css`);
+            expect(getCall.opts.credentials).toBe('omit');
+        });
+
+        it('DELETE on dispose targets managementBaseUrl/{id} with headers + query', async () => {
+            const httpProvider = new HttpPreviewProvider({
+                basePath: '/exe',
+                fetchFn: backend.fetchFn,
+                previewHttp: PREVIEW_HTTP,
+            });
+            await httpProvider.prepare(layeredInput());
+            await httpProvider.dispose({ keepalive: true });
+
+            const deleteCall = backend.calls.find((c) => c.method === 'DELETE');
+            expect(deleteCall.url).toBe(
+                `${PREVIEW_HTTP.managementBaseUrl}/${PREVIEW_ID}?cmid=5&sesskey=abc%20def`,
+            );
+            expect(deleteCall.opts.headers['X-WP-Nonce']).toBe('nonce-123');
+            expect(deleteCall.opts.keepalive).toBe(true);
         });
     });
 });
