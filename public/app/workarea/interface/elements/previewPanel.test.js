@@ -163,6 +163,15 @@ describe('PreviewPanelManager', () => {
         success: true,
         files: { 'index.html': new TextEncoder().encode('<!DOCTYPE html><html><body>x</body></html>') },
       }),
+      // Layered pipeline used ONLY by the http transport (serving contract v2).
+      generatePreviewLayered: vi.fn().mockResolvedValue({
+        success: true,
+        documents: new Map([['index.html', '<!DOCTYPE html><html><body>x</body></html>']]),
+        assetRefs: new Map(),
+        fixedRefs: new Map(),
+        getAssetBytes: vi.fn(async () => null),
+        resolveFixedResource: vi.fn(async () => null),
+      }),
       PREVIEW_SANDBOX: 'allow-scripts allow-popups allow-forms',
     };
 
@@ -897,15 +906,42 @@ describe('PreviewPanelManager', () => {
       manager._provider = createFakeProvider();
     });
 
-    it('prepares the session on first run and renders index.html', async () => {
+    it('prepares the session on first run and renders index.html (layered input for http)', async () => {
       await manager.refresh();
 
-      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(manager._provider.prepare).toHaveBeenCalled();
+      // The http transport uses the layered pipeline, never the full file map.
+      expect(window.SharedExporters.generatePreviewLayered).toHaveBeenCalled();
+      expect(window.SharedExporters.generatePreviewForSW).not.toHaveBeenCalled();
+      expect(manager._provider.prepare).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documents: expect.any(Map),
+          assetRefs: expect.any(Map),
+          fixedRefs: expect.any(Map),
+          getAssetBytes: expect.any(Function),
+        }),
+      );
       expect(manager._session).toEqual(expect.objectContaining({ id: 'sess-1' }));
       expect(manager._provider.resolvePage).toHaveBeenCalledWith('index.html');
       expect(mockElements['preview-iframe'].getAttribute('src')).toContain('/test/preview/sess-1/index.html');
       expect(mockElements['preview-iframe'].dataset.previewPage).toBe('index.html');
+    });
+
+    it('feeds the previous documents back into the generator for page reuse', async () => {
+      const documents = new Map([['index.html', '<html>v1</html>']]);
+      window.SharedExporters.generatePreviewLayered.mockResolvedValue({
+        success: true,
+        documents,
+        assetRefs: new Map(),
+        fixedRefs: new Map(),
+        getAssetBytes: vi.fn(),
+      });
+
+      await manager.refresh();
+      await manager.refresh();
+
+      const calls = window.SharedExporters.generatePreviewLayered.mock.calls;
+      expect(calls[0][4]).toEqual(expect.objectContaining({ previousDocuments: null, dirtyPages: 'all' }));
+      expect(calls[1][4]).toEqual(expect.objectContaining({ previousDocuments: documents }));
     });
 
     it('updates the existing session on subsequent runs', async () => {
@@ -982,6 +1018,195 @@ describe('PreviewPanelManager', () => {
       await manager.refresh();
 
       expect(waitSpy).toHaveBeenCalled();
+    });
+
+    it('keeps non-http transports on the full generatePreviewForSW path', async () => {
+      manager._provider = createFakeProvider({ mode: 'srcdoc', opaqueSafe: true });
+
+      await manager.refresh();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
+      expect(window.SharedExporters.generatePreviewLayered).not.toHaveBeenCalled();
+      // The provider receives the plain file map, not the layered shape.
+      expect(manager._provider.prepare).toHaveBeenCalledWith(
+        expect.objectContaining({ 'index.html': expect.anything() }),
+      );
+    });
+  });
+
+  describe('refresh queue (single-flight + lossless coalescing)', () => {
+    beforeEach(() => {
+      manager._provider = createFakeProvider();
+    });
+
+    /** Install a tracker fake so scope consumption/merging is observable. */
+    function installTracker() {
+      const tracker = {
+        scopes: [{ pages: new Set(['page-1']), assetIds: new Set() }],
+        consumed: [],
+        merged: [],
+        consume: vi.fn(() => tracker.scopes.shift() || { pages: new Set(), assetIds: new Set() }),
+        merge: vi.fn((scope) => tracker.merged.push(scope)),
+        markAll: vi.fn(),
+        detach: vi.fn(),
+      };
+      manager._invalidation = tracker;
+      return tracker;
+    }
+
+    it('coalesces a refresh requested mid-round into exactly one follow-up round', async () => {
+      const tracker = installTracker();
+      tracker.scopes = [
+        { pages: new Set(['page-1']), assetIds: new Set() },
+        { pages: new Set(['page-2']), assetIds: new Set() },
+      ];
+
+      let resolveFirstSync;
+      manager._provider.prepare.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          resolveFirstSync = () => resolve({ id: 'sess-1', mode: 'http' });
+        }),
+      );
+
+      const first = manager.refresh();
+      await vi.waitFor(() => expect(resolveFirstSync).toBeDefined());
+
+      // Three edits land while the first round is in flight.
+      manager.refresh();
+      manager.refresh();
+      manager.refresh();
+      expect(manager._pendingRefresh).toBe(true);
+
+      resolveFirstSync();
+      await first;
+
+      // Exactly ONE follow-up round ran, with the scope accumulated meanwhile.
+      expect(tracker.consume).toHaveBeenCalledTimes(2);
+      const generatorCalls = window.SharedExporters.generatePreviewLayered.mock.calls;
+      expect(generatorCalls).toHaveLength(2);
+      expect([...generatorCalls[1][4].dirtyPages]).toEqual(['page-2']);
+      expect(manager._pendingRefresh).toBe(false);
+      expect(manager.isLoading).toBe(false);
+    });
+
+    it('merges the consumed scope back when a round fails', async () => {
+      const tracker = installTracker();
+      const scope = { pages: new Set(['page-1']), assetIds: new Set(['asset-1']) };
+      tracker.scopes = [scope];
+      manager._provider.prepare.mockRejectedValue(new Error('boom'));
+      vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      await manager.refresh();
+
+      expect(tracker.merge).toHaveBeenCalledWith(scope);
+      expect(manager.showError).toHaveBeenCalledWith('boom');
+      expect(manager.isLoading).toBe(false);
+    });
+
+    it('merges the scope back when generation itself fails', async () => {
+      const tracker = installTracker();
+      const scope = { pages: new Set(['page-1']), assetIds: new Set() };
+      tracker.scopes = [scope];
+      window.SharedExporters.generatePreviewLayered.mockResolvedValueOnce({ success: false, error: 'gen failed' });
+      vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      await manager.refresh();
+
+      expect(tracker.merge).toHaveBeenCalledWith(scope);
+      expect(manager.showError).toHaveBeenCalledWith('gen failed');
+    });
+
+    it('reschedules (debounced) a request that arrived during a failed round', async () => {
+      vi.useFakeTimers();
+      const tracker = installTracker();
+      let rejectFirst;
+      manager._provider.prepare.mockImplementationOnce(
+        () => new Promise((_, reject) => {
+          rejectFirst = () => reject(new Error('boom'));
+        }),
+      );
+      vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      const first = manager.refresh();
+      await vi.waitFor(() => expect(rejectFirst).toBeDefined());
+      manager.refresh(); // arrives mid-failure
+      rejectFirst();
+      await first;
+
+      expect(manager._pendingRefresh).toBe(false);
+      expect(manager.refreshDebounceTimer).not.toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('forceRefresh marks everything dirty and refreshes immediately', async () => {
+      const tracker = installTracker();
+
+      await manager.forceRefresh();
+
+      expect(tracker.markAll).toHaveBeenCalled();
+      expect(tracker.consume).toHaveBeenCalled();
+      expect(manager.refreshDebounceTimer).toBeNull();
+    });
+  });
+
+  describe('subscribeToChanges (layered classification for http)', () => {
+    it('delegates classification to the invalidation tracker for the http transport', () => {
+      manager._provider = createFakeProvider({ mode: 'http' });
+
+      manager.subscribeToChanges();
+
+      expect(manager._invalidation).not.toBeNull();
+      // No blanket ydoc listener: bookkeeping transactions must not refresh.
+      expect(mockYdoc.on).not.toHaveBeenCalled();
+      expect(manager._onYdocUpdate).toBeNull();
+      expect(manager._unsubscribeStructure).toBeNull();
+      // The tracker subscribed through the bridge's structure observer relay.
+      expect(mockBridge.onStructureChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('schedules a debounced refresh when the tracker reports a change and the panel is visible', () => {
+      vi.useFakeTimers();
+      manager._provider = createFakeProvider({ mode: 'http' });
+      manager.subscribeToChanges();
+      manager.isOpen = true;
+      const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+      const structureCallback = mockBridge.onStructureChange.mock.calls[0][0];
+      structureCallback([{ path: [] }]);
+
+      expect(manager.refreshDebounceTimer).not.toBeNull();
+      vi.advanceTimersByTime(500);
+      expect(refreshSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('accumulates scope while hidden without scheduling a refresh', () => {
+      vi.useFakeTimers();
+      manager._provider = createFakeProvider({ mode: 'http' });
+      manager.subscribeToChanges();
+      manager.isOpen = false;
+      manager.isPinned = false;
+
+      const structureCallback = mockBridge.onStructureChange.mock.calls[0][0];
+      structureCallback([{ path: [] }]);
+
+      expect(manager.refreshDebounceTimer).toBeNull();
+      expect(manager._invalidation.isEmpty()).toBe(false);
+      vi.useRealTimers();
+    });
+
+    it('destroy() detaches the tracker and clears the layered cache', () => {
+      manager._provider = createFakeProvider({ mode: 'http' });
+      manager.subscribeToChanges();
+      const tracker = manager._invalidation;
+      const detachSpy = vi.spyOn(tracker, 'detach');
+      manager._lastLayeredDocuments = new Map();
+
+      manager.destroy();
+
+      expect(detachSpy).toHaveBeenCalled();
+      expect(manager._invalidation).toBeNull();
+      expect(manager._lastLayeredDocuments).toBeNull();
     });
   });
 
