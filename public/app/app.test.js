@@ -1696,6 +1696,23 @@ describe('App utility methods', () => {
     });
 
     describe('registerPreviewServiceWorker', () => {
+      beforeEach(() => {
+        // The preview SW only backs the standalone static/PWA transport, so
+        // registration is gated on that capability. Force it open for the
+        // tests that exercise the actual registration flow.
+        appInstance.capabilities = { preview: { staticServiceWorker: true } };
+      });
+
+      it('skips registration when the active transport is not the static Service Worker', async () => {
+        appInstance.capabilities = { preview: { staticServiceWorker: false } };
+        const registerSpy = navigator.serviceWorker.register;
+
+        const result = await appInstance.registerPreviewServiceWorker();
+
+        expect(result).toBeNull();
+        expect(registerSpy).not.toHaveBeenCalled();
+      });
+
       it('returns null when Service Workers not supported', async () => {
         // Remove serviceWorker property entirely so 'serviceWorker' in navigator returns false
         delete navigator.serviceWorker;
@@ -2308,6 +2325,9 @@ describe('registerPreviewServiceWorker secure context checks', () => {
     global._ = (str) => str;
     document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
     appInstance = new App(window.eXeLearning);
+    // Secure-context checks run only after the transport gate; force the
+    // static Service Worker capability so these exercise the context logic.
+    appInstance.capabilities = { preview: { staticServiceWorker: true } };
     originalServiceWorker = navigator.serviceWorker;
     originalIsSecureContext = window.isSecureContext;
   });
@@ -2328,7 +2348,7 @@ describe('registerPreviewServiceWorker secure context checks', () => {
     });
   });
 
-  it('registers SW when protocol is app: (Electron)', async () => {
+  it('registers SW when protocol is app: (app: treated as a secure context)', async () => {
     Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
     const mockRegistration = {
       active: { postMessage: vi.fn(), state: 'activated' },

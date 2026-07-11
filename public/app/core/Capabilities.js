@@ -126,23 +126,37 @@ export class Capabilities {
 
         /**
          * Preview transport (see core/previewTransport.js). The preview
-         * renders untrusted authored content: opaque-safe transports run it
-         * in an opaque-origin sandbox (no allow-same-origin).
+         * renders untrusted authored content: only the HTTP transport is
+         * opaque-safe (runs it in an opaque-origin sandbox, no
+         * allow-same-origin). Selection fails closed for an embedded editor
+         * whose host supplied no valid previewHttp block — surface that as an
+         * unavailable preview rather than crashing app boot.
          */
-        const previewTransport = resolvePreviewTransport(config, { hasElectronApi });
+        let previewTransport = null;
+        let previewError = null;
+        try {
+            previewTransport = resolvePreviewTransport(config, { hasElectronApi });
+        } catch (error) {
+            previewError = error.message;
+        }
         this.preview = Object.freeze({
-            /** Which transport serves preview content */
+            /** Which transport serves preview content ('http' | 'static-service-worker' | null) */
             transport: previewTransport,
-            /** Whether the transport works inside an opaque-origin sandbox */
-            opaqueSafe: previewTransport !== 'service-worker',
+            /** Whether a preview transport is available at all (false = fail closed) */
+            available: previewTransport !== null,
+            /** Reason the preview is unavailable, when it is (else null) */
+            error: previewError,
+            /** Whether the transport works inside an opaque-origin sandbox (HTTP only) */
+            opaqueSafe: previewTransport === 'http',
             /**
-             * Whether "open preview in new tab" is available. All transports open the
-             * same-origin preview-host page (public/preview-tab.html): HTTP frames the
-             * capability URL, srcdoc receives the rendered page HTML from the editor.
+             * Whether "open preview in new tab" is available. Both remaining
+             * transports open the same-origin preview-host page
+             * (public/preview-tab.html): HTTP frames the capability URL, the
+             * static Service Worker frames its /viewer/ URL.
              */
-            extractToNewTab: true,
-            /** Whether the legacy same-origin Service Worker preview is active */
-            legacyServiceWorker: previewTransport === 'service-worker',
+            extractToNewTab: previewTransport !== null,
+            /** Whether the standalone static/PWA Service Worker preview is active (not opaque-safe) */
+            staticServiceWorker: previewTransport === 'static-service-worker',
         });
 
         /**

@@ -194,6 +194,17 @@ export default class App {
      * @returns {Promise<ServiceWorkerRegistration|null>} Registration promise
      */
     registerPreviewServiceWorker() {
+        // The preview Service Worker only backs the standalone static/PWA
+        // transport. Server, Electron and embedded editors use the opaque HTTP
+        // transport and must never register it (a same-origin SW would defeat
+        // the opaque isolation). Fail-closed embedded editors have no transport
+        // at all; the panel surfaces that — boot must not crash here, so this
+        // reads the already-computed capability rather than recomputing.
+        if (this.capabilities?.preview?.staticServiceWorker !== true) {
+            this._previewSwRegistrationPromise = Promise.resolve(null);
+            return this._previewSwRegistrationPromise;
+        }
+
         if (!('serviceWorker' in navigator)) {
             this._previewSwRegistrationPromise = Promise.resolve(null);
             return this._previewSwRegistrationPromise;

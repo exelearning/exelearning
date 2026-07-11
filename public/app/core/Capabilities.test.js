@@ -219,13 +219,36 @@ describe('Capabilities', () => {
             });
             const capabilities = new Capabilities(config);
             expect(capabilities.preview.transport).toBe('http');
+            expect(capabilities.preview.available).toBe(true);
             expect(capabilities.preview.opaqueSafe).toBe(true);
             expect(capabilities.preview.extractToNewTab).toBe(true);
-            expect(capabilities.preview.legacyServiceWorker).toBe(false);
+            expect(capabilities.preview.staticServiceWorker).toBe(false);
+            expect(capabilities.preview.error).toBeNull();
             expect(Object.isFrozen(capabilities.preview)).toBe(true);
         });
 
-        it('uses srcdoc in embedded mode, with extract-to-new-tab via the preview-host page', () => {
+        it('uses HTTP in embedded mode when the host supplies a valid previewHttp block', () => {
+            const config = new RuntimeConfig({
+                mode: 'embedded',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: 'data/bundle.json',
+                isEmbedded: true,
+                embeddingConfig: {
+                    previewHttp: {
+                        protocolVersion: 2,
+                        managementBaseUrl: '/api/preview-session',
+                        servingBaseUrl: '/preview',
+                    },
+                },
+            });
+            const capabilities = new Capabilities(config);
+            expect(capabilities.preview.transport).toBe('http');
+            expect(capabilities.preview.opaqueSafe).toBe(true);
+            expect(capabilities.preview.extractToNewTab).toBe(true);
+        });
+
+        it('fails closed (no transport) in embedded mode without previewHttp', () => {
             const config = new RuntimeConfig({
                 mode: 'embedded',
                 baseUrl: '.',
@@ -234,12 +257,14 @@ describe('Capabilities', () => {
                 isEmbedded: true,
             });
             const capabilities = new Capabilities(config);
-            expect(capabilities.preview.transport).toBe('srcdoc');
-            // srcdoc now opens the preview-host page (editor pushes rendered HTML).
-            expect(capabilities.preview.extractToNewTab).toBe(true);
+            expect(capabilities.preview.transport).toBeNull();
+            expect(capabilities.preview.available).toBe(false);
+            expect(capabilities.preview.opaqueSafe).toBe(false);
+            expect(capabilities.preview.extractToNewTab).toBe(false);
+            expect(capabilities.preview.error).toMatch(/previewHttp/);
         });
 
-        it('uses opaque srcdoc for standalone static/PWA, and keeps Electron on the legacy SW (interim)', () => {
+        it('uses the static Service Worker for standalone static/PWA, and Electron on opaque HTTP', () => {
             const config = new RuntimeConfig({
                 mode: 'static',
                 baseUrl: '.',
@@ -247,17 +272,16 @@ describe('Capabilities', () => {
                 staticDataPath: 'data/bundle.json',
             });
             const staticCaps = new Capabilities(config);
-            expect(staticCaps.preview.transport).toBe('srcdoc');
-            expect(staticCaps.preview.opaqueSafe).toBe(true);
-            expect(staticCaps.preview.legacyServiceWorker).toBe(false);
+            expect(staticCaps.preview.transport).toBe('static-service-worker');
+            expect(staticCaps.preview.opaqueSafe).toBe(false);
+            expect(staticCaps.preview.staticServiceWorker).toBe(true);
 
-            // Electron now serves the preview opaquely over app://localhost/preview
-            // (protocol.handle → electron-preview-handler), same as cloud HTTP —
-            // NOT the legacy same-origin Service Worker preview.
+            // Electron serves the preview opaquely over app://localhost/preview
+            // (protocol.handle → electron-preview-handler), same as cloud HTTP.
             const electronCaps = new Capabilities(config, { hasElectronApi: true });
             expect(electronCaps.preview.transport).toBe('http');
             expect(electronCaps.preview.opaqueSafe).toBe(true);
-            expect(electronCaps.preview.legacyServiceWorker).toBe(false);
+            expect(electronCaps.preview.staticServiceWorker).toBe(false);
         });
     });
 });
