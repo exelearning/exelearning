@@ -67,23 +67,45 @@ never be classified as fixed — they ride the session layers.
 ## Transport selection (client side)
 
 The client selects the transport deterministically
-(`public/app/core/previewTransport.js`). A host activates this contract by
-setting, in its `RuntimeConfig`/embedding config:
+(`public/app/core/previewTransport.js`). The server and Electron runtimes select
+`http` automatically and derive today's same-origin endpoints from the app base
+path (`{basePath}/api/preview-session` for management, `{basePath}/preview` for
+serving). An **embedded** editor activates this contract by supplying a
+`previewHttp` block in its `RuntimeConfig`/embedding config:
 
 ```jsonc
 {
   "embeddingConfig": {
-    "previewTransport": "http",
-    // basePath the client prefixes to every request below; defaults to the app
-    // base path. Point it at the host endpoint that implements this contract.
-    "previewBasePath": "/mod/exelearning/preview"   // example (Moodle)
+    "previewTransport": "http",       // optional: the client also fails closed
+                                      // for an embedded editor without previewHttp
+    "previewHttp": {
+      "protocolVersion": 2,           // literal 2; anything else → clear client error
+      // Authenticated management API base (create/assets/revisions/delete).
+      "managementBaseUrl": "/mod/exelearning/editor/preview_session.php",  // example (Moodle)
+      // Authless capability serving base (the opaque iframe reads from here).
+      "servingBaseUrl": "/mod/exelearning/preview.php",
+      // Optional CSRF/auth headers sent on EVERY management request.
+      "managementHeaders": { },       // e.g. { "X-WP-Nonce": "…" } (WordPress)
+      // Optional query params appended to EVERY management request URL.
+      "managementQuery": { }          // e.g. { "cmid": "…", "sesskey": "…" } (Moodle)
+    }
   }
 }
 ```
 
+The client validates `previewHttp` at provider construction and normalizes it
+(bases parseable as URLs relative to the document, header/query values must be
+strings). Management requests go to `managementBaseUrl` (`/{id}/assets`,
+`/{id}/revisions`, `DELETE /{id}`) with `managementHeaders` + `managementQuery`
+on every call and `credentials: 'same-origin'`; the opaque iframe and
+client-initiated serving fetches use `servingBaseUrl/{id}/…` with
+`credentials: 'omit'`. The provider carries **no** host-specific conditionals —
+a host adapts its dispatcher to this shape server-side.
+
 There is **no silent fallback**: if `http` is selected and the endpoint is
-missing or answers with the wrong `protocolVersion`, the preview surfaces an
-error rather than downgrading to a same-origin document.
+missing, `previewHttp` is malformed, or a create-session answers with the wrong
+`protocolVersion`, the preview surfaces an error rather than downgrading to a
+same-origin document. (`previewBasePath` was never implemented and is removed.)
 
 ## The fixed-resource manifest
 
@@ -214,6 +236,14 @@ GET  {basePath}/preview/{previewId}/{path}
   cookieless file-serving primitive (e.g. Moodle `tokenpluginfile.php`).
 - `previewId` **must** match `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`;
   anything else → 404.
+- **Bare root → redirect.** `GET {basePath}/preview/{previewId}` and
+  `.../{previewId}/` **must** `302`-redirect to the entry document with a
+  **relative** `Location` (`index.html` for the trailing-slash form,
+  `{previewId}/index.html` otherwise) so it survives `BASE_PATH` and the Electron
+  `app://` origin. Never serve `index.html` bytes from the bare URL — one
+  canonical document URL keeps its relative asset references resolving. The
+  redirect is stateless (a valid-UUID bare URL for an unpublished or unknown
+  session redirects to a target that then 404s).
 - **Resolution order** (exact-key lookups against the **active revision** only):
 
   ```
@@ -227,8 +257,16 @@ GET  {basePath}/preview/{previewId}/{path}
   `manifest[id].path` (server-controlled data) reaches the filesystem, resolved
   under the distribution root with containment checks.
 - **Range requests.** Session-asset responses advertise `Accept-Ranges: bytes`
-  and honor single-range requests (`206`, `416` on invalid) so large audio/video
-  seeks without re-downloading. Documents and fixed resources may ignore Range.
+  and honor single-range requests so large audio/video seeks avoid a full
+  re-download. Classification is canonical (RFC 9110 §14.1.2): a valid
+  satisfiable single range → `206`; a valid but **unsatisfiable** single range
+  (first-byte-pos ≥ length such as `bytes=99-`, or a zero-length suffix
+  `bytes=-0`) → `416` with `Content-Range: bytes */<len>`; and any
+  **syntactically invalid or unsupported** spec (non-`bytes` unit, multi-range,
+  unparseable, or inverted last-byte-pos < first-byte-pos such as `bytes=5-2`)
+  **MUST be ignored** → the full `200` body. Structural validity is checked
+  **before** satisfiability, so `bytes=15-2` (inverted *and* past EOF) is ignored
+  (`200`), never `416`. Documents and fixed resources ignore Range entirely.
 - **Conditional requests.** Session-asset responses carry
   `ETag: "<assetKey>"` and honor `If-None-Match` with `304` (an unchanged asset
   re-referenced across revisions revalidates without a byte transfer).
