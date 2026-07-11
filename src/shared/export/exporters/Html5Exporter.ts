@@ -22,9 +22,15 @@ import type {
     Html5ExportOptions,
     FaviconInfo,
     ThemeData,
+    LayeredAssetRef,
+    LayeredPreviewOptions,
+    LayeredPreviewResult,
+    PreviewProvenance,
+    PreviewResourceGroupId,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
+import { buildThemeFixedId, sha256HexOf } from '../utils/previewLayers';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 
 export class Html5Exporter extends BaseExporter {
@@ -808,6 +814,497 @@ export class Html5Exporter extends BaseExporter {
         } catch (error) {
             console.error('[Html5Exporter] generateForPreview failed:', error);
             throw error;
+        }
+    }
+
+    // =========================================================================
+    // Layered preview generation (serving contract v2)
+    // =========================================================================
+
+    /**
+     * Generate the preview as the three layers of serving contract v2:
+     * generated documents (bytes), project-asset references (identities from
+     * the project model — no blob is read here) and fixed installation
+     * resource references (identities the host resolves through its build
+     * manifest — zero bytes transferred).
+     *
+     * Additive sibling of {@link generateForPreview}, which stays byte-exact
+     * for the srcdoc/static/screenshot consumers. Classification is by fetch
+     * provenance via the optional `ResourceProvider.getPreviewProvenance`
+     * seam; providers without it (server exports, null providers) get a fully
+     * dynamic result — correct, just not incremental.
+     *
+     * Dirty-scope regeneration: with `opts.dirtyPages` a Set and
+     * `opts.previousDocuments` from the previous round, only the dirty pages
+     * are re-rendered (LaTeX/Mermaid pre-render included); every other page's
+     * entry is copied by reference from the previous documents map.
+     */
+    async generateForPreviewLayered(options: LayeredPreviewOptions = {}): Promise<LayeredPreviewResult> {
+        const documents = new Map<string, ArrayBuffer | string>();
+        const assetRefs = new Map<string, LayeredAssetRef>();
+        const fixedRefs = new Map<string, string>();
+
+        const prev = options.previousDocuments ?? null;
+        // Without a previous generation there is nothing to reuse: render everything.
+        const dirty: Set<string> | 'all' = !prev || options.dirtyPages === undefined ? 'all' : options.dirtyPages;
+        const isDirtyPage = (pageId: string) => dirty === 'all' || dirty.has(pageId);
+        const anyDirty = dirty === 'all' || dirty.size > 0;
+
+        let pages = this.buildPageList();
+        const meta = this.getMetadata();
+        // Theme priority: 1º parameter > 2º ELP metadata > 3º default
+        const themeName = options?.theme || meta.theme || 'base';
+        const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+        // Pre-process asset URLs. Page-scoped when possible; the search index
+        // embeds every page's preprocessed component HTML and there is no
+        // cross-refresh cache of per-page entries, so with the search box on,
+        // any dirty page forces a full preprocess to keep search_index.js
+        // identical to a full generation (still a cheap string pass — no blob
+        // or network I/O either way).
+        if (dirty === 'all' || (meta.addSearchBox && anyDirty)) {
+            pages = await this.preprocessPagesForExport(pages);
+        } else {
+            pages = await this.preprocessPagesForPreviewScope(pages, dirty);
+        }
+
+        // Build unique filename map for all pages (handles collisions)
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
+
+        // 0. Pre-fetch theme files (also configures icon resolution)
+        const { themeFilesMap, themeRootFiles, faviconInfo: detectedFavicon } = await this.prepareThemeData(themeName);
+
+        const faviconInfo = options?.faviconPath
+            ? { path: options.faviconPath, type: options.faviconType || 'image/x-icon' }
+            : detectedFavicon;
+
+        const assetExportPathMap = await this.buildAssetExportPathMap();
+        const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+
+        // 1. Page HTML: render dirty pages, reuse clean ones from previousDocuments.
+        let latexWasRendered = false;
+        let mermaidWasRendered = false;
+        const pageEntries: Array<{
+            filename: string;
+            page: ExportPage;
+            index: number;
+            reused: boolean;
+            content: ArrayBuffer | string;
+        }> = [];
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+            const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
+
+            if (!isDirtyPage(page.id) && prev?.has(filename)) {
+                pageEntries.push({ filename, page, index: i, reused: true, content: prev.get(filename)! });
+                continue;
+            }
+
+            let html = this.generatePageHtml(
+                page,
+                pages,
+                meta,
+                i === 0,
+                i,
+                themeRootFiles,
+                faviconInfo,
+                pageFilenameMap,
+                assetExportPathMap,
+                navLabels,
+            );
+
+            // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
+            if (!meta.addMathJax) {
+                const latexResult = await this.preRenderHtmlLatex(html, options);
+                html = latexResult.html;
+                if (latexResult.latexRendered) {
+                    latexWasRendered = true;
+                }
+            }
+
+            // Pre-render Mermaid diagrams
+            if (options?.preRenderMermaid) {
+                try {
+                    const result = await options.preRenderMermaid(html);
+                    if (result.mermaidRendered) {
+                        html = result.html;
+                        mermaidWasRendered = true;
+                    }
+                } catch {
+                    // Continue without pre-rendering
+                }
+            }
+
+            pageEntries.push({ filename, page, index: i, reused: false, content: html });
+        }
+
+        // 2. Search index. Its entries embed every page's preprocessed
+        // component HTML, so it regenerates whenever any page is dirty (the
+        // full preprocess above guarantees identical bytes) and is otherwise
+        // copied unchanged from the previous round.
+        if (meta.addSearchBox) {
+            const prevIndex = prev?.get('search_index.js');
+            if (!anyDirty && prevIndex !== undefined) {
+                documents.set('search_index.js', prevIndex);
+            } else {
+                documents.set('search_index.js', this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap));
+            }
+        }
+
+        // 3. content.xml is skipped for preview (matches generateForPreview)
+
+        // 4. Base CSS: fixed ref while pristine; a document once LaTeX/Mermaid
+        // CSS was appended (sticky — reused pages may still need it).
+        await this.addBaseCssToLayeredPreview(documents, fixedRefs, prev, latexWasRendered, mermaidWasRendered);
+
+        // 5. eXeLearning logo
+        try {
+            const logoData = await this.resources.fetchExeLogo();
+            if (logoData) {
+                if ((await this.previewProvenance({ kind: 'logo' })) === 'base') {
+                    fixedRefs.set('content/img/exe_powered_logo.png', 'content/img/exe_powered_logo.png');
+                } else {
+                    documents.set('content/img/exe_powered_logo.png', this.toPreviewArrayBuffer(logoData));
+                }
+            }
+        } catch {
+            // Logo not available - footer will still render but without background image
+        }
+
+        // 6. Theme files: base themes ride the fixed layer under theme:{name}
+        // ids; user/site/admin themes (and unknown provenance) ride documents.
+        if (themeFilesMap) {
+            const themeIsBase = (await this.previewProvenance({ kind: 'theme', themeName })) === 'base';
+            for (const [filePath, content] of themeFilesMap) {
+                if (themeIsBase) {
+                    fixedRefs.set(`theme/${filePath}`, buildThemeFixedId(themeName, filePath));
+                } else {
+                    documents.set(`theme/${filePath}`, this.toPreviewArrayBuffer(content));
+                }
+            }
+        } else {
+            documents.set('theme/style.css', this.getFallbackThemeCss());
+            documents.set('theme/style.js', this.getFallbackThemeJs());
+        }
+
+        // 7. Base libraries
+        try {
+            const baseLibs = await this.resources.fetchBaseLibraries();
+            const libsAreBase = (await this.previewProvenance({ kind: 'baseLibraries' })) === 'base';
+            for (const [libPath, content] of baseLibs) {
+                const path = `libs/${libPath}`;
+                if (libsAreBase) {
+                    fixedRefs.set(path, path);
+                } else {
+                    documents.set(path, this.toPreviewArrayBuffer(content));
+                }
+            }
+        } catch {
+            // Base libraries not available - continue anyway
+        }
+
+        // 7.5. Localized i18n file — generated per language, ALWAYS a document.
+        documents.set('libs/common_i18n.js', await this.generateI18nContent(meta.language || 'en'));
+
+        // 8. Content-detected libraries. LibraryDetector still runs on every
+        // refresh — it is a cheap string scan over component HTML and its
+        // result only affects which fixed refs are emitted.
+        const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+            includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            includeMathJax: meta.addMathJax === true,
+            skipMathJax: latexWasRendered && !meta.addMathJax,
+        });
+
+        try {
+            const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
+            const libsAreBase = (await this.previewProvenance({ kind: 'libraryFiles' })) === 'base';
+            for (const [libPath, content] of libFiles) {
+                const path = `libs/${libPath}`;
+                if (documents.has(path) || fixedRefs.has(path)) continue;
+                if (libsAreBase) {
+                    fixedRefs.set(path, path);
+                } else {
+                    documents.set(path, this.toPreviewArrayBuffer(content));
+                }
+            }
+        } catch {
+            // Additional libraries not available - continue anyway
+        }
+
+        // 9. iDevice runtimes: fixed only when the files provably came from
+        // the idevices bundle; per-file fallbacks may serve user-installed
+        // iDevices and ride documents.
+        const usedIdevices = this.getUsedIdevices(pages);
+        for (const idevice of usedIdevices) {
+            try {
+                const normalizedType = this.resources.normalizeIdeviceType(idevice);
+                const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
+                const ideviceIsBase =
+                    (await this.previewProvenance({ kind: 'idevice', ideviceType: idevice })) === 'base';
+                for (const [filePath, content] of ideviceFiles) {
+                    const path = `idevices/${normalizedType}/${filePath}`;
+                    if (ideviceIsBase) {
+                        fixedRefs.set(path, path);
+                    } else {
+                        documents.set(path, this.toPreviewArrayBuffer(content));
+                    }
+                }
+            } catch {
+                // Many iDevices don't have extra files - this is normal
+            }
+        }
+
+        // 9.5. Global font files
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            try {
+                const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                if (fontFiles) {
+                    const fontsAreBase = (await this.previewProvenance({ kind: 'globalFonts' })) === 'base';
+                    for (const [filePath, content] of fontFiles) {
+                        if (fontsAreBase) {
+                            fixedRefs.set(filePath, filePath);
+                        } else {
+                            documents.set(filePath, this.toPreviewArrayBuffer(content));
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Html5Exporter] Failed to fetch global font files for preview: ${meta.globalFont}`, e);
+            }
+        }
+
+        // 10. Project assets — identity references only, no blob reads.
+        await this.addAssetsToLayeredPreview(documents, assetRefs, assetExportPathMap);
+
+        // 11. ELPX manifest — regenerated from the full served path set every
+        // round (cheap) and ALWAYS a document when present.
+        if (needsElpxDownload) {
+            // Ensure ELPX download libraries are present (may not be detected)
+            const elpxLibFiles = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
+            const missingLibs = elpxLibFiles.filter(f => !documents.has(`libs/${f}`) && !fixedRefs.has(`libs/${f}`));
+            if (missingLibs.length > 0) {
+                try {
+                    const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+                    const libsAreBase = (await this.previewProvenance({ kind: 'libraryFiles' })) === 'base';
+                    for (const [libPath, content] of libContents) {
+                        const path = `libs/${libPath}`;
+                        if (libsAreBase) {
+                            fixedRefs.set(path, path);
+                        } else {
+                            documents.set(path, this.toPreviewArrayBuffer(content));
+                        }
+                    }
+                } catch {
+                    // Library files not available - continue anyway
+                }
+            }
+
+            const fileList: string[] = [
+                ...documents.keys(),
+                ...assetRefs.keys(),
+                ...fixedRefs.keys(),
+                ...pageEntries.map(entry => entry.filename),
+                'libs/elpx-manifest.js',
+            ];
+            documents.set('libs/elpx-manifest.js', this.generateElpxManifestFile(fileList));
+        }
+
+        // 12. Page HTML into the documents map (reused entries keep their
+        // previous value by reference so the transport can skip re-decoration
+        // and byte comparison cheaply).
+        for (const entry of pageEntries) {
+            if (entry.reused) {
+                documents.set(entry.filename, entry.content);
+                continue;
+            }
+            let html = entry.content as string;
+            if (needsElpxDownload) {
+                html = this.injectElpxScripts(html, entry.page, entry.index === 0);
+            }
+            documents.set(entry.filename, html);
+        }
+
+        return { documents, assetRefs, fixedRefs };
+    }
+
+    /**
+     * Provenance query with a safe default: providers without the optional
+     * seam (or failing ones) report 'unknown', which callers treat as session
+     * content.
+     */
+    private async previewProvenance(group: PreviewResourceGroupId): Promise<PreviewProvenance> {
+        if (!this.resources.getPreviewProvenance) return 'unknown';
+        try {
+            return await this.resources.getPreviewProvenance(group);
+        } catch {
+            return 'unknown';
+        }
+    }
+
+    /**
+     * Scoped variant of preprocessPagesForExport: only the dirty pages are
+     * cloned and get their asset URLs rewritten (their HTML is about to be
+     * re-rendered); clean pages are passed through untouched because their
+     * rendered bytes are copied from the previous round. Navigation rendering
+     * only reads titles/ids, never other pages' content.
+     */
+    protected async preprocessPagesForPreviewScope(pages: ExportPage[], dirty: Set<string>): Promise<ExportPage[]> {
+        const result: ExportPage[] = [];
+        for (const page of pages) {
+            if (!dirty.has(page.id)) {
+                result.push(page);
+                continue;
+            }
+            const cloned: ExportPage = JSON.parse(JSON.stringify(page));
+            for (const block of cloned.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        component.content = await this.addFilenamesToAssetUrls(component.content);
+                    }
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
+                    }
+                }
+            }
+            result.push(cloned);
+        }
+        return result;
+    }
+
+    /** First comment line of the appended pre-rendered LaTeX CSS block. */
+    private static readonly LATEX_CSS_MARKER = '/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */';
+    /** First comment line of the appended pre-rendered Mermaid CSS block. */
+    private static readonly MERMAID_CSS_MARKER =
+        '/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */';
+
+    /**
+     * Emit content/css/base.css into the right layer.
+     *
+     * Pristine base.css is an installation file → fixed ref. Once LaTeX or
+     * Mermaid pre-rendering appended CSS the file is a session document, and
+     * it is STICKY: with page-scoped regeneration a reused page may contain
+     * pre-rendered markup this round did not touch, so a previously appended
+     * block keeps being served (detected via its marker comment) even when
+     * this round rendered nothing. When the previous copy already covers
+     * exactly the needed blocks it is reused byte-for-byte to avoid a
+     * spurious document diff.
+     */
+    private async addBaseCssToLayeredPreview(
+        documents: Map<string, ArrayBuffer | string>,
+        fixedRefs: Map<string, string>,
+        prev: Map<string, ArrayBuffer | string> | null,
+        latexThisRound: boolean,
+        mermaidThisRound: boolean,
+    ): Promise<void> {
+        const PATH = 'content/css/base.css';
+
+        const prevCss = prev?.get(PATH);
+        let prevHadLatex = false;
+        let prevHadMermaid = false;
+        if (prevCss !== undefined) {
+            const text = typeof prevCss === 'string' ? prevCss : new TextDecoder().decode(prevCss);
+            prevHadLatex = text.includes(Html5Exporter.LATEX_CSS_MARKER);
+            prevHadMermaid = text.includes(Html5Exporter.MERMAID_CSS_MARKER);
+        }
+
+        const needLatex = latexThisRound || prevHadLatex;
+        const needMermaid = mermaidThisRound || prevHadMermaid;
+
+        if (!needLatex && !needMermaid) {
+            if ((await this.previewProvenance({ kind: 'contentCss' })) === 'base') {
+                fixedRefs.set(PATH, PATH);
+                return;
+            }
+        } else if (prevCss !== undefined && prevHadLatex === needLatex && prevHadMermaid === needMermaid) {
+            documents.set(PATH, prevCss);
+            return;
+        }
+
+        const contentCssFiles = await this.resources.fetchContentCss();
+        const baseCss = contentCssFiles.get(PATH);
+        if (!baseCss) {
+            // Matches generateForPreview: a missing base.css is skipped.
+            return;
+        }
+
+        if (!needLatex && !needMermaid) {
+            documents.set(PATH, this.toPreviewArrayBuffer(baseCss));
+            return;
+        }
+
+        let cssText = new TextDecoder().decode(baseCss);
+        if (needLatex) {
+            cssText += '\n' + this.getPreRenderedLatexCss();
+        }
+        if (needMermaid) {
+            cssText += '\n' + this.getPreRenderedMermaidCss();
+        }
+        documents.set(PATH, this.toPreviewArrayBuffer(new TextEncoder().encode(cssText)));
+    }
+
+    /**
+     * Emit project assets as identity references (layer 2). This is the step
+     * that eliminates the per-refresh asset blob reads: identity comes from
+     * the metadata the project model already stores. The two defensive
+     * fallbacks (a metadata entry without a hash, a legacy non-UUID id that
+     * cannot form a contract-valid asset key) each load ONLY that one asset's
+     * bytes — never a sweep.
+     */
+    private async addAssetsToLayeredPreview(
+        documents: Map<string, ArrayBuffer | string>,
+        assetRefs: Map<string, LayeredAssetRef>,
+        exportPathMap: Map<string, string>,
+    ): Promise<void> {
+        try {
+            if (!this.assets.listAssetMetadata) {
+                // The provider cannot enumerate metadata: fall back to full
+                // dynamic asset bytes in the document layer (correct, not
+                // incremental).
+                await this.forEachAsset(async asset => {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (!exportPath) return;
+                    documents.set(`content/resources/${exportPath}`, await this.toPreviewAssetBuffer(asset.data));
+                });
+                return;
+            }
+
+            const items = await this.assets.listAssetMetadata();
+            for (const item of items) {
+                const exportPath = exportPathMap.get(item.id);
+                if (!exportPath) continue;
+                const filePath = `content/resources/${exportPath}`;
+                const mime = item.mime || 'application/octet-stream';
+                const idOk = /^[0-9a-fA-F-]{36}$/.test(item.id);
+                const hash = typeof item.hash === 'string' ? item.hash.toLowerCase() : '';
+
+                if (idOk && /^[0-9a-f]{8,64}$/.test(hash)) {
+                    assetRefs.set(filePath, {
+                        assetId: item.id,
+                        hash,
+                        size: typeof item.size === 'number' ? item.size : 0,
+                        mime,
+                    });
+                    continue;
+                }
+
+                const asset = await this.assets.getAsset(item.id);
+                if (!asset) continue;
+                const bytes = asset.data instanceof Blob ? new Uint8Array(await asset.data.arrayBuffer()) : asset.data;
+                if (idOk) {
+                    // Metadata lost its hash → hash this one asset on demand.
+                    const computed = await sha256HexOf(bytes);
+                    assetRefs.set(filePath, { assetId: item.id, hash: computed, size: bytes.byteLength, mime });
+                } else {
+                    // Legacy non-UUID id → ship bytes through the document layer.
+                    documents.set(filePath, this.toPreviewArrayBuffer(bytes));
+                }
+            }
+        } catch (e) {
+            console.warn('[Html5Exporter] Failed to add assets to layered preview:', e);
         }
     }
 
