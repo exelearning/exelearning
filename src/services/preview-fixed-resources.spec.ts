@@ -8,10 +8,10 @@ import { configure, getManifestIds, getResource, hasResource, resetDependencies 
  * Build a throwaway distribution root + manifest. `resources` entries are
  * written verbatim into the manifest; `files` are materialized under the root.
  */
-function makeFixture(options: {
-    manifest?: unknown;
-    files?: Record<string, string>;
-}): { root: string; manifestPath: string } {
+function makeFixture(options: { manifest?: unknown; files?: Record<string, string> }): {
+    root: string;
+    manifestPath: string;
+} {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-fixed-'));
     for (const [rel, content] of Object.entries(options.files ?? {})) {
         const abs = path.join(root, rel);

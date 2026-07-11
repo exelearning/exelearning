@@ -13,7 +13,12 @@ import {
     createSession,
     resetDependencies,
 } from '../services/preview-session-manager';
-import { previewServeRoutes, previewSessionApiRoutes, PROTOCOL_VERSION, RECOMMENDED_BATCH_BYTES } from './preview-session';
+import {
+    previewServeRoutes,
+    previewSessionApiRoutes,
+    PROTOCOL_VERSION,
+    RECOMMENDED_BATCH_BYTES,
+} from './preview-session';
 
 // Must match the fallback in getJwtSecret() (API_JWT_SECRET || JWT_SECRET ||
 // 'dev_secret_change_me') so signed tokens verify inside withJwtAuth().
@@ -135,7 +140,11 @@ describe('preview-session routes', () => {
         token = ownerToken,
     ): Promise<Response> {
         return previewSessionApiRoutes.handle(
-            apiRequest(`/api/preview-session/${previewId}/revisions`, { method: 'POST', token, form: revisionForm(meta) }),
+            apiRequest(`/api/preview-session/${previewId}/revisions`, {
+                method: 'POST',
+                token,
+                form: revisionForm(meta),
+            }),
         );
     }
 
@@ -209,7 +218,11 @@ describe('preview-session routes', () => {
             const badJson = new FormData();
             badJson.append('assets', 'not json');
             const bad = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/assets`, { method: 'POST', token: ownerToken, form: badJson }),
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: badJson,
+                }),
             );
             expect(bad.status).toBe(400);
 
@@ -322,7 +335,14 @@ describe('preview-session routes', () => {
             const misaligned = new FormData();
             misaligned.append(
                 'revision',
-                JSON.stringify({ baseRevision: 0, nextRevision: 1, writes: ['index.html'], deletes: [], assetRefs: {}, fixedRefs: {} }),
+                JSON.stringify({
+                    baseRevision: 0,
+                    nextRevision: 1,
+                    writes: ['index.html'],
+                    deletes: [],
+                    assetRefs: {},
+                    fixedRefs: {},
+                }),
             );
             const res = await previewSessionApiRoutes.handle(
                 apiRequest(`/api/preview-session/${previewId}/revisions`, {
@@ -346,7 +366,11 @@ describe('preview-session routes', () => {
 
         it('publishes revisions and answers conflicts with 409 + currentRevision', async () => {
             const previewId = await createViaApi();
-            const first = await publishViaApi(previewId, { baseRevision: 0, nextRevision: 1, writes: { 'index.html': 'v1' } });
+            const first = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'v1' },
+            });
             expect(first.status).toBe(200);
             expect(await first.json()).toEqual({ revision: 1, active: true });
 
@@ -372,7 +396,9 @@ describe('preview-session routes', () => {
         });
 
         it('rejects revisions referencing unknown fixed resources with 422', async () => {
-            tempRoots.push(useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq' } }));
+            tempRoots.push(
+                useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq' } }),
+            );
             const previewId = await createViaApi();
             const res = await publishViaApi(previewId, {
                 baseRevision: 0,
@@ -472,7 +498,9 @@ describe('preview-session routes', () => {
         });
 
         it('applies the tiered Cache-Control per resolution layer', async () => {
-            tempRoots.push(useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq();' } }));
+            tempRoots.push(
+                useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq();' } }),
+            );
             const previewId = await createViaApi();
             await previewSessionApiRoutes.handle(
                 apiRequest(`/api/preview-session/${previewId}/assets`, {

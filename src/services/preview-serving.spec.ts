@@ -115,9 +115,9 @@ describe('handleAssetsUpload', () => {
         expect((await handleAssetsUpload(session, '{broken', [], manager)).status).toBe(400);
         expect((await handleAssetsUpload(session, { key: ASSET_KEY }, [], manager)).status).toBe(400);
         expect((await handleAssetsUpload(session, [{ key: 5, size: 1 }], [new Blob(['x'])], manager)).status).toBe(400);
-        expect((await handleAssetsUpload(session, [{ key: ASSET_KEY, size: 'big' }], [new Blob(['x'])], manager)).status).toBe(
-            400,
-        );
+        expect(
+            (await handleAssetsUpload(session, [{ key: ASSET_KEY, size: 'big' }], [new Blob(['x'])], manager)).status,
+        ).toBe(400);
     });
 });
 
