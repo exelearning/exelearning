@@ -469,6 +469,51 @@ describe('HttpPreviewProvider (contract v2)', () => {
             expect(revisionCalls(backend)[0].revision.baseRevision).toBe(8);
         });
 
+        it('includes deletions in 409 recovery for a publish whose response was lost after the server applied it', async () => {
+            const A = '<html><body>A</body></html>';
+            const B = '<html><body>B</body></html>';
+            const base = new Map([['index.html', '<html><body>i</body></html>']]);
+            const input = layeredInput({ documents: base, fixedRefs: new Map() });
+            await provider.prepare(input);
+            expect(backend.state.revision).toBe(1);
+
+            // Publish adds A + B; the server APPLIES it but the response is lost,
+            // so the client never advances past revision 1 and ackDocuments stays
+            // {index.html} — the acknowledged delta will never mention B again.
+            const withAB = new Map(base);
+            withAB.set('html/a.html', A);
+            withAB.set('html/b.html', B);
+            const originalFetch = backend.fetchFn;
+            provider._fetchFn = async (url, opts) => {
+                if (String(url).includes('/revisions')) {
+                    await originalFetch(url, opts); // server applies it (revision → 2)
+                    throw new TypeError('network lost');
+                }
+                return originalFetch(url, opts);
+            };
+            await expect(provider.update({ ...input, documents: withAB })).rejects.toThrow('network lost');
+            expect(backend.state.revision).toBe(2);
+            expect(backend.state.documents.has('html/b.html')).toBe(true);
+
+            // User deletes page B locally. The next sync sends baseRevision 1 →
+            // 409 (server at 2); recovery must delete B even though the
+            // acknowledged snapshot never held it — only the cumulative
+            // attempted-or-acknowledged set knows B was ever published.
+            provider._fetchFn = originalFetch;
+            const withoutB = new Map(withAB);
+            withoutB.delete('html/b.html');
+            await provider.update({ ...input, documents: withoutB });
+
+            expect(backend.state.revision).toBe(3);
+            expect(backend.state.documents.has('html/b.html')).toBe(false);
+            expect(backend.state.documents.has('html/a.html')).toBe(true);
+            expect(backend.state.documents.has('index.html')).toBe(true);
+            // The recovery revision explicitly carried b.html in deletes.
+            const recovery = revisionCalls(backend).at(-1);
+            expect(recovery.revision.baseRevision).toBe(2);
+            expect(recovery.revision.deletes).toContain('html/b.html');
+        });
+
         it('gives up after one conflict retry', async () => {
             const input = layeredInput();
             await provider.prepare(input);

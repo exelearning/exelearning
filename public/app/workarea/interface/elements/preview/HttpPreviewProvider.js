@@ -123,6 +123,14 @@ export class HttpPreviewProvider {
         this._rejectedAssetKeys = new Set();
         /** Last ACKNOWLEDGED decorated documents (path → string|Uint8Array). */
         this._ackDocuments = new Map();
+        /**
+         * Every document path this session has EVER included in a publish
+         * attempt (attempted-or-acknowledged). A revision can be applied
+         * server-side even when its response is lost, so 409 recovery computes
+         * deletes against this cumulative set — not just the acknowledged one —
+         * to purge paths the current snapshot dropped. Reset on (re)creation.
+         */
+        this._publishedDocPaths = new Set();
         /** Decoration cache: path → {raw, decorated}; hit on reference equality. */
         this._decorationCache = new Map();
         /**
@@ -168,6 +176,7 @@ export class HttpPreviewProvider {
             this._uploadedAssetKeys = new Set();
             this._rejectedAssetKeys = new Set();
             this._ackDocuments = new Map();
+            this._publishedDocPaths = new Set();
             this._decorationCache = new Map();
             this._session = Object.freeze({
                 id: body.previewId,
@@ -237,6 +246,7 @@ export class HttpPreviewProvider {
         this._uploadedAssetKeys = new Set();
         this._rejectedAssetKeys = new Set();
         this._ackDocuments = new Map();
+        this._publishedDocPaths = new Set();
         this._decorationCache = new Map();
         if (!session) return;
         try {
@@ -287,6 +297,7 @@ export class HttpPreviewProvider {
             this._uploadedAssetKeys = new Set();
             this._rejectedAssetKeys = new Set();
             this._ackDocuments = new Map();
+            this._publishedDocPaths = new Set();
             this._decorationCache = new Map();
             throw new PreviewSessionExpiredError(`Preview session ${expired?.id ?? ''} expired`);
         }
@@ -365,10 +376,15 @@ export class HttpPreviewProvider {
                 recovered.conflict = true;
                 // Stateless recovery: resend a full snapshot of the generated
                 // document layer at the server's current revision. Assets are
-                // NOT re-uploaded (422 missing-assets lists real losses).
+                // NOT re-uploaded (422 missing-assets lists real losses). The
+                // conflict may be OUR earlier revision whose response was lost
+                // after the server applied it, so deletes must cover every path
+                // we ever published that the current snapshot no longer has —
+                // otherwise a locally deleted page would keep serving. Deleting
+                // an already-absent path is a harmless server-side no-op.
                 baseRevision = body.currentRevision;
                 writes = new Map(decorated);
-                deletes = [];
+                deletes = [...this._publishedDocPaths].filter((path) => !decorated.has(path));
                 continue;
             }
 
@@ -653,6 +669,10 @@ export class HttpPreviewProvider {
 
     /** POST one revision (multipart: 'revision' JSON + files[] aligned with writes). */
     async _postRevision(baseRevision, writes, deletes, assetKeyByPath, fixedRefs) {
+        // Record before sending: a lost response can still leave the write
+        // applied server-side, so the path must count as attempted for the 409
+        // recovery to be able to delete it later.
+        for (const path of writes.keys()) this._publishedDocPaths.add(path);
         const assetRefsJson = {};
         for (const [path, entry] of assetKeyByPath) assetRefsJson[path] = entry.key;
         const fixedRefsJson = {};
