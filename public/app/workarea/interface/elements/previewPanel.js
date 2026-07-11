@@ -20,6 +20,24 @@ import { PreviewInvalidationTracker } from './preview/previewInvalidation.js';
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
+/**
+ * Document types that execute script when opened top-level. The document opener
+ * fetches raw, author-controlled bytes (NOT the server's CSP'd response) and a
+ * blob: URL inherits the EDITOR origin, so opening any of these as a
+ * same-origin top-level navigation would run their inline <script> against the
+ * editor origin (Yjs doc, auth cookie/IndexedDB, save API). They are downloaded
+ * as inert bytes instead — never window.open()ed. Checked by extension AND by
+ * resolved MIME so a scriptable file cannot slip through either gap.
+ */
+const SCRIPTABLE_DOC_EXTENSIONS = new Set(['svg', 'html', 'htm', 'xhtml', 'xht', 'xml']);
+const SCRIPTABLE_DOC_MIMES = new Set([
+    'image/svg+xml',
+    'text/html',
+    'application/xml',
+    'application/xhtml+xml',
+    'text/xml',
+]);
+
 export default class PreviewPanelManager {
     /** Timeout for Service Worker status check (ms) */
     static SW_STATUS_TIMEOUT = 2000;
@@ -62,6 +80,8 @@ export default class PreviewPanelManager {
         this.autoRefreshEnabled = true;
         this.refreshDebounceTimer = null;
         this.refreshDebounceDelay = 500; // 500ms debounce for responsive updates
+        // Pending embed-overlay reflow timers (cleared on reschedule and teardown).
+        this._embedReflowTimers = null;
         // Refresh requests arriving while a refresh runs are coalesced into
         // exactly one follow-up round (never dropped).
         this._pendingRefresh = false;
@@ -732,12 +752,41 @@ export default class PreviewPanelManager {
                     URL.revokeObjectURL(wrapperUrl);
                     URL.revokeObjectURL(pdfBlobUrl);
                 }, 60000);
+        } else if (SCRIPTABLE_DOC_EXTENSIONS.has(ext) || SCRIPTABLE_DOC_MIMES.has(mime)) {
+            // SECURITY: a scriptable document (SVG/HTML/XML) opened as a
+            // same-origin top-level blob would execute its inline <script> at the
+            // editor origin. The bytes are untrusted (authored / imported .elp /
+            // collaborator), so download them as inert application/octet-stream
+            // instead — never navigate to them.
+            this._downloadDocumentBytes(targetPath, bytes);
         } else {
             const blobUrl = URL.createObjectURL(blob);
             window.open(blobUrl, '_blank');
             // Clean up after a delay to allow the browser to open the URL
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
         }
+    }
+
+    /**
+     * Save document bytes to disk as an inert download. Used for scriptable
+     * document types that must never be opened as a same-origin top-level blob.
+     * application/octet-stream + the download attribute make the browser save
+     * the file rather than render (and execute) it.
+     * @param {string} targetPath
+     * @param {Uint8Array} bytes
+     */
+    _downloadDocumentBytes(targetPath, bytes) {
+        const blob = new Blob([bytes], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        // Strip path separators and control chars from the suggested filename.
+        anchor.download = (targetPath.split('/').pop() || 'document').replace(/[\r\n"\\]/g, '_');
+        anchor.rel = 'noopener';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     /**
@@ -1283,9 +1332,19 @@ export default class PreviewPanelManager {
      * late-arriving overlay created after the animation is already correctly placed.
      */
     _scheduleEmbedReflow() {
-        const run = () => this._mediaHost?.reflowEmbedOverlays();
-        setTimeout(run, 400);
-        setTimeout(run, 900);
+        this._clearEmbedReflowTimers();
+        // Optional call: the reflow is best-effort, and the media host may be
+        // absent or torn down by the time a timer fires (e.g. the panel closed,
+        // or a non-opaque transport never created one) — it must never throw.
+        const run = () => this._mediaHost?.reflowEmbedOverlays?.();
+        this._embedReflowTimers = [setTimeout(run, 400), setTimeout(run, 900)];
+    }
+
+    /** Cancel any pending embed-reflow timers so they cannot fire after teardown. */
+    _clearEmbedReflowTimers() {
+        if (!this._embedReflowTimers) return;
+        for (const timer of this._embedReflowTimers) clearTimeout(timer);
+        this._embedReflowTimers = null;
     }
 
     /**
@@ -1418,6 +1477,9 @@ export default class PreviewPanelManager {
             clearTimeout(this.refreshDebounceTimer);
             this.refreshDebounceTimer = null;
         }
+
+        // Cancel pending embed-overlay reflow timers so they never fire after teardown.
+        this._clearEmbedReflowTimers();
 
         // Clear content needed refresh timer
         if (this._contentNeededRefreshTimer) {

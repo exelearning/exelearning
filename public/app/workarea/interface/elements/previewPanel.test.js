@@ -886,7 +886,9 @@ describe('PreviewPanelManager', () => {
     });
 
     it('open() schedules an embed-overlay reflow (panel slide settles after a transform)', async () => {
-      const spy = vi.spyOn(manager, '_scheduleEmbedReflow');
+      // Mock the scheduler to a no-op so open() does not leak real 400/900ms
+      // timers into later tests; the real scheduling behavior is covered below.
+      const spy = vi.spyOn(manager, '_scheduleEmbedReflow').mockImplementation(() => {});
       vi.spyOn(manager, 'refresh').mockResolvedValue(undefined);
       await manager.open();
       expect(spy).toHaveBeenCalled();
@@ -898,6 +900,31 @@ describe('PreviewPanelManager', () => {
       manager._scheduleEmbedReflow();
       vi.advanceTimersByTime(1000);
       expect(manager._mediaHost.reflowEmbedOverlays).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('cancels pending embed-reflow timers on destroy so they never fire after teardown', () => {
+      vi.useFakeTimers();
+      const reflow = vi.fn();
+      manager._mediaHost = { reflowEmbedOverlays: reflow, detachAll: vi.fn() };
+      manager._scheduleEmbedReflow();
+      expect(manager._embedReflowTimers).not.toBeNull();
+
+      manager.destroy();
+      expect(manager._embedReflowTimers).toBeNull();
+
+      vi.advanceTimersByTime(1000);
+      expect(reflow).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('does not throw when a reflow timer fires with a media host missing the method', () => {
+      vi.useFakeTimers();
+      // A partial media host (or one torn down mid-animation): the optional call
+      // must no-op rather than throw an unhandled error.
+      manager._mediaHost = {};
+      manager._scheduleEmbedReflow();
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
       vi.useRealTimers();
     });
   });
@@ -1536,6 +1563,51 @@ describe('PreviewPanelManager', () => {
 
       expect(manager._provider.getFile).toHaveBeenCalledWith('content/resources/doc.pdf');
       expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('downloads scriptable documents (SVG/HTML/XML) instead of opening a same-origin blob (XSS guard)', async () => {
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+      window.open = mockOpen;
+
+      for (const href of ['evil.svg', 'evil.html', 'evil.xml', 'evil.xhtml']) {
+        mockOpen.mockClear();
+        global.URL.createObjectURL.mockClear();
+        manager._provider.getFile.mockResolvedValue(
+          new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>parent.__pwned=1</script></svg>'),
+        );
+
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'exe-preview-open-document', v: 1, href, page: 'index.html' },
+          source: previewWin,
+        }));
+        await new Promise(resolve => setTimeout(resolve, 5));
+
+        // NEVER a same-origin top-level navigation to scriptable author content.
+        expect(mockOpen).not.toHaveBeenCalled();
+        // Downloaded instead, with the blob coerced to inert
+        // application/octet-stream (never image/svg+xml / text/html).
+        const blobArg = global.URL.createObjectURL.mock.calls.at(-1)[0];
+        expect(blobArg.type).toBe('application/octet-stream');
+      }
+    });
+
+    it('still opens a non-scriptable document (raster image) as a blob tab', async () => {
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+      window.open = mockOpen;
+      global.URL.createObjectURL.mockClear();
+      manager._provider.getFile.mockResolvedValue(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'exe-preview-open-document', v: 1, href: 'content/resources/pic.png', page: 'index.html' },
+        source: previewWin,
+      }));
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      expect(mockOpen).toHaveBeenCalled();
+      const blobArg = global.URL.createObjectURL.mock.calls.at(-1)[0];
+      expect(blobArg.type).toBe('image/png');
     });
 
     it('handles the exe-download-elpx request', async () => {
