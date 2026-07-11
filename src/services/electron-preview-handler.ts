@@ -25,11 +25,13 @@
  * tiered headers, ETag/Range) is REUSED from `preview-session-manager.ts` and
  * `preview-serving.ts`; the isolation policy (CSP + headers) from
  * `previewSandbox.ts`. Packaged builds must point the fixed-resource resolver
- * at the installed static distribution via `preview-fixed-resources.configure`
- * (until then the default public/ root serves dev runs). This file is bundled
- * to CommonJS for the Electron main process by
- * `scripts/build-electron-preview.ts`.
+ * at the installed static distribution via `configureElectronPreview` (until
+ * then the default public/ root serves dev runs). This file is bundled to
+ * CommonJS for the Electron main process by the package.json script
+ * `bundle:electron-preview` (bun build → app/preview/electron-preview.cjs).
  */
+import path from 'node:path';
+import * as fixedResources from './preview-fixed-resources';
 import * as manager from './preview-session-manager';
 import {
     createSessionResponse,
@@ -53,6 +55,20 @@ export function initElectronPreview(): void {
     if (initialized) return;
     manager.startPreviewSessionSweeper();
     initialized = true;
+}
+
+/**
+ * Point the fixed-resource layer at the distribution the Electron main process
+ * actually serves (`dist/static` in dev, the asar copy when packaged). The
+ * handler is bundled with a private module-instance of the resolver, so the
+ * main process must call this export — configuring `preview-fixed-resources`
+ * from server code would not reach the bundle.
+ */
+export function configureElectronPreview(options: { staticRoot: string }): void {
+    fixedResources.configure({
+        publicRoot: options.staticRoot,
+        manifestPath: path.join(options.staticRoot, 'bundles', 'preview-fixed-resources.json'),
+    });
 }
 
 function json(body: unknown, status = 200): Response {

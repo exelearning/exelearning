@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, expect, it } from 'bun:test';
-import { handlePreviewRequest, initElectronPreview } from './electron-preview-handler';
+import { configureElectronPreview, handlePreviewRequest, initElectronPreview } from './electron-preview-handler';
 import {
     configure as configureFixedResources,
     resetDependencies as resetFixedResources,
@@ -19,7 +19,11 @@ function bytesOf(text: string): Uint8Array {
 /** Drive the v2 create → assets → revision handshake and return the previewId. */
 async function preparedSession(
     files: Record<string, string>,
-    extras: { assets?: Array<{ key: string; content: string }>; assetRefs?: Record<string, string> } = {},
+    extras: {
+        assets?: Array<{ key: string; content: string }>;
+        assetRefs?: Record<string, string>;
+        fixedRefs?: Record<string, string>;
+    } = {},
 ): Promise<string> {
     const create = await handlePreviewRequest(new Request(`${BASE}/api/preview-session`, { method: 'POST' }));
     expect(create?.status).toBe(201);
@@ -47,7 +51,7 @@ async function preparedSession(
             writes: Object.keys(files),
             deletes: [],
             assetRefs: extras.assetRefs ?? {},
-            fixedRefs: {},
+            fixedRefs: extras.fixedRefs ?? {},
         }),
     );
     for (const content of Object.values(files)) form.append('files', new Blob([bytesOf(content)]));
@@ -148,6 +152,34 @@ describe('electron-preview-handler', () => {
         expect(res?.status).toBe(200);
         expect(res!.headers.get('cache-control')).toBe('private, max-age=31536000');
         expect(await res!.text()).toBe('jq();');
+        fs.rmSync(root, { recursive: true, force: true });
+    });
+
+    it('configureElectronPreview points the fixed layer at a static distribution root', async () => {
+        // The packaged main process only knows its static root; the manifest
+        // location under bundles/ is this export's convention.
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'electron-static-'));
+        fs.mkdirSync(path.join(root, 'libs'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'libs/exe_export.js'), 'export();');
+        fs.mkdirSync(path.join(root, 'bundles'), { recursive: true });
+        fs.writeFileSync(
+            path.join(root, 'bundles/preview-fixed-resources.json'),
+            JSON.stringify({
+                schemaVersion: 1,
+                buildVersion: 'v-test',
+                resources: { 'libs/exe_export.js': { path: 'libs/exe_export.js', size: 9 } },
+            }),
+        );
+        configureElectronPreview({ staticRoot: root });
+
+        const previewId = await preparedSession(
+            { 'index.html': '<html></html>' },
+            { fixedRefs: { 'libs/exe_export.js': 'libs/exe_export.js' } },
+        );
+        const res = await handlePreviewRequest(new Request(`${BASE}/preview/${previewId}/libs/exe_export.js`));
+        expect(res?.status).toBe(200);
+        expect(res!.headers.get('cache-control')).toBe('private, max-age=31536000');
+        expect(await res!.text()).toBe('export();');
         fs.rmSync(root, { recursive: true, force: true });
     });
 

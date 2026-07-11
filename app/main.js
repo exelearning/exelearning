@@ -114,11 +114,12 @@ function registerProtocolHandler() {
     const staticDir = getStaticPath();
 
     // app:// opaque preview transport. Serves /api/preview-session* and
-    // /preview/{id}/* from an in-process content-addressed store, emitting the
-    // sandbox-first CSP so the preview runs in an OPAQUE origin (cross-origin to
-    // this app://localhost renderer) — which severs the untrusted author JS from
-    // window.top.electronAPI (arbitrary readFile). Bundled from
-    // src/services/electron-preview-handler.ts by `bun run bundle:electron-preview`.
+    // /preview/{id}/* from an in-process layered session store (contract v2),
+    // emitting the sandbox-first CSP so the preview runs in an OPAQUE origin
+    // (cross-origin to this app://localhost renderer) — which severs the
+    // untrusted author JS from window.top.electronAPI (arbitrary readFile).
+    // Bundled from src/services/electron-preview-handler.ts by
+    // `bun run bundle:electron-preview`.
     let previewHandler = null;
     try {
         previewHandler = require('./preview/electron-preview.cjs');
@@ -127,6 +128,16 @@ function registerProtocolHandler() {
             '[Preview] app:// preview handler not built; run "bun run bundle:electron-preview". Preview will 404 until built.',
             error?.message,
         );
+    }
+    if (previewHandler?.configureElectronPreview) {
+        // The fixed-resource layer must resolve under the distribution this
+        // process serves. Fall back to the repo public/ tree in dev runs that
+        // have no static build; a missing manifest only disables the fixed
+        // layer (the client demotes those paths to document writes).
+        const manifestInStatic = fs.existsSync(path.join(staticDir, 'bundles', 'preview-fixed-resources.json'));
+        previewHandler.configureElectronPreview({
+            staticRoot: manifestInStatic ? staticDir : path.join(__dirname, '..', 'public'),
+        });
     }
 
     protocol.handle('app', async request => {
@@ -138,7 +149,16 @@ function registerProtocolHandler() {
                     return previewResponse;
                 }
             } catch (error) {
+                // Do NOT fall through to the static server: an /api/ path would
+                // hit the SPA index.html fallback and return 200 HTML that the
+                // client would try to JSON-parse.
                 console.error('[Preview] app:// preview handler error:', error);
+                if (/^\/(api\/preview-session|preview\/)/.test(new URL(request.url).pathname)) {
+                    return new Response('Preview handler error', {
+                        status: 500,
+                        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+                    });
+                }
             }
         }
 

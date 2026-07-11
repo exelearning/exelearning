@@ -154,6 +154,7 @@
       "preload.js",
       "save-utils.js",
       "update-manager.js",
+      "preview/**/*",
       "package.json",
       "node_modules/**/*",
       "dist/static/**/*",

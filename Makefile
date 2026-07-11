@@ -716,6 +716,8 @@ endif
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
 	@echo "Building static files..."
 	@bun run build:static
+	@echo "Building app:// preview handler..."
+	@bun run bundle:electron-preview
 	@echo "Copying static files to app/dist/static..."
 	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
 	@echo "Updating version in package.json files..."
