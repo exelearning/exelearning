@@ -43,7 +43,8 @@ function mockMessageChannel(onPostMessage) {
 /**
  * Build a fake transport provider matching the PreviewResourceProvider shape.
  * Defaults to an opaque-safe HTTP provider; override `mode`/`opaqueSafe`/methods
- * as needed (e.g. `mode: 'service-worker', opaqueSafe: false` for the legacy path).
+ * as needed (e.g. `mode: 'static-service-worker', opaqueSafe: false` for the
+ * standalone static/PWA path).
  */
 function createFakeProvider(overrides = {}) {
   return {
@@ -62,7 +63,6 @@ function createFakeProvider(overrides = {}) {
     }),
     getFile: vi.fn().mockResolvedValue(null),
     dispose: vi.fn().mockResolvedValue(undefined),
-    hasPage: vi.fn(() => true),
     ...overrides,
   };
 }
@@ -307,15 +307,15 @@ describe('PreviewPanelManager', () => {
       expect(swListenerSpy).not.toHaveBeenCalled();
     });
 
-    it('should install SW recovery listeners for the legacy Service Worker transport', () => {
-      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'legacy-sw' };
+    it('should install SW recovery listeners for the static Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'static-service-worker' };
       const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler');
       const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener');
       const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener');
 
       manager.init();
 
-      expect(manager._provider.mode).toBe('service-worker');
+      expect(manager._provider.mode).toBe('static-service-worker');
       expect(visibilitySpy).toHaveBeenCalled();
       expect(broadcastSpy).toHaveBeenCalled();
       expect(swListenerSpy).toHaveBeenCalled();
@@ -342,17 +342,8 @@ describe('PreviewPanelManager', () => {
       expect(window.exeMediaHost.attach).toHaveBeenCalledTimes(2);
     });
 
-    it('hides the extract-to-new-tab buttons when the capability is off', () => {
-      window.eXeLearning.app.capabilities.preview.extractToNewTab = false;
-
-      manager._initProvider();
-
-      expect(mockElements['preview-extract-button'].classList.contains('hidden')).toBe(true);
-      expect(mockElements['preview-pinned-extract-button'].classList.contains('hidden')).toBe(true);
-    });
-
-    it('applies the legacy sandbox (no media relay) for the Service Worker transport', () => {
-      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'legacy-sw' };
+    it('applies the same-origin sandbox (no media relay) for the static Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'static-service-worker' };
 
       manager._initProvider();
 
@@ -366,6 +357,63 @@ describe('PreviewPanelManager', () => {
       manager._initProvider();
 
       expect(manager._provider).toBeNull();
+    });
+
+    it('fails closed for an embedded editor without previewHttp (provider null)', () => {
+      window.eXeLearning.app.runtimeConfig = { mode: 'embedded', isEmbedded: true, embeddingConfig: {} };
+
+      manager._initProvider();
+
+      expect(manager._provider).toBeNull();
+    });
+
+    it('selects the opaque HTTP provider for an embedded editor with a valid previewHttp block', () => {
+      window.eXeLearning.app.runtimeConfig = {
+        mode: 'embedded',
+        isEmbedded: true,
+        embeddingConfig: {
+          previewHttp: {
+            protocolVersion: 2,
+            managementBaseUrl: '/mod/exelearning/preview_session.php',
+            servingBaseUrl: '/mod/exelearning/preview.php',
+          },
+        },
+      };
+
+      manager._initProvider();
+
+      expect(manager._provider).not.toBeNull();
+      expect(manager._provider.mode).toBe('http');
+      expect(manager._provider.opaqueSafe).toBe(true);
+      // No unsafe banner: HTTP is the opaque-safe embedded transport.
+      expect(mockElements.previewsidenav.querySelector('.preview-unsafe-banner')).toBeNull();
+    });
+
+    it('fails closed for an embedded editor with a malformed previewHttp block', () => {
+      window.eXeLearning.app.runtimeConfig = {
+        mode: 'embedded',
+        isEmbedded: true,
+        embeddingConfig: { previewHttp: { protocolVersion: 1, managementBaseUrl: '/a', servingBaseUrl: '/b' } },
+      };
+
+      manager._initProvider();
+
+      expect(manager._provider).toBeNull();
+    });
+
+    it('shows the unsafe-transport banner when an embedded editor overrides to the static SW', () => {
+      window.eXeLearning.app.runtimeConfig = {
+        mode: 'embedded',
+        isEmbedded: true,
+        embeddingConfig: { previewTransport: 'static-service-worker' },
+      };
+
+      manager._initProvider();
+
+      expect(manager._provider.mode).toBe('static-service-worker');
+      const banner = mockElements.previewsidenav.querySelector('.preview-unsafe-banner');
+      expect(banner).not.toBeNull();
+      expect(banner.getAttribute('role')).toBe('alert');
     });
   });
 
@@ -562,9 +610,9 @@ describe('PreviewPanelManager', () => {
       });
     });
 
-    describe('CONTENT_NEEDED message handling (legacy SW transport)', () => {
+    describe('CONTENT_NEEDED message handling (static Service Worker transport)', () => {
       beforeEach(() => {
-        manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
+        manager._provider = createFakeProvider({ mode: 'static-service-worker', opaqueSafe: false });
       });
 
       it('should refresh when CONTENT_NEEDED received and preview is open', () => {
@@ -961,15 +1009,6 @@ describe('PreviewPanelManager', () => {
       expect(manager._provider.prepare).toHaveBeenCalledTimes(2);
     });
 
-    it('renders srcdoc targets into the iframe', async () => {
-      manager._provider.resolvePage.mockResolvedValue({ kind: 'srcdoc', html: '<html><body>doc</body></html>' });
-
-      await manager.refresh();
-
-      expect(mockElements['preview-iframe'].srcdoc).toContain('doc');
-      expect(mockElements['preview-iframe'].hasAttribute('src')).toBe(false);
-    });
-
     it('surfaces provider errors via showError with no fallback transport', async () => {
       manager._provider.prepare.mockRejectedValue(new Error('sync failed'));
       const errorSpy = vi.spyOn(manager, 'showError').mockImplementation(() => {});
@@ -1005,8 +1044,8 @@ describe('PreviewPanelManager', () => {
       expect(manager._provider.prepare).not.toHaveBeenCalled();
     });
 
-    it('waits for the Service Worker on the legacy transport when there is no controller', async () => {
-      manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
+    it('waits for the Service Worker on the static SW transport when there is no controller', async () => {
+      manager._provider = createFakeProvider({ mode: 'static-service-worker', opaqueSafe: false });
       Object.defineProperty(navigator, 'serviceWorker', {
         value: { controller: null },
         writable: true,
@@ -1020,8 +1059,8 @@ describe('PreviewPanelManager', () => {
       expect(waitSpy).toHaveBeenCalled();
     });
 
-    it('keeps non-http transports on the full generatePreviewForSW path', async () => {
-      manager._provider = createFakeProvider({ mode: 'srcdoc', opaqueSafe: true });
+    it('keeps the static SW transport on the full generatePreviewForSW path', async () => {
+      manager._provider = createFakeProvider({ mode: 'static-service-worker', opaqueSafe: false });
 
       await manager.refresh();
 
@@ -1309,17 +1348,6 @@ describe('PreviewPanelManager', () => {
       expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-forms');
     });
 
-    it('applies srcdoc targets: sets srcdoc, clears src', () => {
-      const iframe = mockElements['preview-iframe'];
-      iframe.src = 'about:blank';
-
-      manager._applyRenderTarget(iframe, { kind: 'srcdoc', html: '<html>x</html>' }, 'index.html');
-
-      expect(iframe.srcdoc).toContain('<html>x</html>');
-      expect(iframe.hasAttribute('src')).toBe(false);
-      expect(iframe.dataset.previewPage).toBe('index.html');
-    });
-
     it('does not throw when the iframe is missing', () => {
       expect(() => manager._applyRenderTarget(null, { kind: 'url', url: 'x' }, 'index.html')).not.toThrow();
     });
@@ -1342,84 +1370,16 @@ describe('PreviewPanelManager', () => {
       expect(manager._popupWindow).not.toBeNull();
     });
 
-    it('keeps opening the legacy /viewer entry URL for the service-worker transport', async () => {
+    it('opens the /viewer entry URL directly for the static Service Worker transport', async () => {
       manager._basePath = '';
-      manager._provider = createFakeProvider({ mode: 'service-worker', opaqueSafe: false });
-      manager._session = { id: 'sw-1', entryUrl: '/viewer/index.html?exe-teacher=1', mode: 'service-worker' };
+      manager._provider = createFakeProvider({ mode: 'static-service-worker', opaqueSafe: false });
+      manager._session = { id: 'sw-1', entryUrl: '/viewer/index.html?exe-teacher=1', mode: 'static-service-worker' };
       const mockOpen = vi.fn(() => ({ closed: false }));
       global.open = mockOpen;
 
       await manager.extractToNewTab();
 
       expect(mockOpen.mock.calls[0][0]).toContain('/viewer/index.html');
-    });
-
-    it('opens the preview-host page and hands off rendered HTML for the srcdoc transport', async () => {
-      manager._basePath = '/test';
-      manager._currentPagePath = 'index.html';
-      const popup = { closed: false, postMessage: vi.fn() };
-      const provider = createFakeProvider({
-        mode: 'srcdoc',
-        opaqueSafe: true,
-        resolvePage: vi.fn().mockResolvedValue({ kind: 'srcdoc', html: '<html>page</html>' }),
-      });
-      manager._provider = provider;
-      manager._session = { id: 'sess-1', entryUrl: null, mode: 'srcdoc' };
-      global.open = vi.fn(() => popup);
-
-      await manager.extractToNewTab();
-
-      expect(global.open.mock.calls[0][0]).toContain('/test/preview-tab.html');
-      expect(global.open.mock.calls[0][0]).not.toContain('?session=');
-
-      // The host tab announces readiness → the editor resolves and pushes the page HTML.
-      window.dispatchEvent(
-        new MessageEvent('message', {
-          source: popup,
-          origin: window.location.origin,
-          data: { type: 'exe-preview-tab:ready' },
-        }),
-      );
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(provider.resolvePage).toHaveBeenCalledWith('index.html');
-      expect(popup.postMessage).toHaveBeenCalledWith(
-        { type: 'exe-preview-tab:render', html: '<html>page</html>' },
-        window.location.origin,
-      );
-    });
-
-    it('resolves forwarded navigation from the srcdoc host tab', async () => {
-      manager._basePath = '';
-      manager._currentPagePath = 'index.html';
-      const popup = { closed: false, postMessage: vi.fn() };
-      const provider = createFakeProvider({
-        mode: 'srcdoc',
-        opaqueSafe: true,
-        resolvePage: vi.fn().mockResolvedValue({ kind: 'srcdoc', html: '<html>p2</html>' }),
-        hasPage: vi.fn(() => true),
-      });
-      manager._provider = provider;
-      manager._session = { id: 'sess-1', entryUrl: null, mode: 'srcdoc' };
-      global.open = vi.fn(() => popup);
-      await manager.extractToNewTab();
-
-      window.dispatchEvent(
-        new MessageEvent('message', {
-          source: popup,
-          origin: window.location.origin,
-          data: { type: 'exe-preview-tab:forward', payload: { type: 'exe-preview-navigate', href: 'html/page2.html', page: 'index.html' } },
-        }),
-      );
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(provider.resolvePage).toHaveBeenCalledWith('html/page2.html');
-      expect(popup.postMessage).toHaveBeenCalledWith(
-        { type: 'exe-preview-tab:render', html: '<html>p2</html>' },
-        window.location.origin,
-      );
     });
 
     it('falls back to a link click when the popup is blocked', async () => {
@@ -1529,27 +1489,6 @@ describe('PreviewPanelManager', () => {
       await new Promise(resolve => setTimeout(resolve, 5));
 
       expect(manager._currentPagePath).toBe('index.html');
-    });
-
-    it('navigates via the provider on exe-preview-navigate when the page exists', async () => {
-      window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'exe-preview-navigate', v: 1, href: 'html/page2.html', page: 'index.html' },
-        source: previewWin,
-      }));
-      await new Promise(resolve => setTimeout(resolve, 5));
-
-      expect(manager._provider.resolvePage).toHaveBeenCalledWith('html/page2.html');
-    });
-
-    it('ignores exe-preview-navigate when the target page is unknown', async () => {
-      manager._provider.hasPage.mockReturnValue(false);
-      window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'exe-preview-navigate', v: 1, href: 'missing.html', page: 'index.html' },
-        source: previewWin,
-      }));
-      await new Promise(resolve => setTimeout(resolve, 5));
-
-      expect(manager._provider.resolvePage).not.toHaveBeenCalled();
     });
 
     it('opens a document via the provider on exe-preview-open-document', async () => {

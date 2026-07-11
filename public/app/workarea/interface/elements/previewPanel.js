@@ -4,13 +4,15 @@
  * with auto-refresh capability when content changes.
  *
  * Transport (how generated files reach the sandboxed iframe) is delegated to
- * a preview provider (./preview/): HTTP sessions in server mode, srcdoc in
- * static/embedded mode, and the legacy same-origin Service Worker only for
- * Electron or explicit opt-in. The panel owns the DOM and the message
- * contract with the (untrusted, opaque-origin) preview content.
+ * a preview provider (./preview/): opaque HTTP sessions in server/Electron
+ * mode and for embedded editors whose host supplies a previewHttp block, and
+ * the standalone static/PWA Service Worker (same-origin compatibility mode,
+ * not opaque-safe) otherwise. The panel owns the DOM and the message contract
+ * with the (untrusted, opaque-origin) preview content.
  */
 import { MSG, PreviewSessionExpiredError, sanitizePagePath } from './preview/providerContract.js';
 import { selectPreviewProvider } from './preview/selectPreviewProvider.js';
+import { validatePreviewHttpConfig, isUnsafeEmbeddedServiceWorker } from '../../../core/previewTransport.js';
 import { PreviewMediaHost } from './preview/previewMediaHost.js';
 import { documentMimeFor } from './preview/previewFileMap.js';
 import { PreviewInvalidationTracker } from './preview/previewInvalidation.js';
@@ -29,7 +31,7 @@ export default class PreviewPanelManager {
      */
     static OPAQUE_SANDBOX = 'allow-scripts allow-popups allow-forms';
 
-    /** Historical token set, applied only for the legacy SW transport. */
+    /** Historical token set, applied only for the static Service Worker transport. */
     static LEGACY_SANDBOX =
         'allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation';
 
@@ -87,7 +89,6 @@ export default class PreviewPanelManager {
         // Popup window tracking
         this._popupWindow = null;
         this._popupMonitorTimer = null;
-        this._previewTabHandoff = null;
         this._recoveryChannel = null;
     }
 
@@ -100,9 +101,10 @@ export default class PreviewPanelManager {
         this.applyViewport();
         this.subscribeToChanges();
         this.resetToDefaultState();
-        // SW recovery machinery only applies to the legacy transport: opaque
-        // transports have no Service Worker to lose content from.
-        if (this._isLegacyServiceWorkerTransport()) {
+        // SW recovery machinery only applies to the static Service Worker
+        // transport: the opaque HTTP transport has no Service Worker to lose
+        // content from.
+        if (this._isStaticServiceWorkerTransport()) {
             this._setupVisibilityHandler();
             this._setupBroadcastChannelListener();
             this._setupServiceWorkerListener();
@@ -118,15 +120,25 @@ export default class PreviewPanelManager {
      */
     _initProvider() {
         const app = eXeLearning?.app;
+        const runtimeConfig = app?.runtimeConfig || null;
         const basePath = app?.getBasePath?.() || '';
         this._basePath = basePath;
         try {
+            // Embedded hosts pass their serving/management endpoints in
+            // embeddingConfig.previewHttp; validate it here (fail closed on a
+            // malformed block) and hand the normalized config to the provider.
+            let previewHttp;
+            const rawPreviewHttp = runtimeConfig?.embeddingConfig?.previewHttp;
+            if (rawPreviewHttp != null) {
+                previewHttp = validatePreviewHttpConfig(rawPreviewHttp);
+            }
             this._provider = selectPreviewProvider({
-                runtimeConfig: app?.runtimeConfig || null,
+                runtimeConfig,
                 hasElectronApi: typeof window !== 'undefined' && !!window.electronAPI,
                 deps: {
                     basePath,
                     app,
+                    previewHttp,
                     pdfUnavailableMessage: _('PDF preview is not available here.'),
                 },
             });
@@ -152,25 +164,47 @@ export default class PreviewPanelManager {
             }
         }
 
-        // Extract-to-new-tab needs a real URL; srcdoc sessions have none.
-        if (app?.capabilities?.preview?.extractToNewTab === false) {
-            for (const button of [this.extractButton, this.pinnedExtractButton]) {
-                button?.classList.add('hidden');
-                button?.setAttribute('aria-hidden', 'true');
-            }
+        // Selecting the static Service Worker inside an embedded editor is a
+        // development-only, unsafe opt-in (playground blueprints only): warn
+        // visibly so it can never be mistaken for a production configuration.
+        if (isUnsafeEmbeddedServiceWorker(runtimeConfig)) {
+            this._showUnsafeTransportBanner();
         }
     }
 
     /** @returns {boolean} */
-    _isLegacyServiceWorkerTransport() {
-        return this._provider?.mode === 'service-worker';
+    _isStaticServiceWorkerTransport() {
+        return this._provider?.mode === 'static-service-worker';
     }
 
     /**
-     * Enforce the sandbox attribute the active transport requires. Opaque
-     * transports get exactly the opaque token set; only the legacy Service
-     * Worker transport (Electron interim / explicit opt-in) keeps the
-     * historical same-origin tokens — loudly.
+     * Render a visible warning banner in both preview bodies when the static
+     * Service Worker transport is active in an embedded editor via override.
+     * That combination is not opaque-safe and must never ship to production.
+     */
+    _showUnsafeTransportBanner() {
+        const message = _(
+            'Development-only preview: the static Service Worker transport is not isolated from untrusted content. Do not use in production.',
+        );
+        const bodies = [
+            this.panel?.querySelector('.preview-panel-body'),
+            this.pinnedContainer?.querySelector('.preview-pinned-body'),
+        ];
+        for (const body of bodies) {
+            if (!body || body.querySelector('.preview-unsafe-banner')) continue;
+            const banner = document.createElement('div');
+            banner.className = 'preview-unsafe-banner';
+            banner.setAttribute('role', 'alert');
+            banner.textContent = message;
+            body.prepend(banner);
+        }
+    }
+
+    /**
+     * Enforce the sandbox attribute the active transport requires. The opaque
+     * HTTP transport gets exactly the opaque token set; only the standalone
+     * static/PWA Service Worker transport keeps the historical same-origin
+     * tokens — loudly. (Server and Electron both use the opaque HTTP transport.)
      * @param {HTMLIFrameElement} iframe
      */
     _applySandboxForProvider(iframe) {
@@ -178,7 +212,7 @@ export default class PreviewPanelManager {
         const tokens = this._provider?.opaqueSafe ? opaqueTokens : PreviewPanelManager.LEGACY_SANDBOX;
         if (!this._provider?.opaqueSafe) {
             Logger.warn(
-                '[PreviewPanel] Legacy same-origin preview transport active (Service Worker); ' +
+                '[PreviewPanel] Same-origin static Service Worker preview transport active; ' +
                     'untrusted content isolation relies on the Y.Doc sanitizer only.',
             );
         }
@@ -346,7 +380,6 @@ export default class PreviewPanelManager {
             if (!this._isPopupOpen()) {
                 Logger.log('[PreviewPanel] Popup window closed');
                 this._popupWindow = null;
-                this._teardownPreviewTabHandoff();
                 this._clearPopupMonitor();
             }
         }, 2000);
@@ -520,14 +553,6 @@ export default class PreviewPanelManager {
                 return;
             }
 
-            // Internal page navigation (srcdoc transport: pages have no URLs)
-            if (data.type === MSG.NAVIGATE) {
-                await this._handlePreviewNavigate(data);
-                return;
-            }
-
-
-
             // Non-HTML document open requests (PDF, office docs, media): the
             // opaque frame can neither render PDFs nor download files, so the
             // trusted parent opens them (PDF.js wrapper tab for PDFs, blob
@@ -537,9 +562,9 @@ export default class PreviewPanelManager {
                 return;
             }
 
-            // Legacy SW transport only: the Service Worker terminated and
-            // restarted without content and asks for a refresh.
-            if (data.type === 'CONTENT_NEEDED' && this._isLegacyServiceWorkerTransport()) {
+            // Static Service Worker transport only: the Service Worker
+            // terminated and restarted without content and asks for a refresh.
+            if (data.type === 'CONTENT_NEEDED' && this._isStaticServiceWorkerTransport()) {
                 Logger.log('[PreviewPanel] Service Worker requested content refresh:', data.reason);
                 if (this._isPreviewVisible()) {
                     // Debounce to avoid multiple refreshes from multiple requests
@@ -575,31 +600,6 @@ export default class PreviewPanelManager {
             ? currentPage.substring(0, currentPage.lastIndexOf('/') + 1)
             : '';
         return sanitizePagePath(currentDir + clean);
-    }
-
-    /**
-     * MSG.NAVIGATE (srcdoc transport): render another page of the preview.
-     * @param {{href: *, page: *}} data
-     */
-    async _handlePreviewNavigate(data) {
-        const currentPage = sanitizePagePath(data.page) || this._currentPagePath || 'index.html';
-        const targetPage = this._resolvePreviewHref(data.href, currentPage);
-        if (!targetPage) {
-            Logger.warn('[PreviewPanel] Rejected preview navigation request:', data.href);
-            return;
-        }
-        if (typeof this._provider?.hasPage === 'function' && !this._provider.hasPage(targetPage)) {
-            Logger.warn(`[PreviewPanel] Preview page not found: ${targetPage}`);
-            return;
-        }
-        try {
-            const target = await this._provider.resolvePage(targetPage);
-            this._currentPagePath = targetPage;
-            const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
-            this._applyRenderTarget(targetIframe, target, targetPage);
-        } catch (error) {
-            Logger.warn('[PreviewPanel] Preview navigation failed:', error);
-        }
     }
 
     /**
@@ -779,7 +779,7 @@ export default class PreviewPanelManager {
             return;
         }
 
-        // Non-HTTP transports (srcdoc, legacy SW) keep the historical
+        // The static Service Worker transport keeps the historical
         // subscriptions and the full-map generation path unchanged.
 
         // 1. Subscribe to structure changes (pages, blocks, components add/remove)
@@ -1007,8 +1007,8 @@ export default class PreviewPanelManager {
     /** One refresh round: generate → sync transport → render current page. */
     async _refreshOnce() {
         const app = eXeLearning?.app;
-        // Legacy SW transport: wait for the Service Worker registration.
-        if (this._isLegacyServiceWorkerTransport() && typeof app?.waitForPreviewServiceWorker === 'function') {
+        // Static Service Worker transport: wait for the Service Worker registration.
+        if (this._isStaticServiceWorkerTransport() && typeof app?.waitForPreviewServiceWorker === 'function') {
             if (!navigator.serviceWorker?.controller) {
                 try {
                     await app.waitForPreviewServiceWorker();
@@ -1033,9 +1033,9 @@ export default class PreviewPanelManager {
      *
      * ONLY the HTTP transport uses the layered pipeline (serving contract
      * v2): the dirty scope is consumed atomically for this round and merged
-     * back if the round fails, so no edit is ever lost. srcdoc and the legacy
-     * Service Worker transports keep the full-map generatePreviewForSW path
-     * exactly as before.
+     * back if the round fails, so no edit is ever lost. The static Service
+     * Worker transport keeps the full-map generatePreviewForSW path exactly as
+     * before.
      */
     async _generateAndSync() {
         if (this._provider.mode !== 'http') {
@@ -1107,12 +1107,12 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Apply a provider render target to an iframe. URL targets set src (and
-     * clear any srcdoc); srcdoc targets set srcdoc (and clear src). The
-     * sandbox is (re)asserted first so an opaque transport can never load
-     * same-origin.
+     * Apply a provider render target to an iframe. Both remaining transports
+     * render pages via a real URL, so this sets src and clears any leftover
+     * srcdoc (e.g. a prior error state). The sandbox is (re)asserted first so
+     * an opaque transport can never load same-origin.
      * @param {HTMLIFrameElement} iframe
-     * @param {{kind: 'url', url: string} | {kind: 'srcdoc', html: string}} target
+     * @param {{kind: 'url', url: string}} target
      * @param {string} pagePath
      */
     _applyRenderTarget(iframe, target, pagePath) {
@@ -1124,13 +1124,8 @@ export default class PreviewPanelManager {
         this._currentPagePath = pagePath;
         iframe.dataset.previewPage = pagePath;
 
-        if (target.kind === 'srcdoc') {
-            iframe.removeAttribute('src');
-            iframe.srcdoc = target.html;
-        } else {
-            iframe.removeAttribute('srcdoc');
-            iframe.src = target.url;
-        }
+        iframe.removeAttribute('srcdoc');
+        iframe.src = target.url;
     }
 
     /**
@@ -1247,19 +1242,13 @@ export default class PreviewPanelManager {
             // than the content directly. A top-level opaque document has no parent, so the
             // embed shim self-disables and external video is blocked; the host page frames
             // the opaque content and runs the relay as the trusted parent, so video plays
-            // in-place. HTTP frames the capability URL via ?session; srcdoc has no URL, so
-            // the editor pushes rendered page HTML to the host tab (handoff below). The
-            // legacy service-worker transport is not opaque and keeps its /viewer URL.
+            // in-place. HTTP frames the capability URL via ?session. The static
+            // service-worker transport is not opaque and keeps its /viewer URL.
             const base = this._basePath || '';
-            const mode = this._provider.mode;
-            let target;
-            if (mode === 'http') {
-                target = `${base}/preview-tab.html?session=${encodeURIComponent(this._session.id)}`;
-            } else if (mode === 'srcdoc') {
-                target = `${base}/preview-tab.html`;
-            } else {
-                target = this._session.entryUrl;
-            }
+            const target =
+                this._provider.mode === 'http'
+                    ? `${base}/preview-tab.html?session=${encodeURIComponent(this._session.id)}`
+                    : this._session.entryUrl;
             if (!target) {
                 Logger.warn('[PreviewPanel] Extract-to-new-tab is unavailable for this transport');
                 return;
@@ -1269,79 +1258,20 @@ export default class PreviewPanelManager {
             const newTab = window.open(url, '_blank');
             if (newTab) {
                 this._popupWindow = newTab;
-                if (mode === 'srcdoc') {
-                    this._startPreviewTabHandoff(newTab);
-                }
                 this._setupPopupMonitor();
                 Logger.log('[PreviewPanel] Preview opened in new tab');
-            } else if (mode !== 'srcdoc') {
-                // Only the self-sufficient URL transports can fall back to a link click;
-                // srcdoc needs the window handle to push content.
+            } else {
+                // Both remaining transports are self-sufficient URLs, so a
+                // popup-blocked open can fall back to a user-gesture link click.
                 Logger.warn('[PreviewPanel] Popup blocked - trying fallback');
                 const a = document.createElement('a');
                 a.href = url;
                 a.target = '_blank';
                 a.click();
-            } else {
-                Logger.warn('[PreviewPanel] Popup blocked - cannot open the preview in a new tab');
             }
         } catch (error) {
             Logger.error('[PreviewPanel] Error extracting to new tab:', error);
         }
-    }
-
-    /**
-     * Feed the opaque preview-host tab (srcdoc transport) with rendered page HTML.
-     * The tab has no project in memory, so this editor — which owns the preview
-     * provider — resolves each page and pushes the HTML; the tab forwards navigation
-     * and document-open requests back here. Same-origin postMessage only.
-     * @param {Window} popup
-     */
-    _startPreviewTabHandoff(popup) {
-        this._teardownPreviewTabHandoff();
-        const origin = window.location.origin;
-        let popupPage = this._currentPagePath || 'index.html';
-
-        const sendRender = async (page) => {
-            try {
-                const target = await this._provider?.resolvePage(page);
-                if (target?.kind === 'srcdoc' && popup && !popup.closed) {
-                    popup.postMessage({ type: 'exe-preview-tab:render', html: target.html }, origin);
-                }
-            } catch (error) {
-                Logger.warn('[PreviewPanel] Preview-tab render failed:', error);
-            }
-        };
-
-        const onMessage = (event) => {
-            if (event.origin !== origin || event.source !== popup) return;
-            const data = event.data;
-            if (!data || typeof data.type !== 'string') return;
-            if (data.type === 'exe-preview-tab:ready') {
-                sendRender(popupPage);
-                return;
-            }
-            if (data.type === 'exe-preview-tab:forward' && data.payload && typeof data.payload.type === 'string') {
-                const payload = data.payload;
-                if (payload.type === MSG.NAVIGATE) {
-                    const targetPage = this._resolvePreviewHref(
-                        payload.href,
-                        sanitizePagePath(payload.page) || popupPage,
-                    );
-                    if (
-                        targetPage &&
-                        (typeof this._provider?.hasPage !== 'function' || this._provider.hasPage(targetPage))
-                    ) {
-                        popupPage = targetPage;
-                        sendRender(targetPage);
-                    }
-                } else if (payload.type === MSG.OPEN_DOC) {
-                    this._handlePreviewOpenDocument(payload);
-                }
-            }
-        };
-        window.addEventListener('message', onMessage);
-        this._previewTabHandoff = onMessage;
     }
 
     /**
@@ -1356,14 +1286,6 @@ export default class PreviewPanelManager {
         const run = () => this._mediaHost?.reflowEmbedOverlays();
         setTimeout(run, 400);
         setTimeout(run, 900);
-    }
-
-    /** Remove the preview-host tab handoff listener (popup closed / panel destroyed). */
-    _teardownPreviewTabHandoff() {
-        if (this._previewTabHandoff) {
-            window.removeEventListener('message', this._previewTabHandoff);
-            this._previewTabHandoff = null;
-        }
     }
 
     /**
@@ -1506,7 +1428,6 @@ export default class PreviewPanelManager {
         // Clean up popup tracking
         this._popupWindow = null;
         this._clearPopupMonitor();
-        this._teardownPreviewTabHandoff();
 
         // Close recovery BroadcastChannel
         if (this._recoveryChannel) {
