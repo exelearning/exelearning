@@ -17,11 +17,11 @@ import {
  * in preview mode. The fix ensures that relative links are properly adjusted
  * when navigating from a subpage to avoid incorrect nested URLs.
  *
- * The preview iframe is opaque (no allow-same-origin), so the parent cannot
- * read `iframe.contentWindow.location` — that throws SecurityError. Navigation
- * is tracked instead via the `data-preview-page` attribute the panel stamps on
- * every rendered page (fed by the in-frame nav reporter), which the browser
- * exposes to the parent regardless of origin.
+ * The preview iframe may be opaque (server/HTTP transport: no allow-same-origin),
+ * so the parent cannot assume it can read `iframe.contentWindow.location`.
+ * Navigation is tracked instead via the `data-preview-page` attribute the panel
+ * stamps on every rendered page, which the browser exposes to the parent
+ * regardless of origin — working the same across the HTTP and static transports.
  */
 
 /**

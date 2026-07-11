@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/auth.fixture';
+import { test, expect, isStaticProject } from '../../fixtures/auth.fixture';
 import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
@@ -208,20 +208,37 @@ async function verifyIframeInPreview(
     page: Page,
     iframe: FrameLocator,
     expectedUrl: string,
-    expectedHeight?: number,
+    expectedHeight: number | undefined,
+    isStatic: boolean,
 ): Promise<void> {
-    // The iDevice container renders inside the opaque-origin preview...
-    await iframe.locator('#iframeWebsiteIdevice').first().waitFor({ state: 'visible', timeout: 10000 });
+    // The iDevice container renders in the preview on every transport.
+    const container = iframe.locator('#iframeWebsiteIdevice').first();
+    await container.waitFor({ state: 'visible', timeout: 10000 });
+    const wanted = expectedUrl.replace(/\/+$/, '');
 
-    // ...but its cross-origin website iframe cannot render in an opaque origin, so the
-    // embed shim promotes it and the editor-side relay overlays the real iframe in-place
-    // (the same mechanism as YouTube/Vimeo). Assert the relay overlay carries the URL
-    // (the browser normalises the src, e.g. adds a trailing slash, so match by prefix).
+    if (isStatic) {
+        // Static Service Worker transport: same-origin, NOT opaque, so there is no
+        // embed relay — the cross-origin website iframe renders directly inside the
+        // preview frame. Assert the iframe itself carries the URL and height.
+        const inner = container.locator('iframe').first();
+        await expect(inner).toBeAttached({ timeout: 15000 });
+        await expect.poll(async () => (await inner.getAttribute('src')) ?? '', { timeout: 10000 }).toContain(wanted);
+        if (expectedHeight) {
+            await expect
+                .poll(async () => Math.round((await inner.boundingBox())?.height ?? 0), { timeout: 10000 })
+                .toBeGreaterThan(Math.round(expectedHeight * 0.6));
+        }
+        return;
+    }
+
+    // Opaque transports (server / HTTP): the cross-origin website iframe cannot render
+    // in an opaque origin, so the embed shim promotes it and the editor-side relay
+    // overlays the real iframe in-place (the same mechanism as YouTube/Vimeo). Assert
+    // the relay overlay carries the URL (the browser normalises the src, e.g. adds a
+    // trailing slash, so match by prefix).
     const overlaid = page.locator('.exe-embed-overlay iframe').first();
     await expect(overlaid).toBeAttached({ timeout: 15000 });
-    await expect
-        .poll(async () => (await overlaid.getAttribute('src')) ?? '', { timeout: 10000 })
-        .toContain(expectedUrl.replace(/\/+$/, ''));
+    await expect.poll(async () => (await overlaid.getAttribute('src')) ?? '', { timeout: 10000 }).toContain(wanted);
 
     if (expectedHeight) {
         // The overlay is positioned over the promoted placeholder, so its rendered height
@@ -484,7 +501,7 @@ test.describe('External Website iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display iframe correctly in preview', async ({ authenticatedPage, createProject }) => {
+        test('should display iframe correctly in preview', async ({ authenticatedPage, createProject }, testInfo) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -510,10 +527,13 @@ test.describe('External Website iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe container is visible in preview
-            await verifyIframeInPreview(page, iframe, TEST_DATA.validUrl);
+            await verifyIframeInPreview(page, iframe, TEST_DATA.validUrl, undefined, isStaticProject(testInfo));
         });
 
-        test('should display iframe with correct height in preview', async ({ authenticatedPage, createProject }) => {
+        test('should display iframe with correct height in preview', async ({
+            authenticatedPage,
+            createProject,
+        }, testInfo) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -540,7 +560,7 @@ test.describe('External Website iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe has correct height (500px for large)
-            await verifyIframeInPreview(page, iframe, TEST_DATA.validUrl, 500);
+            await verifyIframeInPreview(page, iframe, TEST_DATA.validUrl, 500, isStaticProject(testInfo));
         });
     });
 

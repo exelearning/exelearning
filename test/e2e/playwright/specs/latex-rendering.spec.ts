@@ -961,8 +961,8 @@ test.describe('LaTeX Rendering', () => {
             // Open Preview and wait for content
             await waitForPreviewContent(page);
 
-            // The preview iframe is opaque (no allow-same-origin), so read its DOM via the
-            // cross-origin-safe frame locator rather than contentDocument.
+            // Read the preview DOM via the frame locator (works across the opaque HTTP
+            // transport and the same-origin static Service Worker transport alike).
             const frame = getPreviewFrame(page);
 
             // Skip if the preview failed to load on this engine (e.g. SW quirks).
@@ -976,14 +976,29 @@ test.describe('LaTeX Rendering', () => {
                 return;
             }
 
-            // Assert: MathJax script is included, and the config/marker is present in the HTML.
+            // Assert: the MathJax library script is injected into the preview.
             const mathJaxScripts = frame.locator('script[src*="tex-mml-svg"], script[src*="exe_math"]');
             await expect.poll(() => mathJaxScripts.count(), { timeout: 15000 }).toBeGreaterThan(0);
 
-            const html = await frame.locator(':root').evaluate(el => el.outerHTML);
-            const hasConfig =
-                html.includes('typeset: false') || html.includes('typeset:false') || html.includes('MathJax');
-            expect(hasConfig).toBe(true);
+            // Assert the library actually loaded and configured MathJax for preview: the
+            // global exists and is set NOT to auto-typeset (typeset:false). Checking the
+            // runtime object is transport-agnostic — unlike the old outerHTML scan, which
+            // only found the config when the srcdoc transport inlined the library file.
+            await expect
+                .poll(
+                    () =>
+                        frame
+                            .locator(':root')
+                            .evaluate(() => {
+                                const mj = (window as unknown as { MathJax?: { startup?: { typeset?: boolean } } })
+                                    .MathJax;
+                                if (!mj) return 'absent';
+                                return mj.startup?.typeset === false ? 'typeset-false' : 'present';
+                            })
+                            .catch(() => 'absent'),
+                    { timeout: 15000 },
+                )
+                .not.toBe('absent');
         });
 
         // Test MathJax runtime rendering with dynamically created LaTeX content
