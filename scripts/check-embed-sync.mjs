@@ -169,7 +169,7 @@ const FILES = {
         // Moodle's and Nextcloud's CSP live in serving/policy helpers since
         // contract v2 (their controllers delegate to them).
         mod: 'classes/local/preview/serving.php',
-        wp: 'includes/class-preview-proxy.php',
+        wp: 'includes/class-preview-http-headers.php',
         omeka: 'src/Controller/PreviewController.php',
         procomun: 'apps/api/src/routes/preview.ts',
         nextcloud: 'lib/Service/Preview/PreviewPolicy.php',
