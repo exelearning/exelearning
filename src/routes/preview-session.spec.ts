@@ -1,12 +1,24 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { SignJWT } from 'jose';
+import {
+    configure as configureFixedResources,
+    resetDependencies as resetFixedResources,
+} from '../services/preview-fixed-resources';
 import {
     DEFAULT_PREVIEW_SESSION_LIMITS,
     configure,
     createSession,
     resetDependencies,
 } from '../services/preview-session-manager';
-import { previewServeRoutes, previewSessionApiRoutes, RECOMMENDED_BATCH_BYTES } from './preview-session';
+import {
+    previewServeRoutes,
+    previewSessionApiRoutes,
+    PROTOCOL_VERSION,
+    RECOMMENDED_BATCH_BYTES,
+} from './preview-session';
 
 // Must match the fallback in getJwtSecret() (API_JWT_SECRET || JWT_SECRET ||
 // 'dev_secret_change_me') so signed tokens verify inside withJwtAuth().
@@ -14,6 +26,9 @@ const TEST_JWT_SECRET = 'dev_secret_change_me';
 const OWNER_ID = 7;
 const OTHER_ID = 8;
 const BASE = 'http://localhost';
+
+const ASSET_KEY_A = '11111111-2222-4333-8444-555555555555@aabbccdd';
+const ASSET_KEY_B = '99999999-8888-4777-8666-555555555555@00112233';
 
 async function signTestToken(sub: number): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
@@ -24,29 +39,44 @@ async function signTestToken(sub: number): Promise<string> {
         .sign(secret);
 }
 
-function sha256Hex(bytes: Uint8Array): string {
-    const hasher = new Bun.CryptoHasher('sha256');
-    hasher.update(bytes);
-    return hasher.digest('hex');
-}
-
 function bytesOf(text: string): Uint8Array {
     return new TextEncoder().encode(text);
+}
+
+/** Materialize a throwaway fixed-resource root and point the resolver DI at it. */
+function useFixedRoot(files: Record<string, { id: string; content: string }>): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-route-fixed-'));
+    const resources: Record<string, { path: string; size: number }> = {};
+    for (const [rel, { id, content }] of Object.entries(files)) {
+        const abs = path.join(root, rel);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, content);
+        resources[id] = { path: rel, size: Buffer.byteLength(content) };
+    }
+    const manifestPath = path.join(root, 'bundles', 'preview-fixed-resources.json');
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    fs.writeFileSync(manifestPath, JSON.stringify({ schemaVersion: 1, buildVersion: 'v-test', resources }));
+    configureFixedResources({ publicRoot: root, manifestPath });
+    return root;
 }
 
 describe('preview-session routes', () => {
     let ownerToken: string;
     let otherToken: string;
+    const tempRoots: string[] = [];
 
     beforeEach(async () => {
         process.env.JWT_SECRET = TEST_JWT_SECRET;
         resetDependencies();
+        resetFixedResources();
         ownerToken = await signTestToken(OWNER_ID);
         otherToken = await signTestToken(OTHER_ID);
     });
 
     afterEach(() => {
         resetDependencies();
+        resetFixedResources();
+        for (const root of tempRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
     });
 
     function apiRequest(
@@ -72,40 +102,57 @@ describe('preview-session routes', () => {
         return json.previewId;
     }
 
-    async function syncViaApi(previewId: string, files: Record<string, string>, token = ownerToken): Promise<void> {
-        const manifest: Record<string, { sha256: string; size: number }> = {};
-        for (const [path, text] of Object.entries(files)) {
-            const bytes = bytesOf(text);
-            manifest[path] = { sha256: sha256Hex(bytes), size: bytes.length };
-        }
-        const manifestRes = await previewSessionApiRoutes.handle(
-            apiRequest(`/api/preview-session/${previewId}/manifest`, {
-                method: 'POST',
-                token,
-                json: { files: manifest },
+    function assetsForm(entries: Array<{ key: string; size: number; bytes: Uint8Array }>): FormData {
+        const form = new FormData();
+        form.append('assets', JSON.stringify(entries.map(({ key, size }) => ({ key, size }))));
+        for (const { bytes } of entries) form.append('files', new Blob([bytes]));
+        return form;
+    }
+
+    function revisionForm(meta: {
+        baseRevision: number;
+        nextRevision: number;
+        writes?: Record<string, string>;
+        deletes?: string[];
+        assetRefs?: Record<string, string>;
+        fixedRefs?: Record<string, string>;
+    }): FormData {
+        const writes = meta.writes ?? {};
+        const form = new FormData();
+        form.append(
+            'revision',
+            JSON.stringify({
+                baseRevision: meta.baseRevision,
+                nextRevision: meta.nextRevision,
+                writes: Object.keys(writes),
+                deletes: meta.deletes ?? [],
+                assetRefs: meta.assetRefs ?? {},
+                fixedRefs: meta.fixedRefs ?? {},
             }),
         );
-        expect(manifestRes.status).toBe(200);
-        const staged = (await manifestRes.json()) as { manifestId: string; missing: string[]; active: boolean };
-        if (staged.active) return;
+        for (const text of Object.values(writes)) form.append('files', new Blob([bytesOf(text)]));
+        return form;
+    }
 
-        const form = new FormData();
-        form.append('manifestId', staged.manifestId);
-        const hashes: string[] = [];
-        for (const text of Object.values(files)) {
-            const bytes = bytesOf(text);
-            if (staged.missing.includes(sha256Hex(bytes))) {
-                hashes.push(sha256Hex(bytes));
-                form.append('files', new Blob([bytes]));
-            }
-        }
-        form.append('hashes', JSON.stringify(hashes));
-        const blobsRes = await previewSessionApiRoutes.handle(
-            apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', token, form }),
+    async function publishViaApi(
+        previewId: string,
+        meta: Parameters<typeof revisionForm>[0],
+        token = ownerToken,
+    ): Promise<Response> {
+        return previewSessionApiRoutes.handle(
+            apiRequest(`/api/preview-session/${previewId}/revisions`, {
+                method: 'POST',
+                token,
+                form: revisionForm(meta),
+            }),
         );
-        expect(blobsRes.status).toBe(200);
-        const stored = (await blobsRes.json()) as { active: boolean };
-        expect(stored.active).toBe(true);
+    }
+
+    async function servedSession(files: Record<string, string>): Promise<string> {
+        const previewId = await createViaApi();
+        const res = await publishViaApi(previewId, { baseRevision: 0, nextRevision: 1, writes: files });
+        expect(res.status).toBe(200);
+        return previewId;
     }
 
     describe('POST /api/preview-session', () => {
@@ -114,197 +161,264 @@ describe('preview-session routes', () => {
             expect(res.status).toBe(401);
         });
 
-        it('creates a session and advertises the upload limits', async () => {
+        it('creates a protocol-v2 session at revision 0 and advertises the limits', async () => {
             const res = await previewSessionApiRoutes.handle(
                 apiRequest('/api/preview-session', { method: 'POST', token: ownerToken }),
             );
             expect(res.status).toBe(201);
             const json = (await res.json()) as {
                 previewId: string;
-                limits: { maxFilesPerSession: number; maxBytesPerSession: number; recommendedBatchBytes: number };
+                protocolVersion: number;
+                revision: number;
+                limits: {
+                    maxFilesPerSession: number;
+                    maxBytesPerSession: number;
+                    maxAssetBytes: number;
+                    recommendedBatchBytes: number;
+                };
             };
             expect(json.previewId).toMatch(/^[0-9a-f-]{36}$/);
+            expect(json.protocolVersion).toBe(PROTOCOL_VERSION);
+            expect(json.revision).toBe(0);
             expect(json.limits.maxFilesPerSession).toBeGreaterThan(0);
             expect(json.limits.maxBytesPerSession).toBeGreaterThan(0);
+            expect(json.limits.maxAssetBytes).toBeGreaterThan(0);
             expect(json.limits.recommendedBatchBytes).toBe(RECOMMENDED_BATCH_BYTES);
         });
     });
 
-    describe('POST /api/preview-session/:previewId/manifest', () => {
+    describe('POST /api/preview-session/:previewId/assets', () => {
         it('enforces auth, ownership and existence', async () => {
             const previewId = await createViaApi();
-            const body = { files: { 'index.html': { sha256: sha256Hex(bytesOf('x')), size: 1 } } };
+            const makeForm = () => assetsForm([{ key: ASSET_KEY_A, size: 1, bytes: bytesOf('x') }]);
             const unauth = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, { method: 'POST', json: body }),
+                apiRequest(`/api/preview-session/${previewId}/assets`, { method: 'POST', form: makeForm() }),
             );
             expect(unauth.status).toBe(401);
             const forbidden = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
                     method: 'POST',
                     token: otherToken,
-                    json: body,
+                    form: makeForm(),
                 }),
             );
             expect(forbidden.status).toBe(403);
             const missing = await previewSessionApiRoutes.handle(
-                apiRequest('/api/preview-session/11111111-2222-4333-8444-555555555555/manifest', {
+                apiRequest('/api/preview-session/11111111-2222-4333-8444-555555555555/assets', {
                     method: 'POST',
                     token: ownerToken,
-                    json: body,
+                    form: makeForm(),
                 }),
             );
             expect(missing.status).toBe(404);
         });
 
-        it('rejects malformed bodies and unsafe paths with 400', async () => {
+        it('rejects malformed assets JSON and misaligned files with 400', async () => {
             const previewId = await createViaApi();
-            const malformed = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
+            const badJson = new FormData();
+            badJson.append('assets', 'not json');
+            const bad = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
                     method: 'POST',
                     token: ownerToken,
-                    json: { nope: true },
+                    form: badJson,
                 }),
             );
-            expect(malformed.status).toBe(400);
-            const unsafe = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
+            expect(bad.status).toBe(400);
+
+            const misaligned = new FormData();
+            misaligned.append('assets', JSON.stringify([{ key: ASSET_KEY_A, size: 1 }]));
+            const res = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
                     method: 'POST',
                     token: ownerToken,
-                    json: { files: { '../escape': { sha256: sha256Hex(bytesOf('x')), size: 1 } } },
+                    form: misaligned,
                 }),
             );
-            expect(unsafe.status).toBe(400);
+            expect(res.status).toBe(400);
         });
 
-        it('returns the missing hashes for a fresh manifest', async () => {
+        it('stores assets, reporting alreadyStored on immutability re-uploads and rejected entries', async () => {
             const previewId = await createViaApi();
-            const bytes = bytesOf('<html></html>');
-            const res = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
+            const first = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
                     method: 'POST',
                     token: ownerToken,
-                    json: { files: { 'index.html': { sha256: sha256Hex(bytes), size: bytes.length } } },
+                    form: assetsForm([
+                        { key: ASSET_KEY_A, size: 5, bytes: bytesOf('image') },
+                        { key: 'garbage-key', size: 1, bytes: bytesOf('x') },
+                    ]),
                 }),
             );
-            expect(res.status).toBe(200);
-            const json = (await res.json()) as { manifestId: string; missing: string[]; active: boolean };
-            expect(json.active).toBe(false);
-            expect(json.missing).toEqual([sha256Hex(bytes)]);
+            expect(first.status).toBe(200);
+            const firstJson = (await first.json()) as {
+                stored: string[];
+                alreadyStored: string[];
+                rejected: Array<{ key: string; reason: string }>;
+            };
+            expect(firstJson.stored).toEqual([ASSET_KEY_A]);
+            expect(firstJson.rejected).toEqual([{ key: 'garbage-key', reason: 'invalid-key' }]);
+
+            const again = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: assetsForm([{ key: ASSET_KEY_A, size: 9, bytes: bytesOf('DIFFERENT') }]),
+                }),
+            );
+            expect(again.status).toBe(200);
+            const againJson = (await again.json()) as { stored: string[]; alreadyStored: string[] };
+            expect(againJson.stored).toEqual([]);
+            expect(againJson.alreadyStored).toEqual([ASSET_KEY_A]);
+        });
+
+        it('rejects batches whose DECLARED sizes exceed the session byte budget with 413', async () => {
+            configure({ limits: { ...DEFAULT_PREVIEW_SESSION_LIMITS, maxBytesPerSession: 8 } });
+            const previewId = await createViaApi();
+            // Declared size is honest (9 > 8): rejected before buffering.
+            const res = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: assetsForm([{ key: ASSET_KEY_A, size: 9, bytes: bytesOf('123456789') }]),
+                }),
+            );
+            expect(res.status).toBe(413);
+        });
+
+        it('rejects batches whose ACTUAL bytes exceed the budget despite lying declared sizes', async () => {
+            configure({ limits: { ...DEFAULT_PREVIEW_SESSION_LIMITS, maxBytesPerSession: 8 } });
+            const previewId = await createViaApi();
+            // Declared size lies low (1); the buffered actual total (9) trips
+            // the second-stage check.
+            const form = new FormData();
+            form.append('assets', JSON.stringify([{ key: ASSET_KEY_A, size: 1 }]));
+            form.append('files', new Blob([bytesOf('123456789')]));
+            const res = await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, { method: 'POST', token: ownerToken, form }),
+            );
+            expect(res.status).toBe(413);
         });
     });
 
-    describe('POST /api/preview-session/:previewId/blobs', () => {
+    describe('POST /api/preview-session/:previewId/revisions', () => {
         it('enforces auth and ownership', async () => {
             const previewId = await createViaApi();
-            const form = new FormData();
-            form.append('manifestId', 'any');
-            form.append('hashes', '[]');
+            const meta = { baseRevision: 0, nextRevision: 1, writes: { 'index.html': 'x' } };
             const unauth = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', form }),
+                apiRequest(`/api/preview-session/${previewId}/revisions`, { method: 'POST', form: revisionForm(meta) }),
             );
             expect(unauth.status).toBe(401);
-            const form2 = new FormData();
-            form2.append('manifestId', 'any');
-            form2.append('hashes', '[]');
             const forbidden = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, {
+                apiRequest(`/api/preview-session/${previewId}/revisions`, {
                     method: 'POST',
                     token: otherToken,
-                    form: form2,
+                    form: revisionForm(meta),
                 }),
             );
             expect(forbidden.status).toBe(403);
         });
 
-        it('rejects stale manifest ids with 409 and bad hashes JSON with 400', async () => {
+        it('rejects malformed revision JSON and misaligned writes/files with 400', async () => {
             const previewId = await createViaApi();
-            const form = new FormData();
-            form.append('manifestId', '11111111-2222-4333-8444-555555555555');
-            form.append('hashes', '[]');
-            const stale = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', token: ownerToken, form }),
-            );
-            expect(stale.status).toBe(409);
-
-            const badForm = new FormData();
-            badForm.append('manifestId', 'x');
-            badForm.append('hashes', 'not json');
+            const badJson = new FormData();
+            badJson.append('revision', '{not json');
             const bad = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, {
+                apiRequest(`/api/preview-session/${previewId}/revisions`, {
                     method: 'POST',
                     token: ownerToken,
-                    form: badForm,
+                    form: badJson,
                 }),
             );
             expect(bad.status).toBe(400);
-        });
 
-        it('stores missing blobs, reports mismatches, and activates when complete', async () => {
-            const previewId = await createViaApi();
-            const good = bytesOf('good body');
-            const goodHash = sha256Hex(good);
-            const forgedHash = sha256Hex(bytesOf('claimed'));
-            const manifestRes = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
-                    method: 'POST',
-                    token: ownerToken,
-                    json: {
-                        files: {
-                            'good.html': { sha256: goodHash, size: good.length },
-                            'forged.html': { sha256: forgedHash, size: 7 },
-                        },
-                    },
+            const misaligned = new FormData();
+            misaligned.append(
+                'revision',
+                JSON.stringify({
+                    baseRevision: 0,
+                    nextRevision: 1,
+                    writes: ['index.html'],
+                    deletes: [],
+                    assetRefs: {},
+                    fixedRefs: {},
                 }),
             );
-            const staged = (await manifestRes.json()) as { manifestId: string };
-
-            const form = new FormData();
-            form.append('manifestId', staged.manifestId);
-            form.append('hashes', JSON.stringify([goodHash, forgedHash]));
-            form.append('files', new Blob([good]));
-            form.append('files', new Blob([bytesOf('not the claimed bytes')]));
             const res = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', token: ownerToken, form }),
-            );
-            expect(res.status).toBe(200);
-            const json = (await res.json()) as { stored: string[]; mismatched: string[]; active: boolean };
-            expect(json.stored).toEqual([goodHash]);
-            expect(json.mismatched).toEqual([forgedHash]);
-            expect(json.active).toBe(false);
-        });
-
-        it('rejects mismatched hashes/files counts with 400', async () => {
-            const previewId = await createViaApi();
-            const form = new FormData();
-            form.append('manifestId', 'x');
-            form.append('hashes', JSON.stringify(['a'.repeat(64)]));
-            const res = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', token: ownerToken, form }),
+                apiRequest(`/api/preview-session/${previewId}/revisions`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: misaligned,
+                }),
             );
             expect(res.status).toBe(400);
         });
 
-        it('rejects batches whose declared size exceeds the session byte budget with 413', async () => {
-            // A tiny configured budget stands in for a huge upload: the route
-            // must reject on declared Blob sizes, before buffering the parts.
-            configure({ limits: { ...DEFAULT_PREVIEW_SESSION_LIMITS, maxBytesPerSession: 8 } });
+        it('rejects unsafe paths with 400', async () => {
             const previewId = await createViaApi();
-            const bytes = bytesOf('123456789');
-            const manifestRes = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/manifest`, {
-                    method: 'POST',
-                    token: ownerToken,
-                    json: { files: { 'a.bin': { sha256: sha256Hex(bytes), size: 4 } } },
-                }),
+            const res = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { '../escape.html': 'x' },
+            });
+            expect(res.status).toBe(400);
+        });
+
+        it('publishes revisions and answers conflicts with 409 + currentRevision', async () => {
+            const previewId = await createViaApi();
+            const first = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'v1' },
+            });
+            expect(first.status).toBe(200);
+            expect(await first.json()).toEqual({ revision: 1, active: true });
+
+            const conflict = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'stale' },
+            });
+            expect(conflict.status).toBe(409);
+            expect(await conflict.json()).toEqual({ reason: 'revision-conflict', currentRevision: 1 });
+        });
+
+        it('rejects revisions referencing assets the session does not hold with 422', async () => {
+            const previewId = await createViaApi();
+            const res = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'x' },
+                assetRefs: { 'content/resources/a.png': ASSET_KEY_B },
+            });
+            expect(res.status).toBe(422);
+            // Exact contract shape — no extra fields on the wire.
+            expect(await res.json()).toEqual({ reason: 'missing-assets', missing: [ASSET_KEY_B] });
+        });
+
+        it('rejects revisions referencing unknown fixed resources with 422', async () => {
+            tempRoots.push(
+                useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq' } }),
             );
-            const staged = (await manifestRes.json()) as { manifestId: string };
-            const form = new FormData();
-            form.append('manifestId', staged.manifestId);
-            form.append('hashes', JSON.stringify([sha256Hex(bytes)]));
-            form.append('files', new Blob([bytes]));
-            const res = await previewSessionApiRoutes.handle(
-                apiRequest(`/api/preview-session/${previewId}/blobs`, { method: 'POST', token: ownerToken, form }),
-            );
+            const previewId = await createViaApi();
+            const res = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'x' },
+                fixedRefs: { 'libs/nope.js': 'libs/nope.js' },
+            });
+            expect(res.status).toBe(422);
+            expect(await res.json()).toEqual({ reason: 'unknown-fixed-resources', resources: ['libs/nope.js'] });
+        });
+
+        it('rejects revisions over the byte budget with 413', async () => {
+            configure({ limits: { ...DEFAULT_PREVIEW_SESSION_LIMITS, maxBytesPerSession: 4 } });
+            const previewId = await createViaApi();
+            const res = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': '123456789' },
+            });
             expect(res.status).toBe(413);
         });
     });
@@ -332,12 +446,6 @@ describe('preview-session routes', () => {
     });
 
     describe('GET /preview/:previewId/*', () => {
-        async function servedSession(files: Record<string, string>): Promise<string> {
-            const previewId = await createViaApi();
-            await syncViaApi(previewId, files);
-            return previewId;
-        }
-
         it('serves files with correct MIME types', async () => {
             const previewId = await servedSession({
                 'index.html': '<html><body>hi</body></html>',
@@ -374,10 +482,142 @@ describe('preview-session routes', () => {
             for (const res of responses) {
                 expect(res.headers.get('x-content-type-options')).toBe('nosniff');
                 expect(res.headers.get('referrer-policy')).toBe('no-referrer');
-                expect(res.headers.get('cache-control')).toBe('no-store');
                 expect(res.headers.get('permissions-policy')).toContain('camera=()');
                 expect(res.headers.get('access-control-allow-origin')).toBe('*');
             }
+            // 404s are never cacheable.
+            expect(responses[1].status).toBe(404);
+            expect(responses[1].headers.get('cache-control')).toBe('no-store');
+        });
+
+        it('serves nothing before the first revision publishes', async () => {
+            const previewId = await createViaApi();
+            const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/index.html`));
+            expect(res.status).toBe(404);
+            const bare = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}`));
+            expect(bare.status).toBe(404);
+        });
+
+        it('applies the tiered Cache-Control per resolution layer', async () => {
+            tempRoots.push(
+                useFixedRoot({ 'libs/jquery/jquery.min.js': { id: 'libs/jquery/jquery.min.js', content: 'jq();' } }),
+            );
+            const previewId = await createViaApi();
+            await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: assetsForm([{ key: ASSET_KEY_A, size: 5, bytes: bytesOf('asset') }]),
+                }),
+            );
+            const published = await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': '<html></html>' },
+                assetRefs: { 'content/resources/pic.png': ASSET_KEY_A },
+                fixedRefs: { 'libs/jquery/jquery.min.js': 'libs/jquery/jquery.min.js' },
+            });
+            expect(published.status).toBe(200);
+
+            const document = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/index.html`));
+            expect(document.status).toBe(200);
+            expect(document.headers.get('cache-control')).toBe('no-store');
+            expect(document.headers.get('etag')).toBeNull();
+
+            const asset = await previewServeRoutes.handle(
+                new Request(`${BASE}/preview/${previewId}/content/resources/pic.png`),
+            );
+            expect(asset.status).toBe(200);
+            expect(asset.headers.get('cache-control')).toBe('no-cache');
+            expect(asset.headers.get('etag')).toBe(`"${ASSET_KEY_A}"`);
+            expect(asset.headers.get('accept-ranges')).toBe('bytes');
+            expect(await asset.text()).toBe('asset');
+
+            const fixed = await previewServeRoutes.handle(
+                new Request(`${BASE}/preview/${previewId}/libs/jquery/jquery.min.js`),
+            );
+            expect(fixed.status).toBe(200);
+            expect(fixed.headers.get('cache-control')).toBe('private, max-age=31536000');
+            expect(await fixed.text()).toBe('jq();');
+        });
+
+        it('answers If-None-Match with 304 for unchanged assets', async () => {
+            const previewId = await createViaApi();
+            await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: assetsForm([{ key: ASSET_KEY_A, size: 5, bytes: bytesOf('asset') }]),
+                }),
+            );
+            await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'x' },
+                assetRefs: { 'content/resources/pic.png': ASSET_KEY_A },
+            });
+            const res = await previewServeRoutes.handle(
+                new Request(`${BASE}/preview/${previewId}/content/resources/pic.png`, {
+                    headers: { 'If-None-Match': `"${ASSET_KEY_A}"` },
+                }),
+            );
+            expect(res.status).toBe(304);
+            expect(await res.text()).toBe('');
+            // A non-matching validator serves the full body.
+            const changed = await previewServeRoutes.handle(
+                new Request(`${BASE}/preview/${previewId}/content/resources/pic.png`, {
+                    headers: { 'If-None-Match': '"some-other-etag"' },
+                }),
+            );
+            expect(changed.status).toBe(200);
+        });
+
+        it('honors single-range requests on assets with 206/416', async () => {
+            const previewId = await createViaApi();
+            const payload = bytesOf('0123456789');
+            await previewSessionApiRoutes.handle(
+                apiRequest(`/api/preview-session/${previewId}/assets`, {
+                    method: 'POST',
+                    token: ownerToken,
+                    form: assetsForm([{ key: ASSET_KEY_A, size: payload.length, bytes: payload }]),
+                }),
+            );
+            await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'x' },
+                assetRefs: { 'media/clip.mp4': ASSET_KEY_A },
+            });
+            const url = `${BASE}/preview/${previewId}/media/clip.mp4`;
+
+            const middle = await previewServeRoutes.handle(new Request(url, { headers: { Range: 'bytes=2-4' } }));
+            expect(middle.status).toBe(206);
+            expect(middle.headers.get('content-range')).toBe('bytes 2-4/10');
+            expect(middle.headers.get('content-length')).toBe('3');
+            expect(await middle.text()).toBe('234');
+
+            const openEnded = await previewServeRoutes.handle(new Request(url, { headers: { Range: 'bytes=7-' } }));
+            expect(openEnded.status).toBe(206);
+            expect(openEnded.headers.get('content-range')).toBe('bytes 7-9/10');
+            expect(await openEnded.text()).toBe('789');
+
+            const suffix = await previewServeRoutes.handle(new Request(url, { headers: { Range: 'bytes=-3' } }));
+            expect(suffix.status).toBe(206);
+            expect(suffix.headers.get('content-range')).toBe('bytes 7-9/10');
+            expect(await suffix.text()).toBe('789');
+
+            for (const invalid of ['bytes=10-', 'bytes=5-2', 'bytes=-', 'bytes=0-1,3-4', 'items=0-1']) {
+                const res = await previewServeRoutes.handle(new Request(url, { headers: { Range: invalid } }));
+                expect(res.status).toBe(416);
+                expect(res.headers.get('content-range')).toBe('bytes */10');
+            }
+
+            // Documents ignore Range entirely (full 200 body).
+            const doc = await previewServeRoutes.handle(
+                new Request(`${BASE}/preview/${previewId}/index.html`, { headers: { Range: 'bytes=0-0' } }),
+            );
+            expect(doc.status).toBe(200);
+            expect(await doc.text()).toBe('x');
         });
 
         it('adds the sandbox CSP to every scriptable document type (HTML, SVG, XML), not just HTML', async () => {
@@ -404,6 +644,30 @@ describe('preview-session routes', () => {
                 const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/${passive}`));
                 expect(res.headers.get('content-security-policy')).toBeNull();
             }
+        });
+
+        it('adds the sandbox CSP to a scriptable SVG resolved from the FIXED layer', async () => {
+            tempRoots.push(
+                useFixedRoot({
+                    'files/perm/themes/base/zen/icon.svg': {
+                        id: 'theme:zen/icon.svg',
+                        content: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+                    },
+                }),
+            );
+            const previewId = await createViaApi();
+            await publishViaApi(previewId, {
+                baseRevision: 0,
+                nextRevision: 1,
+                writes: { 'index.html': 'x' },
+                fixedRefs: { 'theme/icon.svg': 'theme:zen/icon.svg' },
+            });
+            const res = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/theme/icon.svg`));
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('image/svg+xml; charset=utf-8');
+            expect(res.headers.get('cache-control')).toBe('private, max-age=31536000');
+            const csp = res.headers.get('content-security-policy') ?? '';
+            expect(csp.startsWith('sandbox allow-scripts allow-popups allow-forms')).toBe(true);
         });
 
         it('serves index.html for the bare session URL without redirecting', async () => {
@@ -433,7 +697,7 @@ describe('preview-session routes', () => {
             }
         });
 
-        it('returns 404 for malformed preview ids and expired sessions', async () => {
+        it('returns 404 for malformed preview ids and deleted sessions', async () => {
             const malformed = await previewServeRoutes.handle(new Request(`${BASE}/preview/not-a-uuid/index.html`));
             expect(malformed.status).toBe(404);
             const previewId = await servedSession({ 'index.html': 'x' });
@@ -446,15 +710,17 @@ describe('preview-session routes', () => {
             expect(gone.status).toBe(404);
         });
 
-        it('serves updated bytes after a manifest-diff refresh and keeps unchanged paths', async () => {
+        it('serves updated documents after an incremental revision and keeps unchanged paths', async () => {
             const previewId = await servedSession({
                 'index.html': 'version one',
                 'theme/style.css': 'unchanged css',
             });
-            await syncViaApi(previewId, {
-                'index.html': 'version two!',
-                'theme/style.css': 'unchanged css',
+            const second = await publishViaApi(previewId, {
+                baseRevision: 1,
+                nextRevision: 2,
+                writes: { 'index.html': 'version two!' },
             });
+            expect(second.status).toBe(200);
             const index = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/index.html`));
             expect(await index.text()).toBe('version two!');
             const css = await previewServeRoutes.handle(new Request(`${BASE}/preview/${previewId}/theme/style.css`));

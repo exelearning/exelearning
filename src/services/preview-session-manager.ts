@@ -1,13 +1,19 @@
 /**
- * Editor preview sessions: ephemeral, in-memory storage for the opaque preview.
+ * Editor preview sessions: ephemeral, in-memory storage for the opaque preview
+ * (serving contract v2 — doc/development/preview-serving-contract.md).
  *
- * The editor generates preview files client-side and syncs them here via a
- * manifest-diff protocol (stage a path→sha256 manifest, upload only the blobs
- * the server lacks); the authless `/preview/{previewId}/*` route then serves
- * them to the opaque-origin preview iframe, which cannot send SameSite cookies.
- * Blobs are content-addressed per session, and every uploaded blob is
- * re-hashed server-side, so a forged declared hash can only disqualify itself
- * — it can never poison another path's content.
+ * A session holds three layers with different lifecycles:
+ *
+ * - `documents` — generated files (page HTML, generated CSS/JS, user themes…),
+ *   mutated only through atomic incremental revisions (`applyRevision`);
+ * - `assets` — author media, immutable per `assetKey` for the session lifetime
+ *   (`storeAssets`); the key is an opaque validated token the project model
+ *   already stores (asset id + content-hash prefix) — the server never hashes;
+ * - `fixedRefs` — served path → fixedResourceId indirection into the
+ *   installation's fixed-resource manifest (zero bytes transferred).
+ *
+ * The authless `/preview/{previewId}/*` route serves the three layers through
+ * `getFile` (documents → assetRefs→assets → fixedRefs→manifest → miss).
  *
  * Sessions are process-local and intentionally NOT persisted: they die on
  * restart and the client transparently recreates them on the next refresh (any
@@ -15,34 +21,24 @@
  * run multiple instances behind a load balancer need sticky sessions for the
  * preview routes — the same limitation class as the other in-memory managers.
  */
+import { isScriptableDocumentType } from '../shared/security/previewSandbox';
 import { contentTypeFor, normalizeContentPath } from '../utils/content-path.util';
-
-export interface PreviewManifestEntry {
-    sha256: string;
-    size: number;
-}
-
-export interface PreviewManifest {
-    /** Normalized path → entry. Frozen after the swap; never mutated. */
-    files: Map<string, PreviewManifestEntry>;
-    totalBytes: number;
-}
-
-interface PendingManifest {
-    manifestId: string;
-    files: Map<string, PreviewManifestEntry>;
-    /** Hashes declared by the manifest that the blob store does not hold yet. */
-    missing: Set<string>;
-}
 
 export interface PreviewSession {
     id: string;
     ownerUserId: number;
-    /** Content-addressed blob store: sha256 → bytes. */
-    blobs: Map<string, Uint8Array>;
-    blobBytes: number;
-    activeManifest: PreviewManifest | null;
-    pending: PendingManifest | null;
+    /** Active revision number; 0 until the first revision publishes. */
+    revision: number;
+    /** Generated-document layer: served path → bytes (latest revision). */
+    documents: Map<string, Uint8Array>;
+    /** Active revision's full asset map: served path → assetKey. */
+    assetRefs: ReadonlyMap<string, string>;
+    /** Active revision's full fixed map: served path → fixedResourceId. */
+    fixedRefs: ReadonlyMap<string, string>;
+    /** Session-lifetime asset store: assetKey → bytes (immutable per key). */
+    assets: Map<string, Uint8Array>;
+    assetBytes: number;
+    documentBytes: number;
     createdAt: number;
     lastAccessAt: number;
 }
@@ -52,6 +48,7 @@ export interface PreviewSessionLimits {
     maxSessionsPerUser: number;
     maxFilesPerSession: number;
     maxBytesPerSession: number;
+    maxAssetBytes: number;
     globalMaxBytes: number;
     sweepIntervalMs: number;
 }
@@ -61,6 +58,7 @@ export const DEFAULT_PREVIEW_SESSION_LIMITS: PreviewSessionLimits = {
     maxSessionsPerUser: 4,
     maxFilesPerSession: 5000,
     maxBytesPerSession: 200 * 1024 * 1024,
+    maxAssetBytes: 128 * 1024 * 1024,
     globalMaxBytes: 2048 * 1024 * 1024,
     sweepIntervalMs: 60 * 1000,
 };
@@ -83,6 +81,7 @@ export function getLimitsFromEnv(env: NodeJS.ProcessEnv = process.env): PreviewS
         maxFilesPerSession: positiveInt(env.PREVIEW_MAX_FILES_PER_SESSION, d.maxFilesPerSession),
         maxBytesPerSession:
             positiveInt(env.PREVIEW_MAX_BYTES_PER_SESSION_MB, d.maxBytesPerSession / (1024 * 1024)) * 1024 * 1024,
+        maxAssetBytes: positiveInt(env.PREVIEW_MAX_ASSET_BYTES_MB, d.maxAssetBytes / (1024 * 1024)) * 1024 * 1024,
         globalMaxBytes: positiveInt(env.PREVIEW_GLOBAL_MAX_BYTES_MB, d.globalMaxBytes / (1024 * 1024)) * 1024 * 1024,
         sweepIntervalMs: d.sweepIntervalMs,
     };
@@ -91,27 +90,20 @@ export function getLimitsFromEnv(env: NodeJS.ProcessEnv = process.env): PreviewS
 interface PreviewSessionDeps {
     limits: PreviewSessionLimits;
     now: () => number;
-    sha256: (bytes: Uint8Array) => Promise<string>;
-}
-
-async function defaultSha256(bytes: Uint8Array): Promise<string> {
-    const hasher = new Bun.CryptoHasher('sha256');
-    hasher.update(bytes);
-    return hasher.digest('hex');
 }
 
 function buildDefaultDeps(): PreviewSessionDeps {
     return {
         limits: getLimitsFromEnv(process.env),
         now: () => Date.now(),
-        sha256: defaultSha256,
     };
 }
 
 let deps: PreviewSessionDeps = buildDefaultDeps();
 
 const sessions = new Map<string, PreviewSession>();
-let globalBlobBytes = 0;
+/** Sum of documentBytes + assetBytes across every session. */
+let globalBytes = 0;
 let sweeper: ReturnType<typeof setInterval> | null = null;
 
 export function configure(newDeps: Partial<PreviewSessionDeps>): void {
@@ -125,12 +117,12 @@ export function configure(newDeps: Partial<PreviewSessionDeps>): void {
 export function resetDependencies(): void {
     deps = buildDefaultDeps();
     sessions.clear();
-    globalBlobBytes = 0;
+    globalBytes = 0;
     stopPreviewSessionSweeper();
 }
 
 export function getStats(): { sessions: number; globalBytes: number } {
-    return { sessions: sessions.size, globalBytes: globalBlobBytes };
+    return { sessions: sessions.size, globalBytes };
 }
 
 /** The limits currently in effect (route handlers advertise and enforce them). */
@@ -138,8 +130,13 @@ export function getLimits(): PreviewSessionLimits {
     return deps.limits;
 }
 
+/** Bytes a session currently holds against `maxBytesPerSession`. */
+export function sessionBytes(session: PreviewSession): number {
+    return session.documentBytes + session.assetBytes;
+}
+
 function removeSession(session: PreviewSession): void {
-    globalBlobBytes -= session.blobBytes;
+    globalBytes -= sessionBytes(session);
     sessions.delete(session.id);
 }
 
@@ -162,10 +159,13 @@ export function createSession(ownerUserId: number): { previewId: string } {
     const session: PreviewSession = {
         id: crypto.randomUUID(),
         ownerUserId,
-        blobs: new Map(),
-        blobBytes: 0,
-        activeManifest: null,
-        pending: null,
+        revision: 0,
+        documents: new Map(),
+        assetRefs: new Map(),
+        fixedRefs: new Map(),
+        assets: new Map(),
+        assetBytes: 0,
+        documentBytes: 0,
         createdAt: now,
         lastAccessAt: now,
     };
@@ -209,170 +209,6 @@ export function sweepExpired(now: number = deps.now()): number {
     return swept;
 }
 
-const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
-
-export type StageResult =
-    | { manifestId: string; missing: string[]; active: boolean }
-    | { status: 400 | 413; message: string };
-
-/**
- * Stage a new manifest for the session. Paths are normalized (traversal →
- * 400), caps enforced (→ 413), and the returned `missing` lists the hashes the
- * blob store does not hold. When nothing is missing the manifest is promoted
- * immediately; otherwise it replaces any previously pending manifest (the
- * debounced editor refresh means the latest staged manifest always wins).
- */
-export function stageManifest(session: PreviewSession, files: Record<string, PreviewManifestEntry>): StageResult {
-    const limits = deps.limits;
-    const entries = Object.entries(files ?? {});
-    if (entries.length === 0) {
-        return { status: 400, message: 'Manifest is empty' };
-    }
-    if (entries.length > limits.maxFilesPerSession) {
-        return { status: 413, message: `Too many files (max ${limits.maxFilesPerSession})` };
-    }
-
-    const normalized = new Map<string, PreviewManifestEntry>();
-    let totalBytes = 0;
-    for (const [rawPath, entry] of entries) {
-        const path = normalizeContentPath(rawPath);
-        if (path === null) {
-            return { status: 400, message: `Unsafe path in manifest: ${rawPath}` };
-        }
-        const sha256 = typeof entry?.sha256 === 'string' ? entry.sha256.toLowerCase() : '';
-        if (!SHA256_HEX_RE.test(sha256)) {
-            return { status: 400, message: `Invalid sha256 for ${rawPath}` };
-        }
-        const size = entry.size;
-        if (!Number.isFinite(size) || size < 0) {
-            return { status: 400, message: `Invalid size for ${rawPath}` };
-        }
-        normalized.set(path, { sha256, size });
-        totalBytes += size;
-    }
-    if (totalBytes > limits.maxBytesPerSession) {
-        return { status: 413, message: `Manifest too large (max ${limits.maxBytesPerSession} bytes)` };
-    }
-
-    const missing = new Set<string>();
-    for (const entry of normalized.values()) {
-        if (!session.blobs.has(entry.sha256)) missing.add(entry.sha256);
-    }
-
-    const manifestId = crypto.randomUUID();
-    if (missing.size === 0) {
-        promote(session, { manifestId, files: normalized, missing });
-        return { manifestId, missing: [], active: true };
-    }
-    session.pending = { manifestId, files: normalized, missing };
-    return { manifestId, missing: [...missing], active: false };
-}
-
-/** Swap the active manifest reference and reclaim unreferenced blobs. */
-function promote(session: PreviewSession, pending: PendingManifest): void {
-    session.activeManifest = Object.freeze({
-        files: pending.files,
-        totalBytes: [...pending.files.values()].reduce((sum, e) => sum + e.size, 0),
-    });
-    session.pending = null;
-    collectUnreferencedBlobs(session);
-}
-
-function collectUnreferencedBlobs(session: PreviewSession): void {
-    const referenced = new Set<string>();
-    if (session.activeManifest) {
-        for (const entry of session.activeManifest.files.values()) referenced.add(entry.sha256);
-    }
-    if (session.pending) {
-        for (const entry of session.pending.files.values()) referenced.add(entry.sha256);
-    }
-    for (const [hash, bytes] of session.blobs) {
-        if (!referenced.has(hash)) {
-            session.blobs.delete(hash);
-            session.blobBytes -= bytes.length;
-            globalBlobBytes -= bytes.length;
-        }
-    }
-}
-
-export type StoreBlobsResult =
-    | { stored: string[]; mismatched: string[]; active: boolean }
-    | { status: 400 | 409 | 413; message: string };
-
-/**
- * Store uploaded blobs against the pending manifest.
- *
- * Every blob is re-hashed server-side; entries whose recomputed hash differs
- * from the declared one are quarantined in `mismatched` and dropped. All
- * hashing (the only awaits) happens before any mutation, and the mutations run
- * in one synchronous block, so a concurrent `getFile` always observes either
- * the previous manifest or the fully promoted new one — never a half state.
- */
-export async function storeBlobs(
-    session: PreviewSession,
-    manifestId: string,
-    blobs: Array<{ declaredSha256: string; bytes: Uint8Array }>,
-): Promise<StoreBlobsResult> {
-    if (!session.pending || session.pending.manifestId !== manifestId) {
-        return { status: 409, message: 'Manifest superseded' };
-    }
-
-    const hashed: Array<{ declared: string; actual: string; bytes: Uint8Array }> = [];
-    for (const blob of blobs) {
-        const declared = (blob.declaredSha256 ?? '').toLowerCase();
-        hashed.push({ declared, actual: await deps.sha256(blob.bytes), bytes: blob.bytes });
-    }
-
-    // Re-check after the awaits: a newer manifest may have been staged while
-    // hashing was in flight (the client's debounced refresh superseding this
-    // upload round).
-    const pending = session.pending as PendingManifest | null;
-    if (!pending || pending.manifestId !== manifestId) {
-        return { status: 409, message: 'Manifest superseded' };
-    }
-
-    const stored: string[] = [];
-    const mismatched: string[] = [];
-    const toInsert = new Map<string, Uint8Array>();
-    for (const { declared, actual, bytes } of hashed) {
-        if (declared !== actual) {
-            mismatched.push(declared);
-            continue;
-        }
-        if (session.blobs.has(actual) || toInsert.has(actual)) {
-            stored.push(actual);
-            continue;
-        }
-        // Blobs the pending manifest never declared are ignored silently: they
-        // could only bloat the store without ever being served.
-        if (!pending.missing.has(actual)) continue;
-        toInsert.set(actual, bytes);
-        stored.push(actual);
-    }
-
-    const incomingBytes = [...toInsert.values()].reduce((sum, b) => sum + b.length, 0);
-    if (session.blobBytes + incomingBytes > deps.limits.maxBytesPerSession) {
-        return { status: 413, message: `Session over byte budget (max ${deps.limits.maxBytesPerSession})` };
-    }
-    if (!evictOthersForBudget(session, incomingBytes)) {
-        return { status: 413, message: 'Preview storage budget exceeded' };
-    }
-
-    for (const [hash, bytes] of toInsert) {
-        session.blobs.set(hash, bytes);
-        session.blobBytes += bytes.length;
-        globalBlobBytes += bytes.length;
-        pending.missing.delete(hash);
-    }
-
-    let active = false;
-    if (pending.missing.size === 0) {
-        promote(session, pending);
-        active = true;
-    }
-    return { stored, mismatched, active };
-}
-
 /**
  * Evict other sessions (never `current`) in LRU order until `incomingBytes`
  * fits the global budget. Returns false when it cannot fit even with every
@@ -380,7 +216,7 @@ export async function storeBlobs(
  */
 function evictOthersForBudget(current: PreviewSession, incomingBytes: number): boolean {
     const budget = deps.limits.globalMaxBytes;
-    while (globalBlobBytes + incomingBytes > budget) {
+    while (globalBytes + incomingBytes > budget) {
         const lru = lruOf([...sessions.values()].filter(s => s.id !== current.id));
         if (!lru) return false;
         removeSession(lru);
@@ -388,24 +224,277 @@ function evictOthersForBudget(current: PreviewSession, incomingBytes: number): b
     return true;
 }
 
+// =============================================================================
+// Assets (layer 2)
+// =============================================================================
+
 /**
- * Resolve a file from the session's active manifest. Returns `null` for
- * unsafe paths, unknown paths, and sessions with no promoted manifest yet.
+ * `assetKey` wire format: `{assetId}@{contentHashPrefix}` — a 36-char UUID-like
+ * id plus 8–64 hex chars of the content hash the project model already stores.
+ * The server validates the shape and treats the key as opaque; it never hashes.
+ */
+export const ASSET_KEY_RE = /^[0-9a-fA-F-]{36}@[0-9a-f]{8,64}$/;
+
+export interface AssetUploadEntry {
+    key: string;
+    declaredSize: number;
+    bytes: Uint8Array;
+}
+
+export interface StoreAssetsResult {
+    stored: string[];
+    alreadyStored: string[];
+    rejected: Array<{ key: string; reason: string }>;
+}
+
+/**
+ * Store uploaded assets. Keys are immutable: an existing key is reported in
+ * `alreadyStored` and its bytes are NOT replaced (replaced author files get a
+ * new key because their content hash changed — different bytes can never hide
+ * behind an existing identity). Per-entry failures land in `rejected` with a
+ * reason; the whole call is synchronous (bytes arrive pre-buffered), so a
+ * concurrent `getFile` never observes a half-stored batch.
+ */
+export function storeAssets(session: PreviewSession, entries: AssetUploadEntry[]): StoreAssetsResult {
+    const limits = deps.limits;
+    const stored: string[] = [];
+    const alreadyStored: string[] = [];
+    const rejected: Array<{ key: string; reason: string }> = [];
+
+    for (const entry of entries) {
+        const key = entry.key ?? '';
+        if (!ASSET_KEY_RE.test(key)) {
+            rejected.push({ key, reason: 'invalid-key' });
+            continue;
+        }
+        if (session.assets.has(key)) {
+            alreadyStored.push(key);
+            continue;
+        }
+        if (entry.declaredSize !== entry.bytes.length) {
+            rejected.push({ key, reason: 'size-mismatch' });
+            continue;
+        }
+        if (entry.bytes.length > limits.maxAssetBytes) {
+            rejected.push({ key, reason: 'asset-too-large' });
+            continue;
+        }
+        if (sessionBytes(session) + entry.bytes.length > limits.maxBytesPerSession) {
+            rejected.push({ key, reason: 'session-budget-exceeded' });
+            continue;
+        }
+        if (!evictOthersForBudget(session, entry.bytes.length)) {
+            rejected.push({ key, reason: 'global-budget-exceeded' });
+            continue;
+        }
+        session.assets.set(key, entry.bytes);
+        session.assetBytes += entry.bytes.length;
+        globalBytes += entry.bytes.length;
+        stored.push(key);
+    }
+
+    return { stored, alreadyStored, rejected };
+}
+
+// =============================================================================
+// Revisions (layer 3 publication)
+// =============================================================================
+
+/** Minimal fixed-resource surface `applyRevision` validates against. */
+export interface FixedResourceLookup {
+    hasResource(id: string): boolean;
+}
+
+/** Full resolver surface `getFile` reads the fixed layer through. */
+export interface FixedResourceResolver extends FixedResourceLookup {
+    getResource(id: string): { bytes: Uint8Array; size: number } | null;
+}
+
+export interface RevisionMeta {
+    baseRevision: number;
+    nextRevision: number;
+    writes: Array<{ path: string; bytes: Uint8Array }>;
+    deletes: string[];
+    /** FULL replacement map: served path → assetKey. */
+    assetRefs: Record<string, string>;
+    /** FULL replacement map: served path → fixedResourceId. */
+    fixedRefs: Record<string, string>;
+}
+
+export type ApplyRevisionResult =
+    | { revision: number; active: true }
+    | { status: 400 | 413; message: string }
+    | { status: 409; currentRevision: number }
+    | { status: 422; reason: 'missing-assets'; missing: string[] }
+    | { status: 422; reason: 'unknown-fixed-resources'; resources: string[] };
+
+/**
+ * Publish a revision. Validation order per the contract: revision check (409)
+ * → path normalization (400) → asset existence (422) → fixed-resource
+ * existence (422) → file-count / byte budgets (413). All mutations happen in
+ * one synchronous block at the end — no awaits — so a concurrent `getFile`
+ * observes revision N or N+1 in full, never a mixture, and a failed apply
+ * leaves revision N completely intact.
+ */
+export function applyRevision(
+    session: PreviewSession,
+    meta: RevisionMeta,
+    fixedResources: FixedResourceLookup,
+): ApplyRevisionResult {
+    const limits = deps.limits;
+
+    // 1. Revision ordering: stale base or non-consecutive next → conflict.
+    if (meta.baseRevision !== session.revision || meta.nextRevision !== session.revision + 1) {
+        return { status: 409, currentRevision: session.revision };
+    }
+
+    // 2. Normalize every client-supplied path (writes, deletes, both ref-map
+    //    key sets). Any unsafe path rejects the whole revision.
+    const writes = new Map<string, Uint8Array>();
+    for (const write of meta.writes) {
+        const normalized = normalizeContentPath(write.path);
+        if (normalized === null) return { status: 400, message: `Unsafe path in writes: ${write.path}` };
+        writes.set(normalized, write.bytes);
+    }
+    const deletes: string[] = [];
+    for (const rawPath of meta.deletes) {
+        const normalized = normalizeContentPath(rawPath);
+        if (normalized === null) return { status: 400, message: `Unsafe path in deletes: ${rawPath}` };
+        deletes.push(normalized);
+    }
+    const assetRefs = new Map<string, string>();
+    for (const [rawPath, key] of Object.entries(meta.assetRefs ?? {})) {
+        const normalized = normalizeContentPath(rawPath);
+        if (normalized === null) return { status: 400, message: `Unsafe path in assetRefs: ${rawPath}` };
+        assetRefs.set(normalized, key);
+    }
+    const fixedRefs = new Map<string, string>();
+    for (const [rawPath, id] of Object.entries(meta.fixedRefs ?? {})) {
+        const normalized = normalizeContentPath(rawPath);
+        if (normalized === null) return { status: 400, message: `Unsafe path in fixedRefs: ${rawPath}` };
+        fixedRefs.set(normalized, id);
+    }
+
+    // 3. Every referenced asset must exist in the session store (a malformed
+    //    key cannot exist, so it reports as missing too).
+    const missing = [...new Set([...assetRefs.values()].filter(key => !session.assets.has(key)))];
+    if (missing.length > 0) {
+        return { status: 422, reason: 'missing-assets', missing };
+    }
+
+    // 4. Every referenced fixed resource must be manifest-listed.
+    const unknown = [...new Set([...fixedRefs.values()].filter(id => !fixedResources.hasResource(id)))];
+    if (unknown.length > 0) {
+        return { status: 422, reason: 'unknown-fixed-resources', resources: unknown };
+    }
+
+    // 5. Budgets, computed on the post-delta state without mutating anything.
+    //    Deltas apply deletes first, then writes (a path in both is a write).
+    let documentCount = session.documents.size;
+    let documentBytes = session.documentBytes;
+    const affected = new Map<string, Uint8Array | null>();
+    for (const del of deletes) affected.set(del, null);
+    for (const [writePath, bytes] of writes) affected.set(writePath, bytes);
+    for (const [affectedPath, newBytes] of affected) {
+        const oldSize = session.documents.get(affectedPath)?.length;
+        if (newBytes === null) {
+            if (oldSize !== undefined) {
+                documentCount--;
+                documentBytes -= oldSize;
+            }
+        } else if (oldSize !== undefined) {
+            documentBytes += newBytes.length - oldSize;
+        } else {
+            documentCount++;
+            documentBytes += newBytes.length;
+        }
+    }
+    const fileCount = documentCount + assetRefs.size + fixedRefs.size;
+    if (fileCount > limits.maxFilesPerSession) {
+        return { status: 413, message: `Too many files (max ${limits.maxFilesPerSession})` };
+    }
+    if (documentBytes + session.assetBytes > limits.maxBytesPerSession) {
+        return { status: 413, message: `Session over byte budget (max ${limits.maxBytesPerSession} bytes)` };
+    }
+    const byteDelta = documentBytes - session.documentBytes;
+    if (byteDelta > 0 && !evictOthersForBudget(session, byteDelta)) {
+        return { status: 413, message: 'Preview storage budget exceeded' };
+    }
+
+    // 6. Publish: one synchronous block (no awaits) — deletes, then writes,
+    //    then wholesale ref-map replacement, then the revision bump.
+    for (const del of deletes) {
+        const existing = session.documents.get(del);
+        if (existing !== undefined && !writes.has(del)) {
+            session.documents.delete(del);
+            session.documentBytes -= existing.length;
+            globalBytes -= existing.length;
+        }
+    }
+    for (const [writePath, bytes] of writes) {
+        const existing = session.documents.get(writePath);
+        if (existing !== undefined) {
+            session.documentBytes -= existing.length;
+            globalBytes -= existing.length;
+        }
+        session.documents.set(writePath, bytes);
+        session.documentBytes += bytes.length;
+        globalBytes += bytes.length;
+    }
+    session.assetRefs = assetRefs;
+    session.fixedRefs = fixedRefs;
+    session.revision = meta.nextRevision;
+
+    return { revision: session.revision, active: true };
+}
+
+// =============================================================================
+// Serving (three-layer resolution)
+// =============================================================================
+
+export type PreviewFile =
+    | { kind: 'document'; bytes: Uint8Array; contentType: string; isScriptable: boolean }
+    | { kind: 'asset'; bytes: Uint8Array; contentType: string; isScriptable: boolean; etag: string }
+    | { kind: 'fixed'; bytes: Uint8Array; contentType: string; isScriptable: boolean };
+
+/**
+ * Resolve a served path against the active revision: documents →
+ * assetRefs→assets → fixedRefs→manifest → null. Unsafe paths and sessions
+ * without a published revision (revision 0) resolve to null for everything.
  */
 export function getFile(
     session: PreviewSession,
     rawPath: string,
-): { bytes: Uint8Array; contentType: string; isHtml: boolean } | null {
+    fixedResources: FixedResourceResolver,
+): PreviewFile | null {
+    if (session.revision === 0) return null;
     const path = normalizeContentPath(rawPath);
     if (path === null) return null;
-    const manifest = session.activeManifest;
-    if (!manifest) return null;
-    const entry = manifest.files.get(path);
-    if (!entry) return null;
-    const bytes = session.blobs.get(entry.sha256);
-    if (!bytes) return null;
     const contentType = contentTypeFor(path);
-    return { bytes, contentType, isHtml: contentType.startsWith('text/html') };
+    const isScriptable = isScriptableDocumentType(contentType);
+
+    const document = session.documents.get(path);
+    if (document !== undefined) {
+        return { kind: 'document', bytes: document, contentType, isScriptable };
+    }
+
+    const assetKey = session.assetRefs.get(path);
+    if (assetKey !== undefined) {
+        const bytes = session.assets.get(assetKey);
+        if (bytes !== undefined) {
+            return { kind: 'asset', bytes, contentType, isScriptable, etag: assetKey };
+        }
+    }
+
+    const fixedId = session.fixedRefs.get(path);
+    if (fixedId !== undefined) {
+        const resource = fixedResources.getResource(fixedId);
+        if (resource !== null) {
+            return { kind: 'fixed', bytes: resource.bytes, contentType, isScriptable };
+        }
+    }
+
+    return null;
 }
 
 /**
