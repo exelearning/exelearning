@@ -145,21 +145,23 @@ function requireUrlString(field, value) {
     if (typeof value !== 'string' || value.length === 0) {
         throw new Error(`${field} must be a non-empty URL string`);
     }
-    const hasLocation = typeof window !== 'undefined' && window.location;
-    const base = hasLocation ? window.location.href : 'http://localhost/';
-    const expectedOrigin = hasLocation ? window.location.origin : 'http://localhost';
+    const documentOrigin = typeof window !== 'undefined' && window.location ? window.location.origin : null;
+    const base = documentOrigin ? window.location.href : 'http://localhost/';
     let resolved;
     try {
         resolved = new URL(value, base);
     } catch {
         throw new Error(`${field} is not a parseable URL: ${value}`);
     }
-    // Resolve-then-compare: origin-relative values resolve to the current
-    // origin (pass); protocol-relative and absolute cross-origin values resolve
-    // to a foreign origin (throw).
-    if (resolved.origin !== expectedOrigin) {
+    // Enforce same-origin ONLY where the document origin is knowable (browser /
+    // happy-dom). Without a window (pure Node), the origin cannot be determined,
+    // so skip the comparison rather than compare against a fabricated origin.
+    // Resolve-then-compare: origin-relative values resolve to the current origin
+    // (pass); protocol-relative and absolute cross-origin values resolve to a
+    // foreign origin (throw).
+    if (documentOrigin !== null && resolved.origin !== documentOrigin) {
         throw new Error(
-            `${field} must be same-origin (${expectedOrigin}); resolved to ${resolved.origin} from "${value}"`,
+            `${field} must be same-origin (${documentOrigin}); resolved to ${resolved.origin} from "${value}"`,
         );
     }
     return value;

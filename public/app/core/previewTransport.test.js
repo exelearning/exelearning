@@ -197,6 +197,23 @@ describe('validatePreviewHttpConfig', () => {
         ).toThrow(/servingBaseUrl.*same-origin/);
     });
 
+    it('skips the same-origin check when the document origin is unknowable (no window)', () => {
+        // Pure-Node fallback: the origin cannot be determined, so parseability is
+        // still enforced but the origin comparison is skipped (no false reject).
+        const originalWindow = globalThis.window;
+        globalThis.window = undefined;
+        try {
+            const result = validatePreviewHttpConfig({
+                protocolVersion: 2,
+                managementBaseUrl: 'https://any.example/api/preview-session',
+                servingBaseUrl: 'https://any.example/preview',
+            });
+            expect(result.managementBaseUrl).toBe('https://any.example/api/preview-session');
+        } finally {
+            globalThis.window = originalWindow;
+        }
+    });
+
     it('rejects a non-object', () => {
         expect(() => validatePreviewHttpConfig(null)).toThrow(/previewHttp/);
         expect(() => validatePreviewHttpConfig('nope')).toThrow(/previewHttp/);
