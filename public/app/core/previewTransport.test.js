@@ -145,15 +145,56 @@ describe('validatePreviewHttpConfig', () => {
     });
 
     it('accepts optional string→string header and query records', () => {
+        const origin = window.location.origin;
         const result = validatePreviewHttpConfig({
             protocolVersion: 2,
-            managementBaseUrl: 'https://host.example/api/preview-session',
-            servingBaseUrl: 'https://host.example/preview',
+            managementBaseUrl: `${origin}/api/preview-session`,
+            servingBaseUrl: `${origin}/preview`,
             managementHeaders: { 'X-WP-Nonce': 'abc' },
             managementQuery: { cmid: '42', sesskey: 'zzz' },
         });
         expect(result.managementHeaders).toEqual({ 'X-WP-Nonce': 'abc' });
         expect(result.managementQuery).toEqual({ cmid: '42', sesskey: 'zzz' });
+    });
+
+    it('accepts an origin-relative base (resolves to the current origin)', () => {
+        const result = validatePreviewHttpConfig({
+            protocolVersion: 2,
+            managementBaseUrl: '/api/preview-session',
+            servingBaseUrl: '/preview',
+        });
+        expect(result.managementBaseUrl).toBe('/api/preview-session');
+        expect(result.servingBaseUrl).toBe('/preview');
+    });
+
+    it('accepts a same-origin absolute base', () => {
+        const origin = window.location.origin;
+        const result = validatePreviewHttpConfig({
+            protocolVersion: 2,
+            managementBaseUrl: `${origin}/mod/exelearning/preview_session.php`,
+            servingBaseUrl: `${origin}/mod/exelearning/preview.php`,
+        });
+        expect(result.managementBaseUrl).toBe(`${origin}/mod/exelearning/preview_session.php`);
+    });
+
+    it('rejects a cross-origin absolute base (no second preview domain), naming the field', () => {
+        expect(() =>
+            validatePreviewHttpConfig({
+                protocolVersion: 2,
+                managementBaseUrl: 'https://evil.example/api/preview-session',
+                servingBaseUrl: '/preview',
+            }),
+        ).toThrow(/managementBaseUrl.*same-origin/);
+    });
+
+    it('rejects a protocol-relative base that resolves cross-origin, naming the field', () => {
+        expect(() =>
+            validatePreviewHttpConfig({
+                protocolVersion: 2,
+                managementBaseUrl: '/api/preview-session',
+                servingBaseUrl: '//evil.example/preview',
+            }),
+        ).toThrow(/servingBaseUrl.*same-origin/);
     });
 
     it('rejects a non-object', () => {

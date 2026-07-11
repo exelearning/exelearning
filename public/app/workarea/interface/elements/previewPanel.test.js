@@ -197,6 +197,9 @@ describe('PreviewPanelManager', () => {
   });
 
   afterEach(() => {
+    // Cancel any embed-reflow timers a test scheduled so a 400/900ms timer can
+    // never outlive the test and fire against a torn-down/partial media host.
+    manager?._clearEmbedReflowTimers?.();
     vi.restoreAllMocks();
     document.body.innerHTML = '';
     delete window.exeMediaHost;

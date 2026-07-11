@@ -126,8 +126,17 @@ export function validatePreviewHttpConfig(previewHttp) {
 }
 
 /**
- * A non-empty string parseable as a URL relative to the current document
- * (so origin-relative bases like `/api/preview-session` are accepted).
+ * A non-empty string parseable as a URL relative to the current document AND
+ * resolving to the current origin. Origin-relative bases (`/api/preview-session`)
+ * pass; a cross-origin or protocol-relative base (`//evil.example/…`) fails
+ * closed. The preview contract forbids a second/dedicated preview domain (no
+ * subdomain either), and management requests use `credentials: 'same-origin'`,
+ * so a cross-origin base could never authenticate — reject it up front with a
+ * diagnosable message instead of silently failing at request time.
+ *
+ * NB: this same-origin check lives ONLY here (the embedded `isEmbedded` path).
+ * The server and Electron transports never pass `previewHttp`, so they never
+ * validate — the Electron `app://localhost` origin is never compared.
  * @param {string} field
  * @param {*} value
  * @returns {string}
@@ -136,12 +145,22 @@ function requireUrlString(field, value) {
     if (typeof value !== 'string' || value.length === 0) {
         throw new Error(`${field} must be a non-empty URL string`);
     }
-    const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost/';
+    const hasLocation = typeof window !== 'undefined' && window.location;
+    const base = hasLocation ? window.location.href : 'http://localhost/';
+    const expectedOrigin = hasLocation ? window.location.origin : 'http://localhost';
+    let resolved;
     try {
-        // eslint-disable-next-line no-new
-        new URL(value, base);
+        resolved = new URL(value, base);
     } catch {
         throw new Error(`${field} is not a parseable URL: ${value}`);
+    }
+    // Resolve-then-compare: origin-relative values resolve to the current
+    // origin (pass); protocol-relative and absolute cross-origin values resolve
+    // to a foreign origin (throw).
+    if (resolved.origin !== expectedOrigin) {
+        throw new Error(
+            `${field} must be same-origin (${expectedOrigin}); resolved to ${resolved.origin} from "${value}"`,
+        );
     }
     return value;
 }
