@@ -1,9 +1,17 @@
 /**
  * Shared contract for preview transport providers.
  *
- * A provider owns how generated preview files reach the sandboxed iframe
+ * A provider owns how generated preview content reaches the sandboxed iframe
  * (HTTP session, srcdoc, legacy Service Worker) and never touches the DOM:
  * it returns render targets the panel applies.
+ *
+ * prepare()/update() input shape is EXPLICIT per transport — no duck typing:
+ *  - HTTP transport (mode 'http'): the layered shape below
+ *    ({@link LayeredPreviewInput}), produced by
+ *    `SharedExporters.generatePreviewLayered` (serving contract v2).
+ *  - srcdoc and legacy Service Worker transports: a plain object file map
+ *    (`Object<string, ArrayBuffer|Uint8Array|string>`) from
+ *    `SharedExporters.generatePreviewForSW`, unchanged.
  *
  * @typedef {Object} PreviewSession
  * @property {string} id
@@ -14,6 +22,23 @@
  *   opaque-origin sandbox (no allow-same-origin).
  *
  * @typedef {{kind: 'url', url: string} | {kind: 'srcdoc', html: string}} RenderTarget
+ *
+ * @typedef {Object} LayeredPreviewInput Input for the HTTP transport
+ *   (serving contract v2 — three layers with different lifecycles).
+ * @property {Map<string, ArrayBuffer|string>} documents Generated documents
+ *   (page HTML, generated CSS/JS, user themes/iDevices…): bytes, published as
+ *   atomic incremental revisions.
+ * @property {Map<string, {assetId: string, hash: string, size: number, mime: string}>} assetRefs
+ *   Project assets by identity (served path → asset identity); bytes upload
+ *   at most once per session under `${assetId}@${hash16}` keys.
+ * @property {Map<string, string>} fixedRefs Fixed installation resources
+ *   (served path → fixedResourceId); zero bytes transferred — the host
+ *   resolves ids through its build manifest.
+ * @property {(assetId: string) => Promise<Uint8Array|null>} getAssetBytes
+ *   Lazy per-asset byte loader; called only for assets the session is missing.
+ * @property {(fixedResourceId: string) => Promise<Uint8Array|null>} [resolveFixedResource]
+ *   Resolves the bytes behind a fixed id so paths can be demoted to document
+ *   writes when the host manifest does not know the id (422 recovery).
  */
 
 /** Message types exchanged between the preview iframe and the workarea. */
