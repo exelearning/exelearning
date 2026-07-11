@@ -1,0 +1,299 @@
+{
+    "description": "Machine-readable conformance vectors for eXeLearning preview serving contract v2 (doc/development/preview-serving-contract.md). Replay every step, in order, against a host implementation. See README.md for harness semantics.",
+    "protocolVersion": 2,
+    "fixedResources": {
+        "libs/jquery/jquery.min.js": {
+            "path": "libs/jquery/jquery.min.js",
+            "content": "window.jQuery=function(){};"
+        },
+        "theme:base/icon.svg": {
+            "path": "files/perm/themes/base/base/icon.svg",
+            "content": "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>"
+        }
+    },
+    "constants": {
+        "photoKey": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57",
+        "clipKey": "12345678-90ab-4cde-8f01-234567890abc@00112233"
+    },
+    "steps": [
+        {
+            "id": "create-session",
+            "request": { "method": "POST", "path": "/api/preview-session" },
+            "expect": {
+                "status": 201,
+                "body": { "protocolVersion": 2, "revision": 0 }
+            }
+        },
+        {
+            "id": "upload-assets",
+            "request": {
+                "method": "POST",
+                "path": "/api/preview-session/{previewId}/assets",
+                "body": {
+                    "kind": "assets",
+                    "entries": [
+                        { "key": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57", "content": "PHOTO-BYTES-v1" },
+                        { "key": "12345678-90ab-4cde-8f01-234567890abc@00112233", "content": "0123456789" }
+                    ]
+                }
+            },
+            "expect": {
+                "status": 200,
+                "body": {
+                    "stored": [
+                        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57",
+                        "12345678-90ab-4cde-8f01-234567890abc@00112233"
+                    ],
+                    "alreadyStored": [],
+                    "rejected": []
+                }
+            }
+        },
+        {
+            "id": "reupload-asset-immutability",
+            "comment": "Same key, DIFFERENT bytes: reported alreadyStored, bytes NOT replaced (asserted later by serve-asset).",
+            "request": {
+                "method": "POST",
+                "path": "/api/preview-session/{previewId}/assets",
+                "body": {
+                    "kind": "assets",
+                    "entries": [
+                        {
+                            "key": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57",
+                            "content": "PHOTO-BYTES-v2-DIFFERENT"
+                        }
+                    ]
+                }
+            },
+            "expect": {
+                "status": 200,
+                "body": {
+                    "stored": [],
+                    "alreadyStored": ["aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57"],
+                    "rejected": []
+                }
+            }
+        },
+        {
+            "id": "publish-revision-1",
+            "request": {
+                "method": "POST",
+                "path": "/api/preview-session/{previewId}/revisions",
+                "body": {
+                    "kind": "revision",
+                    "meta": {
+                        "baseRevision": 0,
+                        "nextRevision": 1,
+                        "deletes": [],
+                        "assetRefs": {
+                            "content/resources/photo.png": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57",
+                            "media/clip.mp4": "12345678-90ab-4cde-8f01-234567890abc@00112233"
+                        },
+                        "fixedRefs": {
+                            "libs/jquery/jquery.min.js": "libs/jquery/jquery.min.js",
+                            "theme/icon.svg": "theme:base/icon.svg"
+                        }
+                    },
+                    "writes": [
+                        { "path": "index.html", "content": "<html><body>conformance</body></html>" },
+                        {
+                            "path": "img/inline.svg",
+                            "content": "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(2)</script></svg>"
+                        }
+                    ]
+                }
+            },
+            "expect": { "status": 200, "body": { "revision": 1, "active": true } }
+        },
+        {
+            "id": "serve-document",
+            "request": { "method": "GET", "path": "/preview/{previewId}/index.html" },
+            "expect": {
+                "status": 200,
+                "bodyText": "<html><body>conformance</body></html>",
+                "headers": {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "no-store",
+                    "X-Content-Type-Options": "nosniff",
+                    "Referrer-Policy": "no-referrer",
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Security-Policy": { "startsWith": "sandbox allow-scripts allow-popups allow-forms" }
+                }
+            }
+        },
+        {
+            "id": "serve-asset",
+            "comment": "Bytes are the ORIGINAL upload — proves reupload-asset-immutability did not replace them.",
+            "request": { "method": "GET", "path": "/preview/{previewId}/content/resources/photo.png" },
+            "expect": {
+                "status": 200,
+                "bodyText": "PHOTO-BYTES-v1",
+                "headers": {
+                    "Content-Type": "image/png",
+                    "Cache-Control": "no-cache",
+                    "ETag": "\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57\"",
+                    "Accept-Ranges": "bytes",
+                    "Content-Security-Policy": { "absent": true }
+                }
+            }
+        },
+        {
+            "id": "serve-asset-304",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/content/resources/photo.png",
+                "headers": { "If-None-Match": "\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeffff0000@9c41d2e8a1b03f57\"" }
+            },
+            "expect": {
+                "status": 304,
+                "headers": { "X-Content-Type-Options": "nosniff" }
+            }
+        },
+        {
+            "id": "serve-asset-range",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=2-4" }
+            },
+            "expect": {
+                "status": 206,
+                "bodyText": "234",
+                "headers": { "Content-Range": "bytes 2-4/10", "Content-Length": "3" }
+            }
+        },
+        {
+            "id": "serve-asset-range-unsatisfiable",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=99-" }
+            },
+            "expect": {
+                "status": 416,
+                "headers": { "Content-Range": "bytes */10" }
+            }
+        },
+        {
+            "id": "serve-fixed",
+            "request": { "method": "GET", "path": "/preview/{previewId}/libs/jquery/jquery.min.js" },
+            "expect": {
+                "status": 200,
+                "bodyText": "window.jQuery=function(){};",
+                "headers": {
+                    "Cache-Control": "private, max-age=31536000",
+                    "X-Content-Type-Options": "nosniff",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            }
+        },
+        {
+            "id": "serve-fixed-scriptable-svg",
+            "comment": "The sandbox CSP must be emitted on scriptable types from EVERY layer, fixed included.",
+            "request": { "method": "GET", "path": "/preview/{previewId}/theme/icon.svg" },
+            "expect": {
+                "status": 200,
+                "headers": {
+                    "Content-Type": "image/svg+xml; charset=utf-8",
+                    "Cache-Control": "private, max-age=31536000",
+                    "Content-Security-Policy": { "startsWith": "sandbox allow-scripts allow-popups allow-forms" }
+                }
+            }
+        },
+        {
+            "id": "serve-session-scriptable-svg",
+            "request": { "method": "GET", "path": "/preview/{previewId}/img/inline.svg" },
+            "expect": {
+                "status": 200,
+                "headers": {
+                    "Content-Type": "image/svg+xml; charset=utf-8",
+                    "Content-Security-Policy": { "startsWith": "sandbox allow-scripts allow-popups allow-forms" }
+                }
+            }
+        },
+        {
+            "id": "serve-unknown-404",
+            "request": { "method": "GET", "path": "/preview/{previewId}/nope.css" },
+            "expect": {
+                "status": 404,
+                "headers": {
+                    "Cache-Control": "no-store",
+                    "X-Content-Type-Options": "nosniff",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            }
+        },
+        {
+            "id": "serve-traversal-raw",
+            "comment": "A literal ../ is normalized away by URL parsing before it reaches the server; whatever survives must still 404.",
+            "request": { "method": "GET", "path": "/preview/{previewId}/../secret" },
+            "expect": { "status": 404 }
+        },
+        {
+            "id": "serve-traversal-encoded",
+            "comment": "Percent-encoded traversal reaches the server verbatim and must be rejected by path normalization.",
+            "request": { "method": "GET", "path": "/preview/{previewId}/%2e%2e%2fsecret" },
+            "expect": { "status": 404, "headers": { "Cache-Control": "no-store" } }
+        },
+        {
+            "id": "conflicting-revision-409",
+            "comment": "Stale baseRevision (client believes 0, server is at 1).",
+            "request": {
+                "method": "POST",
+                "path": "/api/preview-session/{previewId}/revisions",
+                "body": {
+                    "kind": "revision",
+                    "meta": {
+                        "baseRevision": 0,
+                        "nextRevision": 1,
+                        "deletes": [],
+                        "assetRefs": {},
+                        "fixedRefs": {}
+                    },
+                    "writes": [{ "path": "index.html", "content": "stale" }]
+                }
+            },
+            "expect": {
+                "status": 409,
+                "body": { "reason": "revision-conflict", "currentRevision": 1 }
+            }
+        },
+        {
+            "id": "missing-asset-revision-422",
+            "request": {
+                "method": "POST",
+                "path": "/api/preview-session/{previewId}/revisions",
+                "body": {
+                    "kind": "revision",
+                    "meta": {
+                        "baseRevision": 1,
+                        "nextRevision": 2,
+                        "deletes": [],
+                        "assetRefs": {
+                            "content/resources/ghost.png": "99999999-9999-4999-8999-999999999999@deadbeef"
+                        },
+                        "fixedRefs": {}
+                    },
+                    "writes": []
+                }
+            },
+            "expect": {
+                "status": 422,
+                "body": {
+                    "reason": "missing-assets",
+                    "missing": ["99999999-9999-4999-8999-999999999999@deadbeef"]
+                }
+            }
+        },
+        {
+            "id": "delete-session",
+            "request": { "method": "DELETE", "path": "/api/preview-session/{previewId}" },
+            "expect": { "status": 200, "body": { "success": true } }
+        },
+        {
+            "id": "serve-after-delete-404",
+            "request": { "method": "GET", "path": "/preview/{previewId}/index.html" },
+            "expect": { "status": 404, "headers": { "Cache-Control": "no-store" } }
+        }
+    ]
+}
