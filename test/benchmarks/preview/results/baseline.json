@@ -1,0 +1,361 @@
+{
+  "meta": {
+    "label": "baseline",
+    "date": "2026-07-11T00:12:36.541Z",
+    "gitSha": "939f93f24f700936937f61874119ef2b3ad1276b",
+    "gitBranch": "feat/incremental-preview-revisions",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M5",
+    "totalMemGiB": 24,
+    "nodeVersion": "v26.4.0"
+  },
+  "fixtures": [
+    {
+      "size": "SMALL",
+      "pages": 3,
+      "images": 0,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 0,
+      "firstManifestFileCount": 77,
+      "firstOpenUploadedBytes": 1717712,
+      "memoryUsedJSHeapAfterBuild": 31200000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 238,
+          "refreshMsAll": [
+            238,
+            169,
+            294
+          ],
+          "uploadedBytesMedian": 1717712,
+          "manifestBytesMedian": 8931,
+          "blobBytesMedian": 1708781,
+          "requestCountMedian": 3,
+          "manifestFileCount": 77,
+          "notes": "Full upload of every file; repeated with a fresh session each time."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 579,
+          "refreshMsAll": [
+            579,
+            532,
+            580
+          ],
+          "uploadedBytesMedian": 22117,
+          "manifestBytesMedian": 8931,
+          "blobBytesMedian": 13186,
+          "requestCountMedian": 2,
+          "manifestFileCount": 77,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 608,
+          "refreshMsAll": [
+            608,
+            645,
+            589
+          ],
+          "uploadedBytesMedian": 2119862,
+          "manifestBytesMedian": 9191,
+          "blobBytesMedian": 2110671,
+          "requestCountMedian": 2,
+          "manifestFileCount": 80,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 582,
+          "refreshMsAll": [
+            582,
+            582,
+            582
+          ],
+          "uploadedBytesMedian": 22950,
+          "manifestBytesMedian": 9321,
+          "blobBytesMedian": 13629,
+          "requestCountMedian": 2,
+          "manifestFileCount": 80,
+          "notes": "Blob upload median 13.3 KiB — the 2 MiB image from S3 is NOT re-uploaded (manifest-diff de-dups by hash)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 582,
+          "refreshMsAll": [
+            597,
+            582,
+            581
+          ],
+          "uploadedBytesMedian": 49438,
+          "manifestBytesMedian": 9321,
+          "blobBytesMedian": 40117,
+          "requestCountMedian": 2,
+          "manifestFileCount": 80,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": true,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2000",
+          "lostUpdateReproduced": true,
+          "note": "Upload throttled to 12 KiB/s: A stayed in-flight through its upload, B's refresh hit the isLoading guard and was dropped (1 refresh for 2 edits); the preview still shows rev2000 — rev2001 LOST until the next edit."
+        }
+      }
+    },
+    {
+      "size": "MEDIUM",
+      "pages": 25,
+      "images": 10,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 0,
+      "firstManifestFileCount": 109,
+      "firstOpenUploadedBytes": 4100215,
+      "memoryUsedJSHeapAfterBuild": 47400000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 225,
+          "refreshMsAll": [
+            251,
+            225,
+            222
+          ],
+          "uploadedBytesMedian": 4100215,
+          "manifestBytesMedian": 12586,
+          "blobBytesMedian": 4087629,
+          "requestCountMedian": 3,
+          "manifestFileCount": 109,
+          "notes": "Full upload of every file; repeated with a fresh session each time."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 585,
+          "refreshMsAll": [
+            605,
+            585,
+            581
+          ],
+          "uploadedBytesMedian": 27191,
+          "manifestBytesMedian": 12586,
+          "blobBytesMedian": 14605,
+          "requestCountMedian": 2,
+          "manifestFileCount": 109,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 608,
+          "refreshMsAll": [
+            601,
+            608,
+            660
+          ],
+          "uploadedBytesMedian": 2125098,
+          "manifestBytesMedian": 12846,
+          "blobBytesMedian": 2112252,
+          "requestCountMedian": 2,
+          "manifestFileCount": 112,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 607,
+          "refreshMsAll": [
+            594,
+            610,
+            607
+          ],
+          "uploadedBytesMedian": 28186,
+          "manifestBytesMedian": 12976,
+          "blobBytesMedian": 15210,
+          "requestCountMedian": 2,
+          "manifestFileCount": 112,
+          "notes": "Blob upload median 14.9 KiB — the 2 MiB image from S3 is NOT re-uploaded (manifest-diff de-dups by hash)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 592,
+          "refreshMsAll": [
+            592,
+            591,
+            633
+          ],
+          "uploadedBytesMedian": 384007,
+          "manifestBytesMedian": 12976,
+          "blobBytesMedian": 371031,
+          "requestCountMedian": 2,
+          "manifestFileCount": 112,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": true,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2000",
+          "lostUpdateReproduced": true,
+          "note": "Upload throttled to 12 KiB/s: A stayed in-flight through its upload, B's refresh hit the isLoading guard and was dropped (1 refresh for 2 edits); the preview still shows rev2000 — rev2001 LOST until the next edit."
+        }
+      }
+    },
+    {
+      "size": "LARGE",
+      "pages": 50,
+      "images": 30,
+      "imageBytesEach": 204800,
+      "bigMediaBytes": 52428800,
+      "firstManifestFileCount": 155,
+      "firstOpenUploadedBytes": 61087139,
+      "memoryUsedJSHeapAfterBuild": 139000000,
+      "scenarios": [
+        {
+          "scenario": "S1",
+          "label": "initial preview open (cold session)",
+          "runs": 3,
+          "refreshMsMedian": 439,
+          "refreshMsAll": [
+            523,
+            437,
+            439
+          ],
+          "uploadedBytesMedian": 61087139,
+          "manifestBytesMedian": 17945,
+          "blobBytesMedian": 61069194,
+          "requestCountMedian": 3,
+          "manifestFileCount": 155,
+          "notes": "Full upload of every file; repeated with a fresh session each time."
+        },
+        {
+          "scenario": "S2",
+          "label": "text edit (one word)",
+          "runs": 3,
+          "refreshMsMedian": 772,
+          "refreshMsAll": [
+            778,
+            767,
+            772
+          ],
+          "uploadedBytesMedian": 34172,
+          "manifestBytesMedian": 17945,
+          "blobBytesMedian": 16227,
+          "requestCountMedian": 2,
+          "manifestFileCount": 155,
+          "notes": "Only the edited page HTML should change."
+        },
+        {
+          "scenario": "S3",
+          "label": "add a new ~2 MiB image",
+          "runs": 3,
+          "refreshMsMedian": 803,
+          "refreshMsAll": [
+            797,
+            803,
+            815
+          ],
+          "uploadedBytesMedian": 2132154,
+          "manifestBytesMedian": 18205,
+          "blobBytesMedian": 2113949,
+          "requestCountMedian": 2,
+          "manifestFileCount": 158,
+          "notes": "New image blob must be uploaded once."
+        },
+        {
+          "scenario": "S4",
+          "label": "text edit after adding image",
+          "runs": 3,
+          "refreshMsMedian": 795,
+          "refreshMsAll": [
+            795,
+            794,
+            795
+          ],
+          "uploadedBytesMedian": 35242,
+          "manifestBytesMedian": 18335,
+          "blobBytesMedian": 16907,
+          "requestCountMedian": 2,
+          "manifestFileCount": 158,
+          "notes": "Blob upload median 16.5 KiB — the 2 MiB image from S3 is NOT re-uploaded (manifest-diff de-dups by hash)."
+        },
+        {
+          "scenario": "S5",
+          "label": "rename a page (structural)",
+          "runs": 3,
+          "refreshMsMedian": 1211,
+          "refreshMsAll": [
+            1211,
+            1204,
+            1218
+          ],
+          "uploadedBytesMedian": 846206,
+          "manifestBytesMedian": 18335,
+          "blobBytesMedian": 827871,
+          "requestCountMedian": 2,
+          "manifestFileCount": 158,
+          "notes": "A title change rewrites the shared nav on every page, so all page HTML re-uploads."
+        }
+      ],
+      "lostUpdate": {
+        "burst": {
+          "editsFired": 10,
+          "refreshesFired": 1,
+          "finalExpected": "rev1010",
+          "finalShown": "rev1010",
+          "finalReflected": true
+        },
+        "overlap": {
+          "attempted": true,
+          "inFlightObserved": true,
+          "droppedRefreshObserved": true,
+          "finalExpected": "rev2001",
+          "finalShown": "rev2000",
+          "lostUpdateReproduced": true,
+          "note": "Upload throttled to 12 KiB/s: A stayed in-flight through its upload, B's refresh hit the isLoading guard and was dropped (1 refresh for 2 edits); the preview still shows rev2000 — rev2001 LOST until the next edit."
+        }
+      }
+    }
+  ]
+}
