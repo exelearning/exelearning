@@ -1,7 +1,7 @@
 ---
 id: ADR-0008
 title: "Serve HTTP preview via cookieless capability URLs backed by a content-addressed, server-verified session store"
-status: Proposed
+status: Superseded
 date: 2026-07-09
 deciders:
   - "@erseco"

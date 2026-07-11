@@ -10,7 +10,7 @@ reviewers:
 related:
   issues: []
   prs: [1968]
-  adrs: [ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0012]
+  adrs: [ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0012, ADR-0015]
   sdds: []
 supersedes: []
 superseded_by: []
@@ -28,6 +28,16 @@ In Review
 <!-- The design is implemented on branch `fix/opaque-iframe-external-media`
 (PR #1968) but not yet merged; it stays `In Review` until the PR is accepted,
 after which it becomes `Implemented`. -->
+
+> **Note — transport superseded by [ADR-0015](../adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md).**
+> This design's Summary and provider description mention `srcdoc` as the
+> no-backend transport. ADR-0015 **removed `srcdoc`** as an authored-content
+> transport: privileged contexts (server, Electron, embedded) use opaque HTTP
+> preview, and standalone static/PWA uses a same-origin `static-service-worker`
+> transport documented as a trusted-content mode (not a security boundary). The
+> opaque-origin isolation model and the external-media relay described below are
+> unchanged; only the no-backend transport differs. The body below is preserved
+> as the original design record and is not rewritten.
 
 ## Summary
 

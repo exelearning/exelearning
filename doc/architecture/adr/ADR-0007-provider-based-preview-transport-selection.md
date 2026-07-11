@@ -11,7 +11,7 @@ related:
   issues: []
   prs: [1968]
   sdds: [SDD-0002]
-  adrs: [ADR-0006, ADR-0008, ADR-0011]
+  adrs: [ADR-0006, ADR-0008, ADR-0011, ADR-0015]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -24,6 +24,11 @@ ai_assistance:
 ## Status
 
 Proposed
+
+> **Amended by [ADR-0015](ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md):**
+> the provider set is reduced to `http` + `static-service-worker`; the `srcdoc`
+> and `legacy-sw` override values were removed by ADR-0015. The deterministic,
+> no-silent-downgrade selection principle stands.
 
 ## Context
 

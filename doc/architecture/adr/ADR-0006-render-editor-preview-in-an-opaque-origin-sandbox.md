@@ -11,7 +11,7 @@ related:
   issues: []
   prs: [1968]
   sdds: [SDD-0002]
-  adrs: [ADR-0007, ADR-0009, ADR-0010, ADR-0011]
+  adrs: [ADR-0007, ADR-0009, ADR-0010, ADR-0011, ADR-0015]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -24,6 +24,10 @@ ai_assistance:
 ## Status
 
 Proposed
+
+> **Amended by [ADR-0015](ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md):**
+> the `srcdoc` authored-content transport this record listed (Consequences →
+> Neutral) was removed by ADR-0015; the opaque-origin requirement stands.
 
 ## Context
 
