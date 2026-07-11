@@ -355,47 +355,69 @@ downgrade** to a same-origin document:
 | Runtime | Transport | Notes |
 |---|---|---|
 | Cloud / server editor | **HTTP opaque** | Ephemeral same-origin capability URL `/preview/{id}/*`, opaque via a response-level `Content-Security-Policy: sandbox` header. Full fidelity: real per-page URLs → working intra-content navigation and open-in-new-tab. |
-| Embedded editor (this doc) | **HTTP opaque, served by the host** *(recommended)* → **`srcdoc`** *(zero-config fallback)* | See below. |
-| Static / PWA standalone | **`srcdoc`** | Self-contained opaque iframe; no server. Lower fidelity (parent-bridged navigation, no open-in-new-tab). |
+| Electron | **HTTP opaque** (`app://localhost`) | The same capability-URL model over the `app://` protocol. |
+| Embedded editor (this doc) | **HTTP opaque, served by the host** *(required)* | The host injects a `previewHttp` block (below). Without it the embedded editor **fails closed** — the panel shows an error, never a same-origin preview. |
+| Static / PWA standalone | **`static-service-worker`** *(trusted-content mode)* | Same-origin `/viewer/*` Service Worker. **Not opaque, not a security boundary** — see the warning below. |
 
-See [preview-architecture.md](preview-architecture.md) for the full model and why
-a Service Worker **cannot** back an opaque iframe.
+See [preview-architecture.md](preview-architecture.md) for the full model,
+[ADR-0015](../architecture/adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md)
+for the transport decision, and why a Service Worker **cannot** back an opaque
+iframe. `srcdoc` was removed as an authored-content transport, and
+`previewBasePath` was never implemented — both are gone.
 
-### Recommended: serve the preview from the host (HTTP opaque)
+### Required for embedded editors: serve the preview from the host (HTTP opaque)
 
-By default an embedded editor uses the `srcdoc` transport — **zero configuration,
-opaque-safe, works everywhere** — but with `srcdoc`'s fidelity limits (intra-page
-navigation is bridged through the parent, and open-in-new-tab is unavailable
-because there is no URL).
-
-For a first-class preview (working page-to-page navigation and open-in-new-tab)
-the host should **serve the preview over HTTP** from its own cookieless serving
-primitive (Moodle `tokenpluginfile.php`, WordPress public REST, Omeka S
-`ContentController`, Nextcloud public `Controller`, Procomún capability URL) and
-activate the HTTP transport:
+An embedded editor has no server-less opaque transport, so it **must** be given a
+host serving backend. The host serves the preview over HTTP from its own
+cookieless serving primitive (Moodle `tokenpluginfile.php` / dispatcher,
+WordPress REST, Omeka S `PreviewController`, Nextcloud public `Controller`,
+Procomún capability URL) and activates the transport by injecting a normalized
+`previewHttp` block — **two URLs** (an authenticated management base and an
+authless serving base) plus optional host CSRF/auth carried on every management
+request:
 
 ```jsonc
 {
   "embeddingConfig": {
-    "previewTransport": "http",
-    "previewBasePath": "/mod/exelearning/preview"   // host endpoint (example)
+    "previewHttp": {
+      "protocolVersion": 2,                                          // literal 2; anything else → clear client error
+      "managementBaseUrl": "/mod/exelearning/editor/preview_session.php",  // authenticated (create/assets/revisions/delete); example (Moodle)
+      "servingBaseUrl": "/mod/exelearning/preview.php",              // authless capability serving base (the opaque iframe reads from here)
+      "managementHeaders": { },   // sent on EVERY management request — e.g. { "X-WP-Nonce": "…" } (WordPress), { "X-CSRF-Token": "…" } (Omeka S), { "requesttoken": "…" } (Nextcloud)
+      "managementQuery": { }      // appended to EVERY management request URL — e.g. { "cmid": "…", "sesskey": "…" } (Moodle)
+    }
   }
 }
 ```
 
+The client validates and normalizes `previewHttp` at provider construction and
+**fails closed** (naming the offending field) if it is missing or malformed —
+there is no same-origin fallback. Management requests use
+`credentials: 'same-origin'`; the opaque iframe and serving fetches use
+`credentials: 'omit'`. The provider carries **no** host-specific conditionals —
+a host that cannot expose this shape natively adds a thin server-side dispatcher.
+
 The host implements the **[Preview Serving Contract](preview-serving-contract.md)**
-— the exact endpoints, capability-URL model, and the sandbox-first CSP/headers
-(emitted **verbatim** from core's `previewCspHeader()`, on every scriptable
-document type incl. `image/svg+xml`). The editor's preview **client is reused
-byte-for-byte**; only the server side is host-specific. This is the same opaque
-model the plugins already use to isolate **published** content — extended to the
-authoring preview. A reference endpoint for each plugin ships on its
-`feature/secure-iframe-*` branch.
+— the exact endpoints, capability-URL model, bare-root `302`, canonical `Range`,
+and the sandbox-first CSP/headers (emitted **verbatim** from core's
+`previewCspHeader()`, on every scriptable document type incl. `image/svg+xml`).
+The editor's preview **client is reused byte-for-byte**; only the server side is
+host-specific. This is the same opaque model the plugins already use to isolate
+**published** content — extended to the authoring preview. A reference endpoint
+for each plugin ships on its `feature/secure-iframe-*` branch.
 
 > **Never** serve the preview same-origin (no `allow-same-origin`, no Service
-> Worker serving preview files). Same-origin author JS in an embedded editor can
+> Worker serving preview files) in an embedded editor. Same-origin author JS can
 > reach the LMS/CMS admin session — the exact compromise the opaque origin
 > prevents.
+
+> **Static / PWA standalone is a trusted-content mode, not a security boundary.**
+> With no backend, a standalone build cannot serve an opaque preview, so it uses
+> a same-origin Service Worker. An imported ELPX containing malicious JavaScript
+> may be able to access or modify data belonging to the editor origin, and
+> external media renders directly (no relay). Prefer a dedicated origin, never
+> share an origin with an authenticated application, and warn users before
+> opening untrusted content (ADR-0015).
 
 ## Teacher Mode
 

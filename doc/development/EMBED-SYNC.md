@@ -13,7 +13,7 @@ plugins so each can ship self-contained assets. To stop the copies from drifting
 | Media policy | `exe_media_policy.js` | **eXe core** (`public/app/common/exe_media_bridge/`) | mod, wp, omeka, procomun, nextcloud |
 | Media host | `exe_media_host.js` (raw-postMessage) | **mod_exelearning** | wp, omeka, procomun, nextcloud (core ships a separate SDK-based host fork) |
 | Sandbox PHP | `player_iframe.php` / `class-iframe-sandbox.php` / `IframeSandbox.php` | **mod_exelearning** | wp, omeka |
-| Preview-serving CSP | the preview endpoint's CSP (`class-preview-proxy.php` / `preview.php` / `PreviewController.php` / `preview.ts`) | **eXe core** (`src/shared/security/previewSandbox.ts` `previewCspHeader()`) | mod, wp, omeka, procomun, nextcloud |
+| Preview-serving CSP | the preview endpoint's CSP (`class-preview-http-headers.php` / `preview.php` / `PreviewController.php` / `preview.ts`) | **eXe core** (`src/shared/security/previewSandbox.ts` `previewCspHeader()`) | mod, wp, omeka, procomun, nextcloud |
 
 Changes flow **from core outward**: edit the canonical file, then propagate to the
 mirrors (only the export wrapper and each repo's code style — tabs/Yoda for WP/Omeka,

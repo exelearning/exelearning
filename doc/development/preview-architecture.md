@@ -7,6 +7,11 @@ is embedded, the LMS/CMS admin origin), the preview iframe runs in an
 **opaque origin**: `sandbox="allow-scripts allow-popups allow-forms"` with no
 `allow-same-origin`. No separate subdomain is used — everything is same-origin.
 
+The transport decision and the honest security posture per runtime are recorded
+in [ADR-0015](../architecture/adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md)
+(which refines ADR-0006 and ADR-0007). The one case that is **not** an opaque
+origin — standalone static/PWA — is called out explicitly below.
+
 ## Why the Service Worker preview cannot serve an opaque iframe
 
 The historical preview served a virtual `/viewer/*` filesystem from
@@ -34,12 +39,16 @@ flag"* and assets fall through to the network, receiving the SPA `index.html`
 and failing strict MIME checks). `test/e2e/playwright/specs/preview-sw-opaque-negative.spec.ts`
 documents this behavior as a permanent regression guard.
 
-Two further constraints shape the design:
+This is the central fact behind the transport matrix: **an opaque preview
+requires a real serving backend** (a server, Electron `app://`, or a host
+route). A build with no backend cannot produce an opaque preview at all — its
+only local serving mechanism is a same-origin Service Worker, which is not
+opaque. Two further constraints follow:
 
-- An opaque-origin child **cannot load a parent-created `blob:` URL**, so the
-  only client-side bootstrap that works is `iframe.srcdoc`.
-- An opaque iframe sends **no SameSite cookies**, so any HTTP serving route
-  must be an authless capability URL.
+- An opaque-origin child **cannot load a parent-created `blob:` URL**, so there
+  is no client-side, server-less way to bootstrap an opaque preview.
+- An opaque iframe sends **no SameSite cookies**, so any HTTP serving route must
+  be an authless capability URL.
 
 ## Transports (the provider abstraction)
 
@@ -47,18 +56,21 @@ Two further constraints shape the design:
 transport; `PreviewPanelManager` stays the orchestrator (it owns the DOM and
 the postMessage contract) and delegates transport to the selected provider.
 Selection is deterministic (`public/app/core/previewTransport.js`) — there is
-**no runtime probing and no fallback chain**: an unavailable transport
-surfaces an error instead of silently downgrading to a same-origin preview.
+**no runtime probing and no fallback chain**: an unavailable or misconfigured
+transport surfaces an error instead of silently downgrading to a same-origin
+preview.
 
-| Runtime | Transport | Opaque-safe | Notes |
+Two transports remain (`srcdoc` was removed):
+
+| Runtime | Transport | Opaque | Notes |
 |---|---|---|---|
-| Server (web editor) | `HttpPreviewProvider` | yes | Uploads files to an ephemeral same-origin session, iframe loads `/preview/{id}/index.html`. |
-| Embedded editor (Moodle/WP/Omeka/Procomún) | `SrcdocPreviewProvider` | yes | No backend; self-contained `srcdoc` with inlined assets + postMessage navigation. |
-| Static / PWA standalone | `ServiceWorkerPreviewProvider` (phase 1) → `SrcdocPreviewProvider` (phase 2) | phase-dependent | SW preview is same-origin, not opaque; the phase-2 flag switches the default to srcdoc. |
-| Electron | `ServiceWorkerPreviewProvider` (interim) | no | Renderer is `app://localhost` with `contextIsolation`, not LMS-exposed. A future `ElectronPreviewProvider` will serve `app://localhost/preview/{id}/*`. |
-| Explicit override | `embeddingConfig.previewTransport` = `http` \| `srcdoc` \| `legacy-sw` | — | Escape hatch for hosts; `legacy-sw` restores the old same-origin SW preview. |
+| Server (web editor) | `HttpPreviewProvider` | yes | `previewHttp` defaults to `{basePath}/api/preview-session` (management) + `{basePath}/preview` (serving); iframe loads `/preview/{id}/index.html`. |
+| Electron | `HttpPreviewProvider` (`app://localhost`) | yes | Main process serves `app://localhost/preview/{id}/*` (`protocol.handle` → `electron-preview-handler`), cross-origin to the `app://localhost` renderer, so author JS cannot reach `window.top.electronAPI` ([ADR-0011](../architecture/adr/ADR-0011-serve-electron-preview-over-app-opaque-transport.md)). |
+| Embedded editor (Moodle/WP/Omeka/Nextcloud/Procomún) | `HttpPreviewProvider` via the host's injected `previewHttp` | yes | **Fails closed** when the host supplies no valid `previewHttp` block — the panel shows an error, never a same-origin preview. |
+| Static / PWA standalone | `StaticServiceWorkerPreviewProvider` | **no** | Same-origin `/viewer/*` Service Worker. A **trusted-content compatibility mode, not a security boundary** (`opaqueSafe = false`). Never selected automatically for an embedded editor. |
+| Explicit override | `embeddingConfig.previewTransport` = `http` \| `static-service-worker` | — | Unknown values throw (no fallback). `static-service-worker` inside an **embedded** editor is a **dev-only unsafe opt-in** (playground blueprints only): honored, but the panel renders a visible warning banner; hosts must never set it in production. |
 
-### HTTP transport — same-origin ephemeral sessions (protocol v2)
+### HTTP transport — opaque capability sessions (protocol v2)
 
 - The preview is split into **three layers with different lifecycles**
   ([ADR-0013](../architecture/adr/ADR-0013-sync-http-preview-as-layered-resources-with-atomic-incremental-revisions.md),
@@ -72,22 +84,21 @@ surfaces an error instead of silently downgrading to a same-origin preview.
   documents** (page HTML, generated CSS/JS, user themes) are published as
   atomic incremental revisions (`baseRevision`/`nextRevision`/`writes`/
   `deletes`) — a text edit transfers roughly the changed page, nothing else.
-- Authenticated API (`/api/preview-session`): create a session
-  (`protocolVersion: 2`), `POST …/assets` (once per new asset key),
-  `POST …/revisions` (delta + full `assetRefs`/`fixedRefs` maps), delete on
-  `pagehide`. Revision conflicts return `409` and the client recovers with a
-  document-layer snapshot — assets are never re-uploaded.
-- Authless serving (`/preview/{previewId}/*`): capability URL (server-minted
-  `crypto.randomUUID()`, idle TTL) resolving
-  `documents → session assets → manifest-gated fixed files → 404` against the
-  active revision only. Every response carries
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, a
-  `Permissions-Policy` deny-list, and `Access-Control-Allow-Origin: *` (opaque
-  frames make CORS-mode requests with `Origin: null` — the route is already
-  authless/cookieless, so this adds no exposure). `Cache-Control` is tiered:
-  documents `no-store`, assets `no-cache` + `ETag` (with `304` revalidation
-  and `Range` support for media seeking), fixed resources
-  `private, max-age=31536000`. Scriptable responses (HTML, SVG, XML, XHTML)
+- Authenticated **management** API and authless **serving** capability URL are
+  configured by a normalized `previewHttp` block (two URLs + optional host CSRF
+  via `managementHeaders`/`managementQuery`); the server and Electron derive the
+  same-origin defaults automatically, and embedded hosts inject their own. The
+  full wire contract — create/assets/revisions/delete, the `409` recovery with
+  deletions, the bare-root `302` redirect, canonical `Range`, and the byte-
+  identical sandbox CSP — lives in
+  [preview-serving-contract.md](preview-serving-contract.md).
+- Every serving response carries `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, a `Permissions-Policy` deny-list, and
+  `Access-Control-Allow-Origin: *` (opaque frames make CORS-mode requests with
+  `Origin: null`; the route is authless/cookieless, so this adds no exposure).
+  `Cache-Control` is tiered (documents `no-store`; assets `no-cache` + `ETag`
+  with `304` revalidation and `Range`; fixed resources
+  `private, max-age=31536000`). Scriptable responses (HTML, SVG, XML, XHTML)
   additionally get
   `Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms; …`
   so the document stays opaque even if the capability URL is opened directly.
@@ -96,43 +107,37 @@ surfaces an error instead of silently downgrading to a same-origin preview.
   scope, only invalidated documents are regenerated (byte-diffed against the
   previous revision before upload), and the refresh queue is single-flight
   with coalescing — an edit landing mid-refresh marks a pending rerun instead
-  of being dropped.
+  of being dropped. Adding a new asset (a new export path) invalidates all
+  rendered pages; a same-path content replacement stays asset-only.
 - Sessions are process-local and die on restart; the client transparently
   recreates a session on any `404` (clearing its uploaded-asset bookkeeping).
   Under a future multi-instance deployment this requires sticky sessions.
 - The sandbox tokens and CSP live in `src/shared/security/previewSandbox.ts`
   (re-exported into the browser bundle so the iframe attribute and the response
-  header never drift). PR #1425 (public viewer) should refactor its
-  `publicViewSandbox.ts` onto this shared module when it lands.
+  header never drift).
 
-### Srcdoc transport — self-contained pages
+### Static / PWA standalone — trusted-content Service Worker mode
 
-`SrcdocPreviewProvider` inlines each page (`srcdocInliner.js`): stylesheets and
-their `@import`/`url()` assets (fonts + images, resolved relative to the CSS
-file), scripts, `img`/`srcset`/media/`poster`/`track` sources, and PDF embeds
-(as `data:` URIs rendered by PDF.js). Byte budgets bound the page; over-budget
-assets keep their original reference (they 404 quietly, as before) and a
-dismissible notice is shown. Navigation and document opening use validated
-`postMessage` because there are no real URLs. The editor preview always makes
-Teacher Mode available; since srcdoc has no URL to carry `?exe-teacher=1`, the
-decorator sets `window.__EXE_TEACHER_MODE__ = true` in `<head>` before
-`exe_export.js` runs.
+A pure static build or an offline PWA has **no backend**, so — per the section
+above — it cannot produce an opaque preview. Its only local serving mechanism is
+the same-origin `/viewer/*` Service Worker (`StaticServiceWorkerPreviewProvider`,
+`opaqueSafe = false`). This is a **trusted-content compatibility mode, not a
+security boundary**:
 
-**Srcdoc fidelity limits.** A srcdoc document has no base URL pointing at the
-preview session, and in pure static/PWA mode there is no server (nor a Service
-Worker) hosting the preview files at a fetchable URL. So anything that loads
-resources **at runtime by relative/absolute URL** cannot work in srcdoc:
-- **Runtime MathJax** (`addMathJax = true`): MathJax v4 injects component
-  `<script>`s at runtime whose paths resolve against the (absent) document base.
-  LaTeX still renders in server (HTTP) mode and in exports (server-side
-  pre-rendering); in srcdoc the author should rely on pre-rendered LaTeX.
-- **3D viewer** STL fetch, and other iDevices that `fetch()` relative asset
-  paths at runtime, degrade to their documented fallbacks.
-- Large media beyond the inline budget (see above).
+> **The standalone static/PWA Service Worker preview is not a security sandbox.
+> It is intended for trusted projects. An imported ELPX containing malicious
+> JavaScript may be able to access or modify data belonging to the editor
+> origin.** (ADR-0015)
 
-These are inherent to a server-less, opaque, self-contained document. The HTTP
-transport (server mode) has none of them because every resource is served
-same-origin under the session prefix.
+Because this transport is same-origin, the Y.Doc sanitizer is the only isolation
+there, and **external media renders directly** — there is no relay (the relay
+exists only for the opaque transports; see [External media](#external-media)).
+Deployment guidance (dedicated origin where practical; never a shared
+authenticated origin; warn before opening untrusted ELPX; "no login" does not
+remove the risk) is in ADR-0015. This transport is **never** selected
+automatically for an embedded editor; forcing it there via
+`previewTransport: 'static-service-worker'` is a dev-only unsafe opt-in that
+raises a visible warning banner (`isUnsafeEmbeddedServiceWorker`).
 
 ### Serverless & php-wasm Playgrounds (demo environments)
 
@@ -142,21 +147,23 @@ real HTTP server at all**; the entire site (including any plugin serving route) 
 emulated by a **Service Worker**. Since a Service Worker cannot serve or control an
 opaque-origin document or its subresources (the same limitation as §"Why the Service
 Worker preview cannot serve an opaque iframe"), an opaque iframe pointed at a
-capability URL simply **bypasses the SW and 404s** against the static host.
+host capability URL simply **bypasses the SW and 404s** against the static host.
 
 The environment map is therefore:
 
-- **Editor preview** — unaffected: embedded editors already select the opaque
-  `SrcdocPreviewProvider` (no server needed), so preview stays opaque in a Playground.
-- **Published content** — the CMS flows point an iframe at a server URL (not a
-  client-inlined `srcdoc`), which the Playground cannot serve opaquely. For the demo
-  only, Playgrounds fall back to a **dev-only escape hatch**
-  (`EXELEARNING_UNSAFE_LEGACY_IFRAME`) that renders same-origin. It **must** be off by
-  default, never a normal admin/UI setting, loudly documented as unsafe, and covered by
-  a test proving it is not enabled by default. Every real deployment (cloud, Electron,
-  embedded LMS, static/PWA) stays opaque and never uses it.
+- **Editor preview** — an embedded editor in a Playground has no opaque backend, so
+  it either omits `previewHttp` (and the panel fails closed) or, for a demo only, is
+  pointed at the dev-only `static-service-worker` opt-in with its visible warning
+  banner. Never in production.
+- **Published content** — the CMS flows point an iframe at a host serving route the
+  Playground cannot serve opaquely. For the demo only, the **host plugins** fall back
+  to a plugin-side, published-viewer escape hatch (`EXELEARNING_UNSAFE_LEGACY_IFRAME`)
+  that renders same-origin. This constant is **plugin-side only — eXe core defines no
+  such flag** — and it must be off by default, never a normal admin/UI setting, loudly
+  documented as unsafe, and covered by a test proving it is not enabled by default.
+  Every real deployment (cloud, Electron, embedded LMS) stays opaque and never uses it.
 
-See the host contract and hatch policy in
+See the host contract in
 [preview-serving-contract.md](preview-serving-contract.md); the shared preview CSP is
 drift-checked across every host by the `serving-contract` kind in
 [EMBED-SYNC.md](EMBED-SYNC.md).
@@ -164,12 +171,14 @@ drift-checked across every host by the `serving-contract` kind in
 ## Script-injection parity
 
 The Service Worker injected external-link/PDF/navigation scripts at serve time.
-Opaque transports have no Service Worker, so `previewContentDecorators.js`
-bakes the equivalents into the HTML client-side — for HTTP **before** the
-upload diff (decoration only runs for regenerated documents; decorated bytes
-are what the delta compares and the session serves), for srcdoc at render time
-(the page path is baked per page). The shared exporter output is left
-untouched, so real exports never carry preview-only scripts.
+The opaque HTTP transport has no Service Worker, so `previewContentDecorators.js`
+bakes the equivalents into the HTML client-side, **before** the upload diff
+(decoration only runs for regenerated documents; decorated bytes are what the
+delta compares and the session serves). On the static/PWA `static-service-worker`
+transport the Service Worker still serves the pages, so `preview-sw.js` injects
+the same-origin navigation reporter (`exe-preview-nav`) for parity. The shared
+exporter output is left untouched, so real exports never carry preview-only
+scripts.
 
 ## postMessage contract
 
@@ -180,7 +189,7 @@ frames — and every field is validated (`providerContract.sanitizePagePath`
 rejects protocol URLs, protocol-relative URLs, oversized values and
 root-escaping paths). Message types: `exe-preview-nav` (child→parent, reports
 the rendered page so auto-refresh reloads the same page), `exe-preview-navigate`
-and `exe-preview-open-document` (srcdoc navigation / document opening),
+and `exe-preview-open-document` (in-frame navigation / document opening),
 `exe-download-elpx` (existing), and `exe-print` (parent→child, print modal).
 
 ## Dropped sandbox tokens
@@ -198,9 +207,12 @@ Relative to the old same-origin preview, the opaque sandbox drops:
 ## External media
 
 Cross-origin embeds (YouTube, Vimeo, …) cannot render inside an opaque frame, so
-they are relayed to the trusted parent (the editor) — automatically, **with no
-click**, exactly like the host plugins. Two cooperating mechanisms, both with
-their canonical source in eXe core (`public/app/common/exe_embed_bridge/` and
+on the **opaque transports** they are relayed to the trusted parent (the editor)
+— automatically, **with no click**, exactly like the host plugins. (On the
+same-origin `static-service-worker` transport there is no opacity to defeat, so
+external media renders directly and no relay runs — part of that transport's
+trusted-content posture.) Two cooperating mechanisms, both with their canonical
+source in eXe core (`public/app/common/exe_embed_bridge/` and
 `.../exe_media_bridge/`); the plugins mirror them:
 
 - **Declarative embeds** (plain `<iframe src="youtube…">` in the content) use the
@@ -209,10 +221,9 @@ their canonical source in eXe core (`public/app/common/exe_embed_bridge/` and
   `exe_embed_relay.js` (started once by `previewMediaHost.js` in the editor)
   overlays the real player positioned over that placeholder, tracking scroll and
   resize. No click, in-place — the plugin behavior. The shim is injected into
-  preview pages by the decorators (a same-origin `<script src>` for the HTTP
-  transport; inlined for srcdoc). `exe_media_bridge.js` detects the shim
-  (`window.exeEmbedShim`) and defers, so declarative embeds are never turned into
-  click-placeholders.
+  preview pages by the decorators as a same-origin `<script src>`.
+  `exe_media_bridge.js` detects the shim (`window.exeEmbedShim`) and defers, so
+  declarative embeds are never turned into click-placeholders.
 - **Programmatic media** (the interactive-video iDevice, which drives question
   timing) keeps using the **media bridge** (`exe_media_bridge.js` +
   `exe-media-host.js`) over a `MessageChannel` to a parent-side player. See
@@ -228,38 +239,34 @@ framed in the opaque child.
 Opening the opaque preview **content** directly as a top-level document breaks
 external media: the embed shim only runs when it has a parent
 (`window.parent !== window`), so a standalone tab leaves the raw cross-origin
-iframe (CSP-blocked) and, for srcdoc, has no URL to open at all. So "open in new
-tab" instead opens a same-origin **preview-host page** — `preview-tab.html`
-(source: `public/app/common/preview-tab/preview-tab.html`, served verbatim by an
-explicit route so no dev-server bundler rewrites its classic bridge scripts),
-served at root by the static plugin and copied into static/PWA builds — that
-frames the opaque content in one sandboxed iframe and runs the embed relay,
-becoming the trusted parent that overlays the real player in-place (same topology
-as the editor panel). Being a plain app page it carries **no CSP**, so the relay
-frames the player freely; the framed content stays opaque via its own response CSP
-(HTTP) or the iframe `sandbox` (srcdoc). Selection mirrors the transport
-(`previewPanel.extractToNewTab`):
+iframe (CSP-blocked). So "open in new tab" instead opens a same-origin
+**preview-host page** — `preview-tab.html` (source:
+`public/app/common/preview-tab/preview-tab.html`, served verbatim by an explicit
+route so no dev-server bundler rewrites its classic bridge scripts), served at
+root by the static plugin and copied into static/PWA builds — that frames the
+opaque content in one sandboxed iframe and runs the embed relay, becoming the
+trusted parent that overlays the real player in-place (same topology as the
+editor panel). Being a plain app page it carries **no CSP**, so the relay frames
+the player freely; the framed content stays opaque via its own response CSP.
+Selection mirrors the transport (`previewPanel.extractToNewTab`):
 
-- **HTTP** (server): `preview-tab.html?session={previewId}` — the page frames the
-  capability URL `preview/{previewId}/index.html` directly (session lives server-side).
-- **srcdoc** (static / embedded): the new tab has no project in memory, so the
-  editor (opener) pushes the rendered page HTML over `postMessage`
-  (`exe-preview-tab:render`); navigation and document-open requests are forwarded
-  back to the editor (`exe-preview-tab:forward`), which owns the preview provider
-  and resolves the target page. Same-origin messaging only.
-- **Electron** (legacy service-worker): not opaque — video plays inline — so it
-  keeps opening its `/viewer` entry URL.
+- **HTTP** (server / Electron / embedded): `preview-tab.html?session={previewId}`
+  — the page frames the capability URL `preview/{previewId}/index.html` directly
+  (the session lives server-side).
+- **static-service-worker** (static / PWA standalone): the transport is already
+  same-origin (not opaque), so the tab opens the session's `/viewer` entry URL
+  directly; video plays inline with no relay needed.
 
 The relay is started on the framed iframe's first `load` (like the panel, which
 attaches the relay after the iframe has content) and re-pinged on every (re)load.
 
 ## Roadmap
 
-- **Phase 2**: flip the static bundle sandbox and the `phase2SrcdocDefault`
-  flag so static/PWA standalone uses srcdoc; add a teacher-mode flag for srcdoc
-  (there is no URL to carry `?exe-teacher=1`).
-- **Phase 3**: `ElectronPreviewProvider` serving `app://localhost/preview/{id}/*`.
-- **Plugins**: hosts already ship the same-origin cookieless serving primitive
-  (Moodle `tokenpluginfile.php`, WP public content REST, Omeka `ContentController`,
-  Procomún `/api/v1/elpx/:hash/*`); they can later opt into
-  `previewTransport: 'http'` with a host endpoint instead of srcdoc.
+- **Static/PWA standalone** already runs on the `static-service-worker`
+  transport (trusted-content mode). If a future static deployment needs opaque
+  isolation, it must add a real serving backend (there is no server-less opaque
+  transport).
+- **Hosts** inject `previewHttp` to activate the opaque HTTP transport;
+  end-to-end activation waits on a core editor release that ships
+  `HttpPreviewProvider` + `bundles/preview-fixed-resources.json` (see
+  [preview-serving-contract.md](preview-serving-contract.md)).

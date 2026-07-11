@@ -3,7 +3,9 @@
 This document defines the **canonical contract** a host (an LMS/CMS plugin, the
 Electron desktop app, or any embedder) implements so the eXeLearning editor can
 render **untrusted author HTML/JS** in an **opaque origin** over a real,
-same-origin capability URL — instead of the `srcdoc` fallback.
+same-origin capability URL. It is the transport every backed context uses
+(`srcdoc` was removed as an authored-content transport; see
+[ADR-0015](../architecture/adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md)).
 
 It is the single source of truth mirrored by the platform plugins
 (`mod_exelearning`, `wp-exelearning`, `omeka-s-exelearning`,
@@ -33,11 +35,13 @@ admin origin** (see the security study in
 `lms-untrusted-content-security-paper`). The fix is a browser-enforced **opaque
 origin**: a document served with a response-level
 `Content-Security-Policy: sandbox …` (no `allow-same-origin`). A **Service Worker
-cannot** back an opaque iframe (its subresources bypass the SW), so opacity in a
-serverless context needs the `srcdoc` fallback; **wherever a server exists
-(cloud, Electron, an LMS host) this HTTP contract is preferred** because it gives
-real per-page URLs (working intra-content navigation and open-in-new-tab) *and*
-an opaque origin at the same time.
+cannot** back an opaque iframe (its subresources bypass the SW), so a **serverless
+context (standalone static/PWA) has no opaque transport at all** — it falls back
+to a same-origin Service Worker documented as a trusted-content mode, **not** a
+security boundary ([ADR-0015](../architecture/adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md)).
+**Wherever a server exists (cloud, Electron, an LMS host) this HTTP contract is
+used** because it gives real per-page URLs (working intra-content navigation and
+open-in-new-tab) *and* an opaque origin at the same time.
 
 ## Why v2 (the incremental model)
 
@@ -442,17 +446,23 @@ a canned session (assets + two revisions + a conflict + traversal and
 scriptable-SVG probes) with the expected status codes and headers, so protocol
 semantics — not just the CSP string — stay aligned across hosts.
 
-## What stays on `srcdoc`
+## Standalone static / PWA — trusted-content Service Worker mode
 
 Pure **serverless static / PWA standalone** (opened from a CDN / GitHub Pages /
-`file://`, no backend) has no server and no SW that can serve an opaque document,
-so it keeps the self-contained `iframe.srcdoc` transport
-([preview-architecture.md](preview-architecture.md)). Its lower fidelity
-(parent-bridged intra-content navigation, no open-in-new-tab) is confined to that
-one context. Every context with a server (cloud, Electron, embedded LMS) uses
-this HTTP contract instead. The srcdoc transport keeps consuming the full
-in-memory file map (`generateForPreview`) — the layered pipeline is specific to
-this HTTP contract and must not change srcdoc/static behavior.
+`file://`, no backend) has no server that can serve an opaque document, so it has
+**no opaque transport at all**. It falls back to a **same-origin `/viewer/*`
+Service Worker** (`StaticServiceWorkerPreviewProvider`, `opaqueSafe = false`)
+documented as a **trusted-content compatibility mode, not a security boundary**:
+an imported ELPX with malicious JavaScript may reach data belonging to the editor
+origin, and external media renders directly (no relay). This is confined to the
+one no-backend context; every context with a server (cloud, Electron, embedded
+LMS) uses this HTTP contract, which is opaque. See
+[ADR-0015](../architecture/adr/ADR-0015-opaque-http-preview-in-privileged-contexts-and-trusted-static-service-worker.md)
+for the transport decision, the full security statement, and deployment guidance,
+and [preview-architecture.md](preview-architecture.md) for the model. The
+static Service Worker transport consumes the full in-memory file map
+(`generateForPreview`) — the layered pipeline is specific to this HTTP contract
+and must not change the static transport's behavior.
 
 ## php-wasm Playgrounds (demo environments) — the dev-only escape hatch
 
@@ -463,14 +473,17 @@ bypasses that SW (opaque origins are not SW-controlled — the same reason a SW 
 serve preview), so neither this HTTP contract nor a plugin's real serving route can
 deliver opaque content there.
 
-For **published-content** demos, whose flows point an iframe at a server URL (not a
-client-inlined `srcdoc`), Playgrounds therefore fall back to a **dev-only escape
-hatch** — `EXELEARNING_UNSAFE_LEGACY_IFRAME`, which renders same-origin. This hatch
-**must**: be off by default, never be exposed as a normal admin/UI setting, be loudly
-documented as unsafe, and be covered by a test proving it is not enabled by default.
-It exists **only** for php-wasm demo environments; every real deployment (cloud,
-Electron, embedded LMS, static/PWA) stays opaque. Editor *preview* is unaffected —
-embedded editors already pick the opaque `srcdoc` transport, which needs no server.
+For **published-content** demos, whose flows point an iframe at a server URL,
+Playgrounds therefore fall back to a **dev-only escape hatch** —
+`EXELEARNING_UNSAFE_LEGACY_IFRAME`, which renders same-origin. This constant is
+**plugin-side only — eXe core defines no such flag** — and it **must**: be off by
+default, never be exposed as a normal admin/UI setting, be loudly documented as
+unsafe, and be covered by a test proving it is not enabled by default. It exists
+**only** for the plugins' php-wasm published-content demos; every real deployment
+(cloud, Electron, embedded LMS) stays opaque. Editor *preview* has no server-less
+opaque transport: an embedded editor without a valid `previewHttp` block **fails
+closed**, and only a dev-only `previewTransport: 'static-service-worker'` opt-in
+(with a visible warning banner) renders a preview in a Playground.
 
 See also: [embedding.md](embedding.md),
 [preview-architecture.md](preview-architecture.md),
