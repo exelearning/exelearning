@@ -792,3 +792,42 @@ describe('BrowserAssetProvider', () => {
         });
     });
 });
+
+describe('BrowserAssetProvider listAssetMetadata hash/size passthrough (layered preview)', () => {
+    it('exposes the Yjs content hash and size when present', async () => {
+        const manager = {
+            getAllAssetsMetadata: () => [
+                { id: 'a1', filename: 'photo.png', folderPath: 'img', mime: 'image/png', hash: 'abc123', size: 42 },
+                { id: 'a2', filename: 'no-hash.png', mime: 'image/png' },
+            ],
+        };
+        const provider = new BrowserAssetProvider(manager as any);
+
+        const list = await provider.listAssetMetadata();
+
+        expect(list[0]).toEqual({
+            id: 'a1',
+            filename: 'photo.png',
+            folderPath: 'img',
+            mime: 'image/png',
+            hash: 'abc123',
+            size: 42,
+        });
+        expect(list[1].hash).toBeUndefined();
+        expect(list[1].size).toBeUndefined();
+    });
+
+    it('never coerces non-string hashes or non-numeric sizes', async () => {
+        const manager = {
+            getAllAssetsMetadata: () => [
+                { id: 'a1', filename: 'photo.png', mime: 'image/png', hash: 12345, size: 'big' },
+            ],
+        };
+        const provider = new BrowserAssetProvider(manager as any);
+
+        const list = await provider.listAssetMetadata();
+
+        expect(list[0].hash).toBeUndefined();
+        expect(list[0].size).toBeUndefined();
+    });
+});

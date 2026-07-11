@@ -5,11 +5,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
+import { resolveFixedResourceBytes, sha256HexOf } from '../utils/previewLayers';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
     ExportPage,
+    PreviewProvenance,
+    PreviewResourceGroupId,
     ResourceProvider,
     AssetProvider,
     ZipProvider,
@@ -2900,5 +2903,461 @@ describe('Html5Exporter — internal link round-trip (#1927)', () => {
         expect(indexHtml).not.toContain('exe-node:');
         expect(aboutHtml).toContain('href="../index.html"');
         expect(aboutHtml).not.toContain('exe-node:');
+    });
+});
+
+// =============================================================================
+// Layered preview generation (serving contract v2)
+// =============================================================================
+
+/** Resource provider with the provenance seam; every group defaults to base. */
+class ProvenancedResourceProvider extends MockResourceProvider {
+    provenanceByKind: Record<string, PreviewProvenance> = {
+        theme: 'base',
+        idevice: 'base',
+        baseLibraries: 'base',
+        libraryFiles: 'base',
+        contentCss: 'base',
+        logo: 'base',
+        globalFonts: 'base',
+    };
+
+    async getPreviewProvenance(group: PreviewResourceGroupId): Promise<PreviewProvenance> {
+        return this.provenanceByKind[group.kind] ?? 'unknown';
+    }
+
+    async fetchExeLogo(): Promise<Buffer | null> {
+        return Buffer.from('logo-bytes');
+    }
+}
+
+/** Asset provider backed by metadata entries + lazy blob loads (tracked). */
+class LayeredAssetProvider extends MockAssetProvider {
+    metadata: Array<{ id: string; filename: string; folderPath?: string; mime: string; hash?: string; size?: number }> =
+        [];
+    bytesById = new Map<string, Uint8Array>();
+    getAssetCalls: string[] = [];
+
+    addAsset(
+        entry: { id: string; filename: string; folderPath?: string; mime: string; hash?: string; size?: number },
+        bytes?: Uint8Array,
+    ): void {
+        this.metadata.push(entry);
+        if (bytes) this.bytesById.set(entry.id, bytes);
+    }
+
+    async listAssetMetadata() {
+        return this.metadata;
+    }
+
+    async getAsset(assetId: string): Promise<any> {
+        this.getAssetCalls.push(assetId);
+        const bytes = this.bytesById.get(assetId);
+        const meta = this.metadata.find(m => m.id === assetId);
+        if (!bytes || !meta) return null;
+        return {
+            id: assetId,
+            filename: meta.filename,
+            originalPath: `${assetId}/${meta.filename}`,
+            folderPath: meta.folderPath || '',
+            mime: meta.mime,
+            data: bytes,
+        };
+    }
+
+    // v1-compatible full listing so generateForPreview covers the same assets.
+    async getAllAssets(): Promise<any> {
+        return this.metadata
+            .filter(m => this.bytesById.has(m.id))
+            .map(m => ({
+                id: m.id,
+                filename: m.filename,
+                originalPath: `${m.id}/${m.filename}`,
+                folderPath: m.folderPath,
+                mime: m.mime,
+                data: Buffer.from(this.bytesById.get(m.id)!),
+            }));
+    }
+}
+
+function toBytes(value: ArrayBuffer | Uint8Array | string | undefined): Uint8Array {
+    if (value === undefined) return new Uint8Array(0);
+    if (typeof value === 'string') return new TextEncoder().encode(value);
+    return value instanceof Uint8Array ? value : new Uint8Array(value);
+}
+
+describe('Html5Exporter.generateForPreviewLayered (serving contract v2)', () => {
+    const ASSET_UUID = '9c41d2e8-a1b0-4f57-8123-4567890abcde';
+    const ASSET_HASH = 'f0e1d2c3b4a59687f0e1d2c3b4a59687f0e1d2c3b4a59687f0e1d2c3b4a59687';
+
+    function createHarness(options: { metadata?: Partial<ExportMetadata>; pages?: ExportPage[] } = {}) {
+        const document = new MockDocument(options.metadata || {}, options.pages || samplePages);
+        const resources = new ProvenancedResourceProvider();
+        const assets = new LayeredAssetProvider();
+        const zip = new MockZipProvider();
+        const exporter = new Html5Exporter(
+            document,
+            resources as unknown as ResourceProvider,
+            assets as unknown as AssetProvider,
+            zip,
+        );
+        return { document, resources, assets, zip, exporter };
+    }
+
+    describe('layer classification', () => {
+        it('routes base-provenance resources through fixedRefs (zero bytes transferred)', async () => {
+            const h = createHarness();
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(result.fixedRefs.get('theme/style.css')).toBe('theme:base/style.css');
+            expect(result.fixedRefs.get('theme/style.js')).toBe('theme:base/style.js');
+            expect(result.fixedRefs.get('libs/jquery/jquery.min.js')).toBe('libs/jquery/jquery.min.js');
+            expect(result.fixedRefs.get('libs/common.js')).toBe('libs/common.js');
+            expect(result.fixedRefs.get('content/css/base.css')).toBe('content/css/base.css');
+            expect(result.fixedRefs.get('content/img/exe_powered_logo.png')).toBe('content/img/exe_powered_logo.png');
+
+            // Fixed files never ride the document layer.
+            for (const path of result.fixedRefs.keys()) {
+                expect(result.documents.has(path)).toBe(false);
+            }
+        });
+
+        it('renders pages and the localized i18n file into the document layer', async () => {
+            const h = createHarness();
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(typeof result.documents.get('index.html')).toBe('string');
+            expect(result.documents.get('index.html') as string).toContain('Welcome to the course.');
+            expect(result.documents.get('html/chapter-1.html') as string).toContain('This is chapter 1.');
+            // common_i18n.js is generated per language → ALWAYS a document.
+            expect(result.documents.has('libs/common_i18n.js')).toBe(true);
+            expect(result.fixedRefs.has('libs/common_i18n.js')).toBe(false);
+        });
+
+        it('routes session-provenance themes through the document layer (user theme shadowing)', async () => {
+            const h = createHarness();
+            h.resources.provenanceByKind.theme = 'session';
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(result.documents.has('theme/style.css')).toBe(true);
+            expect(result.fixedRefs.has('theme/style.css')).toBe(false);
+        });
+
+        it('treats unknown provenance as session content (doubt → documents)', async () => {
+            const h = createHarness();
+            h.resources.provenanceByKind.theme = 'unknown';
+            const result = await h.exporter.generateForPreviewLayered();
+            expect(result.documents.has('theme/style.css')).toBe(true);
+        });
+
+        it('treats providers without the provenance seam as fully dynamic', async () => {
+            const document = new MockDocument({}, samplePages);
+            const resources = new MockResourceProvider(); // no getPreviewProvenance
+            const exporter = new Html5Exporter(
+                document,
+                resources as unknown as ResourceProvider,
+                new LayeredAssetProvider() as unknown as AssetProvider,
+                new MockZipProvider(),
+            );
+            const result = await exporter.generateForPreviewLayered();
+
+            expect(result.fixedRefs.size).toBe(0);
+            expect(result.documents.has('theme/style.css')).toBe(true);
+            expect(result.documents.has('libs/jquery/jquery.min.js')).toBe(true);
+            expect(result.documents.has('content/css/base.css')).toBe(true);
+        });
+    });
+
+    describe('asset layer', () => {
+        it('references assets by identity without reading any blob', async () => {
+            const h = createHarness();
+            h.assets.addAsset(
+                { id: ASSET_UUID, filename: 'photo.png', folderPath: '', mime: 'image/png', hash: ASSET_HASH, size: 3 },
+                new Uint8Array([1, 2, 3]),
+            );
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(result.assetRefs.get('content/resources/photo.png')).toEqual({
+                assetId: ASSET_UUID,
+                hash: ASSET_HASH,
+                size: 3,
+                mime: 'image/png',
+            });
+            expect(result.documents.has('content/resources/photo.png')).toBe(false);
+            expect(h.assets.getAssetCalls).toEqual([]);
+        });
+
+        it('hashes a metadata entry without a hash on demand (that one asset, never a sweep)', async () => {
+            const h = createHarness();
+            const hashlessId = '11111111-2222-4333-8444-555555555555';
+            const bytes = new Uint8Array([9, 8, 7]);
+            h.assets.addAsset(
+                { id: ASSET_UUID, filename: 'a.png', folderPath: '', mime: 'image/png', hash: ASSET_HASH, size: 3 },
+                new Uint8Array([1, 2, 3]),
+            );
+            h.assets.addAsset({ id: hashlessId, filename: 'b.png', folderPath: '', mime: 'image/png' }, bytes);
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(h.assets.getAssetCalls).toEqual([hashlessId]);
+            expect(result.assetRefs.get('content/resources/b.png')).toEqual({
+                assetId: hashlessId,
+                hash: await sha256HexOf(bytes),
+                size: 3,
+                mime: 'image/png',
+            });
+        });
+
+        it('ships legacy non-UUID asset ids through the document layer', async () => {
+            const h = createHarness();
+            h.assets.addAsset(
+                {
+                    id: 'legacy-name.png',
+                    filename: 'legacy-name.png',
+                    folderPath: '',
+                    mime: 'image/png',
+                    hash: ASSET_HASH,
+                },
+                new Uint8Array([4, 5]),
+            );
+            const result = await h.exporter.generateForPreviewLayered();
+
+            expect(result.assetRefs.size).toBe(0);
+            expect(toBytes(result.documents.get('content/resources/legacy-name.png'))).toEqual(new Uint8Array([4, 5]));
+        });
+
+        it('falls back to document-layer bytes when the provider cannot list metadata', async () => {
+            const document = new MockDocument({}, samplePages);
+            const assets = new MockAssetProviderWithForEach();
+            assets.addAsset(ASSET_UUID, 'photo.png', 'image/png', Buffer.from([1, 2, 3]));
+            const exporter = new Html5Exporter(
+                document,
+                new ProvenancedResourceProvider() as unknown as ResourceProvider,
+                assets as unknown as AssetProvider,
+                new MockZipProvider(),
+            );
+            const result = await exporter.generateForPreviewLayered();
+
+            expect(result.assetRefs.size).toBe(0);
+            expect(toBytes(result.documents.get('content/resources/photo.png'))).toEqual(new Uint8Array([1, 2, 3]));
+        });
+    });
+
+    describe('dirty-scope regeneration', () => {
+        it('re-renders only dirty pages and copies clean pages from previousDocuments', async () => {
+            const h = createHarness();
+            const first = await h.exporter.generateForPreviewLayered();
+
+            const prev = new Map(first.documents);
+            prev.set('index.html', '<sentinel-index>');
+
+            const h2 = createHarness(); // fresh exporter instance per refresh, as in production
+            const second = await h2.exporter.generateForPreviewLayered({
+                dirtyPages: new Set(['page-2']),
+                previousDocuments: prev,
+            });
+
+            // Clean page: copied verbatim from the previous round.
+            expect(second.documents.get('index.html')).toBe('<sentinel-index>');
+            // Dirty page: freshly rendered.
+            expect(second.documents.get('html/chapter-1.html') as string).toContain('This is chapter 1.');
+        });
+
+        it('re-renders index.html when the first page is dirty', async () => {
+            const h = createHarness();
+            const first = await h.exporter.generateForPreviewLayered();
+            const prev = new Map(first.documents);
+            prev.set('index.html', '<sentinel-index>');
+            prev.set('html/chapter-1.html', '<sentinel-chapter>');
+
+            const h2 = createHarness();
+            const second = await h2.exporter.generateForPreviewLayered({
+                dirtyPages: new Set(['page-1']),
+                previousDocuments: prev,
+            });
+
+            expect(second.documents.get('index.html') as string).toContain('Welcome to the course.');
+            expect(second.documents.get('html/chapter-1.html')).toBe('<sentinel-chapter>');
+        });
+
+        it('renders everything when previousDocuments is missing (nothing to reuse)', async () => {
+            const h = createHarness();
+            const result = await h.exporter.generateForPreviewLayered({ dirtyPages: new Set() });
+            expect(result.documents.get('index.html') as string).toContain('Welcome to the course.');
+            expect(result.documents.get('html/chapter-1.html') as string).toContain('This is chapter 1.');
+        });
+
+        it('renders a clean page whose entry is missing from previousDocuments', async () => {
+            const h = createHarness();
+            const first = await h.exporter.generateForPreviewLayered();
+            const prev = new Map(first.documents);
+            prev.delete('html/chapter-1.html');
+
+            const h2 = createHarness();
+            const second = await h2.exporter.generateForPreviewLayered({
+                dirtyPages: new Set<string>(),
+                previousDocuments: prev,
+            });
+            expect(second.documents.get('html/chapter-1.html') as string).toContain('This is chapter 1.');
+        });
+
+        it('copies search_index.js when no page is dirty and regenerates it when any page is', async () => {
+            const h = createHarness({ metadata: { addSearchBox: true } });
+            const first = await h.exporter.generateForPreviewLayered();
+            expect(first.documents.has('search_index.js')).toBe(true);
+
+            const prev = new Map(first.documents);
+            prev.set('search_index.js', '<sentinel-search>');
+
+            const clean = createHarness({ metadata: { addSearchBox: true } });
+            const cleanResult = await clean.exporter.generateForPreviewLayered({
+                dirtyPages: new Set<string>(),
+                previousDocuments: prev,
+            });
+            expect(cleanResult.documents.get('search_index.js')).toBe('<sentinel-search>');
+
+            const dirty = createHarness({ metadata: { addSearchBox: true } });
+            const dirtyResult = await dirty.exporter.generateForPreviewLayered({
+                dirtyPages: new Set(['page-1']),
+                previousDocuments: prev,
+            });
+            expect(dirtyResult.documents.get('search_index.js') as string).toContain('exeSearchData');
+        });
+    });
+
+    describe('base.css lifecycle', () => {
+        it('mutates base.css into a document when LaTeX is pre-rendered this round', async () => {
+            const h = createHarness();
+            const result = await h.exporter.generateForPreviewLayered({
+                preRenderLatex: async (html: string) => ({ html, hasLatex: true, latexRendered: true, count: 1 }),
+            });
+
+            expect(result.fixedRefs.has('content/css/base.css')).toBe(false);
+            const css = new TextDecoder().decode(toBytes(result.documents.get('content/css/base.css')));
+            expect(css).toContain('/* base css */');
+            expect(css).toContain('Pre-rendered LaTeX');
+        });
+
+        it('keeps serving a previously mutated base.css byte-for-byte (sticky)', async () => {
+            const stickyCss =
+                '/* base css */\n/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */\n.exe-math-rendered {}';
+            const prev = new Map<string, ArrayBuffer | string>([
+                ['index.html', '<sentinel-index>'],
+                ['html/chapter-1.html', '<sentinel-chapter>'],
+                ['content/css/base.css', stickyCss],
+            ]);
+
+            const h = createHarness();
+            const result = await h.exporter.generateForPreviewLayered({
+                dirtyPages: new Set<string>(),
+                previousDocuments: prev,
+            });
+
+            expect(result.fixedRefs.has('content/css/base.css')).toBe(false);
+            expect(result.documents.get('content/css/base.css')).toBe(stickyCss);
+        });
+    });
+
+    describe('ELPX download support', () => {
+        it('emits the ELPX manifest as a document and injects the download scripts', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Intro',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a href="exe-package:elp">download</a></p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            const h = createHarness({ pages });
+            const result = await h.exporter.generateForPreviewLayered();
+
+            const manifest = result.documents.get('libs/elpx-manifest.js') as string;
+            expect(manifest).toContain('__ELPX_MANIFEST__');
+            expect(manifest).toContain('index.html');
+            expect(result.documents.get('index.html') as string).toContain('libs/elpx-manifest.js');
+        });
+    });
+
+    describe('byte-identical generateForPreview regression', () => {
+        function createRegressionHarness() {
+            const h = createHarness();
+            h.assets.addAsset(
+                { id: ASSET_UUID, filename: 'photo.png', folderPath: '', mime: 'image/png', hash: ASSET_HASH, size: 3 },
+                new Uint8Array([1, 2, 3]),
+            );
+            return h;
+        }
+
+        it('generateForPreview keeps its exact v1 output shape (characterization)', async () => {
+            const h = createRegressionHarness();
+            const files = await h.exporter.generateForPreview();
+
+            expect([...files.keys()].sort()).toEqual([
+                'content/css/base.css',
+                'content/img/exe_powered_logo.png',
+                'content/resources/photo.png',
+                'html/chapter-1.html',
+                'index.html',
+                'libs/common.js',
+                'libs/common_i18n.js',
+                'libs/jquery/jquery.min.js',
+                'theme/style.css',
+                'theme/style.js',
+            ]);
+            // Spot byte checks (values, not just keys).
+            expect(new TextDecoder().decode(files.get('content/css/base.css'))).toBe('/* base css */');
+            expect(new TextDecoder().decode(files.get('theme/style.css'))).toBe('/* theme css */');
+            expect(new Uint8Array(files.get('content/resources/photo.png')!)).toEqual(new Uint8Array([1, 2, 3]));
+            expect(new TextDecoder().decode(files.get('index.html'))).toContain('<!DOCTYPE html');
+        });
+
+        it('the layered result reproduces the full v1 file map (documents ∪ resolved refs)', async () => {
+            const v1Harness = createRegressionHarness();
+            const v1 = await v1Harness.exporter.generateForPreview();
+
+            const layeredHarness = createRegressionHarness();
+            const layered = await layeredHarness.exporter.generateForPreviewLayered();
+
+            const layeredPaths = [
+                ...layered.documents.keys(),
+                ...layered.assetRefs.keys(),
+                ...layered.fixedRefs.keys(),
+            ].sort();
+            expect(layeredPaths).toEqual([...v1.keys()].sort());
+
+            for (const [path, buffer] of v1) {
+                const expected = new Uint8Array(buffer);
+                let actual: Uint8Array;
+                if (layered.documents.has(path)) {
+                    actual = toBytes(layered.documents.get(path));
+                } else if (layered.fixedRefs.has(path)) {
+                    const bytes = await resolveFixedResourceBytes(
+                        layeredHarness.resources as unknown as ResourceProvider,
+                        layered.fixedRefs.get(path)!,
+                    );
+                    actual = toBytes(bytes ?? undefined);
+                } else {
+                    const ref = layered.assetRefs.get(path)!;
+                    const asset = await layeredHarness.assets.getAsset(ref.assetId);
+                    actual = toBytes(asset?.data);
+                }
+                expect(actual).toEqual(expected);
+            }
+        });
     });
 });

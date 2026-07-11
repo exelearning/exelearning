@@ -50,10 +50,11 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { resolveFixedResourceBytes } from '../utils/previewLayers';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
-import type { ExportOptions } from '../interfaces';
+import type { ExportOptions, LayeredAssetRef, LayeredPreviewOptions } from '../interfaces';
 
 /**
  * Yjs Document Manager interface (browser class)
@@ -804,6 +805,117 @@ export async function generatePreviewForSW(
     }
 }
 
+/**
+ * Result of generatePreviewLayered (HTTP preview transport, contract v2).
+ *
+ * `getAssetBytes` loads a single asset's bytes lazily — the transport calls
+ * it only for assets the server session is missing. `resolveFixedResource`
+ * resolves the bytes behind a fixed-resource id so the transport can demote
+ * paths to document writes when the host manifest does not know an id.
+ */
+export interface LayeredPreviewFilesResult {
+    success: boolean;
+    documents?: Map<string, ArrayBuffer | string>;
+    assetRefs?: Map<string, LayeredAssetRef>;
+    fixedRefs?: Map<string, string>;
+    getAssetBytes?: (assetId: string) => Promise<Uint8Array | null>;
+    resolveFixedResource?: (fixedResourceId: string) => Promise<Uint8Array | null>;
+    error?: string;
+}
+
+/**
+ * Generate the layered preview (serving contract v2) for the HTTP transport.
+ *
+ * Same adapter wiring as {@link generatePreviewForSW}; the srcdoc/static and
+ * legacy Service Worker transports keep using generatePreviewForSW unchanged.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param options - Layered options (theme, dirtyPages, previousDocuments)
+ */
+export async function generatePreviewLayered(
+    documentManager: YjsDocumentManagerLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | null,
+    options?: LayeredPreviewOptions,
+): Promise<LayeredPreviewFilesResult> {
+    try {
+        if (!documentManager) {
+            throw new Error('[SharedExporters] documentManager is required for preview');
+        }
+
+        // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+        const document = new YjsDocumentAdapter(documentManager as any);
+
+        let resources;
+        if (resourceFetcher) {
+            // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+            resources = new BrowserResourceProvider(resourceFetcher as any);
+        } else {
+            resources = createNullResourceProvider();
+        }
+
+        let assets;
+        if (assetCache || assetManager) {
+            assets = new BrowserAssetProvider(
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+                assetCache as any,
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+                assetManager as any,
+            );
+        } else {
+            assets = createNullAssetProvider();
+        }
+
+        const zip = new FflateZipProvider();
+        const exporter = new Html5Exporter(document, resources, assets, zip);
+
+        // Wire up LaTeX/Mermaid pre-renderer hooks if available in browser context
+        const latexHooks = await getLatexPreRendererHooks();
+        const mermaidHooks = getMermaidPreRendererHooks();
+        const layeredOptions = { ...options, ...latexHooks, ...mermaidHooks };
+
+        const result = await exporter.generateForPreviewLayered(layeredOptions);
+
+        const assetProvider = assets;
+        const resourceProvider = resources;
+
+        return {
+            success: true,
+            documents: result.documents,
+            assetRefs: result.assetRefs,
+            fixedRefs: result.fixedRefs,
+            // Lazy per-asset byte loader: only called for assets the preview
+            // session is missing; never a sweep.
+            getAssetBytes: async (assetId: string): Promise<Uint8Array | null> => {
+                try {
+                    const asset = await assetProvider.getAsset(assetId);
+                    if (!asset?.data) return null;
+                    if (asset.data instanceof Blob) {
+                        return new Uint8Array(await asset.data.arrayBuffer());
+                    }
+                    return asset.data;
+                } catch (error) {
+                    console.warn('[SharedExporters] getAssetBytes failed for', assetId, error);
+                    return null;
+                }
+            },
+            resolveFixedResource: (fixedResourceId: string) =>
+                // biome-ignore lint/suspicious/noExplicitAny: null provider fallback compatibility
+                resolveFixedResourceBytes(resourceProvider as any, fixedResourceId),
+        };
+    } catch (error) {
+        console.error('[SharedExporters] generatePreviewLayered failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+
 // Export classes for advanced usage
 export {
     // Adapters
@@ -852,6 +964,8 @@ if (typeof window !== 'undefined') {
         exportAndDownload,
         // SW-based preview functions
         generatePreviewForSW,
+        // Layered preview generation (HTTP transport, serving contract v2)
+        generatePreviewLayered,
         // Preview isolation policy (single token source for iframe sandbox attrs)
         PREVIEW_SANDBOX,
         PREVIEW_SANDBOX_TOKENS,

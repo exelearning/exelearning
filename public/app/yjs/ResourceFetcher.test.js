@@ -2780,4 +2780,104 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       expect(result.get('data.xml').type).toBe('text/xml');
     });
   });
+  describe('preview provenance (layered preview, serving contract v2)', () => {
+    describe('getThemeProvenance', () => {
+      it('reports session for Yjs-registered user themes', async () => {
+        const fetcher = new ResourceFetcher();
+        global.Logger = { log: vi.fn() };
+        await fetcher.setUserThemeFiles('my-theme', { 'style.css': new Uint8Array([1]) });
+        expect(fetcher.getThemeProvenance('my-theme')).toBe('session');
+      });
+
+      it('reports session for user themes restored from the IndexedDB store', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.resourceCache = {
+          getUserTheme: vi.fn().mockResolvedValue({ files: new Map([['style.css', new Blob(['x'])]]) }),
+        };
+        await fetcher.fetchTheme('imported-theme');
+        expect(fetcher.getThemeProvenance('imported-theme')).toBe('session');
+      });
+
+      it('reports unknown while the site-theme list has not been loaded (server mode)', () => {
+        const fetcher = new ResourceFetcher();
+        expect(fetcher.getThemeProvenance('base')).toBe('unknown');
+      });
+
+      it('reports session for site themes and base for the rest once the list is loaded', () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.siteThemeVersions = new Map([['corporate', 1234]]);
+        expect(fetcher.getThemeProvenance('corporate')).toBe('session');
+        expect(fetcher.getThemeProvenance('base')).toBe('base');
+      });
+
+      it('reports unknown for every theme when the site-theme list failed to load', async () => {
+        const fetcher = new ResourceFetcher();
+        mockFetch.mockRejectedValue(new Error('offline'));
+        await fetcher.loadSiteThemeVersions();
+        expect(fetcher.getThemeProvenance('base')).toBe('unknown');
+      });
+
+      it('reports unknown for every theme when the site-theme list request is not ok', async () => {
+        const fetcher = new ResourceFetcher();
+        mockFetch.mockResolvedValue({ ok: false, status: 500 });
+        await fetcher.loadSiteThemeVersions();
+        expect(fetcher.getThemeProvenance('base')).toBe('unknown');
+      });
+
+      it('reports base in static mode (static bundles ship base themes only)', () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        expect(fetcher.getThemeProvenance('base')).toBe('base');
+      });
+
+      it('reports session for host-injected admin themes in static mode', () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        global.eXeLearning.config.themeRegistryOverride = {
+          uploaded: [{ name: 'admin-theme', url: 'https://host.example/themes/admin-theme' }],
+        };
+        global.window.eXeLearning = global.eXeLearning;
+        expect(fetcher.getThemeProvenance('admin-theme')).toBe('session');
+        delete global.window.eXeLearning;
+      });
+    });
+
+    describe('getIdeviceProvenance', () => {
+      it('reports unknown when nothing was recorded (e.g. IndexedDB cache hit)', () => {
+        const fetcher = new ResourceFetcher();
+        expect(fetcher.getIdeviceProvenance('text')).toBe('unknown');
+      });
+
+      it('reports base for iDevices distributed from the bundle', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.bundlesAvailable = true;
+        window.fflate = {
+          unzipSync: vi.fn().mockReturnValue({
+            'text/export/text.js': new Uint8Array([1]),
+          }),
+        };
+        mockFetch.mockResolvedValue({
+          ok: true,
+          headers: { get: () => '10' },
+          arrayBuffer: async () => new ArrayBuffer(10),
+        });
+
+        await fetcher.loadIdevicesBundle();
+
+        expect(fetcher.getIdeviceProvenance('text')).toBe('base');
+        delete window.fflate;
+      });
+
+      it('reports session for iDevices resolved through the per-file fallback', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.bundlesAvailable = false;
+        fetcher.cache.set('idevices:all', new Map());
+        mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+        await fetcher.fetchIdevice('user-installed');
+
+        expect(fetcher.getIdeviceProvenance('user-installed')).toBe('session');
+      });
+    });
+  });
 });

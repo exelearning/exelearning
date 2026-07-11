@@ -13,6 +13,7 @@ import { MSG, PreviewSessionExpiredError, sanitizePagePath } from './preview/pro
 import { selectPreviewProvider } from './preview/selectPreviewProvider.js';
 import { PreviewMediaHost } from './preview/previewMediaHost.js';
 import { documentMimeFor } from './preview/previewFileMap.js';
+import { PreviewInvalidationTracker } from './preview/previewInvalidation.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -59,10 +60,17 @@ export default class PreviewPanelManager {
         this.autoRefreshEnabled = true;
         this.refreshDebounceTimer = null;
         this.refreshDebounceDelay = 500; // 500ms debounce for responsive updates
+        // Refresh requests arriving while a refresh runs are coalesced into
+        // exactly one follow-up round (never dropped).
+        this._pendingRefresh = false;
 
         // Store unsubscribe function for Yjs observers
         this._unsubscribeStructure = null;
         this._onYdocUpdate = null;
+        // Layered HTTP transport: dirty-scope classifier + last generated
+        // documents (feeds the generator's page-reuse across refreshes).
+        this._invalidation = null;
+        this._lastLayeredDocuments = null;
 
         // Preview transport provider state
         this._provider = null;
@@ -438,7 +446,7 @@ export default class PreviewPanelManager {
         this.overlay?.addEventListener('click', () => this.close());
         this.extractButton?.addEventListener('click', () => this.extractToNewTab());
         this.pinButton?.addEventListener('click', () => this.pin());
-        this.refreshButton?.addEventListener('click', () => this.refresh());
+        this.refreshButton?.addEventListener('click', () => this.forceRefresh());
         this.mobileButton?.addEventListener('click', () => this.toggleViewport());
 
         // Keyboard on close button
@@ -452,7 +460,7 @@ export default class PreviewPanelManager {
         // Pinned mode events
         this.pinnedExtractButton?.addEventListener('click', () => this.extractToNewTab());
         this.unpinButton?.addEventListener('click', () => this.unpin());
-        this.pinnedRefreshButton?.addEventListener('click', () => this.refresh());
+        this.pinnedRefreshButton?.addEventListener('click', () => this.forceRefresh());
         this.pinnedMobileButton?.addEventListener('click', () => this.toggleViewport());
 
         // Keyboard shortcuts
@@ -738,7 +746,7 @@ export default class PreviewPanelManager {
         // (projectManager.load() runs loadInterface() before initializeYjs()),
         // so the first call bails; open()/pin() call it again once the bridge is
         // ready. Guard against double-subscribing after it succeeds once.
-        if (this._onYdocUpdate || this._unsubscribeStructure) return;
+        if (this._onYdocUpdate || this._unsubscribeStructure || this._invalidation) return;
 
         const project = eXeLearning?.app?.project;
         if (!project?._yjsEnabled || !project._yjsBridge) {
@@ -748,6 +756,27 @@ export default class PreviewPanelManager {
 
         const bridge = project._yjsBridge;
         const documentManager = bridge.documentManager;
+
+        // Layered HTTP transport: change classification is delegated to the
+        // invalidation tracker, which subscribes to the scoped Yjs observers
+        // (a whitelist). A blanket ydoc 'update' listener would mark
+        // bookkeeping transactions dirty (e.g. per-asset 'uploaded' flips
+        // during save), so it is intentionally NOT installed here.
+        if (this._provider?.mode === 'http') {
+            this._invalidation = new PreviewInvalidationTracker({
+                onDirty: () => {
+                    if (this._isPreviewVisible()) {
+                        this.scheduleRefresh();
+                    }
+                },
+            });
+            this._invalidation.attach(bridge);
+            Logger.log('[PreviewPanel] Subscribed to Yjs changes (layered classification)');
+            return;
+        }
+
+        // Non-HTTP transports (srcdoc, legacy SW) keep the historical
+        // subscriptions and the full-map generation path unchanged.
 
         // 1. Subscribe to structure changes (pages, blocks, components add/remove)
         this._unsubscribeStructure = bridge.onStructureChange(() => {
@@ -922,13 +951,19 @@ export default class PreviewPanelManager {
     /**
      * Refresh the preview content through the active transport provider.
      *
-     * The client generates the preview files (unchanged), the provider syncs
-     * them to its transport, and the panel renders the current page. There is
-     * NO cross-transport fallback: a provider failure surfaces as an error
-     * state, never a silent downgrade to a same-origin preview.
+     * Single-flight with lossless coalescing: a refresh requested while one
+     * is running marks `_pendingRefresh` and the loop reruns exactly once
+     * with the dirty scope that accumulated in the meantime — the previous
+     * "drop while loading" behavior lost the latest edit until the next
+     * event. There is NO cross-transport fallback: a provider failure
+     * surfaces as an error state, never a silent downgrade to a same-origin
+     * preview.
      */
     async refresh() {
-        if (this.isLoading) return;
+        if (this.isLoading) {
+            this._pendingRefresh = true;
+            return;
+        }
         if (!this._provider) {
             this.showError(_('Preview is not available in this environment.'));
             return;
@@ -938,38 +973,104 @@ export default class PreviewPanelManager {
         this.showLoadingState();
 
         try {
-            const app = eXeLearning?.app;
-            // Legacy SW transport: wait for the Service Worker registration.
-            if (this._isLegacyServiceWorkerTransport() && typeof app?.waitForPreviewServiceWorker === 'function') {
-                if (!navigator.serviceWorker?.controller) {
-                    try {
-                        await app.waitForPreviewServiceWorker();
-                    } catch {
-                        /* SW not available */
-                    }
-                }
-            }
-
-            const result = await this._generatePreviewFiles();
-            if (!result.success || !result.files) {
-                throw new Error(result.error || 'Failed to generate preview files');
-            }
-
-            await this._syncProvider(result.files);
-
-            const pagePath = this._currentPagePath ?? 'index.html';
-            const target = await this._provider.resolvePage(pagePath);
-            const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
-            this._applyRenderTarget(targetIframe, target, pagePath);
-
-            Logger.log(`[PreviewPanel] Preview refreshed via ${this._provider.mode} transport`);
+            do {
+                this._pendingRefresh = false;
+                await this._refreshOnce();
+            } while (this._pendingRefresh);
         } catch (error) {
             Logger.error('[PreviewPanel] Error generating preview:', error);
             this.showError(error.message);
+            // A round that failed merged its scope back (nothing lost). If a
+            // request arrived meanwhile, retry it after the normal debounce
+            // instead of looping on a persistent error.
+            if (this._pendingRefresh) {
+                this._pendingRefresh = false;
+                this.scheduleRefresh();
+            }
         } finally {
             this.isLoading = false;
             this.hideLoadingState();
         }
+    }
+
+    /** One refresh round: generate → sync transport → render current page. */
+    async _refreshOnce() {
+        const app = eXeLearning?.app;
+        // Legacy SW transport: wait for the Service Worker registration.
+        if (this._isLegacyServiceWorkerTransport() && typeof app?.waitForPreviewServiceWorker === 'function') {
+            if (!navigator.serviceWorker?.controller) {
+                try {
+                    await app.waitForPreviewServiceWorker();
+                } catch {
+                    /* SW not available */
+                }
+            }
+        }
+
+        await this._generateAndSync();
+
+        const pagePath = this._currentPagePath ?? 'index.html';
+        const target = await this._provider.resolvePage(pagePath);
+        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
+        this._applyRenderTarget(targetIframe, target, pagePath);
+
+        Logger.log(`[PreviewPanel] Preview refreshed via ${this._provider.mode} transport`);
+    }
+
+    /**
+     * Generate the preview and sync it into the provider.
+     *
+     * ONLY the HTTP transport uses the layered pipeline (serving contract
+     * v2): the dirty scope is consumed atomically for this round and merged
+     * back if the round fails, so no edit is ever lost. srcdoc and the legacy
+     * Service Worker transports keep the full-map generatePreviewForSW path
+     * exactly as before.
+     */
+    async _generateAndSync() {
+        if (this._provider.mode !== 'http') {
+            const result = await this._generatePreviewFiles();
+            if (!result.success || !result.files) {
+                throw new Error(result.error || 'Failed to generate preview files');
+            }
+            await this._syncProvider(result.files);
+            return;
+        }
+
+        const scope = this._invalidation ? this._invalidation.consume() : null;
+        try {
+            const layered = await this._generateLayeredPreviewFiles(scope);
+            if (!layered.success || !layered.documents) {
+                throw new Error(layered.error || 'Failed to generate preview files');
+            }
+            this._lastLayeredDocuments = layered.documents;
+            await this._syncProvider({
+                documents: layered.documents,
+                assetRefs: layered.assetRefs,
+                fixedRefs: layered.fixedRefs,
+                getAssetBytes: layered.getAssetBytes,
+                resolveFixedResource: layered.resolveFixedResource,
+            });
+        } catch (error) {
+            // Merge the consumed scope back so the failed round's changes are
+            // regenerated by the next attempt.
+            if (scope) this._invalidation?.merge(scope);
+            throw error;
+        }
+    }
+
+    /**
+     * Manual refresh (toolbar buttons): distrust the classifier and
+     * regenerate everything, immediately.
+     */
+    forceRefresh() {
+        this._invalidation?.markAll();
+        // markAll notified the tracker's onDirty → a debounced refresh was
+        // scheduled; cancel it, this refresh runs now.
+        if (this.refreshDebounceTimer) {
+            clearTimeout(this.refreshDebounceTimer);
+            this.refreshDebounceTimer = null;
+        }
+        return this.refresh();
     }
 
     /**
@@ -1050,6 +1151,39 @@ export default class PreviewPanelManager {
     }
 
     /**
+     * Generate the layered preview for the HTTP transport (serving contract
+     * v2): only dirty pages are re-rendered; project assets are referenced by
+     * identity (no blob reads); fixed installation resources are referenced
+     * by manifest id (zero bytes).
+     * @param {{pages: 'all'|Set<string>, assetIds: Set<string>}|null} scope
+     * @returns {Promise<Object>} SharedExporters.generatePreviewLayered result
+     * @private
+     */
+    async _generateLayeredPreviewFiles(scope) {
+        const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            throw new Error('Yjs document manager not available');
+        }
+
+        const SharedExporters = window.SharedExporters;
+        if (typeof SharedExporters?.generatePreviewLayered !== 'function') {
+            throw new Error('SharedExporters.generatePreviewLayered not available');
+        }
+
+        const selectedTheme = eXeLearning.app?.themes?.selected;
+        const theme = selectedTheme?.id || selectedTheme?.name || 'base';
+        const dirtyPages = !scope || scope.pages === 'all' ? 'all' : scope.pages;
+
+        return SharedExporters.generatePreviewLayered(
+            yjsBridge.documentManager,
+            null, // assetCache (legacy)
+            yjsBridge.resourceFetcher || null,
+            yjsBridge.assetManager || null,
+            { theme, dirtyPages, previousDocuments: this._lastLayeredDocuments },
+        );
+    }
+
+    /**
      * Whether a MessageEvent source is one of the preview iframes.
      *
      * The preview renders untrusted authored content, so a null/foreign
@@ -1081,9 +1215,15 @@ export default class PreviewPanelManager {
             }
 
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
-            const result = await this._generatePreviewFiles();
-            if (result.success && result.files) {
-                await this._syncProvider(result.files);
+            // Sync the latest content first — unless a refresh is already in
+            // flight (it is syncing the same state; a second concurrent sync
+            // would race the provider's single-flight revision counter).
+            if (!this.isLoading) {
+                try {
+                    await this._generateAndSync();
+                } catch (error) {
+                    Logger.warn('[PreviewPanel] Extract sync failed; opening last synced state:', error);
+                }
             }
 
             // Open the same-origin "preview host" page (public/preview-tab.html) rather
@@ -1306,6 +1446,14 @@ export default class PreviewPanelManager {
      * Cleanup resources
      */
     destroy() {
+        // Detach the layered-preview invalidation tracker
+        if (this._invalidation) {
+            this._invalidation.detach();
+            this._invalidation = null;
+        }
+        this._lastLayeredDocuments = null;
+        this._pendingRefresh = false;
+
         // Unsubscribe from structure changes
         if (this._unsubscribeStructure) {
             this._unsubscribeStructure();

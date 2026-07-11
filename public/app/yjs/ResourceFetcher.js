@@ -78,6 +78,59 @@ class ResourceFetcher {
     // and the bundle URL so a re-uploaded admin theme invalidates stale files.
     this.siteThemeVersions = null;
     this.siteThemeVersionsPromise = null;
+    // Provenance bookkeeping for the layered preview (serving contract v2).
+    // A resource is only ever classified 'base' when the source that satisfied
+    // the fetch is provably installation-immutable; everything else is
+    // 'session'/'unknown' and rides the preview document layer.
+    // Theme names resolved from the IndexedDB USER theme store (not covered by
+    // this.userThemeFiles, which only tracks Yjs-registered themes).
+    this._userThemeNames = new Set();
+    // True when /api/themes/installed could not be read: site themes can then
+    // not be told apart from base themes, so every theme becomes 'unknown'.
+    this._siteThemeVersionsFailed = false;
+    // Map<ideviceType, 'base'|'session'> recording which source satisfied the
+    // last fetch of that iDevice. IndexedDB cache hits stay unrecorded
+    // ('unknown') because the cached entry may have come from the per-file
+    // fallback (which can serve a user-installed iDevice) in a past session.
+    this._ideviceProvenance = new Map();
+  }
+
+  /**
+   * Provenance of the theme the last fetchTheme(themeName) resolved
+   * (layered preview, serving contract v2).
+   * @param {string} themeName
+   * @returns {'base'|'session'|'unknown'}
+   */
+  getThemeProvenance(themeName) {
+    // User themes: registered from .elpx imports (Yjs) or restored from the
+    // IndexedDB user-theme store.
+    if (this.userThemeFiles.has(themeName)) return 'session';
+    if (this._userThemeNames.has(themeName)) return 'session';
+    if (this.isStaticMode) {
+      // Static bundles ship base themes only; host-injected admin themes are
+      // fetched from an external URL and are never installation files.
+      if (this._findAdminUploadedTheme(themeName)) return 'session';
+      return 'base';
+    }
+    // Server mode: site (admin-uploaded) themes are enumerated by
+    // /api/themes/installed. Without that list a site theme shadowing a base
+    // name could be misclassified as base, so the answer degrades to
+    // 'unknown' (treated as session by callers).
+    if (!this.siteThemeVersions || this._siteThemeVersionsFailed) return 'unknown';
+    return this.siteThemeVersions.has(themeName) ? 'session' : 'base';
+  }
+
+  /**
+   * Provenance of the files the last fetchIdevice(ideviceType) resolved
+   * (layered preview, serving contract v2). 'base' only when the files came
+   * from the idevices bundle (installation-immutable); the per-file fallback
+   * may serve a user-installed iDevice and reports 'session'; anything not
+   * recorded (e.g. an IndexedDB cache hit of unknown origin) is 'unknown'.
+   * @param {string} ideviceType
+   * @returns {'base'|'session'|'unknown'}
+   */
+  getIdeviceProvenance(ideviceType) {
+    return this._ideviceProvenance.get(ideviceType) || 'unknown';
   }
 
   /**
@@ -106,9 +159,14 @@ class ResourceFetcher {
               versions.set(theme.dirName, theme.updatedAt);
             }
           }
+        } else {
+          // The list could not be read: theme provenance cannot be proven base.
+          this._siteThemeVersionsFailed = true;
         }
       } catch (e) {
         console.warn('[ResourceFetcher] Failed to load site theme versions:', e?.message || e);
+        // Without the site-theme list, theme provenance cannot be proven base.
+        this._siteThemeVersionsFailed = true;
       }
       this.siteThemeVersions = versions;
       this.siteThemeVersionsPromise = null;
@@ -272,6 +330,7 @@ class ResourceFetcher {
         if (userTheme) {
           const cacheKey = `theme:${themeName}`;
           this.cache.set(cacheKey, userTheme.files);
+          this._userThemeNames.add(themeName);
           Logger.log(`[ResourceFetcher] User theme '${themeName}' loaded from IndexedDB via getUserThemeAsync`);
           return userTheme.files;
         }
@@ -448,6 +507,7 @@ class ResourceFetcher {
         if (userTheme) {
           // User theme found in IndexedDB
           this.cache.set(cacheKey, userTheme.files);
+          this._userThemeNames.add(themeName);
           Logger.log(`[ResourceFetcher] User theme '${themeName}' loaded from IndexedDB (${userTheme.files.size} files)`);
           return userTheme.files;
         }
@@ -724,6 +784,8 @@ class ResourceFetcher {
     // 5. Fallback to individual file fetches (server mode only)
     Logger.log(`[ResourceFetcher] Fetching iDevice '${ideviceType}' from server...`);
     const ideviceFiles = await this.fetchIdeviceFallback(ideviceType);
+    // The per-file fallback may serve a user-installed iDevice: never base.
+    this._ideviceProvenance.set(ideviceType, 'session');
 
     // 5. Cache the result (cache even if empty to avoid repeated fetches)
     this.cache.set(cacheKey, ideviceFiles);
@@ -774,6 +836,8 @@ class ResourceFetcher {
     // Store in memory cache
     for (const [ideviceName, files] of ideviceFilesMap) {
       this.cache.set(`idevice:${ideviceName}`, files);
+      // Bundle-resolved iDevices are installation-immutable (layered preview).
+      this._ideviceProvenance.set(ideviceName, 'base');
     }
 
     this.cache.set('idevices:all', ideviceFilesMap);
@@ -864,6 +928,8 @@ class ResourceFetcher {
         // Store in memory cache
         for (const [ideviceName, files] of ideviceFilesMap) {
           this.cache.set(`idevice:${ideviceName}`, files);
+          // Bundle-resolved iDevices are installation-immutable (layered preview).
+          this._ideviceProvenance.set(ideviceName, 'base');
         }
 
         this.cache.set('idevices:all', ideviceFilesMap);
