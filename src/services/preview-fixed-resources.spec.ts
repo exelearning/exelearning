@@ -108,6 +108,34 @@ describe('preview-fixed-resources', () => {
         expect(getResource('libs/link.txt')).toBeNull();
     });
 
+    it('returns null when the public root itself does not exist', () => {
+        const { root, manifestPath } = makeFixture({
+            manifest: {
+                schemaVersion: 1,
+                buildVersion: 'v1',
+                resources: { 'libs/a.js': { path: 'libs/a.js', size: 1 } },
+            },
+        });
+        createdRoots.push(root);
+        // Manifest is readable, but the containment root is gone/misconfigured.
+        configure({ publicRoot: path.join(root, 'does-not-exist'), manifestPath });
+        expect(hasResource('libs/a.js')).toBe(true);
+        expect(getResource('libs/a.js')).toBeNull();
+    });
+
+    it('returns null when the manifest path resolves to a directory instead of a file', () => {
+        const root = useFixture({
+            manifest: {
+                schemaVersion: 1,
+                buildVersion: 'v1',
+                resources: { 'libs/dir': { path: 'libs', size: 1 } },
+            },
+            files: { 'libs/a.js': 'a' },
+        });
+        expect(root).toBeTruthy();
+        expect(getResource('libs/dir')).toBeNull();
+    });
+
     it('returns null for files listed in the manifest but missing on disk', () => {
         useFixture({
             manifest: {
