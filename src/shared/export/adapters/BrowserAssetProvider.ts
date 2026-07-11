@@ -295,12 +295,25 @@ export class BrowserAssetProvider implements AssetProvider {
      * Uses getAllAssetsMetadata() which reads only Yjs metadata — no blob loading.
      * Falls back to getProjectAssets() when getAllAssetsMetadata is not available.
      *
+     * The Yjs metadata already carries a content hash (computed once at
+     * ingestion) and a byte size; both are passed through so the layered
+     * preview can build asset identities without touching blobs.
+     *
      * @returns Lightweight metadata array
      */
-    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+    async listAssetMetadata(): Promise<
+        Array<{ id: string; filename: string; folderPath?: string; mime: string; hash?: string; size?: number }>
+    > {
         if (!this.assetManager) return [];
 
-        const toMetadata = (asset: { id: string; mime?: string; filename?: string; folderPath?: string }) => {
+        const toMetadata = (asset: {
+            id: string;
+            mime?: string;
+            filename?: string;
+            folderPath?: string;
+            hash?: string;
+            size?: number;
+        }) => {
             const assetId = String(asset.id);
             const mime = asset.mime || 'application/octet-stream';
             const filename = !isUnknownFilename(asset.filename)
@@ -311,6 +324,8 @@ export class BrowserAssetProvider implements AssetProvider {
                 filename,
                 folderPath: asset.folderPath || '',
                 mime,
+                hash: typeof asset.hash === 'string' ? asset.hash : undefined,
+                size: typeof asset.size === 'number' ? asset.size : undefined,
             };
         };
 

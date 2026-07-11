@@ -675,3 +675,35 @@ describe('BrowserResourceProvider', () => {
         });
     });
 });
+
+describe('BrowserResourceProvider getPreviewProvenance (layered preview)', () => {
+    it('delegates theme and iDevice provenance to the fetcher oracles', async () => {
+        const fetcher = {
+            getThemeProvenance: (name: string) => (name === 'user-theme' ? 'session' : 'base'),
+            getIdeviceProvenance: (type: string) => (type === 'user-idevice' ? 'session' : 'base'),
+        };
+        const provider = new BrowserResourceProvider(fetcher as any);
+
+        expect(await provider.getPreviewProvenance({ kind: 'theme', themeName: 'user-theme' })).toBe('session');
+        expect(await provider.getPreviewProvenance({ kind: 'theme', themeName: 'base' })).toBe('base');
+        expect(await provider.getPreviewProvenance({ kind: 'idevice', ideviceType: 'user-idevice' })).toBe('session');
+        expect(await provider.getPreviewProvenance({ kind: 'idevice', ideviceType: 'text' })).toBe('base');
+    });
+
+    it('reports unknown for theme/iDevice groups when the fetcher lacks the oracles', async () => {
+        const provider = new BrowserResourceProvider({} as any);
+
+        expect(await provider.getPreviewProvenance({ kind: 'theme', themeName: 'base' })).toBe('unknown');
+        expect(await provider.getPreviewProvenance({ kind: 'idevice', ideviceType: 'text' })).toBe('unknown');
+    });
+
+    it('reports base for groups the browser fetcher resolves from app-origin installation files', async () => {
+        const provider = new BrowserResourceProvider({} as any);
+
+        expect(await provider.getPreviewProvenance({ kind: 'baseLibraries' })).toBe('base');
+        expect(await provider.getPreviewProvenance({ kind: 'libraryFiles' })).toBe('base');
+        expect(await provider.getPreviewProvenance({ kind: 'contentCss' })).toBe('base');
+        expect(await provider.getPreviewProvenance({ kind: 'logo' })).toBe('base');
+        expect(await provider.getPreviewProvenance({ kind: 'globalFonts' })).toBe('base');
+    });
+});

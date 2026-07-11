@@ -233,6 +233,82 @@ export interface ResourceProvider {
      * @returns Map<englishSource, translatedTarget>
      */
     fetchI18nTranslations(language: string): Promise<Map<string, string>>;
+
+    /**
+     * OPTIONAL provenance oracle for the layered HTTP preview (contract v2).
+     *
+     * Reports whether the files the corresponding `fetch*` method resolves come
+     * from an installation-immutable, user-unshadowable source ('base') or from
+     * user/site-provided content ('session'). Classification is by resolution
+     * provenance, never by name or path. For the 'theme' and 'idevice' groups
+     * the answer reflects the source that satisfied the LAST fetch of that
+     * name, so callers must fetch first and ask afterwards.
+     *
+     * Providers that cannot prove provenance simply do not implement this
+     * method (or return 'unknown'); the layered generator then treats the
+     * group as dynamic, which is always correct — just less optimal.
+     */
+    getPreviewProvenance?(group: PreviewResourceGroupId): Promise<PreviewProvenance>;
+}
+
+/**
+ * Provenance classification for the layered preview (contract v2).
+ * 'base'    – resolved from the installation's immutable resource set
+ * 'session' – user/site content; must ride the preview session layers
+ * 'unknown' – cannot be proven base; callers must treat it as 'session'
+ */
+export type PreviewProvenance = 'base' | 'session' | 'unknown';
+
+/**
+ * Resource groups the layered preview generator classifies. Mirrors the
+ * exporter's fetch pipeline (Html5Exporter.generateForPreview steps 4–9.5).
+ */
+export type PreviewResourceGroupId =
+    | { kind: 'theme'; themeName: string }
+    | { kind: 'idevice'; ideviceType: string }
+    | { kind: 'baseLibraries' }
+    | { kind: 'libraryFiles' }
+    | { kind: 'contentCss' }
+    | { kind: 'logo' }
+    | { kind: 'globalFonts' };
+
+/**
+ * Reference to a project asset in the layered preview output (contract v2).
+ * The transport derives the immutable asset key as `${assetId}@${hash16}`;
+ * keys are never derived from export paths (paths can be collision-suffixed).
+ */
+export interface LayeredAssetRef {
+    assetId: string;
+    /** Lowercase hex content hash from the project model (computed at ingestion). */
+    hash: string;
+    /** Declared byte size (0 when unknown; the transport uses actual bytes). */
+    size: number;
+    mime: string;
+}
+
+/**
+ * Output of `Html5Exporter.generateForPreviewLayered` — the three preview
+ * layers of serving contract v2. Documents carry bytes; the ref maps carry
+ * identities the serving route resolves outside the generated set.
+ */
+export interface LayeredPreviewResult {
+    documents: Map<string, ArrayBuffer | string>;
+    assetRefs: Map<string, LayeredAssetRef>;
+    fixedRefs: Map<string, string>;
+}
+
+/**
+ * Options for `Html5Exporter.generateForPreviewLayered`.
+ */
+export interface LayeredPreviewOptions extends Html5ExportOptions {
+    /**
+     * Pages whose rendered HTML must be regenerated. 'all' (default) renders
+     * every page; a Set re-renders only those page ids and copies every other
+     * page's entry from `previousDocuments`.
+     */
+    dirtyPages?: Set<string> | 'all';
+    /** Documents map returned by the previous layered generation (same project). */
+    previousDocuments?: Map<string, ArrayBuffer | string> | null;
 }
 
 /**
@@ -269,9 +345,14 @@ export interface AssetProvider {
     /**
      * List asset metadata without loading binary data.
      * Returns lightweight objects suitable for building export path maps.
-     * Falls back to getAllAssets() when not implemented.
+     * `hash`/`size` are exposed when the backing store carries them (the Yjs
+     * assets Y.Map does) so the layered preview can reference assets by
+     * identity without reading blobs. Falls back to getAllAssets() when not
+     * implemented.
      */
-    listAssetMetadata?(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>>;
+    listAssetMetadata?(): Promise<
+        Array<{ id: string; filename: string; folderPath?: string; mime: string; hash?: string; size?: number }>
+    >;
 
     // Optional methods present in some implementations
     exists?(assetPath: string): Promise<boolean>;

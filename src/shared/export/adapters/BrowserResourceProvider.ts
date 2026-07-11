@@ -14,7 +14,7 @@
  * ```
  */
 
-import type { ResourceProvider, LibraryPattern } from '../interfaces';
+import type { ResourceProvider, LibraryPattern, PreviewProvenance, PreviewResourceGroupId } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants } from '../constants';
 
 /**
@@ -32,6 +32,10 @@ interface ResourceFetcherInterface {
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
     fetchI18nFile(language: string): Promise<string | null>;
     fetchI18nTranslations(language: string): Promise<Record<string, string>>;
+    // Optional provenance oracles for the layered preview (contract v2);
+    // older/embedded fetchers may not carry them.
+    getThemeProvenance?(themeName: string): PreviewProvenance;
+    getIdeviceProvenance?(ideviceType: string): PreviewProvenance;
 }
 
 /**
@@ -230,6 +234,37 @@ export class BrowserResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
         const record = await this.fetcher.fetchI18nTranslations(language);
         return new Map(Object.entries(record));
+    }
+
+    /**
+     * Provenance oracle for the layered preview (serving contract v2).
+     *
+     * Themes and iDevices are answered by the ResourceFetcher, which records
+     * which source (user map, IndexedDB user store, site bundle, base bundle,
+     * per-file fallback) satisfied the LAST fetch — so callers must fetch a
+     * group before asking about it. Every other group the browser fetcher
+     * resolves exclusively from app-origin installation files (base libs
+     * bundle / libs paths, content-css bundle, the logo, global fonts), so
+     * those are 'base' by construction. Any doubt degrades to 'unknown' and
+     * the generator treats the group as session content.
+     */
+    async getPreviewProvenance(group: PreviewResourceGroupId): Promise<PreviewProvenance> {
+        switch (group.kind) {
+            case 'theme':
+                return this.fetcher.getThemeProvenance ? this.fetcher.getThemeProvenance(group.themeName) : 'unknown';
+            case 'idevice':
+                return this.fetcher.getIdeviceProvenance
+                    ? this.fetcher.getIdeviceProvenance(group.ideviceType)
+                    : 'unknown';
+            case 'baseLibraries':
+            case 'libraryFiles':
+            case 'contentCss':
+            case 'logo':
+            case 'globalFonts':
+                return 'base';
+            default:
+                return 'unknown';
+        }
     }
 
     /**
