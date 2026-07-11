@@ -122,6 +122,19 @@
             }
         },
         {
+            "id": "serve-bare-root-redirect",
+            "comment": "The bare capability root never serves index.html bytes; it 302-redirects to the entry document with a RELATIVE Location (BASE_PATH / app:// safe). No trailing slash → Location resolves against /preview/{id}.",
+            "request": { "method": "GET", "path": "/preview/{previewId}" },
+            "expect": {
+                "status": 302,
+                "headers": {
+                    "Location": "{previewId}/index.html",
+                    "Cache-Control": "no-store",
+                    "X-Content-Type-Options": "nosniff"
+                }
+            }
+        },
+        {
             "id": "serve-asset",
             "comment": "Bytes are the ORIGINAL upload — proves reupload-asset-immutability did not replace them.",
             "request": { "method": "GET", "path": "/preview/{previewId}/content/resources/photo.png" },
@@ -164,6 +177,7 @@
         },
         {
             "id": "serve-asset-range-unsatisfiable",
+            "comment": "Valid single range past EOF (first-byte-pos ≥ length) → 416.",
             "request": {
                 "method": "GET",
                 "path": "/preview/{previewId}/media/clip.mp4",
@@ -172,6 +186,89 @@
             "expect": {
                 "status": 416,
                 "headers": { "Content-Range": "bytes */10" }
+            }
+        },
+        {
+            "id": "serve-asset-range-zero-suffix-unsatisfiable",
+            "comment": "A zero-length suffix (bytes=-0) is a VALID but unsatisfiable range → 416.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=-0" }
+            },
+            "expect": {
+                "status": 416,
+                "headers": { "Content-Range": "bytes */10" }
+            }
+        },
+        {
+            "id": "serve-asset-range-inverted-ignored",
+            "comment": "last-byte-pos < first-byte-pos (bytes=5-2) is an INVALID spec and MUST be ignored → full 200 body, no Content-Range.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=5-2" }
+            },
+            "expect": {
+                "status": 200,
+                "bodyText": "0123456789",
+                "headers": { "Content-Range": { "absent": true } }
+            }
+        },
+        {
+            "id": "serve-asset-range-inverted-oob-ignored",
+            "comment": "Inverted AND out of bounds (bytes=15-2 on a 10-byte body): structural invalidity is checked BEFORE satisfiability, so it is ignored (200), NEVER 416.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=15-2" }
+            },
+            "expect": {
+                "status": 200,
+                "bodyText": "0123456789",
+                "headers": { "Content-Range": { "absent": true } }
+            }
+        },
+        {
+            "id": "serve-asset-range-multi-ignored",
+            "comment": "Multi-range is unsupported → ignored → full 200 body.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=0-1,3-4" }
+            },
+            "expect": {
+                "status": 200,
+                "bodyText": "0123456789",
+                "headers": { "Content-Range": { "absent": true } }
+            }
+        },
+        {
+            "id": "serve-asset-range-non-bytes-ignored",
+            "comment": "A non-bytes range unit → ignored → full 200 body.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "items=0-1" }
+            },
+            "expect": {
+                "status": 200,
+                "bodyText": "0123456789",
+                "headers": { "Content-Range": { "absent": true } }
+            }
+        },
+        {
+            "id": "serve-asset-range-garbage-ignored",
+            "comment": "Unparseable garbage (non-numeric positions) → ignored → full 200 body.",
+            "request": {
+                "method": "GET",
+                "path": "/preview/{previewId}/media/clip.mp4",
+                "headers": { "Range": "bytes=a-b" }
+            },
+            "expect": {
+                "status": 200,
+                "bodyText": "0123456789",
+                "headers": { "Content-Range": { "absent": true } }
             }
         },
         {

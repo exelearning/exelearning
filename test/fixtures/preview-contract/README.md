@@ -40,6 +40,12 @@ port its interpretation, not just its assertions.
    - `expect.headers` — per header (names case-insensitive): a string means
      exact value match; `{ "startsWith": s }` / `{ "contains": s }` match a
      prefix / substring; `{ "absent": true }` asserts the header is not set.
+     `{previewId}` is substituted in expected header string values too (the
+     bare-root redirect `Location` is `{previewId}/index.html`).
+6. **Redirects.** The harness must NOT auto-follow redirects: a step expecting a
+   `302` asserts the status and `Location` directly. `Location` is RELATIVE (so
+   it survives `BASE_PATH` and the Electron `app://` origin); resolve it against
+   the request URL only if you additionally replay the followed request.
 
 ## What the sequence proves
 
@@ -49,7 +55,13 @@ port its interpretation, not just its assertions.
 - atomic revision publication and the three-layer resolution order;
 - tiered `Cache-Control` (document `no-store` / asset `no-cache` + `ETag` /
   fixed `private, max-age=31536000` / 404 `no-store`);
-- conditional (`304`) and single-range (`206`/`416`) asset requests;
+- the bare capability root (`/preview/{id}`) `302`-redirects to
+  `{id}/index.html` (relative Location) and never serves index.html bytes;
+- conditional (`304`) and single-range asset requests with the canonical Range
+  classification: satisfiable → `206`; valid-but-unsatisfiable (`bytes=99-`,
+  `bytes=-0`) → `416`; and syntactically invalid / unsupported specs
+  (multi-range, non-`bytes` unit, unparseable, inverted `bytes=5-2` /
+  `bytes=15-2`) IGNORED → full `200` body;
 - the sandbox-first CSP on every scriptable type from the session **and** the
   fixed layer (the "SVG opened in a new tab" hole);
 - hardening headers on every response, 404s included;

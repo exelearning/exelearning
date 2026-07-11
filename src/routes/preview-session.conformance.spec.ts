@@ -158,7 +158,9 @@ describe('preview serving contract v2 — conformance vectors', () => {
             for (const [name, matcher] of Object.entries(step.expect.headers ?? {})) {
                 const actual = response.headers.get(name);
                 if (typeof matcher === 'string') {
-                    expect(actual).toBe(matcher);
+                    // {previewId} substitution applies to expected header string
+                    // values too (e.g. the bare-root redirect Location).
+                    expect(actual).toBe(matcher.replace('{previewId}', previewId));
                 } else if (matcher.absent) {
                     expect(actual).toBeNull();
                 } else if (matcher.startsWith !== undefined) {
