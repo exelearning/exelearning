@@ -300,12 +300,25 @@ function buildPdfEmbedScript(pdfjsBase, unavailableMessage) {
  */
 function embedShimScript(options) {
     if (options.embedShimUrl) {
-        return `<script ${INJECTED_MARKER} src="${options.embedShimUrl}"></script>`;
+        // Attribute-encode the URL before interpolating into src="…" so a base
+        // path containing a quote/angle-bracket cannot break out of the
+        // attribute and inject markup (defense in depth: the value is
+        // app-controlled today).
+        return `<script ${INJECTED_MARKER} src="${attrEncode(options.embedShimUrl)}"></script>`;
     }
     if (options.embedShimSource) {
         return `<script ${INJECTED_MARKER}>${options.embedShimSource}</script>`;
     }
     return '';
+}
+
+/** Encode a value for safe interpolation into a double-quoted HTML attribute. */
+function attrEncode(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 /**

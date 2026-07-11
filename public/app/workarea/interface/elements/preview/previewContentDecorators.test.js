@@ -64,6 +64,16 @@ describe('previewContentDecorators', () => {
             expect(shimIndex).toBeLessThan(bodyOpen);
         });
 
+        it('attribute-encodes the embed shim URL so it cannot break out of src="…"', () => {
+            const result = decorateForHttp(PAGE, {
+                pdfjsBase: '/p/x/',
+                embedShimUrl: '/app/shim.js"></script><script>alert(1)</script>',
+            });
+            // The injected shim must not introduce a second, unescaped <script>.
+            expect(result).not.toContain('"></script><script>alert(1)</script>');
+            expect(result).toContain('&quot;&gt;&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+        });
+
         it('omits the shim script when no URL is configured', () => {
             const result = decorateForHttp(PAGE, { pdfjsBase: '/p/x/' });
             expect(result).not.toContain('exe_embed_shim.js');

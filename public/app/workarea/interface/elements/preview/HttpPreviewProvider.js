@@ -37,6 +37,9 @@ const DEFAULT_BATCH_BYTES = 64 * 1024 * 1024;
 /** Contract v2 asset key shape: `${assetId}@${hashPrefix}`. */
 const ASSET_KEY_RE = /^[0-9a-fA-F-]{36}@[0-9a-f]{8,64}$/;
 
+/** Capability id shape (UUID v4-style). Validated before it enters any URL. */
+const PREVIEW_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Server rejection reasons that are TRANSIENT (space can free up, or a
  * recreated session starts empty) and must NOT permanently blacklist the key.
@@ -168,6 +171,12 @@ export class HttpPreviewProvider {
                 throw new PreviewProviderError(
                     `${t('Preview endpoint does not implement protocol v2')} (got ${body.protocolVersion ?? 'none'})`,
                 );
+            }
+            if (typeof body.previewId !== 'string' || !PREVIEW_ID_RE.test(body.previewId)) {
+                // Defense in depth against a buggy/compromised backend: the id
+                // is interpolated into the serving URL path, so reject anything
+                // that is not a bare UUID before it can escape the path.
+                throw new PreviewProviderError(t('Preview endpoint returned an invalid session id'));
             }
             this._limits = body.limits || {};
             this._revision = typeof body.revision === 'number' ? body.revision : 0;

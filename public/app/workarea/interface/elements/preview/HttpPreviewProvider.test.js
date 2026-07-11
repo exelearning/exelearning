@@ -191,6 +191,23 @@ describe('HttpPreviewProvider (contract v2)', () => {
             await expect(provider.prepare(layeredInput())).rejects.toBeInstanceOf(PreviewProviderError);
         });
 
+        it('rejects a create response whose previewId is not a bare UUID (backend hardening)', async () => {
+            // A buggy/compromised backend returning an id with path characters
+            // must not have it interpolated into serving URLs.
+            backend.fetchFn = async (url, opts = {}) => {
+                if ((opts.method || 'GET').toUpperCase() === 'POST' && !String(url).includes('/assets') && !String(url).includes('/revisions')) {
+                    return new Response(
+                        JSON.stringify({ previewId: '../secret', protocolVersion: 2, revision: 0, limits: {} }),
+                        { status: 201 },
+                    );
+                }
+                return new Response('nope', { status: 404 });
+            };
+            provider = new HttpPreviewProvider({ basePath: '/exe', fetchFn: backend.fetchFn });
+            await expect(provider.prepare(layeredInput())).rejects.toBeInstanceOf(PreviewProviderError);
+            expect(provider.session).toBeNull();
+        });
+
         it('rejects non-layered input (plain file maps are for other transports)', async () => {
             await expect(provider.prepare({ 'index.html': 'x' })).rejects.toBeInstanceOf(PreviewProviderError);
         });
