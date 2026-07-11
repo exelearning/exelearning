@@ -392,7 +392,8 @@ describe('preview-session routes', () => {
                 assetRefs: { 'content/resources/a.png': ASSET_KEY_B },
             });
             expect(res.status).toBe(422);
-            expect(await res.json()).toMatchObject({ reason: 'missing-assets', missing: [ASSET_KEY_B] });
+            // Exact contract shape — no extra fields on the wire.
+            expect(await res.json()).toEqual({ reason: 'missing-assets', missing: [ASSET_KEY_B] });
         });
 
         it('rejects revisions referencing unknown fixed resources with 422', async () => {
@@ -407,7 +408,7 @@ describe('preview-session routes', () => {
                 fixedRefs: { 'libs/nope.js': 'libs/nope.js' },
             });
             expect(res.status).toBe(422);
-            expect(await res.json()).toMatchObject({ reason: 'unknown-fixed-resources', resources: ['libs/nope.js'] });
+            expect(await res.json()).toEqual({ reason: 'unknown-fixed-resources', resources: ['libs/nope.js'] });
         });
 
         it('rejects revisions over the byte budget with 413', async () => {

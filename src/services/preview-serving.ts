@@ -241,7 +241,10 @@ export async function handleRevisionUpload(
         return { status: 409, body: { reason: 'revision-conflict', currentRevision: result.currentRevision } };
     }
     if (result.status === 422) {
-        return { status: 422, body: result };
+        // Contract shape: { reason, missing } / { reason, resources } — do not
+        // leak the internal status discriminant into the wire body.
+        const { status, ...body } = result;
+        return { status, body };
     }
     return error(result.status, result.message);
 }
