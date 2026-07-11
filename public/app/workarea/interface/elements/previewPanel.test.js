@@ -1128,6 +1128,38 @@ describe('PreviewPanelManager', () => {
       expect(manager.isLoading).toBe(false);
     });
 
+    it('coalesces mid-round refreshes into exactly one follow-up round on the static SW transport', async () => {
+      // The single-flight loop is transport-agnostic; the static SW path
+      // regenerates the full map each round (no dirty scope), so the follow-up
+      // round must still run exactly once and pick up the latest content.
+      manager._provider = createFakeProvider({ mode: 'static-service-worker', opaqueSafe: false });
+
+      let resolveFirstSync;
+      manager._provider.prepare.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          resolveFirstSync = () => resolve({ id: 'sess-sw', mode: 'static-service-worker' });
+        }),
+      );
+
+      const first = manager.refresh();
+      await vi.waitFor(() => expect(resolveFirstSync).toBeDefined());
+
+      // Several edits land while the first round is in flight.
+      manager.refresh();
+      manager.refresh();
+      expect(manager._pendingRefresh).toBe(true);
+
+      resolveFirstSync();
+      await first;
+
+      // Exactly one follow-up round ran on the full-map SW path (never the
+      // layered pipeline), and the queue drained.
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalledTimes(2);
+      expect(window.SharedExporters.generatePreviewLayered).not.toHaveBeenCalled();
+      expect(manager._pendingRefresh).toBe(false);
+      expect(manager.isLoading).toBe(false);
+    });
+
     it('merges the consumed scope back when a round fails', async () => {
       const tracker = installTracker();
       const scope = { pages: new Set(['page-1']), assetIds: new Set(['asset-1']) };
