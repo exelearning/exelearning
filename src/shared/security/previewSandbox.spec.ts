@@ -67,6 +67,7 @@ describe('previewSandbox', () => {
             expect(isScriptableDocumentType('image/svg+xml')).toBe(true);
             expect(isScriptableDocumentType('image/svg+xml; charset=utf-8')).toBe(true);
             expect(isScriptableDocumentType('application/xml')).toBe(true);
+            expect(isScriptableDocumentType('text/xml')).toBe(true);
             expect(isScriptableDocumentType('application/xhtml+xml')).toBe(true);
         });
 

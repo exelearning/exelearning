@@ -91,6 +91,7 @@ export function isScriptableDocumentType(contentType: string): boolean {
         base === 'text/html' ||
         base === 'image/svg+xml' ||
         base === 'application/xml' ||
+        base === 'text/xml' ||
         base === 'application/xhtml+xml'
     );
 }
