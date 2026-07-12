@@ -21,23 +21,57 @@ jobs:
           ref: fix/opaque-iframe-external-media
           fetch-depth: 0
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Format the updated panel test
+      - name: Normalize the three updated test blocks
+        shell: python
         run: |
-          bun x biome format --write public/app/workarea/interface/elements/previewPanel.test.js
-          git diff --check
+          from pathlib import Path
+          import re
 
-      - name: Restore normal workflows and publish the clean test commit
+          path = Path("public/app/workarea/interface/elements/previewPanel.test.js")
+          text = path.read_text(encoding="utf-8")
+
+          standalone = re.compile(
+              r"(?m)^\s*window\.eXeLearning\.app\.runtimeConfig = \{\n"
+              r"\s*mode: 'static',\n"
+              r"\s*isEmbedded: false,\n"
+              r"\s*embeddingConfig: null,\n"
+              r"\s*\};$"
+          )
+          replacement = (
+              "      window.eXeLearning.app.runtimeConfig = {\n"
+              "        mode: 'static',\n"
+              "        isEmbedded: false,\n"
+              "        embeddingConfig: null,\n"
+              "      };"
+          )
+          text, standalone_count = standalone.subn(replacement, text)
+          if standalone_count != 2:
+              raise SystemExit(f"expected 2 standalone blocks, found {standalone_count}")
+
+          unsafe = re.compile(
+              r"(?m)^\s*embeddingConfig: \{\n"
+              r"\s*previewTransport: 'static-service-worker',\n"
+              r"\s*allowUnsafeEmbeddedPreview: true,\n"
+              r"\s*\},$"
+          )
+          unsafe_replacement = (
+              "        embeddingConfig: {\n"
+              "          previewTransport: 'static-service-worker',\n"
+              "          allowUnsafeEmbeddedPreview: true,\n"
+              "        },"
+          )
+          text, unsafe_count = unsafe.subn(unsafe_replacement, text)
+          if unsafe_count != 1:
+              raise SystemExit(f"expected 1 unsafe embedded block, found {unsafe_count}")
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Validate and publish the clean test-only commit
         shell: bash
         run: |
           set -euo pipefail
+          node --check public/app/workarea/interface/elements/previewPanel.test.js
+          git diff --check
           git show 1009e0044546710a45e32ad4788bfb2bcc7493ba:.github/workflows/e2e.yml > .github/workflows/e2e.yml
           git rm -f .github/workflows/apply-preview-test-contract-patch.yml
           git add public/app/workarea/interface/elements/previewPanel.test.js .github/workflows/e2e.yml
