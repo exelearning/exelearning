@@ -227,11 +227,26 @@ jobs:
           PY
 
       - name: Run focused tests
+        id: focused-tests
+        continue-on-error: true
         run: |
-          bun install --frozen-lockfile
-          bun x vitest run \
-            public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.test.js \
-            public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
+          set -o pipefail
+          {
+            bun install --frozen-lockfile
+            bun x vitest run \
+              public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.test.js \
+              public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
+          } 2>&1 | tee /tmp/es-pv-tests.log
+
+      - uses: actions/upload-artifact@v4
+        if: steps.focused-tests.outcome == 'failure'
+        with:
+          name: es-pv-focused-test-log
+          path: /tmp/es-pv-tests.log
+
+      - name: Stop after focused test failure
+        if: steps.focused-tests.outcome == 'failure'
+        run: exit 1
 
       - name: Commit fixes to the pull request branch
         run: |
