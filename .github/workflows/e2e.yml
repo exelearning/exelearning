@@ -26,9 +26,12 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Format the updated panel test
         run: |
-          bunx @biomejs/biome format --write public/app/workarea/interface/elements/previewPanel.test.js
+          bun x biome format --write public/app/workarea/interface/elements/previewPanel.test.js
           git diff --check
 
       - name: Restore normal workflows and publish the clean test commit
