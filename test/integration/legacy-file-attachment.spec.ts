@@ -112,6 +112,7 @@ function buildLegacyElp(withSecondFile = true, withFiles = true): Uint8Array {
 
 interface ComponentView {
     type: string;
+    htmlView: string;
     props: {
         intro?: string;
         showDescriptions?: boolean;
@@ -129,6 +130,7 @@ function firstComponent(ydoc: Y.Doc): ComponentView {
     const propsStr = component.get('jsonProperties') as string;
     return {
         type: component.get('type') as string,
+        htmlView: (component.get('htmlView') as string) || '',
         props: propsStr ? JSON.parse(propsStr) : {},
     };
 }
@@ -177,6 +179,24 @@ describe('Legacy File Attachment iDevice conversion', () => {
         // Second file has no legacy description -> empty title (iDevice falls back to filename).
         expect(attachments[1].filename).toBe('notes.txt');
         expect(attachments[1].title).toBe('');
+
+        ydoc.destroy();
+    });
+
+    it('renders imported files before the iDevice is opened or saved', async () => {
+        const ydoc = new Y.Doc();
+        const assetHandler = new FileSystemAssetHandler(testDir);
+        const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+        await importer.importFromBuffer(buildLegacyElp());
+        const { htmlView } = firstComponent(ydoc);
+
+        expect(htmlView).toContain('Download the materials below.');
+        expect(htmlView.match(/class="fileAttachment-link"/g)).toHaveLength(2);
+        expect(htmlView).toContain('Activity worksheet');
+        expect(htmlView).toContain('notes.txt');
+        expect(htmlView).toContain('href="asset://');
+        expect(htmlView).not.toContain('href="resources/');
 
         ydoc.destroy();
     });
