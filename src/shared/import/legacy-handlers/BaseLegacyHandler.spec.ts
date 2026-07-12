@@ -409,43 +409,43 @@ describe('BaseLegacyHandler', () => {
             // \\r followed by 'i' in 'right' should NOT be converted
             expect(handler.decodeHtmlContent(latex)).toBe('\\left( x \\right)');
         });
-        
+
         it('should preserve \\times inside \\( ... \\) delimiters', () => {
             const latex = '\\( 4 \\times \\dfrac{1}{2} \\)';
             expect(handler.decodeHtmlContent(latex)).toBe('\\( 4 \\times \\dfrac{1}{2} \\)');
         });
-        
+
         it('should preserve LaTeX commands starting with \\n (e.g. \\nabla)', () => {
             const latex = '\\( \\nabla f(x) \\)';
             expect(handler.decodeHtmlContent(latex)).toBe('\\( \\nabla f(x) \\)');
         });
-        
+
         it('should preserve LaTeX inside \\[ ... \\] block delimiters', () => {
             const latex = '\\[ \\times \\dfrac{a}{b} \\]';
             expect(handler.decodeHtmlContent(latex)).toBe('\\[ \\times \\dfrac{a}{b} \\]');
         });
-        
+
         it('should preserve LaTeX inside $ ... $ inline delimiters', () => {
             const latex = 'The result is $x \\times y$ units';
             expect(handler.decodeHtmlContent(latex)).toBe('The result is $x \\times y$ units');
         });
-        
+
         it('should preserve LaTeX inside $$ ... $$ block delimiters', () => {
             const latex = '$$ a \\times b = c $$';
             expect(handler.decodeHtmlContent(latex)).toBe('$$ a \\times b = c $$');
         });
-        
+
         it('should still decode HTML entities and real \\n outside LaTeX blocks', () => {
             const input = '&lt;p&gt;Text\\nnext line with \\( a \\times b \\)&lt;/p&gt;';
             const expected = '<p>Text\nnext line with \\( a \\times b \\)</p>';
             expect(handler.decodeHtmlContent(input)).toBe(expected);
         });
-        
+
         it('should preserve multiple LaTeX blocks in the same content', () => {
             const input = 'First \\( a \\times b \\) and then \\( c \\times d \\)';
             expect(handler.decodeHtmlContent(input)).toBe(input);
         });
-        
+
         it('should handle the real eXe example with \\times and \\dfrac', () => {
             const input =
                 '<div class="exe-text"><p>\\( 4 \\times \\dfrac{1}{2} = \\dfrac{4}{1} \\times \\dfrac{1}{2} = \\dfrac{4 \\times 1}{1 \\times 2}=\\dfrac{4}{2} \\) = 2 units</p></div>';
