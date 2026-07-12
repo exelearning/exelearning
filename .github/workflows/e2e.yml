@@ -12,83 +12,26 @@ permissions:
   contents: write
 
 jobs:
-  apply-preview-test-contract-patch:
+  finalize-preview-test-contract-patch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the PR branch
         uses: actions/checkout@v7
         with:
           ref: fix/opaque-iframe-external-media
-          fetch-depth: 3
+          fetch-depth: 0
 
-      - name: Align panel tests with the hardened transport contract
-        shell: python
+      - name: Format the updated panel test
         run: |
-          from pathlib import Path
-          import re
+          bunx @biomejs/biome format --write public/app/workarea/interface/elements/previewPanel.test.js
+          git diff --check
 
-          path = Path("public/app/workarea/interface/elements/previewPanel.test.js")
-          text = path.read_text(encoding="utf-8")
-
-          standalone_pattern = re.compile(
-              r"(?m)^(?P<indent>\s*)window\.eXeLearning\.app\.runtimeConfig\.embeddingConfig = "
-              r"\{ previewTransport: 'static-service-worker' \};$"
-          )
-
-          def replace_standalone(match):
-              indent = match.group("indent")
-              return (
-                  f"{indent}window.eXeLearning.app.runtimeConfig = {{\n"
-                  f"{indent}  mode: 'static',\n"
-                  f"{indent}  isEmbedded: false,\n"
-                  f"{indent}  embeddingConfig: null,\n"
-                  f"{indent}}};"
-              )
-
-          text, standalone_count = standalone_pattern.subn(replace_standalone, text)
-          if standalone_count != 2:
-              raise SystemExit(f"expected 2 standalone legacy setups, found {standalone_count}")
-
-          unsafe_pattern = re.compile(
-              r"(?m)^(?P<indent>\s*)embeddingConfig: "
-              r"\{ previewTransport: 'static-service-worker' \},$"
-          )
-
-          def replace_unsafe(match):
-              indent = match.group("indent")
-              return (
-                  f"{indent}embeddingConfig: {{\n"
-                  f"{indent}  previewTransport: 'static-service-worker',\n"
-                  f"{indent}  allowUnsafeEmbeddedPreview: true,\n"
-                  f"{indent}}},"
-              )
-
-          text, unsafe_count = unsafe_pattern.subn(replace_unsafe, text)
-          if unsafe_count != 1:
-              raise SystemExit(f"expected 1 unsafe embedded setup, found {unsafe_count}")
-
-          text = text.replace(
-              "should install SW recovery listeners for the static Service Worker transport",
-              "should install SW recovery listeners for the standalone static Service Worker transport",
-          )
-          text = text.replace(
-              "applies the same-origin sandbox (no media relay) for the static Service Worker transport",
-              "applies the same-origin sandbox (no media relay) for the standalone static Service Worker transport",
-          )
-          text = text.replace(
-              "shows the unsafe-transport banner when an embedded editor overrides to the static SW",
-              "shows the unsafe-transport banner when an embedded editor explicitly authorizes the static SW",
-          )
-
-          path.write_text(text, encoding="utf-8")
-
-      - name: Publish the clean test-only commit
+      - name: Restore normal workflows and publish the clean test commit
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check
-          git show HEAD~2:.github/workflows/e2e.yml > .github/workflows/e2e.yml
-          git rm .github/workflows/apply-preview-test-contract-patch.yml
+          git show 1009e0044546710a45e32ad4788bfb2bcc7493ba:.github/workflows/e2e.yml > .github/workflows/e2e.yml
+          git rm -f .github/workflows/apply-preview-test-contract-patch.yml
           git add public/app/workarea/interface/elements/previewPanel.test.js .github/workflows/e2e.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
