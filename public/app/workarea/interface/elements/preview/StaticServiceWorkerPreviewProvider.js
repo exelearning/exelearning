@@ -18,7 +18,7 @@
 export class StaticServiceWorkerPreviewProvider {
     /**
      * @param {Object} options
-     * @param {{sendContentToPreviewSW: Function}} options.app
+     * @param {{sendContentToPreviewSW: Function, toasts?: {createToast?: Function}}} options.app
      * @param {string} [options.basePath]
      */
     constructor(options) {
@@ -27,6 +27,7 @@ export class StaticServiceWorkerPreviewProvider {
         this._app = options.app;
         this._basePath = options.basePath || '';
         this._session = null;
+        this._trustWarningShown = false;
     }
 
     /** @returns {import('./providerContract.js').PreviewSession|null} */
@@ -35,6 +36,7 @@ export class StaticServiceWorkerPreviewProvider {
     }
 
     async prepare(files) {
+        this._showTrustWarning();
         await this._app.sendContentToPreviewSW(files, { openExternalLinksInNewWindow: true });
         if (!this._session) {
             this._session = Object.freeze({
@@ -50,6 +52,26 @@ export class StaticServiceWorkerPreviewProvider {
     /** The SW replaces its content wholesale; update and prepare are the same. */
     async update(files) {
         await this.prepare(files);
+    }
+
+    /**
+     * Explain the trusted-content posture once per provider lifetime. A toast is
+     * deliberately used instead of a blocking modal: the warning is visible to
+     * standalone static/PWA users without interrupting every refresh.
+     */
+    _showTrustWarning() {
+        if (this._trustWarningShown) return;
+        this._trustWarningShown = true;
+
+        const translate = typeof globalThis._ === 'function' ? globalThis._ : (message) => message;
+        this._app?.toasts?.createToast?.({
+            title: translate('Trusted projects only'),
+            body: translate(
+                'Static/PWA preview runs on the editor origin and is not a security sandbox. Open only projects you trust.',
+            ),
+            icon: 'warning',
+            remove: 12000,
+        });
     }
 
     /**
