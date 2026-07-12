@@ -24,7 +24,7 @@ jobs:
       - name: Normalize the three updated test blocks
         shell: python
         run: |
-          from pathlib import import Path
+          from pathlib import Path
           import re
 
           path = Path("public/app/workarea/interface/elements/previewPanel.test.js")
