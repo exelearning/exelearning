@@ -68,7 +68,6 @@ jobs:
                           out.append((pi, ln['top'], ln['text']))
               return out
           '''
-          replacement = re.sub(r'^ {10}', '', replacement, flags=re.MULTILINE)
           source, count = re.subn(
               r'def _flatten_area_lines\(.*?\n(?=def iter_bands\()',
               replacement + '\n',
