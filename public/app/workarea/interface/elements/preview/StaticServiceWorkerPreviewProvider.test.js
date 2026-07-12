@@ -6,7 +6,10 @@ describe('StaticServiceWorkerPreviewProvider', () => {
     let provider;
 
     beforeEach(() => {
-        app = { sendContentToPreviewSW: vi.fn().mockResolvedValue(undefined) };
+        app = {
+            sendContentToPreviewSW: vi.fn().mockResolvedValue(undefined),
+            toasts: { createToast: vi.fn() },
+        };
         provider = new StaticServiceWorkerPreviewProvider({ app, basePath: '/exe' });
     });
 
@@ -25,6 +28,30 @@ describe('StaticServiceWorkerPreviewProvider', () => {
         expect(session.entryUrl).toBe('/exe/viewer/index.html?exe-teacher=1');
         expect(session.mode).toBe('static-service-worker');
         expect(session.opaqueSafe).toBe(false);
+    });
+
+    it('shows the trusted-content warning only once across prepare and update', async () => {
+        await provider.prepare({});
+        await provider.update({});
+
+        expect(app.toasts.createToast).toHaveBeenCalledTimes(1);
+        expect(app.toasts.createToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+                title: 'Trusted projects only',
+                body: expect.stringMatching(/not a security sandbox/i),
+                icon: 'warning',
+            }),
+        );
+    });
+
+    it('continues safely when the host has no toast manager', async () => {
+        const appWithoutToasts = { sendContentToPreviewSW: vi.fn().mockResolvedValue(undefined) };
+        const providerWithoutToasts = new StaticServiceWorkerPreviewProvider({
+            app: appWithoutToasts,
+            basePath: '/exe',
+        });
+
+        await expect(providerWithoutToasts.prepare({})).resolves.toBe(providerWithoutToasts.session);
     });
 
     it('resolves pages under the virtual /viewer/ prefix', async () => {
