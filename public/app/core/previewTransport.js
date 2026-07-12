@@ -35,31 +35,47 @@ const OVERRIDES = Object.freeze({
  * @returns {PreviewTransport}
  */
 export function resolvePreviewTransport(runtimeConfig, { hasElectronApi = false } = {}) {
-    const forced = runtimeConfig?.embeddingConfig?.previewTransport;
-    if (forced) {
-        const transport = OVERRIDES[forced];
-        if (!transport) {
-            throw new Error(
-                `Unknown previewTransport override: ${forced} ` +
-                    `(expected 'http' or 'static-service-worker')`,
-            );
-        }
-        return transport;
+    const embeddingConfig = runtimeConfig?.embeddingConfig;
+    const forced = embeddingConfig?.previewTransport;
+    if (forced && !OVERRIDES[forced]) {
+        throw new Error(
+            `Unknown previewTransport override: ${forced} ` +
+                `(expected 'http' or 'static-service-worker')`,
+        );
     }
 
-    if (runtimeConfig?.mode === 'server') return 'http';
-    // Electron: opaque HTTP preview served by the main process at
-    // app://localhost/preview/{id}/* (protocol.handle → electron-preview-handler).
-    // Cross-origin to the app://localhost renderer, so untrusted author JS
-    // cannot reach window.top.electronAPI (arbitrary readFile).
-    if (hasElectronApi) return 'http';
+    const isServer = runtimeConfig?.mode === 'server';
+    const isElectron = hasElectronApi === true;
+    const isEmbedded = runtimeConfig?.isEmbedded === true;
 
-    // Embedded editors get a live preview only via HTTP, and only when the host
-    // supplied a valid previewHttp block. No server-less fallback: without it,
-    // fail closed so the panel shows an error rather than silently rendering a
-    // same-origin (non-opaque) preview.
-    if (runtimeConfig?.isEmbedded === true) {
-        const previewHttp = runtimeConfig?.embeddingConfig?.previewHttp;
+    // Server and Electron are privileged runtimes with an opaque HTTP/app
+    // backend. They must never be downgraded to the same-origin Service Worker,
+    // even through an embedding override.
+    if (isServer || isElectron) {
+        if (forced === 'static-service-worker') {
+            throw new Error(
+                'previewTransport "static-service-worker" is only available to standalone static/PWA builds ' +
+                    'or an explicitly authorized development-only embedded preview.',
+            );
+        }
+        return 'http';
+    }
+
+    // Embedded editors get a live preview only via host HTTP. A same-origin
+    // Service Worker is permitted solely as a separately authorized,
+    // development-only escape hatch for php-wasm playgrounds.
+    if (isEmbedded) {
+        if (forced === 'static-service-worker') {
+            if (embeddingConfig?.allowUnsafeEmbeddedPreview !== true) {
+                throw new Error(
+                    'Embedded static-service-worker preview requires the explicit development-only ' +
+                        'allowUnsafeEmbeddedPreview: true authorization.',
+                );
+            }
+            return 'static-service-worker';
+        }
+
+        const previewHttp = embeddingConfig?.previewHttp;
         if (previewHttp == null) {
             throw new Error(
                 'Embedded host did not supply preview HTTP configuration (previewHttp); ' +
@@ -71,22 +87,34 @@ export function resolvePreviewTransport(runtimeConfig, { hasElectronApi = false 
         return 'http';
     }
 
+    // A non-server standalone runtime may opt into HTTP only when it supplies a
+    // complete backend contract. This prevents `previewTransport: "http"` from
+    // bypassing endpoint validation and silently targeting guessed default URLs.
+    if (forced === 'http') {
+        const previewHttp = embeddingConfig?.previewHttp;
+        if (previewHttp == null) {
+            throw new Error('previewTransport "http" requires a valid previewHttp configuration in this runtime.');
+        }
+        validatePreviewHttpConfig(previewHttp);
+        return 'http';
+    }
+
     // Standalone static/PWA: same-origin Service Worker compatibility mode.
     return 'static-service-worker';
 }
 
 /**
- * Whether the active transport is the static Service Worker selected via an
- * explicit override inside an embedded editor. This is a development-only,
- * unsafe opt-in (playground blueprints only): the panel renders a visible
- * warning banner when it is true. Hosts must never set it in production.
+ * Whether the active transport is the static Service Worker selected through
+ * the explicit development-only unsafe opt-in inside an embedded editor. The
+ * preview panel renders a visible warning banner when this is true.
  * @param {{isEmbedded: boolean, embeddingConfig: Object|null}} runtimeConfig
  * @returns {boolean}
  */
 export function isUnsafeEmbeddedServiceWorker(runtimeConfig) {
     return (
         runtimeConfig?.isEmbedded === true &&
-        runtimeConfig?.embeddingConfig?.previewTransport === 'static-service-worker'
+        runtimeConfig?.embeddingConfig?.previewTransport === 'static-service-worker' &&
+        runtimeConfig?.embeddingConfig?.allowUnsafeEmbeddedPreview === true
     );
 }
 
