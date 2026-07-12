@@ -43,6 +43,51 @@ jobs:
           cat .github/es-pv-parser/patch.b64.* \
             | base64 --decode \
             | gzip --decompress > /tmp/es-pv-fixes.patch
+
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path('/tmp/parse_es_pv.py')
+          source = path.read_text(encoding='utf-8')
+
+          replacement = '''def _flatten_area_lines(pdf, p_start, p_end, start_top=None, end_top=None):
+              """All full-width lines of an area as (page_idx, top, text).
+
+              When explicit vertical bounds are supplied, only the first and last page
+              are cropped. This is required for ESO materias that share a PDF page while
+              preserving the original full-page extraction used by Primaria/Infantil.
+              """
+              out = []
+              bounded = start_top is not None and end_top is not None
+              for pi in range(p_start, p_end):
+                  lower = start_top if bounded and pi == p_start else CONTENT_TOP
+                  upper = end_top if bounded and pi == p_end - 1 else CONTENT_BOTTOM
+                  for ln in page_lines(pdf.pages[pi]):
+                      if not bounded or lower - 1 <= ln['top'] < upper - 1:
+                          out.append((pi, ln['top'], ln['text']))
+              return out
+          '''
+          replacement = re.sub(r'^ {10}', '', replacement, flags=re.MULTILINE)
+          source, count = re.subn(
+              r'def _flatten_area_lines\(.*?\n(?=def iter_bands\()',
+              replacement + '\n',
+              source,
+              count=1,
+              flags=re.DOTALL,
+          )
+          assert count == 1, 'Unable to replace _flatten_area_lines()'
+
+          eso_marker = source.index('# ===== eso.py =====')
+          prefix = source[:eso_marker].replace(
+              '(p_end - 1, end_top)',
+              '(p_end - 1, CONTENT_BOTTOM)',
+          )
+          source = prefix + source[eso_marker:]
+          path.write_text(source, encoding='utf-8')
+          PY
+
+          python -m py_compile /tmp/parse_es_pv.py
           git apply --check /tmp/es-pv-fixes.patch
           git apply /tmp/es-pv-fixes.patch
 
