@@ -64,10 +64,11 @@ jobs:
           mv /tmp/es-pv-parser/generated.json \
             public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.json
 
-      - name: Validate generated curriculum
+      - name: Validate generated curriculum and refresh documentation stats
         run: |
           python - <<'PY'
           import json
+          import re
           from pathlib import Path
 
           path = Path('public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.json')
@@ -110,6 +111,51 @@ jobs:
                           assert descriptors, (
                               f'No descriptors: {stage_name}/{level}/{area_code}/{comp_code}'
                           )
+
+          unique_areas = len({code for areas in eso.values() for code in areas})
+          competencias = sum(
+              len(area['competencias_especificas'])
+              for areas in eso.values()
+              for area in areas.values()
+          )
+          criterios = sum(
+              len(comp['criterios_evaluacion'])
+              for areas in eso.values()
+              for area in areas.values()
+              for comp in area['competencias_especificas'].values()
+          )
+          saberes = sum(
+              len(items)
+              for areas in eso.values()
+              for area in areas.values()
+              for items in area['saberes_basicos']['bloques'].values()
+          )
+
+          def format_count(value):
+              return f'{value:,}'.replace(',', ' ')
+
+          readme_path = Path('public/files/perm/idevices/base/lomloe/README.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          replacement = (
+              '| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | '
+              f'{unique_areas} | {format_count(competencias)} | {format_count(criterios)} | '
+              f'{format_count(saberes)} | `ESO1` … `ESO4` |'
+          )
+          readme, count = re.subn(
+              r'^\| `Derrigorrezko Bigarren Hezkuntza` .*$',
+              replacement,
+              readme,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          assert count == 1
+          readme_path.write_text(readme, encoding='utf-8')
+          print({
+              'unique_areas': unique_areas,
+              'competencias': competencias,
+              'criterios': criterios,
+              'saberes': saberes,
+          })
           PY
 
       - name: Run focused tests
