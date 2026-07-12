@@ -25,233 +25,202 @@ ai_assistance:
 
 Proposed
 
-<!-- This ADR refines, and does not overturn, ADR-0006 and ADR-0007. ADR-0006's
-opaque-origin requirement and ADR-0007's deterministic, no-silent-downgrade
-selection principle both stand; this record removes the `srcdoc` authored-content
-transport and reduces the provider set. See the amendment notes on ADR-0006/0007. -->
+This ADR refines ADR-0006 and ADR-0007. Their browser-enforced opaque-origin requirement and deterministic no-silent-downgrade rule remain in force. This record removes `srcdoc` as an authored-content transport, reduces the provider set, and defines the only permitted same-origin exception.
 
 ## Context
 
-The editor preview renders **untrusted, author-authored package HTML/JS**. ADR-0006
-established that this content must run in a **browser-enforced opaque origin** so it
-cannot reach the editor DOM, cookies, IndexedDB/Cache storage, the authenticated
-session, or (in Electron) the preload bridge. ADR-0007 established that the transport
-is chosen through a deterministic provider abstraction with **no silent downgrade**
-to same-origin.
+The editor preview renders author-controlled HTML and JavaScript. In a privileged context, same-origin preview code could reach the editor DOM, session cookies, IndexedDB, Cache API, project data, save/export operations, and Electron preload APIs.
 
-While implementing PR #1968 across the whole ecosystem (core, Electron, and the
-Moodle/WordPress/Omeka S/Nextcloud/Procomún embedding hosts), four facts settled the
-remaining transport questions:
+The implementation established four constraints:
 
-- **A Service Worker cannot back an opaque origin.** It intercepts same-origin
-  fetches, so any SW-served preview is same-origin by construction — it can never be
-  the opaque sandbox ADR-0006 requires.
-- **`srcdoc` required expensive, incomplete inlining.** Serving authored content
-  through `iframe.srcdoc` meant rewriting every asset/document reference into inlined
-  or blob form. It was lower-fidelity (no real per-page URLs, open-in-new-tab, or
-  runtime-URL features), and every new authored construct risked a new inlining gap.
-- **Server-backed environments give real URLs and a response-level sandbox.** A
-  cloud/server editor, Electron (`app://`), and every embedding host with a backend
-  can serve preview over a **real HTTP capability URL** and attach a `sandbox`-first
-  CSP to every scriptable response (ADR-0008, ADR-0009). This is opaque, high-fidelity,
-  and needs no second domain.
-- **Standalone static/PWA has no backend.** A pure static build or an offline PWA has
-  nothing that can mint a capability session or serve a response with headers. Its only
-  local serving mechanism is a Service Worker — which is same-origin, hence not opaque.
-
-This ADR records the final transport matrix that resolves those facts, superseding the
-earlier assumption (carried in ADR-0006/0007) that `srcdoc` and an implicitly-selected
-Service Worker were viable authored-content transports.
-
-## Problem
-
-Given the opaque-origin requirement (ADR-0006) and the no-silent-downgrade rule
-(ADR-0007), which transport serves preview in each runtime — and what is the honest
-security posture where no opaque transport is possible (standalone static/PWA)?
-
-## Decision drivers
-
-- Security: untrusted authored content must be isolated wherever the editor origin
-  holds credentials or privileged capabilities.
-- Fidelity: preview should match a real deployment (real URLs, navigation, runtime URLs).
-- No silent downgrade: an unavailable opaque transport must fail closed, never quietly
-  serve same-origin.
-- No second domain / no bundled web server for static builds (ops and project constraints).
-- Honesty: any residual same-origin exposure must be documented, not hidden.
-
-## Options considered
-
-### Option A (chosen): opaque HTTP in privileged contexts; trusted same-origin SW only in standalone static/PWA
-
-Server/cloud, Electron, and embedded hosts serve preview over an **opaque HTTP
-capability URL** (`http` provider) with a response `sandbox` CSP. Standalone static
-and offline PWA builds — which have no backend — use a **same-origin Service Worker**
-preview, explicitly labelled a **trusted-content compatibility mode**, not a security
-boundary. `srcdoc` is removed as an authored-content transport. Embedded hosts **fail
-closed** if the host does not supply a valid HTTP preview configuration. Selection is
-deterministic; the Service Worker is **never** chosen automatically in an embedded or
-server context.
-
-Pros: opaque isolation everywhere a backend exists; high fidelity; no second domain;
-no bundled server; the one unavoidable same-origin case is isolated to standalone
-static/PWA and documented. Cons: standalone static/PWA does not isolate malicious
-authored scripts (accepted, documented, and constrained to trusted content).
-
-### Option B: `srcdoc` full inlining everywhere without a backend
-
-Reject. Lower fidelity, perpetually incomplete inlining, and it still would not help
-the embedded case where a real URL and host auth are wanted.
-
-### Option C: a dedicated second preview origin/subdomain
-
-Reject. DNS/cert/ops burden, still same-site cookie exposure risk, and rejected as a
-standing project constraint (ADR-0006 Option 3).
-
-### Option D: a WASM/php-wasm web server inside the static build
-
-Reject. Large runtime, complex, and php-wasm playgrounds are served by a Service
-Worker — so the served frame is same-origin anyway; it does not produce an opaque
-origin.
-
-### Option E: a JavaScript HTTP server in the page (e.g. the SW acting as a pseudo-server)
-
-Reject. Same fundamental limit as Option D/the SW: anything the page or its Service
-Worker serves is same-origin and cannot be opaque.
-
-### Option F: per-iDevice JavaScript sandboxes (sanitize/wrap each script)
-
-Reject. Sanitizer/wrapper bypasses are a moving target; not a browser-enforced
-boundary. The Y.Doc sanitizer is retained as defense-in-depth only (ADR-0006).
-
-### Option G: a Service-Worker-controlled opaque iframe
-
-Reject as impossible. A Service Worker only controls same-origin clients; an opaque
-(cross-origin/sandboxed-without-`allow-same-origin`) frame is outside its scope, so it
-can neither be intercepted nor served by the SW.
-
-## Evidence
-
-At `fix/opaque-iframe-external-media` (transport simplification landed in
-`4e2f5dd8`..`cfde1340`; normalized HTTP config in `2737dcf0`; canonical Range +
-bare-root redirect in `36f2787d`):
-
-- Deterministic selection with `srcdoc` removed and the SW constrained to standalone
-  static/PWA: `public/app/core/previewTransport.js`,
-  `public/app/workarea/interface/elements/preview/selectPreviewProvider.js`
-  (`validatePreviewHttpConfig`; embedded fail-closed; `static-service-worker` only for
-  standalone static/PWA).
-- Providers: `HttpPreviewProvider.js` (opaque HTTP, protocol v2),
-  `StaticServiceWorkerPreviewProvider.js` (`opaqueSafe = false`, standalone static/PWA
-  only); the former `SrcdocPreviewProvider` is deleted (grep-clean in `public/app/`).
-- Opaque sandbox tokens + response `sandbox` CSP:
-  `src/shared/security/previewSandbox.ts`, emitted by
-  `src/routes/preview-session.ts` and `src/services/electron-preview-handler.ts`.
-- Normalized host HTTP contract, per-host management CSRF, bare-root 302, and canonical
-  Range: `doc/development/preview-serving-contract.md`; PR #1968 and the host PRs
-  mod_exelearning#80, wp-exelearning#56, omeka-s-exelearning#21,
-  nextcloud-exelearning#68, procomun#260.
-- Layered incremental sync and cookieless capability sessions: ADR-0013 / SDD-0003,
-  ADR-0008.
+1. A Service Worker can only control same-origin clients and therefore cannot serve a sandboxed opaque-origin iframe.
+2. `srcdoc` required recursive inlining, Base64 expansion, custom navigation, runtime URL interception, per-page budgets, and compatibility exceptions. It remained lower fidelity than normal URLs.
+3. Server-backed runtimes can serve real capability URLs and attach a response-level `Content-Security-Policy: sandbox` to every scriptable document.
+4. Standalone static/PWA has no HTTP backend. Its only practical local serving mechanism is a same-origin Service Worker.
 
 ## Decision
 
-We will select the preview transport as follows and remove `srcdoc` as an
-authored-content transport:
+Use exactly two preview providers:
 
-| Runtime | Transport | Posture |
+```text
+HttpPreviewProvider
+StaticServiceWorkerPreviewProvider
+```
+
+Remove `SrcdocPreviewProvider`, its inliner, its authored-content navigation protocol, and all implicit fallback chains.
+
+### Transport matrix
+
+| Runtime | Transport | Security posture |
 |---|---|---|
-| Cloud / server editor | opaque HTTP preview (v2), `previewHttp` | opaque |
-| Electron | `app://` opaque HTTP-equivalent (v2) | opaque / cross-origin |
-| Embedded (Moodle / WordPress / Omeka S / Nextcloud / Procomún) | host HTTP preview (v2) via injected `previewHttp` | opaque; **fail closed** if config is missing or invalid |
-| Standalone static build / offline PWA | same-origin Service Worker (`static-service-worker`) | **trusted-content mode — not a security boundary**; `opaqueSafe = false` |
-| php-wasm playgrounds | disabled, or an explicit dev-only unsafe opt-in with a visible warning | never silent |
+| Cloud/server editor | HTTP preview v2 | opaque |
+| Electron | `app://` HTTP-equivalent v2 | opaque/cross-origin from renderer |
+| Moodle, WordPress, Omeka S, Nextcloud, Procomún | host HTTP preview v2 | opaque; fail closed without valid configuration |
+| Standalone static build | Service Worker | same-origin trusted-content mode |
+| Standalone PWA | Service Worker | same-origin trusted-content mode |
+| php-wasm playground | disabled by default; explicit development-only unsafe opt-in | never presented as secure |
 
-Rules: selection is deterministic; an embedded editor **never** selects the Service
-Worker automatically; a missing/invalid embedded `previewHttp` **fails closed** with a
-clear error and no fallback; there is **no silent downgrade** to same-origin anywhere.
-Trusted, escaped, script-free error markup in `iframe.srcdoc` is permitted and is not a
-transport.
+## Selection invariants
 
-## Security statement (standalone static/PWA)
+Transport selection is deterministic and enforced in code:
 
-**The standalone static/PWA Service Worker preview is not a security sandbox. It is
-intended for trusted projects. An imported ELPX containing malicious JavaScript may be
-able to access or modify data belonging to the editor origin.**
+- Server mode always selects HTTP.
+- Electron always selects the `app://` HTTP-equivalent transport.
+- Neither server nor Electron may be downgraded to `static-service-worker` through an override.
+- An embedded editor selects HTTP only when its host supplies a valid protocol-v2 `previewHttp` block.
+- `previewTransport: "http"` never bypasses `previewHttp` validation in a runtime that needs host endpoints.
+- An embedded editor may select `static-service-worker` only when both fields are present:
 
-Because this transport is same-origin, the preview additionally renders external media
-**directly** (there is no opaque media relay — the relay exists only for the opaque
-transports; ADR-0010), which is consistent with, and part of, the trusted-content
-posture.
+```jsonc
+{
+  "previewTransport": "static-service-worker",
+  "allowUnsafeEmbeddedPreview": true
+}
+```
+
+- The second field is a separate development authorization. The transport name alone is rejected.
+- A standalone static/PWA runtime defaults to `static-service-worker`.
+- Unknown or removed override values fail closed.
+- No unavailable transport silently falls back to a same-origin provider.
+
+## HTTP host contract
+
+Embedded hosts inject two independent URL bases:
+
+```jsonc
+{
+  "previewHttp": {
+    "protocolVersion": 2,
+    "managementBaseUrl": "...",
+    "servingBaseUrl": "...",
+    "managementHeaders": {},
+    "managementQuery": {}
+  }
+}
+```
+
+Both bases must resolve to the editor document's origin. Cross-origin and protocol-relative values are rejected.
+
+Management requests carry same-origin credentials and host CSRF material. Serving requests omit credentials and use an unguessable, expiring capability UUID.
+
+The two URL bases are deliberately independent because host frameworks may expose authenticated APIs and public capability routes under different prefixes.
+
+## Protocol v2
+
+HTTP preview separates three resource layers:
+
+1. **Fixed installation resources** — official build resources resolved through `preview-fixed-resources.json`; never uploaded per session.
+2. **Session assets** — author media stored under immutable project-model keys; uploaded once per session.
+3. **Generated documents** — page HTML and generated CSS/JS published as atomic incremental revisions.
+
+A revision is activated only after all writes and metadata are durable. Readers observe revision N or N+1, never a partial mixture.
+
+## Static/PWA security statement
+
+> The standalone static/PWA Service Worker preview is not a security sandbox. It is intended for trusted projects. An imported ELPX containing malicious JavaScript may be able to access or modify data belonging to the editor origin.
+
+The provider exposes `opaqueSafe = false` and the UI displays a translated, non-blocking warning the first time static/PWA preview is prepared. The warning is shown once per provider lifetime rather than on every refresh.
+
+The stronger development-only warning remains visible when an embedded playground deliberately enables the unsafe Service Worker opt-in.
 
 ## Deployment guidance
 
-- Prefer a **dedicated origin** for a standalone static/PWA editor when practical.
-- **Never** serve a standalone static/PWA editor from an origin shared with an
-  authenticated application: in Service-Worker (static) mode, authored scripts run
-  same-origin and can reach that origin's data.
-- **Warn the user before opening an untrusted ELPX** in a standalone static/PWA build.
-- **Service-Worker mode is not opaque mode.** Do not treat the two as equivalent when
-  reasoning about isolation.
-- **"No login" does not eliminate the risk.** An origin without authentication can
-  still hold IndexedDB/Cache/localStorage data belonging to the editor that malicious
-  authored scripts could read or modify.
+- Prefer a dedicated origin for standalone static/PWA.
+- Do not share that origin with authenticated or sensitive applications.
+- Open only trusted ELPX projects in static/PWA mode.
+- Do not describe the Service Worker mode as equivalent to opaque HTTP preview.
+- “No login” does not eliminate risk: editor data may still exist in IndexedDB, Cache API, or local storage.
+
+## Response isolation
+
+Opaque HTTP preview uses an iframe without `allow-same-origin`. Every scriptable response type also receives the sandbox-first CSP, including HTML, SVG, XML, `text/xml`, and XHTML.
+
+This response policy keeps a capability document sandboxed even when opened directly in a new tab.
+
+Scriptable author documents fetched for download/open actions must not be converted into editor-origin blob URLs. They are downloaded as inert bytes instead.
+
+## External media
+
+Opaque preview cannot safely frame arbitrary external content directly. The untrusted child reports a validated maintained-provider identifier and geometry; the trusted parent reconstructs the canonical provider URL and overlays the real player within the authored-content rectangle.
+
+Static/PWA is already same-origin trusted-content mode and renders external media directly without the opaque relay.
+
+## Alternatives rejected
+
+### Keep `srcdoc`
+
+Rejected because of incomplete fidelity, Base64/memory expansion, duplicated navigation, dynamic-resource interception, and continuing maintenance cost.
+
+### Add a second preview domain
+
+Rejected because of DNS, certificate, deployment, and host-integration burden. The project requires same-host capability serving.
+
+### Run a JavaScript or WebAssembly web server in the browser
+
+Rejected because it would still require a Service Worker gateway and would not create an opaque client. It adds runtime cost without solving the browser-origin constraint.
+
+### Sandbox individual iDevices with JavaScript compartments
+
+Rejected as the primary boundary. Existing iDevices depend on DOM and global runtime behavior; a JavaScript membrane is not equivalent to browser-enforced origin isolation.
+
+### Make a Service Worker control an opaque iframe
+
+Rejected as impossible under the browser service-worker model.
 
 ## Consequences
 
 ### Positive
 
-- Less code and fewer hacks: one opaque HTTP path replaces the `srcdoc` inlining
-  machinery (the preview panel shed a large amount of transport-specific code in
-  PR #1968).
-- Higher static fidelity everywhere a backend exists: real per-page URLs,
-  open-in-new-tab, and runtime-URL features.
-- Real capability URLs plus a response-level `sandbox` CSP give strong,
-  browser-enforced isolation in every context that holds credentials.
+- One high-fidelity URL-based transport in every backend-capable context.
+- A smaller provider set and substantially less preview-specific client code.
+- No recursive authored-resource inliner.
+- Strong isolation where credentials or privileged APIs exist.
+- Honest, explicit treatment of the only same-origin mode.
 
 ### Negative
 
-- Standalone static/PWA does **not** isolate malicious authored scripts; the
-  trusted-content policy must be communicated to deployers and users.
-- The php-wasm playground preview is either unavailable or available only behind an
-  explicit, visibly-warned unsafe opt-in.
-
-### Neutral
-
-- The Service Worker preview survives, renamed and constrained (`static-service-worker`,
-  `opaqueSafe = false`), as a documented compatibility mode rather than a default.
-- Electron `app://` and cookieless HTTP capability sessions remain first-class opaque
-  transports (ADR-0008, ADR-0011).
-
-## Risks
-
-- A deployer could host a standalone static/PWA editor on a shared authenticated origin
-  and open untrusted content. Mitigation: the security statement and deployment guidance
-  above; `opaqueSafe = false` surfaced in the client; a visible warning banner when the
-  `static-service-worker` transport is forced in an embedded context.
-- A future contributor could reintroduce `srcdoc` or an implicit SW selection.
-  Mitigation: grep-clean removal, deterministic selection tests, and this ADR.
+- Static/PWA cannot safely execute hostile authored JavaScript.
+- php-wasm playground preview is unavailable unless explicitly enabled as unsafe development behavior.
+- Host browser activation depends on a core editor build containing `HttpPreviewProvider` and the fixed-resource manifest.
 
 ## Validation
 
-- Transport selection unit tests (`previewTransport.test.js`,
-  `selectPreviewProvider.test.js`) assert `srcdoc` is gone, embedded fails closed, and
-  the Service Worker is never selected implicitly.
-- The static-transport E2E suite exercises the `static-service-worker` path.
-- Host PRs demonstrate opaque HTTP serving and fail-closed embedded selection.
+Tests must demonstrate:
 
-## Follow-up work
+- no mode selects `srcdoc`;
+- embedded missing or malformed `previewHttp` fails closed;
+- HTTP overrides cannot bypass endpoint validation;
+- server and Electron reject Service Worker downgrade attempts;
+- embedded Service Worker requires the separate unsafe authorization;
+- standalone static/PWA selects Service Worker;
+- static/PWA displays the trusted-content warning once;
+- opaque iframe sandbox omits `allow-same-origin`;
+- scriptable serving responses contain the sandbox CSP;
+- the Service Worker cannot serve an opaque iframe;
+- no edit is lost while a refresh is already in flight.
 
-- Ship a core editor release carrying `HttpPreviewProvider` +
-  `bundles/preview-fixed-resources.json` so hosts can activate HTTP preview end-to-end.
-- Re-vendor the conformance vectors into the hosts for the serving-contract §4 deltas
-  (bare-root 302, canonical Range).
+## Activation status
+
+Core server and static/PWA transports are covered by the core browser suites. Electron uses the shared serving implementation and has adapter tests.
+
+Embedding hosts may implement and test their endpoints before a compatible editor release exists. Such a host must distinguish:
+
+```text
+implemented → API-tested → browser-activated → production-released
+```
+
+Bootstrap string tests are not proof of browser activation. The final host gate is a real static-editor artifact from the target core commit driving create → assets → revision → capability iframe → incremental update → cleanup.
+
+## Follow-up
+
+- Publish a core editor release containing `HttpPreviewProvider`, `StaticServiceWorkerPreviewProvider`, and `bundles/preview-fixed-resources.json`.
+- Run the same versioned core artifact through each host's browser integration suite.
+- Measure memory and concurrent-session behavior before increasing preview byte limits.
 
 ## References
 
-- ADR-0006 (opaque-origin sandbox — refined here for the transport matrix),
-  ADR-0007 (provider selection — refined here: `srcdoc` removed, SW constrained),
-  ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0013.
-- SDD-0002 (threat model; its `srcdoc` transport is removed by this ADR), SDD-0003.
-- PR #1968 and host PRs mod_exelearning#80, wp-exelearning#56,
-  omeka-s-exelearning#21, nextcloud-exelearning#68, procomun#260.
-- `doc/development/preview-architecture.md`, `doc/development/preview-serving-contract.md`.
+- ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0013.
+- SDD-0002 and SDD-0003.
+- `doc/development/preview-architecture.md`.
+- `doc/development/preview-serving-contract.md`.
+- PR #1968 and host PRs mod_exelearning#80, wp-exelearning#56, omeka-s-exelearning#21, nextcloud-exelearning#68, procomun#260.
