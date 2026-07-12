@@ -310,8 +310,12 @@ describe('PreviewPanelManager', () => {
       expect(swListenerSpy).not.toHaveBeenCalled();
     });
 
-    it('should install SW recovery listeners for the static Service Worker transport', () => {
-      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'static-service-worker' };
+    it('should install SW recovery listeners for the standalone static Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig = {
+      mode: 'static',
+      isEmbedded: false,
+      embeddingConfig: null,
+    };
       const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler');
       const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener');
       const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener');
@@ -345,8 +349,12 @@ describe('PreviewPanelManager', () => {
       expect(window.exeMediaHost.attach).toHaveBeenCalledTimes(2);
     });
 
-    it('applies the same-origin sandbox (no media relay) for the static Service Worker transport', () => {
-      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'static-service-worker' };
+    it('applies the same-origin sandbox (no media relay) for the standalone static Service Worker transport', () => {
+      window.eXeLearning.app.runtimeConfig = {
+      mode: 'static',
+      isEmbedded: false,
+      embeddingConfig: null,
+    };
 
       manager._initProvider();
 
@@ -404,11 +412,14 @@ describe('PreviewPanelManager', () => {
       expect(manager._provider).toBeNull();
     });
 
-    it('shows the unsafe-transport banner when an embedded editor overrides to the static SW', () => {
+    it('shows the unsafe-transport banner when an embedded editor explicitly authorizes the static SW', () => {
       window.eXeLearning.app.runtimeConfig = {
         mode: 'embedded',
         isEmbedded: true,
-        embeddingConfig: { previewTransport: 'static-service-worker' },
+        embeddingConfig: {
+        previewTransport: 'static-service-worker',
+        allowUnsafeEmbeddedPreview: true,
+      },
       };
 
       manager._initProvider();
