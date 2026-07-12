@@ -232,7 +232,8 @@ jobs:
         run: |
           set -o pipefail
           {
-            bun install --frozen-lockfile
+            bun install
+            git restore bun.lock package.json
             bun x vitest run \
               public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.test.js \
               public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
