@@ -318,18 +318,6 @@ export class FileAttachHandler extends BaseLegacyHandler {
     }
 
     /**
-     * Escape text for safe insertion into HTML content.
-     */
-    private escapeHtml(value: string): string {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    /**
      * Escape text for safe insertion into an HTML attribute.
      */
     private escapeAttr(value: string): string {
