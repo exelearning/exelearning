@@ -77,35 +77,36 @@ export class FileAttachHandler extends BaseLegacyHandler {
         const attachments = Array.isArray(properties.attachments)
             ? (properties.attachments as AttachmentProperty[])
             : [];
+
+        if (attachments.length === 0) return '';
+
         const parts = ['<div class="fileAttachment-IDevice">'];
 
         if (intro.trim()) {
             parts.push(`<div class="fileAttachment-intro">${intro}</div>`);
         }
 
-        if (attachments.length > 0) {
-            parts.push('<ul class="fileAttachment-list">');
-            for (const attachment of attachments) {
-                const label = attachment.title || attachment.filename || 'Attachment';
-                const filename = attachment.filename || label;
-                const meta =
-                    attachment.title && attachment.filename && attachment.title !== attachment.filename
-                        ? `<span class="fileAttachment-meta">${this.escapeHtml(attachment.filename)}</span>`
-                        : '';
+        parts.push('<ul class="fileAttachment-list">');
+        for (const attachment of attachments) {
+            const label = attachment.title || attachment.filename || 'Attachment';
+            const filename = attachment.filename || label;
+            const meta =
+                attachment.title && attachment.filename && attachment.title !== attachment.filename
+                    ? `<span class="fileAttachment-meta">${this.escapeHtml(attachment.filename)}</span>`
+                    : '';
 
-                parts.push(
-                    `<li class="fileAttachment-item fileAttachment-item--file">` +
-                        `<a class="fileAttachment-link" href="${this.escapeAttr(attachment.url)}" download="${this.escapeAttr(filename)}">` +
-                        `<span class="fileAttachment-text">` +
-                        `<span class="fileAttachment-title">${this.escapeHtml(label)}</span>` +
-                        meta +
-                        `</span>` +
-                        `</a>` +
-                        `</li>`,
-                );
-            }
-            parts.push('</ul>');
+            parts.push(
+                `<li class="fileAttachment-item fileAttachment-item--file">` +
+                    `<a class="fileAttachment-link" href="${this.escapeAttr(attachment.url)}" download="${this.escapeAttr(filename)}">` +
+                    `<span class="fileAttachment-text">` +
+                    `<span class="fileAttachment-title">${this.escapeHtml(label)}</span>` +
+                    meta +
+                    `</span>` +
+                    `</a>` +
+                    `</li>`,
+            );
         }
+        parts.push('</ul>');
 
         parts.push('</div>');
         return parts.join('');
