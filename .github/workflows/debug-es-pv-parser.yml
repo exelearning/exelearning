@@ -1,12 +1,19 @@
 name: Apply Euskadi curriculum fixes
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/lomloe-add-euskadi-dataset
     paths:
       - .github/workflows/debug-es-pv-parser.yml
   workflow_dispatch:
+
+concurrency:
+  group: apply-es-pv-fixes
+  cancel-in-progress: true
 
 permissions:
   contents: write
