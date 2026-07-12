@@ -24,7 +24,7 @@ jobs:
       - name: Normalize the three updated test blocks
         shell: python
         run: |
-          from pathlib import Path
+          from pathlib import import Path
           import re
 
           path = Path("public/app/workarea/interface/elements/previewPanel.test.js")
@@ -73,7 +73,9 @@ jobs:
           node --check public/app/workarea/interface/elements/previewPanel.test.js
           git diff --check
           git show 1009e0044546710a45e32ad4788bfb2bcc7493ba:.github/workflows/e2e.yml > .github/workflows/e2e.yml
-          git rm -f .github/workflows/apply-preview-test-contract-patch.yml
+          if [ -e .github/workflows/apply-preview-test-contract-patch.yml ]; then
+            git rm -f .github/workflows/apply-preview-test-contract-patch.yml
+          fi
           git add public/app/workarea/interface/elements/previewPanel.test.js .github/workflows/e2e.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
