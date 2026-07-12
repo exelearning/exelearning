@@ -150,7 +150,8 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Euskadi / País Vasco',
             file: '../data/lomloe-ES-PV.json',
-            available: true
+            available: true,
+            showDescriptorsAtCompetency: true
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
@@ -351,6 +352,16 @@ var $exeDevice = (function () {
     function datasetHasPerCriterionDescriptors(id) {
         var ds = getDataset(id);
         return !!(ds && ds.descriptorsPerCriterion);
+    }
+
+    /**
+     * Whether competencia-level descriptor links should be visible while
+     * browsing the curriculum. The selection panel still lets the teacher
+     * choose the descriptors that apply to each selected criterio.
+     */
+    function datasetShowsCompetencyDescriptors(id) {
+        var ds = getDataset(id);
+        return !!(ds && ds.showDescriptorsAtCompetency);
     }
 
     /**
@@ -1317,14 +1328,29 @@ var $exeDevice = (function () {
         if (!compKeys.length) {
             return '<div class="lomloe-no-materia">' + _('No specific competencies for this subject.') + '</div>';
         }
-        // Only Canarias has an authoritative per-criterio descriptor mapping;
-        // for the other datasets the descriptors are competencia-level, so we
-        // don't render them as if they were tied to each criterio here — the
-        // teacher selects the applicable ones in the right-hand panel instead.
+        // Canarias has an authoritative per-criterio descriptor mapping. Euskadi
+        // publishes descriptor links at competencia level, so those are shown
+        // once per competencia while the selected-criterio panel keeps checkbox
+        // mode for choosing the applicable subset.
         var showCritDescriptors = datasetHasPerCriterionDescriptors(currentDataset);
+        var showCompDescriptors = datasetShowsCompetencyDescriptors(currentDataset);
         return compKeys.map(function (codComp) {
             var comp = comps[codComp];
             var criterios = comp.criterios_evaluacion || [];
+            var compDescriptorCodes = [];
+            if (showCompDescriptors) {
+                criterios.forEach(function (crit) {
+                    (crit.competencias_clave || []).forEach(function (cc) {
+                        if (compDescriptorCodes.indexOf(cc) === -1) {
+                            compDescriptorCodes.push(cc);
+                        }
+                    });
+                });
+            }
+            var compDescriptorTags = compDescriptorCodes.map(function (cc) {
+                return '<span class="lomloe-cc-tag" title="' +
+                    esc(descriptorText(cc)) + '">' + esc(cc) + '</span>';
+            }).join('');
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
                 var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
@@ -1350,6 +1376,9 @@ var $exeDevice = (function () {
                 '    <span class="lomloe-comp-code">' + esc(codComp) + '</span>',
                 '    <span class="lomloe-comp-desc">' + esc(comp.descripcion) + '</span>',
                 '  </div>',
+                compDescriptorTags
+                    ? '  <div class="lomloe-cc-tags lomloe-comp-cc-tags">' + compDescriptorTags + '</div>'
+                    : '',
                 '  <div class="lomloe-criterios">' + criteriosHtml + '</div>',
                 '</div>'
             ].join('');

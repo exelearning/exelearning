@@ -266,6 +266,53 @@ describe('lomloe-ES-PV.json — ESO per-course distribution (no runtime filter n
             expect(codesIn('DBHko 2. maila')).not.toContain(bg.codArea);
         }
     });
+
+    it('exposes Música in 1.º–4.º and the corrected 3.º/4.º subjects', () => {
+        const codesIn = (n) => Object.keys(dataset[ESO][n]);
+        for (const level of ESO_NIVELES) {
+            expect(codesIn(level), level).toContain('MUS');
+        }
+        expect(codesIn('DBHko 3. maila')).toContain('KZ');
+        expect(codesIn('DBHko 4. maila')).toEqual(
+            expect.arrayContaining(['MUS', 'LAT', 'AA', 'KZ', 'ML']),
+        );
+        expect(codesIn('DBHko 1. maila')).not.toContain('AA');
+        expect(codesIn('DBHko 2. maila')).not.toContain('AA');
+        expect(codesIn('DBHko 3. maila')).not.toContain('AA');
+    });
+
+    it('keeps Matematika Lantegia visible without fabricating an unpublished curriculum', () => {
+        const area = dataset[ESO]['DBHko 4. maila'].ML;
+        expect(area.denominacion).toBe('Matematika Lantegia');
+        expect(area.competencias_especificas).toEqual({});
+        expect(area.saberes_basicos.bloques).toEqual({});
+    });
+
+    it('does not bleed Música curriculum text into Matematika', () => {
+        for (const level of ESO_NIVELES) {
+            const area = dataset[ESO][level].MAT;
+            expect(JSON.stringify(area)).not.toContain('Produkzio musikal');
+        }
+    });
+
+    it('newly extracted subjects carry competencia-level operational descriptors', () => {
+        for (const [level, codes] of [
+            ['DBHko 1. maila', ['MUS']],
+            ['DBHko 3. maila', ['MUS', 'KZ']],
+            ['DBHko 4. maila', ['MUS', 'LAT', 'AA', 'KZ']],
+        ]) {
+            for (const code of codes) {
+                const area = dataset[ESO][level][code];
+                for (const comp of Object.values(area.competencias_especificas)) {
+                    const descriptors = new Set(
+                        comp.criterios_evaluacion.flatMap((criterion) => criterion.competencias_clave),
+                    );
+                    expect(descriptors.size, `${level}/${code}`).toBeGreaterThan(0);
+                }
+            }
+        }
+    });
+
 });
 
 describe('lomloe-ES-PV.json — Infantil descriptor policy (documented source limitation)', () => {

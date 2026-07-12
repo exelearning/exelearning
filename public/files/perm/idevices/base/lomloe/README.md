@@ -500,7 +500,7 @@ Educación Básica.
 |---|---|---|---|---|---|---|
 | `Haur Hezkuntza` | `Lehen zikloa (0-3 urte)`, `Bigarren zikloa (3-6 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
 | `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | 329 | 831 | 1 936 | `PRI1` … `PRI6` |
-| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 25 | 379 | 1 028 | 3 118 | `ESO1` … `ESO4` |
+| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 29 | 408 | 1 115 | 3 338 | `ESO1` … `ESO4` |
 
 (Competencias/criterios/saberes counted per `(nivel, area)`, i.e. including the
 per-year/per-course duplication.)
@@ -538,7 +538,11 @@ materia's course offering in **art. 13** (`COURSE_MAP`). The result is encoded
 **directly per course** in the JSON — a materia simply does not appear in a course
 where it is not taught — so **no `ESO_COURSE_SUBJECTS` runtime filter is needed**
 (a regression test in the colocated `lomloe-ES-PV.test.js` asserts the per-course
-distribution). 4.º Matemáticas reuses the 3.º column the decree publishes.
+distribution). `Musika` is available in 1.º–4.º; `Kultura Zientifikoa` in
+3.º/4.º; and `Latina` plus `Adierazpen Artistikoa` in 4.º. `Matematika Lantegia`
+is listed in art. 13 for 4.º but has no curriculum annex in Decreto 77/2023, so it
+is exposed with an intentionally empty curriculum rather than fabricated content.
+4.º Matemáticas reuses the 3.º column the decree publishes.
 
 ### Descriptors / competencias clave strategy
 
@@ -547,8 +551,10 @@ The Basque ANEXO I defines the *irteera-profila* operational descriptors with
 `STEM`=STEM, `KD`=CD, `KPSII`=CPSAA, `HK`=CC, `EK`=CE, `KAKK`=CCEC. Each
 competencia específica lists the descriptors it connects to (`… deskriptore
 hauekin lotzen da: HKK1, KE1, STEM4 …`); those codes are copied onto every
-criterio of the competencia (competencia-level, checkbox mode — `ES-PV` is **not**
-`descriptorsPerCriterion`). The decree's PDF text contains systematic OCR/source
+criterio of the competencia. The browser renders those links once at competencia
+level, while the selected-criterio panel remains in checkbox mode so the teacher
+can choose the applicable subset (`ES-PV` is **not** `descriptorsPerCriterion`).
+The decree's PDF text contains systematic OCR/source
 variants of these codes (`PSIIK`/`SII`→`KPSII`, `DK`/`LD`→`KD`, `ELK`→`KE`,
 `EKK`→`EK`, `KKAK`→`KAKK`, `STEAM`→`STEM`, the Castilian leak `CP`→`KE`); the
 generator normalises them to the ANEXO I family set and validates every code is
@@ -572,18 +578,15 @@ the Basque source does not make. This decision is locked by a test in
 
 ### Known limitations
 
-- **ESO saberes for a few materias are left empty**: `Ekonomia eta Ekintzailetza`
-  (`EE`) and `Teknologia eta Digitalizazioa` (`TD`) in every course, and `MAT` in
-  4.º. Their saberes section could not be segmented without bleeding content from
-  the adjacent materia, so the bloques were left empty rather than ship mis-split
-  items. Their competencias específicas and criterios de evaluación are complete,
-  and saberes **are** extracted for every other ESO materia (including the
-  single-column optatives Teknologia, Digitalizazioa, Filosofia, Plastika, etc.).
 - `4.º Matemáticas A/B` is represented as a single `MAT` reusing the 3.º criterios
-  the decree publishes (the decree gives no separate 4.º A/B criterios columns in
-  this annex), and its 4.º saberes are left empty for the same reason.
+  the decree publishes. Its saberes matrix cannot be segmented reliably (46
+  apparent blocks), so the 4.º bloques are left empty rather than ship mis-split
+  content.
+- `Matematika Lantegia` (`ML`) is listed as a 4.º optative in art. 13, but Decreto
+  77/2023 publishes no competencias específicas, criterios de evaluación or
+  saberes for it. The subject is visible with an intentionally empty curriculum.
 - One `Lanbide-jarduerari Aplikatutako Zientziak` (`LAZ`) competencia in 4.º whose
-  criterios column was empty is dropped (no usable criterios).
+  criterios column is empty in the source is dropped (no usable criterios).
 
 ### Generator script
 

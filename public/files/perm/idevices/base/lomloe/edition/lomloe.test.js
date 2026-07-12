@@ -1952,6 +1952,7 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-PV.json'");
         expect(lomloeSrc).toContain('LOMLOE — Euskadi / País Vasco');
+        expect(lomloeSrc).toContain('showDescriptorsAtCompetency: true');
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {
@@ -1984,7 +1985,7 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         globalThis.fetch = vi.fn(() =>
             Promise.resolve({ ok: true, json: () => Promise.resolve(esPvDataset) })
         );
-        dev.init(el, Object.assign({ lomloeDataset: 'ES-PV' }, saved || {}));
+        dev.init(el, Object.assign({ lomloeDataset: 'ES-PV', lomloeSelections: [] }, saved || {}));
         await new Promise(r => setTimeout(r, 80));
         return el;
     }
@@ -2030,14 +2031,30 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         expect(eso1).toEqual(expect.arrayContaining(['EL', 'GL', 'AHIZ', 'MAT', 'GH', 'HF']));
     });
 
-    it('renders a selected Primaria materia\'s curriculum (competencias + saberes)', async () => {
+    it('lists the corrected ESO subjects in their official courses', async () => {
+        await initEsPv();
+        const eso1 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 1. maila');
+        const eso2 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 2. maila');
+        const eso3 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 3. maila');
+        const eso4 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 4. maila');
+
+        expect(eso1).toContain('MUS');
+        expect(eso2).toContain('MUS');
+        expect(eso3).toEqual(expect.arrayContaining(['MUS', 'KZ']));
+        expect(eso4).toEqual(expect.arrayContaining(['MUS', 'LAT', 'AA', 'KZ', 'ML']));
+        expect(eso1).not.toContain('AA');
+        expect(eso2).not.toContain('AA');
+        expect(eso3).not.toContain('AA');
+    });
+
+    it('renders a selected Primaria materia curriculum and competencia descriptors', async () => {
         await initEsPv();
         await materiasAfter('Lehen Hezkuntza', 'Lehen Hezkuntzako 1. maila');
         const mat = Array.from(el.querySelectorAll('.lomloe-materia-item')).find(li => li.dataset.codarea === 'MAT');
         mat.click();
         await new Promise(r => setTimeout(r, 40));
-        // Active materia + its competencia codes / Basque descriptor tags render.
         expect(el.querySelector('.lomloe-materia-item.active')).toBeTruthy();
         expect(el.innerHTML).toContain('ES-PV-PRI1-MAT-');
+        expect(el.querySelector('.lomloe-comp-cc-tags .lomloe-cc-tag')).toBeTruthy();
     });
 });
