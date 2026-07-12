@@ -427,8 +427,15 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     decodeHtmlContent(content: string): string {
         if (!content) return '';
 
+        // Protect LaTeX blocks before applying replacements
+        const latexBlocks: string[] = [];
+        const protectedContent = content.replace(/\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$/gs, match => {
+            latexBlocks.push(match);
+            return `__LATEX_BLOCK_${latexBlocks.length - 1}__`;
+        });
+
         // Handle Python-style unicode escapes and HTML entities
-        const decoded = content
+        let decoded = protectedContent
             // Decode common HTML entities
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
@@ -439,6 +446,9 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
             .replace(/\\r(?![a-zA-Z])/g, '\r'); // Negative lookahead to preserve LaTeX commands
+
+        // Restore the original LaTeX blocks
+        decoded = decoded.replace(/__LATEX_BLOCK_(\d+)__/g, (_, i) => latexBlocks[i]);
 
         return decoded;
     }
