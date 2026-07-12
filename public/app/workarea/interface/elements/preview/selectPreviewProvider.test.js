@@ -12,11 +12,24 @@ const VALID_PREVIEW_HTTP = Object.freeze({
     servingBaseUrl: '/preview',
 });
 
-function config(mode, { isEmbedded = false, previewTransport = undefined, previewHttp = undefined } = {}) {
-    const embeddingConfig =
-        previewTransport || previewHttp
-            ? { ...(previewTransport ? { previewTransport } : {}), ...(previewHttp ? { previewHttp } : {}) }
-            : null;
+function config(
+    mode,
+    {
+        isEmbedded = false,
+        previewTransport = undefined,
+        previewHttp = undefined,
+        allowUnsafeEmbeddedPreview = undefined,
+    } = {},
+) {
+    const hasEmbeddingConfig =
+        previewTransport !== undefined || previewHttp !== undefined || allowUnsafeEmbeddedPreview !== undefined;
+    const embeddingConfig = hasEmbeddingConfig
+        ? {
+              ...(previewTransport !== undefined ? { previewTransport } : {}),
+              ...(previewHttp !== undefined ? { previewHttp } : {}),
+              ...(allowUnsafeEmbeddedPreview !== undefined ? { allowUnsafeEmbeddedPreview } : {}),
+          }
+        : null;
     return { mode, isEmbedded, embeddingConfig };
 }
 
@@ -60,21 +73,62 @@ describe('selectPreviewProvider', () => {
         expect(provider.opaqueSafe).toBe(false);
     });
 
-    it('honors the explicit static-service-worker override', () => {
+    it('rejects an embedded static-service-worker override without the separate unsafe authorization', () => {
+        expect(() =>
+            selectPreviewProvider({
+                runtimeConfig: config('embedded', {
+                    isEmbedded: true,
+                    previewTransport: 'static-service-worker',
+                }),
+                deps,
+            }),
+        ).toThrow(/allowUnsafeEmbeddedPreview/);
+    });
+
+    it('honors an embedded static-service-worker override only with explicit development authorization', () => {
         const provider = selectPreviewProvider({
-            runtimeConfig: config('embedded', { isEmbedded: true, previewTransport: 'static-service-worker' }),
+            runtimeConfig: config('embedded', {
+                isEmbedded: true,
+                previewTransport: 'static-service-worker',
+                allowUnsafeEmbeddedPreview: true,
+            }),
             deps,
         });
         expect(provider).toBeInstanceOf(StaticServiceWorkerPreviewProvider);
         expect(provider.opaqueSafe).toBe(false);
     });
 
-    it('honors the explicit http override from the embedding host', () => {
+    it('does not let an embedded http override bypass previewHttp validation', () => {
+        expect(() =>
+            selectPreviewProvider({
+                runtimeConfig: config('embedded', {
+                    isEmbedded: true,
+                    previewTransport: 'http',
+                }),
+                deps,
+            }),
+        ).toThrow(/previewHttp/);
+    });
+
+    it('honors the embedded http override when the host also supplies valid previewHttp', () => {
         const provider = selectPreviewProvider({
-            runtimeConfig: config('embedded', { isEmbedded: true, previewTransport: 'http' }),
+            runtimeConfig: config('embedded', {
+                isEmbedded: true,
+                previewTransport: 'http',
+                previewHttp: VALID_PREVIEW_HTTP,
+            }),
             deps,
         });
         expect(provider).toBeInstanceOf(HttpPreviewProvider);
+    });
+
+    it('rejects a Service Worker downgrade in server mode', () => {
+        expect(() =>
+            selectPreviewProvider({
+                runtimeConfig: config('server', { previewTransport: 'static-service-worker' }),
+                deps,
+            }),
+        ).toThrow(/standalone static\/PWA/);
     });
 
     it('rejects the removed srcdoc override instead of silently downgrading', () => {
