@@ -62,11 +62,53 @@ export class FileAttachHandler extends BaseLegacyHandler {
     }
 
     /**
-     * The file-attachment iDevice renders entirely from its JSON properties
-     * (it is a json-only iDevice), so there is no pre-rendered htmlView.
+     * Build an immediate static view for newly imported legacy components.
+     *
+     * The canonical state remains in JSON properties and the modern iDevice will
+     * re-render from that state. The fallback htmlView is required because the
+     * workarea displays imported htmlView before the iDevice has ever been opened
+     * and saved; without it, only the generically extracted intro was visible.
      */
-    extractHtmlView(_dict: Element, _context?: IdeviceHandlerContext): string {
-        return '';
+    extractHtmlView(dict: Element, _context?: IdeviceHandlerContext): string {
+        if (!dict) return '';
+
+        const properties = this.extractProperties(dict);
+        const intro = typeof properties.intro === 'string' ? properties.intro : '';
+        const attachments = Array.isArray(properties.attachments)
+            ? (properties.attachments as AttachmentProperty[])
+            : [];
+        const parts = ['<div class="fileAttachment-IDevice">'];
+
+        if (intro.trim()) {
+            parts.push(`<div class="fileAttachment-intro">${intro}</div>`);
+        }
+
+        if (attachments.length > 0) {
+            parts.push('<ul class="fileAttachment-list">');
+            for (const attachment of attachments) {
+                const label = attachment.title || attachment.filename || 'Attachment';
+                const filename = attachment.filename || label;
+                const meta =
+                    attachment.title && attachment.filename && attachment.title !== attachment.filename
+                        ? `<span class="fileAttachment-meta">${this.escapeHtml(attachment.filename)}</span>`
+                        : '';
+
+                parts.push(
+                    `<li class="fileAttachment-item fileAttachment-item--file">` +
+                        `<a class="fileAttachment-link" href="${this.escapeAttr(attachment.url)}" download="${this.escapeAttr(filename)}">` +
+                        `<span class="fileAttachment-text">` +
+                        `<span class="fileAttachment-title">${this.escapeHtml(label)}</span>` +
+                        meta +
+                        `</span>` +
+                        `</a>` +
+                        `</li>`,
+                );
+            }
+            parts.push('</ul>');
+        }
+
+        parts.push('</div>');
+        return parts.join('');
     }
 
     /**
@@ -273,5 +315,24 @@ export class FileAttachHandler extends BaseLegacyHandler {
             description: '',
             path: `resources/${filename}`,
         };
+    }
+
+    /**
+     * Escape text for safe insertion into HTML content.
+     */
+    private escapeHtml(value: string): string {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Escape text for safe insertion into an HTML attribute.
+     */
+    private escapeAttr(value: string): string {
+        return this.escapeHtml(value);
     }
 }
