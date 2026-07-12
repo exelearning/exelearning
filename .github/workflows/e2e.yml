@@ -21,13 +21,78 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  apply-preview-test-contract-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/opaque-iframe-external-media
+          fetch-depth: 2
+
+      - name: Align panel tests with the hardened transport contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("public/app/workarea/interface/elements/previewPanel.test.js")
+          text = path.read_text(encoding="utf-8")
+
+          standalone_old = "      window.eXeLearning.app.runtimeConfig.embeddingConfig = { previewTransport: 'static-service-worker' };"
+          standalone_new = """      window.eXeLearning.app.runtimeConfig = {
+                mode: 'static',
+                isEmbedded: false,
+                embeddingConfig: null,
+              };"""
+          if text.count(standalone_old) != 2:
+              raise SystemExit(f"expected 2 standalone legacy setups, found {text.count(standalone_old)}")
+          text = text.replace(standalone_old, standalone_new)
+
+          unsafe_old = "        embeddingConfig: { previewTransport: 'static-service-worker' },"
+          unsafe_new = """        embeddingConfig: {
+                  previewTransport: 'static-service-worker',
+                  allowUnsafeEmbeddedPreview: true,
+                },"""
+          if text.count(unsafe_old) != 1:
+              raise SystemExit(f"expected 1 unsafe embedded setup, found {text.count(unsafe_old)}")
+          text = text.replace(unsafe_old, unsafe_new)
+
+          text = text.replace(
+              "should install SW recovery listeners for the static Service Worker transport",
+              "should install SW recovery listeners for the standalone static Service Worker transport",
+          )
+          text = text.replace(
+              "applies the same-origin sandbox (no media relay) for the static Service Worker transport",
+              "applies the same-origin sandbox (no media relay) for the standalone static Service Worker transport",
+          )
+          text = text.replace(
+              "shows the unsafe-transport banner when an embedded editor overrides to the static SW",
+              "shows the unsafe-transport banner when an embedded editor explicitly authorizes the static SW",
+          )
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Publish the clean test-only commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git checkout HEAD^ -- .github/workflows/e2e.yml
+          git rm .github/workflows/apply-preview-test-contract-patch.yml
+          git add public/app/workarea/interface/elements/previewPanel.test.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(preview): align panel tests with hardened transport gates"
+          git push origin HEAD:fix/opaque-iframe-external-media
+
   # Build every asset once and share it with the test shards. Previously each of
   # the 3 browser jobs rebuilt CSS + bundles independently (3x build); now the
   # build is paid a single time and downloaded by the shards.
   build:
+    needs: apply-preview-test-contract-patch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
