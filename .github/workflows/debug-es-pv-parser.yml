@@ -1,6 +1,9 @@
 name: Debug Euskadi curriculum parser
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/lomloe-add-euskadi-dataset
@@ -29,7 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
-          import json
           import os
           import re
           from pathlib import Path
@@ -88,7 +90,6 @@ jobs:
         run: |
           python - <<'PY'
           import importlib.util
-          import json
           import re
 
           import pdfplumber
