@@ -48,18 +48,27 @@ jobs:
 
       - name: Regenerate Euskadi dataset
         run: |
-          python -m pip install --disable-pip-version-check pdfplumber
+          python -m pip install --disable-pip-version-check pdfplumber requests
           mkdir -p /tmp/es-pv-parser
           cp /tmp/parse_es_pv.py /tmp/es-pv-parser/parse_es_pv.py
-          curl --fail --location --retry 3 \
-            'https://www.euskadi.eus/bopv2/datos/2023/06/2302729e.pdf' \
-            --output /tmp/es-pv-parser/eu.pdf
-          curl --fail --location --retry 3 \
-            'https://www.euskadi.eus/bopv2/datos/2023/06/2302727e.pdf' \
-            --output /tmp/es-pv-parser/inf.pdf
+          python - <<'PY'
+          from pathlib import Path
+          import requests
+
+          downloads = {
+              '/tmp/es-pv-parser/eu.pdf': 'https://www.euskadi.eus/bopv2/datos/2023/06/2302729e.pdf',
+              '/tmp/es-pv-parser/inf.pdf': 'https://www.euskadi.eus/bopv2/datos/2023/06/2302727e.pdf',
+          }
+          for output, url in downloads.items():
+              response = requests.get(url, timeout=120)
+              response.raise_for_status()
+              assert response.content.startswith(b'%PDF'), url
+              Path(output).write_bytes(response.content)
+              print(output, len(response.content))
+          PY
           (
             cd /tmp/es-pv-parser
-            python parse_es_pv.py
+            python -u parse_es_pv.py
           )
           mv /tmp/es-pv-parser/generated.json \
             public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.json
