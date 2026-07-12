@@ -51,7 +51,8 @@ describe('StaticServiceWorkerPreviewProvider', () => {
             basePath: '/exe',
         });
 
-        await expect(providerWithoutToasts.prepare({})).resolves.toBe(providerWithoutToasts.session);
+        const session = await providerWithoutToasts.prepare({});
+        expect(session).toBe(providerWithoutToasts.session);
     });
 
     it('resolves pages under the virtual /viewer/ prefix', async () => {
