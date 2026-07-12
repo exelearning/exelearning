@@ -47,11 +47,15 @@ jobs:
           git apply /tmp/es-pv-fixes.patch
 
       - name: Regenerate Euskadi dataset
+        id: regenerate
+        continue-on-error: true
         run: |
-          python -m pip install --disable-pip-version-check pdfplumber requests
-          mkdir -p /tmp/es-pv-parser
-          cp /tmp/parse_es_pv.py /tmp/es-pv-parser/parse_es_pv.py
-          python - <<'PY'
+          set -o pipefail
+          {
+            python -m pip install --disable-pip-version-check pdfplumber requests
+            mkdir -p /tmp/es-pv-parser
+            cp /tmp/parse_es_pv.py /tmp/es-pv-parser/parse_es_pv.py
+            python - <<'PY'
           from pathlib import Path
           import requests
 
@@ -66,12 +70,23 @@ jobs:
               Path(output).write_bytes(response.content)
               print(output, len(response.content))
           PY
-          (
-            cd /tmp/es-pv-parser
-            python -u parse_es_pv.py
-          )
-          mv /tmp/es-pv-parser/generated.json \
-            public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.json
+            (
+              cd /tmp/es-pv-parser
+              python -u parse_es_pv.py
+            )
+            mv /tmp/es-pv-parser/generated.json \
+              public/files/perm/idevices/base/lomloe/data/lomloe-ES-PV.json
+          } 2>&1 | tee /tmp/es-pv-regenerate.log
+
+      - uses: actions/upload-artifact@v4
+        if: steps.regenerate.outcome == 'failure'
+        with:
+          name: es-pv-regenerate-log
+          path: /tmp/es-pv-regenerate.log
+
+      - name: Stop after regeneration failure
+        if: steps.regenerate.outcome == 'failure'
+        run: exit 1
 
       - name: Validate generated curriculum and refresh documentation stats
         run: |
