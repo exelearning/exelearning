@@ -21,6 +21,11 @@ jobs:
           ref: fix/opaque-iframe-external-media
           fetch-depth: 0
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Format the updated panel test
         run: |
           bunx @biomejs/biome format --write public/app/workarea/interface/elements/previewPanel.test.js
