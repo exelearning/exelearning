@@ -10,10 +10,11 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| [ADR-0001](ADR-0001-database-backed-yjs-version-history.md) | Store limited Yjs version history in the database | Proposed | 2026-07-13 |
 
 ## Proposed ADRs
 
-_No proposed ADRs yet._
+- [ADR-0001: Store limited Yjs version history in the database](ADR-0001-database-backed-yjs-version-history.md)
 
 ## Accepted ADRs
 
