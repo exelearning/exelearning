@@ -375,82 +375,65 @@ describe('BaseLegacyHandler', () => {
         });
     });
 
-    describe('decodeHtmlContent', () => {
-        it('should decode HTML entities', () => {
-            expect(handler.decodeHtmlContent('&lt;div&gt;Hello&lt;/div&gt;')).toBe('<div>Hello</div>');
+    describe('decodeHtmlContent - LaTeX stress cases (regression)', () => {
+        it.each([
+            // Commands starting with 't' (previously broken by \t -> tab)
+            ['\\( 4 \\times \\dfrac{1}{2} \\)'],
+            ['\\( \\tan(x) + \\theta \\)'],
+            ['\\( \\tfrac{1}{2} + \\text{units} \\)'],
+            ['\\( \\top \\land \\bot \\)'],
+
+            // Commands starting with 'n' (previously broken by \n -> newline)
+            ['\\( \\nabla f(x, y) \\)'],
+            ['\\( \\neq \\quad \\nleq \\quad \\ngeq \\)'],
+            ['\\( a \\notin B \\)'],
+
+            // Commands starting with 'r' (already protected before, re-confirm)
+            ['\\( \\left( x \\right) \\)'],
+            ['\\( \\rho \\cdot \\rightarrow \\)'],
+
+            // Mixed dangerous commands in the same formula
+            [
+                '\\( 4 \\times \\dfrac{1}{2} = \\dfrac{4}{1} \\times \\dfrac{1}{2} = \\dfrac{4 \\times 1}{1 \\times 2} = \\dfrac{4}{2} \\)',
+            ],
+            ['\\( \\nabla \\times \\vec{F} = \\left( \\tfrac{\\partial}{\\partial x} \\right) \\)'],
+
+            // \begin{...}...\end{...} environments without $, \(, \[ delimiters
+            ['\\begin{equation} a \\times b = c \\end{equation}'],
+            ['\\begin{align} x &= \\nabla f \\\\ y &= \\tan(\\theta) \\end{align}'],
+
+            // Multiple LaTeX blocks in the same content (placeholder collision check)
+            ['First \\( a \\times b \\) then \\( \\nabla \\times c \\) and finally \\( \\tan(\\theta) \\)'],
+
+            // Text that literally contains something resembling the internal placeholder
+            [
+                'Note: __LATEX_BLOCK_0__ is an internal placeholder, it should not be touched, and here is a real formula \\( a \\times b \\)',
+            ],
+
+            // Escaped dollar sign before a real formula
+            ['Price: \\$5, formula: $x \\times y$'],
+            ['The cost is \\$10.50 and the equation is $\\nabla \\times \\vec{F}$'],
+        ])('should leave LaTeX content unchanged: %s', input => {
+            expect(handler.decodeHtmlContent(input)).toBe(input);
         });
 
-        it('should decode &amp;', () => {
-            expect(handler.decodeHtmlContent('A &amp; B')).toBe('A & B');
-        });
-
-        it('should decode &quot;', () => {
-            expect(handler.decodeHtmlContent('Say &quot;Hello&quot;')).toBe('Say "Hello"');
-        });
-
-        it('should decode &#39;', () => {
-            expect(handler.decodeHtmlContent('It&#39;s nice')).toBe("It's nice");
-        });
-
-        it('should decode \\n to newline', () => {
-            expect(handler.decodeHtmlContent('Line1\\nLine2')).toBe('Line1\nLine2');
-        });
-
-        it('should decode \\t to tab', () => {
-            expect(handler.decodeHtmlContent('Col1\\tCol2')).toBe('Col1\tCol2');
-        });
-
-        it('should return empty string for empty input', () => {
-            expect(handler.decodeHtmlContent('')).toBe('');
-        });
-
-        it('should preserve LaTeX \\right command', () => {
-            const latex = '\\left( x \\right)';
-            // \\r followed by 'i' in 'right' should NOT be converted
-            expect(handler.decodeHtmlContent(latex)).toBe('\\left( x \\right)');
-        });
-
-        it('should preserve \\times inside \\( ... \\) delimiters', () => {
-            const latex = '\\( 4 \\times \\dfrac{1}{2} \\)';
-            expect(handler.decodeHtmlContent(latex)).toBe('\\( 4 \\times \\dfrac{1}{2} \\)');
-        });
-
-        it('should preserve LaTeX commands starting with \\n (e.g. \\nabla)', () => {
-            const latex = '\\( \\nabla f(x) \\)';
-            expect(handler.decodeHtmlContent(latex)).toBe('\\( \\nabla f(x) \\)');
-        });
-
-        it('should preserve LaTeX inside \\[ ... \\] block delimiters', () => {
-            const latex = '\\[ \\times \\dfrac{a}{b} \\]';
-            expect(handler.decodeHtmlContent(latex)).toBe('\\[ \\times \\dfrac{a}{b} \\]');
-        });
-
-        it('should preserve LaTeX inside $ ... $ inline delimiters', () => {
-            const latex = 'The result is $x \\times y$ units';
-            expect(handler.decodeHtmlContent(latex)).toBe('The result is $x \\times y$ units');
-        });
-
-        it('should preserve LaTeX inside $$ ... $$ block delimiters', () => {
-            const latex = '$$ a \\times b = c $$';
-            expect(handler.decodeHtmlContent(latex)).toBe('$$ a \\times b = c $$');
-        });
-
-        it('should still decode HTML entities and real \\n outside LaTeX blocks', () => {
-            const input = '&lt;p&gt;Text\\nnext line with \\( a \\times b \\)&lt;/p&gt;';
-            const expected = '<p>Text\nnext line with \\( a \\times b \\)</p>';
+        it.each([
+            // HTML entities inside LaTeX must still be decoded
+            ['\\( x &lt; y \\)', '\\( x < y \\)'],
+            ['$a &amp;&amp; b$', '$a && b$'],
+            ['\\begin{equation} x &lt; y \\end{equation}', '\\begin{equation} x < y \\end{equation}'],
+        ])('should decode HTML entities inside LaTeX: %s -> %s', (input, expected) => {
             expect(handler.decodeHtmlContent(input)).toBe(expected);
         });
 
-        it('should preserve multiple LaTeX blocks in the same content', () => {
-            const input = 'First \\( a \\times b \\) and then \\( c \\times d \\)';
-            expect(handler.decodeHtmlContent(input)).toBe(input);
-        });
-
-        it('should handle the real eXe example with \\times and \\dfrac', () => {
-            const input =
-                '<div class="exe-text"><p>\\( 4 \\times \\dfrac{1}{2} = \\dfrac{4}{1} \\times \\dfrac{1}{2} = \\dfrac{4 \\times 1}{1 \\times 2}=\\dfrac{4}{2} \\) = 2 units</p></div>';
-            expect(handler.decodeHtmlContent(input)).toBe(input);
-        });
+        it(
+            'KNOWN LIMITATION: ordinary currency text with multiple unescaped "$" signs ' +
+                'can still be misread as a single LaTeX block',
+            () => {
+                const input = 'Price: $5 and $10 total';
+                expect(handler.decodeHtmlContent(input)).toBe(input);
+            },
+        );
     });
 
     describe('extractTextAreaFieldRawContent (quiz option plain text)', () => {

@@ -427,30 +427,44 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     decodeHtmlContent(content: string): string {
         if (!content) return '';
 
-        // Protect LaTeX blocks before applying replacements
-        const latexBlocks: string[] = [];
-        const protectedContent = content.replace(/\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$/gs, match => {
-            latexBlocks.push(match);
-            return `__LATEX_BLOCK_${latexBlocks.length - 1}__`;
-        });
-
-        // Handle Python-style unicode escapes and HTML entities
-        let decoded = protectedContent
-            // Decode common HTML entities
+        // Decode HTML entities everywhere, including inside LaTeX expressions.
+        // Entity decoding is independent from the Python-style escape handling
+        // below, so it must not be skipped just because a region is LaTeX.
+        const entitiesDecoded = content
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
             .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            // Handle Python unicode escapes for common characters
+            .replace(/&#39;/g, "'");
+
+        // Build a placeholder token that cannot collide with real content:
+        // it's randomized and regenerated until it's guaranteed absent from
+        // the text being processed.
+        let token: string;
+        do {
+            token = `\u0000LTX${Math.random().toString(36).slice(2)}\u0000`;
+        } while (entitiesDecoded.includes(token));
+
+        // Protect LaTeX regions so the Python-escape replacements below can't
+        // corrupt commands like \times, \nabla, \right.
+        const latexBlocks: string[] = [];
+        const latexPattern =
+            /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}|\$\$[\s\S]*?\$\$|(?<!\\)\$[\s\S]*?(?<!\\)\$/g;
+
+        const protectedContent = entitiesDecoded.replace(latexPattern, match => {
+            latexBlocks.push(match);
+            return `${token}${latexBlocks.length - 1}${token}`;
+        });
+
+        // Handle Python-style escape sequences, now safely outside LaTeX blocks.
+        const decoded = protectedContent
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
-            .replace(/\\r(?![a-zA-Z])/g, '\r'); // Negative lookahead to preserve LaTeX commands
+            .replace(/\\r(?![a-zA-Z])/g, '\r');
 
-        // Restore the original LaTeX blocks
-        decoded = decoded.replace(/__LATEX_BLOCK_(\d+)__/g, (_, i) => latexBlocks[i]);
-
-        return decoded;
+        // Restore the original LaTeX blocks untouched.
+        const tokenPattern = new RegExp(`${token}(\\d+)${token}`, 'g');
+        return decoded.replace(tokenPattern, (_, i) => latexBlocks[Number(i)]);
     }
 
     /**
