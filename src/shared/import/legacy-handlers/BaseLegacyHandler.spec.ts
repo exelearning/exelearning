@@ -376,6 +376,30 @@ describe('BaseLegacyHandler', () => {
     });
 
     describe('decodeHtmlContent - LaTeX stress cases (regression)', () => {
+        // --- RESTORED REGRESSION TESTS (plain \n / \t decoding outside LaTeX) ---
+        // These were covered before the LaTeX protection block was introduced and
+        // must keep working: since LaTeX blocks are protected first, escapes
+        // outside those blocks are decoded unconditionally, without a lookahead.
+
+        it('should decode \\n to newline', () => {
+            expect(handler.decodeHtmlContent('Line1\\nLine2')).toBe('Line1\nLine2');
+        });
+
+        it('should decode \\t to tab', () => {
+            expect(handler.decodeHtmlContent('Col1\\tCol2')).toBe('Col1\tCol2');
+        });
+
+        it('should decode \\n even when immediately followed by a letter (no false LaTeX match)', () => {
+            const input = 'Text\\nnext line without any LaTeX nearby';
+            expect(handler.decodeHtmlContent(input)).toBe('Text\nnext line without any LaTeX nearby');
+        });
+
+        it('should decode &nbsp; to a non-breaking space, not a regular space', () => {
+            const result = handler.decodeHtmlContent('Hello&nbsp;World');
+            expect(result).toBe('Hello\u00A0World');
+            expect(result).not.toBe('Hello World');
+        });
+
         it.each([
             // Commands starting with 't' (previously broken by \t -> tab)
             ['\\( 4 \\times \\dfrac{1}{2} \\)'],

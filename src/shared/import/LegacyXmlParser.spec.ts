@@ -139,36 +139,30 @@ describe('LegacyXmlParser', () => {
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('textmore text');
         });
-
         it('should remove tabs', () => {
             const input = 'text\tmore text';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('textmore text');
         });
-
         it('should convert Windows line endings', () => {
             const input = 'line1\r\nline2';
             const result = parser.preprocessLegacyXml(input);
             // After preprocessing: \r becomes \n, \n\n becomes \n
             expect(result).not.toContain('\r');
         });
-
         it('should convert hex escape sequences', () => {
             const input = '\\x41\\x42\\x43';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('ABC');
         });
-
         it('should convert literal \\n to entity', () => {
             const input = 'text\\nmore text';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('&#10;');
         });
-
         it('should keep encoded pre content inside unicode value attribute', () => {
             const input = 'x     <unicode value="before\t&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;\tafter     end"/>';
             const result = parser.preprocessLegacyXml(input);
-
             expect(result).toBe('x<unicode value="before&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;afterend"/>');
         });
         it('should preserve \\nabla instead of converting \\n to a line-break entity', () => {
@@ -177,13 +171,11 @@ describe('LegacyXmlParser', () => {
             expect(result).toContain('\\nabla');
             expect(result).not.toContain('&#10;abla');
         });
-
         it('should preserve \\newcommand', () => {
             const input = '\\( \\newcommand{\\vec}[1]{\\mathbf{#1}} \\)';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('\\newcommand');
         });
-
         it('should preserve \\notin, \\neq and \\ngeq', () => {
             const input = '\\( a \\notin B \\quad x \\neq y \\quad x \\ngeq y \\)';
             const result = parser.preprocessLegacyXml(input);
@@ -191,17 +183,32 @@ describe('LegacyXmlParser', () => {
             expect(result).toContain('\\neq');
             expect(result).toContain('\\ngeq');
         });
-
         it('should handle mixed content with real line breaks and LaTeX commands together', () => {
             const input = 'Line1\\nLine2 with formula \\( \\nabla f(x) \\)';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('Line1&#10;Line2');
             expect(result).toContain('\\nabla');
         });
-
         it('should preserve \\nabla inside a real eXe unicode value attribute', () => {
             const input =
                 '<unicode content="true" value="\\( \\nabla \\times \\vec{F} = \\left( \\tfrac{\\partial}{\\partial x} \\right) \\)"/>';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toMatch(/&#10;abla/);
+        });
+
+        // --- REVIEWER REGRESSION TEST (Currency vs Formula, same fix as decodeHtmlContent) ---
+
+        it('should convert a literal \\n between two currency amounts (not treat it as a LaTeX block)', () => {
+            // Without a currency guard, "$5...$10" could be greedily matched as a single
+            // $...$ LaTeX block, leaving the literal "\n" between them unconverted.
+            const input = 'Price: $5\\nNew price: $10';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toBe('Price: $5&#10;New price: $10');
+        });
+
+        it('should still protect a real $...$ formula between two currency amounts', () => {
+            const input = 'Price: $5, formula $x \\nabla y$, total: $10';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('\\nabla');
             expect(result).not.toMatch(/&#10;abla/);

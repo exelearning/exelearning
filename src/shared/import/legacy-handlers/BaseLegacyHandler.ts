@@ -426,8 +426,7 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
      */
     decodeHtmlContent(content: string): string {
         if (!content) return '';
-
-        // 1. Decode basic HTML entities (including &nbsp; and &apos;)
+        // 1. Decode basic HTML entities
         const decodedContent = content
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
@@ -435,7 +434,7 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
             .replace(/&apos;/g, "'")
-            .replace(/&nbsp;/g, ' ');
+            .replace(/&nbsp;/g, '\u00A0'); // see point 3 below
 
         // 2. Generate a unique and safe placeholder token to avoid collisions
         let token: string;
@@ -444,29 +443,24 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
         } while (decodedContent.includes(token));
 
         // 3. Robust LaTeX pattern.
-        // - \\\(, \\\[, \\begin: Use (?:[^\\]|\\.)*? to prevent ReDoS (catastrophic backtracking).
-        // - \$\$: Double dollar blocks.
-        // - Single \$:
-        //   a) (?<!\\)      : Must not be preceded by a backslash (ignores escaped \$).
-        //   b) (?!\d+(?:[.,]\d+)?\b) : NOT a currency amount (ignores "$5 ", "$10.50,").
-        //   c) (?:[^$\\]|\\.)*?      : Safe content matching without ReDoS.
-        //   d) (?<!\\)\$             : Closing with an unescaped $.
         const latexPattern =
             /\\\((?:[^\\]|\\.)*?\\\)|\\\[(?:[^\\]|\\.)*?\\\]|\\begin\{[^}]+\}(?:[^\\]|\\.)*?\\end\{[^}]+\}|\$\$(?:[^$]|\\.)*?\$\$|(?<!\\)\$(?!\d+(?:[.,]\d+)?\b)(?:[^$\\]|\\.)*?(?<!\\)\$/g;
-
         const latexBlocks: string[] = [];
         const protectedContent = decodedContent.replace(latexPattern, match => {
             latexBlocks.push(match);
             return `${token}${latexBlocks.length - 1}${token}`;
         });
 
-        // 4. Decode Python-style escape sequences with LaTeX command protection.
-        // The lookahead (?![a-zA-Z]) is a "safety net": if a command like \nabla or \times
-        // is left outside a LaTeX block due to malformed input, it won't be corrupted
-        // into a newline or tab character.
+        // 4. Decode Python-style escape sequences.
+        // \n and \t are decoded unconditionally: LaTeX commands using these
+        // letters (\nabla, \times) are already safe thanks to the block-level
+        // protection in step 3. \r keeps its lookahead as a safety net for
+        // LaTeX commands like \right that appear WITHOUT any recognised
+        // delimiter around them (see the bare "\left( x \right)" regression
+        // test), and are therefore not covered by step 3.
         const finalDecoded = protectedContent
-            .replace(/\\n(?![a-zA-Z])/g, '\n')
-            .replace(/\\t(?![a-zA-Z])/g, '\t')
+            .replace(/\\n/g, '\n')
+            .replace(/\\t/g, '\t')
             .replace(/\\r(?![a-zA-Z])/g, '\r');
 
         // 5. Restore the original LaTeX blocks untouched
