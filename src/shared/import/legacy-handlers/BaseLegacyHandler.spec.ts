@@ -979,6 +979,105 @@ describe('BaseLegacyHandler', () => {
             `);
             expect(handler.extractAnyTextFieldContent(dict)).toBe('Real content');
         });
+
+        it('does not cross into a nested JsIdevice boundary (issue #2159)', () => {
+            // Field belongs to a DIFFERENT iDevice inlined via a back-reference.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.jsidevice.JsIdevice">
+                        <dictionary>
+                            <string role="key" value="fields"/>
+                            <list>
+                                <instance class="exe.engine.field.TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content_w_resourcePaths"/>
+                                        <unicode value="Foreign iDevice content"/>
+                                    </dictionary>
+                                </instance>
+                            </list>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('');
+        });
+
+        it('does not cross into a nested Node boundary (issue #2159)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Node subtree content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('');
+        });
+
+        it('still finds a field nested in the iDevice own containers (not a boundary)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="exe.engine.field.TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="Own field content"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('Own field content');
+        });
+    });
+
+    describe('extractFieldsContent with <reference> fields (issue #2159)', () => {
+        it('resolves a <reference> field via the context resolver', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Referenced field content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractFieldsContent(dict, context)).toBe('Referenced field content');
+        });
+
+        it('skips a <reference> field when no resolver is provided', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractFieldsContent(dict)).toBe('');
+        });
     });
 
     describe('extractResourcePath (lines 610-624)', () => {

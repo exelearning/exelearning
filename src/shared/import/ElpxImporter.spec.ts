@@ -3399,4 +3399,78 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
 
         ydoc.destroy();
     });
+
+    describe('legacy UDL iDevice with reference-based fields (issue #2159)', () => {
+        let udlTestDir: string;
+
+        beforeEach(() => {
+            udlTestDir = path.join('/tmp', `elp-udl-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+            if (!existsSync(udlTestDir)) {
+                mkdirSync(udlTestDir, { recursive: true });
+            }
+        });
+
+        afterEach(() => {
+            if (existsSync(udlTestDir)) {
+                rmSync(udlTestDir, { recursive: true, force: true });
+            }
+        });
+
+        // Collect every imported component together with its owning page title.
+        function collectComponents(ydoc: Y.Doc): { pageTitle: string; type: string; htmlView: string }[] {
+            const out: { pageTitle: string; type: string; htmlView: string }[] = [];
+            const nav = ydoc.getArray('navigation');
+            for (let i = 0; i < nav.length; i++) {
+                const page = nav.get(i) as Y.Map<unknown>;
+                const pageTitle = (page.get('title') as string) || '';
+                const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+                if (!blocks) continue;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const comps = block.get('components') as Y.Array<unknown> | undefined;
+                    if (!comps) continue;
+                    for (let c = 0; c < comps.length; c++) {
+                        const comp = comps.get(c) as Y.Map<unknown>;
+                        out.push({
+                            pageTitle,
+                            type: (comp.get('type') as string) || '',
+                            htmlView: (comp.get('htmlView') as string) || '',
+                        });
+                    }
+                }
+            }
+            return out;
+        }
+
+        it('imports the Diario node with its own content, not another node duplicated', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_epvelp_udl.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(udlTestDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            const components = collectComponents(ydoc);
+            const allHtml = components.map(c => c.htmlView).join('\n');
+
+            // Field 33 content. Before the fix, DefaultHandler overwrote it with the
+            // content of an unrelated field (36), so this text was never imported.
+            expect(allHtml).toContain('Ides cubrir os apartados da Fase 2');
+
+            // The component holding field 33 content must not also carry field 36 content
+            // (the duplication reported in the issue).
+            const withField33 = components.filter(c => c.htmlView.includes('Ides cubrir os apartados da Fase 2'));
+            expect(withField33.length).toBeGreaterThan(0);
+            for (const comp of withField33) {
+                expect(comp.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(comp.type).toBe('udl-content');
+            }
+
+            ydoc.destroy();
+        });
+    });
 });

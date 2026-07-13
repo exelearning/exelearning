@@ -117,6 +117,58 @@ describe('DefaultHandler', () => {
             expect(handler.extractHtmlView(dict)).toBe('Fallback content');
         });
 
+        it('resolves a <reference> field via the context resolver (Strategy 1, #2159)', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Correct referenced content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toBe('Correct referenced content');
+        });
+
+        it('does not pull a foreign nested field when the fields entry is an unresolved reference (#2159)', () => {
+            // fields -> <reference> (unresolved, no resolver) plus a foreign TextAreaField
+            // inlined under a Node boundary. The fallback must stay empty instead of
+            // returning the foreign iDevice content.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Foreign content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+
         it('should remove legacy outer exe-text wrapper for normal text content', () => {
             const dict = createDomElement(`
                 <dictionary>
