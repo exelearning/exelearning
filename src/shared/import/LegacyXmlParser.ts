@@ -351,12 +351,10 @@ export class LegacyXmlParser {
      * Preprocess legacy XML content before parsing
      * Fixes encoding issues from eXe 2.x exports
      */
-    preprocessLegacyXml(xmlContent: string): string {
+    preprocessLegacyXml(xmlContent) {
         let xml = xmlContent;
-
-        // 1. Remove indentations (5 spaces, tabs)
-        const protectedPreBlocks: string[] = [];
-        const protectPreBlock = (match: string): string => {
+        const protectedPreBlocks = [];
+        const protectPreBlock = match => {
             const token = `__LEGACY_PRE_BLOCK_${protectedPreBlocks.length}__`;
             protectedPreBlocks.push(match);
             return token;
@@ -374,24 +372,35 @@ export class LegacyXmlParser {
         xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match, index) => {
             return protectedPreBlocks[Number(index)] || '';
         });
-
-        // 2. Unify newlines to Unix LF
         xml = xml.replace(/\r/g, '\n');
         xml = xml.replace(/\n\n/g, '\n');
-
-        // 3. Convert newlines to &#10; entity
         xml = xml.replace(/\n/g, '&#10;');
-
-        // 4. Restore newlines between tags
         xml = xml.replace(/>&#10;</g, '>\n<');
-
-        // 5. Convert hex escape sequences (\xNN) to characters
         xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (_match, hex) => {
             return String.fromCharCode(parseInt(hex, 16));
         });
 
-        // 6. Convert \n to &#10;
+        // Protect LaTeX regions (\( \), \[ \], \begin{}...\end{}, $$ $$, $ $) before
+        // converting literal "\n" to a line-break entity. A blanket \n -> &#10;
+        // replacement (or a lookahead on the next character) cannot tell a real
+        // line-break escape apart from the start of a command like \nabla or
+        // \newcommand, since both are typically followed by a letter.
+        const latexBlocks = [];
+        let token;
+        do {
+            token = `\u0000LTXP${Math.random().toString(36).slice(2)}\u0000`;
+        } while (xml.includes(token));
+        const latexPattern =
+            /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}|\$\$[\s\S]*?\$\$|(?<!\\)\$[\s\S]*?(?<!\\)\$/g;
+        xml = xml.replace(latexPattern, match => {
+            latexBlocks.push(match);
+            return `${token}${latexBlocks.length - 1}${token}`;
+        });
+
         xml = xml.replace(/\\n/g, '&#10;');
+
+        const tokenPattern = new RegExp(`${token}(\\d+)${token}`, 'g');
+        xml = xml.replace(tokenPattern, (_match, i) => latexBlocks[Number(i)]);
 
         return xml;
     }

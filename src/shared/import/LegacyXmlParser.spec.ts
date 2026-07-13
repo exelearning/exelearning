@@ -171,6 +171,41 @@ describe('LegacyXmlParser', () => {
 
             expect(result).toBe('x<unicode value="before&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;afterend"/>');
         });
+        it('should preserve \\nabla instead of converting \\n to a line-break entity', () => {
+            const input = '\\( \\nabla \\times \\vec{F} \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toContain('&#10;abla');
+        });
+
+        it('should preserve \\newcommand', () => {
+            const input = '\\( \\newcommand{\\vec}[1]{\\mathbf{#1}} \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\newcommand');
+        });
+
+        it('should preserve \\notin, \\neq and \\ngeq', () => {
+            const input = '\\( a \\notin B \\quad x \\neq y \\quad x \\ngeq y \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\notin');
+            expect(result).toContain('\\neq');
+            expect(result).toContain('\\ngeq');
+        });
+
+        it('should handle mixed content with real line breaks and LaTeX commands together', () => {
+            const input = 'Line1\\nLine2 with formula \\( \\nabla f(x) \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('Line1&#10;Line2');
+            expect(result).toContain('\\nabla');
+        });
+
+        it('should preserve \\nabla inside a real eXe unicode value attribute', () => {
+            const input =
+                '<unicode content="true" value="\\( \\nabla \\times \\vec{F} = \\left( \\tfrac{\\partial}{\\partial x} \\right) \\)"/>';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toMatch(/&#10;abla/);
+        });
     });
 
     describe('parse', () => {
