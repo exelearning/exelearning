@@ -1998,6 +1998,22 @@ class YjsStructureBinding {
   }
 
   /**
+   * Length of a component content value that may be a Y.Text, a plain string,
+   * or undefined. Used to detect whether a component already holds content
+   * before applying a potentially destructive update.
+   * @param {*} value
+   * @returns {number}
+   * @private
+   */
+  contentLength(value) {
+    if (value == null) return 0;
+    if (value instanceof this.Y.Text) return value.length;
+    if (typeof value === 'string') return value.length;
+    if (typeof value.length === 'number') return value.length;
+    return 0;
+  }
+
+  /**
    * Update a component's properties
    * @param {string} componentId
    * @param {Object} updates
@@ -2025,6 +2041,28 @@ class YjsStructureBinding {
             safeValue = assetManager.prepareHtmlForSync(safeValue);
           }
 
+          // Data-integrity guard: never let an empty content update erase existing
+          // content. iDevice save paths always emit a non-empty wrapper, so an empty
+          // value here signals a transient/broken write (interrupted edit, race,
+          // failed serialization). Applying it would blank the Y.Text AND drop the
+          // htmlView fallback below — irreversibly wiping the iDevice. Game iDevices
+          // (classify/crossword/select-media-files) are especially exposed because
+          // their whole state lives in htmlView/htmlContent with empty jsonProperties,
+          // so there is no other copy to recover from. Skip the destructive write and
+          // keep whatever content the component already holds.
+          if (safeValue.trim() === '') {
+            const existingLen = this.contentLength(ytext);
+            const htmlViewLen = this.contentLength(compMap.get('htmlView'));
+            if (existingLen > 0 || htmlViewLen > 0) {
+              Logger.warn(
+                `[YjsStructureBinding] Ignored empty '${key}' update for component ` +
+                  `${componentId}: it would erase existing content ` +
+                  `(existing=${existingLen}, htmlView=${htmlViewLen}). Content preserved.`,
+              );
+              return; // skip this key; continue with the rest of the update
+            }
+          }
+
           if (!(ytext instanceof this.Y.Text)) {
             // IMPORTANT: Create Y.Text and insert content BEFORE setting on map
             ytext = new this.Y.Text();
@@ -2040,7 +2078,13 @@ class YjsStructureBinding {
           // htmlView plain-string fallback populated by the initial import path
           // (createComponentMapFromApi / ElpxImporter). Keeping it around causes
           // stale reference counts in the File Manager after in-place edits (issue #1674).
-          if ((key === 'htmlContent' || key === 'content') && compMap.get('htmlView') !== undefined) {
+          // Only drop it when the new value is non-empty, so the fallback is never
+          // removed in favour of blank content.
+          if (
+            (key === 'htmlContent' || key === 'content') &&
+            safeValue.trim() !== '' &&
+            compMap.get('htmlView') !== undefined
+          ) {
             compMap.delete('htmlView');
           }
         } else if (key === 'properties' && typeof value === 'object') {
