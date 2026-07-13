@@ -426,12 +426,44 @@ describe('BaseLegacyHandler', () => {
             expect(handler.decodeHtmlContent(input)).toBe(expected);
         });
 
+        // --- REVIEWER REGRESSION TESTS (Currency vs Formula) ---
+
+        it('should not be tricked by preceding currency text leaving LaTeX commands unprotected (Reviewer Case)', () => {
+            // If the regex is greedy, it might match from the currency "$" to the opening "$"
+            // of the formula, leaving "\times" outside the protected block where it would be
+            // corrupted into a tab character.
+            const input = 'Price: $5 and formula $x \\times y$';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should handle multiple currency amounts without misclassification', () => {
+            const input = 'Price: $5 and $10 total';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should protect a $...$ formula starting with a digit glued to a variable (e.g. "2x")', () => {
+            const input = 'The formula is $2x+3$';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should protect a $...$ formula with a numeric coefficient and a LaTeX command', () => {
+            const input = 'Compute $5x \\times 2$ to get the result';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
         it(
-            'KNOWN LIMITATION: ordinary currency text with multiple unescaped "$" signs ' +
-                'can still be misread as a single LaTeX block',
+            'KNOWN LIMITATION: a $...$ formula consisting of a bare number only (e.g. "$5$") ' +
+                'is still misclassified as currency',
             () => {
-                const input = 'Price: $5 and $10 total';
-                expect(handler.decodeHtmlContent(input)).toBe(input);
+                // "$5$" has nothing after the digit but the closing "$" itself,
+                // which counts as a word boundary — so it's indistinguishable
+                // from a currency amount. Rare in practice (a lone number is
+                // seldom wrapped in $ $ without any operator or variable).
+                // Note: It remains unchanged in the output because it contains no
+                // Python-style escape sequences (\n, \t, \r) to corrupt.
+                const input = 'The answer is $5$';
+                const result = handler.decodeHtmlContent(input);
+                expect(result).toBe(input);
             },
         );
     });
