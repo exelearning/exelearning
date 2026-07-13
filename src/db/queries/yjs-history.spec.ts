@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { cleanTestDb, createTestDb, destroyTestDb, seedTestProject, seedTestUser } from '../../../test/helpers/test-db';
 import type { Database } from '../types';
 import {
@@ -112,22 +112,34 @@ describe('Yjs version history queries', () => {
         expect(await countVersions(db, projectId)).toBe(0);
     });
 
-    it('rolls back the canonical save when history creation fails', async () => {
+    it('rolls back the history entry when the canonical snapshot update fails', async () => {
         await upsertSnapshot(db, projectId, new Uint8Array([1]), '1');
+        await sql`
+            CREATE TRIGGER fail_yjs_document_update
+            BEFORE UPDATE ON yjs_documents
+            BEGIN
+                SELECT RAISE(ABORT, 'forced snapshot update failure');
+            END
+        `.execute(db);
 
-        await expect(
-            saveSnapshotWithHistory(db, {
-                projectId,
-                snapshotData: new Uint8Array([2]),
-                snapshotVersion: '2',
-                historyLimit: 5,
-                createdBy: 999_999,
-            }),
-        ).rejects.toThrow();
+        try {
+            await expect(
+                saveSnapshotWithHistory(db, {
+                    projectId,
+                    snapshotData: new Uint8Array([2]),
+                    snapshotVersion: '2',
+                    historyLimit: 5,
+                    createdBy: userId,
+                }),
+            ).rejects.toThrow('forced snapshot update failure');
+        } finally {
+            await sql`DROP TRIGGER fail_yjs_document_update`.execute(db);
+        }
 
         const current = await findSnapshotByProjectId(db, projectId);
         expect(current?.snapshot_data).toEqual(new Uint8Array([1]));
         expect(current?.snapshot_version).toBe('1');
+        expect(await countVersions(db, projectId)).toBe(0);
     });
 
     it('restores a version and preserves the current state as a safety snapshot', async () => {
