@@ -971,19 +971,31 @@ export abstract class BaseExporter {
      * Collect all HTML content from all pages (for library detection)
      */
     collectAllHtmlContent(pages: ExportPage[]): string {
-        const htmlParts: string[] = [];
+        return [...this.iteratePageContentFragments(pages), ...this.iteratePagePropertyFragments(pages)].join('\n');
+    }
 
-        for (const page of pages) {
-            for (const block of page.blocks || []) {
-                for (const component of block.components || []) {
-                    if (component.content) {
-                        htmlParts.push(component.content);
-                    }
-                }
-            }
+    /**
+     * Yield every nested string value from JSON iDevice properties.
+     * Rich text fields can live at any depth depending on the iDevice.
+     */
+    private *iteratePropertyStringFragments(value: unknown): Generator<string> {
+        if (typeof value === 'string') {
+            yield value;
+            return;
         }
 
-        return htmlParts.join('\n');
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                yield* this.iteratePropertyStringFragments(item);
+            }
+            return;
+        }
+
+        if (value && typeof value === 'object') {
+            for (const item of Object.values(value as Record<string, unknown>)) {
+                yield* this.iteratePropertyStringFragments(item);
+            }
+        }
     }
 
     /**
@@ -1003,14 +1015,36 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Yield rich text and other string fragments nested in JSON iDevice properties.
+     */
+    private *iteratePagePropertyFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    yield* this.iteratePropertyStringFragments(component.properties);
+                }
+            }
+        }
+    }
+
+    /**
      * Detect required libraries across all page fragments incrementally.
      */
     protected getRequiredLibraryFilesForPages(
         pages: ExportPage[],
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
-        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
-            this.iteratePageContentFragments(pages),
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragmentGroups(
+            [
+                { fragments: this.iteratePageContentFragments(pages) },
+                {
+                    fragments: this.iteratePagePropertyFragments(pages),
+                    // JSON iDevice math is handled by the selective pre-rendering pipeline.
+                    // Scanning raw properties for these patterns would force MathJax for
+                    // unsupported iDevices and undo the pre-rendering optimization.
+                    excludedLibraries: ['exe_math', 'exe_math_datagame', 'exe_math_mathml'],
+                },
+            ],
             options,
         );
     }

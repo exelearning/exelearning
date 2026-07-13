@@ -64,6 +64,13 @@ var $magnifier = {
         if (!eXe.app.isInExe()) {
             let html = this.createInterfaceMagnifier(ldata);
             $node.html(`<div class="exe-magnifier-container">${html}</div>`);
+            if (
+                $node.length &&
+                typeof $exeFX !== 'undefined' &&
+                typeof $exeFX.init === 'function'
+            ) {
+                $exeFX.init($node[0]);
+            }
         }
 
         if (typeof MojoMagnify !== 'undefined') {

@@ -28,16 +28,21 @@ $exeFX = {
   baseClass: "exe",
   h2: "h2",
   isOldBrowser: false,
-  init: function () {
+  init: function (root) {
     var ie = $exeFX.checkIE();
     if ((!isNaN(parseFloat(ie)) && isFinite(ie)) && ie < 9) {
       $exeFX.isOldBrowser = true;
       $exeFX.h2 = "H2";
     }
     var k = $exeFX.baseClass;
-    var f = $("." + k + "-fx");
+    var scope = root ? $(root) : $(document);
+    var effects = scope.find("." + k + "-fx");
+    if (scope.hasClass(k + "-fx")) effects = effects.add(scope);
+    var allEffects = $("." + k + "-fx");
     var hasTimeLines = false;
-    $("." + k + "-fx").each(function (i) {
+    effects.each(function (localIndex) {
+      var i = allEffects.index(this);
+      if (i < 0) i = localIndex;
       var c = this.className;
       if (c.indexOf(" " + k + "-accordion") != -1) $exeFX.accordion.init(this, i);
       else if (c.indexOf(" " + k + "-tabs") != -1) $exeFX.tabs.init(this, i);

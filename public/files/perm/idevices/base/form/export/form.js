@@ -205,8 +205,16 @@ var $form = {
         const addBtnAnswers = ldata.addBtnAnswers;
         if (!ldata.questionsData) return;
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
-        $('#form-questions-' + ldata.id).empty();
-        $('#form-questions-' + ldata.id).append(questionsHtml);
+        const $questionsContainer = $('#form-questions-' + ldata.id);
+        $questionsContainer.empty();
+        $questionsContainer.append(questionsHtml);
+        if (
+            $questionsContainer.length &&
+            typeof $exeFX !== 'undefined' &&
+            typeof $exeFX.init === 'function'
+        ) {
+            $exeFX.init($questionsContainer[0]);
+        }
         const interval = setInterval(() => {
             const $ideviceElement = $(`[id="${ldata.id}"]`);
             if ($ideviceElement.length) {
