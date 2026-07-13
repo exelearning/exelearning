@@ -31,8 +31,6 @@ export function parseYjsVersionHistoryLimit(value: string | undefined): number {
 /**
  * Read the Yjs version history retention limit from the environment.
  */
-export function getYjsVersionHistoryLimit(
-    value: string | undefined = process.env.YJS_VERSION_HISTORY_LIMIT,
-): number {
+export function getYjsVersionHistoryLimit(value: string | undefined = process.env.YJS_VERSION_HISTORY_LIMIT): number {
     return parseYjsVersionHistoryLimit(value);
 }
