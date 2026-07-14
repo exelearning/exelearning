@@ -1,5 +1,11 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { getPreviewFrame, gotoWorkarea, openPreviewPanel, waitForAppReady } from '../helpers/workarea-helpers';
+import {
+    getPreviewFrame,
+    gotoWorkarea,
+    openPreviewPanel,
+    selectFirstPage,
+    waitForAppReady,
+} from '../helpers/workarea-helpers';
 
 const componentHtml = `
 <div id="custom-content">
@@ -22,6 +28,7 @@ test.describe('Normal preview custom active content policy', () => {
         const projectUuid = await createProject(page, 'Preview active content policy');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
+        await selectFirstPage(page);
 
         await page.evaluate(
             ({ html }) => {
@@ -41,6 +48,8 @@ test.describe('Normal preview custom active content policy', () => {
             { html: componentHtml },
         );
 
+        await page.locator('#head-bottom-preview').click();
+        await expect(page.locator('#previewsidenav')).toHaveClass(/active/);
         await openPreviewPanel(page);
         const frame = getPreviewFrame(page);
         await frame.locator('#custom-content').waitFor({ state: 'attached' });
@@ -74,6 +83,29 @@ test.describe('Normal preview custom active content policy', () => {
             .catch(async () => {
                 await expect(modal).toContainText('Enable it only when you trust the project');
             });
+        const stacking = await page.evaluate(() => {
+            const preview = document.querySelector('#previewsidenav');
+            const backdrop = document.querySelector('.modal-backdrop');
+            const dialog = document.querySelector('#modalConfirm');
+            const content = dialog?.querySelector('.modal-content');
+            if (!preview || !backdrop || !dialog || !content) return null;
+
+            const bounds = content.getBoundingClientRect();
+            const topElement = document.elementFromPoint(
+                bounds.left + bounds.width / 2,
+                bounds.top + bounds.height / 2,
+            );
+            return {
+                previewZIndex: Number.parseInt(getComputedStyle(preview).zIndex, 10),
+                backdropZIndex: Number.parseInt(getComputedStyle(backdrop).zIndex, 10),
+                dialogZIndex: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
+                dialogIsTopmost: Boolean(topElement?.closest('#modalConfirm')),
+            };
+        });
+        expect(stacking).not.toBeNull();
+        expect(stacking!.backdropZIndex).toBeGreaterThan(stacking!.previewZIndex);
+        expect(stacking!.dialogZIndex).toBeGreaterThan(stacking!.backdropZIndex);
+        expect(stacking!.dialogIsTopmost).toBe(true);
         await modal.getByRole('button', { name: 'Enable custom JavaScript for this preview' }).click();
 
         await expect(warning).toHaveAttribute('aria-pressed', 'true');
