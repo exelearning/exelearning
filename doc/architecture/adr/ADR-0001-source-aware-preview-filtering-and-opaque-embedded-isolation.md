@@ -154,10 +154,12 @@ does not claim to prevent those behaviours.
 - Unit tests verify scripts, event handlers, active URLs, SVG, `srcdoc`, plug-in elements,
   refresh, base elements, form actions, and legacy imports are detected and disabled.
 - Adapter tests verify Yjs/export source objects are not mutated.
-- Browser tests verify the warning, explicit enable/disable lifecycle, official iDevice
-  behaviour, project scoping, and embedded parent isolation.
-- Plugin tests verify authenticated management, cookieless capability serving, expiry, path
-  validation, CSP headers, and real snapshot creation/update/load/cleanup.
+- The core Playwright test covers the warning, explicit enable/disable lifecycle, project
+  scoping, and preservation of the stored and exported source.
+- Host unit and integration tests cover authenticated management, capability serving,
+  expiry, path validation, CSP headers, and snapshot creation/update/load/cleanup.
+- A browser-level run against each real host remains a pre-merge validation requirement for
+  official runtime behaviour, parent isolation, media, downloads, and message handling.
 
 ## Follow-up work
 
@@ -165,6 +167,8 @@ does not claim to prevent those behaviours.
   native IPC exposure.
 - Extend the author-content inventory whenever a new editable HTML or script field is added.
 - Test opaque iframe feature compatibility before adding sandbox tokens or media bridges.
+- Add host-native browser fixtures that exercise the complete management and serving routes
+  in Moodle, WordPress, Omeka S, Nextcloud, and Procomún.
 
 ## References
 
