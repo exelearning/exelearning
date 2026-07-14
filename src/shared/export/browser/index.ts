@@ -20,6 +20,7 @@ import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
 import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
+import { PreviewDocumentAdapter } from '../adapters/PreviewDocumentAdapter';
 
 // Import providers
 import { FflateZipProvider } from '../providers/FflateZipProvider';
@@ -52,7 +53,7 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
-import type { ExportOptions } from '../interfaces';
+import type { ExportOptions, PreviewContentPolicy, PreviewContentReport } from '../interfaces';
 
 /**
  * Yjs Document Manager interface (browser class)
@@ -618,7 +619,10 @@ export async function generatePrintPreview(
 ): Promise<PrintPreviewResult> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-    const document = new YjsDocumentAdapter(documentManager as any);
+    const sourceDocument = new YjsDocumentAdapter(documentManager as any);
+    const document = options?.previewContentPolicy
+        ? new PreviewDocumentAdapter(sourceDocument, options.previewContentPolicy)
+        : sourceDocument;
 
     let resources;
     if (resourceFetcher) {
@@ -659,7 +663,11 @@ export async function generatePrintPreview(
         ...mermaidHooks,
     };
 
-    return exporter.generatePreview(previewOptions);
+    const result = await exporter.generatePreview(previewOptions);
+    if (document instanceof PreviewDocumentAdapter) {
+        result.activeContentReport = document.getReport();
+    }
+    return result;
 }
 
 /**
@@ -674,10 +682,14 @@ export function createPrintPreviewExporter(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
     assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
+    previewContentPolicy?: PreviewContentPolicy,
 ): PrintPreviewExporter {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-    const document = new YjsDocumentAdapter(documentManager as any);
+    const sourceDocument = new YjsDocumentAdapter(documentManager as any);
+    const document = previewContentPolicy
+        ? new PreviewDocumentAdapter(sourceDocument, previewContentPolicy)
+        : sourceDocument;
 
     let resources;
     if (resourceFetcher) {
@@ -714,6 +726,7 @@ export interface PreviewFilesResult {
     success: boolean;
     files?: Record<string, ArrayBuffer>;
     error?: string;
+    activeContentReport?: PreviewContentReport;
 }
 
 /**
@@ -744,7 +757,10 @@ export async function generatePreviewForSW(
 
         // Create adapters with null-safe wrappers
         // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-        const document = new YjsDocumentAdapter(documentManager as any);
+        const sourceDocument = new YjsDocumentAdapter(documentManager as any);
+        const document = options?.previewContentPolicy
+            ? new PreviewDocumentAdapter(sourceDocument, options.previewContentPolicy)
+            : sourceDocument;
 
         // Create resource provider with null-safe fallback
         // Create resource provider with null-safe fallback
@@ -793,6 +809,7 @@ export async function generatePreviewForSW(
         return {
             success: true,
             files,
+            activeContentReport: document instanceof PreviewDocumentAdapter ? document.getReport() : undefined,
         };
     } catch (error) {
         console.error('[SharedExporters] generatePreviewForSW failed:', error);
