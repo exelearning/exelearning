@@ -19,6 +19,14 @@ describe('EmbeddedPreviewSnapshot', () => {
                 servingBaseUrl: '/preview',
             }),
         ).toThrow('editor origin');
+
+        expect(
+            validateEmbeddedPreviewConfig({
+                managementUrl: '/manage',
+                servingBaseUrl: '/preview',
+                deleteUrlTemplate: '/cleanup?id={previewId}',
+            }).deleteUrlTemplate.pathname,
+        ).toBe('/cleanup');
     });
 
     it('applies an opaque sandbox without allow-same-origin', () => {
@@ -66,6 +74,27 @@ describe('EmbeddedPreviewSnapshot', () => {
         await client.dispose();
         expect(fetchImpl.mock.calls[2][0].pathname).toBe('/manage/capability-id');
         expect(fetchImpl.mock.calls[2][1].method).toBe('DELETE');
+    });
+
+    it('uses a same-origin delete URL template when the host cannot append path segments', async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ previewId: 'capability-id' }) })
+            .mockResolvedValueOnce({ ok: true, status: 204 });
+        const client = new EmbeddedPreviewSnapshot(
+            {
+                managementUrl: '/?rest_route=/preview-session/42',
+                servingBaseUrl: '/',
+                deleteUrlTemplate: '/?rest_route=/preview-session/42/{previewId}',
+            },
+            { fetchImpl, zipSync: vi.fn(() => new Uint8Array()) },
+        );
+
+        await client.replace({ 'index.html': '<html></html>' });
+        await client.dispose();
+        expect(fetchImpl.mock.calls[1][0].searchParams.get('rest_route')).toBe(
+            '/preview-session/42/capability-id',
+        );
     });
 
     it('fails closed when ZIP support or the host response is invalid', async () => {

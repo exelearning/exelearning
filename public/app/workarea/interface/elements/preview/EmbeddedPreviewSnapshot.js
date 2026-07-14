@@ -14,6 +14,10 @@ export function validateEmbeddedPreviewConfig(config) {
     return {
         managementUrl,
         servingBaseUrl,
+        deleteUrlTemplate:
+            typeof config.deleteUrlTemplate === 'string' && config.deleteUrlTemplate.includes('{previewId}')
+                ? sameOriginUrl(config.deleteUrlTemplate)
+                : null,
         managementHeaders:
             config.managementHeaders && typeof config.managementHeaders === 'object'
                 ? { ...config.managementHeaders }
@@ -78,10 +82,14 @@ export class EmbeddedPreviewSnapshot {
 
     async dispose() {
         if (!this.previewId) return;
-        const target = new URL(
-            encodeURIComponent(this.previewId),
-            `${this.config.managementUrl.href.replace(/\/$/, '')}/`,
-        );
+        const target = this.config.deleteUrlTemplate
+            ? new URL(
+                  this.config.deleteUrlTemplate.href.replace('{previewId}', encodeURIComponent(this.previewId)),
+              )
+            : new URL(
+                  encodeURIComponent(this.previewId),
+                  `${this.config.managementUrl.href.replace(/\/$/, '')}/`,
+              );
         const response = await this.fetchImpl(target, {
             method: 'DELETE',
             credentials: 'same-origin',
