@@ -120,6 +120,9 @@
                     <div class="preview-pinned-header">
                         <h2 class="preview-pinned-title">{{ t.preview or 'Preview' }}</h2>
                         <div class="preview-pinned-actions">
+                            <button id="preview-pinned-active-content-button" class="btn button-square button-tertiary preview-active-content-button" hidden aria-pressed="false" title="{{ 'Custom active content is disabled in the editor preview' | trans }}" aria-label="{{ 'Custom active content is disabled in the editor preview' | trans }}">
+                                <span class="small-icon active-content-warning-icon"></span>
+                            </button>
                             <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
                                 <span class="small-icon external-link-icon"></span>
                             </button>
@@ -186,6 +189,9 @@
             <div class="preview-panel-header">
                 <h1 class="preview-title">{{ t.preview or 'Preview' }}</h1>
                 <div class="preview-header-actions">
+                    <button id="preview-active-content-button" class="btn button-square button-tertiary preview-active-content-button" hidden aria-pressed="false" title="{{ 'Custom active content is disabled in the editor preview' | trans }}" aria-label="{{ 'Custom active content is disabled in the editor preview' | trans }}">
+                        <span class="small-icon active-content-warning-icon"></span>
+                    </button>
                     <button id="preview-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
                         <span class="small-icon external-link-icon"></span>
                     </button>

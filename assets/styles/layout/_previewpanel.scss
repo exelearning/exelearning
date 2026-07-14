@@ -258,6 +258,23 @@ $preview-transition: 0.3s ease;
     font-family: var(--icons-ff);
 }
 
+.active-content-warning-icon::before {
+    content: "warning";
+    font-family: var(--icons-ff);
+}
+
+.preview-active-content-button:not([hidden]) {
+    color: var(--warning-dark, #8a4b08);
+    background-color: var(--warning-light, #fff4e5);
+    box-shadow: inset 0 0 0 1px currentColor;
+
+    &.is-active,
+    &[aria-pressed="true"] {
+        color: var(--success-dark, #146c43);
+        background-color: var(--success-light, #e8f5ee);
+    }
+}
+
 // Estado activo (modo móvil): el botón se queda claramente "pulsado".
 // Especificidad doble (id + clase + atributo) para superar a `.button-tertiary`.
 #preview-mobile-button.is-active,
