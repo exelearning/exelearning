@@ -459,6 +459,29 @@ export interface ExportOptions {
      * Browser-only: renders HTML in a hidden iframe and captures with html2canvas.
      */
     generateScreenshot?: (firstPageHtml: string) => Promise<string>;
+
+    /** Preview-only policy for author-controlled HTML. Never used by saved exports. */
+    previewContentPolicy?: PreviewContentPolicy;
+}
+
+export type PreviewContentContext = 'component-html' | 'component-property' | 'custom-head' | 'custom-footer';
+
+export interface PreviewContentPolicyResult {
+    html: string;
+    activeContentFound: boolean;
+    categories: string[];
+    actions: string[];
+}
+
+export interface PreviewContentPolicy {
+    prepare(html: string, context: PreviewContentContext): PreviewContentPolicyResult;
+}
+
+export interface PreviewContentReport {
+    activeContentFound: boolean;
+    categories: string[];
+    actions: string[];
+    contexts: PreviewContentContext[];
 }
 
 /**
