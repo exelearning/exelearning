@@ -7,6 +7,23 @@ import { parseCssClassList } from './cssClassHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+export function parseIdeviceJsonProperties(value) {
+    if (value === undefined || value === null || value === '') {
+        return { value: {}, error: null };
+    }
+
+    if (typeof value !== 'string') {
+        return { value, error: null };
+    }
+
+    try {
+        return { value: JSON.parse(value), error: null };
+    } catch (error) {
+        return { value: {}, error };
+    }
+}
+
 /**
  * eXeLearning
  *
@@ -159,9 +176,18 @@ export default class IdeviceNode {
             let defaultValue =
                 this.default[param] != undefined ? this.default[param] : null;
             let value = data[param] ? data[param] : defaultValue;
-            this[param] = this.parseParams.includes(param)
-                ? JSON.parse(value)
-                : value;
+            if (this.parseParams.includes(param)) {
+                const parsed = parseIdeviceJsonProperties(value);
+                this[param] = parsed.value;
+                this.jsonPropertiesParseError = parsed.error;
+                if (parsed.error) {
+                    Logger.warn(
+                        `[IdeviceNode] Ignoring malformed jsonProperties for ${data.odeIdeviceId || data.id || 'unknown component'}: ${parsed.error.message}`
+                    );
+                }
+            } else {
+                this[param] = value;
+            }
         }
         // Debug: Log htmlView to verify it's being set
         if (data.htmlView !== undefined) {

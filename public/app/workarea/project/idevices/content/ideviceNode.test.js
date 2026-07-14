@@ -98,7 +98,32 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceNode from './ideviceNode.js';
+import IdeviceNode, { parseIdeviceJsonProperties } from './ideviceNode.js';
+
+describe('parseIdeviceJsonProperties', () => {
+    it('returns an empty object for missing values', () => {
+        expect(parseIdeviceJsonProperties('')).toEqual({
+            value: {},
+            error: null,
+        });
+    });
+
+    it('preserves values that are already parsed', () => {
+        const value = { questions: [] };
+
+        expect(parseIdeviceJsonProperties(value)).toEqual({
+            value,
+            error: null,
+        });
+    });
+
+    it('returns the parsing error for malformed JSON', () => {
+        const result = parseIdeviceJsonProperties('{"broken":');
+
+        expect(result.value).toEqual({});
+        expect(result.error).toBeInstanceOf(SyntaxError);
+    });
+});
 
 describe('IdeviceNode', () => {
     let idevice;
@@ -254,6 +279,20 @@ describe('IdeviceNode', () => {
             idevice.setParams({ jsonProperties: '{}' });
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
+        });
+
+        it('keeps loading when jsonProperties contains malformed JSON', () => {
+            const malformedJson =
+                '{"questions":[{"question":"<audio src=\\""><a href=\\"">audio.webm</a></audio>"}]}';
+
+            expect(() =>
+                idevice.setParams({
+                    htmlView: '<p>Previously rendered activity</p>',
+                    jsonProperties: malformedJson,
+                })
+            ).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+            expect(idevice.htmlView).toBe('<p>Previously rendered activity</p>');
         });
     });
 
