@@ -1500,6 +1500,9 @@ export default class IdevicesEngine {
             const parsed = parseIdeviceJsonProperties(componentData.jsonProperties);
             ideviceNode.jsonProperties = parsed.value;
             ideviceNode.jsonPropertiesParseError = parsed.error;
+            ideviceNode.malformedJsonPropertiesRaw = parsed.error
+                ? componentData.jsonProperties
+                : null;
             if (parsed.error) {
                 Logger.warn(
                     `[IdevicesEngine] Ignoring malformed jsonProperties update for ${componentData.id}: ${parsed.error.message}`
