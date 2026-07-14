@@ -4,6 +4,16 @@
  * with auto-refresh capability when content changes.
  */
 
+import {
+    canEnableActivePreviewContent,
+    createPreviewContentPolicy,
+    disableActivePreviewContent,
+    enableActivePreviewContent,
+    invalidateActivePreviewAuthorization,
+    isActivePreviewContentEnabled,
+} from '../../../utils/previewContentPolicy.js';
+import { EmbeddedPreviewSnapshot } from './preview/EmbeddedPreviewSnapshot.js';
+
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -20,6 +30,7 @@ export default class PreviewPanelManager {
         this.pinButton = document.getElementById('preview-pin-button');
         this.refreshButton = document.getElementById('preview-refresh-button');
         this.mobileButton = document.getElementById('preview-mobile-button');
+        this.activeContentButton = document.getElementById('preview-active-content-button');
         this.iframe = document.getElementById('preview-iframe');
 
         // DOM Elements - Pinned mode
@@ -29,6 +40,7 @@ export default class PreviewPanelManager {
         this.unpinButton = document.getElementById('preview-unpin-button');
         this.pinnedRefreshButton = document.getElementById('preview-pinned-refresh-button');
         this.pinnedMobileButton = document.getElementById('preview-pinned-mobile-button');
+        this.pinnedActiveContentButton = document.getElementById('preview-pinned-active-content-button');
 
         // State
         this.isOpen = false;
@@ -51,6 +63,8 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._popupMonitorTimer = null;
         this._recoveryChannel = null;
+        this._activeContentReport = null;
+        this._embeddedPreviewSnapshot = null;
     }
 
     /**
@@ -83,6 +97,12 @@ export default class PreviewPanelManager {
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
+        disableActivePreviewContent(this._projectId());
+        this._updateActiveContentIndicator(null);
+        if (this._embeddedPreviewSnapshot) {
+            this._embeddedPreviewSnapshot.dispose().catch(error => Logger.warn('[PreviewPanel] Cleanup failed:', error));
+            this._embeddedPreviewSnapshot = null;
+        }
     }
 
     /** sessionStorage key used to persist the viewport choice for the session */
@@ -322,6 +342,7 @@ export default class PreviewPanelManager {
         this.pinButton?.addEventListener('click', () => this.pin());
         this.refreshButton?.addEventListener('click', () => this.refresh());
         this.mobileButton?.addEventListener('click', () => this.toggleViewport());
+        this.activeContentButton?.addEventListener('click', () => this._showActiveContentDialog());
 
         // Keyboard on close button
         this.closeButton?.addEventListener('keydown', (e) => {
@@ -336,6 +357,7 @@ export default class PreviewPanelManager {
         this.unpinButton?.addEventListener('click', () => this.unpin());
         this.pinnedRefreshButton?.addEventListener('click', () => this.refresh());
         this.pinnedMobileButton?.addEventListener('click', () => this.toggleViewport());
+        this.pinnedActiveContentButton?.addEventListener('click', () => this._showActiveContentDialog());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -587,6 +609,11 @@ export default class PreviewPanelManager {
                 // Skip system-originated updates (initial sync, etc.)
                 if (origin === 'system' || origin === 'initial') return;
 
+                if (isActivePreviewContentEnabled(this._projectId())) {
+                    invalidateActivePreviewAuthorization(this._projectId());
+                    this._updateActiveContentIndicator(this._activeContentReport);
+                }
+
                 this.scheduleRefresh();
             };
             documentManager.ydoc.on('update', this._onYdocUpdate);
@@ -738,7 +765,9 @@ export default class PreviewPanelManager {
                 try { await app.waitForPreviewServiceWorker(); } catch { /* SW not available */ }
             }
 
-            if (this.isServiceWorkerPreviewAvailable()) {
+            if (this._isEmbeddedPreview()) {
+                await this.refreshWithEmbeddedSnapshot();
+            } else if (this.isServiceWorkerPreviewAvailable()) {
                 await this.refreshWithServiceWorker();
             } else {
                 // Fallback for cross-origin iframes where SW can't register
@@ -752,6 +781,31 @@ export default class PreviewPanelManager {
             this.isLoading = false;
             this.hideLoadingState();
         }
+    }
+
+    _isEmbeddedPreview() {
+        return Boolean(eXeLearning?.app?.runtimeConfig?.isEmbedded);
+    }
+
+    _getEmbeddedPreviewSnapshot() {
+        if (this._embeddedPreviewSnapshot) return this._embeddedPreviewSnapshot;
+        const config = eXeLearning?.app?.runtimeConfig?.embeddingConfig?.previewSnapshot;
+        this._embeddedPreviewSnapshot = new EmbeddedPreviewSnapshot(config);
+        return this._embeddedPreviewSnapshot;
+    }
+
+    async refreshWithEmbeddedSnapshot() {
+        const result = await this._generatePreviewFiles();
+        if (!result.success || !result.files) {
+            throw new Error(result.error || 'Failed to generate embedded preview');
+        }
+        const snapshot = this._getEmbeddedPreviewSnapshot();
+        const previewUrl = await snapshot.replace(result.files);
+        snapshot.applySandbox(this.iframe);
+        snapshot.applySandbox(this.pinnedIframe);
+        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
+        if (!targetIframe) throw new Error('Embedded preview iframe is unavailable');
+        targetIframe.src = previewUrl;
     }
 
     /**
@@ -826,13 +880,85 @@ export default class PreviewPanelManager {
         const selectedTheme = eXeLearning.app?.themes?.selected;
         const theme = selectedTheme?.id || selectedTheme?.name || 'base';
 
-        return SharedExporters.generatePreviewForSW(
+        const result = await SharedExporters.generatePreviewForSW(
             yjsBridge.documentManager,
             null, // assetCache (legacy)
             yjsBridge.resourceFetcher || null,
             yjsBridge.assetManager || null,
-            { theme },
+            {
+                theme,
+                // Embedded previews rely on an opaque-origin iframe and retain
+                // the complete authored snapshot. Normal editor previews filter
+                // authored active content at its source boundary instead.
+                previewContentPolicy: this._isEmbeddedPreview()
+                    ? undefined
+                    : createPreviewContentPolicy(this._projectId()),
+            },
         );
+        this._updateActiveContentIndicator(this._isEmbeddedPreview() ? null : result.activeContentReport);
+        return result;
+    }
+
+    _projectId() {
+        return eXeLearning?.app?.project?._yjsBridge?.documentManager?.projectId ?? null;
+    }
+
+    _updateActiveContentIndicator(report) {
+        this._activeContentReport = report || null;
+        const visible = Boolean(report?.activeContentFound);
+        const enabled = visible && isActivePreviewContentEnabled(this._projectId());
+        const label = enabled
+            ? _('Custom active content is enabled for this preview')
+            : _('Custom active content is disabled in the editor preview');
+
+        for (const button of [this.activeContentButton, this.pinnedActiveContentButton]) {
+            if (!button) continue;
+            button.hidden = !visible;
+            button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+            button.classList.toggle('is-active', enabled);
+        }
+    }
+
+    _showActiveContentDialog() {
+        if (!this._activeContentReport?.activeContentFound) return;
+        const modal = eXeLearning?.app?.modals?.confirm;
+        if (!modal) return;
+
+        const projectId = this._projectId();
+        const enabled = isActivePreviewContentEnabled(projectId);
+        const electronRestricted = !canEnableActivePreviewContent();
+        let body = `<p>${_('This project contains custom active content.')}</p>`;
+        if (enabled) {
+            body += `<p>${_('Custom active content is enabled for this preview. This is a trust decision and does not make the content safe.')}</p>`;
+        } else {
+            body += `<p>${_('Custom active content is disabled in the editor preview. Enabling it may allow code contained in this project to access data available to the preview context. Enable it only when you trust the project.')}</p>`;
+        }
+        if (electronRestricted) {
+            body += `<p>${_('Custom active content cannot be enabled in the desktop application because the editor has access to native application features.')}</p>`;
+        }
+
+        modal.show({
+            title: _('Custom active content in preview'),
+            body,
+            confirmButtonText: electronRestricted
+                ? _('Keep disabled')
+                : enabled
+                  ? _('Disable custom JavaScript')
+                  : _('Enable custom JavaScript for this preview'),
+            cancelButtonText: _('Cancel'),
+            focusCancelButton: !enabled,
+            confirmExec: async () => {
+                if (enabled || electronRestricted) {
+                    disableActivePreviewContent(projectId);
+                } else {
+                    enableActivePreviewContent(projectId);
+                }
+                this._updateActiveContentIndicator(this._activeContentReport);
+                await this.refresh();
+            },
+        });
     }
 
     /**
@@ -1343,6 +1469,12 @@ export default class PreviewPanelManager {
      * Opens the SW-served preview in a new tab
      */
     async extractToNewTab() {
+        if (this._isEmbeddedPreview()) {
+            const previewUrl = this._embeddedPreviewSnapshot?.previewUrl;
+            if (!previewUrl) throw new Error('Embedded preview is not ready');
+            window.open(previewUrl, '_blank', 'noopener');
+            return;
+        }
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
@@ -1571,6 +1703,11 @@ export default class PreviewPanelManager {
         if (this._pdfEmbedBlobUrls) {
             this._pdfEmbedBlobUrls.forEach(url => URL.revokeObjectURL(url));
             this._pdfEmbedBlobUrls = null;
+        }
+
+        if (this._embeddedPreviewSnapshot) {
+            this._embeddedPreviewSnapshot.dispose().catch(error => Logger.warn('[PreviewPanel] Cleanup failed:', error));
+            this._embeddedPreviewSnapshot = null;
         }
 
         Logger.log('[PreviewPanel] Destroyed');
