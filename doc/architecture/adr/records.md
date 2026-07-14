@@ -10,10 +10,11 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| [ADR-0001](ADR-0001-source-aware-preview-filtering-and-opaque-embedded-isolation.md) | Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts | Proposed | 2026-07-14 |
 
 ## Proposed ADRs
 
-_No proposed ADRs yet._
+- [ADR-0001](ADR-0001-source-aware-preview-filtering-and-opaque-embedded-isolation.md) — Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts
 
 ## Accepted ADRs
 
