@@ -874,12 +874,15 @@ describe('ApiCallManager', () => {
       expect(savedJsonProps.someNumber).toBe(42);
     });
 
-    it('should handle invalid JSON in jsonProperties gracefully', () => {
+    it('should reject invalid JSON without updating the existing component', () => {
       const updateComponent = vi.fn();
       const convertBlobURLsToAssetRefs = vi.fn((html) => html);
       const structureBinding = {
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
+        prepareJsonPropertiesForSync: vi.fn(() => {
+          throw new SyntaxError('Invalid jsonProperties');
+        }),
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -889,7 +892,6 @@ describe('ApiCallManager', () => {
         },
       };
 
-      // Invalid JSON that contains 'blob:' - should not crash
       const invalidJson = 'not valid json blob:http://localhost/xyz';
 
       const result = apiManager._saveIdeviceToYjs({
@@ -897,11 +899,87 @@ describe('ApiCallManager', () => {
         jsonProperties: invalidJson,
       });
 
-      // Should still save (pass through unchanged on parse error)
-      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
-        jsonProperties: invalidJson,
+      expect(updateComponent).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        responseMessage: 'ERROR',
+        error: 'Invalid iDevice data. The previous version was preserved.',
       });
-      expect(result.responseMessage).toBe('OK');
+    });
+
+    it('should validate JSON before creating a block or component', () => {
+      const createBlock = vi.fn(() => 'block-new');
+      const createComponent = vi.fn(() => 'comp-new');
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock,
+        createComponent,
+        prepareJsonPropertiesForSync: vi.fn(() => {
+          throw new SyntaxError('Invalid jsonProperties');
+        }),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"broken"',
+      });
+
+      expect(createBlock).not.toHaveBeenCalled();
+      expect(createComponent).not.toHaveBeenCalled();
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should report an error when component creation fails after validation', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => ({})),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        prepareJsonPropertiesForSync: vi.fn(value => value),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'block-1',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('previous version was preserved');
+    });
+
+    it('should report an error when component update fails after validation', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent: vi.fn(() => {
+          throw new Error('Yjs component update failed');
+        }),
+        prepareJsonPropertiesForSync: vi.fn(value => value),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('previous version was preserved');
     });
 
     it('should convert multiple blob URLs in different jsonProperties fields', () => {

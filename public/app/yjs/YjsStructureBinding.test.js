@@ -1557,6 +1557,44 @@ describe('YjsStructureBinding', () => {
       expect(compId).toBeDefined();
     });
 
+    it('serializes JSON properties containing HTML quotes and line breaks', () => {
+      const jsonProperties = {
+        question: '<audio src=""><a href="">audio.webm</a></audio>\n<p>¿Dónde vive?</p>',
+        solution: false,
+      };
+
+      const compId = binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+        jsonProperties,
+      });
+
+      const component = binding.getComponent(compId);
+      expect(JSON.parse(component.jsonProperties)).toEqual(jsonProperties);
+    });
+
+    it('rejects malformed JSON before inserting a component', () => {
+      expect(() =>
+        binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+          id: 'invalid-component',
+          jsonProperties: '{"question":"<audio src=\"">',
+        })
+      ).toThrow(/jsonProperties/i);
+
+      expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
+    });
+
+    it('rejects circular JSON properties before inserting a component', () => {
+      const circular = { question: 'Circular' };
+      circular.self = circular;
+
+      expect(() =>
+        binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+          jsonProperties: circular,
+        })
+      ).toThrow(/jsonProperties/i);
+
+      expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
+    });
+
     it('uses provided ID if given in initialData', () => {
       const compId = binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
         id: 'my-custom-id',
@@ -1747,6 +1785,58 @@ describe('YjsStructureBinding', () => {
       const stored = comp.jsonProperties;
       expect(typeof stored).toBe('string');
       expect(JSON.parse(stored)).toEqual(jsonObj);
+    });
+
+    it('rejects malformed JSON without partially updating the component', () => {
+      const originalJson = JSON.stringify({ question: 'Original' });
+      binding.updateComponent('comp-1', {
+        htmlContent: '<p>Original HTML</p>',
+        jsonProperties: originalJson,
+      });
+
+      expect(() =>
+        binding.updateComponent('comp-1', {
+          htmlContent: '<p>Must not be stored</p>',
+          jsonProperties: '{"question":"<img src=\"">',
+        })
+      ).toThrow(/jsonProperties/i);
+
+      const component = binding.getComponent('comp-1');
+      expect(component.htmlContent).toBe('<p>Original HTML</p>');
+      expect(component.jsonProperties).toBe(originalJson);
+    });
+
+    it('rejects JSON corrupted by asset preparation without changing stored data', () => {
+      const originalJson = JSON.stringify({ image: 'asset://original' });
+      binding.updateComponent('comp-1', { jsonProperties: originalJson });
+      global.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                prepareJsonForSync: mock(() => '{"image":"broken"'),
+              },
+            },
+          },
+        },
+      };
+
+      expect(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: JSON.stringify({ image: 'blob:https://localhost/image' }),
+        })
+      ).toThrow(/jsonProperties/i);
+
+      expect(binding.getComponent('comp-1').jsonProperties).toBe(originalJson);
+      delete global.window.eXeLearning;
+    });
+
+    it('rejects undefined top-level JSON properties', () => {
+      expect(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: undefined,
+        })
+      ).toThrow(/jsonProperties/i);
     });
 
     // Regression test for issue #1674: updateComponent must drop the stale
