@@ -1,4 +1,5 @@
 import PreviewPanelManager from './previewPanel.js';
+import { resetPreviewContentAuthorizationForTests } from '../../../utils/previewContentPolicy.js';
 
 /**
  * Create a mock MessageChannel that captures port1.onmessage
@@ -58,6 +59,7 @@ describe('PreviewPanelManager', () => {
       'preview-pin-button': document.createElement('button'),
       'preview-refresh-button': document.createElement('button'),
       'preview-mobile-button': document.createElement('button'),
+      'preview-active-content-button': document.createElement('button'),
       'preview-iframe': document.createElement('iframe'),
       'preview-pinned-container': document.createElement('div'),
       'preview-pinned-iframe': document.createElement('iframe'),
@@ -65,6 +67,7 @@ describe('PreviewPanelManager', () => {
       'preview-unpin-button': document.createElement('button'),
       'preview-pinned-refresh-button': document.createElement('button'),
       'preview-pinned-mobile-button': document.createElement('button'),
+      'preview-pinned-active-content-button': document.createElement('button'),
       workarea: document.createElement('div'),
     };
 
@@ -89,6 +92,7 @@ describe('PreviewPanelManager', () => {
     };
     mockDocumentManager = {
       ydoc: mockYdoc,
+      projectId: 'project-a',
     };
     mockBridge = {
       documentManager: mockDocumentManager,
@@ -104,6 +108,9 @@ describe('PreviewPanelManager', () => {
     window.eXeLearning = {
       app: {
         project: mockProject,
+        modals: {
+          confirm: { show: vi.fn() },
+        },
         config: {
           basePath: '/test',
           version: 'v3',
@@ -130,6 +137,7 @@ describe('PreviewPanelManager', () => {
 
     // Mock i18n function
     globalThis._ = vi.fn((key) => key);
+    resetPreviewContentAuthorizationForTests();
 
     manager = new PreviewPanelManager();
   });
@@ -738,6 +746,19 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('refresh', () => {
+    it('uses only the opaque snapshot transport for an embedded editor', async () => {
+      window.eXeLearning.app.runtimeConfig = { isEmbedded: true };
+      const embeddedSpy = vi.spyOn(manager, 'refreshWithEmbeddedSnapshot').mockResolvedValue();
+      const swSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await manager.refresh();
+
+      expect(embeddedSpy).toHaveBeenCalledOnce();
+      expect(swSpy).not.toHaveBeenCalled();
+      expect(blobSpy).not.toHaveBeenCalled();
+    });
+
     it('should fall back to blob URL when Service Worker is not available', async () => {
       vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
       const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
@@ -1463,8 +1484,42 @@ describe('PreviewPanelManager', () => {
         null,
         null,
         null,
-        { theme: 'base' },
+        expect.objectContaining({
+          theme: 'base',
+          previewContentPolicy: expect.objectContaining({ prepare: expect.any(Function) }),
+        }),
       );
+    });
+
+    it('keeps authored active content intact for an opaque embedded preview', async () => {
+      window.eXeLearning.app.runtimeConfig = { isEmbedded: true };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
+
+      await manager._generatePreviewFiles();
+
+      const options = window.SharedExporters.generatePreviewForSW.mock.calls[0][4];
+      expect(options.previewContentPolicy).toBeUndefined();
+      expect(manager._activeContentReport).toBeNull();
+    });
+  });
+
+  describe('refreshWithEmbeddedSnapshot', () => {
+    it('replaces the complete snapshot and applies an opaque sandbox to both preview frames', async () => {
+      const files = { 'index.html': new Uint8Array([1, 2, 3]) };
+      vi.spyOn(manager, '_generatePreviewFiles').mockResolvedValue({ success: true, files });
+      const snapshot = {
+        replace: vi.fn().mockResolvedValue('https://localhost/preview/capability/index.html'),
+        applySandbox: vi.fn((iframe) => iframe.setAttribute('sandbox', 'allow-scripts')),
+      };
+      vi.spyOn(manager, '_getEmbeddedPreviewSnapshot').mockReturnValue(snapshot);
+
+      await manager.refreshWithEmbeddedSnapshot();
+
+      expect(snapshot.replace).toHaveBeenCalledWith(files);
+      expect(snapshot.applySandbox).toHaveBeenCalledWith(mockElements['preview-iframe']);
+      expect(snapshot.applySandbox).toHaveBeenCalledWith(mockElements['preview-pinned-iframe']);
+      expect(mockElements['preview-iframe'].src).toBe('https://localhost/preview/capability/index.html');
+      expect(mockElements['preview-iframe'].getAttribute('sandbox')).not.toContain('allow-same-origin');
     });
   });
 
@@ -1831,7 +1886,7 @@ describe('PreviewPanelManager', () => {
       // Verify the last argument contains the theme
       expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
-      expect(lastCall[4]).toEqual({ theme: 'custom-theme' });
+      expect(lastCall[4]).toEqual(expect.objectContaining({ theme: 'custom-theme' }));
     });
 
     it('should use theme name when id not available', async () => {
@@ -1842,7 +1897,7 @@ describe('PreviewPanelManager', () => {
 
       // Verify the last argument contains the theme
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
-      expect(lastCall[4]).toEqual({ theme: 'theme-name' });
+      expect(lastCall[4]).toEqual(expect.objectContaining({ theme: 'theme-name' }));
     });
   });
 
@@ -2267,6 +2322,54 @@ describe('PreviewPanelManager', () => {
       await manager.refresh();
 
       expect(swRefreshSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('custom active content authorization', () => {
+    const report = {
+      activeContentFound: true,
+      categories: ['script'],
+      actions: ['disabled'],
+      contexts: ['component-html'],
+    };
+
+    it('shows an accessible warning only when active content is detected', () => {
+      manager._updateActiveContentIndicator(report);
+      const button = mockElements['preview-active-content-button'];
+      expect(button.hidden).toBe(false);
+      expect(button.getAttribute('aria-pressed')).toBe('false');
+      expect(button.getAttribute('aria-label')).toContain('disabled');
+
+      manager._updateActiveContentIndicator({ activeContentFound: false });
+      expect(button.hidden).toBe(true);
+    });
+
+    it('requires the explicit modal action to enable and can disable again', async () => {
+      manager._updateActiveContentIndicator(report);
+      manager._showActiveContentDialog();
+      const firstDialog = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+      expect(firstDialog.confirmButtonText).toContain('Enable custom JavaScript');
+      expect(mockElements['preview-active-content-button'].getAttribute('aria-pressed')).toBe('false');
+      vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+      await firstDialog.confirmExec();
+      expect(mockElements['preview-active-content-button'].getAttribute('aria-pressed')).toBe('true');
+
+      manager._showActiveContentDialog();
+      const secondDialog = window.eXeLearning.app.modals.confirm.show.mock.calls[1][0];
+      expect(secondDialog.confirmButtonText).toContain('Disable custom JavaScript');
+      await secondDialog.confirmExec();
+      expect(mockElements['preview-active-content-button'].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('does not offer enablement in Electron', () => {
+      window.electronAPI = {};
+      manager._updateActiveContentIndicator(report);
+      manager._showActiveContentDialog();
+      const dialog = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+      expect(dialog.confirmButtonText).toBe('Keep disabled');
+      expect(dialog.body).toContain('desktop application');
+      delete window.electronAPI;
     });
   });
 
