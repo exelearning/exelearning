@@ -23,6 +23,7 @@ import { defaultLogger, FEEDBACK_TRANSLATIONS } from './interfaces';
 import { LegacyHandlerRegistry } from './legacy-handlers';
 import type { IdeviceHandlerContext } from './legacy-handlers';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { resolveFieldInstances } from './resolveFieldInstances';
 
 /**
  * Metadata extracted from legacy Python pickle format
@@ -353,17 +354,15 @@ export class LegacyXmlParser {
      */
     preprocessLegacyXml(xmlContent: string): string {
         let xml = xmlContent;
-
-        // 1. Remove indentations (5 spaces, tabs)
         const protectedPreBlocks: string[] = [];
         const protectPreBlock = (match: string): string => {
             const token = `__LEGACY_PRE_BLOCK_${protectedPreBlocks.length}__`;
             protectedPreBlocks.push(match);
             return token;
         };
-        xml = xml.replace(/<unicode\b[^>]*>/gi, tag => {
-            return tag.replace(/\bvalue=(['"])([\s\S]*?)\1/i, (_match, quote, value) => {
-                const protectedValue = value.replace(/&lt;pre\b[\s\S]*?&lt;\/pre&gt;/gi, encodedPre => {
+        xml = xml.replace(/<unicode\b[^>]*>/gi, (tag: string) => {
+            return tag.replace(/\bvalue=(['"])([\s\S]*?)\1/i, (_match: string, quote: string, value: string) => {
+                const protectedValue = value.replace(/&lt;pre\b[\s\S]*?&lt;\/pre&gt;/gi, (encodedPre: string) => {
                     return protectPreBlock(encodedPre);
                 });
                 return `value=${quote}${protectedValue}${quote}`;
@@ -371,27 +370,39 @@ export class LegacyXmlParser {
         });
         xml = xml.replace(/ {5}/g, '');
         xml = xml.replace(/\t/g, '');
-        xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match, index) => {
+        xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match: string, index: string) => {
             return protectedPreBlocks[Number(index)] || '';
         });
-
-        // 2. Unify newlines to Unix LF
         xml = xml.replace(/\r/g, '\n');
         xml = xml.replace(/\n\n/g, '\n');
-
-        // 3. Convert newlines to &#10; entity
         xml = xml.replace(/\n/g, '&#10;');
-
-        // 4. Restore newlines between tags
         xml = xml.replace(/>&#10;</g, '>\n<');
-
-        // 5. Convert hex escape sequences (\xNN) to characters
-        xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (_match, hex) => {
+        xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (_match: string, hex: string) => {
             return String.fromCharCode(parseInt(hex, 16));
         });
 
-        // 6. Convert \n to &#10;
+        // Protect LaTeX regions before converting literal "\n" to a line-break
+        // entity. Uses the same detection logic as BaseLegacyHandler.decodeHtmlContent
+        // for consistency: block-level protection (not a per-character lookahead,
+        // which is ambiguous), plus a currency guard so a "$" followed by an
+        // amount like "$5" doesn't pair with a later real "$...$" formula and
+        // leave a literal "\n" between them unconverted.
+        const latexBlocks: string[] = [];
+        let token: string;
+        do {
+            token = `\u0000LTXP${Math.random().toString(36).slice(2)}\u0000`;
+        } while (xml.includes(token));
+        const latexPattern =
+            /\\\((?:[^\\]|\\.)*?\\\)|\\\[(?:[^\\]|\\.)*?\\\]|\\begin\{[^}]+\}(?:[^\\]|\\.)*?\\end\{[^}]+\}|\$\$(?:[^$]|\\.)*?\$\$|(?<!\\)\$(?!\d+(?:[.,]\d+)?\b)(?:[^$\\]|\\.)*?(?<!\\)\$/g;
+        xml = xml.replace(latexPattern, (match: string) => {
+            latexBlocks.push(match);
+            return `${token}${latexBlocks.length - 1}${token}`;
+        });
+
         xml = xml.replace(/\\n/g, '&#10;');
+
+        const tokenPattern = new RegExp(`${token}(\\d+)${token}`, 'g');
+        xml = xml.replace(tokenPattern, (_match: string, i: string) => latexBlocks[Number(i)]);
 
         return xml;
     }
@@ -1483,6 +1494,9 @@ export class LegacyXmlParser {
                     ideviceId: idevice.id,
                     className: className,
                     ideviceType: rawIdeviceDir || ideviceType,
+                    // Let handlers resolve <reference key="N"> fields to their instance,
+                    // so the explicit fields list stays authoritative (issue #2159).
+                    resolveReference: (key: string) => this.getInstanceByReference(key),
                 };
 
                 // Extract properties using handler
@@ -1497,7 +1511,11 @@ export class LegacyXmlParser {
                 // Use handler's extractHtmlView if it returns content
                 // Some handlers (like GameHandler) process the content (e.g., decrypt game data)
                 const handlerHtml = handler.extractHtmlView(dict, handlerContext);
-                if (handlerHtml) {
+                // The generic fallback handler must not overwrite an htmlView the parser
+                // already resolved from an authoritative field reference: its best-effort
+                // descendant search can pick up a foreign iDevice's field (issue #2159).
+                const isFallbackHandler = typeof handler.isFallback === 'function' && handler.isFallback();
+                if (handlerHtml && !(isFallbackHandler && idevice.htmlView)) {
                     idevice.htmlView = handlerHtml;
                     this.logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
                 }
@@ -2086,23 +2104,9 @@ export class LegacyXmlParser {
             ) {
                 const listEl = children[i + 1];
                 if (listEl && listEl.tagName === 'list') {
-                    const directChildren = Array.from(listEl.childNodes).filter(n => n.nodeType === 1) as Element[];
-                    const fieldInstances: Element[] = [];
-
-                    for (const fieldChild of directChildren) {
-                        if (fieldChild.tagName === 'instance') {
-                            fieldInstances.push(fieldChild);
-                        } else if (fieldChild.tagName === 'reference') {
-                            const refKey = fieldChild.getAttribute('key');
-                            if (refKey && this.xmlDoc) {
-                                const referencedInstance = this.getInstanceByReference(refKey);
-                                if (referencedInstance) {
-                                    this.logger.log(`[LegacyXmlParser] Resolved field reference key=${refKey}`);
-                                    fieldInstances.push(referencedInstance);
-                                }
-                            }
-                        }
-                    }
+                    // Resolve both inline <instance> fields and <reference> back-pointers.
+                    // Shared with the handler layer so the two never diverge (issue #2159).
+                    const fieldInstances = resolveFieldInstances(listEl, key => this.getInstanceByReference(key));
 
                     for (const fieldInst of fieldInstances) {
                         const fieldClass = fieldInst.getAttribute('class') || '';

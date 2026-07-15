@@ -24,6 +24,13 @@ export interface IdeviceHandlerContext {
     className: string;
     /** Optional iDevice type from _iDeviceDir */
     ideviceType?: string;
+    /**
+     * Resolve a legacy `<reference key="N">` back-pointer to its originating
+     * `<instance>` element. Backed by the parser's instance-by-reference map so
+     * handlers can treat the `fields` list (with its explicit references) as the
+     * authoritative source of an iDevice's content. See resolveFieldInstances.
+     */
+    resolveReference?: (key: string) => Element | undefined;
 }
 
 /**
@@ -124,6 +131,17 @@ export interface IdeviceHandler {
      * @returns Block properties or undefined
      */
     getBlockProperties?(): BlockProperties;
+
+    /**
+     * Whether this is the generic fallback handler (matches every class).
+     *
+     * The fallback handler extracts content on a best-effort basis and must never
+     * overwrite an htmlView the parser already resolved from an authoritative field
+     * reference. Concrete specialized handlers leave this undefined/false.
+     *
+     * @returns true only for the catch-all DefaultHandler
+     */
+    isFallback?(): boolean;
 }
 
 /**
