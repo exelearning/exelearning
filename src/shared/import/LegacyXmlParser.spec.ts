@@ -1963,4 +1963,127 @@ describe('LegacyXmlParser', () => {
             expect(elapsed).toBeLessThan(8000);
         });
     });
+
+    describe('legacy UDL iDevice with reference-based fields (#2159)', () => {
+        // Reproduces the interleaved serialization from issue #2159:
+        //
+        //   TextAreaField 33  (the CORRECT content for the UDL iDevice)
+        //   └── _idevice → JsIdevice 34   (udl-content; fields → <reference key="33">)
+        //       └── parentNode → Node 58
+        //           └── parent → Node 37
+        //               └── idevices → JsIdevice 35
+        //                   └── fields → TextAreaField 36  (a DIFFERENT iDevice's content)
+        //
+        // Because the pickle serializer inlines JsIdevice 34's whole parentNode subtree,
+        // TextAreaField 36 is physically nested inside JsIdevice 34's <instance>, while
+        // JsIdevice 34's own fields hold only a <reference key="33">. A handler that
+        // ignores <reference> in the fields list and then recursively searches every
+        // descendant <instance> for a TextAreaField would pick field 36 and overwrite the
+        // correct content the parser had already resolved from the field reference.
+        const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <reference key="34"/>
+        </list>
+        <string role="key" value="children"/>
+        <list/>
+        <string role="key" value="_legacyGraph"/>
+        <instance class="exe.engine.field.TextAreaField" reference="33">
+          <dictionary>
+            <string role="key" value="_idevice"/>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="34">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <string value="udl-content"/>
+                <string role="key" value="class_"/>
+                <unicode value="UDLcontent"/>
+                <string role="key" value="_title"/>
+                <unicode value="O voso diario"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <reference key="33"/>
+                </list>
+                <string role="key" value="parentNode"/>
+                <instance class="exe.engine.node.Node" reference="58">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Diario de aprendizaxe"/>
+                    <string role="key" value="idevices"/>
+                    <list>
+                      <reference key="34"/>
+                    </list>
+                    <string role="key" value="parent"/>
+                    <instance class="exe.engine.node.Node" reference="37">
+                      <dictionary>
+                        <string role="key" value="_title"/>
+                        <unicode value="Parent page"/>
+                        <string role="key" value="parent"/>
+                        <reference key="2"/>
+                        <string role="key" value="idevices"/>
+                        <list>
+                          <instance class="exe.engine.jsidevice.JsIdevice" reference="35">
+                            <dictionary>
+                              <string role="key" value="_iDeviceDir"/>
+                              <string value="udl-content"/>
+                              <string role="key" value="_title"/>
+                              <unicode value="Wrong idevice"/>
+                              <string role="key" value="fields"/>
+                              <list>
+                                <instance class="exe.engine.field.TextAreaField" reference="36">
+                                  <dictionary>
+                                    <string role="key" value="_idevice"/>
+                                    <reference key="35"/>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="&lt;div class=&quot;exe-udlContent exe-udlContent-engagement&quot;&gt;&lt;img src=&quot;resources/66-removebg-preview.png&quot; alt=&quot;&quot;/&gt;&lt;p&gt;Agora que xa sabedes cal é o reto, é o momento de explorar o que sabedes.&lt;/p&gt;&lt;/div&gt;"/>
+                                  </dictionary>
+                                </instance>
+                              </list>
+                            </dictionary>
+                          </instance>
+                        </list>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </dictionary>
+            </instance>
+            <string role="key" value="content_w_resourcePaths"/>
+            <unicode value="&lt;div class=&quot;exe-udlContent exe-udlContent-expression&quot;&gt;&lt;img src=&quot;resources/ddAprendizaxe360_px.png&quot; alt=&quot;&quot;/&gt;&lt;p&gt;Ides cubrir os apartados da Fase 2 do voso diario de aprendizaxe.&lt;/p&gt;&lt;/div&gt;"/>
+          </dictionary>
+        </instance>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+        it('uses the field <reference> content, not a nested foreign TextAreaField', () => {
+            const result = parser.parse(legacyXml);
+
+            const udlIdevices = result.pages
+                .flatMap(p => p.blocks.flatMap(b => b.idevices))
+                .filter(d => d.id === 'idevice-34');
+
+            expect(udlIdevices.length).toBeGreaterThan(0);
+            for (const idevice of udlIdevices) {
+                // Field 33 (the authoritative content resolved via <reference key="33">).
+                expect(idevice.htmlView).toContain('ddAprendizaxe360_px.png');
+                expect(idevice.htmlView).toContain('Ides cubrir os apartados da Fase 2');
+                // Field 36 belongs to a DIFFERENT iDevice and must never leak in here.
+                expect(idevice.htmlView).not.toContain('66-removebg-preview.png');
+                expect(idevice.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(idevice.type).toBe('udl-content');
+            }
+        });
+    });
 });

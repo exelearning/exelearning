@@ -117,6 +117,58 @@ describe('DefaultHandler', () => {
             expect(handler.extractHtmlView(dict)).toBe('Fallback content');
         });
 
+        it('resolves a <reference> field via the context resolver (Strategy 1, #2159)', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Correct referenced content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toBe('Correct referenced content');
+        });
+
+        it('does not pull a foreign nested field when the fields entry is an unresolved reference (#2159)', () => {
+            // fields -> <reference> (unresolved, no resolver) plus a foreign TextAreaField
+            // inlined under a Node boundary. The fallback must stay empty instead of
+            // returning the foreign iDevice content.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Foreign content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+
         it('should remove legacy outer exe-text wrapper for normal text content', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -4061,6 +4113,48 @@ describe('GameHandler', () => {
             `);
             const result = handler.extractHtmlView(dict);
             expect(result).toContain('flipcards-DataGame');
+        });
+
+        // Legacy contentv3.xml serializes each object once as <instance reference="N">
+        // and every later mention as a back-pointer <reference key="N">. A game
+        // iDevice whose content field is written as a <reference> must still resolve
+        // to the referenced instance (issue #2167, sibling of #2159).
+        it('should resolve a <reference> field via the context resolver (issue #2167)', () => {
+            const referenced = createDomElement(`
+                <instance class="TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content"/>
+                        <unicode value="&lt;div class=&quot;flipcards-DataGame&quot;&gt;{&quot;typeGame&quot;:&quot;FlipCards&quot;}&lt;/div&gt;"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toContain('flipcards-DataGame');
+        });
+
+        it('should skip a <reference> field when no resolver is provided', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
         });
 
         it('should return empty when no fields', () => {

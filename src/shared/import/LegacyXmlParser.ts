@@ -23,6 +23,7 @@ import { defaultLogger, FEEDBACK_TRANSLATIONS } from './interfaces';
 import { LegacyHandlerRegistry } from './legacy-handlers';
 import type { IdeviceHandlerContext } from './legacy-handlers';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { resolveFieldInstances } from './resolveFieldInstances';
 
 /**
  * Metadata extracted from legacy Python pickle format
@@ -1493,6 +1494,9 @@ export class LegacyXmlParser {
                     ideviceId: idevice.id,
                     className: className,
                     ideviceType: rawIdeviceDir || ideviceType,
+                    // Let handlers resolve <reference key="N"> fields to their instance,
+                    // so the explicit fields list stays authoritative (issue #2159).
+                    resolveReference: (key: string) => this.getInstanceByReference(key),
                 };
 
                 // Extract properties using handler
@@ -1507,7 +1511,11 @@ export class LegacyXmlParser {
                 // Use handler's extractHtmlView if it returns content
                 // Some handlers (like GameHandler) process the content (e.g., decrypt game data)
                 const handlerHtml = handler.extractHtmlView(dict, handlerContext);
-                if (handlerHtml) {
+                // The generic fallback handler must not overwrite an htmlView the parser
+                // already resolved from an authoritative field reference: its best-effort
+                // descendant search can pick up a foreign iDevice's field (issue #2159).
+                const isFallbackHandler = typeof handler.isFallback === 'function' && handler.isFallback();
+                if (handlerHtml && !(isFallbackHandler && idevice.htmlView)) {
                     idevice.htmlView = handlerHtml;
                     this.logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
                 }
@@ -2096,23 +2104,9 @@ export class LegacyXmlParser {
             ) {
                 const listEl = children[i + 1];
                 if (listEl && listEl.tagName === 'list') {
-                    const directChildren = Array.from(listEl.childNodes).filter(n => n.nodeType === 1) as Element[];
-                    const fieldInstances: Element[] = [];
-
-                    for (const fieldChild of directChildren) {
-                        if (fieldChild.tagName === 'instance') {
-                            fieldInstances.push(fieldChild);
-                        } else if (fieldChild.tagName === 'reference') {
-                            const refKey = fieldChild.getAttribute('key');
-                            if (refKey && this.xmlDoc) {
-                                const referencedInstance = this.getInstanceByReference(refKey);
-                                if (referencedInstance) {
-                                    this.logger.log(`[LegacyXmlParser] Resolved field reference key=${refKey}`);
-                                    fieldInstances.push(referencedInstance);
-                                }
-                            }
-                        }
-                    }
+                    // Resolve both inline <instance> fields and <reference> back-pointers.
+                    // Shared with the handler layer so the two never diverge (issue #2159).
+                    const fieldInstances = resolveFieldInstances(listEl, key => this.getInstanceByReference(key));
 
                     for (const fieldInst of fieldInstances) {
                         const fieldClass = fieldInst.getAttribute('class') || '';

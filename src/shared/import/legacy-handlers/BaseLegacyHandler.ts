@@ -17,6 +17,7 @@
 import type { IdeviceHandler, IdeviceHandlerContext, FeedbackResult, BlockProperties } from './IdeviceHandler';
 import { FEEDBACK_TRANSLATIONS } from '../interfaces';
 import { stripLegacyExeTextWrapper } from '../legacyExeTextWrapper';
+import { resolveFieldInstances } from '../resolveFieldInstances';
 
 /**
  * Abstract base class for legacy iDevice handlers
@@ -550,10 +551,17 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     /**
      * Extract content from "fields" list (JsIdevice format)
      *
+     * The `fields` list is the authoritative source of an iDevice's content. It may
+     * hold inline `<instance>` fields and/or `<reference key="N">` back-pointers to
+     * fields serialized elsewhere in the document, so both must be resolved. When a
+     * reference resolver is available (via `context.resolveReference`) the referenced
+     * field is read too; otherwise references are skipped. See issue #2159.
+     *
      * @param dict - Dictionary element
+     * @param context - Optional handler context providing the reference resolver
      * @returns Combined content from text fields
      */
-    extractFieldsContent(dict: Element): string {
+    extractFieldsContent(dict: Element, context?: IdeviceHandlerContext): string {
         const children = this.getChildElements(dict);
 
         // Find "fields" key and its list
@@ -567,7 +575,7 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
                 const listEl = children[i + 1];
                 if (listEl && listEl.tagName === 'list') {
                     const contents: string[] = [];
-                    const fieldInstances = this.getDirectChildrenByTagName(listEl, 'instance');
+                    const fieldInstances = resolveFieldInstances(listEl, context?.resolveReference);
                     for (const fieldInst of fieldInstances) {
                         const fieldClass = fieldInst.getAttribute('class') || '';
                         if (fieldClass.includes('TextAreaField') || fieldClass.includes('TextField')) {
@@ -620,38 +628,70 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     }
 
     /**
-     * Extract content from any TextAreaField or TextField in the dictionary
+     * Extract content from any TextAreaField or TextField reachable within this
+     * iDevice's own object subtree (last-resort fallback).
      *
-     * @param dict - Dictionary element
+     * The search is boundary-safe: it never descends into a nested iDevice or Node
+     * `<instance>`. In the legacy pickle graph an iDevice inlines its own
+     * `_idevice` / `parentNode` / `parent` back-references as full `<instance>`
+     * elements, so an unbounded descendant search would cross into a *different*
+     * iDevice and return its content. Honouring the iDevice/Node boundary keeps the
+     * fallback scoped to the current iDevice. See issue #2159.
+     *
+     * @param dict - Dictionary element of the current iDevice
      * @returns Content or empty string
      */
     extractAnyTextFieldContent(dict: Element): string {
-        // Find all direct child instance elements that look like text fields
-        const instances = this.getDirectChildrenByTagName(dict, 'instance');
-        for (const inst of instances) {
-            const className = inst.getAttribute('class') || '';
-            if (className.includes('TextAreaField') || className.includes('TextField')) {
-                const content = this.extractTextAreaFieldContent(inst);
-                if (content) {
-                    return content;
+        return this.findBoundedTextFieldContent(dict);
+    }
+
+    /**
+     * Depth-first search for a TextAreaField/TextField instance that stays inside
+     * the current iDevice's own subtree (does not cross iDevice/Node boundaries).
+     *
+     * @param element - Element to search within
+     * @returns Content of the first matching field, or empty string
+     */
+    private findBoundedTextFieldContent(element: Element): string {
+        const children = this.getChildElements(element);
+        for (const child of children) {
+            if (child.tagName === 'instance') {
+                const className = child.getAttribute('class') || '';
+                if (className.includes('TextAreaField') || className.includes('TextField')) {
+                    const content = this.extractTextAreaFieldContent(child);
+                    if (content) {
+                        return content;
+                    }
+                    // Field matched but empty: no need to descend into its dictionary.
+                    continue;
+                }
+                // Never cross into a nested iDevice or Node; that content belongs to a
+                // different object reached only via inlined back-references.
+                if (this.isIdeviceOrNodeClass(className)) {
+                    continue;
                 }
             }
-        }
 
-        // Try nested instances (getElementsByTagName is xmldom-compatible)
-        const nestedInstances = dict.getElementsByTagName('instance');
-        for (let i = 0; i < nestedInstances.length; i++) {
-            const inst = nestedInstances[i] as Element;
-            const className = inst.getAttribute('class') || '';
-            if (className.includes('TextAreaField') || className.includes('TextField')) {
-                const content = this.extractTextAreaFieldContent(inst);
-                if (content) {
-                    return content;
-                }
+            // Recurse into structural containers (dictionary, list) and non-boundary
+            // instances (e.g. resources) that may wrap the field.
+            const nested = this.findBoundedTextFieldContent(child);
+            if (nested) {
+                return nested;
             }
         }
 
         return '';
+    }
+
+    /**
+     * Whether a legacy class name denotes an iDevice or a Node (a content boundary).
+     *
+     * @param className - Legacy class attribute value
+     * @returns true for iDevice / Node classes
+     */
+    private isIdeviceOrNodeClass(className: string): boolean {
+        const lower = className.toLowerCase();
+        return lower.includes('idevice') || lower.includes('.node.node') || lower.endsWith('.node');
     }
 
     /**
