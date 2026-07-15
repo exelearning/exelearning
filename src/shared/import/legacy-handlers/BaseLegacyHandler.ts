@@ -427,21 +427,46 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
      */
     decodeHtmlContent(content: string): string {
         if (!content) return '';
-
-        // Handle Python-style unicode escapes and HTML entities
-        const decoded = content
-            // Decode common HTML entities
+        // 1. Decode basic HTML entities
+        const decodedContent = content
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
             .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
-            // Handle Python unicode escapes for common characters
+            .replace(/&apos;/g, "'")
+            .replace(/&nbsp;/g, '\u00A0'); // see point 3 below
+
+        // 2. Generate a unique and safe placeholder token to avoid collisions
+        let token: string;
+        do {
+            token = `\u0000LTX${Math.random().toString(36).slice(2)}\u0000`;
+        } while (decodedContent.includes(token));
+
+        // 3. Robust LaTeX pattern.
+        const latexPattern =
+            /\\\((?:[^\\]|\\.)*?\\\)|\\\[(?:[^\\]|\\.)*?\\\]|\\begin\{[^}]+\}(?:[^\\]|\\.)*?\\end\{[^}]+\}|\$\$(?:[^$]|\\.)*?\$\$|(?<!\\)\$(?!\d+(?:[.,]\d+)?\b)(?:[^$\\]|\\.)*?(?<!\\)\$/g;
+        const latexBlocks: string[] = [];
+        const protectedContent = decodedContent.replace(latexPattern, match => {
+            latexBlocks.push(match);
+            return `${token}${latexBlocks.length - 1}${token}`;
+        });
+
+        // 4. Decode Python-style escape sequences.
+        // \n and \t are decoded unconditionally: LaTeX commands using these
+        // letters (\nabla, \times) are already safe thanks to the block-level
+        // protection in step 3. \r keeps its lookahead as a safety net for
+        // LaTeX commands like \right that appear WITHOUT any recognised
+        // delimiter around them (see the bare "\left( x \right)" regression
+        // test), and are therefore not covered by step 3.
+        const finalDecoded = protectedContent
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
-            .replace(/\\r(?![a-zA-Z])/g, '\r'); // Negative lookahead to preserve LaTeX commands
+            .replace(/\\r(?![a-zA-Z])/g, '\r');
 
-        return decoded;
+        // 5. Restore the original LaTeX blocks untouched
+        const tokenPattern = new RegExp(`${token}(\\d+)${token}`, 'g');
+        return finalDecoded.replace(tokenPattern, (_, i) => latexBlocks[Number(i)]);
     }
 
     /**

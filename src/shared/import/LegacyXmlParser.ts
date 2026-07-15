@@ -354,17 +354,15 @@ export class LegacyXmlParser {
      */
     preprocessLegacyXml(xmlContent: string): string {
         let xml = xmlContent;
-
-        // 1. Remove indentations (5 spaces, tabs)
         const protectedPreBlocks: string[] = [];
         const protectPreBlock = (match: string): string => {
             const token = `__LEGACY_PRE_BLOCK_${protectedPreBlocks.length}__`;
             protectedPreBlocks.push(match);
             return token;
         };
-        xml = xml.replace(/<unicode\b[^>]*>/gi, tag => {
-            return tag.replace(/\bvalue=(['"])([\s\S]*?)\1/i, (_match, quote, value) => {
-                const protectedValue = value.replace(/&lt;pre\b[\s\S]*?&lt;\/pre&gt;/gi, encodedPre => {
+        xml = xml.replace(/<unicode\b[^>]*>/gi, (tag: string) => {
+            return tag.replace(/\bvalue=(['"])([\s\S]*?)\1/i, (_match: string, quote: string, value: string) => {
+                const protectedValue = value.replace(/&lt;pre\b[\s\S]*?&lt;\/pre&gt;/gi, (encodedPre: string) => {
                     return protectPreBlock(encodedPre);
                 });
                 return `value=${quote}${protectedValue}${quote}`;
@@ -372,27 +370,39 @@ export class LegacyXmlParser {
         });
         xml = xml.replace(/ {5}/g, '');
         xml = xml.replace(/\t/g, '');
-        xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match, index) => {
+        xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match: string, index: string) => {
             return protectedPreBlocks[Number(index)] || '';
         });
-
-        // 2. Unify newlines to Unix LF
         xml = xml.replace(/\r/g, '\n');
         xml = xml.replace(/\n\n/g, '\n');
-
-        // 3. Convert newlines to &#10; entity
         xml = xml.replace(/\n/g, '&#10;');
-
-        // 4. Restore newlines between tags
         xml = xml.replace(/>&#10;</g, '>\n<');
-
-        // 5. Convert hex escape sequences (\xNN) to characters
-        xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (_match, hex) => {
+        xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (_match: string, hex: string) => {
             return String.fromCharCode(parseInt(hex, 16));
         });
 
-        // 6. Convert \n to &#10;
+        // Protect LaTeX regions before converting literal "\n" to a line-break
+        // entity. Uses the same detection logic as BaseLegacyHandler.decodeHtmlContent
+        // for consistency: block-level protection (not a per-character lookahead,
+        // which is ambiguous), plus a currency guard so a "$" followed by an
+        // amount like "$5" doesn't pair with a later real "$...$" formula and
+        // leave a literal "\n" between them unconverted.
+        const latexBlocks: string[] = [];
+        let token: string;
+        do {
+            token = `\u0000LTXP${Math.random().toString(36).slice(2)}\u0000`;
+        } while (xml.includes(token));
+        const latexPattern =
+            /\\\((?:[^\\]|\\.)*?\\\)|\\\[(?:[^\\]|\\.)*?\\\]|\\begin\{[^}]+\}(?:[^\\]|\\.)*?\\end\{[^}]+\}|\$\$(?:[^$]|\\.)*?\$\$|(?<!\\)\$(?!\d+(?:[.,]\d+)?\b)(?:[^$\\]|\\.)*?(?<!\\)\$/g;
+        xml = xml.replace(latexPattern, (match: string) => {
+            latexBlocks.push(match);
+            return `${token}${latexBlocks.length - 1}${token}`;
+        });
+
         xml = xml.replace(/\\n/g, '&#10;');
+
+        const tokenPattern = new RegExp(`${token}(\\d+)${token}`, 'g');
+        xml = xml.replace(tokenPattern, (_match: string, i: string) => latexBlocks[Number(i)]);
 
         return xml;
     }

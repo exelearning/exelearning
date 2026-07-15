@@ -1816,6 +1816,104 @@ describe('ElpxImporter - findAssetUrlForPath coverage', () => {
             ydoc.destroy();
         });
 
+        it('should convert images embedded in a legacy dropdown (ListaIdevice) form to asset:// URLs', async () => {
+            // Regression for legacy "Actividad desplegable" (ListaIdevice → form):
+            // the image lives inside the question HTML stored in an iDevice
+            // PROPERTY (questionsData[].baseText), not in htmlView. It must still
+            // be rewritten to an asset:// URL, otherwise the picture renders
+            // broken and only its alt text is shown.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.listaidevice.ListaIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Dropdown"/>
+              <string role="key" value="_content"/>
+              <instance class="exe.engine.listaidevice.ListaField" reference="4">
+                <dictionary>
+                  <string role="key" value="_encodedContent"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;resources/dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="otras"/>
+                  <unicode value="wrong1|wrong2"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Image stored at root level (legacy format)
+            const imageData = new Uint8Array([137, 80, 78, 71]); // PNG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'dropimg.png': imageData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Collect every string stored under the imported navigation tree
+            // (iDevice properties are serialised into the jsonProperties string).
+            const collectStrings = (obj: unknown): string[] => {
+                if (typeof obj === 'string') return [obj];
+                if (obj instanceof Y.Text) return [obj.toString()];
+                if (obj instanceof Y.Map) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj instanceof Y.Array) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj && typeof obj === 'object') {
+                    return Object.values(obj).flatMap(collectStrings);
+                }
+                return [];
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const questionProps = collectStrings(navigation).filter(s => s.includes('questionsData'));
+
+            // The dropdown must have been imported as a form with questionsData
+            expect(questionProps.length).toBeGreaterThan(0);
+            const parsed = JSON.parse(questionProps[0]) as { questionsData: { baseText: string }[] };
+            const baseText = parsed.questionsData[0].baseText;
+
+            // Gap markers must survive, and the embedded image must be rewritten
+            // to an asset:// URL rather than left as a bare or resources/ path.
+            expect(baseText).toContain('<u>right</u>');
+            expect(baseText).toContain('asset://');
+            expect(baseText).not.toContain('src="dropimg.png"');
+            expect(baseText).not.toContain('src="resources/dropimg.png"');
+
+            ydoc.destroy();
+        });
+
         it('should handle files without extension in resources directory', async () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">

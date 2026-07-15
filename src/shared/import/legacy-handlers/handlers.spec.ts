@@ -1514,6 +1514,34 @@ describe('FillHandler', () => {
             expect(questions[0].answers).toContain('mat');
         });
 
+        it('prefers content_w_resourcePaths over _encodedContent so cloze image paths keep the resources/ prefix', () => {
+            // Same defect as DropdownHandler: a ClozeField stores its gap text
+            // twice. _encodedContent holds BARE image paths (src="tree.png"),
+            // content_w_resourcePaths holds resources/-prefixed paths that can be
+            // resolved to asset:// URLs on import. Prefer the resolvable copy.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ClozeField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string; answers: string[] }[];
+            expect(questions.length).toBe(1);
+            // Cloze gap answers must still be parsed from the <u> markers
+            expect(questions[0].answers).toContain('cone');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/tree.png');
+            expect(questions[0].baseText).not.toContain('src="tree.png"');
+        });
+
         it('should extract from _cloze key', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -1765,6 +1793,38 @@ describe('DropdownHandler', () => {
             const questions = props.questionsData as { baseText: string }[];
             expect(questions.length).toBe(1);
             expect(questions[0].baseText).toContain('<u>blank</u>');
+        });
+
+        it('prefers content_w_resourcePaths over _encodedContent so image paths keep the resources/ prefix', () => {
+            // Real legacy ListaIdevice stores the question twice: _encodedContent
+            // holds the editor/display copy with BARE image paths (src="pic.png"),
+            // while content_w_resourcePaths holds the canonical copy with
+            // resources/-prefixed paths (src="resources/pic.png"). Only the
+            // resources/-prefixed form can later be resolved to an asset:// URL,
+            // so the handler must prefer it (as every other field extraction does).
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ListaField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="otras"/>
+                            <string value="wrong1|wrong2"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string }[];
+            expect(questions.length).toBe(1);
+            // Dropdown gap markers must survive regardless of which copy is used
+            expect(questions[0].baseText).toContain('<u>right</u>');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/pic.png');
+            expect(questions[0].baseText).not.toContain('src="pic.png"');
         });
 
         it('should include eXeFormInstructions', () => {
