@@ -323,6 +323,7 @@ var $exeDevice = {
                 size: typeof metadata.size === 'number' ? metadata.size : file.size || 0,
                 title: '',
                 description: '',
+                openInNewWindow: true,
             });
         } catch (e) {
             if (typeof eXe !== 'undefined' && eXe.app && eXe.app.alert) {
@@ -346,6 +347,7 @@ var $exeDevice = {
             size: typeof asset.size === 'number' ? asset.size : 0,
             title: '',
             description: '',
+            openInNewWindow: true,
         });
     },
 
@@ -365,6 +367,7 @@ var $exeDevice = {
         const category = this.getFileCategory(attachment.mimeType, filename);
         const icon = this.getFileIconSvg(attachment.mimeType, filename);
         const missing = !url;
+        const openInNewWindow = attachment.openInNewWindow !== false;
 
         const item = document.createElement('li');
         item.className = `fileAttachment-edit-item${missing ? ' fileAttachment-edit-item--missing' : ''}`;
@@ -376,6 +379,7 @@ var $exeDevice = {
 
         const titleId = `fileAttachmentTitle_${rowId}`;
         const descId = `fileAttachmentDesc_${rowId}`;
+        const targetId = `fileAttachmentOpenInNewWindow_${rowId}`;
         const displayName = filename || _('Unknown file');
 
         item.innerHTML = `
@@ -388,7 +392,7 @@ var $exeDevice = {
                         : ''
                 }
                 <div class="fileAttachment-edit-details fileAttachment-edit-details-closed">
-                    <button type="button" class="fileAttachment-edit-details-toggle" aria-expanded="false">${_('Title and description')}</button>
+                    <button type="button" class="fileAttachment-edit-details-toggle" aria-expanded="false">${_('File properties')}</button>
                     <div class="fileAttachment-edit-details-body">
                         <div class="property-row">
                             <label for="${titleId}">${_('Title')}:</label>
@@ -397,6 +401,12 @@ var $exeDevice = {
                         <div class="property-row">
                             <label for="${descId}">${_('Description')}:</label>
                             <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${this.escapeHtml(attachment.description || '')}</textarea>
+                        </div>
+                        <div class="property-row">
+                            <label class="fileAttachment-toggle" for="${targetId}">
+                                <input type="checkbox" id="${targetId}" class="fileAttachment-edit-open-new-window" style="width: auto; margin: 0;" ${openInNewWindow ? 'checked' : ''} />
+                                ${_('Open in a new tab or window')}
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -417,12 +427,12 @@ var $exeDevice = {
     },
 
     /**
-     * Wire per-row buttons (reorder + remove).
+     * Wire per-row buttons (properties, reorder + remove).
      *
      * @param {HTMLElement} item
      */
     addRowEvents: function (item) {
-        // Collapsible title/description section (collapsed by default, like the
+        // Collapsible file properties section (collapsed by default, like the
         // optional feedback section in the text iDevice).
         const detailsToggle = item.querySelector('.fileAttachment-edit-details-toggle');
         if (detailsToggle) {
@@ -513,6 +523,7 @@ var $exeDevice = {
         rows.forEach((row) => {
             const titleEl = row.querySelector('.fileAttachment-edit-title');
             const descEl = row.querySelector('.fileAttachment-edit-description');
+            const openInNewWindowEl = row.querySelector('.fileAttachment-edit-open-new-window');
             const size = parseInt(row.getAttribute('data-size') || '0', 10);
             attachments.push({
                 url: row.getAttribute('data-url') || '',
@@ -521,6 +532,7 @@ var $exeDevice = {
                 size: isNaN(size) ? 0 : size,
                 title: titleEl ? titleEl.value.trim() : '',
                 description: descEl ? descEl.value.trim() : '',
+                openInNewWindow: openInNewWindowEl ? openInNewWindowEl.checked : true,
             });
         });
         return attachments;
