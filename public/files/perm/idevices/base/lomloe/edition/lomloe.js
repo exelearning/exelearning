@@ -151,7 +151,13 @@ var $exeDevice = (function () {
             community: 'Euskadi / País Vasco',
             file: '../data/lomloe-ES-PV.json',
             available: true,
-            showDescriptorsAtCompetency: true
+            showDescriptorsAtCompetency: true,
+            // Keep canonical dataset keys stable while using inclusive age labels
+            // in the editor for the two Euskadi Infantil cycles.
+            nivelLabels: {
+                'Lehen zikloa (0-3 urte)': 'Lehen zikloa (0-2 urte)',
+                'Bigarren zikloa (3-6 urte)': 'Bigarren zikloa (3-5 urte)'
+            }
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
@@ -538,6 +544,16 @@ var $exeDevice = (function () {
 
     function getNiveles(etapa) {
         return (rawData && rawData[etapa]) ? Object.keys(rawData[etapa]) : [];
+    }
+
+    /**
+     * Return the user-facing level label while preserving the canonical key used
+     * for data access and persisted selection identifiers.
+     */
+    function getNivelLabel(nivel) {
+        var dataset = getDataset(currentDataset);
+        var labels = dataset && dataset.nivelLabels;
+        return (labels && labels[nivel]) || nivel;
     }
 
     function getMaterias(etapa, nivel) {
@@ -1205,7 +1221,7 @@ var $exeDevice = (function () {
         var niveles = getNiveles(selectedEtapa);
         bar.innerHTML = niveles.map(function (n) {
             var active = (n === selectedNivel) ? ' active' : '';
-            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(n) + '</button>';
+            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(getNivelLabel(n)) + '</button>';
         }).join('');
     }
 

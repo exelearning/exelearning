@@ -498,12 +498,17 @@ Educación Básica.
 
 | Etapa key | Niveles | Areas | Competencias | Criterios | Saberes | Code tag |
 |---|---|---|---|---|---|---|
-| `Haur Hezkuntza` | `Lehen zikloa (0-3 urte)`, `Bigarren zikloa (3-6 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
+| `Haur Hezkuntza` | `Lehen zikloa (0-2 urte)`, `Bigarren zikloa (3-5 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
 | `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | 329 | 831 | 1 936 | `PRI1` … `PRI6` |
 | `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 29 | 408 | 1 115 | 3 338 | `ESO1` … `ESO4` |
 
 (Competencias/criterios/saberes counted per `(nivel, area)`, i.e. including the
 per-year/per-course duplication.)
+
+The JSON keeps the original range keys `Lehen zikloa (0-3 urte)` and
+`Bigarren zikloa (3-6 urte)` so persisted selection identifiers remain stable.
+The editor displays the inclusive age labels `0-2 urte` and `3-5 urte` through
+the `ES-PV` dataset configuration.
 
 Codes follow `ES-PV-{tag}-{AREA}-CE##` (competencia), `…-CR##` (criterio) and
 `ES-PV-{tag}-{AREA}-SB##-###` (saber), with the year/course tag embedded so the
