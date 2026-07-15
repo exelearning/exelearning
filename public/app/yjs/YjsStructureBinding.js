@@ -30,9 +30,8 @@ class YjsStructureBinding {
       JSON.parse(serialized);
       return serialized;
     } catch (error) {
-      const validationError = new Error(`Invalid jsonProperties: ${error.message}`);
+      const validationError = new Error(`Invalid jsonProperties: ${error.message}`, { cause: error });
       validationError.name = 'InvalidJsonPropertiesError';
-      validationError.cause = error;
       throw validationError;
     }
   }
