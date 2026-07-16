@@ -2317,6 +2317,9 @@ var $exeDevices = {
                     return `${formattedMinutes}:${formattedSeconds}`;
                 },
 
+                // iDevice export tests resolve this through the mock in
+                // public/vitest.setup.js, so keep that mock's contract in sync
+                // with this one or those tests will pass against a stale copy.
                 getQuestions: function (questions, percentage, random) {
                     // Every caller reads .length off the result, so returning a
                     // non-array unchanged only defers the failure to them.
