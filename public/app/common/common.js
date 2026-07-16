@@ -2318,7 +2318,9 @@ var $exeDevices = {
                 },
 
                 getQuestions: function (questions, percentage, random) {
-                    if (!Array.isArray(questions)) return questions;
+                    // Every caller reads .length off the result, so returning a
+                    // non-array unchanged only defers the failure to them.
+                    if (!Array.isArray(questions)) return [];
                     const totalQuestions = questions.length;
 
                     if (percentage >= 100 && !random) return questions;

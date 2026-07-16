@@ -1163,6 +1163,10 @@ const mockGamificationHelpers = {
     const title = config?.title || 'Gamification';
     return `<fieldset class="exe-gamification-helpers"><legend>${title}</legend></fieldset>`;
   }),
+  // Mirrors getQuestions in public/app/common/common.js: a non-array yields an
+  // empty array, and a full selection is returned untouched. The percentage /
+  // random subsetting is not reproduced; tests that need it should stub this.
+  getQuestions: vi.fn((questions) => (Array.isArray(questions) ? questions : [])),
 };
 
 const mockGamificationMath = {
