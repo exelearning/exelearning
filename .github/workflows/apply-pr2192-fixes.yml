@@ -1,9 +1,11 @@
 name: Apply PR 2192 review fixes
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/2190-guard-gamification-data-reads
+      - main
+    types:
+      - synchronize
 
 permissions:
   contents: write
