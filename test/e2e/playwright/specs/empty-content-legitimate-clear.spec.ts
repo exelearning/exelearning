@@ -39,11 +39,26 @@ test.describe('empty-write guard vs legitimate clear', () => {
         await node.waitFor({ timeout: 15000 });
         const ideviceId = await node.getAttribute('id');
 
-        await page.waitForFunction(() => (window as any).tinymce?.activeEditor?.initialized, null, { timeout: 20000 });
-        await page.evaluate(() => {
-            (window as any).tinymce.activeEditor.setContent('<p>Real editor content</p>');
+        // Target the TinyMCE instance bound to this node's textTextarea field,
+        // not activeEditor, so we drive the specific editor whose content the
+        // save() reads.
+        const editorId = await page
+            .waitForFunction(
+                nodeId => {
+                    const ta = document.querySelector(`#${nodeId} textarea[id*="textTextarea"]`);
+                    const ed = ta && (window as any).tinymce?.get(ta.id);
+                    return ed?.initialized && !ed.destroyed ? ta.id : null;
+                },
+                ideviceId,
+                { timeout: 20000, polling: 200 },
+            )
+            .then(h => h.jsonValue());
+        await page.evaluate(eid => {
+            const ed = (window as any).tinymce.get(eid);
+            ed.setContent('<p>Real editor content</p>');
+            ed.save();
             (window as any).tinymce.triggerSave();
-        });
+        }, editorId);
         await node.locator('.btn-save-idevice').click();
         await page.waitForTimeout(2500);
 
@@ -51,10 +66,11 @@ test.describe('empty-write guard vs legitimate clear', () => {
             const b = (window as any).eXeLearning.app.project._yjsBridge;
             return b.structureBinding.getComponent(id)?.htmlContent ?? '';
         }, ideviceId);
-        // The real save path wraps the body — it never emits a bare '', which is
-        // exactly why the guard's blank branch cannot fire from a real save.
+        // The typed content really flowed through the editor/save pipeline, and
+        // the save path wraps it — it never emits a bare '', which is exactly
+        // why the guard's blank branch cannot fire from a real save.
+        expect(savedByEditor).toContain('Real editor content');
         expect(savedByEditor).toContain('exe-text-template');
-        expect(savedByEditor.trim()).not.toBe('');
 
         // ---- Part B: the guard, exercised on the real binding + persistence.
         const result = await page.evaluate(id => {

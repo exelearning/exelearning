@@ -1973,9 +1973,10 @@ describe('YjsStructureBinding', () => {
     // skip ONLY the key that would erase content, and apply the rest. The other
     // keys are independent properties, and dropping a valid jsonProperties /
     // order update would itself be data loss. This does leave a transient
-    // old-html / new-props pairing, which is harmless: JSON iDevices re-derive
-    // htmlContent from jsonProperties on the next render, and HTML iDevices do
-    // not read jsonProperties for rendering. (A real save never hits this — its
+    // old-html / new-props pairing, which is expected to be safe for the
+    // current iDevice paths: JSON iDevices re-derive htmlContent from
+    // jsonProperties on the next render, and HTML iDevices do not read
+    // jsonProperties for rendering. (A real save never hits this — its
     // htmlContent is always a non-blank wrapper; this is the transient/corrupt
     // write path.)
     it('applies independent keys even when the empty content key is ignored', () => {
