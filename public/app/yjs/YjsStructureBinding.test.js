@@ -20,6 +20,24 @@ const createYMap = (data = {}) => {
   return map;
 };
 
+/**
+ * Assert a call fails jsonProperties validation with the dedicated error.
+ *
+ * Matching on the message instead would also accept an incidental
+ * "this.prepareJsonPropertiesForSync is not a function" TypeError, so a typo or
+ * a rename could remove validation entirely with the suite still green.
+ */
+const expectInvalidJsonProperties = (fn) => {
+  let error = null;
+  try {
+    fn();
+  } catch (thrown) {
+    error = thrown;
+  }
+  expect(error).not.toBeNull();
+  expect(error.name).toBe('InvalidJsonPropertiesError');
+};
+
 const createYArray = (items = []) => {
   const arr = new window.Y.Array();
   if (items.length) arr.push(items);
@@ -1567,17 +1585,21 @@ describe('YjsStructureBinding', () => {
         jsonProperties,
       });
 
-      const component = binding.getComponent(compId);
-      expect(JSON.parse(component.jsonProperties)).toEqual(jsonProperties);
+      // Assert on what is stored, not on what getComponent gives back: the
+      // legacy path stores plain objects as a Y.Map and mapToComponent rebuilds
+      // a JSON string on read, so a round-trip alone passes without the fix.
+      const stored = binding.getComponentMap(compId).get('jsonProperties');
+      expect(typeof stored).toBe('string');
+      expect(JSON.parse(stored)).toEqual(jsonProperties);
     });
 
     it('rejects malformed JSON before inserting a component', () => {
-      expect(() =>
+      expectInvalidJsonProperties(() =>
         binding.createComponent('page-1', 'block-1', 'trueorfalse', {
           id: 'invalid-component',
           jsonProperties: '{"question":"<audio src=\"">',
         })
-      ).toThrow(/jsonProperties/i);
+      );
 
       expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
     });
@@ -1586,11 +1608,11 @@ describe('YjsStructureBinding', () => {
       const circular = { question: 'Circular' };
       circular.self = circular;
 
-      expect(() =>
+      expectInvalidJsonProperties(() =>
         binding.createComponent('page-1', 'block-1', 'trueorfalse', {
           jsonProperties: circular,
         })
-      ).toThrow(/jsonProperties/i);
+      );
 
       expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
     });
@@ -1674,6 +1696,12 @@ describe('YjsStructureBinding', () => {
   });
 
   describe('updateComponent', () => {
+    // Tests here stub window.eXeLearning to reach the assetManager. Clean up
+    // from a hook so a failing assertion cannot leak the stub into later tests.
+    afterEach(() => {
+      delete global.window.eXeLearning;
+    });
+
     beforeEach(() => {
       const pageMap = createYMap({
         id: 'page-1',
@@ -1755,9 +1783,6 @@ describe('YjsStructureBinding', () => {
       binding.updateComponent('comp-1', { jsonProperties: jsonData });
 
       expect(mockPrepareJsonForSync).toHaveBeenCalledWith(jsonData);
-
-      // Cleanup
-      delete global.window.eXeLearning;
     });
 
     it('handles jsonProperties when assetManager is not available', () => {
@@ -1771,9 +1796,6 @@ describe('YjsStructureBinding', () => {
       const comp = binding.getComponent('comp-1');
       // getComponent returns a plain object with jsonProperties property
       expect(comp.jsonProperties).toBe(jsonData);
-
-      // Cleanup
-      delete global.window.eXeLearning;
     });
 
     it('converts object jsonProperties to string before storing', () => {
@@ -1794,12 +1816,12 @@ describe('YjsStructureBinding', () => {
         jsonProperties: originalJson,
       });
 
-      expect(() =>
+      expectInvalidJsonProperties(() =>
         binding.updateComponent('comp-1', {
           htmlContent: '<p>Must not be stored</p>',
           jsonProperties: '{"question":"<img src=\"">',
         })
-      ).toThrow(/jsonProperties/i);
+      );
 
       const component = binding.getComponent('comp-1');
       expect(component.htmlContent).toBe('<p>Original HTML</p>');
@@ -1821,14 +1843,13 @@ describe('YjsStructureBinding', () => {
         },
       };
 
-      expect(() =>
+      expectInvalidJsonProperties(() =>
         binding.updateComponent('comp-1', {
           jsonProperties: JSON.stringify({ image: 'blob:https://localhost/image' }),
         })
-      ).toThrow(/jsonProperties/i);
+      );
 
       expect(binding.getComponent('comp-1').jsonProperties).toBe(originalJson);
-      delete global.window.eXeLearning;
     });
 
     it('rejects undefined top-level JSON properties', () => {

@@ -1,7 +1,17 @@
 import ApiCallManager from './apiCallManager.js';
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
+const YjsStructureBinding = require('../yjs/YjsStructureBinding');
+
 vi.mock('./apiCallBaseFunctions.js');
+
+/**
+ * The real validator, borrowed from the binding's prototype (it does not use
+ * `this`). Stubbing it instead would make these tests pass even with validation
+ * removed, since they would only ever exercise the stub.
+ */
+const realSerializeAndValidateJsonProperties =
+    YjsStructureBinding.prototype.serializeAndValidateJsonProperties;
 
 describe('ApiCallManager', () => {
   let apiManager;
@@ -604,6 +614,7 @@ describe('ApiCallManager', () => {
       const createBlock = vi.fn(() => 'block-new');
       const createComponent = vi.fn(() => 'comp-new');
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -636,6 +647,7 @@ describe('ApiCallManager', () => {
     it('should update existing component', () => {
       const updateComponent = vi.fn();
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -670,6 +682,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/xyz', 'asset://uuid-123/image.jpg')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -709,6 +722,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/abc', 'asset://uuid-456/photo.png')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -736,6 +750,7 @@ describe('ApiCallManager', () => {
     it('should not fail if assetManager is not available in _saveIdeviceToYjs', () => {
       const updateComponent = vi.fn();
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -767,6 +782,7 @@ describe('ApiCallManager', () => {
         })
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -809,6 +825,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/new-img', 'asset://new-uuid/photo.jpg')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -845,6 +862,7 @@ describe('ApiCallManager', () => {
       const updateComponent = vi.fn();
       const convertBlobURLsToAssetRefs = vi.fn((html) => html);
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -880,9 +898,7 @@ describe('ApiCallManager', () => {
       const structureBinding = {
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
-        prepareJsonPropertiesForSync: vi.fn(() => {
-          throw new SyntaxError('Invalid jsonProperties');
-        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -902,7 +918,7 @@ describe('ApiCallManager', () => {
       expect(updateComponent).not.toHaveBeenCalled();
       expect(result).toEqual({
         responseMessage: 'ERROR',
-        error: 'Invalid iDevice data. The previous version was preserved.',
+        error: 'Invalid iDevice data. The save was discarded.',
       });
     });
 
@@ -914,9 +930,7 @@ describe('ApiCallManager', () => {
         getBlockMap: vi.fn(() => null),
         createBlock,
         createComponent,
-        prepareJsonPropertiesForSync: vi.fn(() => {
-          throw new SyntaxError('Invalid jsonProperties');
-        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -935,6 +949,32 @@ describe('ApiCallManager', () => {
       expect(result.responseMessage).toBe('ERROR');
     });
 
+    it('leaves asset normalization to the binding instead of preparing twice', () => {
+      const updateComponent = vi.fn();
+      const prepareJsonPropertiesForSync = vi.fn(value => value);
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+        prepareJsonPropertiesForSync,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      // updateComponent prepares the value itself, so preparing it here as well
+      // would run assetManager.prepareJsonForSync twice on every save.
+      expect(prepareJsonPropertiesForSync).not.toHaveBeenCalled();
+      expect(updateComponent).toHaveBeenCalledTimes(1);
+      expect(result.responseMessage).toBe('OK');
+    });
+
     it('should report an error when component creation fails after validation', () => {
       const structureBinding = {
         getComponentMap: vi.fn(() => null),
@@ -942,7 +982,7 @@ describe('ApiCallManager', () => {
         createComponent: vi.fn(() => {
           throw new Error('Yjs component creation failed');
         }),
-        prepareJsonPropertiesForSync: vi.fn(value => value),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -957,7 +997,7 @@ describe('ApiCallManager', () => {
       });
 
       expect(result.responseMessage).toBe('ERROR');
-      expect(result.error).toContain('previous version was preserved');
+      expect(result.error).toContain('save was discarded');
     });
 
     it('should report an error when component update fails after validation', () => {
@@ -966,7 +1006,7 @@ describe('ApiCallManager', () => {
         updateComponent: vi.fn(() => {
           throw new Error('Yjs component update failed');
         }),
-        prepareJsonPropertiesForSync: vi.fn(value => value),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -979,7 +1019,7 @@ describe('ApiCallManager', () => {
       });
 
       expect(result.responseMessage).toBe('ERROR');
-      expect(result.error).toContain('previous version was preserved');
+      expect(result.error).toContain('save was discarded');
     });
 
     it('should convert multiple blob URLs in different jsonProperties fields', () => {
@@ -992,6 +1032,7 @@ describe('ApiCallManager', () => {
           .replace('blob:http://localhost/img2', 'asset://uuid-2/img2.jpg');
       });
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
