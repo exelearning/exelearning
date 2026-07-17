@@ -1818,30 +1818,27 @@ export default class ApiCallManager {
         const pageId = params.odeNavStructureSyncId || params.odePageId;
         const blockId = params.odePagStructureSyncId || params.odeBlockId;
         const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
-        let preparedJsonProperties;
+        let validatedJsonProperties;
 
         if (params.jsonProperties !== undefined) {
             try {
-                const convertedJsonProperties = convertJsonProperties(
-                    params.jsonProperties
-                );
-                preparedJsonProperties =
-                    typeof structureBinding.prepareJsonPropertiesForSync ===
-                    'function'
-                        ? structureBinding.prepareJsonPropertiesForSync(
-                              convertedJsonProperties
-                          )
-                        : convertedJsonProperties;
+                // Validate here so an invalid payload never reaches the block
+                // creation below, which would otherwise leave an orphan block
+                // behind when the component write fails. Asset normalization is
+                // left to createComponent/updateComponent, which prepare the
+                // value themselves; running it here too would do the work twice.
+                validatedJsonProperties =
+                    structureBinding.serializeAndValidateJsonProperties(
+                        convertJsonProperties(params.jsonProperties)
+                    );
             } catch (error) {
                 console.error(
-                    '[apiCallManager] Invalid jsonProperties, preserving existing data:',
+                    '[apiCallManager] Invalid jsonProperties, discarding save:',
                     error
                 );
                 return {
                     responseMessage: 'ERROR',
-                    error: _(
-                        'Invalid iDevice data. The previous version was preserved.'
-                    ),
+                    error: _('Invalid iDevice data. The save was discarded.'),
                 };
             }
         }
@@ -1886,9 +1883,9 @@ export default class ApiCallManager {
                     htmlContent: convertHtmlContent(params.htmlView) || '',
                     iconName: params.iconName,
                 };
-                if (preparedJsonProperties !== undefined) {
+                if (validatedJsonProperties !== undefined) {
                     initialComponentData.jsonProperties =
-                        preparedJsonProperties;
+                        validatedJsonProperties;
                 }
                 newComponentId = structureBinding.createComponent(
                     pageId,
@@ -1903,9 +1900,7 @@ export default class ApiCallManager {
                 );
                 return {
                     responseMessage: 'ERROR',
-                    error: _(
-                        'Invalid iDevice data. The previous version was preserved.'
-                    ),
+                    error: _('Invalid iDevice data. The save was discarded.'),
                 };
             }
             console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
@@ -1919,7 +1914,7 @@ export default class ApiCallManager {
                 updateData.htmlContent = convertHtmlContent(params.htmlView);
             }
             if (params.jsonProperties !== undefined) {
-                updateData.jsonProperties = preparedJsonProperties;
+                updateData.jsonProperties = validatedJsonProperties;
             }
             if (params.order !== undefined) {
                 updateData.order = params.order;
@@ -1932,9 +1927,7 @@ export default class ApiCallManager {
                 console.error('[apiCallManager] Error updating iDevice in Yjs:', e);
                 return {
                     responseMessage: 'ERROR',
-                    error: _(
-                        'Invalid iDevice data. The previous version was preserved.'
-                    ),
+                    error: _('Invalid iDevice data. The save was discarded.'),
                 };
             }
 
