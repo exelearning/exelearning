@@ -1853,11 +1853,11 @@ describe('YjsStructureBinding', () => {
     });
 
     it('rejects undefined top-level JSON properties', () => {
-      expect(() =>
+      expectInvalidJsonProperties(() =>
         binding.updateComponent('comp-1', {
           jsonProperties: undefined,
         })
-      ).toThrow(/jsonProperties/i);
+      );
     });
 
     // Regression test for issue #1674: updateComponent must drop the stale

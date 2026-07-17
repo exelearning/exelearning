@@ -922,6 +922,30 @@ describe('ApiCallManager', () => {
       });
     });
 
+    // Validation must be mandatory, not feature-detected: a binding without
+    // the validator must make the save fail rather than silently proceed with
+    // an unvalidated payload (this is the regression an optional typeof guard
+    // would reintroduce).
+    it('should fail the save instead of skipping validation when the validator is missing', () => {
+      const updateComponent = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"broken"',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(updateComponent).not.toHaveBeenCalled();
+    });
+
     it('should validate JSON before creating a block or component', () => {
       const createBlock = vi.fn(() => 'block-new');
       const createComponent = vi.fn(() => 'comp-new');
