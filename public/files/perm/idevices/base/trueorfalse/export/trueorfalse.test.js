@@ -67,6 +67,40 @@ describe('trueorfalse iDevice export', () => {
       expect(result.questionsGame).toEqual([]);
       expect(result.numberQuestions).toBe(0);
     });
+
+    // An activity whose saved jsonProperties was lost or discarded arrives here
+    // as {}, which takes the legacy migration branch with no questionsData.
+    it('renders an activity with no saved data instead of throwing', () => {
+      let result;
+
+      expect(() => {
+        result = $trueorfalse.updateConfig({}, 'tof-1');
+      }).not.toThrow();
+
+      expect(result.questionsGame).toEqual([]);
+      expect(result.numberQuestions).toBe(0);
+    });
+
+    it('still migrates legacy questionsData', () => {
+      const result = $trueorfalse.updateConfig(
+        {
+          questionsData: [
+            { baseText: '¿El Teide está en Tenerife?', answer: 'True', feedback: 'Correcto', hint: 'Isla' },
+          ],
+        },
+        'tof-1'
+      );
+
+      expect(result.typeGame).toBe('TrueOrFalse');
+      expect(result.numberQuestions).toBe(1);
+      expect(result.questionsGame[0]).toEqual({
+        question: '¿El Teide está en Tenerife?',
+        answer: 'True',
+        feedback: 'Correcto',
+        suggestion: 'Isla',
+        solution: 1,
+      });
+    });
   });
 
   describe('escapeForCallback', () => {
@@ -155,71 +189,6 @@ describe('trueorfalse iDevice export', () => {
       expect($trueorfalse.msgsdefault.msgFalse).toBe('Falso');
       expect($trueorfalse.msgsdefault.msgOk).toBe('Correcto');
       expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrecto');
-    });
-  });
-
-  describe('updateConfig', () => {
-    const helpers = () => $exeDevices.iDevice.gamification.helpers;
-    let previousGetQuestions;
-
-    beforeEach(() => {
-      document.body.innerHTML = '';
-      eXe.app.isInExe = vi.fn(() => false);
-      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/trueorfalse/');
-      previousGetQuestions = helpers().getQuestions;
-      // Mirror the real helper (common.js getQuestions): it returns non-array
-      // input unchanged rather than falling back to an empty array.
-      helpers().getQuestions = vi.fn((questions) => questions);
-    });
-
-    afterEach(() => {
-      helpers().getQuestions = previousGetQuestions;
-    });
-
-    // An activity whose saved jsonProperties was lost or discarded arrives here
-    // as {}, which takes the legacy migration branch with no questionsData.
-    it('renders an activity with no saved data instead of throwing', () => {
-      let result;
-
-      expect(() => {
-        result = $trueorfalse.updateConfig({}, 'tof-1');
-      }).not.toThrow();
-
-      expect(result.questionsGame).toEqual([]);
-      expect(result.numberQuestions).toBe(0);
-    });
-
-    // Skips the legacy branch, so questionsGame is never populated there.
-    it('renders a migrated activity with no questions instead of throwing', () => {
-      let result;
-
-      expect(() => {
-        result = $trueorfalse.updateConfig({ typeGame: 'TrueOrFalse' }, 'tof-1');
-      }).not.toThrow();
-
-      expect(result.questionsGame).toEqual([]);
-      expect(result.numberQuestions).toBe(0);
-    });
-
-    it('still migrates legacy questionsData', () => {
-      const result = $trueorfalse.updateConfig(
-        {
-          questionsData: [
-            { baseText: '¿El Teide está en Tenerife?', answer: 'True', feedback: 'Correcto', hint: 'Isla' },
-          ],
-        },
-        'tof-1'
-      );
-
-      expect(result.typeGame).toBe('TrueOrFalse');
-      expect(result.numberQuestions).toBe(1);
-      expect(result.questionsGame[0]).toEqual({
-        question: '¿El Teide está en Tenerife?',
-        answer: 'True',
-        feedback: 'Correcto',
-        suggestion: 'Isla',
-        solution: 1,
-      });
     });
   });
 
