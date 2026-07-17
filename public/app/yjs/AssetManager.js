@@ -44,10 +44,13 @@
 /**
  * A blob: URL as it appears inside a decoded string — either the whole value
  * ("blob:http://host/id") or embedded in markup (src="blob:http://host/id").
- * The class stops at the characters that delimit a URL in those contexts, so
- * the surrounding quotes are never part of the match.
+ * The scheme part accepts any origin scheme (http, https, app for Electron —
+ * see #2186), and the class stops at the characters that delimit a URL in
+ * those contexts, so the surrounding quotes are never part of the match.
+ * Note: opaque-origin URLs ("blob:null/...") are not a target — they cannot
+ * be recovered and never appear in stored content.
  */
-const BLOB_URL_IN_TEXT = /blob:https?:\/\/[^\s"'<>)\\]+/g;
+const BLOB_URL_IN_TEXT = /blob:[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\\]+/g;
 
 class AssetManager {
   // IndexedDB fallback constants (#1710) — used when Cache API is unavailable

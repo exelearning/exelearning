@@ -3347,6 +3347,35 @@ describe('prepareJsonForSync', () => {
       expect(assetManager.prepareJsonForSync(broken)).toBe(broken);
     });
   });
+
+  // Electron serves blobs from the app:// origin (issue #2186), which the old
+  // https?-only pattern silently skipped: those URLs were neither recovered
+  // nor cleared and died on the next reload.
+  describe('blob URLs from non-http origin schemes (Electron app://)', () => {
+    it('recovers a registered blob:app:// URL to its asset reference', () => {
+      assetManager.reverseBlobCache.set('blob:app://exelearning/electron-blob', 'asset-uuid-333');
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:app://exelearning/electron-blob" alt="x">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-333" alt="x">'
+      );
+    });
+
+    it('clears an unrecoverable blob:app:// URL instead of persisting it', () => {
+      const json = JSON.stringify({ img: 'blob:app://exelearning/unknown' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img).toBe('');
+      expect(result).not.toContain('blob:');
+    });
+  });
 });
 
 describe('getAssetUrlFromBlobUrl', () => {
