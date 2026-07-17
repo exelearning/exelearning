@@ -1871,8 +1871,10 @@ export default class ApiCallManager {
         if (!existingComponent && pageId && blockId && (params.odeIdeviceTypeName || componentId)) {
             // Ensure block exists - create if "new"
             let actualBlockId = blockId;
+            let blockCreatedHere = false;
             if (blockId === 'new' || !structureBinding.getBlockMap(pageId, blockId)) {
                 actualBlockId = structureBinding.createBlock(pageId, params.blockName || '');
+                blockCreatedHere = true;
                 console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
             }
 
@@ -1898,6 +1900,18 @@ export default class ApiCallManager {
                     '[apiCallManager] Error creating iDevice in Yjs:',
                     error
                 );
+                // Do not leave behind the block we just created for this
+                // component: an empty orphan block would persist and sync.
+                if (blockCreatedHere) {
+                    try {
+                        structureBinding.deleteBlock(pageId, actualBlockId);
+                    } catch (cleanupError) {
+                        console.error(
+                            '[apiCallManager] Could not remove orphan block:',
+                            cleanupError
+                        );
+                    }
+                }
                 return {
                     responseMessage: 'ERROR',
                     error: _('Invalid iDevice data. The save was discarded.'),

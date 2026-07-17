@@ -1000,6 +1000,61 @@ describe('ApiCallManager', () => {
       expect(result.error).toContain('save was discarded');
     });
 
+    it('should remove the block it created when component creation fails', () => {
+      const deleteBlock = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock: vi.fn(() => 'block-created-here'),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(deleteBlock).toHaveBeenCalledWith('page-1', 'block-created-here');
+    });
+
+    it('should not remove a pre-existing block when component creation fails', () => {
+      const deleteBlock = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => ({})),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'block-1',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(deleteBlock).not.toHaveBeenCalled();
+    });
+
     it('should report an error when component update fails after validation', () => {
       const structureBinding = {
         getComponentMap: vi.fn(() => ({})),
