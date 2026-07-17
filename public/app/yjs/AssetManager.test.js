@@ -3376,6 +3376,32 @@ describe('prepareJsonForSync', () => {
       expect(result).not.toContain('blob:');
     });
   });
+
+  // Gamified iDevices store their questions as arrays (questionsGame,
+  // questionsData), so blob URLs commonly sit inside array items — both as
+  // direct string entries and embedded in HTML of nested objects.
+  describe('blob URLs nested inside arrays', () => {
+    it('walks array items and preserves the array structure', () => {
+      const json = JSON.stringify({
+        questionsGame: [
+          { question: '<img src="blob:http://localhost/abc123" alt="q1">', solution: 1 },
+          'blob:https://example.com/xyz789',
+          ['blob:http://unknown/deep', { feedback: '<audio src="blob:http://unknown/deep2"></audio>' }],
+        ],
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      const parsed = JSON.parse(result);
+      expect(parsed.questionsGame[0].question).toBe('<img src="asset://asset-uuid-111" alt="q1">');
+      expect(parsed.questionsGame[0].solution).toBe(1);
+      expect(parsed.questionsGame[1]).toBe('asset://asset-uuid-222');
+      expect(parsed.questionsGame[2][0]).toBe('');
+      expect(parsed.questionsGame[2][1].feedback).toBe('<audio src=""></audio>');
+      expect(result).not.toContain('blob:');
+    });
+  });
 });
 
 describe('getAssetUrlFromBlobUrl', () => {
