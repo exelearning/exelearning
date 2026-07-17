@@ -36,6 +36,39 @@ describe('trueorfalse iDevice export', () => {
     $trueorfalse = loadExportIdevice(code);
   });
 
+  describe('updateConfig', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/trueorfalse/');
+      document.body.innerHTML = '';
+    });
+
+    // A saved activity that lost its questions still carries typeGame, so it
+    // skips the legacy migration and goes straight to getQuestions. Before the
+    // helper was fixed that returned undefined and the next line read .length
+    // off it, taking down the whole activity.
+    it('normalises missing questions to an empty list', () => {
+      let result;
+
+      expect(() => {
+        result = $trueorfalse.updateConfig({ typeGame: 'TrueOrFalse' }, 'tof-1');
+      }).not.toThrow();
+
+      expect(result.questionsGame).toEqual([]);
+      expect(result.numberQuestions).toBe(0);
+    });
+
+    it('normalises non-array questions to an empty list', () => {
+      const result = $trueorfalse.updateConfig(
+        { typeGame: 'TrueOrFalse', questionsGame: { 0: 'not-an-array' } },
+        'tof-1'
+      );
+
+      expect(result.questionsGame).toEqual([]);
+      expect(result.numberQuestions).toBe(0);
+    });
+  });
+
   describe('escapeForCallback', () => {
     it('escapes backslashes', () => {
       const obj = { path: 'C:\\folder\\file' };

@@ -143,7 +143,7 @@ var $trueorfalse = {
     },
 
     updateConfig: function (odata, ideviceId) {
-        const data = JSON.parse(JSON.stringify(odata));
+        const data = JSON.parse(JSON.stringify(odata || {}));
 
         data.isInExe = eXe.app.isInExe() ?? false;
         data.idevicePath = data.isInExe
