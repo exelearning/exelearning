@@ -82,7 +82,14 @@ test.describe('Damaged iDevice JSON', () => {
                 binding.createComponent(firstPageId, brokenBlockId, 'trueorfalse', {
                     id: 'idevice-malformed-json',
                     htmlContent: html,
-                    jsonProperties,
+                    jsonProperties: '{}',
+                });
+                // Damage the stored payload the way it happens in the wild: a
+                // raw compMap write (pre-existing damaged doc, importer path),
+                // which bypasses the write-boundary validation on purpose.
+                const compMap = binding.getComponentMap('idevice-malformed-json');
+                binding.manager.getDoc().transact(() => {
+                    compMap.set('jsonProperties', jsonProperties);
                 });
                 binding.createComponent(firstPageId, laterBlockId, 'text', {
                     id: 'idevice-after-malformed-json',
