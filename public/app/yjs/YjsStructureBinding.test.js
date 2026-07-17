@@ -1773,6 +1773,66 @@ describe('YjsStructureBinding', () => {
       const fresh = comp.get('htmlContent');
       expect(fresh.toString()).toBe('<p>image removed</p>');
     });
+
+    // Data-integrity guard: an empty content update must never erase existing
+    // content. Regression for the game-iDevice content wipe (classify / crossword
+    // / select-media-files lost all content after a transient empty write, because
+    // the empty value blanked htmlContent AND the #1674 branch dropped the htmlView
+    // fallback, leaving no copy behind).
+    const getComp = () =>
+      mockDocManager.getNavigation().get(0).get('blocks').get(0).get('components').get(0);
+
+    it('preserves htmlView when an empty htmlContent update arrives', () => {
+      const comp = getComp();
+      const original = '<div class="clasifica-IDevice">full game html</div>';
+      comp.set('htmlView', original);
+
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      // The htmlView fallback must survive and no empty shadow may be created.
+      expect(comp.get('htmlView')).toBe(original);
+      expect(binding.contentLength(comp.get('htmlContent'))).toBe(0);
+    });
+
+    it('preserves an existing htmlContent Y.Text when an empty update arrives', () => {
+      const comp = getComp();
+      const game = '<div class="clasifica-IDevice">game</div>';
+      binding.updateComponent('comp-1', { htmlContent: game });
+      expect(comp.get('htmlContent').toString()).toBe(game);
+
+      // A later blank write (interrupted edit / race) must not wipe it.
+      binding.updateComponent('comp-1', { htmlContent: '' });
+      expect(comp.get('htmlContent').toString()).toBe(game);
+    });
+
+    it('preserves content on a whitespace-only content update', () => {
+      const comp = getComp();
+      const original = '<p>keep me</p>';
+      comp.set('htmlView', original);
+
+      binding.updateComponent('comp-1', { content: '   \n  ' });
+
+      expect(comp.get('htmlView')).toBe(original);
+    });
+
+    it('does not remove htmlView when the new htmlContent is empty', () => {
+      const comp = getComp();
+      comp.set('htmlView', '<p>fallback</p>');
+
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      expect(comp.get('htmlView')).toBe('<p>fallback</p>');
+    });
+
+    it('still applies an empty content update when nothing would be lost', () => {
+      const comp = getComp();
+      // No htmlView and no htmlContent yet — an empty write is harmless.
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      const hc = comp.get('htmlContent');
+      expect(hc).toBeDefined();
+      expect(hc.toString()).toBe('');
+    });
   });
 
   describe('deleteComponent', () => {
