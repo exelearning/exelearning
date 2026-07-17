@@ -1969,10 +1969,16 @@ describe('YjsStructureBinding', () => {
       expect(comp.get('htmlContent').toString()).toBe('<p>&nbsp;</p>');
     });
 
-    // Ignoring the empty content key must not turn the update into a partial
-    // write: the remaining keys of the same call still apply, so the component
-    // never ends up in a mixed old-content/new-props state by accident.
-    it('applies the remaining keys of an update whose empty htmlContent is ignored', () => {
+    // Intended semantics of a batched update whose htmlContent is empty:
+    // skip ONLY the key that would erase content, and apply the rest. The other
+    // keys are independent properties, and dropping a valid jsonProperties /
+    // order update would itself be data loss. This does leave a transient
+    // old-html / new-props pairing, which is harmless: JSON iDevices re-derive
+    // htmlContent from jsonProperties on the next render, and HTML iDevices do
+    // not read jsonProperties for rendering. (A real save never hits this — its
+    // htmlContent is always a non-blank wrapper; this is the transient/corrupt
+    // write path.)
+    it('applies independent keys even when the empty content key is ignored', () => {
       const comp = getComp();
       const game = '<div class="clasifica-IDevice">game</div>';
       binding.updateComponent('comp-1', { htmlContent: game });
@@ -1982,6 +1988,7 @@ describe('YjsStructureBinding', () => {
         jsonProperties: '{"question":"still applied"}',
       });
 
+      // Content preserved (not erased); the independent prop update applied.
       expect(comp.get('htmlContent').toString()).toBe(game);
       expect(comp.get('jsonProperties')).toBe('{"question":"still applied"}');
     });
