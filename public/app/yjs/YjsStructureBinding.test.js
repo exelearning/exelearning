@@ -1944,6 +1944,74 @@ describe('YjsStructureBinding', () => {
       expect(hc).toBeDefined();
       expect(hc.toString()).toBe('');
     });
+
+    // Legitimate clearing is NOT blocked: every real editor emits at least the
+    // iDevice wrapper when the user deletes all content (e.g. the text iDevice
+    // renders `<div class="exe-text-template">…</div>` around an empty body),
+    // and a wrapper is a non-blank string, so it sails past the guard. Only a
+    // literally-blank write — which no production flow emits — is ignored.
+    it('applies a visually-empty wrapper update over existing content', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', { htmlContent: '<p>previous content</p>' });
+
+      const cleared = '<div class="exe-text-template"><p><br></p></div>';
+      binding.updateComponent('comp-1', { htmlContent: cleared });
+
+      expect(comp.get('htmlContent').toString()).toBe(cleared);
+    });
+
+    it('applies an &nbsp;-only wrapper update over existing content', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', { htmlContent: '<p>previous content</p>' });
+
+      binding.updateComponent('comp-1', { htmlContent: '<p>&nbsp;</p>' });
+
+      expect(comp.get('htmlContent').toString()).toBe('<p>&nbsp;</p>');
+    });
+
+    // Ignoring the empty content key must not turn the update into a partial
+    // write: the remaining keys of the same call still apply, so the component
+    // never ends up in a mixed old-content/new-props state by accident.
+    it('applies the remaining keys of an update whose empty htmlContent is ignored', () => {
+      const comp = getComp();
+      const game = '<div class="clasifica-IDevice">game</div>';
+      binding.updateComponent('comp-1', { htmlContent: game });
+
+      binding.updateComponent('comp-1', {
+        htmlContent: '',
+        jsonProperties: '{"question":"still applied"}',
+      });
+
+      expect(comp.get('htmlContent').toString()).toBe(game);
+      expect(comp.get('jsonProperties')).toBe('{"question":"still applied"}');
+    });
+
+    it('measures array-like and non-measurable values in contentLength', () => {
+      expect(binding.contentLength({ length: 7 })).toBe(7);
+      expect(binding.contentLength({ length: 'not-a-number' })).toBe(0);
+      expect(binding.contentLength(42)).toBe(0);
+      expect(binding.contentLength(true)).toBe(0);
+    });
+
+    it('rejects jsonProperties containing BigInt values', () => {
+      expectInvalidJsonProperties(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: { big: BigInt(9007199254740993n) },
+        })
+      );
+    });
+
+    // JSON.stringify silently drops function- and symbol-valued properties;
+    // the serialized payload is still valid JSON, so the write is accepted.
+    // Pinned here so the (standard JSON) semantics are explicit.
+    it('drops function-valued properties instead of rejecting the whole payload', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', {
+        jsonProperties: { keep: 1, dropped: () => {} },
+      });
+
+      expect(comp.get('jsonProperties')).toBe('{"keep":1}');
+    });
   });
 
   describe('deleteComponent', () => {

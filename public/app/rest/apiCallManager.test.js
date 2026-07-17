@@ -1079,6 +1079,35 @@ describe('ApiCallManager', () => {
       expect(deleteBlock).not.toHaveBeenCalled();
     });
 
+    it('should still report ERROR when the orphan-block cleanup itself fails', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock: vi.fn(() => 'block-created-here'),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock: vi.fn(() => {
+          throw new Error('deleteBlock also failed');
+        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(structureBinding.deleteBlock).toHaveBeenCalled();
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
     it('should report an error when component update fails after validation', () => {
       const structureBinding = {
         getComponentMap: vi.fn(() => ({})),

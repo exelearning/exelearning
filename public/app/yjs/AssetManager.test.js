@@ -3377,6 +3377,69 @@ describe('prepareJsonForSync', () => {
     });
   });
 
+  // Documented non-targets and edge shapes. blob:null/… comes from opaque
+  // origins (sandboxed iframes) and carries no authority to recover from;
+  // uppercase BLOB: never leaves URL.createObjectURL. Both stay untouched
+  // rather than being half-rewritten.
+  describe('non-target blob shapes and edge cases', () => {
+    it('leaves opaque-origin blob:null URLs untouched', () => {
+      const json = JSON.stringify({ img: 'blob:null/0a1b2c3d', title: 'x' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('leaves uppercase BLOB: strings untouched', () => {
+      const json = JSON.stringify({ note: 'the literal text BLOB:https://host/id is not a URL the browser emits' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('clears a blob URL carrying a fragment without eating adjacent text', () => {
+      const json = JSON.stringify({
+        textTextarea: 'before <a href="blob:http://localhost/abc123#frag">link</a> after',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The fragment makes the exact-string cache lookup miss, so it clears —
+      // but the surrounding markup and text must survive intact.
+      expect(JSON.parse(result).textTextarea).toBe('before <a href="">link</a> after');
+    });
+
+    it('recovers a blob URL followed by punctuation without eating it', () => {
+      const json = JSON.stringify({
+        note: 'see blob:http://localhost/abc123, then continue',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(JSON.parse(result).note).toBe('see asset://asset-uuid-111, then continue');
+    });
+
+    it('replaces multiple blob URLs inside one string value', () => {
+      const json = JSON.stringify({
+        html: '<img src="blob:http://localhost/abc123"> and <img src="blob:https://example.com/xyz789">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      const html = JSON.parse(result).html;
+      expect(html).toContain('asset://asset-uuid-111');
+      expect(html).toContain('asset://asset-uuid-222');
+      expect(html).not.toContain('blob:');
+    });
+
+    it('does not rewrite object keys containing blob URLs', () => {
+      const json = JSON.stringify({ 'blob:http://localhost/abc123': 'value untouched' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      // Keys are identifiers, not asset carriers; only values are rewritten.
+      expect(result).toBe(json);
+    });
+  });
+
   // Gamified iDevices store their questions as arrays (questionsGame,
   // questionsData), so blob URLs commonly sit inside array items — both as
   // direct string entries and embedded in HTML of nested objects.
