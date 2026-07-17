@@ -3289,6 +3289,64 @@ describe('prepareJsonForSync', () => {
 
     expect(result).toBe(json);
   });
+
+  // Regression tests for issue #2177. A blob URL inside an HTML attribute is
+  // serialized as src=\"blob:...\", so rewriting the serialized JSON textually
+  // ate the backslash escaping the closing quote and produced a payload that
+  // JSON.parse rejects — which then aborted page loading in the workarea.
+  describe('blob URLs inside HTML attributes (issue #2177)', () => {
+    it('keeps the payload parseable when clearing an unrecoverable blob', () => {
+      const json = JSON.stringify({
+        textTextarea:
+          '<audio controls="controls" src="blob:https://exelearning.net/unknown-blob"><a href="">audio.webm</a></audio>',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(result).not.toContain('blob:');
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<audio controls="controls" src=""><a href="">audio.webm</a></audio>'
+      );
+    });
+
+    it('recovers a registered blob instead of clearing it', () => {
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:http://localhost/abc123" alt="A photo">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The URL used to be captured with its trailing backslash, so the cache
+      // lookup missed and even recoverable assets were silently cleared.
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-111" alt="A photo">'
+      );
+    });
+
+    it('keeps the payload parseable for a blob nested below the top level', () => {
+      // convertJsonProperties only walks top-level string values, so a nested
+      // blob reaches this method untouched.
+      const json = JSON.stringify({
+        ideviceId: 'gal-1',
+        img_0: { caption: '<img src="blob:http://localhost/abc123" alt="x">' },
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img_0.caption).toBe(
+        '<img src="asset://asset-uuid-111" alt="x">'
+      );
+    });
+
+    it('leaves an unparseable payload untouched rather than corrupting it further', () => {
+      const broken = '{"textTextarea":"<img src=\\"blob:http://localhost/abc123\\">';
+
+      expect(assetManager.prepareJsonForSync(broken)).toBe(broken);
+    });
+  });
 });
 
 describe('getAssetUrlFromBlobUrl', () => {
