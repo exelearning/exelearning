@@ -1818,6 +1818,33 @@ export default class ApiCallManager {
         const pageId = params.odeNavStructureSyncId || params.odePageId;
         const blockId = params.odePagStructureSyncId || params.odeBlockId;
         const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
+        let preparedJsonProperties;
+
+        if (params.jsonProperties !== undefined) {
+            try {
+                const convertedJsonProperties = convertJsonProperties(
+                    params.jsonProperties
+                );
+                preparedJsonProperties =
+                    typeof structureBinding.prepareJsonPropertiesForSync ===
+                    'function'
+                        ? structureBinding.prepareJsonPropertiesForSync(
+                              convertedJsonProperties
+                          )
+                        : convertedJsonProperties;
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Invalid jsonProperties, preserving existing data:',
+                    error
+                );
+                return {
+                    responseMessage: 'ERROR',
+                    error: _(
+                        'Invalid iDevice data. The previous version was preserved.'
+                    ),
+                };
+            }
+        }
 
         console.log('[apiCallManager] _saveIdeviceToYjs:', { pageId, blockId, componentId, params });
 
@@ -1852,17 +1879,35 @@ export default class ApiCallManager {
                 console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
             }
 
-            const newComponentId = structureBinding.createComponent(
-                pageId,
-                actualBlockId,
-                params.odeIdeviceTypeName || 'FreeTextIdevice',
-                {
+            let newComponentId;
+            try {
+                const initialComponentData = {
                     id: componentId, // Preserve the original ID if provided
                     htmlContent: convertHtmlContent(params.htmlView) || '',
                     iconName: params.iconName,
-                    jsonProperties: params.jsonProperties ? convertJsonProperties(params.jsonProperties) : undefined,
+                };
+                if (preparedJsonProperties !== undefined) {
+                    initialComponentData.jsonProperties =
+                        preparedJsonProperties;
                 }
-            );
+                newComponentId = structureBinding.createComponent(
+                    pageId,
+                    actualBlockId,
+                    params.odeIdeviceTypeName || 'FreeTextIdevice',
+                    initialComponentData
+                );
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Error creating iDevice in Yjs:',
+                    error
+                );
+                return {
+                    responseMessage: 'ERROR',
+                    error: _(
+                        'Invalid iDevice data. The previous version was preserved.'
+                    ),
+                };
+            }
             console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
             return buildResponse(newComponentId || componentId, true);
         }
@@ -1874,7 +1919,7 @@ export default class ApiCallManager {
                 updateData.htmlContent = convertHtmlContent(params.htmlView);
             }
             if (params.jsonProperties !== undefined) {
-                updateData.jsonProperties = convertJsonProperties(params.jsonProperties);
+                updateData.jsonProperties = preparedJsonProperties;
             }
             if (params.order !== undefined) {
                 updateData.order = params.order;
@@ -1885,6 +1930,12 @@ export default class ApiCallManager {
                 console.log('[apiCallManager] Updated iDevice in Yjs:', componentId);
             } catch (e) {
                 console.error('[apiCallManager] Error updating iDevice in Yjs:', e);
+                return {
+                    responseMessage: 'ERROR',
+                    error: _(
+                        'Invalid iDevice data. The previous version was preserved.'
+                    ),
+                };
             }
 
             return buildResponse(componentId, false);
