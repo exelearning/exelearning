@@ -2208,6 +2208,7 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = {
         SCORM: {
           set: vi.fn(),
+          SetExit: vi.fn(),
           save: vi.fn(),
         },
       };
@@ -2238,6 +2239,13 @@ describe('common.js $exeDevices', () => {
 
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 30);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        // A finished page (even when failed) exits with the "normal" intent. showFinalScore routes
+        // every exit write through the single SetExit writer, which normalizes "normal" -> "" for
+        // SCORM 1.2 (asserted in SCORM_API_wrapper.test.js) so Moodle stops resuming the SCO. (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
+        // showFinalScore no longer writes the exit CMI element directly (SetExit owns the key).
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.exit', expect.anything());
         // SCORM 2004-only keys must NOT leak into a 1.2 package.
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.success_status', expect.anything());
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.score.scaled', expect.anything());
@@ -2258,6 +2266,7 @@ describe('common.js $exeDevices', () => {
         SCORM: {
           version: '2004',
           set: vi.fn(),
+          SetExit: vi.fn(),
           save: vi.fn(),
         },
       };
@@ -2293,9 +2302,14 @@ describe('common.js $exeDevices', () => {
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.85);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
+        // A finished 2004 page exits with the "normal" intent, routed through the single SetExit
+        // writer (which targets cmi.exit under 2004). (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
         // The SCORM 1.2-only keys must NOT leak into a 2004 package.
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.exit', expect.anything());
       } finally {
         if (typeof originalPipwerks === 'undefined') {
           delete global.pipwerks;
@@ -2410,6 +2424,7 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = {
         SCORM: {
           set: vi.fn(),
+          SetExit: vi.fn(),
           save: vi.fn(),
         },
       };
@@ -2445,6 +2460,9 @@ describe('common.js $exeDevices', () => {
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        // An in-progress page stays resumable so the learner can continue where they left off. (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
         expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
       } finally {
         if (typeof originalPipwerks === 'undefined') {
@@ -2545,6 +2563,7 @@ describe('common.js $exeDevices', () => {
         SCORM: {
           version: '2004',
           set: vi.fn(),
+          SetExit: vi.fn(),
           save: vi.fn(),
         },
       };
@@ -2576,6 +2595,69 @@ describe('common.js $exeDevices', () => {
 
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
+        // The page is no longer finished, so it must stay resumable ("suspend"), not "normal". (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore clears the resumable exit to normal once every iDevice is completed (timed SCO no longer re-opens as suspended)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      // Reproduce the Moodle report from #1831: a timed Sort SCO finalized with
+      // lesson_status "failed" (25% < 50%) and Estado 2 in suspend_data, yet
+      // cmi.core.exit stayed "suspend" (Moodle's in-progress default), so Moodle
+      // resumed and re-opened the SCO as incomplete/suspended on the next visit.
+      const store = { 'cmi.core.exit': 'suspend' };
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn((k, v) => {
+            store[k] = String(v);
+            return true;
+          }),
+          // Mirror pipwerks.SCORM.SetExit under SCORM 1.2: the "normal" intent collapses to ""
+          // (out-of-vocabulary in 1.2) and lands in cmi.core.exit. This exercises the same single
+          // exit writer production now uses, end to end. (#1831)
+          SetExit: (exit) => {
+            store['cmi.core.exit'] = exit === 'normal' ? '' : String(exit);
+          },
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'Ordena tarjetas', score: 25, weighted: 100, state: 2 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Ordena tarjetas',
+            // Timer expiry finalizes the activity: gameStarted false, gameOver true.
+            gameStarted: false,
+            gameOver: true,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        // The failed status is written (correct) AND showFinalScore's "normal" exit intent, routed
+        // through SetExit, clears the resumable exit to "" for SCORM 1.2 so Moodle records a finished
+        // attempt instead of resuming it.
+        expect(store['cmi.core.lesson_status']).toBe('failed');
+        expect(store['cmi.core.exit']).toBe('');
+        expect(store['cmi.core.exit']).not.toBe('suspend');
       } finally {
         if (typeof originalPipwerks === 'undefined') {
           delete global.pipwerks;

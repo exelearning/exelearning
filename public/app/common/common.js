@@ -1541,6 +1541,17 @@ var $exeDevices = {
                             pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
                             pipwerks.SCORM.set("cmi.core.lesson_status", pageState === 2 ? (passed ? "passed" : "failed") : pageState === 1 ? "incomplete" : "not attempted");
                         }
+                        // Single source of truth for the resume/exit token: route every exit write through
+                        // pipwerks.SCORM.SetExit — the one function that maps the intent to the version-correct
+                        // CMI element (cmi.exit in 2004, cmi.core.exit in 1.2) and normalizes "normal" -> ""
+                        // for SCORM 1.2, whose exit vocabulary has no "normal". A finished page (pageState 2)
+                        // exits "normal" so the LMS records a closed attempt instead of resuming it as
+                        // suspended/incomplete on re-entry (the #1831 Moodle report); an in-progress page stays
+                        // resumable ("suspend"). doQuit/doBack/doContinue already funnel through SetExit, so
+                        // showFinalScore must not bypass it and duplicate that per-version mapping. (#1831)
+                        if (typeof pipwerks.SCORM.SetExit === "function") {
+                            pipwerks.SCORM.SetExit(pageState === 2 ? "normal" : "suspend");
+                        }
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);

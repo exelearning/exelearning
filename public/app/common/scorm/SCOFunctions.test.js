@@ -449,7 +449,11 @@ describe('SCOFunctions.js', () => {
     it('does not mark completed if page is already in a terminal state (passed)', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('passed');
+      // unloadPage's terminal guard reads cmi.core.lesson_status (not GetCompletionStatus) and only
+      // marks a content-only page completed when suspend_data is empty AND the status is non-terminal. (#1831)
+      globalThis.pipwerks.SCORM.get.mockImplementation((key) =>
+        key === 'cmi.core.lesson_status' ? 'passed' : ''
+      );
 
       globalThis.unloadPage(false);
 
@@ -460,7 +464,10 @@ describe('SCOFunctions.js', () => {
     it('does not mark completed if page is already in a terminal state (failed)', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('failed');
+      // unloadPage's terminal guard reads cmi.core.lesson_status (not GetCompletionStatus). (#1831)
+      globalThis.pipwerks.SCORM.get.mockImplementation((key) =>
+        key === 'cmi.core.lesson_status' ? 'failed' : ''
+      );
 
       globalThis.unloadPage(false);
 
@@ -471,7 +478,10 @@ describe('SCOFunctions.js', () => {
     it('does not mark completed if page is already in a terminal state (completed)', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
-      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('completed');
+      // unloadPage's terminal guard reads cmi.core.lesson_status (not GetCompletionStatus). (#1831)
+      globalThis.pipwerks.SCORM.get.mockImplementation((key) =>
+        key === 'cmi.core.lesson_status' ? 'completed' : ''
+      );
 
       globalThis.unloadPage(false);
 

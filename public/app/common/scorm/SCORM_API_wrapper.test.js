@@ -1016,6 +1016,24 @@ describe('SCORM_API_wrapper.js', () => {
         expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.exit', '');
       });
 
+      it('keeps normal for SCORM 2004', () => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetExit('normal');
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'normal');
+      });
+
+      it('sets suspend for SCORM 2004', () => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetExit('suspend');
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'suspend');
+      });
+
       it('does nothing for invalid exit', () => {
         pipwerks.SCORM.version = '1.2';
         vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
