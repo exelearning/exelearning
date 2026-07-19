@@ -241,6 +241,19 @@ The UI **tries browser-side first**, falling back to server-side.
 
 Static editor embeds in LMS plugins (WordPress, Moodle, Drupal, Omeka-S) via iframe + postMessage. Key files: `RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, `app.js`, `previewPanel.js`, `main.scss`. See `doc/development/embedding.md`.
 
+### 7.11 Architecture Decision Records (ADR) & Software Design Documents (SDD)
+
+Significant technical work is documented before or alongside the code. Full policy: [ADR guide](doc/architecture/adr/README.md), [SDD guide](doc/architecture/sdd/README.md).
+
+- **Create or update an ADR** when a change introduces or modifies a **durable architecture decision**. ADRs are required for decisions affecting: architecture, storage model, file formats (ELP/ELPX), import/export behavior, the collaboration model, security/sandboxing, accessibility strategy, public APIs (REST v1, embedding bridge), or AI-generation workflows.
+- **Create an SDD** for significant features, major refactors, design gates, cross-cutting changes, or proposals with multiple implementation phases. SDDs may describe the feature plan, but **durable decisions inside an SDD must link to an ADR** (existing or newly proposed) — don't bury the decision.
+- Locations: ADRs live under `doc/architecture/adr/`, SDDs under `doc/architecture/sdd/`.
+- Templates: `doc/architecture/adr/ADR-0000-template.md`, `doc/architecture/sdd/SDD-0000-template.md`. IDs are monotonic and never reused.
+- **Do not rewrite accepted ADRs** — supersede them with a new ADR (`supersedes` / `superseded_by`). **Do not rewrite implemented SDDs** except for typo/link fixes; supersede them if the design changes substantially.
+- While a decision or design is still under discussion, use `status: Proposed` (ADR) or `status: Draft` / `In Review` (SDD).
+- Document AI assistance in the ADR/SDD frontmatter (`ai_assistance.tool` / `ai_assistance.model`; `none` if not used).
+- Mention any ADRs or SDDs a PR creates or updates in the PR description.
+
 ## 8. Environment Configuration
 
 Configure via `.env` file (use `.env.dist` as template).
@@ -317,6 +330,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | [xlf-translate](.agents/skills/xlf-translate/SKILL.md) | Filling empty `<target>` elements in XLF files with `~`-prefixed translations |
 | [mkdocs-nav](.agents/skills/mkdocs-nav/SKILL.md) | Sync `mkdocs.yml` nav with the actual contents of `doc/` |
 | [api-v1](.agents/skills/api-v1/SKILL.md) | External REST API v1 endpoints |
+| [changelog](.agents/skills/changelog/SKILL.md) | Drafting or updating `public/CHANGELOG.md` from merged PRs |
 
 ## 12. Deep-Dive Documentation
 
@@ -333,3 +347,5 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | Styles/Themes | [doc/development/styles.md](doc/development/styles.md) |
 | Conventions | [doc/conventions.md](doc/conventions.md) |
 | Architecture | [doc/architecture.md](doc/architecture.md) |
+| Architecture Decision Records | [doc/architecture/adr/README.md](doc/architecture/adr/README.md) |
+| Software Design Documents | [doc/architecture/sdd/README.md](doc/architecture/sdd/README.md) |
