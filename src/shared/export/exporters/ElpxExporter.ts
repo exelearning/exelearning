@@ -148,7 +148,7 @@ export class ElpxExporter extends Html5Exporter {
                 language: meta.language || 'en',
             });
 
-            // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
+            // 1.1 Generate HTML pages with optional LaTeX/Mermaid pre-rendering and store them for ZIP insertion.
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
             let latexWasRendered = false;
