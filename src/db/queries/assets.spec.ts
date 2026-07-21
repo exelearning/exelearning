@@ -609,6 +609,27 @@ describe('Asset Queries', () => {
             const result = await searchAssetsForProject(db, testProjectId, 'nonexistent-xyz');
             expect(result.length).toBe(0);
         });
+
+        it('treats an underscore in the term literally (SQLite LIKE ESCAPE)', async () => {
+            // The search escapes LIKE metacharacters with '\', but on SQLite (the default
+            // driver) that only works when the query declares ESCAPE '\'. Without it the
+            // '_' stays a wildcard and the injected '\' matches nothing, so "report_2024"
+            // must match only the exact file, never "reportX2024".
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'report_2024.pdf',
+                storage_path: '/report_2024.pdf',
+                client_id: 'exact',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'reportX2024.pdf',
+                storage_path: '/reportX2024.pdf',
+                client_id: 'wild',
+            });
+            const result = await searchAssetsForProject(db, testProjectId, 'report_2024');
+            expect(result.map(a => a.client_id)).toEqual(['exact']);
+        });
     });
 
     describe('updateAssetClientId', () => {

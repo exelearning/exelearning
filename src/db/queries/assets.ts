@@ -3,7 +3,7 @@
  * Type-safe queries for SQLite, PostgreSQL, and MySQL
  * All functions accept db as first parameter for dependency injection
  */
-import type { Kysely } from 'kysely';
+import type { Kysely, RawBuilder } from 'kysely';
 import type { Database, Asset, NewAsset, AssetUpdate, Project } from '../types';
 import { now } from '../types';
 import { sql } from 'kysely';
@@ -162,15 +162,21 @@ export async function searchAssetsForProject(db: Kysely<Database>, projectId: nu
         .selectFrom('assets')
         .selectAll()
         .where('project_id', '=', projectId)
-        .where(eb =>
-            eb.or([
-                eb(sql<string>`lower(${eb.ref('filename')})`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('description')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('title')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('author')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('license')}, ''))`, 'like', pattern),
-            ]),
-        )
+        .where(eb => {
+            // SQLite (the default driver) has no default LIKE escape character, so the
+            // '\'-escaping applied to the term above is otherwise a no-op that also injects
+            // a literal '\'. Declaring ESCAPE '\' explicitly makes the escaping effective
+            // (a '_' / '%' in the term matches literally); PostgreSQL and MariaDB accept the
+            // same clause.
+            const like = (expr: RawBuilder<unknown>) => sql<boolean>`${expr} like ${pattern} escape '\\'`;
+            return eb.or([
+                like(sql`lower(${eb.ref('filename')})`),
+                like(sql`lower(coalesce(${eb.ref('description')}, ''))`),
+                like(sql`lower(coalesce(${eb.ref('title')}, ''))`),
+                like(sql`lower(coalesce(${eb.ref('author')}, ''))`),
+                like(sql`lower(coalesce(${eb.ref('license')}, ''))`),
+            ]);
+        })
         .orderBy('created_at', 'desc')
         .execute();
 }

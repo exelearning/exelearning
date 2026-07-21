@@ -171,13 +171,16 @@ var $resourcereport = {
      * Columns shown in the table layout, honoring the show* toggles.
      */
     tableColumns: function (config) {
-        const cols = [{ key: 'resource', label: 'Resource' }];
-        if (config.showThumbnail) cols.unshift({ key: 'thumb', label: 'Preview' });
-        if (config.showDescription) cols.push({ key: 'description', label: 'Description' });
-        if (config.showAuthor) cols.push({ key: 'author', label: 'Author' });
-        if (config.showLicense) cols.push({ key: 'license', label: 'License' });
+        // Labels use literal-string this.t('…') calls so the i18n key extractor can see
+        // them (it cannot follow this.t(variable)); the resolved label is stored ready to
+        // render.
+        const cols = [{ key: 'resource', label: this.t('Resource') }];
+        if (config.showThumbnail) cols.unshift({ key: 'thumb', label: this.t('Preview') });
+        if (config.showDescription) cols.push({ key: 'description', label: this.t('Description') });
+        if (config.showAuthor) cols.push({ key: 'author', label: this.t('Author') });
+        if (config.showLicense) cols.push({ key: 'license', label: this.t('License') });
         if (config.showViewLink !== false || config.showDownloadLink !== false) {
-            cols.push({ key: 'links', label: 'Links' });
+            cols.push({ key: 'links', label: this.t('Links') });
         }
         return cols;
     },
@@ -217,7 +220,8 @@ var $resourcereport = {
     buildTable: function (resources, config) {
         const cols = this.tableColumns(config);
         let head = '';
-        for (const c of cols) head += `<th scope="col">${this.escapeHtml(this.t(c.label))}</th>`;
+        // c.label is already translated (see tableColumns); just escape for output.
+        for (const c of cols) head += `<th scope="col">${this.escapeHtml(c.label)}</th>`;
         let rows = '';
         for (const res of resources) {
             let cells = '';
