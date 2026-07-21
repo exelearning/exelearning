@@ -1451,19 +1451,25 @@ export default class modalOpenUserOdeFiles extends Modal {
                     try {
                         Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
 
-                        // Clear assets and metadata from previous project before importing new one
-                        if (yjsBridge.clearAssetsForNewProject) {
-                            await yjsBridge.clearAssetsForNewProject();
-                        }
-                        if (yjsBridge.clearMetadataForNewProject) {
-                            yjsBridge.clearMetadataForNewProject();
-                        }
-
-                        await yjsBridge.importFromElpx(odeFile, {
-                            onProgress: (progress) => importProgress.update(progress)
+                        // Clear the previous project's assets/metadata only AFTER the import
+                        // preflight/confirmation gate passes (handled inside importFromElpx via
+                        // the clearPreviousProject option). This guarantees that cancelling a
+                        // large-file confirmation, or rejecting an over-limit archive, leaves
+                        // the current project untouched. See issue #2193.
+                        const importResult = await yjsBridge.importFromElpx(odeFile, {
+                            onProgress: (progress) => importProgress.update(progress),
+                            clearPreviousProject: true
                         });
 
                         importProgress.hide();
+
+                        // Import was cancelled (large-file confirmation declined) or rejected
+                        // (over the applicable limit). The bridge already showed the actionable
+                        // error when relevant; the current project is unchanged, so stop here.
+                        if (importResult && importResult.cancelled) {
+                            Logger.log('[OpenFile] Static mode import cancelled/rejected:', odeFileName);
+                            return;
+                        }
 
                         // Refresh UI after import (without server calls)
                         if (eXeLearning.app.project?.refreshAfterDirectImport) {
