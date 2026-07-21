@@ -1816,6 +1816,104 @@ describe('ElpxImporter - findAssetUrlForPath coverage', () => {
             ydoc.destroy();
         });
 
+        it('should convert images embedded in a legacy dropdown (ListaIdevice) form to asset:// URLs', async () => {
+            // Regression for legacy "Actividad desplegable" (ListaIdevice → form):
+            // the image lives inside the question HTML stored in an iDevice
+            // PROPERTY (questionsData[].baseText), not in htmlView. It must still
+            // be rewritten to an asset:// URL, otherwise the picture renders
+            // broken and only its alt text is shown.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.listaidevice.ListaIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Dropdown"/>
+              <string role="key" value="_content"/>
+              <instance class="exe.engine.listaidevice.ListaField" reference="4">
+                <dictionary>
+                  <string role="key" value="_encodedContent"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;resources/dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="otras"/>
+                  <unicode value="wrong1|wrong2"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Image stored at root level (legacy format)
+            const imageData = new Uint8Array([137, 80, 78, 71]); // PNG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'dropimg.png': imageData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Collect every string stored under the imported navigation tree
+            // (iDevice properties are serialised into the jsonProperties string).
+            const collectStrings = (obj: unknown): string[] => {
+                if (typeof obj === 'string') return [obj];
+                if (obj instanceof Y.Text) return [obj.toString()];
+                if (obj instanceof Y.Map) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj instanceof Y.Array) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj && typeof obj === 'object') {
+                    return Object.values(obj).flatMap(collectStrings);
+                }
+                return [];
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const questionProps = collectStrings(navigation).filter(s => s.includes('questionsData'));
+
+            // The dropdown must have been imported as a form with questionsData
+            expect(questionProps.length).toBeGreaterThan(0);
+            const parsed = JSON.parse(questionProps[0]) as { questionsData: { baseText: string }[] };
+            const baseText = parsed.questionsData[0].baseText;
+
+            // Gap markers must survive, and the embedded image must be rewritten
+            // to an asset:// URL rather than left as a bare or resources/ path.
+            expect(baseText).toContain('<u>right</u>');
+            expect(baseText).toContain('asset://');
+            expect(baseText).not.toContain('src="dropimg.png"');
+            expect(baseText).not.toContain('src="resources/dropimg.png"');
+
+            ydoc.destroy();
+        });
+
         it('should handle files without extension in resources directory', async () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">
@@ -3398,5 +3496,79 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
         expect(remapped).not.toContain(`exe-node:${fresh.get('Page 10')}0`);
 
         ydoc.destroy();
+    });
+
+    describe('legacy UDL iDevice with reference-based fields (issue #2159)', () => {
+        let udlTestDir: string;
+
+        beforeEach(() => {
+            udlTestDir = path.join('/tmp', `elp-udl-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+            if (!existsSync(udlTestDir)) {
+                mkdirSync(udlTestDir, { recursive: true });
+            }
+        });
+
+        afterEach(() => {
+            if (existsSync(udlTestDir)) {
+                rmSync(udlTestDir, { recursive: true, force: true });
+            }
+        });
+
+        // Collect every imported component together with its owning page title.
+        function collectComponents(ydoc: Y.Doc): { pageTitle: string; type: string; htmlView: string }[] {
+            const out: { pageTitle: string; type: string; htmlView: string }[] = [];
+            const nav = ydoc.getArray('navigation');
+            for (let i = 0; i < nav.length; i++) {
+                const page = nav.get(i) as Y.Map<unknown>;
+                const pageTitle = (page.get('title') as string) || '';
+                const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+                if (!blocks) continue;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const comps = block.get('components') as Y.Array<unknown> | undefined;
+                    if (!comps) continue;
+                    for (let c = 0; c < comps.length; c++) {
+                        const comp = comps.get(c) as Y.Map<unknown>;
+                        out.push({
+                            pageTitle,
+                            type: (comp.get('type') as string) || '',
+                            htmlView: (comp.get('htmlView') as string) || '',
+                        });
+                    }
+                }
+            }
+            return out;
+        }
+
+        it('imports the Diario node with its own content, not another node duplicated', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_epvelp_udl.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(udlTestDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            const components = collectComponents(ydoc);
+            const allHtml = components.map(c => c.htmlView).join('\n');
+
+            // Field 33 content. Before the fix, DefaultHandler overwrote it with the
+            // content of an unrelated field (36), so this text was never imported.
+            expect(allHtml).toContain('Ides cubrir os apartados da Fase 2');
+
+            // The component holding field 33 content must not also carry field 36 content
+            // (the duplication reported in the issue).
+            const withField33 = components.filter(c => c.htmlView.includes('Ides cubrir os apartados da Fase 2'));
+            expect(withField33.length).toBeGreaterThan(0);
+            for (const comp of withField33) {
+                expect(comp.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(comp.type).toBe('udl-content');
+            }
+
+            ydoc.destroy();
+        });
     });
 });
