@@ -838,6 +838,29 @@ class AssetManager {
   }
 
   /**
+   * Decode a subtitle blob's raw bytes to text. `.srt` files are usually UTF-8
+   * but very frequently Windows-1252/Latin-1 in the wild (accented cues). A
+   * non-fatal UTF-8 decode would silently replace every high byte with U+FFFD,
+   * so we decode UTF-8 strictly first and fall back to Windows-1252 -- keeping
+   * accented captions readable in the live workarea editor. This mirrors the
+   * export/preview decode in `BaseExporter.readAssetDataAsText()` so the editor
+   * display and the downloaded/preview export never diverge (issue #2035).
+   *
+   * `Blob.text()` cannot be used here: per the Blob spec it always decodes as
+   * UTF-8, turning every Latin-1 byte into mojibake. Read the raw bytes instead.
+   * @param {Blob} blob
+   * @returns {Promise<string>}
+   */
+  async _readSubtitleBlobAsText(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      return new TextDecoder('windows-1252').decode(bytes);
+    }
+  }
+
+  /**
    * Create a *display* blob URL for an asset. Raw `.srt` subtitle assets are
    * converted to WebVTT on the fly and served as a `text/vtt` blob, so the
    * native `<video><track>` renders cues in the live workarea editor -- the
@@ -861,7 +884,7 @@ class AssetManager {
       typeof window.convertSrtToVtt === 'function'
     ) {
       try {
-        const text = await asset.blob.text();
+        const text = await this._readSubtitleBlobAsText(asset.blob);
         const { vtt } = window.convertSrtToVtt(text);
         return this.createBlobURL(new Blob([vtt], { type: 'text/vtt' }));
       } catch (e) {

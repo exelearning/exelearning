@@ -1553,6 +1553,36 @@ describe('AssetManager', () => {
         const url = await assetManager._displayBlobURLForAsset(asset);
         expect(mockObjectURLs.get(url)).toBe(imgBlob);
       });
+
+      it('decodes a Windows-1252 .srt (Latin-1 accents) for display, matching the export decode', async () => {
+        // A real-world `.srt` saved as Windows-1252: the accented "ó" is the
+        // single byte 0xF3, NOT the two-byte UTF-8 sequence. `Blob.text()`
+        // always decodes as UTF-8 (0xF3 -> U+FFFD), so the display path must
+        // decode the bytes the same strict-UTF-8-then-Windows-1252 way the
+        // exporter (`BaseExporter.readAssetDataAsText`) does, or the live
+        // workarea editor shows mojibake while the export stays correct (#2035).
+        const win1252Bytes = () => {
+          const bytes = [];
+          const pushAscii = (s) => {
+            for (const ch of s) bytes.push(ch.charCodeAt(0));
+          };
+          pushAscii('1\n00:00:02,360 --> 00:00:05,760\n');
+          pushAscii('Canci');
+          bytes.push(0xf3); // "ó" in Windows-1252 (single high byte, invalid UTF-8)
+          pushAscii('n\n');
+          return new Uint8Array(bytes);
+        };
+        const srtBlob = new Blob([win1252Bytes()], { type: 'application/x-subrip' });
+        const asset = { id: 'a3', filename: 'cancion.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+        const text = await served.text();
+
+        expect(served.type).toBe('text/vtt');
+        expect(text).toContain('Canción');
+        expect(text).not.toContain('�');
+      });
     });
 
     describe('resolveAssetURL', () => {
