@@ -89,6 +89,10 @@ function scanDirectory(dirPath, basePath = '') {
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
+    // Exclude colocated test sources so manifests match the dist/static copy,
+    // which drops these files (excludePatterns=['.test.js','.spec.js']). Listing
+    // them would 404 on every fetch during static bundle assembly.
+    if (entry.isFile() && /\.(test|spec)\.js$/.test(entry.name)) continue;
 
     const fullPath = path.join(dirPath, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;

@@ -178,6 +178,23 @@ describe('build-resource-bundles', () => {
             }
         });
 
+        it('should not list colocated .test.js / .spec.js sources (idevices and common)', () => {
+            // The dist/static copy excludes these test sources, so the manifest
+            // must not list them either — otherwise assembly 404s on every one
+            // and the static manifest diverges from the server-mode zips.
+            const isTestSource = (p: string) => /\.(test|spec)\.js$/.test(p);
+            const groups = [
+                ...Object.values<any>(manifest.staticFiles.idevices),
+                ...Object.values<any>(manifest.staticFiles.common),
+            ];
+            for (const entries of groups) {
+                for (const { s, t } of entries) {
+                    expect(isTestSource(s)).toBe(false);
+                    expect(isTestSource(t)).toBe(false);
+                }
+            }
+        });
+
         it('should reference loose files that actually exist on disk', () => {
             // Spot-check one entry per group so assembly never 404s.
             const groups = [
