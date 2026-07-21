@@ -156,7 +156,14 @@ export async function searchAssetsForProject(db: Kysely<Database>, projectId: nu
         return findAllAssetsForProject(db, projectId);
     }
 
-    const pattern = `%${trimmed.toLowerCase().replace(/[\\%_]/g, '\\$&')}%`;
+    // LIKE wildcards in the user's term (% _) must match literally, so they are
+    // escaped and the query declares the escape character explicitly — without an
+    // ESCAPE clause SQLite treats the escape prefix as a literal character and the
+    // search silently matches nothing (e.g. "report_2024"). '!' is used instead of
+    // the conventional backslash because a backslash inside a SQL string literal is
+    // itself dialect-sensitive (MariaDB escape sequences), while '!' is plain text
+    // on SQLite, PostgreSQL and MariaDB alike.
+    const pattern = `%${trimmed.toLowerCase().replace(/[!%_]/g, '!$&')}%`;
 
     return db
         .selectFrom('assets')
@@ -164,11 +171,11 @@ export async function searchAssetsForProject(db: Kysely<Database>, projectId: nu
         .where('project_id', '=', projectId)
         .where(eb =>
             eb.or([
-                eb(sql<string>`lower(${eb.ref('filename')})`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('description')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('title')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('author')}, ''))`, 'like', pattern),
-                eb(sql<string>`lower(coalesce(${eb.ref('license')}, ''))`, 'like', pattern),
+                sql<boolean>`lower(${eb.ref('filename')}) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('description')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('title')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('author')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('license')}, '')) like ${pattern} escape '!'`,
             ]),
         )
         .orderBy('created_at', 'desc')

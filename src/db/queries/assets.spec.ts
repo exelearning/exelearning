@@ -609,6 +609,62 @@ describe('Asset Queries', () => {
             const result = await searchAssetsForProject(db, testProjectId, 'nonexistent-xyz');
             expect(result.length).toBe(0);
         });
+
+        describe('LIKE wildcard escaping (SQLite ESCAPE clause)', () => {
+            beforeEach(async () => {
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'report_2024.pdf',
+                    storage_path: '/report_2024.pdf',
+                    client_id: 'w1',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'reportX2024.pdf',
+                    storage_path: '/reportX2024.pdf',
+                    client_id: 'w2',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: '100%_done.png',
+                    storage_path: '/100pct.png',
+                    client_id: 'w3',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'hello!.png',
+                    storage_path: '/hello.png',
+                    client_id: 'w4',
+                });
+            });
+
+            it('finds filenames containing an underscore searched literally', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, 'report_2024');
+                expect(result.map(a => a.client_id)).toEqual(['w1']);
+            });
+
+            it('does not treat _ in the term as a single-char wildcard', async () => {
+                // Without escaping, report_2024 would also match reportX2024.
+                const result = await searchAssetsForProject(db, testProjectId, 'report_');
+                expect(result.map(a => a.client_id)).toEqual(['w1']);
+            });
+
+            it('finds filenames containing a percent sign searched literally', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, '100%_done');
+                expect(result.map(a => a.client_id)).toEqual(['w3']);
+            });
+
+            it('does not treat % in the term as a multi-char wildcard', async () => {
+                // Without escaping, "report%pdf" would match both report files.
+                const result = await searchAssetsForProject(db, testProjectId, 'report%pdf');
+                expect(result.length).toBe(0);
+            });
+
+            it('matches a literal escape character in values', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, 'hello!');
+                expect(result.map(a => a.client_id)).toEqual(['w4']);
+            });
+        });
     });
 
     describe('updateAssetClientId', () => {
