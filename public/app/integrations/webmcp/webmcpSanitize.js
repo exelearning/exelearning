@@ -28,6 +28,16 @@ const URL_ATTRS = ['href', 'src', 'xlink:href', 'action', 'formaction', 'data', 
 // URL schemes that must never survive sanitisation.
 const DANGEROUS_URL_SCHEME = /^\s*(?:javascript|vbscript):/i;
 
+// Internal / ephemeral media schemes that are safe as <img>/<source> sources
+// but are rejected by DOMPurify's default ALLOWED_URI_REGEXP. eXeLearning stores
+// project images as `asset://<uuid>[.ext]` and previews them via `blob:` URLs;
+// if DOMPurify strips these from `src` the image silently disappears (data loss)
+// and the asset is orphaned, since resolvers key on `img[src^="asset://"]`. We
+// re-permit them ONLY on the `src` of media elements, so scripts, event handlers
+// and dangerous schemes (javascript:, data:text/html, …) are still removed.
+const SAFE_MEDIA_URL_SCHEME = /^\s*(?:asset:|blob:)/i;
+const MEDIA_SRC_TAGS = new Set(['IMG', 'SOURCE']);
+
 // Elements that are removed wholesale (along with their contents for <script>).
 const FORBIDDEN_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'LINK', 'META', 'BASE']);
 
@@ -113,6 +123,29 @@ function scrubElementAttributes(el) {
 }
 
 /**
+ * DOMPurify `uponSanitizeAttribute` hook that force-keeps `asset://` / `blob:`
+ * sources on <img>/<source>. Scoped to the `src` attribute of those two tags, so
+ * no other URL attribute (href, action, formaction, …) gains these schemes and
+ * every other sanitisation rule (scripts, event handlers, javascript:/data: URLs)
+ * still applies unchanged.
+ *
+ * @param {Element} node
+ * @param {{ attrName: string, attrValue: string, forceKeepAttr?: boolean }} data
+ */
+function keepMediaSchemeAttribute(node, data) {
+    if (data.attrName !== 'src') {
+        return;
+    }
+    const tag = node && node.nodeName ? node.nodeName.toUpperCase() : '';
+    if (!MEDIA_SRC_TAGS.has(tag)) {
+        return;
+    }
+    if (SAFE_MEDIA_URL_SCHEME.test(data.attrValue || '')) {
+        data.forceKeepAttr = true;
+    }
+}
+
+/**
  * Sanitises agent-supplied rich HTML before it is persisted to the Y.Doc.
  *
  * @param {unknown} html
@@ -125,7 +158,14 @@ export function sanitizeRichHtml(html) {
 
     const purify = getDomPurify();
     if (purify) {
-        return purify.sanitize(html);
+        // Register the scoped hook only for the duration of this call so the
+        // shared DOMPurify global is not permanently mutated for other callers.
+        purify.addHook('uponSanitizeAttribute', keepMediaSchemeAttribute);
+        try {
+            return purify.sanitize(html);
+        } finally {
+            purify.removeHook('uponSanitizeAttribute', keepMediaSchemeAttribute);
+        }
     }
 
     return sanitizeWithDom(html);
