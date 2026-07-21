@@ -2291,18 +2291,23 @@ export class ElpxImporter {
         }
 
         if (typeof obj === 'string') {
-            // Handle {{context_path}}/... references (in HTML content)
-            if (obj.includes('{{context_path}}') && this.assetHandler) {
-                return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
-            }
-
-            // Handle resources/filename.jpg paths (legacy gallery/iDevice properties)
-            // These are just path strings, not HTML, so we look them up directly
+            // Standalone legacy resource path (e.g. gallery image property
+            // "resources/foo.jpg"): these are plain path strings, not HTML, so we
+            // look them up directly.
             if (obj.startsWith('resources/') && this.assetMap.size > 0) {
                 const assetUrl = this.findAssetUrlForPath(obj);
                 if (assetUrl) {
                     return assetUrl;
                 }
+            }
+
+            // HTML fragments stored inside iDevice properties (e.g. form
+            // questionsData[].baseText, instructions, feedback) can embed
+            // {{context_path}}/... or legacy src="resources/..." references. Route
+            // them through the same rewriter used for htmlView so their images
+            // resolve to asset:// URLs instead of rendering broken.
+            if (this.assetHandler && (obj.includes('{{context_path}}') || obj.includes('resources/'))) {
+                return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
             }
 
             return obj;

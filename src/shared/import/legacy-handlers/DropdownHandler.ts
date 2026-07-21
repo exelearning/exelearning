@@ -215,11 +215,16 @@ export class DropdownHandler extends BaseLegacyHandler {
         const qDict = this.getDirectChildByTagName(listaFieldInst, 'dictionary');
         if (!qDict) return null;
 
-        // Extract question text from _encodedContent or content_w_resourcePaths
-        // Keep <u> tags intact - form.js will convert them to <select> elements
+        // Extract question text, keeping <u> tags intact (form.js converts them
+        // to <select> elements). Prefer content_w_resourcePaths: it stores image
+        // src attributes with the resources/ prefix, which the asset-path
+        // rewriter needs to turn them into asset:// URLs. _encodedContent holds
+        // the same markup but with BARE image paths (src="foo.jpg"), which can no
+        // longer be resolved once imported, leaving the picture broken. This also
+        // matches how every other field is read (see extractTextAreaFieldContent).
         let baseText =
-            this.findDictStringValue(qDict, '_encodedContent') ||
             this.findDictStringValue(qDict, 'content_w_resourcePaths') ||
+            this.findDictStringValue(qDict, '_encodedContent') ||
             '';
 
         // Fallback: check for questionTextArea field (some legacy formats)
