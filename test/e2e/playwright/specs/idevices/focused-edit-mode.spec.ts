@@ -304,4 +304,46 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         });
         expect(overflowY).toBe('hidden');
     });
+
+    test('hides non-edited sibling iDevices in the same block while focused', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Focused Edit - block siblings');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdevice(page);
+        const ideviceId = await getTextIdeviceId(page);
+        await ensureEditing(page, ideviceId);
+        await waitForFocusActive(page);
+
+        // A block can hold several iDevices, but only the edited one is the focused
+        // editor. Its non-edited siblings must leave the focused surface — otherwise
+        // a tall sibling whose view content is opaque and captures pointer events
+        // (e.g. an interactive-video <video>) overlaps the editor and swallows every
+        // click. Add a real sibling iDevice node to the focused block and assert the
+        // fix removes it from layout while the edited iDevice stays visible.
+        const result = await page.evaluate(focusedId => {
+            const focused = document.getElementById(focusedId);
+            const block = focused.closest('.box');
+            const content = block.querySelector(':scope > .box-content') || block;
+            const sibling = document.createElement('div');
+            sibling.className = 'idevice_node idevice-element-in-content draggable text';
+            sibling.id = 'focus-sibling-probe';
+            sibling.style.height = '600px';
+            content.appendChild(sibling);
+            void document.body.offsetHeight; // force layout
+            const out = {
+                sibling: getComputedStyle(sibling).display,
+                focused: getComputedStyle(focused).display,
+            };
+            sibling.remove();
+            return out;
+        }, ideviceId);
+
+        expect(result.sibling).toBe('none'); // the non-edited sibling is hidden by the fix
+        expect(result.focused).not.toBe('none'); // the edited iDevice stays visible
+    });
 });

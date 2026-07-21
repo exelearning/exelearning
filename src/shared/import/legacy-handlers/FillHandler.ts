@@ -155,7 +155,11 @@ export class FillHandler extends BaseLegacyHandler {
             const clozeDict = this.getDirectChildByTagName(contentInst, 'dictionary');
             if (clozeDict) {
                 // Symfony extracts from _encodedContent
-                const encodedContent = this.findDictStringValue(clozeDict, '_encodedContent');
+                // Prefer content_w_resourcePaths (resources/-prefixed image src,
+                // resolvable to asset://) over _encodedContent (bare image src).
+                const encodedContent =
+                    this.findDictStringValue(clozeDict, 'content_w_resourcePaths') ||
+                    this.findDictStringValue(clozeDict, '_encodedContent');
                 if (encodedContent) {
                     const parsedText = this.parseClozeText(encodedContent);
                     if (parsedText.baseText) {
@@ -176,6 +180,7 @@ export class FillHandler extends BaseLegacyHandler {
             const clozeDict = this.getDirectChildByTagName(clozeInst, 'dictionary');
             if (clozeDict) {
                 const clozeText =
+                    this.findDictStringValue(clozeDict, 'content_w_resourcePaths') ||
                     this.findDictStringValue(clozeDict, '_encodedContent') ||
                     this.findDictStringValue(clozeDict, '_clozeText') ||
                     this.findDictStringValue(clozeDict, 'clozeText');
@@ -201,7 +206,11 @@ export class FillHandler extends BaseLegacyHandler {
         if (clozeFieldByClass) {
             const clozeDict = this.getDirectChildByTagName(clozeFieldByClass, 'dictionary');
             if (clozeDict) {
-                const encodedContent = this.findDictStringValue(clozeDict, '_encodedContent');
+                // Prefer content_w_resourcePaths (resources/-prefixed image src,
+                // resolvable to asset://) over _encodedContent (bare image src).
+                const encodedContent =
+                    this.findDictStringValue(clozeDict, 'content_w_resourcePaths') ||
+                    this.findDictStringValue(clozeDict, '_encodedContent');
                 if (encodedContent) {
                     const parsedText = this.parseClozeText(encodedContent);
                     if (parsedText.baseText) {
