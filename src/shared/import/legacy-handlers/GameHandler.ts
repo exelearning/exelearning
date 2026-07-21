@@ -16,6 +16,7 @@
 
 import { BaseLegacyHandler } from './BaseLegacyHandler';
 import type { IdeviceHandlerContext, FeedbackResult } from './IdeviceHandler';
+import { resolveFieldInstances } from '../resolveFieldInstances';
 
 /**
  * Game types and their DataGame div class patterns
@@ -226,7 +227,7 @@ export class GameHandler extends BaseLegacyHandler {
      * @param dict - Dictionary element
      * @returns HTML content with updated DataGame div
      */
-    extractHtmlView(dict: Element, _context?: IdeviceHandlerContext): string {
+    extractHtmlView(dict: Element, context?: IdeviceHandlerContext): string {
         if (!dict) return '';
 
         const contents: string[] = [];
@@ -242,8 +243,12 @@ export class GameHandler extends BaseLegacyHandler {
             ) {
                 const listEl = children[i + 1];
                 if (listEl && listEl.tagName === 'list') {
-                    // Extract content from each field in the list
-                    const fieldInstances = this.getChildElements(listEl).filter(el => el.tagName === 'instance');
+                    // Extract content from each field in the list. Fields may be
+                    // written inline as <instance> or as a back-reference
+                    // <reference key="N"> pointing to an instance serialized earlier
+                    // in the pickle graph; resolve both so referenced game content is
+                    // not lost (issue #2167, sibling of #2159).
+                    const fieldInstances = resolveFieldInstances(listEl, context?.resolveReference);
 
                     for (const fieldInst of fieldInstances) {
                         const fieldClass = fieldInst.getAttribute('class') || '';
