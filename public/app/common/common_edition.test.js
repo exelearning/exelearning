@@ -1118,7 +1118,7 @@ describe('common_edition.js', () => {
         expect(document.getElementById('eXeIAMessage').textContent).toContain('not fully configured');
       });
 
-      it('saves questions, populates the textarea, switches tab and hides the message', async () => {
+      it('auto-inserts the generated questions and hides the message without priming the Save surface', async () => {
         globalThis.eXeLearning = {
           app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }) } },
         };
@@ -1129,10 +1129,65 @@ describe('common_edition.js', () => {
         const saveQuestions = vi.fn();
         await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
 
-        expect(saveQuestions).toHaveBeenCalled();
-        expect(document.getElementById('eXeEQuestionsArea').value).toContain('Word1#Definition1');
-        expect(tabClicked).toHaveBeenCalled();
+        // Managed Create auto-inserts the generated questions once...
+        expect(saveQuestions).toHaveBeenCalledWith(['Word1#Definition1', 'Word2#Definition2']);
+        // ...but must NOT re-stage them into the Save textarea nor switch the user to the
+        // primed Save tab; otherwise clicking Save re-inserts everything a second time (#1998).
+        expect(document.getElementById('eXeEQuestionsArea').value).toBe('');
+        expect(tabClicked).not.toHaveBeenCalled();
         expect(document.getElementById('eXeIAMessage').style.display).toBe('none');
+      });
+    });
+
+    describe('managed Create does not lead the user into double-inserting (#1998)', () => {
+      let savedEXe;
+      const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+      beforeEach(() => {
+        savedEXe = globalThis.eXeLearning;
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><input id="eXeNumberOfQuestionsIA" value="2"></div>
+          <p id="eXeIAMessage" style="display:block"></p>
+          <textarea id="eXeEQuestionsArea"></textarea>
+          <button id="eXeESaveButton"></button>
+          <a id="eXeETabQuestions"></a>`;
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi
+                .fn()
+                .mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }),
+            },
+          },
+        };
+      });
+      afterEach(() => {
+        globalThis.eXeLearning = savedEXe;
+        document.body.innerHTML = '';
+      });
+
+      it('inserts each generated question exactly once even if Save is clicked afterwards', async () => {
+        const share = globalThis.$exeDevicesEdition.iDevice.gamification.share;
+
+        // Mirror the real iDevice callback (insertAIContent): every call appends its
+        // lines to the questions collection. Both the managed Create flow and the Save
+        // button reuse this exact same callback in production.
+        const questionsGame = [];
+        const insertAIContent = vi.fn((content) => {
+          const lines = Array.isArray(content) ? content : [];
+          for (const line of lines) questionsGame.push(line);
+        });
+
+        // Wire the Save button (as the workarea does) and run the managed Create flow.
+        share.addEvents(0, insertAIContent);
+        await share.genarateIAQuestons(0, insertAIContent, {});
+
+        // The user clicks Save on whatever surface the Create flow navigates them to.
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        // Each generated question must be inserted once, never twice (N, not 2N).
+        expect(questionsGame).toEqual(['Word1#Definition1', 'Word2#Definition2']);
       });
     });
 

@@ -1191,9 +1191,11 @@ var $exeDevicesEdition = {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
                                 const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
+                                // Managed Create auto-inserts the generated questions.
+                                // Do NOT also re-stage them into the Save textarea or
+                                // switch to the primed Save tab: that would lead the user
+                                // to click Save and insert every question a second time (#1998).
                                 saveQuestions(correctsQuestions);
-                                $('#eXeEQuestionsArea').val(correctsQuestions.join('\n'));
-                                $('#eXeETabQuestions').trigger('click');
                                 $('#eXeIAMessage').hide();
                             } else {
                                 sdata = _('The questions could not be generated');
