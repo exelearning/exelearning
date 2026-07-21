@@ -69,6 +69,17 @@ body.exe-idevice-focus-editing {
             flex-direction: column;
             overflow: hidden;
         }
+
+        /* A block can contain several iDevices. Only the edited one is the
+         * focused editor; its non-edited siblings must leave the focused
+         * surface. We keep them in the DOM (queryable by tooling / assistive
+         * tech, consistent with the sibling-block note above) but remove them
+         * from layout — otherwise a tall sibling whose view content is opaque
+         * and captures pointer events (e.g. an interactive-video `<video>`)
+         * overlaps the editor and swallows every click. */
+        .idevice_node:not(.idevice-node--focused-editing) {
+            display: none;
+        }
     }
 
     .idevice-node--focused-editing {
