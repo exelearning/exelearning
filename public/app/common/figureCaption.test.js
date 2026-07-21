@@ -73,6 +73,49 @@ describe('buildFigureCaption (twin)', () => {
         expect(caption).not.toContain('<a ');
     });
 
+    describe('URL scheme allowlist (unsafe links render as plain text)', () => {
+        it('refuses javascript: URLs in source and author links', () => {
+            const { caption } = buildFigureCaption(
+                { title: 'Sunset', author: 'Ada', sourceUrl: 'javascript:alert(1)', authorUrl: 'javascript:alert(2)' },
+                {},
+            );
+            expect(caption).toContain('<span class="title"><em>Sunset</em></span>');
+            expect(caption).toContain('<span class="author">Ada</span>');
+            expect(caption).not.toContain('<a ');
+            expect(caption).not.toContain('javascript:');
+        });
+
+        it('refuses data: and other non-http(s) schemes', () => {
+            const { caption } = buildFigureCaption(
+                { title: 'T', author: 'A', sourceUrl: 'data:text/html,<script>x</script>', authorUrl: 'mailto:a@b.c' },
+                {},
+            );
+            expect(caption).not.toContain('<a ');
+        });
+
+        it('refuses scheme case variants', () => {
+            for (const url of ['JAVASCRIPT:alert(1)', 'JaVaScRiPt:alert(1)', 'VBSCRIPT:x']) {
+                const { caption } = buildFigureCaption({ title: 'T', sourceUrl: url }, {});
+                expect(caption).toContain('<span class="title">');
+                expect(caption).not.toContain('<a ');
+            }
+        });
+
+        it('refuses control-character smuggling inside the scheme', () => {
+            for (const url of ['java\tscript:alert(1)', '\njavascript:alert(1)', ' javascript:alert(1)', 'java script:alert(1)']) {
+                const { caption } = buildFigureCaption({ title: 'T', sourceUrl: url }, {});
+                expect(caption).not.toContain('<a ');
+            }
+        });
+
+        it('allows http, https, protocol-relative and relative URLs', () => {
+            for (const url of ['http://e.example/a', 'https://e.example/a', '//cdn.example/a', '/local/path', '#anchor', 'docs/page.html']) {
+                const { caption } = buildFigureCaption({ title: 'T', sourceUrl: url }, {});
+                expect(caption).toContain('<a class="title"');
+            }
+        });
+    });
+
     it('escapes HTML in text and quotes in URLs', () => {
         const { header, caption } = buildFigureCaption(
             { title: '<b>x</b>', author: 'A & B', sourceUrl: 'https://e.example/"a"' },

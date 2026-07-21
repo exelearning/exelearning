@@ -55,6 +55,29 @@ function esc(value: string | undefined | null): string {
 }
 
 /**
+ * Return a safe href for caption links, or '' when the URL must not be linked.
+ * Only http:, https: and relative URLs (including scheme-relative //host) are
+ * allowed; any other scheme (javascript:, data:, vbscript:, file:, …) is refused
+ * and the caller renders the text without an anchor. Control characters and
+ * whitespace are stripped before scheme matching because browsers ignore them
+ * when parsing URLs (the classic "jav\tascript:" smuggling bypass).
+ */
+function safeCaptionUrl(value: string): string {
+    const url = String(value == null ? '' : value).trim();
+    if (!url) return '';
+    // Strip control characters and whitespace (code points <= 0x20) the way
+    // browsers do while parsing, so the scheme cannot be smuggled past the check.
+    let normalized = '';
+    for (const ch of url) {
+        if (ch.charCodeAt(0) > 0x20) normalized += ch;
+    }
+    const scheme = normalized.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (!scheme) return url; // relative URL (/path, //host, ?query, #anchor)
+    const name = scheme[1].toLowerCase();
+    return name === 'http' || name === 'https' ? url : '';
+}
+
+/**
  * Resolve a stored license label (the centralized vocabulary from
  * public/app/common/licenseOptions.js, e.g. "Creative Commons BY-SA") to its canonical
  * URL + `cc cc-<code>` icon class. Values mirror the single source of truth
@@ -86,21 +109,23 @@ export function resolveCaptionLicense(license: string | undefined | null): Resol
     return { url: '', cssClass: '', isCC: false };
 }
 
-/** Build the `.title` element: name text linked to the source URL when present. */
+/** Build the `.title` element: name text linked to the source URL when safe. */
 function nameHtml(title: string, sourceUrl: string): string {
     if (!title) return '';
     const inner = `<em>${esc(title)}</em>`;
-    if (sourceUrl) {
-        return `<a class="title" href="${esc(sourceUrl)}" target="_blank" rel="noopener">${inner}</a>`;
+    const href = safeCaptionUrl(sourceUrl);
+    if (href) {
+        return `<a class="title" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>`;
     }
     return `<span class="title">${inner}</span>`;
 }
 
-/** Build the `.author` element: author text linked to the author URL when present. */
+/** Build the `.author` element: author text linked to the author URL when safe. */
 function authorHtml(author: string, authorUrl: string): string {
     if (!author) return '';
-    if (authorUrl) {
-        return `<a class="author" href="${esc(authorUrl)}" target="_blank" rel="noopener">${esc(author)}</a>`;
+    const href = safeCaptionUrl(authorUrl);
+    if (href) {
+        return `<a class="author" href="${esc(href)}" target="_blank" rel="noopener">${esc(author)}</a>`;
     }
     return `<span class="author">${esc(author)}</span>`;
 }
