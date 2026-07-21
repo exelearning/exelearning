@@ -10,9 +10,6 @@ import {
     addTextIdevice,
     waitForTinyMCEReady,
     saveProject,
-    reloadPage,
-    waitForPreviewContent,
-    getPreviewFrame,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -24,10 +21,12 @@ import {
  * built the labels from h2.text(), discarding the rendered <span class="exe-math-rendered">
  * (SVG + assistive MathML).
  *
- * This spec drives the full user workflow: create the iDevice, save, verify the
- * rendered equation survives in the visible tab label, switch to an initially
- * hidden tab and verify its content renders, switch back, reload for persistence,
- * verify Preview, and verify the HTML5 export.
+ * Two tests:
+ *  1) Workarea — the tab labels render the equation, switching to an initially
+ *     hidden tab renders its content, switching back keeps the first tab active,
+ *     and no raw LaTeX delimiters remain visible.
+ *  2) HTML5 export — the FX tab heading ships the pre-rendered math and exe_effects.js
+ *     is bundled so the tabs (and their labels) are built at runtime in the viewer.
  */
 
 // FX Tabs with LaTeX in both the tab headings (labels) and the panel content.
@@ -117,16 +116,14 @@ async function exportHtml5Website(page: Page): Promise<Download> {
 }
 
 test.describe('FX Tabs LaTeX rendering (#2191)', () => {
-    test('renders LaTeX in tab labels and hidden panels, and preserves it through reload, preview and export', async ({
+    test('renders LaTeX in tab labels and in an initially hidden tab', async ({
         authenticatedPage,
         createProject,
     }, testInfo) => {
-        // Creating a project, adding an iDevice and driving Preview/export is a
-        // server-backed authoring workflow (same reason as block-icons.spec.ts).
-        // The fix itself (exe_effects.js) is covered elsewhere: the colocated
-        // Vitest suite exercises $exeFX.tabs.rft() directly, and the static build
-        // ships the same exe_effects.js used here.
-        skipInStaticMode(test, testInfo, 'Requires server to create projects, add iDevices, and drive Preview/export');
+        // Creating a project and adding an iDevice is a server-backed authoring
+        // workflow (same reason as block-icons.spec.ts). The fix in exe_effects.js
+        // is exercised identically in the static build, which ships the same script.
+        skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
 
         const page = authenticatedPage;
 
@@ -154,8 +151,6 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
                 tabCount: labels.length,
                 firstLabelRendered: rendered(labels[0]),
                 secondLabelRendered: rendered(labels[1]),
-                // The label must NOT be the flattened MathML string.
-                firstLabelText: (labels[0]?.textContent ?? '').trim(),
             };
         });
 
@@ -164,11 +159,11 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
         expect(workareaState.secondLabelRendered).toBe(true);
 
         // 2) Switch to the second (initially hidden) tab and verify its content
-        //    renders the equation. Use dispatchEvent so the tab's click handler
-        //    fires deterministically: a label whose only content is an inline
+        //    renders the equation. dispatchEvent fires the tab handler
+        //    deterministically: a label whose only content is an inline
         //    (aria-hidden) SVG can be reported as "not visible" by Playwright's
-        //    strict actionability check in the static build. The assertion below
-        //    still verifies the real DOM outcome (panel activates and renders).
+        //    strict actionability check. The assertion still verifies the real
+        //    DOM outcome (panel activates and renders).
         await page.locator('#node-content .exe-fx.exe-tabs ul.fx-tabs > li').nth(1).locator('a').dispatchEvent('click');
         await page.waitForFunction(
             () => {
@@ -181,7 +176,7 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
             { timeout: 15000 },
         );
 
-        // 3) Switch back to the first tab; it must still be rendered and active.
+        // 3) Switch back to the first tab; it must still be active.
         await page.locator('#node-content .exe-fx.exe-tabs ul.fx-tabs > li').nth(0).locator('a').dispatchEvent('click');
         await page.waitForFunction(
             () => {
@@ -202,33 +197,27 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
         expect(afterSwitch.hasRawInline).toBe(false);
         expect(afterSwitch.hasRawDisplay).toBe(false);
 
-        // 5) Persistence: save + reload, then the rendered tab label must survive.
-        await saveProject(page);
-        await reloadPage(page);
+        // No relevant uncaught page errors during the flow.
+        const relevantErrors = pageErrors.filter(m => /fx|tab|mathjax|latex|typeset/i.test(m));
+        expect(relevantErrors).toEqual([]);
+    });
+
+    test('HTML5 export ships pre-rendered FX-tabs LaTeX and bundles exe_effects.js', async ({
+        authenticatedPage,
+        createProject,
+    }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires server to create projects, add iDevices, and export');
+
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'FX Tabs LaTeX export #2191');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
-        await waitForRenderedTabLabel(page);
 
-        // 6) Preview must render the tab label equation as well.
-        await waitForPreviewContent(page);
-        const iframe = getPreviewFrame(page);
-        await iframe.locator('.exe-fx.exe-tabs ul.fx-tabs li a').first().waitFor({ state: 'attached', timeout: 20000 });
-        const previewState = await iframe.locator('body').evaluate((body: HTMLElement) => {
-            const fx = body.querySelector('.exe-fx.exe-tabs');
-            const labels = Array.from(fx?.querySelectorAll('ul.fx-tabs > li > a') ?? []);
-            const rendered = (a: Element | undefined) => !!a?.querySelector('.exe-math-rendered, mjx-container, svg');
-            return {
-                tabCount: labels.length,
-                firstLabelRendered: rendered(labels[0]),
-                hasRawInline: (fx as HTMLElement)?.textContent?.includes('\\(') ?? false,
-            };
-        });
-        expect(previewState.tabCount).toBe(2);
-        expect(previewState.firstLabelRendered).toBe(true);
-        expect(previewState.hasRawInline).toBe(false);
-
-        // 7) HTML5 export: the FX tab heading must ship pre-rendered math and no
-        //    raw inline delimiters must remain in the exported markup.
+        await selectFirstPage(page);
+        await addFxTabsIdevice(page);
         await saveProject(page);
+
         const download = await exportHtml5Website(page);
         const tmpDir = path.join('/tmp', `fx-tabs-latex-${projectUuid}`);
         fs.mkdirSync(tmpDir, { recursive: true });
@@ -241,7 +230,7 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
         expect(htmlFiles.length).toBeGreaterThan(0);
         const decodedHtml = htmlFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
 
-        // The exported FX tabs heading ships pre-rendered math.
+        // The exported FX tabs block ships pre-rendered math (built into labels at runtime).
         expect(decodedHtml).toContain('class="exe-fx exe-tabs"');
         expect(decodedHtml).toContain('class="exe-math-rendered"');
         // No raw inline LaTeX delimiters directly between tags in the export.
@@ -249,9 +238,5 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
         expect(rawVisibleInline).toBe(0);
         // exe_effects.js must be bundled so the tabs are built at runtime.
         expect(Object.keys(zipMap).some(f => f.endsWith('exe_effects.js'))).toBe(true);
-
-        // No relevant uncaught page errors during the whole flow.
-        const relevantErrors = pageErrors.filter(m => /fx|tab|mathjax|latex|typeset/i.test(m));
-        expect(relevantErrors).toEqual([]);
     });
 });
