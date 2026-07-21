@@ -118,20 +118,19 @@ AI_TEMPERATURE=0.2
 
 ## Troubleshooting a managed provider
 
-When a managed provider request fails, the editor shows a safe message such as
-*"The AI provider returned an error (HTTP 500)"*. The underlying cause is logged
-**server-side** with provider, endpoint host, HTTP status and a truncated body
-snippet, for example:
+When a managed provider request fails, the editor shows a safe, generic message
+such as *"The AI provider returned an error (HTTP 500)"*. To avoid leaking
+request details (provider URL, API key, prompt payload) or the provider's
+answer, the server maps every transport/HTTP failure to a typed error and
+**discards the upstream response body** — it is not returned to the client and
+is not written to a log. There are no dedicated `[ai]` log lines to grep for.
 
-```
-[ai] provider "ollama" at localhost:11434 returned HTTP 500: {"error":"model 'llama3' not found, try pulling it first"}
-```
-
-Check the application/container logs for `[ai]` lines first. Administrators can
-also use **Test connection** in the admin **AI** tab: that admin-only diagnostic
-returns the upstream `details` snippet directly, so the exact provider error is
-visible without reading logs. (The public `POST /api/ai/generate-text` response
-never includes this snippet.)
+Administrators can use **Test connection** in the admin **AI** tab to check the
+configuration end to end. It performs a real request and returns only the same
+safe, typed result — `{ ok: false, error: <code>, message: <generic message> }`
+on failure — with no upstream `details` snippet. Because the exact provider
+error is not surfaced anywhere, diagnose failures by checking the provider and
+endpoint directly against the common causes below.
 
 Common causes of an upstream `HTTP 500`:
 
