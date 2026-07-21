@@ -484,7 +484,7 @@ export default class WebMCPService {
 
         if (this.mode === 'native' && this.instance) {
             return {
-                label: 'Ready (native WebMCP)',
+                label: _('Ready (native WebMCP)'),
                 className: 'text-success',
                 description: `${toolCount} tools registered via navigator.modelContext.`,
             };
@@ -492,15 +492,15 @@ export default class WebMCPService {
 
         if (this.loading) {
             return {
-                label: 'Loading WebMCP script...',
+                label: _('Loading WebMCP script...'),
                 className: 'text-info',
-                description: 'Trying to load webmcp.js automatically.',
+                description: _('Trying to load webmcp.js automatically.'),
             };
         }
 
         if (this.lastError) {
             return {
-                label: 'Error',
+                label: _('Error'),
                 className: 'text-danger',
                 description: this.lastError,
             };
@@ -508,10 +508,14 @@ export default class WebMCPService {
 
         if (!this.available) {
             const description = this.isEmbeddedInIframe()
-                ? 'eXeLearning is running inside an iframe. The W3C navigator.modelContext API is restricted to top-level documents, and webmcp.js is not loaded. Open the editor in its own tab to use MCP.'
-                : 'This browser does not expose navigator.modelContext and webmcp.js is not loaded.';
+                ? _(
+                      'eXeLearning is running inside an iframe. The W3C navigator.modelContext API is restricted to top-level documents, and webmcp.js is not loaded. Open the editor in its own tab to use MCP.',
+                  )
+                : _(
+                      'This browser does not expose navigator.modelContext and webmcp.js is not loaded.',
+                  );
             return {
-                label: 'WebMCP unavailable',
+                label: _('WebMCP unavailable'),
                 className: 'text-warning',
                 description,
             };
@@ -519,14 +523,14 @@ export default class WebMCPService {
 
         if (!this.instance) {
             return {
-                label: 'WebMCP unavailable',
+                label: _('WebMCP unavailable'),
                 className: 'text-danger',
-                description: 'The WebMCP instance could not be created.',
+                description: _('The WebMCP instance could not be created.'),
             };
         }
 
         return {
-            label: 'Ready',
+            label: _('Ready'),
             className: 'text-success',
             description: `${toolCount} tools registered${
                 this.loadedScriptUrl ? ` (source: ${this.loadedScriptUrl})` : ''
