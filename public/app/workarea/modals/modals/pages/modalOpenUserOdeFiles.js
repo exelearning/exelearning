@@ -1,5 +1,6 @@
 import Modal from '../modal.js';
 import ImportProgress from '../../../interface/importProgress.js';
+import { isImportCancelled } from '../../../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -1466,7 +1467,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                         // Import was cancelled (large-file confirmation declined) or rejected
                         // (over the applicable limit). The bridge already showed the actionable
                         // error when relevant; the current project is unchanged, so stop here.
-                        if (importResult && importResult.cancelled) {
+                        if (isImportCancelled(importResult)) {
                             Logger.log('[OpenFile] Static mode import cancelled/rejected:', odeFileName);
                             return;
                         }
