@@ -139,37 +139,79 @@ describe('LegacyXmlParser', () => {
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('textmore text');
         });
-
         it('should remove tabs', () => {
             const input = 'text\tmore text';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('textmore text');
         });
-
         it('should convert Windows line endings', () => {
             const input = 'line1\r\nline2';
             const result = parser.preprocessLegacyXml(input);
             // After preprocessing: \r becomes \n, \n\n becomes \n
             expect(result).not.toContain('\r');
         });
-
         it('should convert hex escape sequences', () => {
             const input = '\\x41\\x42\\x43';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toBe('ABC');
         });
-
         it('should convert literal \\n to entity', () => {
             const input = 'text\\nmore text';
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('&#10;');
         });
-
         it('should keep encoded pre content inside unicode value attribute', () => {
             const input = 'x     <unicode value="before\t&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;\tafter     end"/>';
             const result = parser.preprocessLegacyXml(input);
-
             expect(result).toBe('x<unicode value="before&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;afterend"/>');
+        });
+        it('should preserve \\nabla instead of converting \\n to a line-break entity', () => {
+            const input = '\\( \\nabla \\times \\vec{F} \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toContain('&#10;abla');
+        });
+        it('should preserve \\newcommand', () => {
+            const input = '\\( \\newcommand{\\vec}[1]{\\mathbf{#1}} \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\newcommand');
+        });
+        it('should preserve \\notin, \\neq and \\ngeq', () => {
+            const input = '\\( a \\notin B \\quad x \\neq y \\quad x \\ngeq y \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\notin');
+            expect(result).toContain('\\neq');
+            expect(result).toContain('\\ngeq');
+        });
+        it('should handle mixed content with real line breaks and LaTeX commands together', () => {
+            const input = 'Line1\\nLine2 with formula \\( \\nabla f(x) \\)';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('Line1&#10;Line2');
+            expect(result).toContain('\\nabla');
+        });
+        it('should preserve \\nabla inside a real eXe unicode value attribute', () => {
+            const input =
+                '<unicode content="true" value="\\( \\nabla \\times \\vec{F} = \\left( \\tfrac{\\partial}{\\partial x} \\right) \\)"/>';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toMatch(/&#10;abla/);
+        });
+
+        // --- REVIEWER REGRESSION TEST (Currency vs Formula, same fix as decodeHtmlContent) ---
+
+        it('should convert a literal \\n between two currency amounts (not treat it as a LaTeX block)', () => {
+            // Without a currency guard, "$5...$10" could be greedily matched as a single
+            // $...$ LaTeX block, leaving the literal "\n" between them unconverted.
+            const input = 'Price: $5\\nNew price: $10';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toBe('Price: $5&#10;New price: $10');
+        });
+
+        it('should still protect a real $...$ formula between two currency amounts', () => {
+            const input = 'Price: $5, formula $x \\nabla y$, total: $10';
+            const result = parser.preprocessLegacyXml(input);
+            expect(result).toContain('\\nabla');
+            expect(result).not.toMatch(/&#10;abla/);
         });
     });
 
@@ -1919,6 +1961,129 @@ describe('LegacyXmlParser', () => {
             // Generous time bound. The previous full-scan implementation took ~21.8s for
             // ~10k lookups on a 1.2MB document; with the O(1) map this stays well under 8s.
             expect(elapsed).toBeLessThan(8000);
+        });
+    });
+
+    describe('legacy UDL iDevice with reference-based fields (#2159)', () => {
+        // Reproduces the interleaved serialization from issue #2159:
+        //
+        //   TextAreaField 33  (the CORRECT content for the UDL iDevice)
+        //   └── _idevice → JsIdevice 34   (udl-content; fields → <reference key="33">)
+        //       └── parentNode → Node 58
+        //           └── parent → Node 37
+        //               └── idevices → JsIdevice 35
+        //                   └── fields → TextAreaField 36  (a DIFFERENT iDevice's content)
+        //
+        // Because the pickle serializer inlines JsIdevice 34's whole parentNode subtree,
+        // TextAreaField 36 is physically nested inside JsIdevice 34's <instance>, while
+        // JsIdevice 34's own fields hold only a <reference key="33">. A handler that
+        // ignores <reference> in the fields list and then recursively searches every
+        // descendant <instance> for a TextAreaField would pick field 36 and overwrite the
+        // correct content the parser had already resolved from the field reference.
+        const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <reference key="34"/>
+        </list>
+        <string role="key" value="children"/>
+        <list/>
+        <string role="key" value="_legacyGraph"/>
+        <instance class="exe.engine.field.TextAreaField" reference="33">
+          <dictionary>
+            <string role="key" value="_idevice"/>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="34">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <string value="udl-content"/>
+                <string role="key" value="class_"/>
+                <unicode value="UDLcontent"/>
+                <string role="key" value="_title"/>
+                <unicode value="O voso diario"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <reference key="33"/>
+                </list>
+                <string role="key" value="parentNode"/>
+                <instance class="exe.engine.node.Node" reference="58">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Diario de aprendizaxe"/>
+                    <string role="key" value="idevices"/>
+                    <list>
+                      <reference key="34"/>
+                    </list>
+                    <string role="key" value="parent"/>
+                    <instance class="exe.engine.node.Node" reference="37">
+                      <dictionary>
+                        <string role="key" value="_title"/>
+                        <unicode value="Parent page"/>
+                        <string role="key" value="parent"/>
+                        <reference key="2"/>
+                        <string role="key" value="idevices"/>
+                        <list>
+                          <instance class="exe.engine.jsidevice.JsIdevice" reference="35">
+                            <dictionary>
+                              <string role="key" value="_iDeviceDir"/>
+                              <string value="udl-content"/>
+                              <string role="key" value="_title"/>
+                              <unicode value="Wrong idevice"/>
+                              <string role="key" value="fields"/>
+                              <list>
+                                <instance class="exe.engine.field.TextAreaField" reference="36">
+                                  <dictionary>
+                                    <string role="key" value="_idevice"/>
+                                    <reference key="35"/>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="&lt;div class=&quot;exe-udlContent exe-udlContent-engagement&quot;&gt;&lt;img src=&quot;resources/66-removebg-preview.png&quot; alt=&quot;&quot;/&gt;&lt;p&gt;Agora que xa sabedes cal é o reto, é o momento de explorar o que sabedes.&lt;/p&gt;&lt;/div&gt;"/>
+                                  </dictionary>
+                                </instance>
+                              </list>
+                            </dictionary>
+                          </instance>
+                        </list>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </dictionary>
+            </instance>
+            <string role="key" value="content_w_resourcePaths"/>
+            <unicode value="&lt;div class=&quot;exe-udlContent exe-udlContent-expression&quot;&gt;&lt;img src=&quot;resources/ddAprendizaxe360_px.png&quot; alt=&quot;&quot;/&gt;&lt;p&gt;Ides cubrir os apartados da Fase 2 do voso diario de aprendizaxe.&lt;/p&gt;&lt;/div&gt;"/>
+          </dictionary>
+        </instance>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+        it('uses the field <reference> content, not a nested foreign TextAreaField', () => {
+            const result = parser.parse(legacyXml);
+
+            const udlIdevices = result.pages
+                .flatMap(p => p.blocks.flatMap(b => b.idevices))
+                .filter(d => d.id === 'idevice-34');
+
+            expect(udlIdevices.length).toBeGreaterThan(0);
+            for (const idevice of udlIdevices) {
+                // Field 33 (the authoritative content resolved via <reference key="33">).
+                expect(idevice.htmlView).toContain('ddAprendizaxe360_px.png');
+                expect(idevice.htmlView).toContain('Ides cubrir os apartados da Fase 2');
+                // Field 36 belongs to a DIFFERENT iDevice and must never leak in here.
+                expect(idevice.htmlView).not.toContain('66-removebg-preview.png');
+                expect(idevice.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(idevice.type).toBe('udl-content');
+            }
         });
     });
 });
