@@ -688,6 +688,12 @@ var $interactivevideo = {
                 controller.on('error', function () {
                     self.showYoutubeFallback();
                 });
+                controller.on('closed', function () {
+                    // The single-media bridge was handed to another instance, or the parent
+                    // modal was closed: drop the dead controller so stale play/show/seek can
+                    // no longer drive the now-foreign parent media while our clock goes stale.
+                    self.mediaController = null;
+                });
             })
             .catch(function () {
                 self.showYoutubeFallback();

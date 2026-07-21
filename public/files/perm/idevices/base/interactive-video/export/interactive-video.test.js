@@ -616,5 +616,29 @@ describe('interactive-video iDevice export', () => {
       $interactivevideo.controls.seek(42);
       expect(calls).toEqual([['seek', 42], ['track', 42]]);
     });
+
+    it("startBridgePlayer clears the controller when the parent fires 'closed' (supersede)", async () => {
+      $interactivevideo.type = 'youtube';
+      // Skip unrelated activity/DOM wiring; only the bridge callbacks matter here.
+      $interactivevideo.complete = () => {};
+      const handlers = {};
+      const controller = { on: (event, cb) => { handlers[event] = cb; } };
+      global.window.exeMediaBridge = {
+        shouldUseBridge: () => true,
+        openMedia: () => Promise.resolve(controller),
+      };
+
+      $interactivevideo.startBridgePlayer();
+      // Flush the openMedia().then() microtask that stores the controller.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect($interactivevideo.mediaController).toBe(controller);
+      // The single-media slot was handed to another instance: the controller retires,
+      // so stale play/show/seek must no longer drive the now-foreign parent media.
+      expect(typeof handlers.closed).toBe('function');
+      handlers.closed();
+      expect($interactivevideo.mediaController).toBeNull();
+    });
   });
 });
