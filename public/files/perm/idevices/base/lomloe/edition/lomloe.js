@@ -1427,7 +1427,9 @@ var $exeDevice = (function () {
             var key = matGroupKey(sel.etapa, sel.nivel, sel.codArea);
             if (!groups.has(key)) {
                 groups.set(key, {
-                    label: sel.etapa + ' · ' + sel.nivel + ' · ' + sel.denominacion,
+                    // Display the remapped (inclusive) level label; the raw
+                    // sel.nivel remains the canonical grouping key above.
+                    label: sel.etapa + ' · ' + getNivelLabel(sel.nivel) + ' · ' + sel.denominacion,
                     items: []
                 });
             }
@@ -1607,7 +1609,7 @@ var $exeDevice = (function () {
                 group.items.forEach(function (sel) {
                     html += '<tr>';
                     if (isFirstInGroup) {
-                        var compTip = [sel.etapa, sel.nivel, sel.denominacion]
+                        var compTip = [sel.etapa, getNivelLabel(sel.nivel), sel.denominacion]
                             .filter(Boolean).join(' · ');
                         if (group.descripcionComp) {
                             compTip += (compTip ? '\n\n' : '') + group.descripcionComp;

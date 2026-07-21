@@ -22,6 +22,25 @@ const DATASET = {
     },
 };
 
+// A restored criterio selection whose `nivel` holds the canonical dataset key.
+// The editor must show the remapped inclusive label wherever the level is
+// presented to the teacher, while the persisted key stays untouched.
+const CRITERIO_SELECTION = {
+    id: ['criterio', 'Haur Hezkuntza', 'Lehen zikloa (0-3 urte)', 'AREA', 'CE1', 'C1'].join('\x1F'),
+    type: 'criterio',
+    dataset: 'ES-PV',
+    etapa: 'Haur Hezkuntza',
+    nivel: 'Lehen zikloa (0-3 urte)',
+    codArea: 'AREA',
+    denominacion: 'Test Area',
+    codigoComp: 'CE1',
+    descripcionComp: 'Competency description',
+    codigoCriterio: 'C1',
+    descripcionCriterio: 'Criterion description',
+    competenciasClave: [],
+    partial: false,
+};
+
 function buildMockElement() {
     const element = document.createElement('article');
     element.setAttribute('idevice-id', 'test-lomloe-es-pv-level-labels');
@@ -60,5 +79,34 @@ describe('Euskadi Infantil level labels', () => {
             'Bigarren zikloa (3-6 urte)',
         ]);
         expect(device.save().lomloeSelectedNivel).toBe('Lehen zikloa (0-3 urte)');
+    });
+
+    it('remaps the Infantil level label in the selection panel and summary tooltip', async () => {
+        const element = buildMockElement();
+        globalThis.fetch = vi.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(DATASET),
+        }));
+
+        device.init(element, {
+            lomloeDataset: 'ES-PV',
+            lomloeSelections: [structuredClone(CRITERIO_SELECTION)],
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        // Selection panel group title must use the inclusive (remapped) label,
+        // not the raw canonical dataset key.
+        const groupTitle = element.querySelector('.lomloe-selected-group-title');
+        expect(groupTitle.textContent).toBe('Haur Hezkuntza · Lehen zikloa (0-2 urte) · Test Area');
+        expect(groupTitle.textContent).not.toContain('0-3');
+
+        // The exported/persisted summary tooltip must also use the remapped label.
+        const summaryHtml = device.save().lomloeSummaryHtml;
+        expect(summaryHtml).toContain('data-lomloe-tip="Haur Hezkuntza · Lehen zikloa (0-2 urte)');
+        expect(summaryHtml).not.toContain('0-3 urte');
+
+        // The persisted selection key stays canonical (unchanged).
+        expect(device.save().lomloeSelections[0].nivel).toBe('Lehen zikloa (0-3 urte)');
     });
 });
