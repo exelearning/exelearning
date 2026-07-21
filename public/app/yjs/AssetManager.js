@@ -55,6 +55,13 @@ class AssetManager {
   // values (alt text, accessibility title, caption heading/notes) are NOT here.
   static CENTRALIZED_METADATA_FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'];
 
+  // iDevice types whose components are IGNORED by the asset-reference scanners.
+  // A Resource Report snapshots an asset:// URL for EVERY project asset
+  // (resources[].assetUrl), so counting it as a reference would mark every
+  // asset as used: reference sorting, the File Manager usage labels and the
+  // report's own "used in this project" filter would all become self-referential.
+  static REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES = new Set(['resource-report']);
+
   /**
    * @param {string} projectId - Project UUID
    */
@@ -748,9 +755,13 @@ class AssetManager {
   }
 
   /**
-   * Iterate every component (iDevice) in the project, invoking the callback with the
-   * component Y.Map plus its page/block context. Single shared traversal used by all
-   * asset-reference helpers (count, referenced ids, per-id counts, usage locations).
+   * Iterate every reference-scannable component (iDevice) in the project, invoking the
+   * callback with the component Y.Map plus its page/block context. Single shared
+   * traversal used by all asset-reference helpers (count, referenced ids, per-id
+   * counts, usage locations). Components whose type is in
+   * {@link AssetManager.REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES} are skipped: they
+   * snapshot asset:// URLs for assets they merely list (not use), so including them
+   * would make every asset count as referenced.
    * @param {(ctx: {compMap: Object, pageMap: Object, blockMap: Object, pageIndex: number, blockIndex: number}) => void} callback
    * @private
    */
@@ -769,7 +780,10 @@ class AssetManager {
         if (!components) continue;
         for (let k = 0; k < components.length; k++) {
           const compMap = components.get(k);
-          if (compMap) callback({ compMap, pageMap, blockMap, pageIndex: i, blockIndex: j });
+          if (!compMap) continue;
+          const ideviceType = compMap.get('ideviceType') || compMap.get('type') || '';
+          if (AssetManager.REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES.has(ideviceType)) continue;
+          callback({ compMap, pageMap, blockMap, pageIndex: i, blockIndex: j });
         }
       }
     }

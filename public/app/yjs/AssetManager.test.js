@@ -2298,6 +2298,8 @@ describe('AssetManager', () => {
               return c.properties;
             case 'ideviceType':
               return c.ideviceType;
+            case 'type':
+              return c.type;
             case 'title':
               return c.title;
             case 'id':
@@ -2419,6 +2421,58 @@ describe('AssetManager', () => {
       expect(used[0].ideviceTitle).toBe('custom-type');
       expect(assetManager.getAssetUsageLocations('missing')).toEqual([]);
       expect(assetManager.getAssetUsageLocations('')).toEqual([]);
+    });
+
+    describe('resource-report exclusion (self-reference)', () => {
+      // A Resource Report snapshots asset:// URLs for EVERY asset in its
+      // jsonProperties (resources[].assetUrl). It must never count as a reference,
+      // or one default report marks every asset as used.
+      const reportComponent = {
+        ideviceType: 'resource-report',
+        id: 'rr-1',
+        props: {
+          resources: [
+            { id: 'a1', assetUrl: 'asset://a1.jpg' },
+            { id: 'b2', assetUrl: 'asset://b2.png' },
+          ],
+        },
+      };
+
+      it('countAssetReferences ignores resource-report snapshots', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        // a1 is genuinely used by the text iDevice; b2 only appears in the report.
+        expect(assetManager.countAssetReferences('a1')).toBe(1);
+        expect(assetManager.countAssetReferences('b2')).toBe(0);
+      });
+
+      it('getAllAssetReferenceCounts ignores resource-report snapshots', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        const counts = assetManager.getAllAssetReferenceCounts();
+        expect(counts.get('a1')).toBe(1);
+        expect(counts.has('b2')).toBe(false);
+      });
+
+      it('getReferencedAssetIds ignores resource-report snapshots (fixes the "used" filter)', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        const ids = assetManager.getReferencedAssetIds();
+        expect(ids.has('a1')).toBe(true);
+        expect(ids.has('b2')).toBe(false);
+      });
+
+      it('getAssetUsageLocations never lists the resource-report itself', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text', id: 't-1' }]);
+        const locations = assetManager.getAssetUsageLocations('a1');
+        expect(locations.length).toBe(1);
+        expect(locations[0].ideviceType).toBe('text');
+        expect(assetManager.getAssetUsageLocations('b2')).toEqual([]);
+      });
+
+      it('also excludes components using the legacy "type" key', () => {
+        setMockYDoc([
+          { type: 'resource-report', props: { resources: [{ assetUrl: 'asset://a1.jpg' }] } },
+        ]);
+        expect(assetManager.countAssetReferences('a1')).toBe(0);
+      });
     });
   });
 
