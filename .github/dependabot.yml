@@ -37,6 +37,22 @@ updates:
           - "vite"
           - "sass"
           - "@biomejs/*"
+      # Vendored front-end libraries: browser assets generated from npm by
+      # scripts/copy-vendor-libs.js (the bundle:vendor build step). Grouped so
+      # updates to these shipped-to-browser libs are reviewed together.
+      frontend-libs:
+        patterns:
+          - "jquery"
+          - "jquery-ui"
+          - "bootstrap"
+          - "showdown"
+          - "fflate"
+          - "abcjs"
+          - "html2canvas"
+          - "interactjs"
+          - "simplelightbox"
+          - "dompurify"
+          - "fabric"
 
   # Dockerfile dependencies (e.g., base images)
   - package-ecosystem: "docker"

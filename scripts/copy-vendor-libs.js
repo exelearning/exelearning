@@ -52,11 +52,28 @@ function copyFile(src, dest) {
     console.log(`  ✓ ${path.relative(ROOT, dest)}`);
 }
 
-/** Copy every entry in COPIES. Throws on the first failure. */
+/**
+ * Append `content` to a file already produced by copyFile. Throws (rather than
+ * calling process.exit) so the CLI wrapper turns failures into a non-zero exit
+ * while keeping the error path unit-testable.
+ */
+function appendFile(dest, content) {
+    try {
+        fs.appendFileSync(dest, content);
+    } catch (err) {
+        throw new Error(`could not append to ${dest}: ${err.message}`);
+    }
+    console.log(`  ✎ ${path.relative(ROOT, dest)}`);
+}
+
+/** Copy every entry in COPIES, then re-apply local overrides. Throws on the first failure. */
 function run() {
     console.log('Copying vendor libs from node_modules...');
     for (const { src, dest } of COPIES) {
         copyFile(src, dest);
+    }
+    for (const { dest, content } of APPENDS) {
+        appendFile(dest, content);
     }
     console.log('Done.');
 }
@@ -143,9 +160,36 @@ const COPIES = [
     },
 ];
 
+/**
+ * Local CSS override for simplelightbox (marker: SDWEB). The npm distribution
+ * does not carry it, so it is re-appended to every generated
+ * simple-lightbox.min.css after the pristine file is copied. Without this the
+ * override — aqua links plus caption/license padding — is lost on every rebuild,
+ * so exported image galleries silently drop those styles. copyFile truncates the
+ * destination first, so a rebuild always ends with exactly one override block.
+ */
+const SIMPLELIGHTBOX_CSS_OVERRIDE =
+    '\n/* +++++ SDWEB +++++ */' +
+    '.sl-wrapper a{color:aqua}' +
+    '.sl-wrapper a{padding-right:10px}' +
+    '.sl-wrapper span{padding-right:10px}' +
+    '.sl-wrapper .license,.sl-wrapper .license a,.sl-wrapper .custom-license,.sl-wrapper .custom-license a{padding-right:0}' +
+    '/* +++++++++++++++++ */\n';
+
+const APPENDS = [
+    { dest: pub('libs/simplelightbox/dist/simple-lightbox.min.css'), content: SIMPLELIGHTBOX_CSS_OVERRIDE },
+    {
+        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
+        content: SIMPLELIGHTBOX_CSS_OVERRIDE,
+    },
+];
+
 // Exported for unit testing. The CLI entry point runs below.
 module.exports = {
+    APPENDS,
     COPIES,
+    SIMPLELIGHTBOX_CSS_OVERRIDE,
+    appendFile,
     copyFile,
     resetCreatedDirs,
     run,
