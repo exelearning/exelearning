@@ -1481,6 +1481,70 @@ describe('WebMCPService', () => {
             expect(payload.htmlContent).toContain('<em>idea</em>');
             expect(payload.htmlContent).toContain('<li>x</li>');
         });
+
+        // Create paths (exe.components.create / exe.idevices.text.add) must pass
+        // agent HTML through the SAME sanitise choke-point as the setters. Before
+        // the fix these fed raw args.html straight into bridge.addComponent.
+        it('createComponent strips <script> and event handlers before persisting', async () => {
+            const { svc, bridge } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.createComponent({
+                pageId: 'page-1',
+                blockId: 'block-1',
+                ideviceType: 'text',
+                html: '<p>Safe</p><img src=x onerror=alert(1)><script>evil()</script>',
+            });
+
+            const initialData = bridge.addComponent.mock.calls[0][3];
+            expect(initialData.htmlContent).toContain('Safe');
+            expect(initialData.htmlContent).not.toContain('<script');
+            expect(initialData.htmlContent).not.toContain('evil()');
+            expect(initialData.htmlContent.toLowerCase()).not.toContain('onerror');
+            expect(initialData.htmlContent).not.toContain('alert(1)');
+            // htmlView and the synced JSON copy must be sanitised as well.
+            expect(initialData.htmlView.toLowerCase()).not.toContain('onerror');
+            const json = JSON.parse(initialData.jsonProperties);
+            expect(json.textTextarea).not.toContain('<script');
+            expect(json.textTextarea.toLowerCase()).not.toContain('onerror');
+        });
+
+        it('addTextIdevice strips <script> and event handlers before persisting', async () => {
+            const { svc, bridge } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.addTextIdevice({
+                pageId: 'page-1',
+                blockName: 'Resumen',
+                html: '<p>Safe</p><img src=x onerror=alert(1)><script>evil()</script>',
+            });
+
+            const initialData = bridge.addComponent.mock.calls[0][3];
+            expect(initialData.htmlContent).toContain('Safe');
+            expect(initialData.htmlContent).not.toContain('<script');
+            expect(initialData.htmlContent).not.toContain('evil()');
+            expect(initialData.htmlContent.toLowerCase()).not.toContain('onerror');
+            expect(initialData.htmlContent).not.toContain('alert(1)');
+            expect(initialData.htmlView.toLowerCase()).not.toContain('onerror');
+            const json = JSON.parse(initialData.jsonProperties);
+            expect(json.textTextarea).not.toContain('<script');
+            expect(json.textTextarea.toLowerCase()).not.toContain('onerror');
+        });
+
+        it('create paths preserve asset:// image srcs (parity with setters)', async () => {
+            const { svc, bridge } = makeBridgeService();
+            vi.spyOn(svc, 'getSelectedPageId').mockReturnValue('page-1');
+
+            await svc.createComponent({
+                pageId: 'page-1',
+                blockId: 'block-1',
+                ideviceType: 'text',
+                html: '<figure><img src="asset://a1.png" alt="ok"></figure>',
+            });
+
+            const initialData = bridge.addComponent.mock.calls[0][3];
+            expect(initialData.htmlContent).toContain('asset://a1.png');
+        });
     });
 
     it('deleteComponent calls bridge.deleteComponent and returns { componentId, deleted }', async () => {

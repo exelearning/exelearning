@@ -864,12 +864,14 @@ export default class WebMCPService {
             initialData.title = args.title;
         }
         if (typeof args.html === 'string') {
-            initialData.htmlContent = args.html;
+            // Agent-supplied HTML is untrusted; sanitise before it reaches the Y.Doc.
+            const html = sanitizeRichHtml(args.html);
+            initialData.htmlContent = html;
             if (isTextIdeviceType(ideviceType)) {
-                initialData.htmlView = args.html;
+                initialData.htmlView = html;
                 if (args.jsonProperties === undefined) {
                     initialData.jsonProperties = JSON.stringify(
-                        this.buildTextIdeviceJsonProperties(args.html),
+                        this.buildTextIdeviceJsonProperties(html),
                     );
                 }
             }
@@ -962,10 +964,12 @@ export default class WebMCPService {
         const { pageId, blockId, blockName, iconName } =
             this.prepareIdeviceTarget(args);
 
-        const html =
+        // Agent-supplied HTML is untrusted; sanitise before it reaches the Y.Doc.
+        const html = sanitizeRichHtml(
             typeof args.html === 'string' && args.html.trim().length > 0
                 ? args.html
-                : '<p></p>';
+                : '<p></p>',
+        );
 
         const initialData = this.buildComponentInitialData({
             title: optionalString(args.title) || blockName,
