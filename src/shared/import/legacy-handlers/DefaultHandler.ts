@@ -20,6 +20,15 @@ export class DefaultHandler extends BaseLegacyHandler {
     }
 
     /**
+     * This is the generic catch-all handler.
+     * Its best-effort content must never overwrite an htmlView the parser already
+     * resolved from an authoritative field reference (issue #2159).
+     */
+    isFallback(): boolean {
+        return true;
+    }
+
+    /**
      * Default to 'text' iDevice for unknown types
      */
     getTargetType(): string {
@@ -29,11 +38,12 @@ export class DefaultHandler extends BaseLegacyHandler {
     /**
      * Try to extract HTML content from various common fields
      */
-    extractHtmlView(dict: Element, _context?: IdeviceHandlerContext): string {
+    extractHtmlView(dict: Element, context?: IdeviceHandlerContext): string {
         if (!dict) return '';
 
-        // Strategy 1: Look for "fields" list (JsIdevice format)
-        const fieldsResult = this.extractFieldsContent(dict);
+        // Strategy 1: Look for "fields" list (JsIdevice format).
+        // Pass the context so <reference> fields resolve to their instance (#2159).
+        const fieldsResult = this.extractFieldsContent(dict, context);
         if (fieldsResult) {
             return this.stripLegacyExeTextWrapper(fieldsResult);
         }
