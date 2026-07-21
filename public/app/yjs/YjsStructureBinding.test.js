@@ -3069,6 +3069,33 @@ describe('YjsStructureBinding', () => {
       expect(blockMap.get('iconName')).toBe('mi-alarm');
       expect(blockMap.get('icon')).toEqual({ source: 'material', value: 'alarm' });
     });
+
+    it('classifies asset icons from legacy iconName as asset, not theme', () => {
+      const assetBlock = {
+        blockId: 'block-3',
+        blockName: 'Asset Block',
+        iconName: 'asset://uuid-123/icon.jpg',
+        odeComponentsSyncs: [],
+      };
+
+      const assetMap = binding.createBlockMapFromApi(assetBlock);
+      integrateYType(assetMap);
+
+      expect(assetMap.get('iconName')).toBe('asset://uuid-123/icon.jpg');
+      expect(assetMap.get('icon')).toEqual({ source: 'asset', value: 'asset://uuid-123/icon.jpg' });
+
+      const slashBlock = {
+        blockId: 'block-4',
+        blockName: 'Slash Asset Block',
+        iconName: '/files/perm/icon.png',
+        odeComponentsSyncs: [],
+      };
+
+      const slashMap = binding.createBlockMapFromApi(slashBlock);
+      integrateYType(slashMap);
+
+      expect(slashMap.get('icon')).toEqual({ source: 'asset', value: '/files/perm/icon.png' });
+    });
   });
 
   describe('getPageProperties', () => {

@@ -2982,7 +2982,13 @@ class YjsStructureBinding {
     blockMap.set('blockName', apiBlock.blockName ?? '');  // Preserve empty string
     const importedIconName = apiBlock.iconName || '';
     blockMap.set('iconName', importedIconName);
-    blockMap.set('icon', importedIconName ? (importedIconName.startsWith('mi-') ? { source: 'material', value: importedIconName.replace(/^mi-/, '') } : { source: 'theme', value: importedIconName }) : { source: 'none', value: '' });
+    // Derive the structured icon descriptor via the shared helper (JS twin of
+    // src/shared/block-icon.ts) so asset icons (asset://… or /-prefixed) are
+    // classified as { source: 'asset' } rather than mislabelled 'theme'.
+    // Resolved lazily: blockIconRuntime loads after this file (yjs-loader group 4).
+    const blockIconRuntime = window.eXeBlockIconRuntime
+      || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
+    blockMap.set('icon', blockIconRuntime.deriveBlockIcon(importedIconName));
     blockMap.set('blockType', apiBlock.blockType || 'default');
     blockMap.set('order', apiBlock.order ?? 0);
     blockMap.set('createdAt', new Date().toISOString());
