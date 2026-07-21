@@ -10,10 +10,11 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| [ADR-0001](ADR-0001-runtime-specific-elpx-import-limits.md) | Runtime-specific ELP/ELPX decompression limits | Proposed | 2026-07-21 |
 
 ## Proposed ADRs
 
-_No proposed ADRs yet._
+- [ADR-0001](ADR-0001-runtime-specific-elpx-import-limits.md) — Runtime-specific ELP/ELPX decompression limits (#2193)
 
 ## Accepted ADRs
 
