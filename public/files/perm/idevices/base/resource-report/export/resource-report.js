@@ -17,7 +17,7 @@ var $resourcereport = {
      * Translation helper — uses the global _() when available (build-time language),
      * falls back to identity so the module is testable in isolation.
      */
-    t: function (s) {
+    trans: function (s) {
         return typeof _ === 'function' ? _(s) : s;
     },
 
@@ -124,14 +124,14 @@ var $resourcereport = {
         const showView = config.showViewLink !== false;
         const showDownload = config.showDownloadLink !== false;
         if (!res.assetUrl || (!showView && !showDownload)) return '';
-        const forName = esc(res.title || res.filename || this.t('Missing resource'));
+        const forName = esc(res.title || res.filename || this.trans('Missing resource'));
         let actions = '';
         if (showView) {
-            const viewLabel = this.t('View');
+            const viewLabel = this.trans('View');
             actions += `<a class="resource-report-view" href="${esc(res.assetUrl)}" target="_blank" rel="noopener" aria-label="${viewLabel}: ${forName}">${viewLabel}</a>`;
         }
         if (showDownload) {
-            const dlLabel = this.t('Download');
+            const dlLabel = this.trans('Download');
             actions += `<a class="resource-report-download" href="${esc(res.assetUrl)}" download="${esc(res.filename)}" aria-label="${dlLabel}: ${forName}">${dlLabel}</a>`;
         }
         return `<div class="resource-report-actions">${actions}</div>`;
@@ -142,7 +142,7 @@ var $resourcereport = {
      */
     renderItem: function (res, config) {
         const esc = this.escapeHtml.bind(this);
-        const title = res.title || res.filename || this.t('Missing resource');
+        const title = res.title || res.filename || this.trans('Missing resource');
         const thumb = this.thumbHtml(res, config);
 
         let body = `<span class="resource-report-item-title">${esc(title)}</span>`;
@@ -168,16 +168,18 @@ var $resourcereport = {
     },
 
     /**
-     * Columns shown in the table layout, honoring the show* toggles.
+     * Columns shown in the table layout, honoring the show* toggles. Labels are
+     * translated here with literal keys so the i18n extractor can pick them up
+     * (a variable passed to trans() would be invisible to key extraction).
      */
     tableColumns: function (config) {
-        const cols = [{ key: 'resource', label: 'Resource' }];
-        if (config.showThumbnail) cols.unshift({ key: 'thumb', label: 'Preview' });
-        if (config.showDescription) cols.push({ key: 'description', label: 'Description' });
-        if (config.showAuthor) cols.push({ key: 'author', label: 'Author' });
-        if (config.showLicense) cols.push({ key: 'license', label: 'License' });
+        const cols = [{ key: 'resource', label: this.trans('Resource') }];
+        if (config.showThumbnail) cols.unshift({ key: 'thumb', label: this.trans('Preview') });
+        if (config.showDescription) cols.push({ key: 'description', label: this.trans('Description') });
+        if (config.showAuthor) cols.push({ key: 'author', label: this.trans('Author') });
+        if (config.showLicense) cols.push({ key: 'license', label: this.trans('License') });
         if (config.showViewLink !== false || config.showDownloadLink !== false) {
-            cols.push({ key: 'links', label: 'Links' });
+            cols.push({ key: 'links', label: this.trans('Links') });
         }
         return cols;
     },
@@ -191,7 +193,7 @@ var $resourcereport = {
             case 'thumb':
                 return this.thumbHtml(res, config);
             case 'resource': {
-                const title = res.title || res.filename || this.t('Missing resource');
+                const title = res.title || res.filename || this.trans('Missing resource');
                 let out = `<span class="resource-report-item-title">${esc(title)}</span>`;
                 if (config.showFileName && res.filename) {
                     out += `<span class="resource-report-filename">${esc(res.filename)}</span>`;
@@ -217,7 +219,7 @@ var $resourcereport = {
     buildTable: function (resources, config) {
         const cols = this.tableColumns(config);
         let head = '';
-        for (const c of cols) head += `<th scope="col">${this.escapeHtml(this.t(c.label))}</th>`;
+        for (const c of cols) head += `<th scope="col">${this.escapeHtml(c.label)}</th>`;
         let rows = '';
         for (const res of resources) {
             let cells = '';
@@ -348,7 +350,7 @@ var $resourcereport = {
             html += `<p class="resource-report-intro">${esc(config.intro)}</p>`;
         }
         if (resources.length === 0) {
-            html += `<p class="resource-report-empty">${this.t('No resources available')}</p>`;
+            html += `<p class="resource-report-empty">${this.trans('No resources available')}</p>`;
         } else if (layout === 'table') {
             html += this.buildTable(resources, config);
         } else {

@@ -190,6 +190,27 @@ describe('resource-report iDevice export', () => {
         expect(html).not.toContain('<ul class="resource-report-list');
     });
 
+    it('translates table headers and action labels through the global _() when present', () => {
+        // Labels are literal keys inside trans('…') so the i18n extractor sees them;
+        // at runtime they must flow through the build-time translator.
+        global._ = key => `[t]${key}`;
+        try {
+            const html = render(
+                [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, author: 'Ada', license: 'Creative Commons BY' }],
+                { layout: 'table' },
+            );
+            expect(html).toContain('<th scope="col">[t]Resource</th>');
+            expect(html).toContain('<th scope="col">[t]Preview</th>');
+            expect(html).toContain('<th scope="col">[t]Author</th>');
+            expect(html).toContain('<th scope="col">[t]License</th>');
+            expect(html).toContain('<th scope="col">[t]Links</th>');
+            expect(html).toContain('>[t]View</a>');
+            expect(html).toContain('>[t]Download</a>');
+        } finally {
+            delete global._;
+        }
+    });
+
     it('omits table columns whose toggles are off', () => {
         const html = render(
             [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, author: 'Ada', license: 'Creative Commons BY' }],
