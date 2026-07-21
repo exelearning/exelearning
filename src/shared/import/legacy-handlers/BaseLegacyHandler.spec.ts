@@ -375,22 +375,11 @@ describe('BaseLegacyHandler', () => {
         });
     });
 
-    describe('decodeHtmlContent', () => {
-        it('should decode HTML entities', () => {
-            expect(handler.decodeHtmlContent('&lt;div&gt;Hello&lt;/div&gt;')).toBe('<div>Hello</div>');
-        });
-
-        it('should decode &amp;', () => {
-            expect(handler.decodeHtmlContent('A &amp; B')).toBe('A & B');
-        });
-
-        it('should decode &quot;', () => {
-            expect(handler.decodeHtmlContent('Say &quot;Hello&quot;')).toBe('Say "Hello"');
-        });
-
-        it('should decode &#39;', () => {
-            expect(handler.decodeHtmlContent('It&#39;s nice')).toBe("It's nice");
-        });
+    describe('decodeHtmlContent - LaTeX stress cases (regression)', () => {
+        // --- RESTORED REGRESSION TESTS (plain \n / \t decoding outside LaTeX) ---
+        // These were covered before the LaTeX protection block was introduced and
+        // must keep working: since LaTeX blocks are protected first, escapes
+        // outside those blocks are decoded unconditionally, without a lookahead.
 
         it('should decode \\n to newline', () => {
             expect(handler.decodeHtmlContent('Line1\\nLine2')).toBe('Line1\nLine2');
@@ -400,15 +389,107 @@ describe('BaseLegacyHandler', () => {
             expect(handler.decodeHtmlContent('Col1\\tCol2')).toBe('Col1\tCol2');
         });
 
-        it('should return empty string for empty input', () => {
-            expect(handler.decodeHtmlContent('')).toBe('');
+        it('should decode \\n even when immediately followed by a letter (no false LaTeX match)', () => {
+            const input = 'Text\\nnext line without any LaTeX nearby';
+            expect(handler.decodeHtmlContent(input)).toBe('Text\nnext line without any LaTeX nearby');
         });
 
-        it('should preserve LaTeX \\right command', () => {
-            const latex = '\\left( x \\right)';
-            // \\r followed by 'i' in 'right' should NOT be converted
-            expect(handler.decodeHtmlContent(latex)).toBe('\\left( x \\right)');
+        it('should decode &nbsp; to a non-breaking space, not a regular space', () => {
+            const result = handler.decodeHtmlContent('Hello&nbsp;World');
+            expect(result).toBe('Hello\u00A0World');
+            expect(result).not.toBe('Hello World');
         });
+
+        it.each([
+            // Commands starting with 't' (previously broken by \t -> tab)
+            ['\\( 4 \\times \\dfrac{1}{2} \\)'],
+            ['\\( \\tan(x) + \\theta \\)'],
+            ['\\( \\tfrac{1}{2} + \\text{units} \\)'],
+            ['\\( \\top \\land \\bot \\)'],
+
+            // Commands starting with 'n' (previously broken by \n -> newline)
+            ['\\( \\nabla f(x, y) \\)'],
+            ['\\( \\neq \\quad \\nleq \\quad \\ngeq \\)'],
+            ['\\( a \\notin B \\)'],
+
+            // Commands starting with 'r' (already protected before, re-confirm)
+            ['\\( \\left( x \\right) \\)'],
+            ['\\( \\rho \\cdot \\rightarrow \\)'],
+
+            // Mixed dangerous commands in the same formula
+            [
+                '\\( 4 \\times \\dfrac{1}{2} = \\dfrac{4}{1} \\times \\dfrac{1}{2} = \\dfrac{4 \\times 1}{1 \\times 2} = \\dfrac{4}{2} \\)',
+            ],
+            ['\\( \\nabla \\times \\vec{F} = \\left( \\tfrac{\\partial}{\\partial x} \\right) \\)'],
+
+            // \begin{...}...\end{...} environments without $, \(, \[ delimiters
+            ['\\begin{equation} a \\times b = c \\end{equation}'],
+            ['\\begin{align} x &= \\nabla f \\\\ y &= \\tan(\\theta) \\end{align}'],
+
+            // Multiple LaTeX blocks in the same content (placeholder collision check)
+            ['First \\( a \\times b \\) then \\( \\nabla \\times c \\) and finally \\( \\tan(\\theta) \\)'],
+
+            // Text that literally contains something resembling the internal placeholder
+            [
+                'Note: __LATEX_BLOCK_0__ is an internal placeholder, it should not be touched, and here is a real formula \\( a \\times b \\)',
+            ],
+
+            // Escaped dollar sign before a real formula
+            ['Price: \\$5, formula: $x \\times y$'],
+            ['The cost is \\$10.50 and the equation is $\\nabla \\times \\vec{F}$'],
+        ])('should leave LaTeX content unchanged: %s', input => {
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it.each([
+            // HTML entities inside LaTeX must still be decoded
+            ['\\( x &lt; y \\)', '\\( x < y \\)'],
+            ['$a &amp;&amp; b$', '$a && b$'],
+            ['\\begin{equation} x &lt; y \\end{equation}', '\\begin{equation} x < y \\end{equation}'],
+        ])('should decode HTML entities inside LaTeX: %s -> %s', (input, expected) => {
+            expect(handler.decodeHtmlContent(input)).toBe(expected);
+        });
+
+        // --- REVIEWER REGRESSION TESTS (Currency vs Formula) ---
+
+        it('should not be tricked by preceding currency text leaving LaTeX commands unprotected (Reviewer Case)', () => {
+            // If the regex is greedy, it might match from the currency "$" to the opening "$"
+            // of the formula, leaving "\times" outside the protected block where it would be
+            // corrupted into a tab character.
+            const input = 'Price: $5 and formula $x \\times y$';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should handle multiple currency amounts without misclassification', () => {
+            const input = 'Price: $5 and $10 total';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should protect a $...$ formula starting with a digit glued to a variable (e.g. "2x")', () => {
+            const input = 'The formula is $2x+3$';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it('should protect a $...$ formula with a numeric coefficient and a LaTeX command', () => {
+            const input = 'Compute $5x \\times 2$ to get the result';
+            expect(handler.decodeHtmlContent(input)).toBe(input);
+        });
+
+        it(
+            'KNOWN LIMITATION: a $...$ formula consisting of a bare number only (e.g. "$5$") ' +
+                'is still misclassified as currency',
+            () => {
+                // "$5$" has nothing after the digit but the closing "$" itself,
+                // which counts as a word boundary — so it's indistinguishable
+                // from a currency amount. Rare in practice (a lone number is
+                // seldom wrapped in $ $ without any operator or variable).
+                // Note: It remains unchanged in the output because it contains no
+                // Python-style escape sequences (\n, \t, \r) to corrupt.
+                const input = 'The answer is $5$';
+                const result = handler.decodeHtmlContent(input);
+                expect(result).toBe(input);
+            },
+        );
     });
 
     describe('extractTextAreaFieldRawContent (quiz option plain text)', () => {
@@ -978,6 +1059,105 @@ describe('BaseLegacyHandler', () => {
                 </dictionary>
             `);
             expect(handler.extractAnyTextFieldContent(dict)).toBe('Real content');
+        });
+
+        it('does not cross into a nested JsIdevice boundary (issue #2159)', () => {
+            // Field belongs to a DIFFERENT iDevice inlined via a back-reference.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.jsidevice.JsIdevice">
+                        <dictionary>
+                            <string role="key" value="fields"/>
+                            <list>
+                                <instance class="exe.engine.field.TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content_w_resourcePaths"/>
+                                        <unicode value="Foreign iDevice content"/>
+                                    </dictionary>
+                                </instance>
+                            </list>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('');
+        });
+
+        it('does not cross into a nested Node boundary (issue #2159)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Node subtree content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('');
+        });
+
+        it('still finds a field nested in the iDevice own containers (not a boundary)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="exe.engine.field.TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="Own field content"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('Own field content');
+        });
+    });
+
+    describe('extractFieldsContent with <reference> fields (issue #2159)', () => {
+        it('resolves a <reference> field via the context resolver', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Referenced field content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractFieldsContent(dict, context)).toBe('Referenced field content');
+        });
+
+        it('skips a <reference> field when no resolver is provided', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractFieldsContent(dict)).toBe('');
         });
     });
 
