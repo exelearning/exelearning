@@ -1723,6 +1723,39 @@ describe('ElpxImporter - Legacy Format', () => {
             ydoc.destroy();
         });
 
+        it('should persist pp_addKeyboardNavigation through the ELP/ELPX round-trip', async () => {
+            const fflate = await import('fflate');
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Keyboard Nav Round-Trip</value></odeProperty>
+  <odeProperty><key>pp_addKeyboardNavigation</key><value>true</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            // The export option enabled by the author must survive re-opening the file.
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('addKeyboardNavigation')).toBe(true);
+
+            ydoc.destroy();
+        });
+
         it('should handle legacy XML with footer and extra head content', async () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">
