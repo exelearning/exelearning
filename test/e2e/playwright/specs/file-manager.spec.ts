@@ -226,13 +226,11 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 /**
- * Expand the collapsible "Details" section in the sidebar. Filename, type, size,
- * dimensions, date, location and URL live here and are collapsed by default.
+ * Activate the "Details" tab in the sidebar. Filename, type, size, dimensions,
+ * date, location and URL live here; the Metadata tab is active by default.
  */
 async function openDetailsSection(page: Page): Promise<void> {
-    await page.locator('#modalFileManager .media-library-section-details').evaluate(d => {
-        (d as HTMLDetailsElement).open = true;
-    });
+    await page.locator('#modalFileManager .media-library-tab[data-media-tab="details"]').click();
 }
 
 /**

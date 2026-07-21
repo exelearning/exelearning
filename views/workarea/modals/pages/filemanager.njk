@@ -34,10 +34,10 @@
                     <div class="media-library-sort-controls d-none d-md-flex">
                         <label>{{ 'Sort' | trans }}:</label>
                         <select class="form-select media-library-sort">
-                            <option value="name-asc">{{ 'Name A-Z' | trans }}</option>
-                            <option value="name-desc">{{ 'Name Z-A' | trans }}</option>
                             <option value="date-desc" selected>{{ 'Newest first' | trans }}</option>
                             <option value="date-asc">{{ 'Oldest first' | trans }}</option>
+                            <option value="name-asc">{{ 'Name A-Z' | trans }}</option>
+                            <option value="name-desc">{{ 'Name Z-A' | trans }}</option>
                             <option value="size-desc">{{ 'Largest first' | trans }}</option>
                             <option value="size-asc">{{ 'Smallest first' | trans }}</option>
                             <option value="type-asc">{{ 'Type A-Z' | trans }}</option>
@@ -54,11 +54,8 @@
                         </select>
                     </div>
 
-                    <div class="media-library-refcount-toggle d-none d-md-flex">
-                        <label class="form-check-label">
-                            <input type="checkbox" class="form-check-input media-library-show-refcount">
-                            {{ 'Show references' | trans }}
-                        </label>
+                    <div class="media-library-file-count text-muted small ms-auto d-none d-md-block">
+                        <span class="media-library-count-value">0</span> {{ 'files' | trans }}
                     </div>
                 </div>
 
@@ -69,9 +66,6 @@
                                 <span class="breadcrumb-item" data-path="" title="{{ 'Root' | trans }}">
                                     <span class="exe-icon">home</span>
                                 </span>
-                            </div>
-                            <div class="media-library-file-count text-muted small ms-auto pe-2">
-                                <span class="media-library-count-value">0</span> {{ 'files' | trans }}
                             </div>
                         </div>
                         <div class="media-library-search-indicator ps-2 d-none">
@@ -115,9 +109,23 @@
                             <p>{{ 'Select an item to view details' | trans }}</p>
                         </div>
                         <div class="media-library-sidebar-content" style="display:none;">
-                            <!-- Preview: collapsible so it can be folded away to free space -->
-                            <details class="media-library-section media-library-section-preview" open>
-                                <summary class="media-library-section-summary">{{ 'Preview' | trans }}</summary>
+                            <!-- Compact file header: thumbnail + name + technical summary + preview toggle -->
+                            <div class="media-library-file-header">
+                                <div class="media-library-header-thumb" aria-hidden="true">
+                                    <img src="" alt="" class="media-library-header-thumb-img" style="display:none;">
+                                    <span class="exe-icon media-library-header-thumb-icon">description</span>
+                                </div>
+                                <div class="media-library-header-info">
+                                    <p class="media-library-header-name"></p>
+                                    <p class="media-library-header-meta"></p>
+                                </div>
+                                <button type="button" class="media-library-preview-toggle" aria-expanded="false" title="{{ 'Toggle preview' | trans }}" aria-label="{{ 'Toggle preview' | trans }}">
+                                    <span class="exe-icon" aria-hidden="true">open_in_full</span>
+                                </button>
+                            </div>
+
+                            <!-- Large preview: folded away until the user expands it -->
+                            <div class="media-library-preview-wrap" hidden>
                                 <div class="media-library-preview">
                                     <img src="" alt="" class="media-library-preview-img">
                                     <video src="" class="media-library-preview-video" controls style="display:none;"></video>
@@ -126,14 +134,27 @@
                                         <span class="exe-icon file-icon">description</span>
                                     </div>
                                 </div>
-                            </details>
+                            </div>
 
-                            <div class="media-library-metadata">
-                                <!-- Editable metadata: first-class, expanded by default.
-                                     Field labels alone are enough — no sub-group headings. -->
-                                <details class="media-library-section media-library-section-metadata" open>
-                                    <summary class="media-library-section-summary">{{ 'Metadata' | trans }}</summary>
+                            <!-- Metadata / Details / Usage tabs (same segmented tab style used across the app) -->
+                            <ul class="nav nav-tabs media-library-tabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button type="button" class="nav-link media-library-tab active" data-media-tab="metadata" role="tab" aria-selected="true">{{ 'Metadata' | trans }}</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button type="button" class="nav-link media-library-tab" data-media-tab="details" role="tab" aria-selected="false">{{ 'Details' | trans }}</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button type="button" class="nav-link media-library-tab" data-media-tab="usage" role="tab" aria-selected="false">{{ 'Usage' | trans }}<span class="media-library-usage-tab-count"></span></button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content media-library-tab-content media-library-metadata">
+                                <!-- Editable centralized metadata (autosaved; the caption preview reuses
+                                     the shared figure-caption builder so it matches exports). -->
+                                <div class="tab-pane active media-library-tab-pane media-library-section-metadata" data-media-pane="metadata" role="tabpanel">
                                     <form class="media-library-edit-metadata" style="display:none;">
+                                        <p class="media-library-metadata-hint">{{ 'These details apply to every insertion of the file and build its caption. Changes are saved automatically.' | trans }}</p>
                                         <span class="media-library-meta-status small" role="status" aria-live="polite"></span>
                                         <div class="metadata-row metadata-edit-row">
                                             <label for="media-library-meta-title">{{ 'Image name' | trans }}</label>
@@ -147,24 +168,29 @@
                                             <label for="media-library-meta-license">{{ 'License' | trans }}</label>
                                             <select id="media-library-meta-license" class="form-select form-select-sm media-library-meta-license"></select>
                                         </div>
-                                        <div class="metadata-row metadata-edit-row">
-                                            <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
-                                            <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
-                                        </div>
-                                        <div class="metadata-row metadata-edit-row">
-                                            <label for="media-library-meta-author-url">{{ 'Author link' | trans }}</label>
-                                            <input type="url" id="media-library-meta-author-url" class="form-control form-control-sm media-library-meta-author-url">
+                                        <div class="metadata-author-grid">
+                                            <div class="metadata-row metadata-edit-row">
+                                                <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
+                                                <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
+                                            </div>
+                                            <div class="metadata-row metadata-edit-row">
+                                                <label for="media-library-meta-author-url">{{ 'Author link' | trans }}</label>
+                                                <input type="url" id="media-library-meta-author-url" class="form-control form-control-sm media-library-meta-author-url">
+                                            </div>
                                         </div>
                                         <div class="metadata-row metadata-edit-row">
                                             <label for="media-library-meta-source-url">{{ 'Image URL' | trans }}</label>
                                             <input type="url" id="media-library-meta-source-url" class="form-control form-control-sm media-library-meta-source-url">
                                         </div>
+                                        <div class="media-library-caption-preview is-empty">
+                                            <p class="media-library-caption-preview-label">{{ 'Resulting caption' | trans }}</p>
+                                            <div class="media-library-caption-preview-text"></div>
+                                        </div>
                                     </form>
-                                </details>
+                                </div>
 
-                                <!-- Read-only technical details, collapsed by default -->
-                                <details class="media-library-section media-library-section-details">
-                                    <summary class="media-library-section-summary">{{ 'Details' | trans }}</summary>
+                                <!-- Read-only technical details -->
+                                <div class="tab-pane media-library-tab-pane media-library-section-details" data-media-pane="details" role="tabpanel">
                                     <div class="metadata-row metadata-filename">
                                         <label>{{ 'Name' | trans }}:</label>
                                         <span class="media-library-filename"></span>
@@ -195,27 +221,27 @@
                                         </div>
                                     </div>
                                     <div class="metadata-row metadata-url-row">
-                                        <label>{{ 'URL:' | trans }}</label>
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control media-library-url" readonly>
-                                            <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
+                                        <label>{{ 'Internal URL' | trans }}:</label>
+                                        <div class="media-library-url-group">
+                                            <input type="text" class="media-library-url" readonly aria-label="{{ 'Internal URL' | trans }}">
+                                            <button type="button" class="media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
                                                 <span class="exe-icon">content_copy</span>
                                             </button>
                                         </div>
                                     </div>
-                                </details>
+                                    <button type="button" class="btn btn-secondary media-library-replace-inline-btn">
+                                        <span class="exe-icon">find_replace</span> {{ 'Replace file' | trans }}…
+                                    </button>
+                                    <p class="media-library-replace-hint">{{ 'References and metadata are preserved.' | trans }}</p>
+                                </div>
 
-                                <!-- Usage / references, collapsed by default -->
-                                <details class="media-library-section media-library-section-usage">
-                                    <summary class="media-library-section-summary">{{ 'Usage' | trans }}</summary>
-                                    <div class="metadata-row media-library-usage-row">
-                                        <span class="badge bg-light text-dark border media-library-usage">{{ '0 iDevices' | trans }}</span>
-                                    </div>
+                                <!-- Usage / references -->
+                                <div class="tab-pane media-library-tab-pane media-library-section-usage" data-media-pane="usage" role="tabpanel">
+                                    <p class="media-library-usage-intro" style="display:none;">{{ 'This file is used in:' | trans }}</p>
                                     <div class="metadata-row media-library-usage-locations-row">
-                                        <label>{{ 'Used in' | trans }}</label>
                                         <ul class="media-library-usage-locations" aria-live="polite"></ul>
                                     </div>
-                                </details>
+                                </div>
                             </div>
                         </div>
                     </div>

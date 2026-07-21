@@ -468,12 +468,12 @@
 
 #modalFileManager {
     > .modal-dialog {
-        max-width: 1100px;
-        max-height: 700px;
+        max-width: 1280px;
+        max-height: 800px;
     }
 
     .modal-content {
-        width: 1000px;
+        width: 100%;
         height: 650px;
         position: relative;
 
@@ -488,9 +488,6 @@
             flex-direction: column;
         }
 
-        .form-control.media-library-url{
-            width:auto;
-        }
     }
 
     /* Header with title, search, and close button aligned */
@@ -558,6 +555,8 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            padding-top: 5px;
+            padding-bottom: 5px;
 
             .exe-icon {
                 font-family: var(--icons-ff);
@@ -569,7 +568,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 6px 10px;
+            padding: 5px 10px;
 
             .exe-icon {
                 font-family: var(--icons-ff);
@@ -584,7 +583,7 @@
         }
 
         .media-library-view-btn {
-            padding: 6px 10px;
+            padding: 5px 10px;
             border: 1px solid var(--elements-hover);
             background: white;
             cursor: pointer;
@@ -632,25 +631,12 @@
             }
         }
 
-        .media-library-refcount-toggle {
-            display: flex;
-            align-items: center;
-            margin-left: 8px;
+        .media-library-file-count {
+            white-space: nowrap;
 
-            label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                margin: 0;
-                font-size: 13px;
-                color: var(--icon-gray);
-                cursor: pointer;
-                white-space: nowrap;
-
-                input[type="checkbox"] {
-                    margin: 0;
-                    cursor: pointer;
-                }
+            .media-library-count-value {
+                font-weight: 600;
+                color: var(--body-text-color);
             }
         }
 
@@ -689,10 +675,11 @@
         padding: var(--margin-l);
         overflow-y: auto;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        grid-auto-rows: 100px;
+        grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+        grid-auto-rows: max-content;
         gap: var(--margin-m);
         align-content: start;
+        align-items: start;
     }
 
     .media-library-loading,
@@ -762,24 +749,20 @@
         color: var(--remove);
     }
 
-    /* Grid items */
+    /* Grid items: card with a fixed-height thumbnail and a name + usage footer */
     .media-library-item {
-        width: 100px;
-        height: 100px;
-        border: 2px solid transparent;
+        border: 2px solid var(--elements-hover);
         border-radius: var(--radius);
         overflow: hidden;
         cursor: pointer;
-        background: var(--bg-light-gray);
+        background: var(--main-background-color);
         transition: var(--tr-02);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
         position: relative;
 
         &:hover {
-            border-color: var(--elements-hover);
+            border-color: var(--dark-exe-color);
         }
 
         &.selected {
@@ -787,77 +770,58 @@
             box-shadow: 0 0 0 2px var(--dark-exe-color-04);
         }
 
-        img {
+        .item-thumb {
             width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: #f5f5f5;
-        }
-
-        .media-thumbnail {
+            height: 96px;
+            flex-shrink: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: var(--margin-s);
-            text-align: center;
-            width: 100%;
-            height: 100%;
+            background: var(--bg-light-gray);
+            overflow: hidden;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
 
             .exe-icon {
                 font-family: var(--icons-ff);
                 font-size: 32px;
                 color: var(--icon-gray);
-                margin-bottom: var(--margin-s);
             }
+        }
 
-            .media-label {
-                font-size: 10px;
-                color: var(--icon-gray);
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 8px;
+
+            .item-name {
+                font-size: 12px;
+                color: var(--body-text-color);
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                max-width: 100%;
             }
-        }
-
-        .item-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 2px 4px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            font-size: 9px;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Usage count badge (grid) */
-        .badge {
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 18px;
-            height: 18px;
-            line-height: 12px;
-            padding: 3px 5px;
-            z-index: 1;
         }
     }
 
-    /* Small badge for list view */
-    .badge-sm {
-        font-size: 9px;
-        font-weight: 600;
-        min-width: 14px;
-        height: 14px;
-        line-height: 10px;
-        padding: 2px 4px;
-        vertical-align: middle;
-        margin-left: 6px;
+    /* Usage label ("Not used" / "N uses") shown on grid cards and list rows */
+    .item-usage {
+        font-size: 11px;
+        white-space: nowrap;
+
+        &.is-used {
+            color: var(--dark-exe-color);
+        }
+
+        &.is-unused,
+        &.is-folder {
+            color: var(--icon-gray);
+        }
     }
 
     /* List view container */
@@ -1007,7 +971,7 @@
 
     /* Sidebar */
     .media-library-sidebar {
-        width: 280px;
+        width: 340px;
         border-left: 1px solid var(--elements-hover);
         background: var(--main-background-color);
         display: flex;
@@ -1031,13 +995,102 @@
         flex-direction: column;
         flex: 1;
         min-height: 0;
-        overflow-y: auto; /* the whole panel scrolls; preview can be collapsed to free space */
-        padding: var(--margin-m) 0;
+        overflow-y: auto; /* the whole panel scrolls; preview can be folded to free space */
     }
 
-    /* Preview */
+    /* Compact file header: thumbnail + name + technical summary + preview toggle */
+    .media-library-file-header {
+        display: flex;
+        align-items: center;
+        gap: var(--margin-m);
+        padding: var(--margin-m) var(--margin-l);
+        border-bottom: 1px solid var(--elements-hover);
+        flex-shrink: 0;
+
+        .media-library-header-thumb {
+            width: 64px;
+            height: 48px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--elements-hover);
+            border-radius: var(--radius);
+            background: var(--bg-light-gray);
+            overflow: hidden;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 24px;
+                color: var(--icon-gray);
+            }
+        }
+
+        .media-library-header-info {
+            flex: 1;
+            min-width: 0;
+
+            .media-library-header-name {
+                margin: 0;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--dark-exe-color);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .media-library-header-meta {
+                margin: 2px 0 0;
+                font-size: 11px;
+                color: var(--icon-gray);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
+        .media-library-preview-toggle {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--elements-hover);
+            border-radius: var(--radius);
+            background: var(--main-background-color);
+            color: var(--icon-gray);
+            cursor: pointer;
+            transition: var(--tr-02);
+
+            &:hover {
+                background: var(--bg-light-gray);
+                color: var(--body-text-color);
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 16px;
+            }
+        }
+    }
+
+    /* Large preview, expanded from the file header */
+    .media-library-preview-wrap {
+        padding: var(--margin-m) var(--margin-l);
+        border-bottom: 1px solid var(--elements-hover);
+        background: var(--bg-light-gray);
+        flex-shrink: 0;
+    }
+
     .media-library-preview {
-        padding: var(--margin-s) 0 0;
         background: var(--bg-light-gray);
         border-radius: var(--radius);
         display: flex;
@@ -1101,71 +1154,180 @@
         }
     }
 
-    /* Collapsible sidebar sections (Preview / Metadata / Details / Usage) using native
-       <details>/<summary> so they are keyboard-accessible without extra JS. Every
-       section is inset by the same horizontal margin so all headers — and the dividers
-       between them — line up at the same left edge. */
-    .media-library-section {
-        margin: 0 var(--margin-l);
+    /* Sidebar tabs (Metadata / Details / Usage): same segmented-control style as the
+       app's other nav-tabs (e.g. the styles panel) — pill container, white active tab. */
+    .media-library-tabs {
+        display: flex;
+        margin: var(--margin-m) var(--margin-l) 0;
+        padding: 0.25rem;
+        background-color: var(--gray-100, #f3f4f6);
+        border: 1px solid var(--gray-border-light, #e5e7eb);
+        border-radius: 12px;
+        flex-shrink: 0;
 
-        > .media-library-section-summary {
-            cursor: pointer;
+        .nav-item {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .nav-link.media-library-tab {
+            width: 100%;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            padding: 6px 8px;
             font-size: 12px;
             font-weight: 600;
-            text-transform: uppercase;
-            color: var(--icon-gray);
-            list-style: none;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: var(--margin-s) 0;
-            user-select: none;
+            color: var(--gray-500, #6b7280) !important;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
 
-            &::-webkit-details-marker {
-                display: none;
-            }
-
-            /* Disclosure caret: a plain Unicode triangle (not an icon-font ligature,
-               which does not reliably form inside a ::before pseudo-element). */
-            &::before {
-                content: '\25B8'; /* ▸ */
-                display: inline-block;
-                font-size: 11px;
-                line-height: 1;
-                color: var(--icon-gray);
-                transition: transform 0.15s ease;
-            }
-
-            &:hover {
-                color: var(--body-text-color);
+            &.active {
+                color: var(--text-black, #111) !important;
+                background: white;
+                box-shadow: 0 1px 3px 0 rgba(16, 24, 40, 0.10), 0 1px 2px 0 rgba(16, 24, 40, 0.06);
             }
 
             &:focus-visible {
                 outline: 2px solid var(--main-color, #2664d8);
-                outline-offset: 2px;
-                border-radius: 2px;
+                outline-offset: 1px;
+            }
+
+            .media-library-usage-tab-count {
+                font-weight: 400;
+                white-space: pre;
+            }
+        }
+    }
+
+    /* Tab panes share the horizontal inset of the header */
+    .media-library-tab-content {
+        flex: 1;
+        min-height: 0;
+
+        > .media-library-tab-pane {
+            padding: var(--margin-m) var(--margin-l) var(--margin-l);
+        }
+    }
+
+    /* Explanatory hint at the top of the Metadata tab */
+    .media-library-metadata-hint {
+        margin: 0 0 var(--margin-m);
+        font-size: 11px;
+        color: var(--icon-gray);
+    }
+
+    /* Author + author link side by side */
+    .metadata-author-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 var(--margin-m);
+
+        .metadata-edit-row {
+            min-width: 0;
+        }
+    }
+
+    /* Live "resulting caption" preview (shared figure-caption builder output) */
+    .media-library-caption-preview {
+        border: 1px solid var(--elements-hover);
+        border-radius: var(--radius);
+        background: var(--bg-light-gray);
+        padding: var(--margin-s) var(--margin-m);
+
+        .media-library-caption-preview-label {
+            margin: 0 0 2px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--icon-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .media-library-caption-preview-text {
+            font-size: 12px;
+            color: var(--body-text-color);
+            font-style: italic;
+            word-break: break-word;
+
+            .figcaption {
+                display: block;
             }
         }
 
-        &[open] > .media-library-section-summary::before {
-            transform: rotate(90deg);
+        &.is-empty .media-library-caption-preview-text {
+            color: var(--icon-gray);
         }
     }
 
-    .media-library-section-preview {
-        flex: 0 0 auto;
-        border-bottom: 1px solid var(--elements-hover);
-        padding-bottom: var(--margin-s);
+    /* Location and Internal URL rows read like the other detail rows: label on
+       top, plain left-aligned value, with their action as a subtle icon button. */
+    .metadata-url-row {
+        .media-library-url-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        input.media-library-url {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            background: transparent;
+            padding: 0;
+            font-size: 13px;
+            color: var(--body-text-color);
+            box-shadow: none;
+            outline: none;
+        }
+
+        .media-library-copy-url-btn {
+            border: none;
+            background: transparent;
+            color: var(--icon-gray);
+            padding: 2px 4px;
+            border-radius: var(--radius);
+            flex-shrink: 0;
+            cursor: pointer;
+
+            &:hover {
+                color: var(--body-text-color);
+                background: var(--bg-light-gray);
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 16px;
+            }
+        }
     }
 
-    /* Subtle dividers between the metadata/details/usage sections. The section margin
-       insets the lines so they never reach the panel edges. */
-    .media-library-metadata > .media-library-section {
-        border-top: 1px solid var(--elements-hover);
+    /* Inline replace action in the Details tab */
+    .media-library-replace-inline-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: var(--margin-s);
 
-        &:first-child {
-            border-top: none;
+        .exe-icon {
+            font-family: var(--icons-ff);
+            font-size: 16px;
         }
+    }
+
+    .media-library-replace-hint {
+        margin: var(--margin-s) 0 0;
+        font-size: 11px;
+        color: var(--icon-gray);
+    }
+
+    /* Usage tab intro line */
+    .media-library-usage-intro {
+        margin: 0 0 var(--margin-m);
+        font-size: 12px;
+        color: var(--body-text-color);
     }
 
     /* Editable centralized metadata form. */
@@ -3719,7 +3881,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 #modalFileManager .media-library-header-search {
     position: relative;
-    width: 200px;
+    width: 300px;
     flex-shrink: 0;
 }
 
@@ -3837,31 +3999,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     color: var(--remove, #dc3545);
 }
 
-/* Grid item info overlay (for search results) */
-#modalFileManager .media-library-item .item-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.75));
-    padding: 16px 4px 4px 4px;
-    color: white;
-    font-size: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-#modalFileManager .media-library-item .item-info .item-name {
-    position: static;
-    background: none;
-    padding: 0;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 #modalFileManager .media-library-item .item-path-badge {
     display: inline-flex;
     align-items: center;
@@ -3912,18 +4049,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     color: var(--brand-dark, #087d7d);
 }
 
-/* Location row in sidebar */
-#modalFileManager .media-library-location-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-#modalFileManager .media-library-location-value {
-    color: var(--brand-primary, #0BA1A1);
-    font-size: 12px;
-}
-
 #modalFileManager .media-library-open-folder-btn {
     color: #6b7280;
     font-size: 14px;
@@ -3936,12 +4061,12 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Fixed modal height - NEVER changes based on content */
 #modalFileManager .modal-dialog {
-    max-width: 1100px;
+    max-width: 1280px;
 }
 
 #modalFileManager .modal-content {
-    height: 70vh;
-    max-height: 700px;
+    height: 78vh;
+    max-height: 800px;
     min-height: 500px;
     display: flex;
     flex-direction: column;
@@ -3978,12 +4103,33 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 
     li {
         font-size: 12px;
         color: var(--body-text-color);
-        padding: 2px 0;
         word-break: break-word;
+    }
+
+    .media-library-usage-location {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border: 1px solid var(--elements-hover);
+        border-radius: var(--radius);
+        background: var(--bg-light-gray);
+        padding: 8px 10px;
+
+        .usage-page {
+            font-weight: 700;
+        }
+
+        .usage-place {
+            font-size: 11px;
+            color: var(--icon-gray);
+        }
     }
 
     .media-library-usage-empty {
@@ -4029,7 +4175,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Sidebar fixed width with scroll */
 #modalFileManager .media-library-sidebar {
-    width: 280px;
+    width: 340px;
     flex-shrink: 0;
     overflow-y: auto;
     overflow-x: hidden;

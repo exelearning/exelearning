@@ -37,11 +37,9 @@ async function selectFirstFile(page: Page): Promise<void> {
     await page.waitForSelector('#modalFileManager .media-library-sidebar-content:not([style*="display: none"])', {
         timeout: 5000,
     });
-    // Usage (and its "Used in" list) lives in a collapsible section, collapsed by
-    // default — expand it so usage assertions can see the rendered locations.
-    await page.locator('#modalFileManager .media-library-section-usage').evaluate(d => {
-        (d as HTMLDetailsElement).open = true;
-    });
+    // Usage (and its "Used in" list) lives in the Usage tab — activate it so the
+    // usage assertions can see the rendered locations.
+    await page.locator('#modalFileManager .media-library-tab[data-media-tab="usage"]').click();
 }
 
 test.describe('File Manager usage & replace (#1817)', () => {

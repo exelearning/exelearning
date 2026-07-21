@@ -1,5 +1,6 @@
 import Modal from '../modal.js';
 import { getLicenseOptions } from '../../../../common/licenseOptions.js';
+import { buildFigureCaption } from '../../../../common/figureCaption.js';
 import { debounce } from '../../../../search/SearchEngine.js';
 
 // Use global AppLogger for debug-controlled logging
@@ -43,6 +44,13 @@ export default class ModalFilemanager extends Modal {
         this.sortBy = 'date-desc';
         this.currentPage = 1;
         this.itemsPerPage = 50;
+
+        // Sidebar state: active tab (metadata | details | usage), whether the large
+        // preview is expanded, and the asset currently shown (to tell a fresh
+        // selection apart from a remote refresh of the same asset).
+        this.activeTab = 'metadata';
+        this.previewOpen = false;
+        this._sidebarAssetId = null;
 
         // DOM references (set in initElements)
         this.grid = null;
@@ -146,8 +154,20 @@ export default class ModalFilemanager extends Modal {
         this.viewBtns = this.modalElement.querySelectorAll('.media-library-view-btn');
         this.sortSelect = this.modalElement.querySelector('.media-library-sort');
         this.filterSelect = this.modalElement.querySelector('.media-library-filter');
-        this.showRefCountCheckbox = this.modalElement.querySelector('.media-library-show-refcount');
-        this.showRefCount = false; // Badge visibility state (off by default)
+
+        // Sidebar file header (compact thumbnail + name + technical summary)
+        this.headerThumbImg = this.modalElement.querySelector('.media-library-header-thumb-img');
+        this.headerThumbIcon = this.modalElement.querySelector('.media-library-header-thumb-icon');
+        this.headerName = this.modalElement.querySelector('.media-library-header-name');
+        this.headerMeta = this.modalElement.querySelector('.media-library-header-meta');
+        this.previewToggle = this.modalElement.querySelector('.media-library-preview-toggle');
+        this.previewWrap = this.modalElement.querySelector('.media-library-preview-wrap');
+
+        // Sidebar tabs (Metadata / Details / Usage)
+        this.sidebarTabs = this.modalElement.querySelector('.media-library-tabs');
+        this.tabButtons = this.modalElement.querySelectorAll('.media-library-tab');
+        this.tabPanes = this.modalElement.querySelectorAll('.media-library-tab-pane');
+        this.usageTabCount = this.modalElement.querySelector('.media-library-usage-tab-count');
 
         // Preview elements
         this.previewImg = this.modalElement.querySelector('.media-library-preview-img');
@@ -202,14 +222,15 @@ export default class ModalFilemanager extends Modal {
         this.dimensionsRow = this.modalElement.querySelector('.media-library-dimensions-row');
         this.dimensionsSpan = this.modalElement.querySelector('.media-library-dimensions');
         this.dateSpan = this.modalElement.querySelector('.media-library-date');
-        this.usageRow = this.modalElement.querySelector('.media-library-usage-row');
-        this.usageSpan = this.modalElement.querySelector('.media-library-usage');
         this.usageLocationsRow = this.modalElement.querySelector('.media-library-usage-locations-row');
         this.usageLocations = this.modalElement.querySelector('.media-library-usage-locations');
         this.urlInput = this.modalElement.querySelector('.media-library-url');
         this.locationRow = this.modalElement.querySelector('.media-library-location-row');
         this.locationValue = this.modalElement.querySelector('.media-library-location-value');
         this.openFolderBtn = this.modalElement.querySelector('.media-library-open-folder-btn');
+        this.replaceInlineBtn = this.modalElement.querySelector('.media-library-replace-inline-btn');
+        this.replaceHint = this.modalElement.querySelector('.media-library-replace-hint');
+        this.usageIntro = this.modalElement.querySelector('.media-library-usage-intro');
 
         // List view location column header (for toggling visibility in search mode)
         this.locationColumnHeader = this.listTable?.querySelector('th.col-location');
@@ -223,8 +244,9 @@ export default class ModalFilemanager extends Modal {
         this.metaAuthorUrlInput = this.modalElement.querySelector('.media-library-meta-author-url');
         this.metaSourceUrlInput = this.modalElement.querySelector('.media-library-meta-source-url');
         this.metaStatus = this.modalElement.querySelector('.media-library-meta-status');
-        // Collapsible section wrapping the editable metadata (expanded by default).
-        this.metadataSection = this.modalElement.querySelector('.media-library-section-metadata');
+        // Live "resulting caption" preview fed by the shared figure-caption builder.
+        this.captionPreviewBox = this.modalElement.querySelector('.media-library-caption-preview');
+        this.captionPreviewText = this.modalElement.querySelector('.media-library-caption-preview-text');
 
         // Autosave state: fields edited since the last populate (field-level updates).
         this._metaDirty = new Set();
@@ -389,11 +411,30 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        // Show reference count checkbox
-        if (this.showRefCountCheckbox) {
-            this.showRefCountCheckbox.addEventListener('change', (e) => {
-                this.showRefCount = e.target.checked;
-                this.applyFiltersAndRender();
+        // Sidebar tabs (Metadata / Details / Usage)
+        if (this.tabButtons) {
+            this.tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.mediaTab;
+                    if (tab) this.setActiveTab(tab);
+                });
+            });
+        }
+
+        // Expand/collapse the large preview from the sidebar file header
+        if (this.previewToggle) {
+            this.previewToggle.addEventListener('click', () => {
+                this.setPreviewOpen(!this.previewOpen);
+            });
+        }
+
+        // Inline "Replace file…" button in the Details tab (same flow as the
+        // dropdown action: preserves asset identity, references and metadata).
+        if (this.replaceInlineBtn) {
+            this.replaceInlineBtn.addEventListener('click', () => {
+                if (this.replaceInput && this.selectedAsset) {
+                    this.replaceInput.click();
+                }
             });
         }
 
@@ -595,6 +636,126 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Activate one of the sidebar tabs (metadata | details | usage) and reveal its
+     * pane. `remember` distinguishes a user choice (persisted for the session) from
+     * an internal forcing (e.g. folders only have details).
+     * @param {'metadata'|'details'|'usage'} tab
+     * @param {boolean} remember
+     */
+    setActiveTab(tab, remember = true) {
+        if (remember) this.activeTab = tab;
+        if (this.tabButtons) {
+            this.tabButtons.forEach(btn => {
+                const active = btn.dataset.mediaTab === tab;
+                btn.classList.toggle('active', active);
+                btn.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
+        if (this.tabPanes) {
+            this.tabPanes.forEach(pane => {
+                pane.classList.toggle('active', pane.dataset.mediaPane === tab);
+            });
+        }
+    }
+
+    /**
+     * Expand or collapse the large preview under the sidebar file header.
+     * @param {boolean} open
+     */
+    setPreviewOpen(open) {
+        this.previewOpen = open;
+        if (this.previewWrap) this.previewWrap.hidden = !open;
+        if (this.previewToggle) {
+            this.previewToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            const icon = this.previewToggle.querySelector('.exe-icon');
+            if (icon) icon.textContent = open ? 'close_fullscreen' : 'open_in_full';
+        }
+    }
+
+    /**
+     * Populate the compact sidebar file header: thumbnail (image or type icon),
+     * name and one-line technical summary.
+     * @param {{name: string, metaLine: string, thumbUrl?: string|null, icon?: string}} info
+     */
+    updateSidebarHeader({ name, metaLine, thumbUrl = null, icon = 'description' }) {
+        if (this.headerName) {
+            this.headerName.textContent = name;
+            this.headerName.title = name;
+        }
+        if (this.headerMeta) this.headerMeta.textContent = metaLine;
+        if (this.headerThumbImg) {
+            if (thumbUrl) {
+                this.headerThumbImg.src = thumbUrl;
+                this.headerThumbImg.style.display = 'block';
+            } else {
+                this.headerThumbImg.removeAttribute('src');
+                this.headerThumbImg.style.display = 'none';
+            }
+        }
+        if (this.headerThumbIcon) {
+            this.headerThumbIcon.style.display = thumbUrl ? 'none' : '';
+            this.headerThumbIcon.textContent = icon;
+        }
+    }
+
+    /**
+     * Adapt the sidebar to what is selected. Files get the full tab set (restoring
+     * the user's last active tab); folders and multi-selections only have technical
+     * details, so the tab bar is hidden and the details pane is forced.
+     * @param {'file'|'folder'|'multi'} mode
+     */
+    setSidebarMode(mode) {
+        const isFile = mode === 'file';
+        if (this.sidebarTabs) this.sidebarTabs.style.display = isFile ? '' : 'none';
+        this.setActiveTab(isFile ? this.activeTab : 'details', false);
+    }
+
+    /**
+     * Show or hide the inline "Replace file…" action (and its hint) in the Details
+     * tab. Only single selected files can be replaced.
+     * @param {boolean} visible
+     */
+    setReplaceInlineVisible(visible) {
+        if (this.replaceInlineBtn) this.replaceInlineBtn.style.display = visible ? '' : 'none';
+        if (this.replaceHint) this.replaceHint.style.display = visible ? '' : 'none';
+    }
+
+    /**
+     * Human label for an asset's reference count ("Not used" / "1 use" / "N uses").
+     * @param {number} count
+     * @returns {string}
+     */
+    getUsageLabel(count) {
+        if (!count) return _('Not used');
+        if (count === 1) return _('1 use');
+        return _('%1 uses').replace('%1', count);
+    }
+
+    /**
+     * Rebuild the live "resulting caption" preview from the current form values via
+     * the shared figure-caption builder, so what the user sees here is exactly the
+     * caption inserted images get in the authoring view and in exports.
+     */
+    updateCaptionPreview() {
+        if (!this.captionPreviewText) return;
+        const meta = {
+            title: (this.metaTitleInput?.value || '').trim(),
+            author: (this.metaAuthorInput?.value || '').trim(),
+            authorUrl: (this.metaAuthorUrlInput?.value || '').trim(),
+            sourceUrl: (this.metaSourceUrlInput?.value || '').trim(),
+            license: this.metaLicenseSelect?.value || '',
+        };
+        const { caption } = buildFigureCaption(meta, {});
+        if (caption) {
+            this.captionPreviewText.innerHTML = caption;
+            this.captionPreviewBox?.classList.remove('is-empty');
+        } else {
+            this.captionPreviewText.textContent = _('No metadata yet — the caption will be empty.');
+            this.captionPreviewBox?.classList.add('is-empty');
+        }
+    }
+
+    /**
      * Show the modal
      * @param {Object} data - Optional configuration
      * @param {Function} data.onSelect - Callback when asset is inserted
@@ -632,11 +793,11 @@ export default class ModalFilemanager extends Modal {
                 this.initBehaviour();
             }
 
-            // Reset reference count toggle (off by default) - after initElements
-            this.showRefCount = false;
-            if (this.showRefCountCheckbox) {
-                this.showRefCountCheckbox.checked = false;
-            }
+            // Reset sidebar state (default tab, collapsed preview) - after initElements
+            this.activeTab = 'metadata';
+            this.setActiveTab('metadata');
+            this.setPreviewOpen(false);
+            this._sidebarAssetId = null;
 
             // Clear usage count cache so it's recalculated fresh
             this.assetUsageCounts.clear();
@@ -1306,10 +1467,16 @@ export default class ModalFilemanager extends Modal {
         item.dataset.folderName = folderName;
 
         item.innerHTML = `
-            <div class="media-thumbnail folder-thumbnail">
+            <div class="item-thumb folder-thumbnail">
                 <span class="exe-icon folder-icon">folder</span>
-                <span class="media-label">${this.escapeHtml(folderName)}</span>
+            </div>
+            <div class="item-info">
+                <span class="item-name text-truncate">${this.escapeHtml(folderName)}</span>
+                <span class="item-usage is-folder">${_('Folder')}</span>
             </div>`;
+        // Tooltip with the full name; set via DOM so quotes in folder names stay inert.
+        const folderNameSpan = item.querySelector('.item-name');
+        if (folderNameSpan) folderNameSpan.title = folderName;
 
         // Double-click to enter folder
         item.addEventListener('dblclick', () => {
@@ -1345,6 +1512,11 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
+        // Folders only have technical details: hide the tab bar, force the details pane
+        this.setSidebarMode('folder');
+        this._sidebarAssetId = null;
+        this.setPreviewOpen(false);
+
         // Hide all preview elements
         if (this.previewImg) this.previewImg.style.display = 'none';
         if (this.previewVideo) this.previewVideo.style.display = 'none';
@@ -1366,13 +1538,22 @@ export default class ModalFilemanager extends Modal {
             return path === folderPath || path.startsWith(folderPath + '/');
         }).length;
 
+        const itemsLabel = `${filesInFolder} ${_('items')}`;
+        this.updateSidebarHeader({
+            name: folderName,
+            metaLine: `${_('Folder')} · ${itemsLabel}`,
+            icon: 'folder',
+        });
+
         // Update metadata
         if (this.filenameSpan) this.filenameSpan.textContent = folderName;
         if (this.typeSpan) this.typeSpan.textContent = _('Folder');
-        if (this.sizeSpan) this.sizeSpan.textContent = `${filesInFolder} ${_('items')}`;
+        if (this.sizeSpan) this.sizeSpan.textContent = itemsLabel;
         if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
         if (this.dateSpan) this.dateSpan.textContent = '-';
         if (this.urlInput) this.urlInput.value = folderPath;
+        if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
+        this.setReplaceInlineVisible(false);
 
         // Store selected folder info for operations
         this.selectedFolder = folderName;
@@ -1530,16 +1711,12 @@ export default class ModalFilemanager extends Modal {
         }
         row.appendChild(thumbCell);
 
-        // Name cell (with optional usage badge)
+        // Name cell with the always-visible usage label ("Not used" / "N uses")
         const nameCell = document.createElement('td');
         nameCell.className = 'col-name';
-        if (this.showRefCount) {
-            const usageCount = this.getAssetUsageCount(asset.id);
-            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            nameCell.innerHTML = `<span class="filename">${this.escapeHtml(asset.filename || _('Unknown'))}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
-        } else {
-            nameCell.textContent = asset.filename || _('Unknown');
-        }
+        const usageCount = this.getAssetUsageCount(asset.id);
+        const usageClass = usageCount > 0 ? 'is-used' : 'is-unused';
+        nameCell.innerHTML = `<span class="filename">${this.escapeHtml(asset.filename || _('Unknown'))}</span> <span class="item-usage ${usageClass}">${this.escapeHtml(this.getUsageLabel(usageCount))}</span>`;
         row.appendChild(nameCell);
 
         // Location cell (only visible in search mode)
@@ -1921,14 +2098,6 @@ export default class ModalFilemanager extends Modal {
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
-        // Get usage count badge (only when showRefCount is enabled)
-        let usageBadge = '';
-        if (this.showRefCount) {
-            const usageCount = this.getAssetUsageCount(asset.id);
-            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            usageBadge = `<span class="position-absolute top-0 end-0 badge rounded-pill ${badgeClass} m-2 shadow-sm">${usageCount}</span>`;
-        }
-
         // Path badge (only in search mode)
         let pathBadgeHtml = '';
         if (this.isSearchMode) {
@@ -1942,46 +2111,37 @@ export default class ModalFilemanager extends Modal {
                 </span>`;
         }
 
-        // Determine content based on type
+        // Thumbnail area: image, or a type icon for other files.
         // Add data-asset-id for loading images so updateDomImagesForAsset can update them when asset arrives
         const loadingAttrs = isLoading ? ` data-asset-id="${asset.id}" data-asset-loading="true"` : '';
+        const displayName = this.escapeHtml(asset.filename || _('File'));
+        let thumbHtml;
         if (asset.mime && asset.mime.startsWith('image/')) {
-            if (this.isSearchMode) {
-                // In search mode: show image with info overlay
-                item.innerHTML = `
-                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>
-                    ${usageBadge}
-                    <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('Image'))}</span>
-                        ${pathBadgeHtml}
-                    </div>`;
-            } else {
-                // Normal mode: just image
-                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>${usageBadge}`;
-            }
+            thumbHtml = `
+                <div class="item-thumb">
+                    <img src="${blobUrl}" alt="${displayName}" loading="lazy"${loadingAttrs}>
+                </div>`;
         } else {
-            // Use icon for non-image files
             const icon = this.getFileIcon(asset.mime, asset.filename);
-            if (this.isSearchMode) {
-                // In search mode: show with info overlay
-                item.innerHTML = `
-                    <div class="media-thumbnail file-thumbnail">
-                        <span class="exe-icon">${icon}</span>
-                    </div>
-                    ${usageBadge}
-                    <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('File'))}</span>
-                        ${pathBadgeHtml}
-                    </div>`;
-            } else {
-                // Normal mode: icon with label
-                item.innerHTML = `
-                    <div class="media-thumbnail file-thumbnail">
-                        <span class="exe-icon">${icon}</span>
-                        <span class="media-label">${this.escapeHtml(asset.filename || _('File'))}</span>
-                    </div>${usageBadge}`;
-            }
+            thumbHtml = `
+                <div class="item-thumb file-thumbnail">
+                    <span class="exe-icon">${icon}</span>
+                </div>`;
         }
+
+        // Card footer: name + always-visible usage label ("Not used" / "N uses").
+        const usageCount = this.getAssetUsageCount(asset.id);
+        const usageClass = usageCount > 0 ? 'is-used' : 'is-unused';
+        item.innerHTML = `
+            ${thumbHtml}
+            <div class="item-info">
+                <span class="item-name text-truncate">${displayName}</span>
+                <span class="item-usage ${usageClass}">${this.escapeHtml(this.getUsageLabel(usageCount))}</span>
+                ${pathBadgeHtml}
+            </div>`;
+        // Tooltip with the full name; set via DOM so quotes in filenames stay inert.
+        const nameSpan = item.querySelector('.item-name');
+        if (nameSpan) nameSpan.title = asset.filename || _('File');
 
         // Path badge click handler (navigate to folder)
         const pathBadge = item.querySelector('.item-path-badge');
@@ -2115,6 +2275,7 @@ export default class ModalFilemanager extends Modal {
     showSidebarEmpty() {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'block';
         if (this.sidebarContent) this.sidebarContent.style.display = 'none';
+        this._sidebarAssetId = null;
         // Close the mobile bottom sheet when nothing is selected.
         this.sidebar?.classList.remove('is-open');
         this.updateButtonStates();
@@ -2133,6 +2294,13 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
         // Slide up the mobile bottom sheet to reveal the selected asset's details.
         this.sidebar?.classList.add('is-open');
+
+        // Full tab set for files; collapse the preview only on a fresh selection so a
+        // remote refresh of the same asset never folds what the user just expanded.
+        this.setSidebarMode('file');
+        const isNewSelection = this._sidebarAssetId !== asset.id;
+        this._sidebarAssetId = asset.id;
+        if (isNewSelection) this.setPreviewOpen(false);
 
         // Get blob URL (using synced method to ensure reverseBlobCache consistency)
         let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
@@ -2214,21 +2382,32 @@ export default class ModalFilemanager extends Modal {
             }
         }
 
+        // Compact file header: thumbnail + name + "type · size" summary (the date
+        // does not fit here; it stays in the Details tab).
+        const sizeLabel = this.assetManager.formatFileSize(asset.size || 0);
+        const date = asset.createdAt ? new Date(asset.createdAt) : null;
+        const dateLabel = date ? date.toLocaleDateString() : _('Unknown');
+        this.updateSidebarHeader({
+            name: asset.filename || _('Unknown'),
+            metaLine: `${asset.mime || _('Unknown')} · ${sizeLabel}`,
+            thumbUrl: asset.mime && asset.mime.startsWith('image/') ? blobUrl : null,
+            icon: this.getFileIcon(asset.mime, asset.filename),
+        });
+
         // Update metadata
         if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || _('Unknown');
         if (this.typeSpan) this.typeSpan.textContent = asset.mime || _('Unknown');
-        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager.formatFileSize(asset.size || 0);
+        if (this.sizeSpan) this.sizeSpan.textContent = sizeLabel;
 
         // Date
         if (this.dateSpan) {
-            const date = asset.createdAt ? new Date(asset.createdAt) : null;
-            this.dateSpan.textContent = date ? date.toLocaleDateString() : _('Unknown');
+            this.dateSpan.textContent = dateLabel;
         }
 
-        // Usage count
-        if (this.usageSpan) {
+        // Usage count in the Usage tab label — "Usage (n)"
+        if (this.usageTabCount) {
             const usageCount = this.getAssetUsageCount(asset.id);
-            this.usageSpan.textContent = _('%1 iDevices').replace('%1', usageCount);
+            this.usageTabCount.textContent = usageCount > 0 ? ` (${usageCount})` : '';
         }
 
         // Usage locations ("Used in")
@@ -2265,6 +2444,9 @@ export default class ModalFilemanager extends Modal {
             this.locationValue.textContent = displayPath;
             this.locationValue.title = displayPath;
         }
+
+        // Single files can be replaced from the Details tab
+        this.setReplaceInlineVisible(true);
 
         // Editable centralized metadata (images only)
         this.populateEditMetadata(asset);
@@ -2327,6 +2509,9 @@ export default class ModalFilemanager extends Modal {
                 this.metaLicenseSelect.value = license;
             }
         }
+
+        // Keep the live caption preview in sync with the populated values.
+        this.updateCaptionPreview();
     }
 
     /**
@@ -2340,6 +2525,7 @@ export default class ModalFilemanager extends Modal {
             el.addEventListener('input', () => {
                 this._metaDirty.add(key);
                 this.setMetaStatus(_('Saving…'), 'saving');
+                this.updateCaptionPreview();
                 this.scheduleMetadataSave();
             });
             el.addEventListener('blur', () => {
@@ -2350,6 +2536,7 @@ export default class ModalFilemanager extends Modal {
             this.metaLicenseSelect.addEventListener('change', () => {
                 this._metaDirty.add('license');
                 this.setMetaStatus(_('Saving…'), 'saving');
+                this.updateCaptionPreview();
                 this.flushPendingMetadata();
             });
         }
@@ -2441,7 +2628,7 @@ export default class ModalFilemanager extends Modal {
      */
     openMetadataEditor() {
         if (this.sidebar) this.sidebar.classList.add('is-open');
-        if (this.metadataSection) this.metadataSection.open = true;
+        this.setActiveTab('metadata');
         const firstField = this.getMetadataFieldEntries()
             .map(([, el]) => el)
             .find(el => el && el.offsetParent !== null);
@@ -2458,6 +2645,11 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
+        // Multi-selections only aggregate technical details: hide tabs, force details
+        this.setSidebarMode('multi');
+        this._sidebarAssetId = null;
+        this.setPreviewOpen(false);
+
         // Hide all preview elements except generic file preview
         if (this.previewImg) this.previewImg.style.display = 'none';
         if (this.previewVideo) this.previewVideo.style.display = 'none';
@@ -2471,17 +2663,24 @@ export default class ModalFilemanager extends Modal {
 
         const totalSize = assets.reduce((sum, current) => sum + (current?.size || 0), 0);
         const countLabel = _('%1 files selected').replace('%1', assets.length);
+        const totalSizeLabel = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+
+        this.updateSidebarHeader({
+            name: countLabel,
+            metaLine: `${_('Multiple files')} · ${totalSizeLabel}`,
+            icon: 'collections',
+        });
 
         if (this.filenameSpan) this.filenameSpan.textContent = countLabel;
         if (this.typeSpan) this.typeSpan.textContent = _('Multiple files');
-        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+        if (this.sizeSpan) this.sizeSpan.textContent = totalSizeLabel;
         if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
         if (this.dateSpan) this.dateSpan.textContent = '-';
-        if (this.usageSpan) this.usageSpan.textContent = '-';
         if (this.usageLocationsRow) this.usageLocationsRow.style.display = 'none';
         if (this.urlInput) this.urlInput.value = '';
         if (this.locationRow) this.locationRow.style.display = 'none';
         if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
+        this.setReplaceInlineVisible(false);
 
         // Ensure folder selection is cleared
         this.selectedFolder = null;
@@ -2900,8 +3099,9 @@ export default class ModalFilemanager extends Modal {
 
     /**
      * Render the "Used in" list for the selected asset, reusing the centralized
-     * usage-location scanner in AssetManager. Shows page / iDevice / block context,
-     * capped at 10 entries with a "+ N more" line, or a "Not used" message.
+     * usage-location scanner in AssetManager. Each location is a small card with the
+     * page title and the iDevice/block context, capped at 10 entries with a
+     * "+ N more" line, or a "Not used" message.
      * @param {Object} asset
      */
     renderUsageLocations(asset) {
@@ -2912,6 +3112,8 @@ export default class ModalFilemanager extends Modal {
         const locations = this.assetManager?.getAssetUsageLocations
             ? this.assetManager.getAssetUsageLocations(asset.id)
             : [];
+
+        if (this.usageIntro) this.usageIntro.style.display = locations.length ? '' : 'none';
 
         if (!locations.length) {
             const li = document.createElement('li');
@@ -2924,11 +3126,23 @@ export default class ModalFilemanager extends Modal {
         const MAX = 10;
         for (const loc of locations.slice(0, MAX)) {
             const li = document.createElement('li');
-            const parts = [];
-            if (loc.pageTitle) parts.push(`${_('Page')}: ${loc.pageTitle}`);
-            if (loc.ideviceTitle) parts.push(`${_('iDevice')}: ${loc.ideviceTitle}`);
-            if (loc.blockTitle) parts.push(`${_('Block')}: ${loc.blockTitle}`);
-            li.textContent = parts.join(' · ') || _('Untitled');
+            li.className = 'media-library-usage-location';
+
+            const pageSpan = document.createElement('span');
+            pageSpan.className = 'usage-page';
+            pageSpan.textContent = loc.pageTitle || _('Untitled');
+            li.appendChild(pageSpan);
+
+            const placeParts = [];
+            if (loc.ideviceTitle) placeParts.push(`${_('iDevice')} ${loc.ideviceTitle}`);
+            if (loc.blockTitle) placeParts.push(`${_('Block')} ${loc.blockTitle}`);
+            if (placeParts.length) {
+                const placeSpan = document.createElement('span');
+                placeSpan.className = 'usage-place';
+                placeSpan.textContent = placeParts.join(' · ');
+                li.appendChild(placeSpan);
+            }
+
             this.usageLocations.appendChild(li);
         }
 

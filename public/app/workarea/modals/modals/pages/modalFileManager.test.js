@@ -77,14 +77,11 @@ describe('ModalFilemanager', () => {
               <option value="">All</option>
             </select>
           </div>
-          <div class="media-library-refcount-toggle">
-            <input type="checkbox" class="media-library-show-refcount" id="media-library-show-refcount">
-          </div>
+          <div class="media-library-file-count"><span class="media-library-count-value">0</span> files</div>
         </div>
         <div class="media-library-main">
           <div class="media-library-nav-bar">
             <div class="media-library-breadcrumbs"></div>
-            <div class="media-library-file-count"><span class="media-library-count-value">0</span> files</div>
           </div>
           <div class="media-library-empty"></div>
           <div class="media-library-grid"></div>
@@ -94,31 +91,54 @@ describe('ModalFilemanager', () => {
           <button class="media-library-sheet-close" aria-label="Close"><span class="exe-icon">expand_more</span></button>
           <div class="media-library-sidebar-empty"></div>
           <div class="media-library-sidebar-content">
-            <div class="media-library-preview">
-              <img class="media-library-preview-img">
-              <video class="media-library-preview-video"></video>
-              <audio class="media-library-preview-audio"></audio>
-              <div class="media-library-preview-file"></div>
-              <iframe class="media-library-preview-pdf"></iframe>
+            <div class="media-library-file-header">
+              <div class="media-library-header-thumb">
+                <img class="media-library-header-thumb-img" style="display:none;">
+                <span class="exe-icon media-library-header-thumb-icon">description</span>
+              </div>
+              <div class="media-library-header-info">
+                <p class="media-library-header-name"></p>
+                <p class="media-library-header-meta"></p>
+              </div>
+              <button type="button" class="media-library-preview-toggle" aria-expanded="false">
+                <span class="exe-icon">open_in_full</span>
+              </button>
             </div>
-            <div class="media-library-metadata">
-              <div class="metadata-row metadata-filename"><span class="media-library-filename"></span></div>
-
-              <details class="media-library-section media-library-section-metadata" open>
-                <summary class="media-library-section-summary">Metadata</summary>
+            <div class="media-library-preview-wrap" hidden>
+              <div class="media-library-preview">
+                <img class="media-library-preview-img">
+                <video class="media-library-preview-video"></video>
+                <audio class="media-library-preview-audio"></audio>
+                <div class="media-library-preview-file"></div>
+                <iframe class="media-library-preview-pdf"></iframe>
+              </div>
+            </div>
+            <ul class="nav nav-tabs media-library-tabs" role="tablist">
+              <li class="nav-item"><button type="button" class="nav-link media-library-tab active" data-media-tab="metadata" role="tab" aria-selected="true">Metadata</button></li>
+              <li class="nav-item"><button type="button" class="nav-link media-library-tab" data-media-tab="details" role="tab" aria-selected="false">Details</button></li>
+              <li class="nav-item"><button type="button" class="nav-link media-library-tab" data-media-tab="usage" role="tab" aria-selected="false">Usage<span class="media-library-usage-tab-count"></span></button></li>
+            </ul>
+            <div class="tab-content media-library-tab-content media-library-metadata">
+              <div class="tab-pane active media-library-tab-pane media-library-section-metadata" data-media-pane="metadata" role="tabpanel">
                 <form class="media-library-edit-metadata" style="display:none;">
+                  <p class="media-library-metadata-hint">Hint</p>
                   <span class="media-library-meta-status" role="status" aria-live="polite"></span>
                   <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-title"></div>
                   <div class="metadata-row metadata-edit-row"><textarea class="media-library-meta-description"></textarea></div>
                   <div class="metadata-row metadata-edit-row"><select class="media-library-meta-license"></select></div>
-                  <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-author"></div>
-                  <div class="metadata-row metadata-edit-row"><input type="url" class="media-library-meta-author-url"></div>
+                  <div class="metadata-author-grid">
+                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-author"></div>
+                    <div class="metadata-row metadata-edit-row"><input type="url" class="media-library-meta-author-url"></div>
+                  </div>
                   <div class="metadata-row metadata-edit-row"><input type="url" class="media-library-meta-source-url"></div>
+                  <div class="media-library-caption-preview is-empty">
+                    <p class="media-library-caption-preview-label">Resulting caption</p>
+                    <div class="media-library-caption-preview-text"></div>
+                  </div>
                 </form>
-              </details>
-
-              <details class="media-library-section media-library-section-details">
-                <summary class="media-library-section-summary">Details</summary>
+              </div>
+              <div class="tab-pane media-library-tab-pane media-library-section-details" data-media-pane="details" role="tabpanel">
+                <div class="metadata-row metadata-filename"><span class="media-library-filename"></span></div>
                 <span class="media-library-type"></span>
                 <span class="media-library-size"></span>
                 <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
@@ -131,13 +151,13 @@ describe('ModalFilemanager', () => {
                   <input class="media-library-url" readonly>
                   <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
                 </div>
-              </details>
-
-              <details class="media-library-section media-library-section-usage">
-                <summary class="media-library-section-summary">Usage</summary>
-                <div class="media-library-usage-row"><span class="media-library-usage">0 iDevices</span></div>
+                <button type="button" class="media-library-replace-inline-btn">Replace file…</button>
+                <p class="media-library-replace-hint">References and metadata are preserved.</p>
+              </div>
+              <div class="tab-pane media-library-tab-pane media-library-section-usage" data-media-pane="usage" role="tabpanel">
+                <p class="media-library-usage-intro" style="display:none;">This file is used in:</p>
                 <div class="media-library-usage-locations-row"><ul class="media-library-usage-locations"></ul></div>
-              </details>
+              </div>
             </div>
           </div>
         </div>
@@ -582,11 +602,10 @@ it('should filter by accept=3d for 3D models', () => {
     });
   });
 
-  describe('createListRow - XSS in reference-count branch (H12)', () => {
+  describe('createListRow - XSS in the name + usage-label cell (H12)', () => {
     beforeEach(() => {
-      // Enable the reference-count badge branch and force a deterministic
-      // usage count so getAssetUsageCount() does not depend on the document.
-      modal.showRefCount = true;
+      // Force a deterministic usage count so getAssetUsageCount() does not
+      // depend on the document.
       modal.assetUsageCounts = new Map();
     });
 
@@ -611,14 +630,14 @@ it('should filter by accept=3d for 3D models', () => {
       const filenameSpan = nameCell.querySelector('.filename');
       expect(filenameSpan).not.toBeNull();
       expect(filenameSpan.textContent).toBe('<img src=x onerror="window.__xss=1">.png');
-      // The static badge still renders the usage count.
-      const badge = nameCell.querySelector('.badge');
-      expect(badge).not.toBeNull();
-      expect(badge.textContent).toBe('3');
-      expect(badge.classList.contains('bg-primary')).toBe(true);
+      // The always-visible usage label renders the reference count.
+      const usageLabel = nameCell.querySelector('.item-usage');
+      expect(usageLabel).not.toBeNull();
+      expect(usageLabel.textContent).toBe('3 uses');
+      expect(usageLabel.classList.contains('is-used')).toBe(true);
     });
 
-    it('renders a benign filename unchanged in the reference-count branch', () => {
+    it('renders a benign filename with the "Not used" label', () => {
       modal.assetUsageCounts.set('ok', 0);
       const asset = {
         id: 'ok',
@@ -633,10 +652,10 @@ it('should filter by accept=3d for 3D models', () => {
 
       expect(filenameSpan).not.toBeNull();
       expect(filenameSpan.textContent).toBe('photo.png');
-      const badge = nameCell.querySelector('.badge');
-      expect(badge.textContent).toBe('0');
-      // Zero references => danger badge variant.
-      expect(badge.classList.contains('bg-danger')).toBe(true);
+      const usageLabel = nameCell.querySelector('.item-usage');
+      expect(usageLabel.textContent).toBe('Not used');
+      // Zero references => muted variant.
+      expect(usageLabel.classList.contains('is-unused')).toBe(true);
     });
   });
 
@@ -3018,8 +3037,12 @@ describe('getMimeTypeFromFilename', () => {
     it('should escape HTML in folder name', () => {
       const item = modal.createFolderGridItem('<script>alert(1)</script>');
 
-      expect(item.innerHTML).not.toContain('<script>');
-      expect(item.innerHTML).toContain('&lt;script&gt;');
+      // No live element is created from the untrusted name…
+      expect(item.querySelector('script')).toBeNull();
+      // …the name renders as inert text and the DOM-set tooltip keeps it verbatim.
+      const nameSpan = item.querySelector('.item-name');
+      expect(nameSpan.textContent).toBe('<script>alert(1)</script>');
+      expect(nameSpan.title).toBe('<script>alert(1)</script>');
     });
 
     it('should handle click to select folder', () => {
@@ -4696,24 +4719,25 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.metaAuthorInput.value).toBe('new');
     });
 
-    it('renders the metadata section before the details and usage sections', () => {
-      const sections = Array.from(
-        modal.modalElement.querySelectorAll('.media-library-section')
-      ).map(el => el.className);
-      expect(sections[0]).toContain('media-library-section-metadata');
-      expect(sections[1]).toContain('media-library-section-details');
-      expect(sections[2]).toContain('media-library-section-usage');
+    it('renders the metadata pane first and active by default', () => {
+      const panes = Array.from(
+        modal.modalElement.querySelectorAll('.media-library-tab-pane')
+      );
+      expect(panes[0].className).toContain('media-library-section-metadata');
+      expect(panes[1].className).toContain('media-library-section-details');
+      expect(panes[2].className).toContain('media-library-section-usage');
 
-      // Metadata is expanded by default; details/usage collapsed.
-      expect(modal.modalElement.querySelector('.media-library-section-metadata').open).toBe(true);
-      expect(modal.modalElement.querySelector('.media-library-section-details').open).toBe(false);
-      expect(modal.modalElement.querySelector('.media-library-section-usage').open).toBe(false);
+      // Metadata is the active tab by default; details/usage are not.
+      expect(panes[0].classList.contains('active')).toBe(true);
+      expect(panes[1].classList.contains('active')).toBe(false);
+      expect(panes[2].classList.contains('active')).toBe(false);
     });
 
-    it('openMetadataEditor opens the sheet and expands the metadata section', () => {
-      modal.metadataSection.open = false;
+    it('openMetadataEditor opens the sheet and activates the metadata tab', () => {
+      modal.setActiveTab('details');
       modal.openMetadataEditor();
-      expect(modal.metadataSection.open).toBe(true);
+      const metadataPane = modal.modalElement.querySelector('.media-library-section-metadata');
+      expect(metadataPane.classList.contains('active')).toBe(true);
       expect(modal.sidebar.classList.contains('is-open')).toBe(true);
     });
 
@@ -4836,6 +4860,305 @@ describe('getMimeTypeFromFilename', () => {
         expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
           expect.objectContaining({ icon: 'error' }),
         );
+      });
+    });
+  });
+
+  describe('sidebar redesign (tabs, header, caption preview)', () => {
+    describe('setActiveTab', () => {
+      it('activates the clicked tab button and its pane', () => {
+        modal.setActiveTab('details');
+
+        const detailsBtn = modal.modalElement.querySelector('[data-media-tab="details"]');
+        const metadataBtn = modal.modalElement.querySelector('[data-media-tab="metadata"]');
+        expect(detailsBtn.classList.contains('active')).toBe(true);
+        expect(detailsBtn.getAttribute('aria-selected')).toBe('true');
+        expect(metadataBtn.classList.contains('active')).toBe(false);
+        expect(metadataBtn.getAttribute('aria-selected')).toBe('false');
+
+        const detailsPane = modal.modalElement.querySelector('.media-library-section-details');
+        const metadataPane = modal.modalElement.querySelector('.media-library-section-metadata');
+        expect(detailsPane.classList.contains('active')).toBe(true);
+        expect(metadataPane.classList.contains('active')).toBe(false);
+        expect(modal.activeTab).toBe('details');
+      });
+
+      it('does not persist the tab when remember=false (internal forcing)', () => {
+        modal.activeTab = 'metadata';
+        modal.setActiveTab('details', false);
+        expect(modal.activeTab).toBe('metadata');
+        const detailsPane = modal.modalElement.querySelector('.media-library-section-details');
+        expect(detailsPane.classList.contains('active')).toBe(true);
+      });
+
+      it('switches tabs from a click on the tab button', () => {
+        modal.modalElement.querySelector('[data-media-tab="usage"]').click();
+        expect(modal.activeTab).toBe('usage');
+        expect(
+          modal.modalElement.querySelector('.media-library-section-usage').classList.contains('active'),
+        ).toBe(true);
+      });
+    });
+
+    describe('preview toggle', () => {
+      it('expands and collapses the large preview', () => {
+        expect(modal.previewWrap.hidden).toBe(true);
+
+        modal.previewToggle.click();
+        expect(modal.previewOpen).toBe(true);
+        expect(modal.previewWrap.hidden).toBe(false);
+        expect(modal.previewToggle.getAttribute('aria-expanded')).toBe('true');
+        expect(modal.previewToggle.querySelector('.exe-icon').textContent).toBe('close_fullscreen');
+
+        modal.previewToggle.click();
+        expect(modal.previewOpen).toBe(false);
+        expect(modal.previewWrap.hidden).toBe(true);
+        expect(modal.previewToggle.getAttribute('aria-expanded')).toBe('false');
+        expect(modal.previewToggle.querySelector('.exe-icon').textContent).toBe('open_in_full');
+      });
+
+      it('collapses the preview on a fresh selection but keeps it on a same-asset refresh', async () => {
+        const asset = { id: 'a1', filename: 'photo.png', mime: 'image/png', size: 10, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+        expect(modal.previewOpen).toBe(false);
+
+        // The user expands the preview, then a remote refresh of the same asset arrives.
+        modal.setPreviewOpen(true);
+        await modal.showSidebarContent(asset);
+        expect(modal.previewOpen).toBe(true);
+
+        // Selecting a different asset folds it again.
+        await modal.showSidebarContent({ ...asset, id: 'a2' });
+        expect(modal.previewOpen).toBe(false);
+      });
+    });
+
+    describe('sidebar file header', () => {
+      it('shows the image thumbnail, name and technical summary for an image', async () => {
+        const asset = {
+          id: 'img1',
+          filename: 'photo.png',
+          mime: 'image/png',
+          size: 2048,
+          createdAt: '2026-07-12T10:00:00Z',
+          blob: new Blob(['x']),
+        };
+        await modal.showSidebarContent(asset);
+
+        expect(modal.headerName.textContent).toBe('photo.png');
+        expect(modal.headerName.title).toBe('photo.png');
+        // Type and size only — the date does not fit and lives in the Details tab.
+        expect(modal.headerMeta.textContent).toBe('image/png · 2048 bytes');
+        expect(modal.headerThumbImg.style.display).toBe('block');
+        expect(modal.headerThumbIcon.style.display).toBe('none');
+      });
+
+      it('shows a type icon instead of a thumbnail for non-image files', async () => {
+        const asset = { id: 'pdf1', filename: 'doc.pdf', mime: 'application/pdf', size: 5, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+
+        expect(modal.headerThumbImg.style.display).toBe('none');
+        expect(modal.headerThumbIcon.style.display).not.toBe('none');
+        expect(modal.headerThumbIcon.textContent).toBe(modal.getFileIcon('application/pdf', 'doc.pdf'));
+      });
+    });
+
+    describe('usage tab count', () => {
+      it('shows the reference count in the Usage tab label when used', async () => {
+        modal.assetUsageCounts = new Map([['used1', 3]]);
+        const asset = { id: 'used1', filename: 'x.png', mime: 'image/png', size: 1, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+        expect(modal.usageTabCount.textContent).toBe(' (3)');
+      });
+
+      it('keeps the Usage tab label bare when unused', async () => {
+        modal.assetUsageCounts = new Map([['unused1', 0]]);
+        const asset = { id: 'unused1', filename: 'x.png', mime: 'image/png', size: 1, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+        expect(modal.usageTabCount.textContent).toBe('');
+      });
+    });
+
+    describe('usage intro line', () => {
+      it('shows the intro only when the asset has usage locations', () => {
+        modal.assetManager = {
+          getAssetUsageLocations: () => [{ pageTitle: 'Page one', ideviceTitle: 'Text' }],
+        };
+        modal.renderUsageLocations({ id: 'a1' });
+        expect(modal.usageIntro.style.display).not.toBe('none');
+
+        modal.assetManager = { getAssetUsageLocations: () => [] };
+        modal.renderUsageLocations({ id: 'a1' });
+        expect(modal.usageIntro.style.display).toBe('none');
+      });
+
+      it('renders each location as a card with page and place lines', () => {
+        modal.assetManager = {
+          getAssetUsageLocations: () => [
+            { pageTitle: 'Page one', ideviceTitle: 'Text', blockTitle: 'Block 2' },
+            { ideviceTitle: 'Gallery' },
+          ],
+        };
+        modal.renderUsageLocations({ id: 'a1' });
+
+        const cards = modal.usageLocations.querySelectorAll('.media-library-usage-location');
+        expect(cards.length).toBe(2);
+        expect(cards[0].querySelector('.usage-page').textContent).toBe('Page one');
+        expect(cards[0].querySelector('.usage-place').textContent).toContain('Text');
+        expect(cards[0].querySelector('.usage-place').textContent).toContain('Block 2');
+        // Missing page title falls back to "Untitled".
+        expect(cards[1].querySelector('.usage-page').textContent).toBe('Untitled');
+      });
+    });
+
+    describe('updateCaptionPreview', () => {
+      beforeEach(() => {
+        modal.selectedAsset = { id: 'a1', mime: 'image/png' };
+      });
+
+      it('shows the empty placeholder when there is no metadata', () => {
+        modal.populateEditMetadata({ id: 'a1', mime: 'image/png' });
+        expect(modal.captionPreviewBox.classList.contains('is-empty')).toBe(true);
+        expect(modal.captionPreviewText.textContent).toContain('caption will be empty');
+      });
+
+      it('builds the caption from title and author via the shared builder', () => {
+        modal.metaTitleInput.value = 'Retiro pond';
+        modal.metaAuthorInput.value = 'Ada Lovelace';
+        modal.updateCaptionPreview();
+
+        expect(modal.captionPreviewBox.classList.contains('is-empty')).toBe(false);
+        expect(modal.captionPreviewText.textContent).toContain('Retiro pond');
+        expect(modal.captionPreviewText.textContent).toContain('Ada Lovelace');
+        // Uses the shared figure-caption markup (title span + author span).
+        expect(modal.captionPreviewText.querySelector('.title')).not.toBeNull();
+        expect(modal.captionPreviewText.querySelector('.author')).not.toBeNull();
+      });
+
+      it('updates live while the user types', () => {
+        modal.populateEditMetadata({ id: 'a1', mime: 'image/png' });
+        modal.metaTitleInput.value = 'Live title';
+        modal.metaTitleInput.dispatchEvent(new Event('input'));
+        expect(modal.captionPreviewText.textContent).toContain('Live title');
+      });
+    });
+
+    describe('grid cards', () => {
+      it('always shows the name and usage label on file cards', () => {
+        modal.assetUsageCounts = new Map([['g1', 2]]);
+        const item = modal.createGridItem({
+          id: 'g1',
+          filename: 'card.png',
+          mime: 'image/png',
+          blob: new Blob(['x']),
+        });
+
+        expect(item.querySelector('.item-name').textContent).toBe('card.png');
+        expect(item.querySelector('.item-name').title).toBe('card.png');
+        const usage = item.querySelector('.item-usage');
+        expect(usage.textContent).toBe('2 uses');
+        expect(usage.classList.contains('is-used')).toBe(true);
+      });
+
+      it('marks unused files with the muted "Not used" label', () => {
+        modal.assetUsageCounts = new Map([['g2', 0]]);
+        const item = modal.createGridItem({
+          id: 'g2',
+          filename: 'lonely.png',
+          mime: 'image/png',
+          blob: new Blob(['x']),
+        });
+        const usage = item.querySelector('.item-usage');
+        expect(usage.textContent).toBe('Not used');
+        expect(usage.classList.contains('is-unused')).toBe(true);
+      });
+
+      it('renders folder cards with a folder label instead of a usage count', () => {
+        const item = modal.createFolderGridItem('assets');
+        expect(item.querySelector('.item-name').textContent).toBe('assets');
+        expect(item.querySelector('.item-usage').classList.contains('is-folder')).toBe(true);
+      });
+    });
+
+    describe('getUsageLabel', () => {
+      it('maps counts to labels', () => {
+        expect(modal.getUsageLabel(0)).toBe('Not used');
+        expect(modal.getUsageLabel(1)).toBe('1 use');
+        expect(modal.getUsageLabel(4)).toBe('4 uses');
+      });
+    });
+
+    describe('sidebar modes (file / folder / multi)', () => {
+      it('hides the tab bar and forces the details pane for folders', () => {
+        modal.assets = [];
+        modal.showFolderSidebarContent('docs');
+
+        expect(modal.sidebarTabs.style.display).toBe('none');
+        expect(
+          modal.modalElement.querySelector('.media-library-section-details').classList.contains('active'),
+        ).toBe(true);
+        expect(modal.headerName.textContent).toBe('docs');
+        expect(modal.headerThumbIcon.textContent).toBe('folder');
+        expect(modal.editMetadataForm.style.display).toBe('none');
+        expect(modal.replaceInlineBtn.style.display).toBe('none');
+      });
+
+      it('hides the tab bar for multi-selection and restores it for files', async () => {
+        modal.showMultiSelectionSidebarContent([
+          { id: 'm1', size: 5 },
+          { id: 'm2', size: 7 },
+        ]);
+        expect(modal.sidebarTabs.style.display).toBe('none');
+        expect(modal.headerThumbIcon.textContent).toBe('collections');
+        expect(modal.replaceInlineBtn.style.display).toBe('none');
+
+        const asset = { id: 'f1', filename: 'a.png', mime: 'image/png', size: 1, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+        expect(modal.sidebarTabs.style.display).toBe('');
+        expect(modal.replaceInlineBtn.style.display).toBe('');
+      });
+
+      it('restores the user-selected tab when going back to a file', async () => {
+        modal.setActiveTab('usage');
+        modal.assets = [];
+        modal.showFolderSidebarContent('docs');
+        const asset = { id: 'f2', filename: 'a.png', mime: 'image/png', size: 1, blob: new Blob(['x']) };
+        await modal.showSidebarContent(asset);
+        expect(
+          modal.modalElement.querySelector('.media-library-section-usage').classList.contains('active'),
+        ).toBe(true);
+      });
+    });
+
+    describe('inline replace button', () => {
+      it('opens the replace file picker for the selected asset', () => {
+        modal.selectedAsset = { id: 'a1', filename: 'x.png', mime: 'image/png' };
+        const clickSpy = vi.spyOn(modal.replaceInput, 'click');
+        modal.replaceInlineBtn.click();
+        expect(clickSpy).toHaveBeenCalled();
+      });
+
+      it('does nothing when no asset is selected', () => {
+        modal.selectedAsset = null;
+        const clickSpy = vi.spyOn(modal.replaceInput, 'click');
+        modal.replaceInlineBtn.click();
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('show() resets the sidebar state', () => {
+      it('returns to the metadata tab with a collapsed preview', async () => {
+        vi.useFakeTimers();
+        modal.setActiveTab('usage');
+        modal.setPreviewOpen(true);
+
+        await modal.show();
+        vi.advanceTimersByTime(500);
+
+        expect(modal.activeTab).toBe('metadata');
+        expect(modal.previewOpen).toBe(false);
+        expect(modal.previewWrap.hidden).toBe(true);
+        vi.useRealTimers();
       });
     });
   });
