@@ -2389,6 +2389,26 @@ describe('AssetManager', () => {
       expect(counts.has('zzz')).toBe(false);
     });
 
+    it('excludes resource-report snapshots from the reference scan (#1868)', () => {
+      // A default Resource Report iDevice (resourceMode:'all') snapshots an asset:// link
+      // for every listed asset. Those links are a generated report, not real usage, so the
+      // scan must count only the genuine reference (A) and ignore the report's A, B, C.
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg">', ideviceType: 'text' },
+        {
+          html: '<a href="asset://a1.jpg">A</a><a href="asset://b2.png">B</a><a href="asset://c3.pdf">C</a>',
+          ideviceType: 'resource-report',
+        },
+      ]);
+      expect([...assetManager.getReferencedAssetIds()]).toEqual(['a1']);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+      expect(assetManager.countAssetReferences('b2')).toBe(0);
+      const counts = assetManager.getAllAssetReferenceCounts();
+      expect(counts.get('a1')).toBe(1);
+      expect(counts.has('b2')).toBe(false);
+      expect(counts.has('c3')).toBe(false);
+    });
+
     it('getAssetUsageLocations returns page/block/iDevice context', () => {
       setMockYDoc(
         [

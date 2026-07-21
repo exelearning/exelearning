@@ -782,7 +782,14 @@ class AssetManager {
    * @private
    */
   _forEachComponentText(callback) {
-    this._forEachComponent(({ compMap }) => callback(this._componentSearchableText(compMap)));
+    this._forEachComponent(({ compMap }) => {
+      // Resource Report iDevices (default resourceMode:'all') snapshot an asset:// link for
+      // every listed asset, which would make every asset look referenced. Those links are a
+      // generated report, not real usage, so exclude this type from the reference scan (#1868).
+      const type = compMap?.get('ideviceType') || compMap?.get('type') || '';
+      if (type === 'resource-report') return;
+      callback(this._componentSearchableText(compMap));
+    });
   }
 
   /**
