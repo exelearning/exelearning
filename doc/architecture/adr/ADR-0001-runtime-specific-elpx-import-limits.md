@@ -177,8 +177,9 @@ warns before exporting an ELPX whose assets exceed the desktop policy
   `src/shared/import/browser/index.spec.ts` (preflight, confirmation,
   cancellation, no stale policy), `public/app/yjs/YjsProjectBridge.test.js`
   (runtime selection, confirmation routing, actionable error, export warning).
-- E2E: `test/e2e/playwright/specs/desktop-large-asset-import.spec.ts` drives the
-  real confirmation modal with an injected desktop runtime and scaled limits.
+- E2E: `test/e2e/playwright/specs/desktop-large-asset-import-static.spec.ts`
+  drives the real confirmation modal with an injected desktop runtime and scaled
+  limits.
 - Manual: the real ~360 MB / ~436 MB ELPX opens on desktop with the video asset
   present and playable.
 
