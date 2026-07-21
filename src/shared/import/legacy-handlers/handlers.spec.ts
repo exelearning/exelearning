@@ -117,6 +117,58 @@ describe('DefaultHandler', () => {
             expect(handler.extractHtmlView(dict)).toBe('Fallback content');
         });
 
+        it('resolves a <reference> field via the context resolver (Strategy 1, #2159)', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Correct referenced content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toBe('Correct referenced content');
+        });
+
+        it('does not pull a foreign nested field when the fields entry is an unresolved reference (#2159)', () => {
+            // fields -> <reference> (unresolved, no resolver) plus a foreign TextAreaField
+            // inlined under a Node boundary. The fallback must stay empty instead of
+            // returning the foreign iDevice content.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Foreign content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+
         it('should remove legacy outer exe-text wrapper for normal text content', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -1462,6 +1514,34 @@ describe('FillHandler', () => {
             expect(questions[0].answers).toContain('mat');
         });
 
+        it('prefers content_w_resourcePaths over _encodedContent so cloze image paths keep the resources/ prefix', () => {
+            // Same defect as DropdownHandler: a ClozeField stores its gap text
+            // twice. _encodedContent holds BARE image paths (src="tree.png"),
+            // content_w_resourcePaths holds resources/-prefixed paths that can be
+            // resolved to asset:// URLs on import. Prefer the resolvable copy.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ClozeField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string; answers: string[] }[];
+            expect(questions.length).toBe(1);
+            // Cloze gap answers must still be parsed from the <u> markers
+            expect(questions[0].answers).toContain('cone');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/tree.png');
+            expect(questions[0].baseText).not.toContain('src="tree.png"');
+        });
+
         it('should extract from _cloze key', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -1713,6 +1793,38 @@ describe('DropdownHandler', () => {
             const questions = props.questionsData as { baseText: string }[];
             expect(questions.length).toBe(1);
             expect(questions[0].baseText).toContain('<u>blank</u>');
+        });
+
+        it('prefers content_w_resourcePaths over _encodedContent so image paths keep the resources/ prefix', () => {
+            // Real legacy ListaIdevice stores the question twice: _encodedContent
+            // holds the editor/display copy with BARE image paths (src="pic.png"),
+            // while content_w_resourcePaths holds the canonical copy with
+            // resources/-prefixed paths (src="resources/pic.png"). Only the
+            // resources/-prefixed form can later be resolved to an asset:// URL,
+            // so the handler must prefer it (as every other field extraction does).
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ListaField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="otras"/>
+                            <string value="wrong1|wrong2"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string }[];
+            expect(questions.length).toBe(1);
+            // Dropdown gap markers must survive regardless of which copy is used
+            expect(questions[0].baseText).toContain('<u>right</u>');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/pic.png');
+            expect(questions[0].baseText).not.toContain('src="pic.png"');
         });
 
         it('should include eXeFormInstructions', () => {
@@ -4001,6 +4113,48 @@ describe('GameHandler', () => {
             `);
             const result = handler.extractHtmlView(dict);
             expect(result).toContain('flipcards-DataGame');
+        });
+
+        // Legacy contentv3.xml serializes each object once as <instance reference="N">
+        // and every later mention as a back-pointer <reference key="N">. A game
+        // iDevice whose content field is written as a <reference> must still resolve
+        // to the referenced instance (issue #2167, sibling of #2159).
+        it('should resolve a <reference> field via the context resolver (issue #2167)', () => {
+            const referenced = createDomElement(`
+                <instance class="TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content"/>
+                        <unicode value="&lt;div class=&quot;flipcards-DataGame&quot;&gt;{&quot;typeGame&quot;:&quot;FlipCards&quot;}&lt;/div&gt;"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toContain('flipcards-DataGame');
+        });
+
+        it('should skip a <reference> field when no resolver is provided', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
         });
 
         it('should return empty when no fields', () => {
