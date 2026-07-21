@@ -121,9 +121,9 @@ describe('unifiedFillBlankToFormQuestion', () => {
         expect(question.feedbackRight).toBe('eXeLearning creates interactive learning content.');
     });
 
-    it('encodes alternative answers with pipe-wrapped <u> gaps', () => {
+    it('encodes alternative answers as bare pipe-separated <u> gaps (no wrapping pipes)', () => {
         const question = unifiedFillBlankToFormQuestion(fillblank('Water is @@wet|moist@@.'));
-        expect(question.baseText).toBe('<p>Water is <u>|wet|moist|</u>.</p>');
+        expect(question.baseText).toBe('<p>Water is <u>wet|moist</u>.</p>');
     });
 
     it('maps case-sensitive to capitalization and strict to strict', () => {

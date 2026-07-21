@@ -57,7 +57,7 @@ export interface FormTrueFalseQuestion {
 /** A `form` iDevice fill-in-the-blank question (`questionsData` entry). */
 export interface FormFillQuestion {
     activityType: 'fill';
-    /** HTML with each blank encoded as `<u>answer</u>` (alternatives as `<u>|a|b|</u>`). */
+    /** HTML with each blank encoded as `<u>answer</u>` (alternatives as `<u>a|b</u>`). */
     baseText: string;
     suggestion?: string;
     feedbackRight?: string;
@@ -194,8 +194,7 @@ function renderFillBaseText(item: UnifiedFillBlankItem): string {
             if (token.type === 'text') {
                 return token.value;
             }
-            const inner = token.answers.length > 1 ? `|${token.answers.join('|')}|` : token.answers[0];
-            return `<u>${inner}</u>`;
+            return `<u>${token.answers.join('|')}</u>`;
         })
         .join('');
     return toHtmlParagraph(body);
