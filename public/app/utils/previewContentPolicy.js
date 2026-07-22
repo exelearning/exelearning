@@ -205,6 +205,29 @@ export function prepareUserHtmlForPreview(html, { allowActiveContent = false } =
     };
 }
 
+/**
+ * Screen author CSS for markup breakouts. `customStyles` is rendered RAW
+ * inside `<style>...</style>` by the export renderers, so a literal
+ * `</style>` sequence would close the element and inject markup — including
+ * `<script>` — into the document. CSS itself cannot execute script, so that
+ * breakout is the only active vector; when found (and not allowed) the whole
+ * style block is dropped, fail closed.
+ */
+export function prepareStyleForPreview(css, { allowActiveContent = false } = {}) {
+    const input = css === null || css === undefined ? '' : String(css);
+    // Per the HTML parser, `</style` only closes the element when followed by
+    // whitespace, `/` or `>` — or, here, by end-of-input, because the renderer
+    // appends `\n</style>` right after the author CSS.
+    const breakout = /<\/style([\s/>]|$)/i.test(input);
+    if (!breakout) {
+        return { html: input, activeContentFound: false, categories: [], actions: [] };
+    }
+    if (allowActiveContent) {
+        return { html: input, activeContentFound: true, categories: ['style-breakout'], actions: ['allowed'] };
+    }
+    return { html: '', activeContentFound: true, categories: ['style-breakout'], actions: ['disabled'] };
+}
+
 function selectProject(projectId) {
     const normalized = projectId === null || projectId === undefined ? null : String(projectId);
     if (authorization.projectId !== normalized) {
@@ -333,6 +356,7 @@ export function createPreviewContentPolicy(projectId, runtimeConfig = globalThis
         getActivePreviewTrustState(projectId, runtimeConfig) === PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
     return {
         prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent }),
+        prepareStyle: css => prepareStyleForPreview(css, { allowActiveContent }),
     };
 }
 
@@ -344,6 +368,7 @@ export function createPreviewContentPolicy(projectId, runtimeConfig = globalThis
 export function createReportingPreviewContentPolicy() {
     return {
         prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent: true }),
+        prepareStyle: css => prepareStyleForPreview(css, { allowActiveContent: true }),
     };
 }
 
