@@ -533,6 +533,10 @@ test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
+.PHONY: bench-preview
+bench-preview: check-env bundle ## Run the three-way preview refresh benchmark (main vs filtered vs opaque)
+	bun x playwright test -c test/benchmarks/preview/playwright.bench.config.ts
+
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 	bun x playwright test --ui
