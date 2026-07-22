@@ -464,7 +464,13 @@ export interface ExportOptions {
     previewContentPolicy?: PreviewContentPolicy;
 }
 
-export type PreviewContentContext = 'component-html' | 'component-property' | 'custom-head' | 'custom-footer';
+export type PreviewContentContext =
+    | 'component-html'
+    | 'component-property'
+    | 'custom-head'
+    | 'custom-footer'
+    | 'custom-styles'
+    | 'unclassified-metadata';
 
 export interface PreviewContentPolicyResult {
     html: string;
@@ -475,6 +481,12 @@ export interface PreviewContentPolicyResult {
 
 export interface PreviewContentPolicy {
     prepare(html: string, context: PreviewContentContext): PreviewContentPolicyResult;
+    /**
+     * Screen author CSS (rendered raw inside `<style>`) for markup breakouts
+     * (`</style>`). Optional for backward compatibility; when absent the
+     * adapter applies its own fail-closed screening.
+     */
+    prepareStyle?(css: string): PreviewContentPolicyResult;
 }
 
 export interface PreviewContentReport {

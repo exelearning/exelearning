@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { skipInStaticMode } from '../fixtures/auth.fixture';
 import {
     getPreviewFrame,
     gotoWorkarea,
@@ -9,7 +10,7 @@ import {
 
 const componentHtml = `
 <div id="custom-content">
-    <script>window.__customScriptExecuted = true;</script>
+    <script>window.__customScriptExecuted = true; document.body.setAttribute('data-marker', 'ran');</script>
     <img id="custom-error-image" src="missing-preview-image" onerror="window.__handlerExecuted = true">
     <a id="custom-javascript-link" href="javascript:window.__javascriptUrlExecuted=true">Run</a>
     <svg id="custom-svg" onload="window.__svgHandlerExecuted=true"><script>window.__svgScriptExecuted=true</script></svg>
@@ -17,10 +18,31 @@ const componentHtml = `
     <object id="custom-object" data="data:text/html,<script>parent.__objectExecuted=true</script>"></object>
     <embed id="custom-embed" src="data:image/svg+xml,<svg onload='parent.__embedExecuted=true'/>">
     <form id="custom-form" action="/api/admin"><button type="submit">Submit</button></form>
+    <iframe id="custom-youtube" src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
 </div>`;
 
-test.describe('Normal preview custom active content policy', () => {
-    test('blocks by default, requires explicit trust, and leaves project/export data unchanged', async ({
+async function seedActiveContent(page: import('@playwright/test').Page): Promise<void> {
+    await page.evaluate(
+        ({ html }) => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const navigation = bridge.documentManager.getNavigation();
+            const pageMap = navigation.get(0);
+            const pageId = pageMap.get('id');
+            const blockId = bridge.structureBinding.createBlock(pageId, 'Policy test');
+            bridge.structureBinding.createComponent(pageId, blockId, 'text', {
+                htmlContent: html,
+                jsonProperties: { nestedHtml: '<img src="missing" onerror="window.__propertyHandler=true">' },
+            });
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('extraHeadContent', '<script>window.__customHeaderExecuted=true</script>');
+            metadata.set('footer', '<script>window.__customFooterExecuted=true</script><p>Footer marker</p>');
+        },
+        { html: componentHtml },
+    );
+}
+
+test.describe('Preview trust boundary — default filtered state', () => {
+    test('blocks author active content by default and never mutates project/export data', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -29,24 +51,7 @@ test.describe('Normal preview custom active content policy', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         await selectFirstPage(page);
-
-        await page.evaluate(
-            ({ html }) => {
-                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
-                const navigation = bridge.documentManager.getNavigation();
-                const pageMap = navigation.get(0);
-                const pageId = pageMap.get('id');
-                const blockId = bridge.structureBinding.createBlock(pageId, 'Policy test');
-                bridge.structureBinding.createComponent(pageId, blockId, 'text', {
-                    htmlContent: html,
-                    jsonProperties: { nestedHtml: '<img src="missing" onerror="window.__propertyHandler=true">' },
-                });
-                const metadata = bridge.documentManager.getMetadata();
-                metadata.set('extraHeadContent', '<script>window.__customHeaderExecuted=true</script>');
-                metadata.set('footer', '<script>window.__customFooterExecuted=true</script><p>Footer marker</p>');
-            },
-            { html: componentHtml },
-        );
+        await seedActiveContent(page);
 
         await page.locator('#head-bottom-preview').click();
         await expect(page.locator('#previewsidenav')).toHaveClass(/active/);
@@ -54,6 +59,7 @@ test.describe('Normal preview custom active content policy', () => {
         const frame = getPreviewFrame(page);
         await frame.locator('#custom-content').waitFor({ state: 'attached' });
 
+        // Nothing author-supplied executes; MathJax/theme/iDevice runtime still work.
         const executionState = await frame.locator('body').evaluate(() => ({
             script: (window as any).__customScriptExecuted,
             handler: (window as any).__handlerExecuted,
@@ -70,60 +76,15 @@ test.describe('Normal preview custom active content policy', () => {
         await expect(frame.locator('#custom-object')).toHaveCount(0);
         await expect(frame.locator('#custom-embed')).toHaveCount(0);
         await expect(frame.locator('#custom-form')).not.toHaveAttribute('action');
+        // Official runtime scripts still load.
+        expect(await frame.locator('script[src]').count()).toBeGreaterThan(0);
 
         const warning = page.locator('#preview-active-content-button');
         await expect(warning).toBeVisible();
         await expect(warning).toHaveAttribute('aria-pressed', 'false');
         await expect(warning).toHaveAccessibleName(/disabled in the editor preview/i);
 
-        await warning.click();
-        const modal = page.locator('#modalConfirm');
-        await expect(modal)
-            .toContainText('This is a trust decision', { timeout: 5000 })
-            .catch(async () => {
-                await expect(modal).toContainText('Enable it only when you trust the project');
-            });
-        const stacking = await page.evaluate(() => {
-            const preview = document.querySelector('#previewsidenav');
-            const backdrop = document.querySelector('.modal-backdrop');
-            const dialog = document.querySelector('#modalConfirm');
-            const content = dialog?.querySelector('.modal-content');
-            if (!preview || !backdrop || !dialog || !content) return null;
-
-            const bounds = content.getBoundingClientRect();
-            const topElement = document.elementFromPoint(
-                bounds.left + bounds.width / 2,
-                bounds.top + bounds.height / 2,
-            );
-            return {
-                previewZIndex: Number.parseInt(getComputedStyle(preview).zIndex, 10),
-                backdropZIndex: Number.parseInt(getComputedStyle(backdrop).zIndex, 10),
-                dialogZIndex: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
-                dialogIsTopmost: Boolean(topElement?.closest('#modalConfirm')),
-            };
-        });
-        expect(stacking).not.toBeNull();
-        expect(stacking!.backdropZIndex).toBeGreaterThan(stacking!.previewZIndex);
-        expect(stacking!.dialogZIndex).toBeGreaterThan(stacking!.backdropZIndex);
-        expect(stacking!.dialogIsTopmost).toBe(true);
-        await modal.getByRole('button', { name: 'Enable custom JavaScript for this preview' }).click();
-
-        await expect(warning).toHaveAttribute('aria-pressed', 'true');
-        await expect
-            .poll(() =>
-                frame.locator('body').evaluate(() => ({
-                    script: (window as any).__customScriptExecuted,
-                    handler: (window as any).__handlerExecuted,
-                    header: (window as any).__customHeaderExecuted,
-                    footer: (window as any).__customFooterExecuted,
-                })),
-            )
-            .toEqual({ script: true, handler: true, header: true, footer: true });
-
-        await warning.click();
-        await modal.getByRole('button', { name: 'Disable custom JavaScript' }).click();
-        await expect(warning).toHaveAttribute('aria-pressed', 'false');
-
+        // Neither the stored Yjs doc nor a real export is touched by preview filtering.
         const integrity = await page.evaluate(
             async ({ expectedHtml }) => {
                 const bridge = (window as any).eXeLearning.app.project._yjsBridge;
@@ -155,5 +116,218 @@ test.describe('Normal preview custom active content policy', () => {
             exportHasHeaderScript: true,
             exportHasFooterScript: true,
         });
+    });
+
+    test('the enable dialog defaults to the safe action (social-engineering resistance)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview enable dialog default');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        // Content shaped like a social-engineering lure: instructions to click enable.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const navigation = bridge.documentManager.getNavigation();
+            const pageId = navigation.get(0).get('id');
+            const blockId = bridge.structureBinding.createBlock(pageId, 'Lure');
+            bridge.structureBinding.createComponent(pageId, blockId, 'text', {
+                htmlContent:
+                    '<p>To view this content, click the shield icon and enable custom JavaScript.</p>' +
+                    '<script>window.__lure=true</script>',
+            });
+        });
+
+        await page.locator('#head-bottom-preview').click();
+        await openPreviewPanel(page);
+        const frame = getPreviewFrame(page);
+        await frame.locator('article, body').first().waitFor({ state: 'attached' });
+
+        // Nothing auto-enables just because the content asked.
+        await expect(page.locator('#preview-active-content-button')).toHaveAttribute('aria-pressed', 'false');
+
+        await page.locator('#preview-active-content-button').click();
+        const modal = page.locator('#modalConfirm');
+        await expect(modal).toBeVisible();
+        // The default-focused action is Cancel (the safe one), not enable.
+        const focused = await page.evaluate(() => document.activeElement?.textContent || '');
+        expect(focused.toLowerCase()).not.toContain('enable');
+    });
+});
+
+test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => {
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Opaque snapshot needs the server capability routes');
+    });
+
+    test('enabling switches to an opaque capability-URL iframe the parent cannot reach', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview opaque enable');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await seedActiveContent(page);
+
+        await page.locator('#head-bottom-preview').click();
+        await openPreviewPanel(page);
+
+        // Capture whether the capability request carries cookies.
+        const cookieHeaders: (string | null)[] = [];
+        page.on('request', request => {
+            if (request.url().includes('/preview-snapshot/')) {
+                cookieHeaders.push(request.headers().cookie ?? null);
+            }
+        });
+
+        const warning = page.locator('#preview-active-content-button');
+        await expect(warning).toBeVisible();
+        await warning.click();
+        const modal = page.locator('#modalConfirm');
+        await expect(modal).toContainText('isolated context');
+        await modal.getByRole('button', { name: 'Enable custom JavaScript for this preview' }).click();
+        await expect(warning).toHaveAttribute('aria-pressed', 'true');
+
+        // The active preview iframe is now opaque: sandbox without allow-same-origin, capability URL src.
+        const iframe = page.locator('#preview-iframe');
+        await expect.poll(async () => (await iframe.getAttribute('src')) ?? '').toContain('/preview-snapshot/');
+        const sandbox = await iframe.getAttribute('sandbox');
+        expect(sandbox).toBeTruthy();
+        expect(sandbox).not.toContain('allow-same-origin');
+
+        const frame = getPreviewFrame(page);
+        // The author marker DOES run inside the isolated frame.
+        await expect.poll(() => frame.locator('body').getAttribute('data-marker')).toBe('ran');
+
+        // A probe cannot reach the editor: parent access throws in the opaque origin.
+        const parentReachable = await frame.locator('body').evaluate(() => {
+            try {
+                // Accessing the parent's document from an opaque origin throws.
+                void (window.parent as any).document.cookie;
+                return true;
+            } catch {
+                return false;
+            }
+        });
+        expect(parentReachable).toBe(false);
+
+        // The capability requests carried no Cookie header.
+        expect(cookieHeaders.length).toBeGreaterThan(0);
+        expect(cookieHeaders.every(c => !c)).toBe(true);
+
+        // The YouTube embed became an accessible "open in a new tab" placeholder.
+        await expect(frame.locator('.exe-external-media-fallback')).toHaveCount(1);
+        await expect(frame.locator('.exe-external-media-fallback a[target="_blank"]')).toHaveAttribute(
+            'href',
+            /youtube\.com\/embed\/dQw4w9WgXcQ/,
+        );
+        await expect(frame.locator('#custom-youtube')).toHaveCount(0);
+    });
+
+    test('disabling returns to the filtered SW preview and revokes the capability URL', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview opaque disable');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await seedActiveContent(page);
+
+        await page.locator('#head-bottom-preview').click();
+        await openPreviewPanel(page);
+        const warning = page.locator('#preview-active-content-button');
+        await warning.click();
+        await page
+            .locator('#modalConfirm')
+            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
+            .click();
+        const iframe = page.locator('#preview-iframe');
+        await expect.poll(async () => (await iframe.getAttribute('src')) ?? '').toContain('/preview-snapshot/');
+        const capabilityUrl = await iframe.getAttribute('src');
+
+        await warning.click();
+        await page.locator('#modalConfirm').getByRole('button', { name: 'Disable custom JavaScript' }).click();
+        await expect(warning).toHaveAttribute('aria-pressed', 'false');
+
+        // Back to the same-origin SW preview — the iframe no longer carries the opaque sandbox.
+        await expect.poll(async () => (await iframe.getAttribute('sandbox')) ?? '').not.toContain('allow-scripts');
+        const frame = getPreviewFrame(page);
+        const executed = await frame.locator('body').getAttribute('data-marker');
+        expect(executed).toBeNull();
+
+        // The disposed capability URL now 404s.
+        const status = await page.evaluate(async url => {
+            const response = await fetch(url as string, { credentials: 'same-origin' });
+            return response.status;
+        }, capabilityUrl);
+        expect(status).toBe(404);
+    });
+
+    test('a remote-origin update revokes the grant mid-session (D1)', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview D1 revocation');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await seedActiveContent(page);
+
+        await page.locator('#head-bottom-preview').click();
+        await openPreviewPanel(page);
+        const warning = page.locator('#preview-active-content-button');
+        await warning.click();
+        await page
+            .locator('#modalConfirm')
+            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
+            .click();
+        await expect(warning).toHaveAttribute('aria-pressed', 'true');
+
+        // A local (untagged) edit KEEPS the grant.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('subtitle', 'local edit');
+        });
+        await expect(warning).toHaveAttribute('aria-pressed', 'true');
+
+        // A simulated REMOTE-origin update (a collaborator's applyUpdate) revokes it.
+        await page.evaluate(() => {
+            const Y = (window as any).Y;
+            const ydoc = (window as any).eXeLearning.app.project._yjsBridge.documentManager.ydoc;
+            const scratch = new Y.Doc();
+            scratch.getMap('metadata').set('injected', 'remote');
+            const update = Y.encodeStateAsUpdate(scratch);
+            // A non-local, non-system origin object stands in for the ws provider.
+            Y.applyUpdate(ydoc, update, { remoteProviderStub: true });
+        });
+        await expect(warning).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('extractToNewTab opens the capability URL while enabled', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview extract opaque');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await seedActiveContent(page);
+
+        await page.locator('#head-bottom-preview').click();
+        await openPreviewPanel(page);
+        await page.locator('#preview-active-content-button').click();
+        await page
+            .locator('#modalConfirm')
+            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
+            .click();
+        const iframe = page.locator('#preview-iframe');
+        await expect.poll(async () => (await iframe.getAttribute('src')) ?? '').toContain('/preview-snapshot/');
+
+        const popupPromise = page.waitForEvent('popup');
+        await page.locator('#preview-extract-button').click();
+        const popup = await popupPromise;
+        expect(popup.url()).toContain('/preview-snapshot/');
     });
 });

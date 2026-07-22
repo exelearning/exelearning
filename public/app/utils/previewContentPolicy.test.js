@@ -10,6 +10,7 @@ import {
     getActivePreviewTrustState,
     invalidateActivePreviewAuthorization,
     isActivePreviewContentEnabled,
+    prepareStyleForPreview,
     prepareUserHtmlForPreview,
     resetPreviewContentAuthorizationForTests,
     resolvePreviewTransport,
@@ -250,5 +251,50 @@ describe('shouldRevokeOnYdocUpdate (D1)', () => {
     it('revokes on object origins even when no documentManager is available', () => {
         expect(shouldRevokeOnYdocUpdate({ any: 'object' }, null)).toBe(true);
         expect(shouldRevokeOnYdocUpdate(null, null)).toBe(false);
+    });
+});
+
+describe('prepareStyleForPreview', () => {
+    it('passes benign CSS through byte-identical', () => {
+        const css = 'body { color: red; } /* </styleish is not a close tag */';
+        expect(prepareStyleForPreview(css)).toEqual({
+            html: css,
+            activeContentFound: false,
+            categories: [],
+            actions: [],
+        });
+    });
+
+    it.each([
+        ['classic breakout', 'x{}</style><script>run()</script>'],
+        ['case-insensitive with space', 'x{}</STYLE ><script>run()</script>'],
+        ['self-closing delimiter', 'x{}</style/>'],
+        ['trailing bare close (renderer appends \n</style>)', 'x{} </style'],
+    ])('drops CSS with a %s and reports style-breakout', (_label, css) => {
+        const result = prepareStyleForPreview(css);
+        expect(result.html).toBe('');
+        expect(result.activeContentFound).toBe(true);
+        expect(result.categories).toEqual(['style-breakout']);
+        expect(result.actions).toEqual(['disabled']);
+    });
+
+    it('keeps the breakout byte-identical when explicitly allowed, still reporting', () => {
+        const css = '</style><script>x()</script>';
+        expect(prepareStyleForPreview(css, { allowActiveContent: true })).toEqual({
+            html: css,
+            activeContentFound: true,
+            categories: ['style-breakout'],
+            actions: ['allowed'],
+        });
+    });
+
+    it('policies expose prepareStyle consistently with their prepare mode', () => {
+        enableActivePreviewContent('project-a');
+        const staticRuntime = { mode: 'static', isEmbedded: false };
+        const serverRuntime = { mode: 'server', isEmbedded: false };
+        const breakout = '</style><script>x()</script>';
+        expect(createPreviewContentPolicy('project-a', staticRuntime).prepareStyle(breakout).html).toBe(breakout);
+        expect(createPreviewContentPolicy('project-a', serverRuntime).prepareStyle(breakout).html).toBe('');
+        expect(createReportingPreviewContentPolicy().prepareStyle(breakout).html).toBe(breakout);
     });
 });
