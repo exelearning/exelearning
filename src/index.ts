@@ -30,6 +30,8 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
+import { previewSnapshotApiRoutes, previewSnapshotServeRoutes } from './routes/preview-snapshot';
+import { startSweeper as startPreviewSnapshotSweeper } from './services/preview-snapshot-store';
 import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSocket } from './websocket/yjs-websocket';
 import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
@@ -583,6 +585,8 @@ if (registerRootRoutes) {
         .use(yjsRoutes)
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
+        .use(previewSnapshotApiRoutes)
+        .use(previewSnapshotServeRoutes)
         .use(createWebSocketRoutes())
         .use(webSocketInfoRoutes)
         .use(yjsDebugRoutes)
@@ -619,6 +623,8 @@ if (routePrefix) {
             .use(yjsRoutes)
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
+            .use(previewSnapshotApiRoutes)
+            .use(previewSnapshotServeRoutes)
             .use(createWebSocketRoutes())
             .use(webSocketInfoRoutes)
             .use(yjsDebugRoutes)
@@ -821,6 +827,7 @@ async function bootstrap() {
     // expired upload sessions so neither disk nor memory grows unbounded.
     startChunkUploadSweeper();
     startUploadSessionCleanup();
+    startPreviewSnapshotSweeper();
 
     // 7c. Surface a common platform-integration misconfiguration: tokens/ids set
     // but PROVIDER_URLS empty (isAllowedProviderUrl fails closed, so callbacks

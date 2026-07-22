@@ -1,4 +1,13 @@
-const EMBEDDED_PREVIEW_SANDBOX = 'allow-scripts allow-forms allow-popups allow-downloads allow-presentation';
+// Must stay identical to PREVIEW_SNAPSHOT_SANDBOX in
+// src/shared/security/previewSandbox.ts (the serving CSP `sandbox` directive):
+// the effective sandbox of a framed document is the INTERSECTION of the CSP
+// directive and this attribute, so any divergence silently drops capabilities.
+// A drift test in previewSandbox.spec.ts enforces the equality.
+// `allow-popups-to-escape-sandbox` is decision D2 (ADR-0002): the external
+// media fallback's author-initiated "open in a new tab" must land in a clean,
+// non-sandboxed tab or the video would not play there either.
+const EMBEDDED_PREVIEW_SANDBOX =
+    'allow-scripts allow-forms allow-popups allow-downloads allow-presentation allow-popups-to-escape-sandbox';
 
 function sameOriginUrl(value, baseUrl = window.location.href) {
     if (typeof value !== 'string' || !value.trim()) throw new Error('Embedded preview URL is missing');
