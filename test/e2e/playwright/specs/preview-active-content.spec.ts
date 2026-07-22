@@ -151,9 +151,15 @@ test.describe('Preview trust boundary — default filtered state', () => {
         await page.locator('#preview-active-content-button').click();
         const modal = page.locator('#modalConfirm');
         await expect(modal).toBeVisible();
-        // The default-focused action is Cancel (the safe one), not enable.
-        const focused = await page.evaluate(() => document.activeElement?.textContent || '');
-        expect(focused.toLowerCase()).not.toContain('enable');
+        // The safe action must be the default: the enable button is not the
+        // focused element, and dismissing the dialog leaves content disabled.
+        const enableIsFocused = await page.evaluate(() => {
+            const active = document.activeElement as HTMLElement | null;
+            return active?.tagName === 'BUTTON' && /enable/i.test(active.textContent || '');
+        });
+        expect(enableIsFocused).toBe(false);
+        await modal.getByRole('button', { name: 'Cancel' }).click();
+        await expect(page.locator('#preview-active-content-button')).toHaveAttribute('aria-pressed', 'false');
     });
 });
 
@@ -257,9 +263,10 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
 
         // Back to the same-origin SW preview — the iframe no longer carries the opaque sandbox.
         await expect.poll(async () => (await iframe.getAttribute('sandbox')) ?? '').not.toContain('allow-scripts');
+        // The filtered SW preview reloads asynchronously; wait for it to replace
+        // the opaque doc, then the author marker must be absent (script stripped).
         const frame = getPreviewFrame(page);
-        const executed = await frame.locator('body').getAttribute('data-marker');
-        expect(executed).toBeNull();
+        await expect.poll(() => frame.locator('body').getAttribute('data-marker')).toBeNull();
 
         // The disposed capability URL now 404s.
         const status = await page.evaluate(async url => {
