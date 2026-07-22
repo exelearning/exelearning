@@ -350,5 +350,14 @@ describe('preview-snapshot-store', () => {
             expect(result.files.has('dir')).toBe(false);
             expect(result.files.has('dir/file.txt')).toBe(true);
         });
+
+        it('rejects an archive over the file-count cap with 413', () => {
+            const entries: Record<string, Uint8Array> = {};
+            for (let i = 0; i <= getLimits().maxFilesPerSnapshot; i++) {
+                entries[`f${i}.txt`] = new Uint8Array(1);
+            }
+            const result = unpackSnapshotArchive(fflate.zipSync(entries));
+            expect('status' in result && result.status).toBe(413);
+        });
     });
 });
