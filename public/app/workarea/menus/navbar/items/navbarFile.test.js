@@ -1747,7 +1747,9 @@ describe('NavbarFile', () => {
 
         it('should not markClean or update UI when user cancels save dialog', async () => {
             eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: false });
-            eXeLearning.app.project._yjsBridge = { documentManager: { markClean: vi.fn() } };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { markClean: vi.fn() },
+            };
             window.electronAPI = { saveBuffer: vi.fn() };
 
             await navbarFile.downloadProjectViaYjs();
@@ -1759,7 +1761,9 @@ describe('NavbarFile', () => {
         it('should markClean in Electron mode on successful save', async () => {
             eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: true });
             const markClean = vi.fn();
-            eXeLearning.app.project._yjsBridge = { documentManager: { markClean } };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { markClean },
+            };
             window.electronAPI = { saveBuffer: vi.fn() };
 
             await navbarFile.downloadProjectViaYjs();

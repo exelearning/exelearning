@@ -4847,6 +4847,7 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
@@ -4856,6 +4857,7 @@ describe('YjsProjectBridge', () => {
         'test-project-123',
         'project.elpx'
       );
+      expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -4891,10 +4893,12 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
       expect(result).toEqual({ saved: false });
+      expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;

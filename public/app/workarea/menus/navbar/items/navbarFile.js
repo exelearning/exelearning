@@ -354,6 +354,7 @@ export default class NavbarFile {
             }
 
             toast.toastBody.innerHTML = _('Folder saved.');
+            yjsBridge.assetManager?.markAssetsSavedLocally?.();
             const docManager = yjsBridge.documentManager;
             if (docManager?.markClean) docManager.markClean();
         } catch (error) {
@@ -2164,7 +2165,8 @@ export default class NavbarFile {
             const capabilities = eXeLearning?.app?.capabilities;
             const isOfflineLike = window.electronAPI || (capabilities && capabilities.storage?.remote === false);
             if (isOfflineLike) {
-                const docManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+                const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+                const docManager = yjsBridge?.documentManager;
                 if (docManager?.markClean) {
                     docManager.markClean();
                 }
