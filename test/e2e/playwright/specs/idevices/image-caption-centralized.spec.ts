@@ -126,17 +126,18 @@ test.describe('Centralized image caption', () => {
         });
 
         // Set the centralized metadata. Blur flushes each field immediately (field-level
-        // merge), so we don't depend on the transient "Saved" status (which re-populates
-        // can clear before assertion — that was flaky). The real check is the caption below.
+        // merge); waiting for the autosave "Saved" status after each edit makes the flush
+        // deterministic — a fixed sleep raced the flush under full-suite load.
+        const status = page.locator('#modalFileManager .media-library-meta-status');
         const setField = async (sel: string, value: string): Promise<void> => {
             await page.locator(sel).fill(value);
             await page.locator(sel).blur();
+            await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
         };
         await setField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
         await setField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
         await page.locator('#modalFileManager .media-library-meta-license').selectOption('Creative Commons BY');
-        // Let the blur-immediate autosave + best-effort server sync settle before inserting.
-        await page.waitForTimeout(2000);
+        await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
 
         // Insert the image into the editor (selects file → insert → save dialog).
         await insertFileIntoEditor(page, 'sample-2.jpg');
@@ -175,7 +176,9 @@ test.describe('Centralized image caption', () => {
         });
         await page.locator('#modalFileManager .media-library-meta-title').fill('Sunset');
         await page.locator('#modalFileManager .media-library-meta-title').blur();
-        await page.waitForTimeout(1500);
+        await expect(page.locator('#modalFileManager .media-library-meta-status')).toHaveText(/saved|guardad/i, {
+            timeout: 5000,
+        });
         await insertFileIntoEditor(page, 'sample-2.jpg');
 
         const frame = page.frameLocator('iframe.tox-edit-area__iframe').first();
@@ -265,11 +268,13 @@ test.describe('Centralized image caption', () => {
             state: 'visible',
             timeout: 5000,
         });
+        const metaStatus = page.locator('#modalFileManager .media-library-meta-status');
         await page.locator('#modalFileManager .media-library-meta-title').fill('Sunset');
         await page.locator('#modalFileManager .media-library-meta-title').blur();
+        await expect(metaStatus).toHaveText(/saved|guardad/i, { timeout: 5000 });
         await page.locator('#modalFileManager .media-library-meta-author').fill('Ada Lovelace');
         await page.locator('#modalFileManager .media-library-meta-author').blur();
-        await page.waitForTimeout(1500);
+        await expect(metaStatus).toHaveText(/saved|guardad/i, { timeout: 5000 });
         await insertFileIntoEditor(page, 'sample-2.jpg');
 
         const frame = page.frameLocator('iframe.tox-edit-area__iframe').first();
