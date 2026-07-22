@@ -347,6 +347,19 @@ The editor preview works in two modes:
 
 The fallback is automatic and requires no configuration.
 
+### Shared opaque-snapshot client (host and editor)
+
+Host plugins and the editor now share **one** snapshot client contract. The same
+`EmbeddedPreviewSnapshot` class (`public/app/workarea/interface/elements/preview/EmbeddedPreviewSnapshot.js`)
+uploads a ZIP snapshot to a management route and points a sandboxed iframe (no
+`allow-same-origin`) at a capability URL — for an embedding host's own routes, or
+for eXe's own `/api/preview-snapshot` + `/preview-snapshot/{id}` routes when a
+web/server user enables custom active content. One client, two servers. A host
+integration only needs to implement the create/replace/serve/delete lifecycle;
+`selfHostedPreviewSnapshotConfig()` shows the eXe-side shape. See
+[preview-architecture.md](preview-architecture.md) and
+[ADR-0004](../architecture/adr/ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md).
+
 ## YouTube "Error 153" and `referrerpolicy`
 
 Separate from iframe sandboxing, YouTube's embedded player returns **Error 153**
