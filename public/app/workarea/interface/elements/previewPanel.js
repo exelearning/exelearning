@@ -593,6 +593,12 @@ export default class PreviewPanelManager {
      * including text edits in iDevices, titles, and collaborative updates
      */
     subscribeToChanges() {
+        // Idempotent: init() calls this before a project may be loaded (the
+        // interface is built before the Yjs bridge is ready), so it returns
+        // early then. open()/refresh() call it again once the project exists.
+        // Guard against double-subscription on those later calls.
+        if (this._onYdocUpdate) return;
+
         const project = eXeLearning?.app?.project;
         if (!project?._yjsEnabled || !project._yjsBridge) {
             Logger.log('[PreviewPanel] Yjs not enabled, auto-refresh disabled');
@@ -774,6 +780,11 @@ export default class PreviewPanelManager {
      */
     async refresh() {
         if (this.isLoading) return;
+
+        // Ensure the Yjs change subscription is live: init() may have run before
+        // the project loaded, in which case the ydoc update handler (auto-refresh
+        // and active-content revocation) was never attached. Idempotent.
+        this.subscribeToChanges();
 
         this.isLoading = true;
         this.showLoadingState();
