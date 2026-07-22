@@ -657,7 +657,7 @@ var $exeDevice = {
                <span class="ODNE-ETitleImage" id="ordenaETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
                <div class="ODNE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="ordenaEInputImage-${$exeDevice.activeID}">
                    <label class="sr-av">URL</label>
-                   <input type="text" id="ordenaEURLImage-${$exeDevice.activeID}" class="ODNE-EURLImage exe-file-picker form-control me-0 w-100"/>
+                   <input type="text" id="ordenaEURLImage-${$exeDevice.activeID}" data-author-target="#ordenaEAuthorAlt-${$exeDevice.activeID} .ODNE-EAuthor" class="ODNE-EURLImage exe-file-picker form-control me-0 w-100"/>
                    <a href="#" id="ordenaEPlayImage-${$exeDevice.activeID}" class="ODNE-ENavigationButton " title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-ENavigationButton" /></a>
                    <a href="#" id="ordenaEShowMore-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="ODNE-ENavigationButton" /></a>
                </div>

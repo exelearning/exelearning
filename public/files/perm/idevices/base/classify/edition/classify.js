@@ -439,7 +439,7 @@ var $exeDevice = {
            <span class="CQE-ETitleImage" id="clasificaETitleImage">${_('Image')}</span>
            <div class="CQE-EInputImage mb-3 gap-2" id="clasificaEInputImage">
                <label class="sr-av" for="clasificaEURLImage">URL</label>
-               <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImage"/>
+               <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImage" data-author-target="#clasificaEAuthor"/>
                <a href="#" id="clasificaEPlayImage" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage " /></a>
                <a href="#" id="clasificaShowAlt" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="CQE-EButtonImage " /></a>
            </div>

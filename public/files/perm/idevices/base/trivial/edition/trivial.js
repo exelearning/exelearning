@@ -1164,7 +1164,7 @@ var $exeDevice = {
                                     <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputImage">
                                         <span class="text-nowrap" id="trivialETitleImage">${_('URL')}</span>
                                         <label class="sr-av" for="trivialEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker TRVLE-EURLImage form-control me-0 w-100" id="trivialEURLImage"/>
+                                        <input type="text" class="exe-file-picker TRVLE-EURLImage form-control me-0 w-100" id="trivialEURLImage" data-author-target="#trivialEAuthor"/>
                                         <a href="#" id="trivialEPlayImage" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_('Play')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="TRVLE-EButtonImage " />
                                         </a>

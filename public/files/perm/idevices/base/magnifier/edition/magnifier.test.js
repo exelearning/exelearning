@@ -75,4 +75,14 @@ describe('magnifier iDevice', () => {
       expect(typeof $exeDevice.updateFieldGame).toBe('function');
     });
   });
+  describe('author prefill wiring (data-author-target)', () => {
+    it('declares the file picker prefill target pointing at the Authorship input', () => {
+      const filePath = join(__dirname, 'magnifier.js');
+      const code = readFileSync(filePath, 'utf-8');
+      expect(code).toMatch(
+        /id="mnfFileInput"[^>]*data-author-target="#mnfAuthor"|data-author-target="#mnfAuthor"[^>]*id="mnfFileInput"/
+      );
+    });
+  });
+
 });

@@ -1471,7 +1471,7 @@ var $exeDevice = {
                                     <div id="dmoleModelFileGroup">
                                         <span id="dmoleTitleModel">${_('3D model file')}:</span>
                                         <div class="DMOLE-EModelInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <input type="text" id="dmoleModelFile" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" data-filemanager-accept="molecule" />
+                                            <input type="text" id="dmoleModelFile" data-author-target="#dmoleModelAuthor" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" data-filemanager-accept="molecule" />
                                             <a href="#" id="dmolePreviewModel" class="DMOLE-ENavigationButton" title="${_('Preview model')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="DMOLE-ENavigationButton" />
                                             </a>

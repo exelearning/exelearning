@@ -1514,7 +1514,7 @@ var $exeDevice = {
                                     <span class="SLCNE-ETitleImage" id="seleccionaETitleImage">${_('Image URL')}:</span>
                                     <div class="SLCNE-EInputImage SLCNE-Flex mb-3 gap-2" id="seleccionaEInputImage">
                                         <label class="sr-av" for="seleccionaEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker form-control w-100 me-0" id="seleccionaEURLImage"/>
+                                        <input type="text" class="exe-file-picker form-control w-100 me-0" id="seleccionaEURLImage" data-author-target="#seleccionaEAuthor"/>
                                         <a href="#" id="seleccionaEPlayImage" class="SLCNE-ENavigationButton" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCNE-ENavigationButton " /></a>
                                     </div>
                                     <div class="SLCNE-EInputOptionsImage mb-3" id="seleccionaInputOptionsImage">

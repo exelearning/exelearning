@@ -524,7 +524,7 @@ var $exeDevice = {
                                     <span class="HIE-TitleImage" id="hiETitleImage">${_('Image URL')}</span>
                                     <div class="justify-content-start d-flex flex-nowrap align-items-center gap-2 mb-3" id="hiEInputImage">
                                         <label class="sr-av" for="hiEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker form-control me-0" id="hiEURLImage" />
+                                        <input type="text" class="exe-file-picker form-control me-0" id="hiEURLImage" data-author-target="#hiEAuthor" />
                                         <a href="#" id="hiEPlayImage" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="HIE-ButtonImage " /></a>
                                     </div>
                                     <div class="HIE-AuthorAlt mb-3 d-flex flex-nowrap align-items-center gap-2" id="hiEAuthorAlt">

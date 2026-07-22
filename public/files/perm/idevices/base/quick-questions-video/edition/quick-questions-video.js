@@ -996,7 +996,7 @@ var $exeDevice = {
                                 <div class="VDQXTE-EPanel" id="vquextEPanel">
                                     <div class="d-flex align-items-center mb-0 flex-nowrap gap-2">                                    
                                         <label for="vquextEVIURL">URL:</label>
-                                        <input type="text" id="vquextEVIURL" class="exe-file-picker w-100 form-control me-0"  mt-3/>
+                                        <input type="text" id="vquextEVIURL" data-author-target="#vquextEAuthor" class="exe-file-picker w-100 form-control me-0"  mt-3/>
                                         <a href="#" id="vquextEPlayStart" class="VDQXTE-ENavigationButton VDQXTE-EPlayVideo" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="VDQXTE-EButtonImage" /></a>
                                         <label for="vquextEVIStart">${_('Start')}:</label>
                                         <input id="vquextEVIStart" class="form-control VDQXTE-EVideoX " type="text" value="00:00:00" maxlength="8" />
