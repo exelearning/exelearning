@@ -162,7 +162,7 @@ test.describe('Save Detection', () => {
     test('successful save with an asset should not trigger beforeunload warning', async ({
         authenticatedPage,
         createProject,
-    }) => {
+    }, testInfo) => {
         const page = authenticatedPage;
         const projectUuid = await createProject(page, 'Save Then Close Test');
 
@@ -203,15 +203,21 @@ test.describe('Save Detection', () => {
         });
         expect(beforeSave).toEqual({ defaultPrevented: true, hasUnsavedChanges: true });
 
-        await page.locator('#head-top-save-button').click();
-        await page.waitForFunction(
-            () => {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                return bridge?.saveManager?.isSaving === false;
-            },
-            undefined,
-            { timeout: 30000 },
-        );
+        if (testInfo.project.name === 'static') {
+            await page.evaluate(async () => {
+                await (window as any).eXeLearning.app.menus.navbar.file.downloadProjectViaYjs();
+            });
+        } else {
+            await page.locator('#head-top-save-button').click();
+            await page.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    return bridge?.saveManager?.isSaving === false;
+                },
+                undefined,
+                { timeout: 30000 },
+            );
+        }
 
         const afterSave = await page.evaluate(() => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
