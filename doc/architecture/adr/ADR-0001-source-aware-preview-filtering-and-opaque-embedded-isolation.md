@@ -12,7 +12,7 @@ related:
   sdds: []
   adrs: []
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-0002]
 ai_assistance:
   tool: "OpenAI Codex"
   model: "GPT-5"
@@ -22,7 +22,17 @@ ai_assistance:
 
 ## Status
 
-Proposed
+Superseded by [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md).
+
+ADR-0002 keeps this record's source-aware filtering and embedded-host opaque
+isolation, and extends it: enabling custom active content in web/server mode now
+switches the preview to a self-hosted opaque snapshot (instead of running author
+JavaScript same-origin with the editor). The residual risk this ADR called out —
+"enabling custom JavaScript is a trust decision and does not make the project
+safe", with author code reaching the editor DOM and cookies on enable — is what
+ADR-0002 closes for web/server. The rest of this ADR (the filtering policy, the
+non-mutation guarantee, the embedded-host lifecycle, the Electron restriction)
+carries forward unchanged.
 
 ## Context
 
