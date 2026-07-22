@@ -195,15 +195,25 @@ function readAttr(attrs: string, name: string): string {
 }
 
 /**
+ * The embedded element a `figure[data-asset-id]` presents: an image (exeimage) or a
+ * media element (exemedia — video/audio/iframe/embed). Container elements keep their
+ * children (`<source>`/`<track>`); `<img>`/`<embed>` are void. The first match is the
+ * figure's subject; anything else inside the figure (stale captions) is rebuilt around it.
+ */
+const FIGURE_MEDIA_RE =
+    /<img\b[^>]*>|<video\b[\s\S]*?<\/video>|<audio\b[\s\S]*?<\/audio>|<iframe\b[\s\S]*?<\/iframe>|<embed\b[^>]*>/i;
+
+/**
  * Bake the auto-derived captions into exported HTML.
  *
  * The caption stored in the Y.Doc is a snapshot from insert/edit time and can go stale
  * after a File Manager metadata edit (the live resolver only updates the authoring DOM,
  * not the stored content). At export we therefore re-derive the figcaption of every
- * `figure[data-asset-id]` from the current centralized metadata + the figure's per-instance
- * `data-caption-*`, so static packages (HTML5/SCORM/EPUB/ELPX) always reflect the File
- * Manager. DOM-free (figures never nest) so it runs in both the browser and server export
- * pipelines without a DOM dependency.
+ * `figure[data-asset-id]` — image figures (exeimage) and media figures (exemedia:
+ * video/audio/iframe/embed) alike — from the current centralized metadata + the figure's
+ * per-instance `data-caption-*`, so static packages (HTML5/SCORM/EPUB/ELPX) always
+ * reflect the File Manager. DOM-free (figures never nest) so it runs in both the browser
+ * and server export pipelines without a DOM dependency.
  *
  * @param html - rendered iDevice content HTML
  * @param metadataMap - centralized metadata keyed by asset id (from getExportMetadataMap)
@@ -213,9 +223,9 @@ export function bakeFigureCaptions(html: string, metadataMap?: Map<string, Asset
     return html.replace(/<figure\b([^>]*)>([\s\S]*?)<\/figure>/gi, (full, attrs: string, inner: string) => {
         const assetId = readAttr(attrs, 'data-asset-id');
         if (!assetId) return full;
-        const imgMatch = inner.match(/<img\b[^>]*>/i);
-        if (!imgMatch) return full;
-        const img = imgMatch[0];
+        const mediaMatch = inner.match(FIGURE_MEDIA_RE);
+        if (!mediaMatch) return full;
+        const media = mediaMatch[0];
         const meta = metadataMap?.get(assetId) || {};
         const instance: FigureCaptionInstance = {
             heading: decodeAttr(readAttr(attrs, 'data-caption-heading')),
@@ -223,6 +233,6 @@ export function bakeFigureCaptions(html: string, metadataMap?: Map<string, Asset
             hidden: readAttr(attrs, 'data-caption-hidden') === 'true',
         };
         const { header, caption } = buildFigureCaption(meta, instance);
-        return `<figure${attrs}>${header}${img}${caption}</figure>`;
+        return `<figure${attrs}>${header}${media}${caption}</figure>`;
     });
 }

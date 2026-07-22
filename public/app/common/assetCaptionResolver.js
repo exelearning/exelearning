@@ -24,6 +24,11 @@ const ASSET_URL_RE = /^asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?:[/?#]|$)/i;
  * Resolve the centralized asset id for a figure: prefer the explicit data-asset-id,
  * otherwise derive it from the figure's asset:// image src. Returns null when neither
  * is present.
+ *
+ * Derivation stays image-only ON PURPOSE: legacy exemedia figures carry a per-instance
+ * authored caption, and deriving their id would silently replace it with the centralized
+ * caption (legacy attribution import is explicitly out of scope). Media figures become
+ * live only when the media dialog stamps data-asset-id on them.
  * @param {Element} figure
  * @returns {string|null}
  */
@@ -69,13 +74,16 @@ export function renderFigureCaption(figure, metadata) {
 
     clearCaptionNodes(figure);
 
-    const img = figure.querySelector(':scope > img') || figure.querySelector('img');
+    // The figure's subject: an image (exeimage) or a media element (exemedia).
+    const media =
+        figure.querySelector(':scope > img, :scope > video, :scope > audio, :scope > iframe, :scope > embed') ||
+        figure.querySelector('img, video, audio, iframe, embed');
     if (header) {
-        if (img) img.insertAdjacentHTML('beforebegin', header);
+        if (media) media.insertAdjacentHTML('beforebegin', header);
         else figure.insertAdjacentHTML('afterbegin', header);
     }
     if (caption) {
-        if (img) img.insertAdjacentHTML('afterend', caption);
+        if (media) media.insertAdjacentHTML('afterend', caption);
         else figure.insertAdjacentHTML('beforeend', caption);
     }
 }

@@ -82,6 +82,62 @@ describe('renderFigureCaption', () => {
     });
 });
 
+describe('renderFigureCaption — media figures (exemedia)', () => {
+    it('anchors the caption around a <video> subject (header before, figcaption after)', () => {
+        const fig = figureHtml(
+            '<figure class="exe-figure exe-media" data-asset-id="m1" data-caption-heading="Clip 1">' +
+                '<video controls="controls"><source src="asset://m1.mp4"><track kind="subtitles" src="s.vtt"></video>' +
+                '</figure>',
+        );
+        renderFigureCaption(fig, { title: 'Intro', author: 'Ada' });
+
+        const kids = Array.from(fig.children).map(n => n.tagName.toLowerCase());
+        expect(kids).toEqual(['div', 'video', 'figcaption']);
+        // The video keeps its children (source + track) untouched.
+        expect(fig.querySelector('video source')).not.toBeNull();
+        expect(fig.querySelector('video track')).not.toBeNull();
+        expect(fig.querySelector('figcaption .title em').textContent).toBe('Intro');
+    });
+
+    it('anchors the caption around audio, iframe and embed subjects', () => {
+        for (const inner of [
+            '<audio controls="controls" src="asset://m1.mp3"></audio>',
+            '<iframe src="https://example.org/embed"></iframe>',
+            '<embed src="asset://m1.pdf" type="application/pdf">',
+        ]) {
+            const fig = figureHtml(`<figure class="exe-figure exe-media" data-asset-id="m1">${inner}</figure>`);
+            renderFigureCaption(fig, { title: 'Doc' });
+            const cap = fig.querySelector('figcaption.figcaption');
+            expect(cap).not.toBeNull();
+            // The caption is the media element's next sibling.
+            expect(cap.previousElementSibling).toBe(fig.firstElementChild);
+        }
+    });
+
+    it('is idempotent on media figures (re-render replaces, never duplicates)', () => {
+        const fig = figureHtml(
+            '<figure class="exe-figure exe-media" data-asset-id="m1"><video src="asset://m1.mp4"></video></figure>',
+        );
+        renderFigureCaption(fig, { title: 'First' });
+        renderFigureCaption(fig, { title: 'Second' });
+        expect(fig.querySelectorAll('figcaption.figcaption').length).toBe(1);
+        expect(fig.querySelector('.title em').textContent).toBe('Second');
+    });
+
+    it('does NOT auto-upgrade a legacy media figure without data-asset-id', () => {
+        const fig = figureHtml(
+            '<figure class="exe-figure exe-media"><video controls="controls"><source src="asset://legacy1.mp4"></video>' +
+                '<figcaption class="figcaption">authored per-instance</figcaption></figure>',
+        );
+        expect(extractAssetId(fig)).toBeNull();
+        // renderAssetCaptions skips it entirely, so the authored caption survives.
+        const root = document.createElement('div');
+        root.appendChild(fig);
+        expect(renderAssetCaptions(root, () => ({ title: 'Nope' }))).toBe(0);
+        expect(fig.querySelector('figcaption').textContent).toBe('authored per-instance');
+    });
+});
+
 describe('renderAssetCaptions', () => {
     let root;
     beforeEach(() => {

@@ -64,4 +64,47 @@ describe('bakeFigureCaptions', () => {
         expect(out).toContain('<em>One</em>');
         expect(out).toContain('<em>Two</em>');
     });
+
+    it('rebuilds the figcaption of a media figure keeping the whole <video> (sources + tracks)', () => {
+        const video =
+            '<video width="560" height="315" controls="controls"><source src="content/resources/u1.mp4"><track label="Subtitles" kind="subtitles" src="content/resources/subs.vtt"></video>';
+        const html = `<figure class="exe-figure exe-media position-center" data-asset-id="u1">${video}<figcaption class="figcaption">STALE</figcaption></figure>`;
+        const out = bakeFigureCaptions(html, mapOf({ u1: { title: 'Intro clip', author: 'Ada' } }));
+        expect(out).not.toContain('STALE');
+        expect(out).toContain(video); // the media element round-trips byte-identical
+        expect(out).toContain('<span class="title"><em>Intro clip</em></span>');
+        expect(out).toContain('<span class="author">Ada</span>');
+    });
+
+    it('bakes audio, iframe and embed media figures', () => {
+        const audio = '<audio controls="controls" src="r/u1.mp3"></audio>';
+        const iframe = '<iframe width="560" height="315" src="r/u2.html"></iframe>';
+        const embed = '<embed width="600" height="300" src="r/u3.pdf" type="application/pdf">';
+        const html =
+            `<figure data-asset-id="u1">${audio}</figure>` +
+            `<figure data-asset-id="u2">${iframe}</figure>` +
+            `<figure data-asset-id="u3">${embed}</figure>`;
+        const out = bakeFigureCaptions(html, mapOf({ u1: { title: 'A' }, u2: { title: 'B' }, u3: { title: 'C' } }));
+        expect(out).toContain(audio);
+        expect(out).toContain(iframe);
+        expect(out).toContain(embed);
+        expect(out).toContain('<em>A</em>');
+        expect(out).toContain('<em>B</em>');
+        expect(out).toContain('<em>C</em>');
+    });
+
+    it('honors data-caption-hidden on media figures (media survives, caption removed)', () => {
+        const out = bakeFigureCaptions(
+            '<figure data-asset-id="u1" data-caption-hidden="true"><video controls="controls"><source src="r/u1.mp4"></video><figcaption class="figcaption">old</figcaption></figure>',
+            mapOf({ u1: { title: 'X', license: 'Creative Commons BY' } }),
+        );
+        expect(out).not.toContain('figcaption');
+        expect(out).toContain('<source src="r/u1.mp4">');
+    });
+
+    it('leaves a legacy media figure without data-asset-id untouched (no auto-upgrade)', () => {
+        const html =
+            '<figure class="exe-figure exe-media"><video controls="controls"><source src="asset://u9.mp4"></video><figcaption class="figcaption">authored per-instance</figcaption></figure>';
+        expect(bakeFigureCaptions(html, mapOf({ u9: { title: 'Nope' } }))).toBe(html);
+    });
 });
