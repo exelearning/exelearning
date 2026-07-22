@@ -16,6 +16,23 @@ function sameOriginUrl(value, baseUrl = window.location.href) {
     return url;
 }
 
+/**
+ * Snapshot config pointing at eXe's OWN capability routes
+ * (src/routes/preview-snapshot.ts) instead of an embedding host's. The same
+ * EmbeddedPreviewSnapshot lifecycle drives both cases — one client, two
+ * servers — which is the point of reusing the wire format: host plugins and
+ * the editor share a single snapshot contract.
+ */
+export function selfHostedPreviewSnapshotConfig(basePath = '') {
+    const base = String(basePath || '').replace(/\/+$/, '');
+    return {
+        managementUrl: `${base}/api/preview-snapshot/`,
+        servingBaseUrl: `${base}/preview-snapshot/`,
+        // No deleteUrlTemplate: the default dispose target (managementUrl +
+        // previewId) is exactly eXe's DELETE /api/preview-snapshot/:previewId.
+    };
+}
+
 export function validateEmbeddedPreviewConfig(config) {
     if (!config || typeof config !== 'object') throw new Error('Embedded preview configuration is missing');
     const managementUrl = sameOriginUrl(config.managementUrl);
@@ -91,9 +108,14 @@ export class EmbeddedPreviewSnapshot {
 
     async dispose() {
         if (!this.previewId) return;
+        // The URL constructor percent-encodes `{`/`}` in pathnames (but not in
+        // query strings), so the placeholder may appear either raw or encoded
+        // in the validated template href — substitute both forms.
         const target = this.config.deleteUrlTemplate
             ? new URL(
-                  this.config.deleteUrlTemplate.href.replace('{previewId}', encodeURIComponent(this.previewId)),
+                  this.config.deleteUrlTemplate.href
+                      .replace('%7BpreviewId%7D', encodeURIComponent(this.previewId))
+                      .replace('{previewId}', encodeURIComponent(this.previewId)),
               )
             : new URL(
                   encodeURIComponent(this.previewId),

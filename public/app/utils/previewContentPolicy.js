@@ -221,6 +221,83 @@ export function canEnableActivePreviewContent() {
     return !isElectronPreview();
 }
 
+/**
+ * Preview transports — one per row of the trust-boundary matrix (ADR-0002).
+ * The transport is decided by the runtime, never by content, and there is no
+ * fallback between rows: a transport that cannot deliver fails visibly.
+ */
+export const PREVIEW_TRANSPORTS = Object.freeze({
+    /** Electron: enabling custom active content is blocked outright. */
+    ELECTRON_BLOCKED: 'electron-blocked',
+    /** Embedded LMS/CMS host: always-opaque snapshot via HOST capability routes. */
+    EMBEDDED_OPAQUE: 'embedded-opaque',
+    /** Web/server editor: opaque snapshot via eXe's own capability routes on enable. */
+    SELF_HOSTED_OPAQUE: 'self-hosted-opaque',
+    /** Static/PWA (no backend): same-origin with explicit consent — documented residual risk. */
+    CONSENT_SAME_ORIGIN: 'consent-same-origin',
+});
+
+/**
+ * Resolve the preview transport for the current runtime.
+ *
+ * Only a runtime that positively declares itself backend-less (`mode ===
+ * 'static'`) gets the consent-same-origin row; an unknown or missing runtime
+ * config resolves to the self-hosted opaque transport, whose enable path
+ * fails visibly (and stays filtered) when no snapshot routes exist — the
+ * fail-closed direction.
+ */
+export function resolvePreviewTransport(runtimeConfig) {
+    if (isElectronPreview()) return PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
+    if (runtimeConfig?.isEmbedded) return PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE;
+    if (runtimeConfig?.mode === 'static') return PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN;
+    return PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE;
+}
+
+/** Trust states of the enable/disable machine (ADR-0002 §state machine). */
+export const PREVIEW_TRUST_STATES = Object.freeze({
+    FILTERED: 'filtered',
+    OPAQUE_ENABLED: 'opaque-enabled',
+    CONSENTED_SAME_ORIGIN: 'consented-same-origin',
+});
+
+/**
+ * Current trust state for a project under a given runtime. The stored grant
+ * is a single bit; what it MEANS is decided by the transport at read time,
+ * so a runtime change (e.g. a project reopened in Electron) can only ever
+ * tighten the interpretation.
+ */
+export function getActivePreviewTrustState(projectId, runtimeConfig) {
+    if (!isActivePreviewContentEnabled(projectId)) return PREVIEW_TRUST_STATES.FILTERED;
+    const transport = resolvePreviewTransport(runtimeConfig);
+    if (transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) return PREVIEW_TRUST_STATES.OPAQUE_ENABLED;
+    if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) return PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
+    // Embedded is always isolated regardless of the grant; Electron can never
+    // hold one (enableActivePreviewContent refuses).
+    return PREVIEW_TRUST_STATES.FILTERED;
+}
+
+/**
+ * Revocation rule under collaboration (decision D1, ADR-0003).
+ *
+ * The grant survives only updates whose origin is POSITIVELY identified as a
+ * local user action:
+ *  - `null`/`undefined` — untagged `ydoc.transact()` calls, the codebase's
+ *    convention for local UI edits;
+ *  - the document's own `Y.UndoManager` instance — local undo/redo.
+ *
+ * Everything else revokes, fail closed: the y-websocket provider instance
+ * (a remote collaborator's update), the IndexedDB persistence instance,
+ * string-tagged flows such as `'import'` (project replacement), and any
+ * origin this code has never seen. `'system'`/`'initial'` never reach this
+ * predicate — the update handler skips them before consulting it, matching
+ * the pre-existing behavior of ignoring system-originated updates.
+ */
+export function shouldRevokeOnYdocUpdate(origin, documentManager) {
+    if (origin === null || origin === undefined) return false;
+    if (documentManager?.undoManager && origin === documentManager.undoManager) return false;
+    return true;
+}
+
 export function isActivePreviewContentEnabled(projectId) {
     selectProject(projectId);
     return authorization.enabled;
@@ -242,10 +319,31 @@ export function invalidateActivePreviewAuthorization(projectId) {
     if (selectProject(projectId) === authorization.projectId) authorization.enabled = false;
 }
 
-export function createPreviewContentPolicy(projectId) {
-    const allowActiveContent = isActivePreviewContentEnabled(projectId);
+/**
+ * Policy for SAME-ORIGIN preview surfaces (Service Worker preview, blob
+ * fallback, print preview). Author active content passes through only in the
+ * `consented-same-origin` state (static/PWA runtimes, where no server exists
+ * to mint capability URLs). In every other state — including `opaque-enabled`
+ * — same-origin surfaces stay filtered: while the opaque transport is active,
+ * unfiltered content may only ever reach the sandboxed capability-URL iframe,
+ * never a same-origin document.
+ */
+export function createPreviewContentPolicy(projectId, runtimeConfig = globalThis.eXeLearning?.app?.runtimeConfig) {
+    const allowActiveContent =
+        getActivePreviewTrustState(projectId, runtimeConfig) === PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
     return {
         prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent }),
+    };
+}
+
+/**
+ * Report-only policy for the OPAQUE snapshot generation path: author HTML is
+ * returned byte-identical (the origin boundary is the control there), while
+ * detection still runs so the active-content indicator stays fresh.
+ */
+export function createReportingPreviewContentPolicy() {
+    return {
+        prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent: true }),
     };
 }
 

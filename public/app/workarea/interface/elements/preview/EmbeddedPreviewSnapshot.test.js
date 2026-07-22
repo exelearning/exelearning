@@ -2,8 +2,53 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     EMBEDDED_PREVIEW_SANDBOX,
     EmbeddedPreviewSnapshot,
+    selfHostedPreviewSnapshotConfig,
     validateEmbeddedPreviewConfig,
 } from './EmbeddedPreviewSnapshot.js';
+
+describe('selfHostedPreviewSnapshotConfig', () => {
+    it('builds a config for eXe\'s own capability routes', () => {
+        expect(selfHostedPreviewSnapshotConfig()).toMatchObject({
+            managementUrl: '/api/preview-snapshot/',
+            servingBaseUrl: '/preview-snapshot/',
+        });
+    });
+
+    it('prefixes BASE_PATH installs and strips trailing slashes', () => {
+        expect(selfHostedPreviewSnapshotConfig('/exelearning/')).toMatchObject({
+            managementUrl: '/exelearning/api/preview-snapshot/',
+            servingBaseUrl: '/exelearning/preview-snapshot/',
+        });
+    });
+
+    it('passes the same-origin validation the class enforces (dual config, one lifecycle)', () => {
+        const validated = validateEmbeddedPreviewConfig(selfHostedPreviewSnapshotConfig());
+        expect(validated.managementUrl.origin).toBe(window.location.origin);
+        expect(validated.servingBaseUrl.origin).toBe(window.location.origin);
+    });
+
+    it('drives the full replace/dispose lifecycle against the self-hosted routes', async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ previewId: 'a'.repeat(32), previewUrl: `/preview-snapshot/${'a'.repeat(32)}/index.html` }),
+            })
+            .mockResolvedValueOnce({ ok: true, status: 204 });
+        const client = new EmbeddedPreviewSnapshot(selfHostedPreviewSnapshotConfig(), {
+            fetchImpl,
+            zipSync: vi.fn(() => new Uint8Array([1])),
+        });
+
+        const url = await client.replace({ 'index.html': '<html></html>' });
+        expect(url).toBe(`${window.location.origin}/preview-snapshot/${'a'.repeat(32)}/index.html`);
+        expect(fetchImpl.mock.calls[0][0].pathname).toBe('/api/preview-snapshot/');
+
+        await client.dispose();
+        expect(fetchImpl.mock.calls[1][0].pathname).toBe(`/api/preview-snapshot/${'a'.repeat(32)}`);
+        expect(fetchImpl.mock.calls[1][1].method).toBe('DELETE');
+    });
+});
 
 describe('EmbeddedPreviewSnapshot', () => {
     it('validates same-origin management and serving URLs', () => {
@@ -95,6 +140,24 @@ describe('EmbeddedPreviewSnapshot', () => {
         expect(fetchImpl.mock.calls[1][0].searchParams.get('rest_route')).toBe(
             '/preview-session/42/capability-id',
         );
+    });
+
+    it('substitutes a PATH-based delete template even though the URL constructor percent-encodes braces', async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ previewId: 'capability-id' }) })
+            .mockResolvedValueOnce({ ok: true, status: 204 });
+        const client = new EmbeddedPreviewSnapshot(
+            {
+                managementUrl: '/manage',
+                servingBaseUrl: '/preview',
+                deleteUrlTemplate: '/cleanup/{previewId}',
+            },
+            { fetchImpl, zipSync: vi.fn(() => new Uint8Array()) },
+        );
+        await client.replace({ 'index.html': '<html></html>' });
+        await client.dispose();
+        expect(fetchImpl.mock.calls[1][0].pathname).toBe('/cleanup/capability-id');
     });
 
     it('fails closed when ZIP support or the host response is invalid', async () => {
