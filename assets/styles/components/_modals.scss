@@ -1154,45 +1154,47 @@
         }
     }
 
-    /* Sidebar tabs (Metadata / Details / Usage): same segmented-control style as the
-       app's other nav-tabs (e.g. the styles panel) — pill container, white active tab. */
+    /* Sidebar tabs (Metadata / Details / Usage): underline style, matching the
+       app's standard tabs (e.g. the project properties panel) — a bottom rule with
+       a teal underline + teal label on the active tab. */
     .media-library-tabs {
         display: flex;
+        gap: 0;
         margin: var(--margin-m) var(--margin-l) 0;
-        padding: 0.25rem;
-        background-color: var(--gray-100, #f3f4f6);
-        border: 1px solid var(--gray-border-light, #e5e7eb);
-        border-radius: 12px;
+        padding: 0;
+        border-bottom: 2px solid var(--gray-200, #e5e7eb);
         flex-shrink: 0;
 
         .nav-item {
-            flex: 1;
-            min-width: 0;
+            margin-bottom: -2px;
         }
 
         .nav-link.media-library-tab {
-            width: 100%;
             border: none;
+            border-bottom: 2px solid transparent;
             background: transparent;
-            border-radius: 8px;
-            padding: 6px 8px;
-            font-size: 12px;
-            font-weight: 600;
+            border-radius: 0;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
             color: var(--gray-500, #6b7280) !important;
             transition: all 0.2s ease;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+
+            &:hover {
+                color: var(--gray-700, #374151) !important;
+            }
 
             &.active {
-                color: var(--text-black, #111) !important;
-                background: white;
-                box-shadow: 0 1px 3px 0 rgba(16, 24, 40, 0.10), 0 1px 2px 0 rgba(16, 24, 40, 0.06);
+                color: var(--brand-primary, #0BA1A1) !important;
+                border-bottom-color: var(--brand-primary, #0BA1A1);
+                background: transparent;
+                box-shadow: none;
             }
 
             &:focus-visible {
-                outline: 2px solid var(--main-color, #2664d8);
-                outline-offset: 1px;
+                outline: 2px solid var(--brand-primary, #0BA1A1);
+                outline-offset: -2px;
             }
 
             .media-library-usage-tab-count {
@@ -1209,6 +1211,27 @@
 
         > .media-library-tab-pane {
             padding: var(--margin-m) var(--margin-l) var(--margin-l);
+        }
+    }
+
+    /* Read-only Details rows read inline — the label sits on the same line as its
+       value ("TYPE: image/png"), not stacked above it. The editable Metadata form
+       keeps its stacked label/input layout. */
+    .media-library-section-details .metadata-row {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 6px;
+
+        > label {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        > span,
+        > .media-library-url-group,
+        > .d-flex {
+            flex: 1;
+            min-width: 0;
         }
     }
 
