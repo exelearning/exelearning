@@ -219,6 +219,7 @@ var $resourcereport = {
     buildTable: function (resources, config) {
         const cols = this.tableColumns(config);
         let head = '';
+        // c.label is already translated (see tableColumns); just escape for output.
         for (const c of cols) head += `<th scope="col">${this.escapeHtml(c.label)}</th>`;
         let rows = '';
         for (const res of resources) {

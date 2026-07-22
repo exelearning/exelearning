@@ -796,6 +796,8 @@ class AssetManager {
    * @private
    */
   _forEachComponentText(callback) {
+    // Resource Report exclusion happens once in _forEachComponent (see
+    // REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES) so every scanner shares it.
     this._forEachComponent(({ compMap }) => callback(this._componentSearchableText(compMap)));
   }
 
