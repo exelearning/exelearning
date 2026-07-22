@@ -54,6 +54,37 @@ describe('prepareUserHtmlForPreview', () => {
         expect(result.html).not.toContain('allow-same-origin');
     });
 
+    describe('object/embed PDF and media allowlist (not stripped)', () => {
+        it.each([
+            ['typed PDF embed', '<embed type="application/pdf" src="resources/doc.pdf">'],
+            ['typed PDF object', '<object type="application/pdf" data="resources/doc.pdf"></object>'],
+            ['untyped PDF embed by extension', '<embed src="asset://x/doc.pdf">'],
+            ['untyped mp4 object by extension', '<object data="resources/movie.mp4"></object>'],
+            ['typed audio embed', '<embed type="audio/mpeg" src="a.bin">'],
+            ['typed video object', '<object type="video/mp4" data="v.bin"></object>'],
+            ['image object', '<object type="image/png" data="p.bin"></object>'],
+        ])('keeps a benign %s and does not flag active content', (_label, html) => {
+            const result = prepareUserHtmlForPreview(html);
+            expect(result.activeContentFound).toBe(false);
+            expect(result.html).toBe(html);
+        });
+
+        it.each([
+            ['object loading HTML by extension', '<object data="page.html"></object>', 'plugin-content'],
+            ['embed loading SVG by extension', '<embed src="art.svg">', 'plugin-content'],
+            ['object with scriptable type', '<object type="image/svg+xml" data="a.bin"></object>', 'plugin-content'],
+            ['embed with active data URL', '<embed src="data:text/html,<script>x()</script>">', 'active-data-url'],
+            ['object with javascript scheme in data', '<object data="javascript:x()"></object>', 'plugin-content'],
+            ['untyped embed unknown extension', '<embed src="thing.xyz">', 'plugin-content'],
+            ['applet always', '<applet code="Bad.class"></applet>', 'plugin-content'],
+        ])('removes a dangerous %s', (_label, html, category) => {
+            const result = prepareUserHtmlForPreview(html);
+            expect(result.activeContentFound).toBe(true);
+            expect(result.categories).toContain(category);
+            expect(result.html).not.toMatch(/<object|<embed|<applet/i);
+        });
+    });
+
     it('preserves benign markup exactly', () => {
         const html = '<p><strong>Educational content</strong></p>';
         expect(prepareUserHtmlForPreview(html)).toEqual({

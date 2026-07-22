@@ -7,8 +7,81 @@ const SCRIPTABLE_DATA_MEDIA_TYPES = new Set([
 ]);
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction']);
-const REMOVED_TAGS = new Set(['script', 'object', 'embed', 'applet', 'base']);
+// Always removed. `object`/`embed` are NOT here: they are dual-use — a PDF or
+// media embed is legitimate iDevice content, while an embed of a scriptable
+// document is dangerous. They are decided per-element by isDangerousPluginElement().
+const REMOVED_TAGS = new Set(['script', 'applet', 'base']);
 const DANGEROUS_SCHEMES = new Set(['javascript', 'vbscript']);
+
+// Non-document resource types an <object>/<embed> may safely load in the
+// same-origin filtered preview: a PDF renders in the browser's own (isolated)
+// PDF viewer and media/images carry no script — none can reach the editor. A
+// scriptable document (html/xhtml/svg/xml) loaded via object/embed runs in a
+// nested same-origin context that CAN reach the parent, so it is never safe.
+const SAFE_EMBED_EXTENSIONS = new Set([
+    'pdf',
+    'mp3',
+    'wav',
+    'ogg',
+    'oga',
+    'mp4',
+    'webm',
+    'ogv',
+    'm4a',
+    'm4v',
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'webp',
+    'avif',
+    'bmp',
+]);
+
+function embedResourceUrl(element) {
+    return element.localName.toLowerCase() === 'object'
+        ? element.getAttribute('data') || ''
+        : element.getAttribute('src') || '';
+}
+
+function urlExtension(url) {
+    const path = String(url).split('?')[0].split('#')[0];
+    const dot = path.lastIndexOf('.');
+    if (dot === -1) return '';
+    return path.slice(dot + 1).toLowerCase();
+}
+
+/**
+ * Decide whether an `<object>`/`<embed>` (or `<applet>`) must be removed from
+ * the filtered preview. Fail closed: an element is kept ONLY when it positively
+ * declares a safe, non-document resource (a known media/PDF `type`, or a
+ * media/PDF file extension when untyped). Anything else — a dangerous scheme,
+ * an active `data:` URL, a scriptable document `type`, an unknown/absent
+ * indicator — is removed.
+ */
+function isDangerousPluginElement(element) {
+    const tag = element.localName.toLowerCase();
+    if (tag === 'applet') return true; // legacy Java plugin — never safe
+    const url = embedResourceUrl(element);
+    if (DANGEROUS_SCHEMES.has(getScheme(url))) return true;
+    if (isActiveDataUrl(url)) return true;
+
+    const type = (element.getAttribute('type') || '').toLowerCase().split(';')[0].trim();
+    if (type) {
+        if (SCRIPTABLE_DATA_MEDIA_TYPES.has(type)) return true;
+        if (
+            type === 'application/pdf' ||
+            type.startsWith('audio/') ||
+            type.startsWith('video/') ||
+            (type.startsWith('image/') && type !== 'image/svg+xml')
+        ) {
+            return false;
+        }
+        return true; // any other explicit type (flash, unknown, …) → fail closed
+    }
+    // Untyped: infer from the resource extension.
+    return !SAFE_EMBED_EXTENSIONS.has(urlExtension(url));
+}
 
 let authorization = {
     projectId: null,
@@ -56,7 +129,12 @@ function inspectFragment(root) {
     for (const element of Array.from(root.querySelectorAll('*'))) {
         const tag = element.localName.toLowerCase();
         if (tag === 'script') categories.add(element.closest('svg') ? 'svg-script' : 'script');
-        if (['object', 'embed', 'applet'].includes(tag)) categories.add('plugin-content');
+        // A PDF/media object/embed is benign iDevice content and does NOT count
+        // as active content; only a dangerous plugin element (scriptable
+        // document, dangerous scheme, applet) is flagged.
+        if (['object', 'embed', 'applet'].includes(tag) && isDangerousPluginElement(element)) {
+            categories.add('plugin-content');
+        }
         if (tag === 'base') categories.add('base-url');
         if (tag === 'iframe') {
             categories.add('iframe');
@@ -109,7 +187,9 @@ function removeUnsafeNodes(root) {
             tag === 'meta' && (element.getAttribute('http-equiv') || '').toLowerCase() === 'refresh';
         const isHtmlImport =
             tag === 'link' && (element.getAttribute('rel') || '').toLowerCase().split(' ').includes('import');
-        if (REMOVED_TAGS.has(tag) || isMetaRefresh || isHtmlImport) {
+        const isDangerousPlugin =
+            (tag === 'object' || tag === 'embed' || tag === 'applet') && isDangerousPluginElement(element);
+        if (REMOVED_TAGS.has(tag) || isMetaRefresh || isHtmlImport || isDangerousPlugin) {
             element.remove();
             continue;
         }
@@ -154,10 +234,23 @@ function sanitizeFragment(html) {
     const purifier = typeof window !== 'undefined' ? window.DOMPurify : undefined;
     let sanitized = html;
     if (purifier?.sanitize) {
+        // Keep object/embed so removeUnsafeNodes can apply the per-element PDF/
+        // media allowlist (a dangerous one is still dropped there). applet is
+        // forbidden outright. `type`/`data` are preserved so the allowlist can
+        // read them.
         sanitized = purifier.sanitize(html, {
-            ADD_TAGS: ['iframe'],
-            ADD_ATTR: ['sandbox', 'allow', 'allowfullscreen', 'frameborder', 'scrolling', 'referrerpolicy'],
-            FORBID_TAGS: ['script', 'object', 'embed', 'applet', 'base', 'meta', 'link'],
+            ADD_TAGS: ['iframe', 'object', 'embed'],
+            ADD_ATTR: [
+                'sandbox',
+                'allow',
+                'allowfullscreen',
+                'frameborder',
+                'scrolling',
+                'referrerpolicy',
+                'type',
+                'data',
+            ],
+            FORBID_TAGS: ['script', 'applet', 'base', 'meta', 'link'],
             FORBID_ATTR: ['srcdoc'],
             ALLOW_UNKNOWN_PROTOCOLS: false,
             SAFE_FOR_XML: true,

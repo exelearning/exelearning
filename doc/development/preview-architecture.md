@@ -133,6 +133,24 @@ sequenceDiagram
   exports have their own delivery model). This is why the opaque serving CSP is
   `sandbox`-only and does not restrict `frame-src`/`connect-src`.
 
+## What the default filter removes
+
+The source-aware policy disables author-controlled **active** content only:
+scripts, inline `on*` handlers, `javascript:`/active `data:` URLs, `srcdoc`,
+`base`, `meta refresh`, HTML imports, `form action`, SVG scripts/handlers, and
+active XML processing instructions. Official eXe scripts/themes/MathJax/iDevice
+runtimes are never filtered.
+
+`<object>`/`<embed>` are **dual-use** and decided per element: a PDF or media
+resource (`type` of `application/pdf`, `audio/*`, `video/*`, non-SVG `image/*`,
+or a media/PDF file extension when untyped) is **kept** — it renders in the
+browser's own isolated PDF/media context and cannot reach the editor, exactly
+like a sandboxed `<iframe>` pointing at a PDF. An `<object>`/`<embed>` that loads
+a **scriptable document** (HTML/XHTML/SVG/XML, a dangerous scheme, or an active
+`data:` URL) runs in a nested same-origin context that could reach the parent,
+so it is removed. `<applet>` is always removed. Fail closed: an untyped embed
+with an unknown resource is removed.
+
 ## Non-mutation guarantee
 
 No preview path mutates the Yjs document or stored project data. The
