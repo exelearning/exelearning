@@ -197,12 +197,23 @@ Game iDevices and the image gallery will:
 
 - **Open a dedicated implementation issue** (this ADR intentionally replaces
   opening it now, so the decision can be reviewed inside PR #1868 first).
-- Write an SDD proposing phased delivery: (a) the read-only mirror + provenance
-  hint in the image/media insert dialogs and harmonizing external-source
-  attribution between them (smallest, most visible slice); (b) the image gallery
-  as pilot iDevice (already has `seedAttributionFromAsset`); (c) the game family,
-  all using a shared attribution-line builder.
-- Implement in a follow-up branch — explicitly out of scope for PR #1868.
+- **Prototyped in this PR:** the read-only mirror + provenance hint for
+  `asset://` media in both the image (`exeimage`) and media (`exemedia`) insert
+  dialogs — the "Title and Attribution" tab shows disabled fields prefilled from
+  the File Manager under the hint "These details come from the File Manager".
+  Detection keys off the figure's `data-asset-id` (the display `src` is rewritten
+  by TinyMCE on re-open). Covered by the plugin mirror-tests and the
+  image/media caption E2E specs.
+- **Deferred (risky revert):** re-adding *editable* external-source attribution
+  to the image dialog to fully harmonize the two dialogs (media already keeps it;
+  the image dialog dropped it). That means resurrecting the removed editable
+  "Title and Attribution" feature and its export round-trip — it belongs in its
+  own tracked change, not PR #1868.
+- Write an SDD proposing phased delivery for the game/gallery side: (a) the image
+  gallery as pilot iDevice (already has `seedAttributionFromAsset`); (b) the game
+  family, all using a shared attribution-line builder.
+- Implement the game/gallery field removal in a follow-up branch — out of scope
+  for PR #1868.
 
 ## References
 
