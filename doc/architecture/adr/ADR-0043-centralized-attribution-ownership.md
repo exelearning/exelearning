@@ -43,6 +43,26 @@ seeds the empty Authorship field from centralized metadata. Field removal was
 explicitly deferred at the time and listed in the PR #1868 batch comment as a
 "chosen default pending team confirmation".
 
+### Current dialog surfacing (uneven)
+
+The image and media insert dialogs already diverge in how they surface
+attribution, which the reviewer flagged (PR #1868 reviews 4401089472,
+4751991449 — "metadata should be more visible", and reconsidering the "Title
+and attribution" tab in the Image/Video plugins):
+
+- `exeimage` removed its "Title and Attribution" tab outright for **every**
+  source (tabpanel assembly at `plugin.min.js` ~L2041-2045); external images
+  therefore carry no per-instance author/license at all, and asset-backed images
+  only expose per-instance presentation fields (`:1496-1507`).
+- `exemedia` shows an **editable** "Title and Attribution" tab **only** for
+  external sources and hides it for `asset://` media (`buildTabs(isAsset)`
+  ~L2648-2657), redialing when the source flips kind (~L2724).
+
+So for asset-backed media both dialogs simply *omit* the attribution fields
+(nothing tells the author the attribution is set and lives in the File Manager),
+and for external media the two dialogs disagree (media keeps editable fields,
+image dropped them).
+
 ## Problem
 
 Should game iDevices and the image gallery keep editable per-media
@@ -110,13 +130,23 @@ For media referenced through the File Manager (`asset://`), attribution
 (author, author link, license, title, source URL) is owned by the asset.
 Game iDevices and the image gallery will:
 
-1. Stop storing and editing per-media author/license for asset-backed media.
-2. Gain a per-activity "Show attribution" toggle (default: preserve each
+1. Stop storing an editable per-media author/license copy for asset-backed
+   media — the asset is the single source.
+2. Surface asset-backed attribution in per-instance insert UIs (image/media
+   dialogs, and later games) as **disabled, read-only fields pre-filled from
+   the File Manager**, with a short provenance hint ("These details come from
+   the File Manager") and an affordance to open it — instead of hiding the
+   fields. A read-only mirror keeps one source of truth (no drift) while making
+   attribution visible and its origin discoverable, which answers the
+   reviewer's "make metadata more visible" note without reintroducing editable
+   copies.
+3. Keep **editable** per-instance attribution fields only for external sources
+   (e.g. YouTube, a pasted URL), applied **consistently across the image and
+   media dialogs** (they diverge today — see Context).
+4. Gain a per-activity "Show attribution" toggle (default: preserve each
    iDevice's current visible behavior) that controls rendering of the
    attribution line derived from centralized metadata at render/export time.
-3. Keep per-instance attribution fields only for external sources, shown only
-   when the source is external.
-4. Adopt centralized values on the next edition save of a legacy component
+5. Adopt centralized values on the next edition save of a legacy component
    (import never rewrites stored content) — the same save-triggered boundary
    exemedia applies to legacy figures.
 
@@ -126,6 +156,11 @@ Game iDevices and the image gallery will:
 
 - File Manager metadata edits propagate to every game/gallery usage.
 - Simpler game editions; one attribution model across all iDevices.
+- Attribution stays *visible* at insert time (as a read-only mirror) with a
+  clear pointer to where it is edited, instead of silently disappearing for
+  asset-backed media — the reviewer's discoverability concern — without
+  reintroducing an editable duplicate.
+- The image and media dialogs stop disagreeing on external-source attribution.
 
 ### Negative
 
@@ -148,6 +183,9 @@ Game iDevices and the image gallery will:
 - Per-game export renderers diverge in how they print attribution; a shared
   attribution-line helper (sibling of `buildFigureCaption`) is needed to avoid
   24 hand-rolled variants.
+- Disabled mirror fields must read unambiguously as read-only (styling + the
+  provenance hint), or authors may think their edits are being dropped; the
+  affordance to open the File Manager must be obvious.
 
 ## Validation
 
@@ -159,13 +197,19 @@ Game iDevices and the image gallery will:
 
 - **Open a dedicated implementation issue** (this ADR intentionally replaces
   opening it now, so the decision can be reviewed inside PR #1868 first).
-- Write an SDD proposing two phases: image gallery as pilot (single iDevice,
-  already has `seedAttributionFromAsset`), then the game family, both using a
-  shared attribution-line builder.
+- Write an SDD proposing phased delivery: (a) the read-only mirror + provenance
+  hint in the image/media insert dialogs and harmonizing external-source
+  attribution between them (smallest, most visible slice); (b) the image gallery
+  as pilot iDevice (already has `seedAttributionFromAsset`); (c) the game family,
+  all using a shared attribution-line builder.
 - Implement in a follow-up branch — explicitly out of scope for PR #1868.
 
 ## References
 
 - PR #1868 and its batch summary comment (chosen defaults section).
+- PR #1868 reviews 4401089472 (centralize metadata across iDevices;
+  reconsider the Image/Video "Title and attribution" tab) and 4751991449.
+- Dialog surfacing today: `exeimage/plugin.min.js` (~L2041-2045, L1496-1507),
+  `exemedia/plugin.min.js` (`buildTabs` ~L2648-2657, redial ~L2724).
 - Commits: `2656d8b7`, `90b1701b`, `0db59493`, `0cf6c89c`, `deb96be7`.
 - `doc/architecture/adr/README.md` (ADR policy).
