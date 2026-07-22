@@ -5106,6 +5106,86 @@ describe('IdeviceNode', () => {
             expect(() => idevice.legacyExeIdevicesFilePicker()).not.toThrow();
         });
 
+        it('seeds declared author/license targets from the selected asset metadata', async () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'gameImageInput';
+            input.classList.add('exe-file-picker');
+            input.setAttribute('data-author-target', '#gameAuthor');
+            idevice.ideviceBody.appendChild(input);
+
+            let capturedOnSelect = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedOnSelect = options?.onSelect;
+                            }),
+                        },
+                    },
+                },
+            };
+            // Shared seeding helper (real implementation lives in common_edition.js;
+            // its fill-only-empty behavior is covered by common_edition.test.js).
+            const seedSpy = vi.fn();
+            const originalEdition = global.$exeDevicesEdition;
+            const originalJq = window.$;
+            global.$exeDevicesEdition = { iDevice: { filePicker: { seedDeclaredTargets: seedSpy } } };
+            window.$ = vi.fn((el) => ({ el }));
+
+            idevice.legacyExeIdevicesFilePicker();
+            idevice.ideviceBody.querySelector('input[type="button"]').click();
+            expect(capturedOnSelect).toBeTypeOf('function');
+
+            const asset = { author: 'Ada Lovelace', license: 'Creative Commons BY' };
+            await capturedOnSelect({ assetUrl: 'asset://a1.png', blobUrl: 'blob:x', asset });
+
+            expect(input.value).toBe('asset://a1.png');
+            expect(seedSpy).toHaveBeenCalledTimes(1);
+            // Called with the wrapped picker input, its button, and the full asset.
+            expect(seedSpy.mock.calls[0][0].el).toBe(input);
+            expect(seedSpy.mock.calls[0][2]).toBe(asset);
+
+            global.eXeLearning = originalEXeLearning;
+            global.$exeDevicesEdition = originalEdition;
+            window.$ = originalJq;
+        });
+
+        it('still stores the asset URL when the seeding helper is unavailable', async () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'gameImageInput2';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            let capturedOnSelect = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedOnSelect = options?.onSelect;
+                            }),
+                        },
+                    },
+                },
+            };
+            const originalEdition = global.$exeDevicesEdition;
+            global.$exeDevicesEdition = undefined;
+
+            idevice.legacyExeIdevicesFilePicker();
+            idevice.ideviceBody.querySelector('input[type="button"]').click();
+            await capturedOnSelect({ assetUrl: 'asset://b2.png', blobUrl: 'blob:y', asset: { author: 'A' } });
+
+            expect(input.value).toBe('asset://b2.png');
+
+            global.eXeLearning = originalEXeLearning;
+            global.$exeDevicesEdition = originalEdition;
+        });
+
         it('should detect 3D file picker from input id containing "3d"', () => {
             // Create input with id containing "3d"
             const input = document.createElement('input');

@@ -3579,6 +3579,17 @@ export default class IdeviceNode {
                                 e.value = result.assetUrl;
                                 // Store blob URL as data attribute for display
                                 e.dataset.blobUrl = result.blobUrl;
+                                // Seed opt-in author/license targets (declared via
+                                // data-author-target / data-license-target on the
+                                // picker) from the centralized asset metadata. The
+                                // fill-only-empty contract lives in the shared
+                                // helper in common_edition.js.
+                                const seed =
+                                    window.$exeDevicesEdition?.iDevice?.filePicker
+                                        ?.seedDeclaredTargets;
+                                if (seed && typeof window.$ === 'function') {
+                                    seed(window.$(e), window.$(buttonElement), result.asset);
+                                }
                                 // Dispatch change event for iDevice to react
                                 e.dispatchEvent(new Event('change'));
                             },
