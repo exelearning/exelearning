@@ -1,0 +1,35 @@
+{
+    "gitSha": "20fcbac61",
+    "results": [
+        {
+            "size": "SMALL",
+            "pages": 3,
+            "mainMs": 8.400000095367432,
+            "filteredMs": 9,
+            "opaqueMs": 36.90000009536743,
+            "opaqueZipBytes": 410986,
+            "deltaPct": 7.142855926435835,
+            "withinGate": true
+        },
+        {
+            "size": "MEDIUM",
+            "pages": 25,
+            "mainMs": 8.900000095367432,
+            "filteredMs": 8.900000095367432,
+            "opaqueMs": 37.69999980926514,
+            "opaqueZipBytes": 411927,
+            "deltaPct": 0,
+            "withinGate": true
+        },
+        {
+            "size": "LARGE",
+            "pages": 50,
+            "mainMs": 9.600000381469727,
+            "filteredMs": 9.700000286102295,
+            "opaqueMs": 38.10000038146973,
+            "opaqueZipBytes": 412946,
+            "deltaPct": 1.041665631863847,
+            "withinGate": true
+        }
+    ]
+}

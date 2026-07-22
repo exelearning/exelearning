@@ -87,6 +87,11 @@ function inspectFragment(root) {
 
 function inspectXml(html, categories) {
     if (typeof DOMParser === 'undefined') return;
+    // An active XML processing instruction is the ONLY thing this second parse
+    // detects, and a PI always starts with `<?`. The overwhelming majority of
+    // author HTML has none, so skip the (expensive) full XML re-parse unless a
+    // `<?` is present — a pure fast-path, identical result.
+    if (html.indexOf('<?') === -1) return;
     try {
         const xml = new DOMParser().parseFromString(`<preview-root>${html}</preview-root>`, 'application/xml');
         if (xml.querySelector('parsererror')) return;

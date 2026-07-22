@@ -75,6 +75,7 @@ make up                         # Docker dev environment
 | **Test** | `make test-e2e` | E2E tests (Playwright) |
 | **Test** | `make test-e2e-static` | E2E tests against static build |
 | **Test** | `make test-coverage` | Tests with coverage report |
+| **Bench** | `make bench-preview` | Three-way preview refresh benchmark (main vs filtered vs opaque) |
 | **Lint** | `make fix` | Autofix lint + check — **always run after changes** |
 | **Lint** | `make lint` | Lint without fixing |
 | **i18n** | `make translations` | Extract new translation keys — **never run by agents; managed by a separate process** |
