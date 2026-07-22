@@ -322,6 +322,110 @@ describe('ExeImage Plugin - centralized caption contract', () => {
   });
 });
 
+describe('ExeImage Plugin - read-only attribution mirror (asset:// images)', () => {
+  // Mirror of exeAttributionMirror(): maps centralized File Manager metadata to the
+  // read-only ro_* fields shown (disabled) for asset:// images. MUST stay in lockstep
+  // with plugin.min.js.
+  function exeAttributionMirror(meta) {
+    meta = meta || {};
+    return {
+      ro_title: meta.title || '',
+      ro_author: meta.author || '',
+      ro_authorlink: meta.authorUrl || '',
+      ro_source: meta.sourceUrl || '',
+      ro_license: meta.license || '',
+    };
+  }
+
+  // Mirror of exeAssetIdFromSrc() (asset id from an asset:// src).
+  function exeAssetIdFromSrc(src) {
+    const m = /^asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?:[/?#]|$)/i.exec(src || '');
+    return m ? m[1] : '';
+  }
+
+  // Mirror of exeImageAssetId(): the figure's data-asset-id (stashed as image.assetId)
+  // wins over the display src, which TinyMCE rewrites for editing. MUST stay in lockstep.
+  function exeImageAssetId(image) {
+    if (!image) return '';
+    return image.assetId || exeAssetIdFromSrc(image.src);
+  }
+
+  // Mirror of makeDialogBody()'s tab-inclusion branching (tab names only). The dialog
+  // uses a tabpanel when there is an advanced/upload tab OR the image is asset-backed;
+  // asset-backed images append the read-only 'attribution' tab. Returns null when the
+  // dialog falls back to a plain (tab-less) panel.
+  function imageDialogTabNames({ isAsset, hasAdvTab, hasUpload }) {
+    if (!(hasAdvTab || hasUpload || isAsset)) return null;
+    const tabs = ['general'];
+    if (hasAdvTab) tabs.push('advanced');
+    if (hasUpload) tabs.push('upload');
+    if (isAsset) tabs.push('attribution');
+    return tabs;
+  }
+
+  it('maps centralized File Manager metadata to the disabled ro_* fields', () => {
+    const meta = {
+      title: 'Sunset',
+      author: 'Ada Lovelace',
+      authorUrl: 'https://example.org/ada',
+      sourceUrl: 'https://example.org/sunset',
+      license: 'Creative Commons BY-SA',
+    };
+    expect(exeAttributionMirror(meta)).toEqual({
+      ro_title: 'Sunset',
+      ro_author: 'Ada Lovelace',
+      ro_authorlink: 'https://example.org/ada',
+      ro_source: 'https://example.org/sunset',
+      ro_license: 'Creative Commons BY-SA',
+    });
+  });
+
+  it('yields empty strings for missing metadata or an external image', () => {
+    expect(exeAttributionMirror({})).toEqual({
+      ro_title: '',
+      ro_author: '',
+      ro_authorlink: '',
+      ro_source: '',
+      ro_license: '',
+    });
+    expect(exeAttributionMirror(null).ro_license).toBe('');
+    expect(exeAttributionMirror({ author: 'Only author' }).ro_title).toBe('');
+  });
+
+  it('resolves the asset id from the figure data-asset-id first, then the src', () => {
+    // On re-open the display src is a rewritten/blob URL — the figure id must still win.
+    expect(exeImageAssetId({ assetId: 'u1', src: 'blob:http://localhost/xyz' })).toBe('u1');
+    // Fresh insert: no figure id yet, fall back to the asset:// src.
+    expect(exeImageAssetId({ assetId: '', src: 'asset://u2.jpg' })).toBe('u2');
+    // External image: neither → no asset id.
+    expect(exeImageAssetId({ assetId: '', src: 'https://example.com/x.jpg' })).toBe('');
+    expect(exeImageAssetId(null)).toBe('');
+  });
+
+  it('appends the read-only attribution tab only for asset:// images', () => {
+    expect(imageDialogTabNames({ isAsset: true, hasAdvTab: true, hasUpload: false })).toEqual([
+      'general',
+      'advanced',
+      'attribution',
+    ]);
+    expect(imageDialogTabNames({ isAsset: false, hasAdvTab: true, hasUpload: false })).toEqual([
+      'general',
+      'advanced',
+    ]);
+  });
+
+  it('forces a tabpanel for an asset image even without advanced/upload tabs', () => {
+    expect(imageDialogTabNames({ isAsset: true, hasAdvTab: false, hasUpload: false })).toEqual([
+      'general',
+      'attribution',
+    ]);
+  });
+
+  it('keeps a plain (tab-less) panel for an external image with no advanced/upload tabs', () => {
+    expect(imageDialogTabNames({ isAsset: false, hasAdvTab: false, hasUpload: false })).toBeNull();
+  });
+});
+
 describe('ExeImage Plugin - non-editable auto-derived caption (PR #1868)', () => {
   // Mirrors the caption-locking helpers added to the plugin. The exe-figure caption
   // (header div + figcaption) is auto-derived from the centralized File Manager metadata,

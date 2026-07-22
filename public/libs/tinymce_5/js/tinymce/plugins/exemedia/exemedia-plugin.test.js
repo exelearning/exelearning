@@ -53,14 +53,26 @@ function exeBuildCentralizedMediaFigure(html, assetId, mediaWidth, state, meta) 
   return figure.outerHTML;
 }
 
-// Mirror of buildTabs() branching (tab names only).
+// Mirror of buildTabs() branching (tab names only). The attribution tab is ALWAYS
+// present now: editable for external media, a read-only mirror for asset:// media.
 function buildTabNames(isAsset, hasAdvanced) {
-  const tabs = ['general'];
-  if (!isAsset) tabs.push('attribution');
-  tabs.push('attributes');
-  tabs.push('subtitles');
+  const tabs = ['general', 'attribution', 'attributes', 'subtitles'];
   if (hasAdvanced) tabs.push('advanced');
   return tabs;
+}
+
+// Mirror of exeAttributionMirror(): maps centralized File Manager metadata to the
+// read-only ro_* fields shown (disabled) for asset:// media. MUST stay in lockstep
+// with plugin.min.js.
+function exeAttributionMirror(meta) {
+  meta = meta || {};
+  return {
+    ro_title: meta.title || '',
+    ro_author: meta.author || '',
+    ro_authorlink: meta.authorUrl || '',
+    ro_source: meta.sourceUrl || '',
+    ro_license: meta.license || '',
+  };
 }
 
 // Mirror of the GetActualData() figure-state branching.
@@ -193,13 +205,50 @@ describe('ExeMedia Plugin - centralized figure build', () => {
 });
 
 describe('ExeMedia Plugin - dialog tab set per source kind', () => {
-  it('asset:// media has no attribution tab', () => {
-    expect(buildTabNames(true, false)).toEqual(['general', 'attributes', 'subtitles']);
+  it('asset:// media shows the attribution tab as a read-only mirror', () => {
+    expect(buildTabNames(true, false)).toEqual(['general', 'attribution', 'attributes', 'subtitles']);
   });
 
-  it('external media keeps the attribution tab (per-instance storage, fixed decision)', () => {
+  it('external media keeps the attribution tab editable (per-instance storage)', () => {
     expect(buildTabNames(false, false)).toEqual(['general', 'attribution', 'attributes', 'subtitles']);
     expect(buildTabNames(false, true)).toEqual(['general', 'attribution', 'attributes', 'subtitles', 'advanced']);
+  });
+});
+
+describe('ExeMedia Plugin - read-only attribution mirror (asset:// media)', () => {
+  it('maps centralized File Manager metadata to the disabled ro_* fields', () => {
+    const meta = {
+      title: 'Intro clip',
+      author: 'Ada Lovelace',
+      authorUrl: 'https://example.org/ada',
+      sourceUrl: 'https://example.org/clip',
+      license: 'Creative Commons BY-SA',
+    };
+    expect(exeAttributionMirror(meta)).toEqual({
+      ro_title: 'Intro clip',
+      ro_author: 'Ada Lovelace',
+      ro_authorlink: 'https://example.org/ada',
+      ro_source: 'https://example.org/clip',
+      ro_license: 'Creative Commons BY-SA',
+    });
+  });
+
+  it('yields empty strings for missing metadata or an unmanaged (external) source', () => {
+    expect(exeAttributionMirror({})).toEqual({
+      ro_title: '',
+      ro_author: '',
+      ro_authorlink: '',
+      ro_source: '',
+      ro_license: '',
+    });
+    expect(exeAttributionMirror(null)).toEqual({
+      ro_title: '',
+      ro_author: '',
+      ro_authorlink: '',
+      ro_source: '',
+      ro_license: '',
+    });
+    expect(exeAttributionMirror({ title: 'Only title' }).ro_author).toBe('');
   });
 });
 

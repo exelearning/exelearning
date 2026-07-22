@@ -314,4 +314,71 @@ test.describe('Centralized image caption', () => {
         await expect(header).toHaveAttribute('contenteditable', 'false');
         await expect(footer).toHaveAttribute('contenteditable', 'false');
     });
+
+    // Re-surfacing attribution (PR #1868 follow-up): for an asset-backed image the dialog
+    // shows a READ-ONLY "Title and Attribution" tab — a provenance hint + disabled fields
+    // mirrored from the File Manager — so the author/license stay visible and their origin
+    // is discoverable, without a per-instance editable copy.
+    test('re-opening an asset image shows a read-only attribution mirror from File Manager metadata', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Image caption — attribution mirror');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addTextIdevice(page);
+        await enterTextIdeviceEditMode(page);
+        await openFileManagerViaImageButton(page);
+        await uploadFixtureFile(page, 'test/fixtures/sample-2.jpg');
+        await page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first().click();
+        await page.waitForSelector('#modalFileManager .media-library-edit-metadata', {
+            state: 'visible',
+            timeout: 5000,
+        });
+        const status = page.locator('#modalFileManager .media-library-meta-status');
+        const setField = async (sel: string, value: string): Promise<void> => {
+            await page.locator(sel).fill(value);
+            await page.locator(sel).blur();
+            await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
+        };
+        await setField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
+        await setField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
+        await page.locator('#modalFileManager .media-library-meta-license').selectOption('Creative Commons BY');
+        await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
+        await insertFileIntoEditor(page, 'sample-2.jpg');
+
+        const frame = page.frameLocator('iframe.tox-edit-area__iframe').first();
+        const figure = frame.locator('figure.exe-figure[data-asset-id]').first();
+        await expect(figure).toHaveCount(1, { timeout: 10000 });
+
+        // Re-open the dialog on the inserted asset image: the read-only attribution tab is
+        // present (detection keys off the figure's data-asset-id, since TinyMCE rewrites the
+        // display src on re-open).
+        await figure.locator('img').first().click();
+        await openImageDialog(page);
+        const tabs = page.locator('.tox-dialog .tox-dialog__body-nav-item, .tox-dialog .tox-tab');
+        const tabTexts = (await tabs.allTextContents()).map(t => t.trim().toLowerCase());
+        expect(tabTexts.some(t => /atribuci|attribution/.test(t))).toBe(true);
+
+        // Open it: provenance hint + disabled fields prefilled from the centralized metadata.
+        await tabs
+            .filter({ hasText: /atribuci|attribution/i })
+            .first()
+            .click();
+        await expect(page.locator('.tox-dialog .exe-attr-fm-hint')).toBeVisible();
+        expect(await page.locator('.tox-dialog input.tox-textfield[disabled]').count()).toBeGreaterThanOrEqual(3);
+        const titleField = page
+            .locator('.tox-dialog label.tox-label', { hasText: /^t[íi]tulo$|^title$/i })
+            .first()
+            .locator('xpath=following::*[self::input or self::textarea][1]');
+        await expect(titleField).toHaveValue('Mountain Sunset');
+        await expect(titleField).toBeDisabled();
+
+        await page
+            .locator('.tox-dialog .tox-button:has-text("Cancel"), .tox-dialog .tox-button:has-text("Cancelar")')
+            .first()
+            .click();
+    });
 });

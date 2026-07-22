@@ -72,6 +72,15 @@ function dialogTabTexts(page: Page): Promise<string[]> {
         .then(texts => texts.map(t => t.trim().toLowerCase()));
 }
 
+/** Click a dialog tab whose label matches `re`. */
+async function openDialogTab(page: Page, re: RegExp): Promise<void> {
+    await page
+        .locator('.tox-dialog .tox-dialog__body-nav-item, .tox-dialog .tox-tab')
+        .filter({ hasText: re })
+        .first()
+        .click();
+}
+
 /** The per-instance "Hide media caption" checkbox — only present for asset:// media. */
 function hideCaptionCheckbox(page: Page) {
     return page.locator('.tox-dialog .tox-checkbox').filter({ hasText: /hide media caption|ocultar/i });
@@ -142,7 +151,7 @@ const labelledField = (page: Page, re: RegExp) =>
         .locator('xpath=following::*[self::input or self::textarea][1]');
 
 test.describe('Centralized media caption', () => {
-    test('media dialog: attribution tab only for external sources, caption controls for asset media', async ({
+    test('media dialog: editable attribution for external sources, read-only mirror for asset media', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -155,20 +164,32 @@ test.describe('Centralized media caption', () => {
         await enterTextIdeviceEditMode(page);
         await openMediaDialog(page);
 
-        // Empty/external source: the attribution tab is present (per-instance fields kept).
+        // Empty/external source: the attribution tab is present and editable.
         let tabTexts = await dialogTabTexts(page);
         expect(tabTexts.some(t => /atribuci|attribution/.test(t))).toBe(true);
         await expect(hideCaptionCheckbox(page)).toHaveCount(0);
 
-        // Picking an asset video flips the dialog: no attribution tab, caption controls shown.
-        await pickAssetVideo(page);
+        // Picking an asset video keeps the attribution tab but turns it into a READ-ONLY
+        // mirror (File-Manager provenance hint + disabled fields prefilled from centralized
+        // metadata), and the per-instance caption controls appear on the General tab.
+        await pickAssetVideo(page, { title: 'Intro clip', author: 'Ada Lovelace', license: 'Creative Commons BY' });
         tabTexts = await dialogTabTexts(page);
-        expect(tabTexts.some(t => /atribuci|attribution/.test(t))).toBe(false);
+        expect(tabTexts.some(t => /atribuci|attribution/.test(t))).toBe(true);
         await expect(hideCaptionCheckbox(page)).toHaveCount(1);
         await expect(labelledField(page, /header|encabezado/i)).toBeVisible();
         await expect(labelledField(page, /notes|notas|observaciones/i)).toBeVisible();
 
-        // Flipping back to an external URL restores the attribution tab.
+        await openDialogTab(page, /atribuci|attribution/i);
+        await expect(page.locator('.tox-dialog .exe-attr-fm-hint')).toBeVisible();
+        // The mirror fields are disabled (owned by the File Manager) and prefilled.
+        expect(await page.locator('.tox-dialog input.tox-textfield[disabled]').count()).toBeGreaterThanOrEqual(3);
+        await expect(labelledField(page, /^t[íi]tulo$|^title$/i)).toHaveValue('Intro clip');
+        await expect(labelledField(page, /source\/author$|fuente\/autor[íi]a?$|autor[íi]a?$/i)).toHaveValue(
+            'Ada Lovelace',
+        );
+
+        // Return to General, then flip back to an external URL: the editable attribution tab returns.
+        await openDialogTab(page, /general/i);
         const sourceInput = page
             .locator('.tox-dialog .tox-textfield[type="url"], .tox-dialog input.tox-textfield')
             .first();
