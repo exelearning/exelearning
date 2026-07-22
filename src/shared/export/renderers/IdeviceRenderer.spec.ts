@@ -1799,4 +1799,38 @@ describe('IdeviceRenderer', () => {
             expect(mainTag).not.toContain('type="module"');
         });
     });
+
+    describe('addReferrerPolicyToEmbeds', () => {
+        it('adds referrerpolicy to a YouTube iframe that lacks it', () => {
+            const html = '<p>x</p><iframe src="https://www.youtube.com/embed/abc" allowfullscreen></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+            expect(out).toContain('allowfullscreen');
+        });
+
+        it('adds referrerpolicy to nocookie, youtu.be and Vimeo iframes', () => {
+            const html =
+                '<iframe src="https://www.youtube-nocookie.com/embed/a"></iframe>' +
+                '<iframe src="https://player.vimeo.com/video/123"></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out.match(/referrerpolicy=/g)).toHaveLength(2);
+        });
+
+        it('does not duplicate an existing referrerpolicy', () => {
+            const html = '<iframe src="https://www.youtube.com/embed/abc" referrerpolicy="no-referrer"></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out.match(/referrerpolicy=/g)).toHaveLength(1);
+            expect(out).toContain('referrerpolicy="no-referrer"');
+        });
+
+        it('leaves non-provider iframes untouched', () => {
+            const html = '<iframe src="https://example.com/widget"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
+        });
+
+        it('is a no-op for content without iframes', () => {
+            expect(renderer.addReferrerPolicyToEmbeds('<p>no iframes</p>')).toBe('<p>no iframes</p>');
+            expect(renderer.addReferrerPolicyToEmbeds('')).toBe('');
+        });
+    });
 });
