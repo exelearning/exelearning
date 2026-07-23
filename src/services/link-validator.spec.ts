@@ -11,6 +11,8 @@ import {
     validateLinkWithResult,
     validateLinksStream,
     toBrokenLinkInfo,
+    shouldFallbackFromHead,
+    classifyHttpStatus,
     type ExtractedLink,
     type RawExtractedLink,
     type IdeviceContent,
@@ -360,7 +362,7 @@ describe('Link Validator Service', () => {
                 }
                 // GET request with Range header
                 expect(options?.method).toBe('GET');
-                expect(options?.headers).toHaveProperty('Range', 'bytes=0-0');
+                expect(options?.headers).toMatchObject({ Range: 'bytes=0-0' });
                 return mockResponse({ status: 200, ok: true });
             }) as unknown as typeof fetch;
 
@@ -372,6 +374,49 @@ describe('Link Validator Service', () => {
             });
             expect(result).toBeNull(); // Should be valid after GET fallback
             expect(callCount).toBe(2); // HEAD then GET
+        });
+
+        it('should fallback to GET when HEAD returns 403 (bot/method rejection)', async () => {
+            let callCount = 0;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                callCount++;
+                if (options?.method === 'HEAD') {
+                    return mockResponse({ status: 403, ok: false });
+                }
+                expect(options?.method).toBe('GET');
+                expect(options?.headers).toMatchObject({ Range: 'bytes=0-0' });
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/head-forbidden', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(callCount).toBe(2);
+        });
+
+        it('should fallback to GET when HEAD throws a network error', async () => {
+            let callCount = 0;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                callCount++;
+                if (options?.method === 'HEAD') {
+                    throw new Error('The socket connection was closed unexpectedly');
+                }
+                expect(options?.method).toBe('GET');
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/head-dropped', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(callCount).toBe(2);
         });
 
         it('should return error when GET fallback also fails', async () => {
@@ -390,6 +435,20 @@ describe('Link Validator Service', () => {
                 fetchImpl,
             });
             expect(result).toBe('404');
+        });
+
+        it('should still report a broken URL when both HEAD and GET fail with a network error', async () => {
+            const fetchImpl = (async () => {
+                throw new Error('The socket connection was closed unexpectedly');
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/dead', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('The socket connection was closed unexpectedly');
         });
 
         it('should block a host that resolves to a private/loopback address (SSRF guard)', async () => {
@@ -558,6 +617,37 @@ describe('Link Validator Service', () => {
 
             // All 7 links should be processed
             expect(results).toHaveLength(7);
+        });
+    });
+
+    describe('shouldFallbackFromHead', () => {
+        it('should fallback for method-not-allowed and bot-style rejections', () => {
+            expect(shouldFallbackFromHead(405)).toBe(true);
+            expect(shouldFallbackFromHead(403)).toBe(true);
+            expect(shouldFallbackFromHead(401)).toBe(true);
+            expect(shouldFallbackFromHead(501)).toBe(true);
+        });
+
+        it('should not fallback for success or genuine missing-resource statuses', () => {
+            expect(shouldFallbackFromHead(200)).toBe(false);
+            expect(shouldFallbackFromHead(301)).toBe(false);
+            expect(shouldFallbackFromHead(404)).toBe(false);
+            expect(shouldFallbackFromHead(500)).toBe(false);
+        });
+    });
+
+    describe('classifyHttpStatus', () => {
+        it('should treat 2xx and 3xx as valid', () => {
+            expect(classifyHttpStatus(200)).toBeNull();
+            expect(classifyHttpStatus(204)).toBeNull();
+            expect(classifyHttpStatus(301)).toBeNull();
+            expect(classifyHttpStatus(302)).toBeNull();
+            expect(classifyHttpStatus(303)).toBeNull();
+        });
+
+        it('should report 4xx/5xx as the status string', () => {
+            expect(classifyHttpStatus(404)).toBe('404');
+            expect(classifyHttpStatus(500)).toBe('500');
         });
     });
 

@@ -251,41 +251,136 @@ export default class LinkValidationAdapter {
                 };
             }
 
-            // Create abort controller for timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            // Prefer HEAD (cheap). Some hosts reject HEAD or block no-cors redirect
+            // chains (e.g. consent walls); fall back to GET, then to a DNS probe so
+            // a browser security policy failure is not reported as a broken link.
+            try {
+                await this._probeUrl(normalizedUrl, 'HEAD');
+                return { status: 'valid', error: null };
+            } catch (headError) {
+                if (headError?.name === 'AbortError') {
+                    return { status: 'broken', error: _('Timeout') };
+                }
+            }
 
             try {
-                // Try HEAD request first (lighter, but may be blocked by CORS)
-                const response = await fetch(normalizedUrl, {
-                    method: 'HEAD',
-                    mode: 'no-cors', // Use no-cors to avoid CORS errors
-                    signal: controller.signal,
-                });
-
-                clearTimeout(timeoutId);
-
-                // In no-cors mode, we can't read the response status
-                // A successful fetch (no network error) suggests the URL is reachable
-                // This is the best we can do from browser without CORS cooperation
-
-                // If we got here without error, consider it valid
+                await this._probeUrl(normalizedUrl, 'GET');
                 return { status: 'valid', error: null };
-            } catch (fetchError) {
-                clearTimeout(timeoutId);
-
-                // Check for specific error types
-                if (fetchError.name === 'AbortError') {
+            } catch (getError) {
+                if (getError?.name === 'AbortError') {
                     return { status: 'broken', error: _('Timeout') };
                 }
 
-                // Network errors (DNS failure, connection refused, etc.)
-                // These indicate the URL is genuinely broken
-                return { status: 'broken', error: fetchError.message || _('Network error') };
+                // Browser fetch often throws TypeError "Failed to fetch" both for
+                // truly dead hosts and for reachable hosts whose redirect/CORS policy
+                // the page cannot follow (e.g. youtube.com → consent.youtube.com).
+                // Distinguish those cases with a DNS-over-HTTPS lookup: if the host
+                // resolves, the link is reachable from a real browser navigation.
+                const hostResolves = await this._hostResolves(normalizedUrl);
+                if (hostResolves === true) {
+                    return { status: 'valid', error: null };
+                }
+                if (hostResolves === false) {
+                    return { status: 'broken', error: _('Could not resolve host') };
+                }
+
+                return {
+                    status: 'broken',
+                    error: getError?.message || _('Network error'),
+                };
             }
         } catch (error) {
             // URL parsing or other errors
             return { status: 'broken', error: _('Invalid URL') };
+        }
+    }
+
+    /**
+     * Probe a URL with a no-cors request (opaque success ⇒ reachable).
+     * @param {string} url
+     * @param {'HEAD'|'GET'} method
+     * @returns {Promise<Response>}
+     * @private
+     */
+    async _probeUrl(url, method) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        try {
+            // no-cors: we only care whether the request completes without a network
+            // error. Status is opaque (0) and cannot be read cross-origin.
+            return await fetch(url, {
+                method,
+                mode: 'no-cors',
+                signal: controller.signal,
+                // Avoid sending cookies that can force consent/redirect chains.
+                credentials: 'omit',
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    /**
+     * Check whether a URL's hostname resolves via DNS-over-HTTPS.
+     * Returns true / false when DoH answers, or null when the probe itself fails
+     * (offline, blocked, etc.) so the caller can fall back to the original error.
+     * @param {string} url
+     * @returns {Promise<boolean|null>}
+     * @private
+     */
+    async _hostResolves(url) {
+        let hostname;
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            return false;
+        }
+        if (!hostname) {
+            return false;
+        }
+
+        // Cloudflare DoH is CORS-enabled and needs no API key. Only used as a
+        // last resort after browser fetch failed, so we never send hostnames for
+        // links that already validated successfully.
+        const dohUrl =
+            'https://cloudflare-dns.com/dns-query?name=' +
+            encodeURIComponent(hostname) +
+            '&type=A';
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            let response;
+            try {
+                response = await fetch(dohUrl, {
+                    method: 'GET',
+                    headers: { Accept: 'application/dns-json' },
+                    signal: controller.signal,
+                    credentials: 'omit',
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+            if (!response.ok) {
+                return null;
+            }
+            const data = await response.json();
+            // DNS RCODE: 0 = NOERROR, 3 = NXDOMAIN. Any answer section means the
+            // name exists (A, CNAME, etc.).
+            if (data && data.Status === 3) {
+                return false;
+            }
+            if (data && data.Status === 0 && Array.isArray(data.Answer) && data.Answer.length > 0) {
+                return true;
+            }
+            // NOERROR with no Answer can still be a valid host (NODATA for A but
+            // AAAA-only, etc.). Treat Status 0 as resolved.
+            if (data && data.Status === 0) {
+                return true;
+            }
+            return false;
+        } catch {
+            return null;
         }
     }
 

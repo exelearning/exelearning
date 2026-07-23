@@ -319,6 +319,7 @@ describe('LinkValidationAdapter', () => {
             });
 
             it('should handle fetch network errors', async () => {
+                // HEAD + GET both fail; DoH also fails → surface the original network error
                 global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
                 const result = await adapter.validateLink('https://nonexistent.invalid');
@@ -349,6 +350,78 @@ describe('LinkValidationAdapter', () => {
                     'https://cdn.example.com/file.js',
                     expect.any(Object)
                 );
+            });
+
+            /**
+             * Regression for #2207: hosts (e.g. YouTube channel URLs) that respond with a
+             * cross-site consent/redirect chain cause browser fetch(mode:'no-cors') to throw
+             * TypeError "Failed to fetch" (ERR_BLOCKED_BY_RESPONSE.NotSameSite) even though
+             * the URL is reachable in a normal navigation. When the browser cannot complete
+             * the check but DNS still resolves the host, treat the link as valid rather than
+             * reporting a false "Failed to fetch" breakage.
+             */
+            it('should treat browser-blocked fetches as valid when the host still resolves', async () => {
+                const failedFetch = new TypeError('Failed to fetch');
+                global.fetch = vi
+                    .fn()
+                    // HEAD no-cors
+                    .mockRejectedValueOnce(failedFetch)
+                    // GET fallback no-cors
+                    .mockRejectedValueOnce(failedFetch)
+                    // DNS-over-HTTPS probe: host resolves
+                    .mockResolvedValueOnce({
+                        ok: true,
+                        json: async () => ({
+                            Status: 0,
+                            Answer: [{ type: 1, data: '142.250.0.1' }],
+                        }),
+                    });
+
+                const result = await adapter.validateLink('https://www.youtube.com/@freddcosmos');
+
+                expect(result.status).toBe('valid');
+                expect(result.error).toBeNull();
+                // HEAD, then GET, then DoH
+                expect(global.fetch).toHaveBeenCalledTimes(3);
+                expect(global.fetch.mock.calls[0][1]).toMatchObject({ method: 'HEAD' });
+                expect(global.fetch.mock.calls[1][1]).toMatchObject({ method: 'GET' });
+                expect(String(global.fetch.mock.calls[2][0])).toContain('dns-query');
+                expect(String(global.fetch.mock.calls[2][0])).toContain('www.youtube.com');
+            });
+
+            it('should fall back from HEAD to GET when HEAD is rejected but GET succeeds', async () => {
+                global.fetch = vi
+                    .fn()
+                    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+                    .mockResolvedValueOnce({ ok: true, type: 'opaque', status: 0 });
+
+                const result = await adapter.validateLink('https://example.com/head-blocked');
+
+                expect(result.status).toBe('valid');
+                expect(result.error).toBeNull();
+                expect(global.fetch).toHaveBeenCalledTimes(2);
+                expect(global.fetch.mock.calls[0][1]).toMatchObject({ method: 'HEAD' });
+                expect(global.fetch.mock.calls[1][1]).toMatchObject({ method: 'GET' });
+            });
+
+            it('should still report genuinely unresolvable hosts as broken', async () => {
+                const failedFetch = new TypeError('Failed to fetch');
+                global.fetch = vi
+                    .fn()
+                    .mockRejectedValueOnce(failedFetch)
+                    .mockRejectedValueOnce(failedFetch)
+                    // DoH NXDOMAIN
+                    .mockResolvedValueOnce({
+                        ok: true,
+                        json: async () => ({ Status: 3 }),
+                    });
+
+                const result = await adapter.validateLink(
+                    'https://this-domain-definitely-does-not-exist-zzz999.invalid/page',
+                );
+
+                expect(result.status).toBe('broken');
+                expect(result.error).toBe('Could not resolve host');
             });
         });
 
