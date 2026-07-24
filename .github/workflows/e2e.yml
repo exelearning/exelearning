@@ -28,6 +28,7 @@ jobs:
   # the 3 browser jobs rebuilt CSS + bundles independently (3x build); now the
   # build is paid a single time and downloaded by the shards.
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -74,6 +75,7 @@ jobs:
           path: dist/static/**
 
   e2e:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: build
     runs-on: ubuntu-latest
     strategy:
@@ -150,7 +152,7 @@ jobs:
   merge-report:
     needs: e2e
     # Run even if some shards failed so the report still reflects every shard.
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
