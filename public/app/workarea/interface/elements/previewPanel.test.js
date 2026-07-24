@@ -884,109 +884,42 @@ describe('PreviewPanelManager', () => {
       expect(mockOpen).not.toHaveBeenCalled();
     });
 
-    it('should derive basePath from pathname for subdirectory deployments', async () => {
-      // Mock SW availability
+    it('should build the viewer URL from getBasePath (plugin/static base)', async () => {
       manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
       global.open = mockOpen;
 
-      // Mock pathname for subdirectory deployment
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/pr-preview/pr-20/workarea',
-      };
+      window.eXeLearning.app.getBasePath = () =>
+        '/wp-content/plugins/exelearning/dist/static';
 
       await manager.extractToNewTab();
 
-      // Should derive base path from pathname and construct correct URL
+      // The new tab opens the SW-served viewer at the app's base path (the same
+      // URL loadPreviewFromServiceWorker uses), so it works under the plugin's
+      // static base as well as the standalone layout.
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
+        '/wp-content/plugins/exelearning/dist/static/viewer/index.html?exe-teacher=1',
         '_blank'
       );
-
-      // Restore location
-      window.location = originalLocation;
     });
 
-    it('should handle workarea.html pathname correctly', async () => {
+    it('should build a root viewer URL when getBasePath is empty', async () => {
       manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
       global.open = mockOpen;
 
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/app/workarea.html',
-      };
+      window.eXeLearning.app.getBasePath = () => '';
 
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/app/viewer/index.html?exe-teacher=1',
+        '/viewer/index.html?exe-teacher=1',
         '_blank'
       );
-
-      window.location = originalLocation;
-    });
-
-    it('should handle root workarea path correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'http://localhost:8080',
-        pathname: '/workarea',
-      };
-
-      await manager.extractToNewTab();
-
-      expect(mockOpen).toHaveBeenCalledWith(
-        'http://localhost:8080/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      window.location = originalLocation;
-    });
-
-    it('should handle pathname with trailing slash correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
-      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
-
-      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
-      global.open = mockOpen;
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = {
-        ...originalLocation,
-        origin: 'https://example.com',
-        pathname: '/pr-preview/pr-20/workarea/',
-      };
-
-      await manager.extractToNewTab();
-
-      // Should NOT produce double slashes
-      expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
-        '_blank'
-      );
-
-      window.location = originalLocation;
     });
   });
 
@@ -2584,10 +2517,14 @@ describe('PreviewPanelManager', () => {
       expect(openSpy).toHaveBeenCalledWith(CAPABILITY_URL, '_blank', 'noopener');
     });
 
-    it('extractToNewTab fails when the opaque snapshot is not ready', async () => {
+    it('extractToNewTab stays quiet when the opaque snapshot is not ready', async () => {
       enableActivePreviewContent('project-a');
       manager._selfHostedPreviewSnapshot = null;
-      await expect(manager.extractToNewTab()).rejects.toThrow('not ready');
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+      // No opaque URL yet — fail closed WITHOUT an uncaught rejection or opening
+      // an empty tab (the click handler has no .catch()).
+      await expect(manager.extractToNewTab()).resolves.toBeUndefined();
+      expect(openSpy).not.toHaveBeenCalled();
     });
 
     it('explains the isolated reload in the enable dialog (web/server transport)', () => {
