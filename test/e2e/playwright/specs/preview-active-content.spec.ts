@@ -199,7 +199,7 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         await warning.click();
         const modal = page.locator('#modalConfirm');
         await expect(modal).toContainText('isolated context');
-        await modal.getByRole('button', { name: 'Enable custom JavaScript for this preview' }).click();
+        await modal.getByRole('button', { name: 'Allow external scripts' }).click();
         await expect(warning).toHaveAttribute('aria-pressed', 'true');
 
         // The active preview iframe is now opaque: sandbox without allow-same-origin, capability URL src.
@@ -254,16 +254,13 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         await openPreviewPanel(page);
         const warning = page.locator('#preview-active-content-button');
         await warning.click();
-        await page
-            .locator('#modalConfirm')
-            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
-            .click();
+        await page.locator('#modalConfirm').getByRole('button', { name: 'Allow external scripts' }).click();
         const iframe = page.locator('#preview-iframe');
         await expect.poll(async () => (await iframe.getAttribute('src')) ?? '').toContain('/preview-snapshot/');
         const capabilityUrl = await iframe.getAttribute('src');
 
         await warning.click();
-        await page.locator('#modalConfirm').getByRole('button', { name: 'Disable custom JavaScript' }).click();
+        await page.locator('#modalConfirm').getByRole('button', { name: 'Block external scripts' }).click();
         await expect(warning).toHaveAttribute('aria-pressed', 'false');
 
         // Back to the same-origin SW preview — the iframe no longer carries the opaque sandbox.
@@ -293,10 +290,7 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         await openPreviewPanel(page);
         const warning = page.locator('#preview-active-content-button');
         await warning.click();
-        await page
-            .locator('#modalConfirm')
-            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
-            .click();
+        await page.locator('#modalConfirm').getByRole('button', { name: 'Allow external scripts' }).click();
         await expect(warning).toHaveAttribute('aria-pressed', 'true');
 
         // A local (untagged) edit KEEPS the grant.
@@ -330,10 +324,7 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         await page.locator('#head-bottom-preview').click();
         await openPreviewPanel(page);
         await page.locator('#preview-active-content-button').click();
-        await page
-            .locator('#modalConfirm')
-            .getByRole('button', { name: 'Enable custom JavaScript for this preview' })
-            .click();
+        await page.locator('#modalConfirm').getByRole('button', { name: 'Allow external scripts' }).click();
         const iframe = page.locator('#preview-iframe');
         await expect.poll(async () => (await iframe.getAttribute('src')) ?? '').toContain('/preview-snapshot/');
 

@@ -15501,6 +15501,82 @@
         <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
         <target>Algunos cambios colaborativos aún no se han guardado. Haz clic en Guardar antes de salir para no perderlos.</target>
       </trans-unit>
+      <trans-unit id="extscripts-01" resname="Allow external scripts">
+        <source>Allow external scripts</source>
+        <target>Permitir scripts externos</target>
+      </trans-unit>
+      <trans-unit id="extscripts-02" resname="External scripts active">
+        <source>External scripts active</source>
+        <target>Scripts externos activos</target>
+      </trans-unit>
+      <trans-unit id="extscripts-03" resname="External scripts are active — click to block them again">
+        <source>External scripts are active — click to block them again</source>
+        <target>Los scripts externos están activos: pulse para volver a bloquearlos</target>
+      </trans-unit>
+      <trans-unit id="extscripts-04" resname="External scripts are disabled in the editor preview">
+        <source>External scripts are disabled in the editor preview</source>
+        <target>Los scripts externos están desactivados en la vista previa del editor</target>
+      </trans-unit>
+      <trans-unit id="extscripts-05" resname="Allow external scripts in the preview">
+        <source>Allow external scripts in the preview</source>
+        <target>Permitir scripts externos en la vista previa</target>
+      </trans-unit>
+      <trans-unit id="extscripts-06" resname="Block external scripts in the preview">
+        <source>Block external scripts in the preview</source>
+        <target>Bloquear scripts externos en la vista previa</target>
+      </trans-unit>
+      <trans-unit id="extscripts-07" resname="External scripts blocked in the preview">
+        <source>External scripts blocked in the preview</source>
+        <target>Scripts externos bloqueados en la vista previa</target>
+      </trans-unit>
+      <trans-unit id="extscripts-08" resname="This project contains external scripts, disabled for security in the editor preview.">
+        <source>This project contains external scripts, disabled for security in the editor preview.</source>
+        <target>Este proyecto contiene scripts externos, desactivados por seguridad en la vista previa del editor.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-09" resname="Allowing them lets that code access the data available to the preview. This is a trust decision and does not make the content safe. Allow them only if you trust the project.">
+        <source>Allowing them lets that code access the data available to the preview. This is a trust decision and does not make the content safe. Allow them only if you trust the project.</source>
+        <target>Permitirlos deja que ese código acceda a los datos disponibles en la vista previa. Es una decisión de confianza y no hace que el contenido sea seguro. Permítalos solo si confía en el proyecto.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-10" resname="External scripts are allowed in this preview.">
+        <source>External scripts are allowed in this preview.</source>
+        <target>Los scripts externos están permitidos en esta vista previa.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-11" resname="You can block them again at any time. Remember: allowing them was a trust decision and does not make the content safe.">
+        <source>You can block them again at any time. Remember: allowing them was a trust decision and does not make the content safe.</source>
+        <target>Puede volver a bloquearlos en cualquier momento. Recuerde: permitirlos fue una decisión de confianza y no hace que el contenido sea seguro.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-12" resname="External scripts cannot be allowed in the desktop application because the editor has access to native application features.">
+        <source>External scripts cannot be allowed in the desktop application because the editor has access to native application features.</source>
+        <target>Los scripts externos no se pueden permitir en la aplicación de escritorio porque el editor tiene acceso a funciones nativas del sistema.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-13" resname='The preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while scripts are allowed.'>
+        <source>The preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while scripts are allowed.</source>
+        <target>La vista previa se recargará en un contexto aislado que no puede acceder a su sesión del editor. Los vídeos externos (YouTube, Vimeo) ofrecerán un enlace «abrir en una pestaña nueva» mientras los scripts estén permitidos.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-14" resname="This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.">
+        <source>This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.</source>
+        <target>Esta versión del editor no puede aislar la vista previa, por lo que el código se ejecutará con el mismo acceso que el propio editor. Actívelo solo en proyectos en los que confíe plenamente.</target>
+      </trans-unit>
+      <trans-unit id="extscripts-15" resname="Block external scripts">
+        <source>Block external scripts</source>
+        <target>Bloquear scripts externos</target>
+      </trans-unit>
+      <trans-unit id="extscripts-16" resname="Keep blocked">
+        <source>Keep blocked</source>
+        <target>Mantener bloqueados</target>
+      </trans-unit>
+      <trans-unit id="extscripts-17" resname="Block them again">
+        <source>Block them again</source>
+        <target>Volver a bloquear</target>
+      </trans-unit>
+      <trans-unit id="extscripts-18" resname="External scripts unavailable">
+        <source>External scripts unavailable</source>
+        <target>Scripts externos no disponibles</target>
+      </trans-unit>
+      <trans-unit id="extscripts-19" resname="The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.">
+        <source>The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.</source>
+        <target>No se pudo cargar la vista previa aislada, por lo que los scripts externos siguen bloqueados y se muestra la vista previa filtrada.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -63,7 +63,7 @@ test.describe('External media demo fixture', () => {
         await warning.click();
         const modal = page.locator('#modalConfirm');
         await expect(modal).toContainText('isolated context');
-        await modal.getByRole('button', { name: 'Enable custom JavaScript for this preview' }).click();
+        await modal.getByRole('button', { name: 'Allow external scripts' }).click();
         await expect(warning).toHaveAttribute('aria-pressed', 'true');
 
         const iframe = page.locator('#preview-iframe');

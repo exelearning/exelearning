@@ -2367,7 +2367,7 @@ describe('PreviewPanelManager', () => {
       manager._updateActiveContentIndicator(report);
       manager._showActiveContentDialog();
       const firstDialog = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
-      expect(firstDialog.confirmButtonText).toContain('Enable custom JavaScript');
+      expect(firstDialog.confirmButtonText).toContain('Allow external scripts');
       expect(mockElements['preview-active-content-button'].getAttribute('aria-pressed')).toBe('false');
       vi.spyOn(manager, 'refresh').mockResolvedValue();
 
@@ -2376,7 +2376,7 @@ describe('PreviewPanelManager', () => {
 
       manager._showActiveContentDialog();
       const secondDialog = window.eXeLearning.app.modals.confirm.show.mock.calls[1][0];
-      expect(secondDialog.confirmButtonText).toContain('Disable custom JavaScript');
+      expect(secondDialog.confirmButtonText).toContain('Block external scripts');
       await secondDialog.confirmExec();
       expect(mockElements['preview-active-content-button'].getAttribute('aria-pressed')).toBe('false');
     });
@@ -2386,7 +2386,7 @@ describe('PreviewPanelManager', () => {
       manager._updateActiveContentIndicator(report);
       manager._showActiveContentDialog();
       const dialog = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
-      expect(dialog.confirmButtonText).toBe('Keep disabled');
+      expect(dialog.confirmButtonText).toBe('Keep blocked');
       expect(dialog.body).toContain('desktop application');
       delete window.electronAPI;
     });
