@@ -750,14 +750,23 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('refresh', () => {
-    it('uses only the opaque snapshot transport for an embedded editor', async () => {
+    it('embedded: filtered same-origin by default, opaque snapshot only once enabled', async () => {
       window.eXeLearning.app.runtimeConfig = { isEmbedded: true };
       const embeddedSpy = vi.spyOn(manager, 'refreshWithEmbeddedSnapshot').mockResolvedValue();
       const swSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
       const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
 
+      // Default (not enabled): a filtered same-origin transport (SW or its blob
+      // fallback), never the opaque snapshot — so whitelisted videos play inline.
       await manager.refresh();
+      expect(swSpy.mock.calls.length + blobSpy.mock.calls.length).toBe(1);
+      expect(embeddedSpy).not.toHaveBeenCalled();
 
+      // Enabled: the host's opaque snapshot, never a same-origin transport.
+      swSpy.mockClear();
+      blobSpy.mockClear();
+      enableActivePreviewContent('project-a');
+      await manager.refresh();
       expect(embeddedSpy).toHaveBeenCalledOnce();
       expect(swSpy).not.toHaveBeenCalled();
       expect(blobSpy).not.toHaveBeenCalled();
@@ -1495,15 +1504,21 @@ describe('PreviewPanelManager', () => {
       );
     });
 
-    it('keeps authored active content intact for an opaque embedded preview', async () => {
+    it('embedded default filters (sanitizes); the opaque snapshot keeps author bytes', async () => {
       window.eXeLearning.app.runtimeConfig = { isEmbedded: true };
       window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
 
+      // Default embedded preview: filtered policy — author active content is sanitized.
       await manager._generatePreviewFiles();
+      const filtered = window.SharedExporters.generatePreviewForSW.mock.calls[0][4].previewContentPolicy;
+      expect(filtered).toBeDefined();
+      expect(filtered.prepare('<script>window.x=1</script>').html).not.toContain('window.x=1');
 
-      const options = window.SharedExporters.generatePreviewForSW.mock.calls[0][4];
-      expect(options.previewContentPolicy).toBeUndefined();
-      expect(manager._activeContentReport).toBeNull();
+      // Opaque snapshot (embedded, on enable): report-only policy — author bytes intact.
+      await manager._generatePreviewFiles({ forOpaqueSnapshot: true });
+      const reporting = window.SharedExporters.generatePreviewForSW.mock.calls[1][4].previewContentPolicy;
+      expect(reporting).toBeDefined();
+      expect(reporting.prepare('<script>window.x=1</script>').html).toContain('window.x=1');
     });
   });
 

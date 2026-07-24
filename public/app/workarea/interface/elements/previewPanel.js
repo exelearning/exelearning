@@ -796,19 +796,20 @@ export default class PreviewPanelManager {
                 try { await app.waitForPreviewServiceWorker(); } catch { /* SW not available */ }
             }
 
-            if (this._isEmbeddedPreview()) {
-                await this.refreshWithEmbeddedSnapshot();
-            } else if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
-                await this._refreshOpaqueOrStayFiltered();
-            } else {
-                this._clearOpaqueSandbox();
-                if (this.isServiceWorkerPreviewAvailable()) {
-                    await this.refreshWithServiceWorker();
+            if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
+                // Active content enabled: isolate the unfiltered snapshot in an
+                // opaque-origin iframe — the host's routes when embedded, eXe's own
+                // routes when self-hosted. Both fail closed to the filtered preview.
+                if (this._isEmbeddedPreview()) {
+                    await this._refreshEmbeddedOpaqueOrStayFiltered();
                 } else {
-                    // Fallback for cross-origin iframes where SW can't register
-                    Logger.log('[PreviewPanel] SW not available, using blob URL fallback');
-                    await this.refreshWithBlobUrl();
+                    await this._refreshOpaqueOrStayFiltered();
                 }
+            } else {
+                // Default (filtered) — including the default embedded preview — and
+                // consented same-origin: a same-origin surface. Filtered content is
+                // sanitized, so whitelisted external videos play inline.
+                await this._refreshFiltered();
             }
         } catch (error) {
             Logger.error('[PreviewPanel] Error generating preview:', error);
@@ -881,11 +882,44 @@ export default class PreviewPanelManager {
                 ),
                 contentId: 'error',
             });
-            if (this.isServiceWorkerPreviewAvailable()) {
-                await this.refreshWithServiceWorker();
-            } else {
-                await this.refreshWithBlobUrl();
-            }
+            await this._refreshFiltered();
+        }
+    }
+
+    /** Filtered same-origin preview: sanitized content over SW (or blob fallback). */
+    async _refreshFiltered() {
+        this._clearOpaqueSandbox();
+        if (this.isServiceWorkerPreviewAvailable()) {
+            await this.refreshWithServiceWorker();
+        } else {
+            // Fallback for cross-origin iframes where a Service Worker can't register.
+            Logger.log('[PreviewPanel] SW not available, using blob URL fallback');
+            await this.refreshWithBlobUrl();
+        }
+    }
+
+    /**
+     * Embedded opaque-enabled refresh with the same fail-closed contract as the
+     * self-hosted path: if the host's snapshot routes cannot be reached, the
+     * enable attempt fails visibly, the grant is dropped, and the preview
+     * re-renders filtered — never a silent same-origin fallback of unfiltered
+     * content.
+     */
+    async _refreshEmbeddedOpaqueOrStayFiltered() {
+        try {
+            await this.refreshWithEmbeddedSnapshot();
+        } catch (error) {
+            Logger.error('[PreviewPanel] Embedded opaque preview failed, staying filtered:', error);
+            disableActivePreviewContent(this._projectId());
+            this._clearOpaqueSandbox();
+            eXeLearning?.app?.modals?.alert?.show?.({
+                title: _('Custom active content unavailable'),
+                body: _(
+                    'The isolated preview could not be loaded. Custom active content stays disabled and the filtered preview is shown instead.',
+                ),
+                contentId: 'error',
+            });
+            await this._refreshFiltered();
         }
     }
 
@@ -911,12 +945,13 @@ export default class PreviewPanelManager {
     }
 
     async refreshWithEmbeddedSnapshot() {
-        const result = await this._generatePreviewFiles();
+        const result = await this._generatePreviewFiles({ forOpaqueSnapshot: true });
         if (!result.success || !result.files) {
             throw new Error(result.error || 'Failed to generate embedded preview');
         }
+        const { files } = applyPreviewExternalMediaFallback(result.files);
         const snapshot = this._getEmbeddedPreviewSnapshot();
-        const previewUrl = await snapshot.replace(result.files);
+        const previewUrl = await snapshot.replace(files);
         snapshot.applySandbox(this.iframe);
         snapshot.applySandbox(this.pinnedIframe);
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
@@ -996,18 +1031,15 @@ export default class PreviewPanelManager {
         const selectedTheme = eXeLearning.app?.themes?.selected;
         const theme = selectedTheme?.id || selectedTheme?.name || 'base';
 
-        // Embedded previews rely on the host's opaque-origin iframe and retain
-        // the complete authored snapshot (no policy, no indicator). The opaque
-        // self-hosted snapshot also retains authored content byte-identical but
-        // keeps DETECTION running (report-only policy) so the indicator stays
-        // fresh while enabled. Same-origin surfaces get the state-aware policy.
-        const embedded = this._isEmbeddedPreview();
-        let previewContentPolicy;
-        if (!embedded) {
-            previewContentPolicy = forOpaqueSnapshot
-                ? createReportingPreviewContentPolicy()
-                : createPreviewContentPolicy(this._projectId());
-        }
+        // The opaque snapshot (self-hosted OR embedded, taken only once active
+        // content is enabled) retains the authored content byte-identical while
+        // keeping DETECTION running (report-only policy) so the indicator stays
+        // fresh. Every same-origin surface — including the DEFAULT embedded
+        // preview — gets the state-aware policy, which sanitizes author active
+        // content but keeps whitelisted external videos playable inline.
+        const previewContentPolicy = forOpaqueSnapshot
+            ? createReportingPreviewContentPolicy()
+            : createPreviewContentPolicy(this._projectId());
 
         const result = await SharedExporters.generatePreviewForSW(
             yjsBridge.documentManager,
@@ -1019,7 +1051,7 @@ export default class PreviewPanelManager {
                 previewContentPolicy,
             },
         );
-        this._updateActiveContentIndicator(embedded ? null : result.activeContentReport);
+        this._updateActiveContentIndicator(result.activeContentReport);
         return result;
     }
 
@@ -1032,8 +1064,11 @@ export default class PreviewPanelManager {
         const visible = Boolean(report?.activeContentFound);
         const enabled = visible && isActivePreviewContentEnabled(this._projectId());
         const label = enabled
-            ? _('Custom active content is enabled for this preview')
+            ? _('External scripts are active — click to block them again')
             : _('Custom active content is disabled in the editor preview');
+        const shortLabel = enabled
+            ? _('External scripts active')
+            : _('Allow external scripts');
 
         for (const button of [this.activeContentButton, this.pinnedActiveContentButton]) {
             if (!button) continue;
@@ -1042,6 +1077,8 @@ export default class PreviewPanelManager {
             button.setAttribute('aria-label', label);
             button.setAttribute('title', label);
             button.classList.toggle('is-active', enabled);
+            const labelEl = button.querySelector('.active-content-label');
+            if (labelEl) labelEl.textContent = shortLabel;
         }
     }
 
