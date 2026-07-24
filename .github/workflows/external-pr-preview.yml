@@ -4,13 +4,9 @@
 # Deploys a static preview of pull requests from external contributors (forks)
 # to GitHub Pages under /pr-preview/pr-{number}/.
 #
-# Previews are deployed only when a maintainer adds the `external-pr-preview` label to a
-# fork PR. They are automatically cleaned up when the PR is closed or merged.
-#
-# ⚠️  SECURITY NOTE: This workflow uses `pull_request_target`, which means it
-# requires maintainer approval before running. Since it builds and deploys code
-# from external forks, maintainers MUST carefully review the PR changes before
-# approving the workflow run to prevent malicious code execution.
+# External fork previews are disabled because `pull_request_target` runs in the
+# base repository security context. This workflow must not check out or execute
+# code supplied by a fork while holding write permissions.
 # =============================================================================
 name: Deploy external PR Preview
 
@@ -34,7 +30,7 @@ jobs:
   deploy-preview:
     runs-on: ubuntu-latest
     if: >-
-      github.event.pull_request.head.repo.fork == true
+      github.event.pull_request.head.repo.full_name == github.repository
       && github.event.action == 'labeled'
       && github.event.label.name == 'external-pr-preview'
     steps:
@@ -80,7 +76,7 @@ jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
     if: >-
-      github.event.pull_request.head.repo.fork == true
+      github.event.pull_request.head.repo.full_name == github.repository
       && github.event.action == 'closed'
     steps:
       - name: Checkout base branch
