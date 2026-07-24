@@ -326,6 +326,32 @@ describe('exe_export.js', () => {
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
+  it('hands the scored-activities flag to the new SCORM 1.2 runtime instead of wiring unload', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    window.exeScorm12 = { setPageHasScoredActivities: vi.fn() };
+
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+    window.$adaptativequiz = {};
+
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    window.$exeExport.initScorm();
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.exeScorm12.setPageHasScoredActivities).toHaveBeenCalledWith(true);
+    // The new runtime owns end-of-session handling: no unload listener.
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('unload', expect.any(Function));
+
+    addEventListenerSpy.mockRestore();
+    delete window.exeScorm12;
+  });
+
   it('normalizes search strings', () => {
     expect(window.$exeExport.searchBar.normalizeText('Árbol')).toBe('arbol');
   });

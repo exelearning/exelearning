@@ -203,9 +203,12 @@ export interface ResourceProvider {
     fetchContentCss(): Promise<Map<string, Uint8Array>>;
 
     /**
-     * Fetch SCORM API wrapper files (SCORM_API_wrapper.js, SCOFunctions.js)
+     * Fetch SCORM runtime source files. For '1.2' this is the vendored
+     * pipwerks wrapper plus the project runtime layers (assembled into the
+     * package files by Scorm12Runtime.buildScorm12RuntimeFiles); for '2004'
+     * it is the legacy SCORM_API_wrapper.js/SCOFunctions.js pair.
      * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of relative path -> content buffer
+     * @returns Map of scorm/-relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 

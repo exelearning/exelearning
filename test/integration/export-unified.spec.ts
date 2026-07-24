@@ -90,6 +90,23 @@ describe('Unified Export System Integration', () => {
         // Create minimal theme files
         await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.css'), '/* Test theme CSS */');
         await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.js'), '/* Test theme JS */');
+
+        // Create the SCORM runtime source files (the 1.2 exporter fails
+        // loudly when they are missing; see Scorm12Runtime.ts)
+        const scormDir = path.join(testDir, 'public', 'app', 'common', 'scorm');
+        for (const sourcePath of [
+            'SCORM_API_wrapper.js',
+            'SCOFunctions.js',
+            'scorm12/vendor/pipwerks/SCORM_API_wrapper.js',
+            'scorm12/exe-scorm12-client.js',
+            'scorm12/exe-scorm12-policy.js',
+            'scorm12/exe-scorm12-lifecycle.js',
+            'scorm12/exe-scorm12-adapter.js',
+        ]) {
+            const fullPath = path.join(scormDir, ...sourcePath.split('/'));
+            await fs.ensureDir(path.dirname(fullPath));
+            await fs.writeFile(fullPath, `/* ${sourcePath} */`);
+        }
     });
 
     afterEach(async () => {

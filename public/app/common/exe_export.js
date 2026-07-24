@@ -272,7 +272,16 @@ window.$exeExport = {
                 }
             })
             window.loadPage()
-            window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            if (window.exeScorm12 && typeof window.exeScorm12.setPageHasScoredActivities === 'function') {
+                // New SCORM 1.2 runtime: it owns end-of-session handling
+                // (pagehide/visibilitychange); hand over the activity flag
+                // instead of registering an unreliable unload handler.
+                window.exeScorm12.setPageHasScoredActivities(isSCORM);
+            } else {
+                // Legacy runtime (SCORM 2004 packages and packages exported
+                // before the SCORM 1.2 runtime rewrite).
+                window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            }
         }
     },
 

@@ -24,7 +24,7 @@ interface ResourceFetcherInterface {
     fetchTheme(themeName: string): Promise<Map<string, Blob>>;
     fetchIdevice(ideviceType: string): Promise<Map<string, Blob>>;
     fetchBaseLibraries(): Promise<Map<string, Blob>>;
-    fetchScormFiles(): Promise<Map<string, Blob>>;
+    fetchScormFiles(version?: '1.2' | '2004'): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
@@ -87,11 +87,12 @@ export class BrowserResourceProvider implements ResourceProvider {
 
     /**
      * Fetch SCORM API wrapper files
-     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
+     * @param version - SCORM version: '1.2' (vendored pipwerks + project
+     * runtime layers) or '2004' (legacy pair)
      * @returns Map of path -> content
      */
-    async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Uint8Array>> {
-        const blobMap = await this.fetcher.fetchScormFiles();
+    async fetchScormFiles(version: '1.2' | '2004' = '1.2'): Promise<Map<string, Uint8Array>> {
+        const blobMap = await this.fetcher.fetchScormFiles(version);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
