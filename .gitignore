@@ -31,6 +31,9 @@
 ###< files ###
 /data
 vendor
+# Vendored third-party runtime files ARE tracked (see THIRD-PARTY-NOTICES.md)
+!/public/app/common/scorm/scorm12/vendor
+!/public/app/common/scorm/scorm12/vendor/**
 
 ### macOS ###
 # General macOS file excludes
