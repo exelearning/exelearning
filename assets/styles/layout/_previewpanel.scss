@@ -276,20 +276,39 @@ $preview-transition: 0.3s ease;
     background-color: #fdf7e8;
     color: #6f531c;
     box-shadow: none;
+    // Active-state hover only fades the fill darker (design: no shadow, no scale).
+    transition: background-color 0.5s ease;
+
+    // Keep the pill's own palette on hover/focus: the shared `.button-tertiary`
+    // hover paints a grey fill (`background-color: … !important`) that washes out
+    // the amber/teal and hides the white text of the active state — so we must
+    // override its fill with !important too.
+    &:hover,
+    &:focus-visible {
+        background-color: #fbeecb !important;
+        border-color: #d49b3a;
+        color: #6f531c;
+    }
 
     .active-content-icon {
         flex: none;
     }
-    // Default (blocked) shows the shield-with-"!"; the shield-check is hidden.
-    .active-content-icon--active {
+    // Default (blocked): shield-with-"!" only; the other glyphs are hidden.
+    .active-content-icon--active,
+    .active-content-icon--revoke {
         display: none;
     }
 
-    .active-content-label {
+    .active-content-label,
+    .active-content-hover-label {
         font-size: 12px;
         font-weight: 600;
         line-height: 1;
         white-space: nowrap;
+    }
+    // "Block them again" only surfaces on the active pill's hover.
+    .active-content-hover-label {
+        display: none;
     }
 
     &.is-active,
@@ -303,6 +322,30 @@ $preview-transition: 0.3s ease;
         }
         .active-content-icon--active {
             display: inline-flex;
+        }
+
+        // Hover = the "block external scripts" action: the fill DARKENS to a
+        // deeper teal (never grey, never lighter — that reads as disabled), and
+        // the label + shield swap to "Block them again" (crossed shield) to
+        // preview what the click will do.
+        &:hover,
+        &:focus-visible {
+            background-color: #066d6d !important;
+            border-color: #054d4d;
+            color: #fff;
+
+            .active-content-icon--active {
+                display: none;
+            }
+            .active-content-icon--revoke {
+                display: inline-flex;
+            }
+            .active-content-label {
+                display: none;
+            }
+            .active-content-hover-label {
+                display: inline-flex;
+            }
         }
     }
 }

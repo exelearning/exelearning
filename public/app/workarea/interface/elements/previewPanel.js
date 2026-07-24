@@ -876,9 +876,9 @@ export default class PreviewPanelManager {
             this._disposeSelfHostedSnapshot();
             this._clearOpaqueSandbox();
             eXeLearning?.app?.modals?.alert?.show?.({
-                title: _('Custom active content unavailable'),
+                title: _('External scripts unavailable'),
                 body: _(
-                    'The isolated preview could not be loaded. Custom active content stays disabled and the filtered preview is shown instead.',
+                    'The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.',
                 ),
                 contentId: 'error',
             });
@@ -913,9 +913,9 @@ export default class PreviewPanelManager {
             disableActivePreviewContent(this._projectId());
             this._clearOpaqueSandbox();
             eXeLearning?.app?.modals?.alert?.show?.({
-                title: _('Custom active content unavailable'),
+                title: _('External scripts unavailable'),
                 body: _(
-                    'The isolated preview could not be loaded. Custom active content stays disabled and the filtered preview is shown instead.',
+                    'The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.',
                 ),
                 contentId: 'error',
             });
@@ -1065,7 +1065,7 @@ export default class PreviewPanelManager {
         const enabled = visible && isActivePreviewContentEnabled(this._projectId());
         const label = enabled
             ? _('External scripts are active — click to block them again')
-            : _('Custom active content is disabled in the editor preview');
+            : _('External scripts are disabled in the editor preview');
         const shortLabel = enabled
             ? _('External scripts active')
             : _('Allow external scripts');
@@ -1091,28 +1091,53 @@ export default class PreviewPanelManager {
         const enabled = isActivePreviewContentEnabled(projectId);
         const transport = this._previewTransport();
         const electronRestricted = transport === PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
-        let body = `<p>${_('This project contains custom active content.')}</p>`;
-        if (enabled) {
-            body += `<p>${_('Custom active content is enabled for this preview. This is a trust decision and does not make the content safe.')}</p>`;
-        } else {
-            body += `<p>${_('Custom active content is disabled in the editor preview. Enabling it may allow code contained in this project to access data available to the preview context. Enable it only when you trust the project.')}</p>`;
-        }
+
+        // The dialog reuses the toolbar pill's shield so both read as the same
+        // control: amber shield-with-"!" to allow, teal shield-with-check to
+        // block. The primary button repeats the shield in currentColor.
+        const SHIELD = 'M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z';
+        const titleIcon = enabled
+            ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#078e8e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><polyline points="9 11.5 11.2 13.7 15.2 9.3"/></svg>`
+            : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c68a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="15.4" r="0.6" fill="#c68a1a" stroke="none"/></svg>`;
+        // Confirm-button glyph: crossed shield to block, check shield to allow.
+        const confirmIcon = enabled
+            ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><line x1="4.5" y1="4" x2="19.5" y2="20"/></svg>`
+            : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><polyline points="9 11.5 11.2 13.7 15.2 9.3"/></svg>`;
+
+        let title;
+        let body;
+        let confirmButtonText;
+        let confirmHasIcon = true;
         if (electronRestricted) {
-            body += `<p>${_('Custom active content cannot be enabled in the desktop application because the editor has access to native application features.')}</p>`;
-        } else if (!enabled && transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) {
-            body += `<p>${_('If you enable it, the preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while enabled.')}</p>`;
-        } else if (!enabled && transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) {
-            body += `<p>${_('This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.')}</p>`;
+            title = _('External scripts blocked in the preview');
+            body =
+                `<p>${_('This project contains external scripts, disabled for security in the editor preview.')}</p>` +
+                `<p>${_('External scripts cannot be allowed in the desktop application because the editor has access to native application features.')}</p>`;
+            confirmButtonText = _('Keep blocked');
+            confirmHasIcon = false;
+        } else if (enabled) {
+            title = _('Block external scripts in the preview');
+            body =
+                `<p>${_('External scripts are allowed in this preview.')}</p>` +
+                `<p>${_('You can block them again at any time. Remember: allowing them was a trust decision and does not make the content safe.')}</p>`;
+            confirmButtonText = _('Block external scripts');
+        } else {
+            title = _('Allow external scripts in the preview');
+            body =
+                `<p>${_('This project contains external scripts, disabled for security in the editor preview.')}</p>` +
+                `<p>${_('Allowing them lets that code access the data available to the preview. This is a trust decision and does not make the content safe. Allow them only if you trust the project.')}</p>`;
+            confirmButtonText = _('Allow external scripts');
+            if (transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) {
+                body += `<p>${_('The preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while scripts are allowed.')}</p>`;
+            } else if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) {
+                body += `<p>${_('This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.')}</p>`;
+            }
         }
 
         modal.show({
-            title: _('Custom active content in preview'),
+            title: titleIcon + title,
             body,
-            confirmButtonText: electronRestricted
-                ? _('Keep disabled')
-                : enabled
-                  ? _('Disable custom JavaScript')
-                  : _('Enable custom JavaScript for this preview'),
+            confirmButtonText: confirmHasIcon ? confirmIcon + confirmButtonText : confirmButtonText,
             cancelButtonText: _('Cancel'),
             focusCancelButton: !enabled,
             confirmExec: async () => {
