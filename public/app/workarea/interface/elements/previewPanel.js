@@ -1662,22 +1662,28 @@ export default class PreviewPanelManager {
      * Opens the SW-served preview in a new tab
      */
     async extractToNewTab() {
-        if (this._isEmbeddedPreview()) {
-            const previewUrl = this._embeddedPreviewSnapshot?.previewUrl;
-            if (!previewUrl) throw new Error('Embedded preview is not ready');
-            window.open(previewUrl, '_blank', 'noopener');
-            return;
-        }
+        // Opaque-enabled: only the capability URL may carry unfiltered content
+        // (its sandbox-first CSP keeps the new tab opaque too). Embedded uses the
+        // host snapshot, self-hosted its own; never hand unfiltered files to the
+        // same-origin SW here. If the snapshot is not ready, fail quietly — do
+        // NOT throw, or the click handler surfaces an uncaught rejection.
         if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
-            // While opaque-enabled, the capability URL is the only surface that
-            // may carry unfiltered content — its sandbox-first CSP keeps the
-            // new tab opaque too. Never hand the unfiltered files to the
-            // same-origin SW here.
-            const previewUrl = this._selfHostedPreviewSnapshot?.previewUrl;
-            if (!previewUrl) throw new Error('Opaque preview is not ready');
+            const snapshot = this._isEmbeddedPreview()
+                ? this._embeddedPreviewSnapshot
+                : this._selfHostedPreviewSnapshot;
+            const previewUrl = snapshot?.previewUrl;
+            if (!previewUrl) {
+                Logger.warn('[PreviewPanel] Opaque preview not ready; cannot open in a new tab');
+                return;
+            }
             window.open(previewUrl, '_blank', 'noopener');
             return;
         }
+        // Filtered (default) — INCLUDING the embedded filtered preview: the
+        // sanitized content is served same-origin by the SW at /viewer/, so we
+        // open that (the same URL the panel iframe uses). This is why the
+        // embedded filtered preview no longer needs an opaque snapshot to be
+        // "opened in a new tab".
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
@@ -1690,14 +1696,13 @@ export default class PreviewPanelManager {
             // Refresh SW content before opening new tab
             await this.refreshWithServiceWorker();
 
-            // Build the viewer URL - derive base path from current URL for subdirectory deployments
-            const pathname = window.location.pathname;
-            // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
-            // Also remove any trailing slash to avoid double slashes
-            const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
+            // Same viewer URL the panel iframe uses (loadPreviewFromServiceWorker):
+            // getBasePath() resolves both the standalone layout and the plugin's
+            // static base, so the old /workarea pathname hack is gone.
+            const basePath = eXeLearning?.app?.getBasePath?.() || '';
             // Preview makes the Teacher Mode toggle available (the author is the teacher);
             // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
-            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
+            const viewerUrl = `${basePath}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');
