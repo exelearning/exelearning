@@ -414,6 +414,71 @@ describe('Scorm12Exporter Integration', () => {
         });
     });
 
+    describe('SCORM 1.2 runtime packaging (clean-provenance rewrite)', () => {
+        async function exportPackage() {
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            const zip = new FflateZipProvider();
+
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            return fflateUnzipSync(result.data!);
+        }
+
+        it('ships the vendored pipwerks wrapper byte-identical to the repository copy', async () => {
+            const unzipped = await exportPackage();
+
+            const vendoredPath = path.join(
+                publicDir,
+                'app',
+                'common',
+                'scorm',
+                'scorm12',
+                'vendor',
+                'pipwerks',
+                'SCORM_API_wrapper.js',
+            );
+            const vendored = await fs.readFile(vendoredPath);
+            expect(Buffer.from(unzipped['libs/SCORM_API_wrapper.js']).equals(vendored)).toBe(true);
+        });
+
+        it('keeps the MIT license notice inside the exported package', async () => {
+            const unzipped = await exportPackage();
+
+            const wrapper = new TextDecoder().decode(unzipped['libs/SCORM_API_wrapper.js']);
+            expect(wrapper).toContain('MIT-style license');
+            expect(wrapper).toContain('pipwerks SCORM Wrapper for JavaScript');
+        });
+
+        it('ships the assembled project runtime instead of the legacy SCOFunctions.js', async () => {
+            const unzipped = await exportPackage();
+
+            const scoFunctions = new TextDecoder().decode(unzipped['libs/SCOFunctions.js']);
+            // The assembled AGPL runtime layers…
+            expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
+            expect(scoFunctions).toContain('exe-scorm12-client.js');
+            expect(scoFunctions).toContain('exe-scorm12-adapter.js');
+            // …and none of the legacy ADL/CTC-derived file.
+            expect(scoFunctions).not.toContain('ADL Technical Team');
+            expect(scoFunctions).not.toContain('convertTotalMiliSeconds');
+        });
+
+        it('emits no unload/beforeunload attributes or handlers in the pages', async () => {
+            const unzipped = await exportPackage();
+
+            const htmlFiles = Object.keys(unzipped).filter(f => f.endsWith('.html') && !f.includes('idevices/'));
+            expect(htmlFiles.length).toBeGreaterThan(0);
+            for (const file of htmlFiles) {
+                const html = new TextDecoder().decode(unzipped[file]);
+                expect(html).not.toContain('onunload');
+                expect(html).not.toContain('onbeforeunload');
+                expect(html).toContain('onload="loadPage()"');
+            }
+        });
+    });
+
     describe('Error handling', () => {
         it('should handle empty pages gracefully', async () => {
             const emptyStructure: ParsedOdeStructure = {
