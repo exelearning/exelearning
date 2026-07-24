@@ -15,23 +15,14 @@
  * byte-identical.
  */
 
-const PROVIDER_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com'];
+import { isVideoProviderUrl } from '../../../../utils/videoProviderAllowlist.js';
 
 function translate(text) {
     return typeof _ === 'function' ? _(text) : text;
 }
 
 /** True when the URL's hostname is a known external video provider. */
-export function isExternalMediaUrl(url) {
-    if (typeof url !== 'string' || !url.trim()) return false;
-    let hostname;
-    try {
-        hostname = new URL(url, 'https://placeholder.invalid').hostname.toLowerCase();
-    } catch {
-        return false;
-    }
-    return PROVIDER_HOSTS.some(host => hostname === host || hostname.endsWith(`.${host}`));
-}
+export const isExternalMediaUrl = isVideoProviderUrl;
 
 function buildPlaceholder(doc, src) {
     const wrapper = doc.createElement('div');

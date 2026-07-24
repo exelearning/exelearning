@@ -1,3 +1,5 @@
+import { isVideoProviderUrl } from './videoProviderAllowlist.js';
+
 const SCRIPTABLE_DATA_MEDIA_TYPES = new Set([
     'text/html',
     'application/xhtml+xml',
@@ -122,9 +124,24 @@ function isActiveDataUrl(value) {
     return SCRIPTABLE_DATA_MEDIA_TYPES.has(mediaType);
 }
 
+/**
+ * True when an `<iframe>` is a benign, playable external video: it carries no
+ * `srcdoc` (inline document) and its `src` host is on the shared video-provider
+ * allowlist. Such an iframe is cross-origin (the provider's own origin), so it
+ * stays isolated from the editor and may render inline in the filtered preview.
+ */
+function isVideoProviderIframe(element) {
+    return (
+        element.localName.toLowerCase() === 'iframe' &&
+        !element.hasAttribute('srcdoc') &&
+        isVideoProviderUrl(element.getAttribute('src'))
+    );
+}
+
 function inspectFragment(root) {
     const categories = new Set();
     const actions = new Set();
+    let hasWhitelistedVideo = false;
 
     for (const element of Array.from(root.querySelectorAll('*'))) {
         const tag = element.localName.toLowerCase();
@@ -137,8 +154,15 @@ function inspectFragment(root) {
         }
         if (tag === 'base') categories.add('base-url');
         if (tag === 'iframe') {
-            categories.add('iframe');
-            if (element.hasAttribute('srcdoc')) categories.add('iframe-srcdoc');
+            if (element.hasAttribute('srcdoc')) {
+                categories.add('iframe');
+                categories.add('iframe-srcdoc');
+            } else if (isVideoProviderIframe(element)) {
+                // Whitelisted external video: benign, cross-origin, plays inline.
+                hasWhitelistedVideo = true;
+            } else {
+                categories.add('iframe');
+            }
         }
         if (tag === 'meta' && (element.getAttribute('http-equiv') || '').toLowerCase() === 'refresh') {
             categories.add('meta-refresh');
@@ -160,7 +184,7 @@ function inspectFragment(root) {
     }
 
     if (categories.size > 0) actions.add('disabled');
-    return { categories, actions };
+    return { categories, actions, hasWhitelistedVideo };
 }
 
 function inspectXml(html, categories) {
@@ -195,8 +219,20 @@ function removeUnsafeNodes(root) {
         }
 
         if (tag === 'iframe') {
+            const isVideo = isVideoProviderIframe(element);
             element.removeAttribute('srcdoc');
-            element.setAttribute('sandbox', '');
+            if (isVideo) {
+                // Keep a whitelisted external video playable. It is cross-origin
+                // (the provider's own origin, kept by allow-same-origin), so it
+                // stays isolated from the editor; allow-scripts + allow-same-origin
+                // cannot escape a cross-origin frame.
+                element.setAttribute(
+                    'sandbox',
+                    'allow-scripts allow-same-origin allow-popups allow-presentation allow-popups-to-escape-sandbox',
+                );
+            } else {
+                element.setAttribute('sandbox', '');
+            }
         }
         if (tag === 'form') element.removeAttribute('action');
 
@@ -281,6 +317,15 @@ export function prepareUserHtmlForPreview(html, { allowActiveContent = false } =
 
     const activeContentFound = inspection.categories.size > 0;
     if (!activeContentFound) {
+        // A box whose only dynamic content is a whitelisted provider video is
+        // benign but, on the filtered (sanitizing) path, must still pass through
+        // the sanitizer so the iframe gets the safe cross-origin video sandbox —
+        // without requiring the "allow" gate. On the allowed/opaque path the
+        // author bytes are returned untouched (the opaque external-media fallback
+        // handles provider iframes there).
+        if (inspection.hasWhitelistedVideo && !allowActiveContent) {
+            return { html: sanitizeFragment(input), activeContentFound: false, categories: [], actions: [] };
+        }
         return { html: input, activeContentFound: false, categories: [], actions: [] };
     }
     if (allowActiveContent) {
@@ -390,10 +435,18 @@ export const PREVIEW_TRUST_STATES = Object.freeze({
 export function getActivePreviewTrustState(projectId, runtimeConfig) {
     if (!isActivePreviewContentEnabled(projectId)) return PREVIEW_TRUST_STATES.FILTERED;
     const transport = resolvePreviewTransport(runtimeConfig);
-    if (transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) return PREVIEW_TRUST_STATES.OPAQUE_ENABLED;
+    // Both the self-hosted and the embedded opaque transports isolate the
+    // unfiltered content in an opaque-origin iframe once enabled; before enabling,
+    // both fall through to the filtered same-origin preview (the `!enabled` guard
+    // above), which is where whitelisted external videos play inline.
+    if (
+        transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE ||
+        transport === PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE
+    ) {
+        return PREVIEW_TRUST_STATES.OPAQUE_ENABLED;
+    }
     if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) return PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
-    // Embedded is always isolated regardless of the grant; Electron can never
-    // hold one (enableActivePreviewContent refuses).
+    // Electron can never hold a grant (enableActivePreviewContent refuses).
     return PREVIEW_TRUST_STATES.FILTERED;
 }
 

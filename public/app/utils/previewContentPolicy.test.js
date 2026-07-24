@@ -54,6 +54,74 @@ describe('prepareUserHtmlForPreview', () => {
         expect(result.html).not.toContain('allow-same-origin');
     });
 
+    describe('whitelisted external video iframes (inline in the filtered preview)', () => {
+        const YT = '<iframe src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ" allowfullscreen></iframe>';
+
+        it.each([
+            ['YouTube', 'https://www.youtube.com/embed/aqz-KE-bpKQ'],
+            ['YouTube (nocookie)', 'https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ'],
+            ['youtu.be', 'https://youtu.be/aqz-KE-bpKQ'],
+            ['Vimeo', 'https://vimeo.com/76979871'],
+            ['player.vimeo', 'https://player.vimeo.com/video/76979871'],
+            ['Dailymotion', 'https://www.dailymotion.com/embed/video/x2jvvep'],
+            ['dai.ly', 'https://dai.ly/x2jvvep'],
+        ])('renders a %s embed inline without the "allow" gate', (_label, src) => {
+            const result = prepareUserHtmlForPreview(`<iframe src="${src}" allowfullscreen></iframe>`);
+            expect(result.activeContentFound).toBe(false);
+            expect(result.categories).toEqual([]);
+            expect(result.html).toContain(`src="${src}"`);
+            // Kept playable: cross-origin video sandbox, NOT the locked empty sandbox.
+            expect(result.html).toContain('allow-same-origin');
+            expect(result.html).toContain('allow-scripts');
+            expect(result.html).not.toContain('sandbox=""');
+        });
+
+        it('still locks a non-whitelisted iframe and requires the gate', () => {
+            const result = prepareUserHtmlForPreview('<iframe src="https://evil.example.com/x"></iframe>');
+            expect(result.activeContentFound).toBe(true);
+            expect(result.categories).toContain('iframe');
+            expect(result.html).toContain('sandbox=""');
+            expect(result.html).not.toContain('allow-same-origin');
+        });
+
+        it.each([
+            'https://youtube.com.evil.com/embed/x',
+            'https://evil-vimeo.com/video/1',
+            'https://notyoutu.be/x',
+        ])('rejects the look-alike host %s (locked, gated)', src => {
+            const result = prepareUserHtmlForPreview(`<iframe src="${src}"></iframe>`);
+            expect(result.activeContentFound).toBe(true);
+            expect(result.categories).toContain('iframe');
+            expect(result.html).toContain('sandbox=""');
+        });
+
+        it('keeps the video playable but still gates a box that also has a script', () => {
+            const result = prepareUserHtmlForPreview(`<script>window.x=1</script>${YT}`);
+            expect(result.activeContentFound).toBe(true);
+            expect(result.categories).toContain('script');
+            expect(result.html).not.toContain('window.x=1');
+            // The whitelisted video survives sanitization, still playable.
+            expect(result.html).toContain('youtube-nocookie.com/embed/aqz-KE-bpKQ');
+            expect(result.html).toContain('allow-same-origin');
+        });
+
+        it('gates and strips a srcdoc iframe even with a whitelisted src', () => {
+            const result = prepareUserHtmlForPreview(
+                '<iframe src="https://www.youtube.com/embed/x" srcdoc="<script>run()</script>"></iframe>',
+            );
+            expect(result.activeContentFound).toBe(true);
+            expect(result.categories).toContain('iframe-srcdoc');
+            expect(result.html).not.toContain('srcdoc');
+            expect(result.html).not.toContain('run()');
+        });
+
+        it('returns the author bytes untouched on the allowed/opaque path', () => {
+            const result = prepareUserHtmlForPreview(YT, { allowActiveContent: true });
+            expect(result.activeContentFound).toBe(false);
+            expect(result.html).toBe(YT);
+        });
+    });
+
     describe('object/embed PDF and media allowlist (not stripped)', () => {
         it.each([
             ['typed PDF embed', '<embed type="application/pdf" src="resources/doc.pdf">'],
@@ -235,9 +303,13 @@ describe('trust state machine', () => {
         expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN);
     });
 
-    it('embedded never leaves filtered (the host boundary is the control)', () => {
-        enableActivePreviewContent('p');
+    it('embedded starts filtered and goes opaque-enabled on enable', () => {
+        // Default (before enabling) the embedded preview is filtered same-origin,
+        // so whitelisted external videos play inline; enabling active content
+        // isolates the unfiltered content in the host's opaque snapshot iframe.
         expect(getActivePreviewTrustState('p', EMBEDDED)).toBe(PREVIEW_TRUST_STATES.FILTERED);
+        enableActivePreviewContent('p');
+        expect(getActivePreviewTrustState('p', EMBEDDED)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
     });
 
     it('Electron can never hold a grant', () => {
