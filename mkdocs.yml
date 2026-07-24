@@ -33,6 +33,7 @@ nav:
       - Architecture Decision Records: architecture/adr/README.md
       - ADR Index: architecture/adr/records.md
       - ADR Template: architecture/adr/ADR-0000-template.md
+      - "ADR-0001: SCORM 1.2 Runtime Rewrite": architecture/adr/ADR-0001-scorm12-runtime-rewrite.md
       - Software Design Documents: architecture/sdd/README.md
       - SDD Index: architecture/sdd/records.md
       - SDD Template: architecture/sdd/SDD-0000-template.md
@@ -51,6 +52,7 @@ nav:
       - Installers: development/installers.md
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md
+      - SCORM 1.2 Runtime Contract: development/scorm12-runtime-contract.md
   - File Formats:
       - Legacy ELP Format: contentv3-format.md
       - ELPX Format:
