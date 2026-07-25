@@ -192,7 +192,7 @@ ${contentHtml}
         if (!html || html.indexOf('<iframe') === -1) return html;
         const POLICY = ' referrerpolicy="strict-origin-when-cross-origin"';
         const PROVIDER =
-            /(?:youtube\.com|youtube-nocookie\.com|youtu\.be|player\.vimeo\.com|vimeo\.com|dailymotion\.com|dai\.ly)/i;
+            /(?:youtube\.com|youtube-nocookie\.com|youtu\.be|player\.vimeo\.com|vimeo\.com|dailymotion\.com|dai\.ly|mediateca\.educa\.madrid\.org)/i;
         return html.replace(/<iframe\b[^>]*>/gi, tag => {
             if (/\breferrerpolicy\s*=/i.test(tag)) return tag;
             const srcMatch = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
