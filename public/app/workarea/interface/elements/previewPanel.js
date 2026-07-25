@@ -21,7 +21,7 @@ import {
 import { EmbeddedPreviewSnapshot, selfHostedPreviewSnapshotConfig } from './preview/EmbeddedPreviewSnapshot.js';
 import { applyPreviewEmbedShim } from './preview/previewEmbedShim.js';
 import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
-import { PreviewMediaHost } from './preview/previewMediaHost.js';
+import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -77,11 +77,11 @@ export default class PreviewPanelManager {
         this._selfHostedPreviewSnapshot = null;
         // External-media relay for the opaque preview (lazy: most previews never
         // hold a provider embed, and the bridge scripts load on demand).
-        this._mediaHost = null;
+        this._embedHost = null;
         // Memoized fetch of the embed shim (see _loadEmbedShimSource).
         this._embedShimPromise = null;
         // Iframe the relay is currently attached to, so we attach only once.
-        this._mediaHostIframe = null;
+        this._embedHostIframe = null;
     }
 
     /**
@@ -719,7 +719,7 @@ export default class PreviewPanelManager {
         this.overlay?.classList.remove('active');
         // The relay's players live on the editor's own body; the panel only
         // slides away via transform, so they would linger over the workarea.
-        this._mediaHost?.hideEmbedOverlays();
+        this._embedHost?.hideOverlays();
 
         Logger.log('[PreviewPanel] Panel closed');
     }
@@ -903,7 +903,7 @@ export default class PreviewPanelManager {
         this._clearOpaqueSandbox();
         // Leaving the opaque transport: drop any relayed players, the filtered
         // preview renders whitelisted videos inline by itself.
-        this._mediaHost?.hideEmbedOverlays();
+        this._embedHost?.hideOverlays();
         if (this.isServiceWorkerPreviewAvailable()) {
             await this.refreshWithServiceWorker();
         } else {
@@ -957,7 +957,7 @@ export default class PreviewPanelManager {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
         if (!targetIframe) throw new Error('Preview iframe is unavailable');
         targetIframe.src = previewUrl;
-        if (shimmed) this._attachMediaHost(targetIframe);
+        if (shimmed) this._startEmbedHost(targetIframe);
     }
 
     async refreshWithEmbeddedSnapshot() {
@@ -973,7 +973,7 @@ export default class PreviewPanelManager {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
         if (!targetIframe) throw new Error('Embedded preview iframe is unavailable');
         targetIframe.src = previewUrl;
-        if (shimmed) this._attachMediaHost(targetIframe);
+        if (shimmed) this._startEmbedHost(targetIframe);
     }
 
     /**
@@ -1028,28 +1028,28 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Attach the editor-side media relay to the opaque preview iframe.
+     * Start the editor-side embed relay for the opaque preview iframe.
      *
-     * Attaching is NOT free: each call registers another window `message`
-     * listener inside the relay, and this runs on every opaque refresh, so a
-     * repeated attach on the same iframe is skipped and a switch between the
-     * panel and pinned iframes releases the previous one.
+     * The relay is page-global — it finds preview iframes by `event.source` —
+     * so it is started once. This runs on every opaque refresh, so a repeat on
+     * the same iframe is skipped, and a switch between the panel and pinned
+     * iframes drops the overlays left over the previous one.
      *
      * @param {HTMLIFrameElement} iframe
      */
-    _attachMediaHost(iframe) {
-        if (!iframe || this._mediaHostIframe === iframe) return;
+    _startEmbedHost(iframe) {
+        if (!iframe || this._embedHostIframe === iframe) return;
         try {
-            if (!this._mediaHost) {
-                this._mediaHost = new PreviewMediaHost({ basePath: this._basePath() });
+            if (!this._embedHost) {
+                this._embedHost = new PreviewEmbedHost({ basePath: this._basePath() });
             }
-            this._mediaHost.detachAll();
-            this._mediaHostIframe = iframe;
-            this._mediaHost.attach(iframe).catch(error => {
-                Logger.warn('[PreviewPanel] Media relay attach failed:', error);
+            this._embedHost.hideOverlays();
+            this._embedHostIframe = iframe;
+            this._embedHost.start().catch(error => {
+                Logger.warn('[PreviewPanel] Embed relay start failed:', error);
             });
         } catch (error) {
-            Logger.warn('[PreviewPanel] Media relay unavailable:', error);
+            Logger.warn('[PreviewPanel] Embed relay unavailable:', error);
         }
     }
 
@@ -2015,9 +2015,9 @@ export default class PreviewPanelManager {
         this._disposeSelfHostedSnapshot();
         this._selfHostedPreviewSnapshot = null;
 
-        this._mediaHost?.detachAll();
-        this._mediaHost = null;
-        this._mediaHostIframe = null;
+        this._embedHost?.stop();
+        this._embedHost = null;
+        this._embedHostIframe = null;
 
         Logger.log('[PreviewPanel] Destroyed');
     }

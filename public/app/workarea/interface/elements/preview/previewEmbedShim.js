@@ -7,7 +7,7 @@
  * shim (public/app/common/exe_embed_bridge/exe_embed_shim.js) runs INSIDE that
  * document, replaces every cross-origin embed with a geometry placeholder and
  * reports it to the editor, which overlays the real player on the trusted side
- * (see previewMediaHost.js + exe_embed_relay.js). Net effect: videos play in
+ * (see previewEmbedHost.js + exe_embed_relay.js). Net effect: videos play in
  * place, with the untrusted document still opaque.
  *
  * The shim travels as ONE file in the snapshot and every page links it with a
