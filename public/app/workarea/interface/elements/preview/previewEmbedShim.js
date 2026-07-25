@@ -10,15 +10,24 @@
  * (see previewMediaHost.js + exe_embed_relay.js). Net effect: videos play in
  * place, with the untrusted document still opaque.
  *
- * The shim is INLINED rather than linked: the opaque document has no stable
- * origin for a relative URL to resolve against, and the serving CSP allows
- * 'unsafe-inline' scripts but pins everything else to 'self'. It must run
- * before the page's own scripts (exe_media_bridge.js checks window.exeEmbedShim
- * and defers to it), hence the injection at the very top of <head>.
+ * The shim travels as ONE file in the snapshot and every page links it with a
+ * relative `<script src>`. Inlining it instead would repeat ~14.5 KB per page —
+ * on a 15-page project that is ~220 KB re-zipped, re-uploaded and re-extracted
+ * on every 500 ms-debounced refresh, and re-downloaded on every page the author
+ * visits, since preview responses are `no-store`. A relative URL resolves
+ * against the document's URL (the sandbox does not change that) and the serving
+ * CSP allows `'self'`, so the link works in the opaque document.
+ *
+ * The tag goes at the very top of <head>: the shim must run before the page's
+ * own scripts, because exe_media_bridge.js checks `window.exeEmbedShim` and
+ * defers to it.
  */
 
 /** Preview entries that are HTML documents. */
 const HTML_PATH = /\.x?html?$/i;
+
+/** Snapshot-root filename for the shared shim. */
+export const EMBED_SHIM_FILENAME = 'exe-embed-shim.js';
 
 /** Marker attribute, also the double-injection guard. */
 const SHIM_MARKER = 'data-exe-embed-shim';
@@ -29,26 +38,23 @@ function decodeEntry(content) {
     return new TextDecoder().decode(bytes);
 }
 
-/**
- * Neutralize any `</script` inside the injected source so it cannot terminate
- * the wrapping tag early. Defense in depth — the canonical shim contains none.
- */
-function escapeForInlineScript(source) {
-    return String(source).replace(/<\/script/gi, '<\\/script');
+/** `html/page.html` is one level deep, so it needs `../` to reach the root. */
+function relativePrefix(path) {
+    return '../'.repeat(path.split('/').length - 1);
 }
 
 /**
- * Inject the shim into one HTML document string. Returns `null` when nothing
- * was injected so callers can keep the original bytes untouched.
+ * Inject the shim tag into one HTML document string. Returns `null` when
+ * nothing was injected so callers can keep the original bytes untouched.
  *
  * @param {string} html
- * @param {string} shimSource
+ * @param {string} src Relative URL of the shim file.
  * @returns {string|null}
  */
-export function injectEmbedShimIntoHtml(html, shimSource) {
-    if (!shimSource || typeof html !== 'string') return null;
+export function injectEmbedShimIntoHtml(html, src) {
+    if (!src || typeof html !== 'string') return null;
     if (html.includes(SHIM_MARKER)) return null;
-    const tag = `<script ${SHIM_MARKER}>${escapeForInlineScript(shimSource)}</script>`;
+    const tag = `<script ${SHIM_MARKER} src="${src}"></script>`;
     const headOpen = /<head\b[^>]*>/i.exec(html);
     if (headOpen) {
         const at = headOpen.index + headOpen[0].length;
@@ -57,13 +63,14 @@ export function injectEmbedShimIntoHtml(html, shimSource) {
     // Degenerate documents (no <head>): still run the shim before the body.
     const bodyOpen = /<body\b[^>]*>/i.exec(html);
     if (bodyOpen) return html.slice(0, bodyOpen.index) + tag + html.slice(bodyOpen.index);
-    return tag + html;
+    return null;
 }
 
 /**
- * Inject the shim into every HTML page of a generated preview file map.
- * Non-HTML entries (and pages that already carry the shim) are returned by
- * reference, byte-identical — the opaque snapshot must keep author bytes.
+ * Add the shim to a generated preview file map: one copy of the source at the
+ * snapshot root, one `<script src>` per HTML page. Non-HTML entries (and pages
+ * that already carry the shim) are returned by reference, byte-identical — the
+ * opaque snapshot must keep author bytes.
  *
  * @param {Record<string, string|Uint8Array|ArrayBuffer>} files
  * @param {string} shimSource
@@ -78,7 +85,10 @@ export function applyPreviewEmbedShim(files, shimSource) {
             output[path] = content;
             continue;
         }
-        const next = injectEmbedShimIntoHtml(decodeEntry(content), shimSource);
+        const next = injectEmbedShimIntoHtml(
+            decodeEntry(content),
+            relativePrefix(path) + EMBED_SHIM_FILENAME
+        );
         if (!next) {
             output[path] = content;
             continue;
@@ -86,5 +96,6 @@ export function applyPreviewEmbedShim(files, shimSource) {
         output[path] = new TextEncoder().encode(next);
         injected += 1;
     }
+    if (injected > 0) output[EMBED_SHIM_FILENAME] = shimSource;
     return { files: output, injected };
 }

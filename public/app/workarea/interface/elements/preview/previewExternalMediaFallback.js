@@ -15,14 +15,13 @@
  * byte-identical.
  */
 
-import { isVideoProviderUrl } from '../../../../utils/videoProviderAllowlist.js';
+import { isTrustedEmbedUrl } from '../../../../utils/trustedEmbedHosts.js';
 
 function translate(text) {
     return typeof _ === 'function' ? _(text) : text;
 }
 
 /** True when the URL's hostname is a known external video provider. */
-export const isExternalMediaUrl = isVideoProviderUrl;
 
 function buildPlaceholder(doc, src) {
     const wrapper = doc.createElement('div');
@@ -65,7 +64,7 @@ export function replaceExternalMediaInHtml(html) {
     let replaced = 0;
     for (const iframe of Array.from(doc.querySelectorAll('iframe[src]'))) {
         const src = iframe.getAttribute('src');
-        if (!isExternalMediaUrl(src)) continue;
+        if (!isTrustedEmbedUrl(src)) continue;
         iframe.replaceWith(buildPlaceholder(doc, src));
         replaced++;
     }

@@ -78,9 +78,10 @@ export default class PreviewPanelManager {
         // External-media relay for the opaque preview (lazy: most previews never
         // hold a provider embed, and the bridge scripts load on demand).
         this._mediaHost = null;
-        // Cached shim source; `null` once a fetch failed, so we stop retrying and
-        // fall back to the "open in a new tab" placeholder.
-        this._embedShimSource = undefined;
+        // Memoized fetch of the embed shim (see _loadEmbedShimSource).
+        this._embedShimPromise = null;
+        // Iframe the relay is currently attached to, so we attach only once.
+        this._mediaHostIframe = null;
     }
 
     /**
@@ -703,7 +704,6 @@ export default class PreviewPanelManager {
 
         // Generate and load preview
         await this.refresh();
-        this._scheduleMediaOverlayReflow();
 
         Logger.log('[PreviewPanel] Panel opened');
     }
@@ -725,20 +725,6 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Re-place the relayed players once the panel's slide/pin transition has
-     * settled: it is a CSS transform, which fires no scroll/resize event, so an
-     * overlay positioned mid-animation would sit off its embed.
-     */
-    _scheduleMediaOverlayReflow() {
-        if (!this._mediaHost) return;
-        if (this._mediaOverlayReflowTimer) clearTimeout(this._mediaOverlayReflowTimer);
-        this._mediaOverlayReflowTimer = setTimeout(() => {
-            this._mediaOverlayReflowTimer = null;
-            this._mediaHost?.reflowEmbedOverlays();
-        }, 400);
-    }
-
-    /**
      * Pin the preview to the layout (3-panel mode)
      */
     async pin() {
@@ -757,7 +743,6 @@ export default class PreviewPanelManager {
 
         // Refresh content in pinned iframe
         await this.refresh();
-        this._scheduleMediaOverlayReflow();
 
         Logger.log('[PreviewPanel] Preview pinned to layout');
     }
@@ -780,7 +765,6 @@ export default class PreviewPanelManager {
 
         // Refresh content
         this.refresh();
-        this._scheduleMediaOverlayReflow();
 
         Logger.log('[PreviewPanel] Preview unpinned');
     }
@@ -965,7 +949,7 @@ export default class PreviewPanelManager {
         if (!result.success || !result.files) {
             throw new Error(result.error || 'Failed to generate opaque preview');
         }
-        const files = await this._prepareOpaqueMedia(result.files);
+        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
         const snapshot = this._getSelfHostedPreviewSnapshot();
         const previewUrl = await snapshot.replace(files);
         snapshot.applySandbox(this.iframe);
@@ -973,7 +957,7 @@ export default class PreviewPanelManager {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
         if (!targetIframe) throw new Error('Preview iframe is unavailable');
         targetIframe.src = previewUrl;
-        this._attachMediaHost(targetIframe);
+        if (shimmed) this._attachMediaHost(targetIframe);
     }
 
     async refreshWithEmbeddedSnapshot() {
@@ -981,7 +965,7 @@ export default class PreviewPanelManager {
         if (!result.success || !result.files) {
             throw new Error(result.error || 'Failed to generate embedded preview');
         }
-        const files = await this._prepareOpaqueMedia(result.files);
+        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
         const snapshot = this._getEmbeddedPreviewSnapshot();
         const previewUrl = await snapshot.replace(files);
         snapshot.applySandbox(this.iframe);
@@ -989,7 +973,7 @@ export default class PreviewPanelManager {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
         if (!targetIframe) throw new Error('Embedded preview iframe is unavailable');
         targetIframe.src = previewUrl;
-        this._attachMediaHost(targetIframe);
+        if (shimmed) this._attachMediaHost(targetIframe);
     }
 
     /**
@@ -1006,50 +990,62 @@ export default class PreviewPanelManager {
         const shimSource = await this._loadEmbedShimSource();
         if (shimSource) {
             const { files } = applyPreviewEmbedShim(generatedFiles, shimSource);
-            return files;
+            return { files, shimmed: true };
         }
         const { files } = applyPreviewExternalMediaFallback(generatedFiles);
-        return files;
+        return { files, shimmed: false };
     }
 
     /**
-     * Fetch (once) the canonical embed shim so it can be inlined into the opaque
-     * pages. Same-origin read from the editor's own assets; `null` disables the
-     * relay path for this session.
+     * Fetch (once) the canonical embed shim so it can travel with the opaque
+     * snapshot. Same-origin read from the editor's own assets; resolves to `null`
+     * when unavailable, which falls the preview back to the media placeholders.
+     *
+     * The PROMISE is memoized, not its value: two refreshes starting together
+     * then share one request instead of both issuing it.
      *
      * @returns {Promise<string|null>}
      */
-    async _loadEmbedShimSource() {
-        if (this._embedShimSource !== undefined) return this._embedShimSource;
-        const basePath = eXeLearning?.app?.getBasePath?.() || '';
-        const url = `${basePath}/app/common/exe_embed_bridge/exe_embed_shim.js`;
-        try {
-            const response = await fetch(url, { credentials: 'same-origin' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            this._embedShimSource = await response.text();
-        } catch (error) {
-            Logger.warn('[PreviewPanel] Embed shim unavailable, using media placeholders:', error);
-            this._embedShimSource = null;
+    _loadEmbedShimSource() {
+        if (!this._embedShimPromise) {
+            const url = `${this._basePath()}/app/common/exe_embed_bridge/exe_embed_shim.js`;
+            this._embedShimPromise = fetch(url, { credentials: 'same-origin' })
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
+                })
+                .catch(error => {
+                    Logger.warn('[PreviewPanel] Embed shim unavailable, using media placeholders:', error);
+                    return null;
+                });
         }
-        return this._embedShimSource;
+        return this._embedShimPromise;
+    }
+
+    /** Base path of the editor's own assets. */
+    _basePath() {
+        return eXeLearning?.app?.getBasePath?.() || '';
     }
 
     /**
-     * Attach the editor-side media relay to the opaque preview iframe. The relay
-     * survives child reloads, so a repeated attach is cheap; failures are never
-     * fatal (the preview still renders, just without in-place players).
+     * Attach the editor-side media relay to the opaque preview iframe.
+     *
+     * Attaching is NOT free: each call registers another window `message`
+     * listener inside the relay, and this runs on every opaque refresh, so a
+     * repeated attach on the same iframe is skipped and a switch between the
+     * panel and pinned iframes releases the previous one.
      *
      * @param {HTMLIFrameElement} iframe
      */
     _attachMediaHost(iframe) {
-        if (!iframe || this._embedShimSource == null) return;
+        if (!iframe || this._mediaHostIframe === iframe) return;
         try {
             if (!this._mediaHost) {
-                this._mediaHost = new PreviewMediaHost({
-                    basePath: eXeLearning?.app?.getBasePath?.() || '',
-                });
+                this._mediaHost = new PreviewMediaHost({ basePath: this._basePath() });
             }
-            this._mediaHost.attach(iframe).catch((error) => {
+            this._mediaHost.detachAll();
+            this._mediaHostIframe = iframe;
+            this._mediaHost.attach(iframe).catch(error => {
                 Logger.warn('[PreviewPanel] Media relay attach failed:', error);
             });
         } catch (error) {
@@ -2019,12 +2015,9 @@ export default class PreviewPanelManager {
         this._disposeSelfHostedSnapshot();
         this._selfHostedPreviewSnapshot = null;
 
-        if (this._mediaOverlayReflowTimer) {
-            clearTimeout(this._mediaOverlayReflowTimer);
-            this._mediaOverlayReflowTimer = null;
-        }
         this._mediaHost?.detachAll();
         this._mediaHost = null;
+        this._mediaHostIframe = null;
 
         Logger.log('[PreviewPanel] Destroyed');
     }

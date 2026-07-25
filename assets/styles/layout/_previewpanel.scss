@@ -269,13 +269,10 @@ $preview-transition: 0.3s ease;
 .preview-active-content-button:not([hidden]) {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    width: auto;
     padding-inline: 10px;
     border: 1.5px solid #e0a94a;
     background-color: #fdf7e8;
     color: #6f531c;
-    box-shadow: none;
     // Active-state hover only fades the fill darker (design: no shadow, no scale).
     transition: background-color 0.5s ease;
 
@@ -311,8 +308,7 @@ $preview-transition: 0.3s ease;
         display: none;
     }
 
-    &.is-active,
-    &[aria-pressed="true"] {
+    &.is-active {
         border-color: #066d6d;
         background-color: #078e8e;
         color: #fff;
