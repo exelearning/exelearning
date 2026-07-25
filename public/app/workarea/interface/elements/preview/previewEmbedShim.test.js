@@ -1,48 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import { applyPreviewEmbedShim, injectEmbedShimIntoHtml } from './previewEmbedShim.js';
+import {
+    applyPreviewEmbedShim,
+    EMBED_SHIM_FILENAME,
+    injectEmbedShimIntoHtml,
+} from './previewEmbedShim.js';
 
 const SHIM = 'window.__shim__ = 1;';
+const SRC = EMBED_SHIM_FILENAME;
 
 describe('injectEmbedShimIntoHtml', () => {
     it('injects at the very top of <head> so it runs before the page scripts', () => {
-        const out = injectEmbedShimIntoHtml('<html><head><script src="a.js"></script></head><body>x</body></html>', SHIM);
+        const out = injectEmbedShimIntoHtml(
+            '<html><head><script src="a.js"></script></head><body>x</body></html>',
+            SRC
+        );
         expect(out.indexOf('data-exe-embed-shim')).toBeLessThan(out.indexOf('a.js'));
-        expect(out).toContain(SHIM);
+        expect(out).toContain(`src="${SRC}"`);
     });
 
     it('falls back to before <body> when the document has no head', () => {
-        const out = injectEmbedShimIntoHtml('<html><body>x</body></html>', SHIM);
+        const out = injectEmbedShimIntoHtml('<html><body>x</body></html>', SRC);
         expect(out.indexOf('data-exe-embed-shim')).toBeLessThan(out.indexOf('<body'));
     });
 
+    it('declines a document with neither head nor body', () => {
+        expect(injectEmbedShimIntoHtml('<p>fragment</p>', SRC)).toBeNull();
+    });
+
     it('is idempotent — a page already carrying the shim is left alone', () => {
-        const once = injectEmbedShimIntoHtml('<html><head></head><body></body></html>', SHIM);
-        expect(injectEmbedShimIntoHtml(once, SHIM)).toBeNull();
+        const once = injectEmbedShimIntoHtml('<html><head></head><body></body></html>', SRC);
+        expect(injectEmbedShimIntoHtml(once, SRC)).toBeNull();
     });
 
-    it('returns null without a shim source', () => {
+    it('returns null without a src', () => {
         expect(injectEmbedShimIntoHtml('<html><head></head></html>', '')).toBeNull();
-    });
-
-    it('neutralizes a </script> inside the source so it cannot close the tag early', () => {
-        const out = injectEmbedShimIntoHtml('<html><head></head></html>', 'var a = "</script>";');
-        expect(out).not.toContain('"</script>"');
-        expect(out).toContain('<\\/script');
     });
 });
 
 describe('applyPreviewEmbedShim', () => {
     const html = '<html><head></head><body><iframe src="https://www.youtube.com/embed/x"></iframe></body></html>';
 
-    it('injects into every HTML page and reports the count', () => {
+    it('ships ONE copy of the source and links it from every page', () => {
         const { files, injected } = applyPreviewEmbedShim(
             { 'index.html': html, 'html/page-2.html': html },
-            SHIM,
+            SHIM
         );
         expect(injected).toBe(2);
-        for (const path of ['index.html', 'html/page-2.html']) {
-            expect(new TextDecoder().decode(files[path])).toContain('data-exe-embed-shim');
-        }
+        // A single shared copy, not one inlined per page.
+        expect(files[EMBED_SHIM_FILENAME]).toBe(SHIM);
+        const decode = path => new TextDecoder().decode(files[path]);
+        expect(decode('index.html')).not.toContain(SHIM);
+        expect(decode('index.html')).toContain(`src="${EMBED_SHIM_FILENAME}"`);
+        // Pages one level deep have to climb back to the snapshot root.
+        expect(decode('html/page-2.html')).toContain(`src="../${EMBED_SHIM_FILENAME}"`);
     });
 
     it('keeps the provider iframe so the shim can promote it', () => {
@@ -60,9 +70,15 @@ describe('applyPreviewEmbedShim', () => {
         const encoded = new TextEncoder().encode(html);
         const { injected } = applyPreviewEmbedShim(
             { 'a.html': html, 'b.html': encoded, 'c.html': encoded.buffer.slice(0) },
-            SHIM,
+            SHIM
         );
         expect(injected).toBe(3);
+    });
+
+    it('adds no shim file when no page could take it', () => {
+        const { files, injected } = applyPreviewEmbedShim({ 'media/clip.mp4': new Uint8Array([1]) }, SHIM);
+        expect(injected).toBe(0);
+        expect(files[EMBED_SHIM_FILENAME]).toBeUndefined();
     });
 
     it('returns the map untouched when no shim source is available', () => {

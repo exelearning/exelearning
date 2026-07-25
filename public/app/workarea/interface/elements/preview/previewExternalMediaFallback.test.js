@@ -1,36 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
     applyPreviewExternalMediaFallback,
-    isExternalMediaUrl,
     replaceExternalMediaInHtml,
 } from './previewExternalMediaFallback.js';
-
-describe('isExternalMediaUrl', () => {
-    it.each([
-        'https://www.youtube.com/embed/abc',
-        'https://youtube.com/embed/abc',
-        'https://www.youtube-nocookie.com/embed/abc',
-        'https://youtu.be/abc',
-        'https://player.vimeo.com/video/123',
-        'https://vimeo.com/123',
-    ])('detects provider URL %s', (url) => {
-        expect(isExternalMediaUrl(url)).toBe(true);
-    });
-
-    it.each([
-        'https://example.com/widget',
-        'https://h5p.org/h5p/embed/1',
-        'https://notyoutube.com/embed/abc',
-        'https://youtube.com.evil.example/embed/abc',
-        'https://www.geogebra.org/material/iframe/id',
-        '',
-        null,
-        undefined,
-        'not a url at all ://',
-    ])('ignores non-provider URL %s', (url) => {
-        expect(isExternalMediaUrl(url)).toBe(false);
-    });
-});
 
 describe('replaceExternalMediaInHtml', () => {
     it('replaces a YouTube iframe with an accessible open-in-new-tab placeholder', () => {

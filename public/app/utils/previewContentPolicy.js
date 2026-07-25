@@ -1,4 +1,4 @@
-import { isVideoProviderUrl } from './videoProviderAllowlist.js';
+import { isTrustedEmbedUrl } from './trustedEmbedHosts.js';
 
 const SCRIPTABLE_DATA_MEDIA_TYPES = new Set([
     'text/html',
@@ -130,11 +130,11 @@ function isActiveDataUrl(value) {
  * allowlist. Such an iframe is cross-origin (the provider's own origin), so it
  * stays isolated from the editor and may render inline in the filtered preview.
  */
-function isVideoProviderIframe(element) {
+function isTrustedEmbedIframe(element) {
     return (
         element.localName.toLowerCase() === 'iframe' &&
         !element.hasAttribute('srcdoc') &&
-        isVideoProviderUrl(element.getAttribute('src'))
+        isTrustedEmbedUrl(element.getAttribute('src'))
     );
 }
 
@@ -157,7 +157,7 @@ function inspectFragment(root) {
             if (element.hasAttribute('srcdoc')) {
                 categories.add('iframe');
                 categories.add('iframe-srcdoc');
-            } else if (isVideoProviderIframe(element)) {
+            } else if (isTrustedEmbedIframe(element)) {
                 // Whitelisted external video: benign, cross-origin, plays inline.
                 hasWhitelistedVideo = true;
             } else {
@@ -219,7 +219,7 @@ function removeUnsafeNodes(root) {
         }
 
         if (tag === 'iframe') {
-            const isVideo = isVideoProviderIframe(element);
+            const isVideo = isTrustedEmbedIframe(element);
             element.removeAttribute('srcdoc');
             if (isVideo) {
                 // Keep a whitelisted external video playable. It is cross-origin
