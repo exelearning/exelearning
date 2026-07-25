@@ -71,9 +71,10 @@ test.describe('External media demo fixture', () => {
         const sandbox = await iframe.getAttribute('sandbox');
         expect(sandbox).not.toContain('allow-same-origin');
 
-        // The external embeds became accessible "open in a new tab" placeholders,
-        // while the local <video> is retained (it is not active content).
+        // The external embeds became geometry placeholders that the trusted-side relay
+        // overlays with the real player, while the local <video> is retained (it is not
+        // active content).
         const frame = getPreviewFrame(page);
-        await expect.poll(() => frame.locator('.exe-external-media-fallback').count()).toBeGreaterThan(0);
+        await expect.poll(() => frame.locator('[data-exe-embed-id]').count()).toBeGreaterThan(0);
     });
 });

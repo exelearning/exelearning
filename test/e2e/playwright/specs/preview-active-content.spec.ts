@@ -230,12 +230,15 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         expect(snapshotResponses.some(r => r.status === 200)).toBe(true);
         expect(snapshotResponses.every(r => !r.setCookie)).toBe(true);
 
-        // The YouTube embed became an accessible "open in a new tab" placeholder.
-        await expect(frame.locator('.exe-external-media-fallback')).toHaveCount(1);
-        await expect(frame.locator('.exe-external-media-fallback a[target="_blank"]')).toHaveAttribute(
-            'href',
-            /youtube\.com\/embed\/dQw4w9WgXcQ/,
-        );
+        // The YouTube embed became a geometry placeholder: an opaque origin fails the
+        // provider's embedder check, so the shim demotes the iframe and reports it to
+        // the trusted side, where the relay overlays the real player in its place.
+        // (The "open in a new tab" fallback only applies when the shim cannot load.)
+        const placeholder = frame.locator('[data-exe-embed-id]');
+        await expect(placeholder).toHaveCount(1);
+        await expect(placeholder).toHaveAttribute('data-exe-embed-url', /youtube\.com\/embed\/dQw4w9WgXcQ/);
+        await expect(placeholder).toHaveAttribute('data-exe-embed-provider', 'youtube');
+        await expect(placeholder).toHaveAttribute('data-exe-embed-object-id', 'dQw4w9WgXcQ');
         await expect(frame.locator('#custom-youtube')).toHaveCount(0);
     });
 
