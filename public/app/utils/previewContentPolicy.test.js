@@ -65,6 +65,10 @@ describe('prepareUserHtmlForPreview', () => {
             ['player.vimeo', 'https://player.vimeo.com/video/76979871'],
             ['Dailymotion', 'https://www.dailymotion.com/embed/video/x2jvvep'],
             ['dai.ly', 'https://dai.ly/x2jvvep'],
+            ['Mediateca Madrid video', 'https://mediateca.educa.madrid.org/video/ywxnnec399b/fs'],
+            // Trusted per host, not per path: the same library serves the
+            // document embeds authors place next to their videos.
+            ['Mediateca Madrid document', 'https://mediateca.educa.madrid.org/documentos/nl3fhe1a2b3c'],
         ])('renders a %s embed inline without the "allow" gate', (_label, src) => {
             const result = prepareUserHtmlForPreview(`<iframe src="${src}" allowfullscreen></iframe>`);
             expect(result.activeContentFound).toBe(false);
@@ -88,6 +92,7 @@ describe('prepareUserHtmlForPreview', () => {
             'https://youtube.com.evil.com/embed/x',
             'https://evil-vimeo.com/video/1',
             'https://notyoutu.be/x',
+            'https://mediateca.educa.madrid.org.evil.com/video/x',
         ])('rejects the look-alike host %s (locked, gated)', src => {
             const result = prepareUserHtmlForPreview(`<iframe src="${src}"></iframe>`);
             expect(result.activeContentFound).toBe(true);

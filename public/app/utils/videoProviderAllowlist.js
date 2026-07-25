@@ -1,7 +1,11 @@
 /**
- * Shared allowlist of external video-provider hosts.
+ * Shared allowlist of trusted external embed-provider hosts.
  *
- * Single source of truth for "is this iframe `src` a known video provider?",
+ * Mostly video providers, plus institutional media libraries that also serve
+ * documents from the same host (see `mediateca.educa.madrid.org` below), which
+ * is why the match is by host rather than by path.
+ *
+ * Single source of truth for "is this iframe `src` a known provider?",
  * reused by:
  *   - the preview trust-boundary sanitizer (`previewContentPolicy.js`), so a
  *     provider iframe plays inline in the filtered preview without the "allow"
@@ -24,9 +28,14 @@ export const VIDEO_PROVIDER_HOSTS = [
     'vimeo.com',
     'dailymotion.com',
     'dai.ly',
+    // Regional education media library, already a first-class provider in the
+    // canonical embed relay (exe_embed_bridge/exe_embed_relay.js). Trusted as a
+    // whole host, not just its `/video/` paths, because the same library serves
+    // the `/documentos/` embeds authors put next to their videos.
+    'mediateca.educa.madrid.org',
 ];
 
-/** True when the URL's hostname is a known external video-provider host. */
+/** True when the URL's hostname is a trusted external embed-provider host. */
 export function isVideoProviderUrl(url) {
     if (typeof url !== 'string' || !url.trim()) return false;
     let hostname;

@@ -272,6 +272,8 @@ ${contentHtml}
      * such as `vimeo.com.example.org` is not mistaken for the provider.
      */
     private isReferrerSensitiveEmbed(src: string): boolean {
+        // Include education/media providers that this branch tracks (Dailymotion, Mediateca Madrid)
+        // on top of the YouTube/Vimeo set hardened on main.
         const PROVIDER_HOSTS = [
             'youtube.com',
             'youtube-nocookie.com',
@@ -279,6 +281,7 @@ ${contentHtml}
             'vimeo.com',
             'dailymotion.com',
             'dai.ly',
+            'mediateca.educa.madrid.org',
         ];
         let hostname: string;
         try {
