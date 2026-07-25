@@ -67,6 +67,10 @@ $preview-transition: 0.3s ease;
             padding: 16px 20px;
             border-bottom: 1px solid #EAECF0;
             flex-shrink: 0;
+            // Lets the active-content pill drop its label when the header is
+            // narrow. A viewport query would not do: pinned mode is a narrow
+            // column on a wide screen.
+            container: preview-header / inline-size;
 
             .preview-title {
                 font-size: 18px;
@@ -133,6 +137,9 @@ $preview-transition: 0.3s ease;
         border-bottom: 1px solid #EAECF0;
         flex-shrink: 0;
         background-color: var(--gray-50);
+        // Same container as the panel header: pinned is the narrow case even on
+        // a wide screen, so the pill collapses to its shield here first.
+        container: preview-header / inline-size;
 
         .preview-pinned-title {
             font-size: 14px;
@@ -341,6 +348,30 @@ $preview-transition: 0.3s ease;
             }
             .active-content-hover-label {
                 display: inline-flex;
+            }
+        }
+    }
+
+    // Narrow header — the pinned column, or the panel on a small viewport: keep
+    // the shield, drop the words. The button already carries the full sentence
+    // in `title`/`aria-label` (kept in sync with the state), which is what a
+    // screen reader announces anyway, so only pixels are lost. Placed last so it
+    // also overrides the `.is-active:hover` label swap above, which it ties with
+    // on specificity.
+    @container preview-header (max-width: 30rem) {
+        padding-inline: 7px;
+
+        .active-content-label,
+        .active-content-hover-label {
+            display: none;
+        }
+
+        // Hover still swaps the glyph to the crossed shield; with no label to
+        // swap, that is the whole preview of what the click does.
+        &.is-active:hover,
+        &.is-active:focus-visible {
+            .active-content-hover-label {
+                display: none;
             }
         }
     }
