@@ -186,6 +186,11 @@ var $exeDevice = {
         if (!assetsMap || typeof assetsMap.observe !== 'function') return;
 
         const body = this.ideviceBody;
+        // Bind to this instance, not to the global `$exeDevice`: the core resets that
+        // global when edition ends while the iDevice node stays on the page, so
+        // reading it here threw a TypeError that Yjs propagated into the Media
+        // Library rename/delete caller.
+        const device = this;
         const handler = () => {
             // Self-clean once this iDevice's DOM has been torn down.
             if (typeof document !== 'undefined' && !document.contains(body)) {
@@ -196,7 +201,7 @@ var $exeDevice = {
                 }
                 return;
             }
-            $exeDevice.refreshAttachmentsFromAssets();
+            device.refreshAttachmentsFromAssets();
         };
 
         assetsMap.observe(handler);

@@ -434,6 +434,27 @@ describe('file-attachment iDevice edition', () => {
             expect(row.querySelector('.fileAttachment-edit-warning')).toBeNull();
         });
 
+        it('keeps syncing after the core resets the global $exeDevice', () => {
+            const { meta, assetsMap } = installAssetManager({
+                [UUID]: { filename: 'doc.pdf', mime: 'application/pdf', size: 100 },
+            });
+            init();
+            const device = $exeDevice;
+            device.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'doc.pdf' }));
+
+            // ideviceNode.js sets `$exeDevice = undefined` when edition ends, but the
+            // iDevice node stays on the page, so the observer's detach branch does not
+            // run. Reading the global from the callback threw a TypeError that Yjs
+            // propagated into the Media Library rename/delete caller.
+            global.$exeDevice = undefined;
+            meta.set(UUID, { filename: 'renamed.pdf', mime: 'application/pdf', size: 100 });
+
+            expect(() => assetsMap._fire()).not.toThrow();
+
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.getAttribute('data-filename')).toBe('renamed.pdf');
+        });
+
         it('stops observing once the iDevice DOM is detached', () => {
             const { assetsMap } = installAssetManager({ [UUID]: { filename: 'doc.pdf' } });
             init();
