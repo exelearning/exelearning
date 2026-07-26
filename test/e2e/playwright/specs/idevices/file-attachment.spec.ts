@@ -149,6 +149,17 @@ test.describe('File attachment iDevice', () => {
     test('shows the download link in the preview panel', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
+        // The exported/preview runtime has no editor-only c_() helper. Calling it
+        // from the export code threw "c_ is not defined" inside renderView(), which
+        // exe_export.js swallowed as "Could not load template" and the iDevice never
+        // rendered. Capture the runtime log so the regression cannot return silently.
+        const runtimeErrors: string[] = [];
+        page.on('console', message => {
+            const text = message.text();
+            if (/is not defined|Could not load template/.test(text)) runtimeErrors.push(text);
+        });
+        page.on('pageerror', error => runtimeErrors.push(error.message));
+
         const projectUuid = await createProject(page, 'File Attachment Preview Test');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -172,5 +183,11 @@ test.describe('File attachment iDevice', () => {
         const previewLink = frame.locator('.fileAttachment-link').first();
         await expect(previewLink).toBeVisible({ timeout: 20000 });
         await expect(previewLink).toHaveAttribute('download', /sample-1\.pdf/);
+
+        // Links stay in the same browsing context unless the author opts in
+        // (WCAG 2.2 SC 3.2.5 Change on Request).
+        await expect(previewLink).not.toHaveAttribute('target', '_blank');
+
+        expect(runtimeErrors).toEqual([]);
     });
 });

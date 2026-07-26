@@ -54,6 +54,12 @@ authoring and export rendering provide?
   editor without a manual refresh.
 - **Accessibility (WCAG)**: keyboard operable controls, screen-reader labels,
   meaningful link text, non-decorative-icon handling, visible focus.
+- **No unrequested change of context**: a download link must not move the learner
+  to a new tab/window unless the author asked for it (WCAG 2.2 SC 3.2.5 *Change on
+  Request*, technique G200).
+- **Runtime-safe strings**: the export code runs in the generated site, where the
+  editor-only `c_()` / `_()` helpers do not exist — only the pre-resolved
+  `$exe_i18n` bundle shipped as `libs/common_i18n.js`.
 - **Output safety**: escape all author/legacy-controlled attachment fields in the
   rendered HTML.
 - **No new dependencies**: use inline SVG icons (no icon font) so rendering works
@@ -77,6 +83,15 @@ authoring and export rendering provide?
   `aria-hidden` on decorative icons; `aria-expanded` on the collapsible
   title/description panel; `download` attribute on links; `:focus`/`:focus-visible`
   styles in CSS.
+- **Link target**: per-file **Open in a new tab or window** option, **opt-in**
+  (unchecked by default, including for imported/legacy attachments that lack the
+  property). Enabling it emits `target="_blank" rel="noopener noreferrer"`;
+  otherwise no `target` is emitted and the link stays in the current browsing
+  context.
+- **Export-runtime strings**: export rendering resolves its labels through a local
+  `translate(key, englishFallback)` helper that reads the `$exe_i18n` bundle, never
+  through `c_()`/`_()`. The English literal is used when the bundle or key is
+  absent, so a missing string can never abort the render.
 - **Output safety**: `escapeHtml`/`escapeAttr` applied to filename, title,
   description, and the icon label in both edition and export renderers.
 
@@ -119,9 +134,18 @@ All paths verified on the PR #2011 branch.
   — `renderItem()` emits an `<a class="fileAttachment-link" download=...>` when a
   `url` exists, and otherwise a non-clickable
   `<span class="fileAttachment-link fileAttachment-link--missing">` with
-  `c_('File unavailable')`.
+  `translate('fileUnavailable', 'File unavailable')`.
+- Link target (export): `renderItem()` emits the `target`/`rel` pair only when
+  `attachment.openInNewWindow === true`; edition `addAttachment()` mirrors the same
+  `=== true` test for the checkbox state, and newly added/uploaded files are stored
+  with `openInNewWindow: false`.
+- Export-runtime strings: `translate(key, fallback)` reads `window.$exe_i18n`
+  (shipped as `libs/common_i18n.js`, generated from
+  `public/app/common/common_i18n.js` by `scripts/build-i18n-bundles.js`) and falls
+  back to the English literal. Keys `attachment`, `noFilesAttached` and
+  `fileUnavailable` were added to that template; `download` already existed.
 - Accessibility markup (export): `renderItem()` wraps link text with
-  `<span class="exe-sr-only">${c_('Download')} </span>`; icons carry
+  `<span class="exe-sr-only">${translate('download', 'Download')} </span>`; icons carry
   `aria-hidden="true"`; the CSS defines `.fileAttachment-IDevice .exe-sr-only`,
   `.fileAttachment-link:focus` and `:focus-visible`
   (`public/files/perm/idevices/base/file-attachment/export/file-attachment.css`).
@@ -143,10 +167,20 @@ All paths verified on the PR #2011 branch.
     user-controlled title, description and filename"; "includes an accessible
     'Download' prefix"; "does not emit id attributes inside list items (no
     duplicate IDs across instances)".
+  - Export Vitest (`.../export/file-attachment-i18n.test.js`): renders every label
+    with `c_`/`_` deleted from the global scope (the exported-site environment),
+    asserting no `ReferenceError`, `$exe_i18n` use when present, and the English
+    fallback when a key is missing or blank.
+  - Target Vitest (`.../export/file-attachment-target.test.js`,
+    `.../edition/file-attachment-target.test.js`): default is no `target`, the
+    attributes appear only on explicit opt-in, and the checkbox state round-trips.
   - Playwright (`test/e2e/playwright/specs/idevices/file-attachment.spec.ts`):
     "reflects renaming and deleting a referenced asset in the Media Library"
     asserts the row updates on rename and gains
-    `fileAttachment-edit-item--missing` + a visible warning on delete.
+    `fileAttachment-edit-item--missing` + a visible warning on delete; "shows the
+    download link in the preview panel" additionally fails on any
+    `is not defined` / `Could not load template` console output and asserts the
+    preview link carries no `target="_blank"`.
   - Integration (`test/integration/legacy-file-attachment.spec.ts`): "does not
     crash when the attached binary files are missing from the package".
 
@@ -162,6 +196,13 @@ rendered markup uses `exe-sr-only` link prefixes, `aria-*` labels, `download`
 attributes, visible focus styles, dependency-free inline SVG icons, and
 `escapeHtml`/`escapeAttr` on every author/legacy-controlled field.
 
+Download links open in the **current** browsing context by default; opening in a
+new tab/window is a per-file, opt-in author decision (WCAG 2.2 SC 3.2.5 *Change on
+Request* / technique G200), and the export renderer emits `target`/`rel` only on
+explicit opt-in. Export-side strings are resolved from the `$exe_i18n` bundle with
+an English fallback — the editor-only `c_()`/`_()` helpers must never be called
+from export code.
+
 ## Consequences
 
 ### Positive
@@ -174,6 +215,10 @@ attributes, visible focus styles, dependency-free inline SVG icons, and
   all export targets.
 - Attachment titles/filenames/descriptions are escaped, closing the obvious
   injection vector on those fields.
+- No unrequested change of context: learners keep their place and the Back button
+  keeps working unless the author deliberately opted a file into a new tab.
+- Export rendering no longer depends on an editor-only global, so a missing
+  translation helper can never abort the iDevice render in a generated site.
 
 ### Negative
 
@@ -227,6 +272,10 @@ attributes, visible focus styles, dependency-free inline SVG icons, and
 ## References
 
 - Issue #1858, PR #2011, SDD-0009.
+- WCAG 2.2 SC 3.2.5 *Change on Request*
+  (<https://www.w3.org/WAI/WCAG22/Understanding/change-on-request.html>) and
+  technique G200 *Opening new windows and tabs from a link only when necessary*
+  (<https://www.w3.org/WAI/WCAG22/Techniques/general/G200>).
 - ADR-0035 (iDevice restoration), ADR-0036 (reference model), ADR-0037 (legacy
   remap).
 - `public/files/perm/idevices/base/file-attachment/edition/file-attachment.js`,

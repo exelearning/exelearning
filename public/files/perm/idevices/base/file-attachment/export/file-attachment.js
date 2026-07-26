@@ -53,6 +53,32 @@ var $fileattachment = {
     init: function () {},
 
     /**
+     * Export-safe string lookup.
+     *
+     * The editor-only `c_()` / `_()` helpers do not exist in an exported site:
+     * exports ship `libs/common_i18n.js`, which defines the already-resolved
+     * `$exe_i18n` bundle. Calling `c_()` from here threw
+     * `ReferenceError: c_ is not defined`, which aborted `renderView()` and left
+     * the iDevice unrendered. The English literal is used when the bundle (or the
+     * key) is unavailable, so the export never fails on a missing string.
+     *
+     * @param {String} key - key in the `$exe_i18n` bundle
+     * @param {String} fallback - English source string
+     * @returns {String}
+     */
+    translate: function (key, fallback) {
+        try {
+            const scope = typeof window !== 'undefined' ? window : globalThis;
+            const bundle = scope && scope.$exe_i18n;
+            const value = bundle && bundle[key];
+            if (typeof value === 'string' && value.trim()) return value;
+        } catch (e) {
+            // Fall through to the English literal.
+        }
+        return fallback;
+    },
+
+    /**
      * Locate the live AssetManager, reaching into parent/top frames because export
      * JS runs inside the preview iframe.
      *
@@ -120,7 +146,9 @@ var $fileattachment = {
         }
 
         if (attachments.length === 0) {
-            parts.push(`<p class="fileAttachment-empty">${c_('No files attached.')}</p>`);
+            parts.push(
+                `<p class="fileAttachment-empty">${$fileattachment.translate('noFilesAttached', 'No files attached.')}</p>`,
+            );
         } else {
             const showDescriptions = data.showDescriptions !== false;
             parts.push('<ul class="fileAttachment-list">');
@@ -155,12 +183,17 @@ var $fileattachment = {
     renderItem: function (attachment, showDescriptions) {
         const filename = attachment.filename || '';
         const url = attachment.url || '';
-        const label = (attachment.title && String(attachment.title).trim()) || filename || c_('Attachment');
+        const label =
+            (attachment.title && String(attachment.title).trim()) ||
+            filename ||
+            $fileattachment.translate('attachment', 'Attachment');
         const category = $fileattachment.getFileCategory(attachment.mimeType, filename);
         const icon = $fileattachment.getFileIconSvg(attachment.mimeType, filename);
         const size = $fileattachment.formatFileSize(attachment.size);
+        // Opt-in: links stay in the same browsing context unless the author asked
+        // for a new tab (WCAG 2.2 SC 3.2.5 Change on Request / technique G200).
         const targetAttributes =
-            attachment.openInNewWindow !== false ? ' target="_blank" rel="noopener noreferrer"' : '';
+            attachment.openInNewWindow === true ? ' target="_blank" rel="noopener noreferrer"' : '';
 
         const meta = [];
         if (filename && filename !== label) meta.push($fileattachment.escapeHtml(filename));
@@ -180,7 +213,7 @@ var $fileattachment = {
             body = `<a class="fileAttachment-link" href="${$fileattachment.escapeAttr(url)}" download="${$fileattachment.escapeAttr(filename || label)}"${targetAttributes}>
                 <span class="fileAttachment-icon fileAttachment-icon--${category}" aria-hidden="true">${icon}</span>
                 <span class="fileAttachment-text">
-                    <span class="exe-sr-only">${c_('Download')} </span><span class="fileAttachment-title">${$fileattachment.escapeHtml(label)}</span>
+                    <span class="exe-sr-only">${$fileattachment.translate('download', 'Download')} </span><span class="fileAttachment-title">${$fileattachment.escapeHtml(label)}</span>
                     ${metaHtml}
                 </span>
             </a>`;
@@ -190,7 +223,7 @@ var $fileattachment = {
                 <span class="fileAttachment-icon fileAttachment-icon--${category}" aria-hidden="true">${icon}</span>
                 <span class="fileAttachment-text">
                     <span class="fileAttachment-title">${$fileattachment.escapeHtml(label)}</span>
-                    <span class="fileAttachment-meta fileAttachment-meta--missing">${c_('File unavailable')}</span>
+                    <span class="fileAttachment-meta fileAttachment-meta--missing">${$fileattachment.translate('fileUnavailable', 'File unavailable')}</span>
                 </span>
             </span>`;
         }

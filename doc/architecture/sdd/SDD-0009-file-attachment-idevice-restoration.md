@@ -234,8 +234,15 @@ JSON-only iDevice):
 
 - Edition strings use `_()` (e.g. `_('Add file')`, `_('Instructions')`,
   `_('The attached file is missing. Re-add it from the Media Library.')`).
-- Export/content strings use `c_()` (e.g. `c_('Download')`, `c_('File unavailable')`,
-  `c_('No files attached.')`).
+- Export/content strings are resolved at runtime from the `$exe_i18n` bundle
+  (shipped as `libs/common_i18n.js`) through a local
+  `translate(key, englishFallback)` helper — e.g.
+  `translate('download', 'Download')`, `translate('fileUnavailable', 'File unavailable')`,
+  `translate('noFilesAttached', 'No files attached.')`. The editor-only `c_()`/`_()`
+  helpers do not exist in an exported site and must not be called from export code;
+  the keys themselves are declared with `c_()` in
+  `public/app/common/common_i18n.js`, which is resolved at build time. Details in
+  ADR-0038.
 - Per project policy, no `translations/**` files are added or edited by this
   work; string extraction is handled by a separate process (AGENTS.md §7.4).
 

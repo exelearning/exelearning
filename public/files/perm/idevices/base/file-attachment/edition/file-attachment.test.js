@@ -287,6 +287,8 @@ describe('file-attachment iDevice edition', () => {
             expect(assetManager.insertImage).toHaveBeenCalled();
             expect(row.getAttribute('data-url')).toBe('asset://cccccccc-cccc-cccc-cccc-cccccccccccc.txt');
             expect(row.getAttribute('data-filename')).toBe('notes.txt');
+            // Uploaded files open in the same tab unless the author opts in.
+            expect(row.querySelector('.fileAttachment-edit-open-new-window').checked).toBe(false);
 
             delete global.eXeLearning.app;
         });

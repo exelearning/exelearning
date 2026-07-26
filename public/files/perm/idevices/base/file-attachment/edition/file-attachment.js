@@ -323,7 +323,7 @@ var $exeDevice = {
                 size: typeof metadata.size === 'number' ? metadata.size : file.size || 0,
                 title: '',
                 description: '',
-                openInNewWindow: true,
+                openInNewWindow: false,
             });
         } catch (e) {
             if (typeof eXe !== 'undefined' && eXe.app && eXe.app.alert) {
@@ -347,7 +347,7 @@ var $exeDevice = {
             size: typeof asset.size === 'number' ? asset.size : 0,
             title: '',
             description: '',
-            openInNewWindow: true,
+            openInNewWindow: false,
         });
     },
 
@@ -367,7 +367,9 @@ var $exeDevice = {
         const category = this.getFileCategory(attachment.mimeType, filename);
         const icon = this.getFileIconSvg(attachment.mimeType, filename);
         const missing = !url;
-        const openInNewWindow = attachment.openInNewWindow !== false;
+        // Opt-in: unchecked unless the author explicitly enabled it for this file
+        // (WCAG 2.2 SC 3.2.5 Change on Request / technique G200).
+        const openInNewWindow = attachment.openInNewWindow === true;
 
         const item = document.createElement('li');
         item.className = `fileAttachment-edit-item${missing ? ' fileAttachment-edit-item--missing' : ''}`;
@@ -532,7 +534,7 @@ var $exeDevice = {
                 size: isNaN(size) ? 0 : size,
                 title: titleEl ? titleEl.value.trim() : '',
                 description: descEl ? descEl.value.trim() : '',
-                openInNewWindow: openInNewWindowEl ? openInNewWindowEl.checked : true,
+                openInNewWindow: openInNewWindowEl ? openInNewWindowEl.checked : false,
             });
         });
         return attachments;

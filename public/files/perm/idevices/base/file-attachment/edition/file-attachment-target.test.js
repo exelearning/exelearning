@@ -48,11 +48,19 @@ describe('file-attachment per-file target option', () => {
         document.body.innerHTML = '';
     });
 
-    it('defaults existing attachments without the property to opening in a new window', () => {
+    it('defaults existing attachments without the property to the same browsing context', () => {
         init({ attachments: [attachment()] });
 
         const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
         expect(checkbox).not.toBeNull();
+        expect(checkbox.checked).toBe(false);
+        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
+    });
+
+    it('restores and persists the enabled state', () => {
+        init({ attachments: [attachment({ openInNewWindow: true })] });
+
+        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
         expect(checkbox.checked).toBe(true);
         expect($exeDevice.save().attachments[0].openInNewWindow).toBe(true);
     });
@@ -65,7 +73,7 @@ describe('file-attachment per-file target option', () => {
         expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
     });
 
-    it('uses the enabled state for newly selected Media Library files', () => {
+    it('uses the disabled state for newly selected Media Library files', () => {
         init();
         $exeDevice.addAttachmentFromAsset({
             assetUrl: 'asset://bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.pdf',
@@ -73,7 +81,16 @@ describe('file-attachment per-file target option', () => {
         });
 
         const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        expect(checkbox.checked).toBe(true);
+        expect(checkbox.checked).toBe(false);
+        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
+    });
+
+    it('keeps the author choice when the checkbox is ticked before saving', () => {
+        init({ attachments: [attachment()] });
+
+        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
+        checkbox.checked = true;
+
         expect($exeDevice.save().attachments[0].openInNewWindow).toBe(true);
     });
 });

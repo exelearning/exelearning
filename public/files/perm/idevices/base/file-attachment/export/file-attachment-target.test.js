@@ -36,8 +36,15 @@ describe('file-attachment exported link target', () => {
         $fileattachment = loadExportIdevice(code);
     });
 
-    it('adds a secure blank target by default for existing attachment data', () => {
+    it('opens in the same browsing context by default (WCAG 3.2.5 Change on Request)', () => {
         const html = $fileattachment.renderItem(attachment(), true);
+
+        expect(html).not.toContain('target="_blank"');
+        expect(html).not.toContain('rel="noopener noreferrer"');
+    });
+
+    it('adds a secure blank target only when the option is explicitly enabled', () => {
+        const html = $fileattachment.renderItem(attachment({ openInNewWindow: true }), true);
 
         expect(html).toContain('target="_blank"');
         expect(html).toContain('rel="noopener noreferrer"');
@@ -45,6 +52,13 @@ describe('file-attachment exported link target', () => {
 
     it('omits target and rel attributes when the option is disabled', () => {
         const html = $fileattachment.renderItem(attachment({ openInNewWindow: false }), true);
+
+        expect(html).not.toContain('target="_blank"');
+        expect(html).not.toContain('rel="noopener noreferrer"');
+    });
+
+    it('does not add target attributes when the option is explicitly enabled but the file is missing', () => {
+        const html = $fileattachment.renderItem(attachment({ url: '', openInNewWindow: true }), true);
 
         expect(html).not.toContain('target="_blank"');
         expect(html).not.toContain('rel="noopener noreferrer"');
