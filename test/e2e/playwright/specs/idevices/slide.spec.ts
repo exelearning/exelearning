@@ -464,7 +464,7 @@ test.describe('Slide iDevice', () => {
             caretOffset: number;
             inkStart: number | null;
             inkEnd: number | null;
-            textLeft: number;
+            paintedLeft: number;
             midIndex: number;
             midCaretOffset: number;
             midRenderedPrefixWidth: number;
@@ -492,10 +492,9 @@ test.describe('Slide iDevice', () => {
                 if (!canvas) throw new Error('slide canvas not found');
                 const t = canvas.getObjects().find(o => typeof (o as { text?: string }).text === 'string') as {
                     text: string;
-                    left: number;
-                    top: number;
                     width: number;
                     fontSize: number;
+                    getBoundingRect: () => { left: number; top: number; width: number; height: number };
                     fontStyle: string;
                     fontWeight: string | number;
                     fontFamily: string;
@@ -532,11 +531,15 @@ test.describe('Slide iDevice', () => {
 
                 // Glyph ink span read from the backstore. The lower canvas
                 // holds only the scene (grid/background are CSS), so any dark
-                // pixel in the text row band belongs to the glyphs.
+                // pixel in the text row band belongs to the glyphs. Fabric 7
+                // defaults objects to a center origin, so the painted box
+                // comes from the transform (getBoundingRect), never from
+                // left/top directly.
                 canvas.renderAll();
+                const box = t.getBoundingRect();
                 const retina = canvas.getRetinaScaling();
-                const bandTop = Math.round((t.top + 2) * retina);
-                const bandBottom = Math.round((t.top + t.fontSize * 1.3) * retina);
+                const bandTop = Math.max(0, Math.round((box.top - 1) * retina));
+                const bandBottom = Math.round((box.top + box.height + 1) * retina);
                 const width = canvas.lowerCanvasEl.width;
                 let inkStart: number | null = null;
                 let inkEnd: number | null = null;
@@ -561,7 +564,7 @@ test.describe('Slide iDevice', () => {
                     caretOffset: caretOffsetAt(text.length),
                     inkStart: inkStart === null ? null : inkStart / retina,
                     inkEnd: inkEnd === null ? null : inkEnd / retina,
-                    textLeft: t.left,
+                    paintedLeft: box.left,
                     midIndex: mid,
                     midCaretOffset: caretOffsetAt(mid),
                     midRenderedPrefixWidth,
@@ -655,7 +658,7 @@ test.describe('Slide iDevice', () => {
             //    and the rightmost ink must sit just behind it (trailing side
             //    bearing only).
             expect(probe.inkEnd).not.toBeNull();
-            const caretAbsoluteX = probe.textLeft + probe.caretOffset;
+            const caretAbsoluteX = probe.paintedLeft + probe.caretOffset;
             expect((probe.inkEnd as number) - caretAbsoluteX).toBeLessThanOrEqual(INK_TOLERANCE);
             expect(caretAbsoluteX - (probe.inkEnd as number)).toBeLessThanOrEqual(12);
 
