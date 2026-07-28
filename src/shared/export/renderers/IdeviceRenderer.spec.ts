@@ -1832,5 +1832,41 @@ describe('IdeviceRenderer', () => {
             expect(renderer.addReferrerPolicyToEmbeds('<p>no iframes</p>')).toBe('<p>no iframes</p>');
             expect(renderer.addReferrerPolicyToEmbeds('')).toBe('');
         });
+
+        it('handles uppercase tag and attribute names', () => {
+            // HTML tag and attribute names are case-insensitive, and pasted embed codes vary.
+            const html = '<IFRAME SRC="https://www.YOUTUBE.com/embed/abc" ALLOWFULLSCREEN></IFRAME>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+        });
+
+        it('does not corrupt a tag with ">" inside a quoted attribute value', () => {
+            const html = '<iframe src="https://www.youtube.com/embed/abc" title="1 > 2" allowfullscreen></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            // The title must survive intact and the policy must land as a real attribute.
+            expect(out).toContain('title="1 > 2"');
+            expect(out).toContain('allowfullscreen');
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+            expect(out).toContain('</iframe>');
+            expect(out.match(/<iframe/gi)).toHaveLength(1);
+        });
+
+        it('matches the provider by hostname, not by substring', () => {
+            // A lookalike host that merely contains "vimeo.com" is not the provider.
+            const html = '<iframe src="https://vimeo.com.attacker.io/x"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
+        });
+
+        it('recognises protocol-relative provider URLs', () => {
+            const html = '<iframe src="//www.youtube.com/embed/abc"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toContain(
+                'referrerpolicy="strict-origin-when-cross-origin"',
+            );
+        });
+
+        it('leaves relative-src iframes untouched', () => {
+            const html = '<iframe src="/local/player.html"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
+        });
     });
 });

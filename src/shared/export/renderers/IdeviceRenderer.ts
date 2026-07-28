@@ -189,15 +189,34 @@ ${contentHtml}
      * `referrerpolicy` is left as-is.
      */
     addReferrerPolicyToEmbeds(html: string): string {
-        if (!html || html.indexOf('<iframe') === -1) return html;
+        if (!html || !/<iframe/i.test(html)) return html;
         const POLICY = ' referrerpolicy="strict-origin-when-cross-origin"';
-        const PROVIDER = /(?:youtube\.com|youtube-nocookie\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/i;
-        return html.replace(/<iframe\b[^>]*>/gi, tag => {
+        // Quoted attribute values are consumed whole, so a ">" inside one does not end the tag.
+        const IFRAME_TAG = /<iframe\b(?:"[^"]*"|'[^']*'|[^"'>])*>/gi;
+        return html.replace(IFRAME_TAG, tag => {
             if (/\breferrerpolicy\s*=/i.test(tag)) return tag;
             const srcMatch = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
-            if (!srcMatch || !PROVIDER.test(srcMatch[1])) return tag;
+            if (!srcMatch || !this.isReferrerSensitiveEmbed(srcMatch[1])) return tag;
             return tag.endsWith('/>') ? `${tag.slice(0, -2)}${POLICY} />` : `${tag.slice(0, -1)}${POLICY}>`;
         });
+    }
+
+    /**
+     * Whether an iframe `src` points at a provider that needs the Referer header. Compared on the
+     * parsed hostname — exact match or a subdomain — rather than a substring, so a lookalike host
+     * such as `vimeo.com.example.org` is not mistaken for the provider.
+     */
+    private isReferrerSensitiveEmbed(src: string): boolean {
+        const PROVIDER_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com'];
+        let hostname: string;
+        try {
+            // The base resolves protocol-relative URLs; genuinely relative ones land on the
+            // placeholder host and are correctly rejected.
+            hostname = new URL(src, 'https://exe-local.invalid').hostname.toLowerCase();
+        } catch {
+            return false;
+        }
+        return PROVIDER_HOSTS.some(host => hostname === host || hostname.endsWith(`.${host}`));
     }
 
     /**
