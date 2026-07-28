@@ -405,6 +405,60 @@ function buildArrowControls(): Record<string, fabric.Control> {
 // Type alias matches Fabric's exported event payload for pointer events.
 type TPointerEvent = MouseEvent | TouchEvent | PointerEvent;
 
+// ── Text metrics configuration ──────────────────────────────────────────────
+
+let sizeTrueTextMetricsInstalled = false;
+
+/**
+ * Make Fabric measure text at each object's own font size.
+ *
+ * Browsers apply automatic optical sizing in canvas 2D: with a variable font
+ * carrying an `opsz` axis (the app ships Inter with opsz 14–32), glyph
+ * advances are non-linear in font size. Fabric measures once at
+ * `CACHE_FONT_SIZE` (400px — where auto optical sizing clamps `opsz` to the
+ * axis maximum) and scales linearly down, while glyphs are painted at the
+ * object's real font size — below the axis maximum the painted advances are
+ * up to ~10% wider than the measured ones that drive the caret, selection,
+ * wrapping and hit-testing, so the caret drifts left of the glyphs
+ * proportionally to text length (#2214).
+ *
+ * Element CSS cannot fix this cross-browser (Firefox resolves no
+ * canvas-element font styles for 2D text, and Fabric's measuring and cache
+ * canvases are detached anyway), so measurement itself must happen at the
+ * render size — then measured and painted advances resolve the same optical
+ * size in every engine. Two coordinated tweaks on the bundle-private Fabric
+ * instance:
+ *
+ * - `CACHE_FONT_SIZE` becomes a prototype getter returning the object's own
+ *   font size (its own-property copy is removed from `ownDefaults` so the
+ *   getter stays visible on instances).
+ * - The shared char-width cache is additionally keyed by font size, since
+ *   cached advances are now size-specific.
+ */
+function installSizeTrueTextMetrics(): void {
+    if (sizeTrueTextMetricsInstalled) return;
+    sizeTrueTextMetricsInstalled = true;
+
+    const textClass = fabric.FabricText as unknown as {
+        ownDefaults: Record<string, unknown>;
+        prototype: object;
+    };
+    delete textClass.ownDefaults.CACHE_FONT_SIZE;
+    Object.defineProperty(textClass.prototype, 'CACHE_FONT_SIZE', {
+        configurable: true,
+        get(): number {
+            return Number((this as { fontSize?: number }).fontSize) || 400;
+        },
+    });
+
+    const cache = fabric.cache as unknown as {
+        getFontCache: (style: { fontFamily: string; fontSize?: number }) => unknown;
+    };
+    const baseGetFontCache = cache.getFontCache.bind(fabric.cache);
+    cache.getFontCache = style =>
+        baseGetFontCache({ ...style, fontFamily: `${style.fontFamily}#${Number(style.fontSize) || 0}px` });
+}
+
 // ── Adapter ─────────────────────────────────────────────────────────────────
 
 export class SlideCanvasAdapter {
@@ -431,6 +485,7 @@ export class SlideCanvasAdapter {
     } | null = null;
 
     constructor(opts: CanvasAdapterOptions) {
+        installSizeTrueTextMetrics();
         this.opts = opts;
         this.init();
     }
