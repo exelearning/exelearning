@@ -707,6 +707,153 @@ test.describe('Slide iDevice', () => {
                 METRIC_TOLERANCE,
             );
         });
+
+        test('keeps per-character styled sizes from corrupting other objects', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // Serialized scenes (and the Code view) can carry Fabric
+            // per-character styles with their own fontSize. Measurements of
+            // a styled span must be stored/scaled for the span's size, and
+            // must never leak wrong-size advances into the shared width
+            // cache used by other objects.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Styled Spans');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            const HEAD = 'Base 32px text then ';
+            const SPAN = 'a styled span with wide WWW letters iii';
+            const result = await page.evaluate(
+                ({ head, span }) => {
+                    const w = window as unknown as {
+                        __slideEditorCanvas?: {
+                            add: (o: unknown) => void;
+                            renderAll: () => void;
+                            lowerCanvasEl: HTMLCanvasElement;
+                        };
+                        fabric?: {
+                            IText: new (
+                                text: string,
+                                opts: Record<string, unknown>,
+                            ) => {
+                                styles: Record<number, Record<number, Record<string, unknown>>>;
+                                initDimensions: () => void;
+                                getLineWidth: (l: number) => number;
+                                fontFamily: string;
+                            };
+                        };
+                    };
+                    const canvas = w.__slideEditorCanvas;
+                    const fabric = w.fabric;
+                    if (!canvas || !fabric) throw new Error('canvas or fabric missing');
+                    const fontFamily = 'Inter, Arial, sans-serif';
+
+                    // Object A: base 32px with the span styled at 16px, as a
+                    // deserialized scene would carry it.
+                    const styled = new fabric.IText(head + span, { left: 40, top: 60, fontSize: 32, fontFamily });
+                    const styles: Record<number, Record<string, unknown>> = {};
+                    for (let i = head.length; i < head.length + span.length; i++) styles[i] = { fontSize: 16 };
+                    styled.styles = { 0: styles };
+                    styled.initDimensions();
+                    canvas.add(styled);
+
+                    // Object B: a separate uniform 16px object reusing the
+                    // exact same characters the styled span just measured.
+                    const plain = new fabric.IText(span, { left: 40, top: 200, fontSize: 16, fontFamily });
+                    canvas.add(plain);
+                    canvas.renderAll();
+
+                    const ctx = canvas.lowerCanvasEl.getContext('2d') as CanvasRenderingContext2D;
+                    ctx.save();
+                    ctx.font = `normal normal 16px ${fontFamily}`;
+                    const span16 = ctx.measureText(span).width;
+                    ctx.font = `normal normal 32px ${fontFamily}`;
+                    const head32 = ctx.measureText(head).width;
+                    ctx.restore();
+                    return {
+                        plainMeasured: plain.getLineWidth(0),
+                        plainRendered: span16,
+                        styledMeasured: styled.getLineWidth(0),
+                        styledRendered: head32 + span16,
+                    };
+                },
+                { head: HEAD, span: SPAN },
+            );
+
+            // The uniform 16px object must match what the browser paints at
+            // 16px — a polluted shared cache would roughly double it.
+            expect(Math.abs(result.plainMeasured - result.plainRendered)).toBeLessThanOrEqual(3);
+            // The styled object's line is head@32px + span@16px. Style-run
+            // boundaries drop one kerning pair, hence the slightly wider
+            // tolerance.
+            expect(Math.abs(result.styledMeasured - result.styledRendered)).toBeLessThanOrEqual(5);
+        });
+
+        test('keeps Fabric shared state intact: per-family cache invalidation still works', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // The Slide editor runs against the app-global window.fabric
+            // (the bundle maps `import 'fabric'` to it), so its metric
+            // corrections must not mutate shared defaults nor break the
+            // documented `cache.clearFontCache(fontFamily)` invalidation
+            // used after lazy webfont loads.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Fabric State');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            await page.locator('[data-testid="slide-tool-text"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+
+            const result = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getActiveObject: () => {
+                            set: (p: Record<string, unknown>) => void;
+                            initDimensions: () => void;
+                        } | null;
+                    };
+                    fabric?: {
+                        cache: { charWidthsCache: Map<string, unknown>; clearFontCache: (f?: string) => void };
+                        FabricText: { ownDefaults: { CACHE_FONT_SIZE?: number } };
+                    };
+                };
+                const fabric = w.fabric;
+                const t = w.__slideEditorCanvas?.getActiveObject();
+                if (!fabric || !t) throw new Error('fabric or text object missing');
+                const family = 'Inter, Arial, sans-serif';
+                // Populate width-cache entries for two font sizes.
+                t.set({ fontSize: 16 });
+                t.initDimensions();
+                t.set({ fontSize: 24 });
+                t.initDimensions();
+                const familyKeys = () =>
+                    [...fabric.cache.charWidthsCache.keys()].filter(k => k.startsWith(family.toLowerCase()));
+                const before = familyKeys().length;
+                fabric.cache.clearFontCache(family);
+                const after = familyKeys().length;
+                return { before, after, ownDefaultsCacheFontSize: fabric.FabricText.ownDefaults.CACHE_FONT_SIZE };
+            });
+
+            expect(result.before).toBeGreaterThanOrEqual(1);
+            // Per-family invalidation must remove every entry for the family,
+            // including any size-scoped buckets.
+            expect(result.after).toBe(0);
+            // Shared Fabric defaults must stay untouched for other consumers.
+            expect(result.ownDefaultsCacheFontSize).toBe(400);
+        });
     });
 
     test.describe('Security', () => {
