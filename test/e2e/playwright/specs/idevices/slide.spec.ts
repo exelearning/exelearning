@@ -663,9 +663,7 @@ test.describe('Slide iDevice', () => {
             expect(caretAbsoluteX - (probe.inkEnd as number)).toBeLessThanOrEqual(12);
 
             // 3. Mid-text caret must match the painted width of the prefix.
-            expect(Math.abs(probe.midCaretOffset - probe.midRenderedPrefixWidth)).toBeLessThanOrEqual(
-                METRIC_TOLERANCE,
-            );
+            expect(Math.abs(probe.midCaretOffset - probe.midRenderedPrefixWidth)).toBeLessThanOrEqual(METRIC_TOLERANCE);
 
             // 4. Editing mid-text must stay aligned: put the caret after the
             //    prefix and type one more character through the keyboard.
