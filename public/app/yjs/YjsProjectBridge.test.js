@@ -1007,6 +1007,14 @@ describe('YjsProjectBridge', () => {
       expect(bridge.documentManager).toBeNull();
       expect(bridge.structureBinding).toBeNull();
     });
+
+    it('tears down the edition-mode observer', async () => {
+      const observerDisconnect = mock(() => {});
+      bridge.editionModeObserver = { disconnect: observerDisconnect };
+      await bridge.disconnect();
+      expect(observerDisconnect).toHaveBeenCalled();
+      expect(bridge.editionModeObserver).toBeNull();
+    });
   });
 
   describe('onSaveStatus', () => {
@@ -1793,6 +1801,54 @@ describe('YjsProjectBridge', () => {
       bridge.updateUndoRedoButtons();
 
       expect(bridge.undoButton.disabled).toBe(false);
+    });
+
+    it('updateUndoRedoButtons disables both buttons while an iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(true);
+      expect(bridge.redoButton.disabled).toBe(true);
+    });
+
+    it('updateUndoRedoButtons re-enables the buttons once no iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock(() => null);
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(false);
+      expect(bridge.redoButton.disabled).toBe(false);
+    });
+
+    it('observeIdeviceEditionState is a safe no-op without an observable DOM root', () => {
+      expect(() => bridge.observeIdeviceEditionState()).not.toThrow();
+      expect(bridge.editionModeObserver).toBeFalsy();
+    });
+
+    it('observeIdeviceEditionState refreshes the buttons when the DOM mutates', async () => {
+      // Borrow the real (happy-dom) body — the stubbed document has none.
+      global.document.body = originalDocument.body;
+      bridge.updateUndoRedoButtons = mock(() => {});
+
+      bridge.observeIdeviceEditionState();
+      expect(bridge.editionModeObserver).toBeTruthy();
+
+      const el = originalDocument.createElement('div');
+      originalDocument.body.appendChild(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+
+      bridge.editionModeObserver.disconnect();
+      el.remove();
+      delete global.document.body;
     });
 
     it('onPendingMetadataChange sets flag and updates buttons', () => {

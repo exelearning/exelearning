@@ -487,6 +487,29 @@ test.describe('Slide iDevice', () => {
             await expect(page.locator('.modal.show')).toHaveCount(0);
         });
 
+        test('project-level undo/redo buttons are disabled while the editor is open and never pop the modal', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Navbar Undo Guard');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await setupEditorWithRect(page);
+            const ideviceId = await getSlideIdeviceId(page);
+
+            // While the slide editor owns the history, the project-level
+            // buttons must be disabled (clicking them used to pop the
+            // "unsaved changes" modal).
+            await expect(page.locator('#yjs-undo-redo .btn-undo')).toBeDisabled();
+            await expect(page.locator('#yjs-undo-redo .btn-redo')).toBeDisabled();
+            await expect(page.locator('.modal.show')).toHaveCount(0);
+
+            // Once the iDevice is saved the project history takes over again.
+            await saveIdevice(page, ideviceId);
+            await expect(page.locator('#yjs-undo-redo .btn-undo')).toBeEnabled({ timeout: 10_000 });
+        });
+
         test('arrow keys nudge the selected object by 1px, Shift+arrow by 10px', async ({
             authenticatedPage,
             createProject,
