@@ -5,11 +5,14 @@
 # Root directory for tests
 root = "."
 
-# Exclude legacy code, node_modules, Playwright e2e tests, and frontend tests (run by Vitest)
+# Exclude legacy code, node_modules, Playwright e2e tests, and frontend tests (run by Vitest).
+# `*.bench.spec.ts` are Playwright benchmark specs (test/benchmarks/): they need the
+# Playwright runner and its fixtures, so bun must skip them while still collecting the
+# plain unit specs that live beside them.
 # Note: websocket specs (yjs-persistence.spec.ts, yjs-websocket.spec.ts, room-manager.spec.ts) use mock.module()
 # and may cause test pollution when run together with other tests
 # pathIgnorePatterns prunes directories during scanning (more efficient than ignore for large dirs)
-pathIgnorePatterns = ["node_modules/**", "**/public/**", "public/", "nestjs_legacy/**", "symfony_legacy/**", "test/e2e/**"]
+pathIgnorePatterns = ["node_modules/**", "**/public/**", "public/", "nestjs_legacy/**", "symfony_legacy/**", "test/e2e/**", "**/*.bench.spec.ts"]
 
 # Environment variables for tests
 # Use in-memory SQLite database for fast, isolated tests

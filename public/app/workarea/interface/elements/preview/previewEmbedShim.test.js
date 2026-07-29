@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     applyPreviewEmbedShim,
+    EMBED_CHILD_SCRIPT_PATH,
     EMBED_SHIM_FILENAME,
     injectEmbedShimIntoHtml,
 } from './previewEmbedShim.js';
@@ -86,5 +87,31 @@ describe('applyPreviewEmbedShim', () => {
         const { files, injected } = applyPreviewEmbedShim(input, null);
         expect(files).toBe(input);
         expect(injected).toBe(0);
+    });
+});
+
+describe('EMBED_CHILD_SCRIPT_PATH', () => {
+    /**
+     * The preview injects the built CHILD ARTIFACT, not a raw source file
+     * (ADR-0020 step 3). The artifact is versioned and hash-verified, and is the
+     * same thing host plugins vendor — so what authors get in the preview is what
+     * ships inside their exported packages.
+     */
+    it('points at the built child artifact, not a source file', () => {
+        expect(EMBED_CHILD_SCRIPT_PATH).toBe(
+            'app/common/exe_external_media/dist/exe-external-media-child.min.js'
+        );
+    });
+
+    it('is a relative path, so it composes with any base path', () => {
+        expect(EMBED_CHILD_SCRIPT_PATH.startsWith('/')).toBe(false);
+    });
+
+    /**
+     * The injected filename stays stable: every page links it relatively, and the
+     * snapshot carries exactly one copy at its root.
+     */
+    it('keeps the snapshot-root filename independent of where the source came from', () => {
+        expect(EMBED_SHIM_FILENAME).toBe('exe-embed-shim.js');
     });
 });

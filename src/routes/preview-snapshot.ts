@@ -13,9 +13,15 @@
  *   serves snapshot files to the opaque-origin preview iframe. An opaque
  *   iframe sends no SameSite cookies, so this is a capability URL
  *   (server-minted 128-bit crypto-random id + TTL). Every response carries
- *   the hardening headers and `Cache-Control: no-store`; scriptable types
- *   additionally get the `sandbox`-first CSP so a directly opened snapshot
- *   URL stays opaque. The route never reads and never sets cookies.
+ *   the hardening headers; scriptable types additionally get the `sandbox`-first
+ *   CSP so a directly opened snapshot URL stays opaque. The route never reads
+ *   and never sets cookies.
+ *
+ *   Caching is tiered on that same scriptable/non-scriptable split: a scriptable
+ *   document is `no-store` (it is rewritten on every refresh and is what the CSP
+ *   guards), everything else revalidates with `no-cache` + `ETag` and accepts
+ *   single byte ranges, which is what lets a video inside the snapshot seek.
+ *   404s and the bare-root redirect stay `no-store`.
  *
  * These plugins are registered only by the Bun server (`src/index.ts`). The
  * Electron app serves via its `app://` protocol handler and static/PWA builds
@@ -128,8 +134,64 @@ function baseServeHeaders(): Record<string, string> {
         'Referrer-Policy': 'no-referrer',
         'Permissions-Policy': previewSnapshotPermissionsPolicy(),
         'Access-Control-Allow-Origin': '*',
+        // Default tier. A non-scriptable file downgrades this to `no-cache`
+        // below; redirects, 404s and every scriptable document keep `no-store`.
         'Cache-Control': 'no-store',
     };
+}
+
+/** An inclusive byte window, or the valid-but-unsatisfiable marker. */
+export type ParsedRange = { start: number; end: number } | 'unsatisfiable' | null;
+
+/**
+ * Parse a single-range `Range` header against a body of `totalSize` bytes.
+ *
+ * Three outcomes, and the distinction between the first and the last is the
+ * part RFC 9110 is easy to get wrong:
+ *
+ * - `null` — no header, or one this route does not honor as a partial request:
+ *   a non-`bytes` unit, a multi-range list, garbage, or a structurally INVALID
+ *   single range (`bytes=5-2`, last-byte-pos below first-byte-pos). All of
+ *   these are IGNORED and answered with a normal 200 full body — never 416.
+ * - `{ start, end }` — a satisfiable single range (206).
+ * - `'unsatisfiable'` — a VALID range that cannot be met: first-byte-pos at or
+ *   past EOF (`bytes=99-` on 10 bytes), a zero-length suffix (`bytes=-0`), or
+ *   an empty body. This is the only case that answers 416.
+ */
+export function parseRangeHeader(value: string | null | undefined, totalSize: number): ParsedRange {
+    if (!value) return null;
+    const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
+    if (!match) return null;
+    const [, rawStart, rawEnd] = match;
+    // `bytes=-` names neither a first-byte-pos nor a suffix length: malformed,
+    // so ignore it (full response) rather than answering 416.
+    if (rawStart === '' && rawEnd === '') return null;
+    if (rawStart === '') {
+        // Suffix form (`bytes=-N`): the last N bytes. A zero-length suffix, or
+        // any suffix of an empty body, is valid but unsatisfiable.
+        const suffix = Number.parseInt(rawEnd, 10);
+        if (suffix === 0 || totalSize === 0) return 'unsatisfiable';
+        return { start: Math.max(0, totalSize - suffix), end: totalSize - 1 };
+    }
+    const start = Number.parseInt(rawStart, 10);
+    if (rawEnd === '') {
+        return start >= totalSize ? 'unsatisfiable' : { start, end: totalSize - 1 };
+    }
+    const end = Number.parseInt(rawEnd, 10);
+    // Structural invalidity is checked BEFORE satisfiability, so `bytes=15-2`
+    // is a 200 regardless of the body length — never a 416.
+    if (end < start) return null;
+    if (start >= totalSize) return 'unsatisfiable';
+    return { start, end: Math.min(end, totalSize - 1) };
+}
+
+/** Loose `If-None-Match` evaluation: any listed entity tag (or `*`) matches. */
+export function ifNoneMatchMatches(headerValue: string | null | undefined, etag: string): boolean {
+    if (!headerValue) return false;
+    return headerValue.split(',').some(candidate => {
+        const cleaned = candidate.trim().replace(/^W\//i, '').replace(/^"|"$/g, '');
+        return cleaned === '*' || cleaned === etag;
+    });
 }
 
 function notFound(): Response {
@@ -139,8 +201,19 @@ function notFound(): Response {
     });
 }
 
+/** Conditional/partial request inputs, read off the incoming request. */
+export interface ServeRequestHeaders {
+    ifNoneMatch?: string | null;
+    range?: string | null;
+}
+
 /** Reference serving logic: id gate → snapshot lookup → file lookup → headers. */
-export function serveSnapshotFile(previewId: string, relPath: string, store: PreviewSnapshotStore): Response {
+export function serveSnapshotFile(
+    previewId: string,
+    relPath: string,
+    store: PreviewSnapshotStore,
+    requestHeaders: ServeRequestHeaders = {},
+): Response {
     if (!previewSnapshotStore.PREVIEW_ID_RE.test(previewId)) return notFound();
 
     // Bare capability root → redirect to the canonical entry document so its
@@ -169,6 +242,33 @@ export function serveSnapshotFile(previewId: string, relPath: string, store: Pre
     // already a scriptable type).
     if (isScriptableDocumentType(file.contentType)) {
         headers['Content-Security-Policy'] = previewSnapshotCspHeader();
+        // A scriptable document is regenerated on every refresh and is the
+        // thing the sandbox CSP guards, so it is never cached or served in
+        // pieces: `no-store`, whole body, no ETag, no Accept-Ranges.
+        return new Response(file.bytes as BodyInit, { headers });
+    }
+
+    // Non-scriptable file (asset tier): revalidate instead of re-download, and
+    // honor single-byte ranges so a video or audio track inside the snapshot
+    // can seek without pulling the whole file again on every scrub.
+    headers['Cache-Control'] = 'no-cache';
+    headers.ETag = `"${file.etag}"`;
+    headers['Accept-Ranges'] = 'bytes';
+
+    if (ifNoneMatchMatches(requestHeaders.ifNoneMatch, file.etag)) {
+        return new Response(null, { status: 304, headers });
+    }
+
+    const total = file.bytes.length;
+    const range = parseRangeHeader(requestHeaders.range, total);
+    if (range === 'unsatisfiable') {
+        headers['Content-Range'] = `bytes */${total}`;
+        return new Response(null, { status: 416, headers });
+    }
+    if (range !== null) {
+        const slice = file.bytes.slice(range.start, range.end + 1);
+        headers['Content-Range'] = `bytes ${range.start}-${range.end}/${total}`;
+        return new Response(slice as BodyInit, { status: 206, headers });
     }
     return new Response(file.bytes as BodyInit, { headers });
 }
@@ -183,7 +283,10 @@ export function createPreviewSnapshotServeRoutes(deps: PreviewSnapshotRouteDeps 
         if (rest === '') {
             relPath = new URL(request.url).pathname.endsWith('/') ? '/' : '';
         }
-        return serveSnapshotFile(previewId, relPath, deps.store);
+        return serveSnapshotFile(previewId, relPath, deps.store, {
+            ifNoneMatch: request.headers.get('if-none-match'),
+            range: request.headers.get('range'),
+        });
     };
 
     return new Elysia({ prefix: '/preview-snapshot' })

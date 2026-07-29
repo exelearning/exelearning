@@ -120,6 +120,51 @@ sequenceDiagram
     Note over F: full authored content, isolated by origin
 ```
 
+## Serving contract (capability route)
+
+`/preview-snapshot/{previewId}/{path}` is authless and cookieless — the
+unguessable id plus the TTL is the whole credential. Host adapters implement the
+same contract against their own storage, so this table is the canonical version
+they conform to; the CSP in particular must stay **byte-identical** to
+`previewSnapshotCspHeader()` (one line, directives joined by `"; "`, no trailing
+semicolon), because a divergent sandbox silently changes what author code can do.
+
+Every response, 404s included, carries `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer`, the preview `Permissions-Policy` and
+`Access-Control-Allow-Origin: *` — sound only because the route is authless, and
+never to be paired with credentials.
+
+Caching is tiered on the scriptable/non-scriptable split, the same split that
+decides the CSP:
+
+| | Scriptable document (`text/html`, XHTML, SVG, XML, PDF) | Everything else |
+|---|---|---|
+| `Content-Security-Policy` | `sandbox …` | absent |
+| `Cache-Control` | `no-store` | `no-cache` |
+| `ETag` / `Accept-Ranges` | absent | `"{previewId}-{publishSeq}-{path}"` / `bytes` |
+| Conditional / partial | — | `If-None-Match` → 304; single range → 206/416 |
+
+A scriptable document is rewritten on every refresh and is the thing the sandbox
+guards, so it is never cached or sliced. Everything else revalidates, which is
+what lets a video or audio track inside the snapshot seek instead of
+re-downloading on every scrub.
+
+Two details are easy to get wrong and are covered by tests:
+
+- **The ETag must fold in a publish counter.** A replace keeps the capability id
+  so the iframe URL stays valid; an ETag derived from the id and path alone
+  answers 304 with the *previous* bytes whenever the refreshed asset happens to
+  be the same length. The tag never hashes bytes — serving a 200 MB video must
+  not cost a hash.
+- **An invalid `Range` is ignored, not rejected** (RFC 9110). `bytes=15-2`, a
+  multi-range list and a non-`bytes` unit all answer `200` with the full body.
+  Only a *valid but unsatisfiable* range (`bytes=99-` past EOF, `bytes=-0`, an
+  empty body) answers `416` with `Content-Range: bytes */{size}`.
+
+The bare capability root answers `302` with a **relative** `Location` — no
+trailing slash → `{previewId}/index.html`, trailing slash → `index.html` — so the
+iframe's relative-URL base is correct under any `BASE_PATH`.
+
 ## Threat model
 
 - **Assets:** editor DOM and JS context, Yjs project state, eXe server session

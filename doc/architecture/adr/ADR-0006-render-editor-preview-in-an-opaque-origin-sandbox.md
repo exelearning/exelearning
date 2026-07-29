@@ -1,7 +1,7 @@
 ---
 id: ADR-0006
 title: "Render editor preview content in an opaque-origin sandbox"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 deciders:
   - "@erseco"

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PreviewEmbedHost } from './previewEmbedHost.js';
 
-const RELAY_SRC = 'app/common/exe_embed_bridge/exe_embed_relay.js';
+// The editor loads the built, hash-verified ARTIFACT, not a raw source file
+// (ADR-0020 step 3). The artifact carries the same relay plus the media half.
+const RELAY_SRC = 'app/common/exe_external_media/dist/exe-external-media-host.min.js';
 
 describe('PreviewEmbedHost', () => {
     let win;
@@ -20,7 +22,7 @@ describe('PreviewEmbedHost', () => {
         loadScript = vi.fn(async (src) => {
             loadedScripts.push(src);
             // Loading the relay defines window.exeEmbedRelay; init() returns the instance.
-            if (src.includes('exe_embed_relay')) win.exeEmbedRelay = { init: relayInit };
+            if (src.includes('exe-external-media-host')) win.exeEmbedRelay = { init: relayInit };
         });
     });
 

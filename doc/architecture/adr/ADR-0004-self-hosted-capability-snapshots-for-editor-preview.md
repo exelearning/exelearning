@@ -1,7 +1,7 @@
 ---
 id: ADR-0004
 title: "Self-hosted capability snapshots for the editor preview (minimal subset)"
-status: Proposed
+status: Accepted
 date: 2026-07-22
 deciders:
   - "@erseco"

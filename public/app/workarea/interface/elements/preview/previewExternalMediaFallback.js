@@ -14,6 +14,7 @@
  * are touched, and an entry without provider iframes is passed through
  * byte-identical.
  */
+import { decodeEntry, isHtmlEntry } from './previewSnapshotEntries.js';
 
 import { isTrustedEmbedUrl } from '../../../../utils/trustedEmbedHosts.js';
 
@@ -47,12 +48,6 @@ function buildPlaceholder(doc, src) {
     return wrapper;
 }
 
-function decodeEntry(content) {
-    if (typeof content === 'string') return content;
-    const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
-    return new TextDecoder().decode(bytes);
-}
-
 /**
  * Replace provider iframes in one HTML document string. Returns `null` when
  * nothing needed replacing so callers can keep the original bytes untouched.
@@ -83,7 +78,7 @@ export function applyPreviewExternalMediaFallback(files) {
     const output = {};
     let replaced = 0;
     for (const [path, content] of Object.entries(files)) {
-        if (!/\.x?html?$/i.test(path)) {
+        if (!isHtmlEntry(path)) {
             output[path] = content;
             continue;
         }

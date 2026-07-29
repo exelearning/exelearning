@@ -2,14 +2,25 @@
  * Editor-side host for the embed relay.
  *
  * An opaque preview cannot embed YouTube/Vimeo itself: an opaque origin fails
- * the providers' embedder checks. exe_embed_shim.js, injected into the preview
- * files, demotes those iframes to geometry placeholders and reports them to the
- * parent; this host loads exe_embed_relay.js on the trusted side, which overlays
- * the real player in place. The relay loads lazily: most previews embed nothing.
+ * the providers' embedder checks. The in-content shim demotes those iframes to
+ * geometry placeholders and reports them to the parent; this host loads the
+ * trusted-side runtime, which overlays the real player in place. It loads
+ * lazily: most previews embed nothing.
+ *
+ * The editor loads the built ARTIFACT rather than a raw source file (ADR-0020
+ * step 3). The artifact is versioned, hash-verified by
+ * `check-external-media-artifacts`, and is the same thing host plugins vendor —
+ * so what the editor exercises is what ships. It carries the same relay the raw
+ * file did, minified, so this swap changes packaging and not behaviour; changing
+ * the implementation inside it is a separate step that does not touch this file
+ * again.
+ *
+ * It is produced by `bundle:external-media`, which `build:all` runs, so a built
+ * tree always has it.
  */
 const Logger = (typeof window !== 'undefined' && window.AppLogger) || console;
 
-const RELAY_SCRIPT = 'app/common/exe_embed_bridge/exe_embed_relay.js';
+const RELAY_SCRIPT = 'app/common/exe_external_media/dist/exe-external-media-host.min.js';
 
 function defaultLoadScript(win) {
     return (src) =>

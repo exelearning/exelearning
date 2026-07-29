@@ -77,7 +77,7 @@ describe('preview-snapshot-store', () => {
             const snapshot = createSnapshot();
             expect(getForServing(snapshot.id)).toBe(snapshot);
             expect(snapshot.ownerUserId).toBe(OWNER);
-            expect(snapshot.totalBytes).toBeGreaterThan(0);
+            expect(snapshot.files.size).toBeGreaterThan(0);
         });
 
         it('replaces in place: same previewId, new contents, renewed touch time', () => {
@@ -310,6 +310,33 @@ describe('preview-snapshot-store', () => {
         it('returns null for paths not in the snapshot', () => {
             const snapshot = createSnapshot(OWNER, files);
             expect(getFile(snapshot, 'missing.html')).toBeNull();
+        });
+
+        it('derives the ETag from id, publish counter and normalized path', () => {
+            const snapshot = createSnapshot(OWNER, files);
+            expect(getFile(snapshot, 'img/photo.png')?.etag).toBe(`${snapshot.id}-1-img/photo.png`);
+            // Path normalization happens before the tag is built, so the two
+            // spellings of one file share an entity tag rather than splitting
+            // the cache entry in two.
+            expect(getFile(snapshot, '/img/photo.png')?.etag).toBe(getFile(snapshot, 'img/photo.png')?.etag);
+            expect(getFile(snapshot, 'theme/style.css')?.etag).not.toBe(getFile(snapshot, 'img/photo.png')?.etag);
+        });
+
+        it('turns every ETag over on replace, even for byte-identical content', () => {
+            const snapshot = createSnapshot(OWNER, files);
+            const before = getFile(snapshot, 'img/photo.png')!.etag;
+
+            const result = createOrReplace(OWNER, snapshot.id, makeFiles({ 'img/photo.png': 'png' }));
+            expect(result).toHaveProperty('snapshot');
+            const replaced = (result as { snapshot: typeof snapshot }).snapshot;
+
+            expect(replaced.id).toBe(snapshot.id); // the iframe URL must survive
+            expect(replaced.publishSeq).toBe(2);
+            expect(getFile(replaced, 'img/photo.png')!.etag).not.toBe(before);
+        });
+
+        it('starts a freshly minted snapshot at publish 1', () => {
+            expect(createSnapshot(OWNER, files).publishSeq).toBe(1);
         });
     });
 

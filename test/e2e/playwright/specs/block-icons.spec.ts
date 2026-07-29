@@ -7,6 +7,9 @@ import {
     gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
+/** The slice of TinyMCE's global these specs read, instead of casting to `any`. */
+type TinyMceWindow = Window & { tinymce?: { activeEditor?: { initialized?: boolean } } };
+
 /**
  * Block Icon Selection Modal Tests
  *
@@ -46,8 +49,8 @@ test.describe('Block Icon Selection Modal', () => {
         // leave edition before opening the block icon modal.
         await page.waitForFunction(
             () => {
-                const ed = (window as any).tinymce?.activeEditor;
-                return ed && ed.initialized;
+                const ed = (window as TinyMceWindow).tinymce?.activeEditor;
+                return ed?.initialized;
             },
             undefined,
             { timeout: 15000 },

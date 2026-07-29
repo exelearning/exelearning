@@ -1,7 +1,7 @@
 ---
 id: ADR-0001
 title: "Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts"
-status: Proposed
+status: Superseded
 date: 2026-07-14
 deciders:
   - "@erseco"
