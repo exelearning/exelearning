@@ -101,7 +101,11 @@ export class PreviewDocumentAdapter implements ExportDocument {
             properties: page.properties ? this.cloneValue(page.properties, 'component-property') : undefined,
             blocks: page.blocks.map(block => ({
                 ...block,
-                properties: block.properties ? { ...block.properties } : undefined,
+                // Filtered like the page's and the component's: three structurally identical
+                // property bags, and this one was being shallow-copied straight through. The
+                // adapter fails closed everywhere else, so an unexplained exception here is
+                // a hole rather than a decision.
+                properties: block.properties ? this.cloneValue(block.properties, 'component-property') : undefined,
                 components: block.components.map(component => this.prepareComponent(component)),
             })),
         }));

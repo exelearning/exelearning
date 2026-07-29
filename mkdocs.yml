@@ -45,6 +45,8 @@ nav:
       - Internationalization: development/internationalization.md
       - Real Time: development/real-time.md
       - Embedding: development/embedding.md
+      - External Media Vendoring: development/external-media-vendoring.md
+      - External Media Evidence Harness: development/external-media-report/README.md
       - Preview Architecture: development/preview-architecture.md
       - Profiling: development/profiling.md
       - Customization: development/customization.md

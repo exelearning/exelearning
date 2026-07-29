@@ -281,11 +281,30 @@ describe('preview-snapshot routes', () => {
             for (const path of ['index.html', 'img/photo.png', 'missing.txt']) {
                 const res = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/${path}`));
                 expect(res.headers.get('x-content-type-options')).toBe('nosniff');
-                expect(res.headers.get('cache-control')).toBe('no-store');
                 expect(res.headers.get('referrer-policy')).toBe('no-referrer');
                 expect(res.headers.get('permissions-policy')).toContain('camera=()');
                 expect(res.headers.get('access-control-allow-origin')).toBe('*');
             }
+        });
+
+        it('keeps every scriptable document uncached and unrangeable', async () => {
+            const { previewId } = await createSnapshot();
+            for (const path of ['index.html', 'img/logo.svg', 'content/data.xml', 'content/doc.pdf']) {
+                const res = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/${path}`));
+                expect(res.headers.get('cache-control')).toBe('no-store');
+                expect(res.headers.get('etag')).toBeNull();
+                expect(res.headers.get('accept-ranges')).toBeNull();
+            }
+        });
+
+        it('keeps 404s and the bare-root redirect on no-store', async () => {
+            const { previewId } = await createSnapshot();
+            const missing = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/nope.png`));
+            expect(missing.status).toBe(404);
+            expect(missing.headers.get('cache-control')).toBe('no-store');
+            const bare = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}`));
+            expect(bare.status).toBe(302);
+            expect(bare.headers.get('cache-control')).toBe('no-store');
         });
 
         it('emits the sandbox-first CSP on every scriptable type (HTML, SVG, XML, PDF)', async () => {
@@ -306,6 +325,146 @@ describe('preview-snapshot routes', () => {
             }
         });
 
+        it('puts non-scriptable files on the revalidating tier', async () => {
+            const { previewId } = await createSnapshot();
+            for (const path of ['theme/style.css', 'img/photo.png']) {
+                const res = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/${path}`));
+                expect(res.status).toBe(200);
+                expect(res.headers.get('cache-control')).toBe('no-cache');
+                expect(res.headers.get('accept-ranges')).toBe('bytes');
+                expect(res.headers.get('etag')).toMatch(/^"[0-9a-f]{32}-\d+-.+"$/);
+            }
+        });
+
+        it('gives distinct ETags to distinct paths in the same snapshot', async () => {
+            const { previewId } = await createSnapshot();
+            const css = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/theme/style.css`));
+            const png = await app.handle(new Request(`http://localhost/preview-snapshot/${previewId}/img/photo.png`));
+            expect(css.headers.get('etag')).not.toBe(png.headers.get('etag'));
+        });
+    });
+
+    describe('serving: conditional requests', () => {
+        it('answers a matching If-None-Match with a bodyless 304 that keeps the headers', async () => {
+            const { previewId } = await createSnapshot();
+            const url = `http://localhost/preview-snapshot/${previewId}/img/photo.png`;
+            const first = await app.handle(new Request(url));
+            const etag = first.headers.get('etag')!;
+
+            const second = await app.handle(new Request(url, { headers: { 'If-None-Match': etag } }));
+            expect(second.status).toBe(304);
+            expect(await second.text()).toBe('');
+            expect(second.headers.get('etag')).toBe(etag);
+            expect(second.headers.get('cache-control')).toBe('no-cache');
+            expect(second.headers.get('x-content-type-options')).toBe('nosniff');
+        });
+
+        it('accepts a weak tag, a list and the wildcard', async () => {
+            const { previewId } = await createSnapshot();
+            const url = `http://localhost/preview-snapshot/${previewId}/img/photo.png`;
+            const bare = (await app.handle(new Request(url))).headers.get('etag')!.replace(/^"|"$/g, '');
+            for (const header of [`W/"${bare}"`, `"other", "${bare}"`, '*']) {
+                const res = await app.handle(new Request(url, { headers: { 'If-None-Match': header } }));
+                expect(res.status).toBe(304);
+            }
+        });
+
+        it('serves 200 when the tag does not match', async () => {
+            const { previewId } = await createSnapshot();
+            const res = await app.handle(
+                new Request(`http://localhost/preview-snapshot/${previewId}/img/photo.png`, {
+                    headers: { 'If-None-Match': '"stale-tag"' },
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect(await res.text()).toBe('png-bytes');
+        });
+
+        // The bug this guards: a replace keeps the capability id, so an ETag
+        // derived from the id and path alone would answer 304 with the previous
+        // bytes whenever the refreshed asset happens to be the same length.
+        it('turns the ETag over on a same-size refresh of the same path', async () => {
+            const { previewId } = await createSnapshot();
+            const url = `http://localhost/preview-snapshot/${previewId}/img/photo.png`;
+            const before = await app.handle(new Request(url));
+            const staleTag = before.headers.get('etag')!;
+            expect(await before.text()).toBe('png-bytes');
+
+            const replaced = { ...DEFAULT_ENTRIES, 'img/photo.png': 'PNG-BYTES' }; // identical length
+            expect(await app.handle(uploadRequest(ownerToken, replaced, previewId))).toHaveProperty('status', 200);
+
+            const after = await app.handle(new Request(url, { headers: { 'If-None-Match': staleTag } }));
+            expect(after.status).toBe(200);
+            expect(await after.text()).toBe('PNG-BYTES');
+            expect(after.headers.get('etag')).not.toBe(staleTag);
+        });
+    });
+
+    describe('serving: range requests', () => {
+        const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'; // 26 bytes, easy arithmetic
+        const rangedEntries = { ...DEFAULT_ENTRIES, 'img/photo.png': ALPHABET };
+
+        async function rangeRequest(previewId: string, range: string) {
+            return app.handle(
+                new Request(`http://localhost/preview-snapshot/${previewId}/img/photo.png`, {
+                    headers: { Range: range },
+                }),
+            );
+        }
+
+        it('serves a satisfiable single range as 206 with Content-Range', async () => {
+            const { previewId } = await createSnapshot(ownerToken, rangedEntries);
+            for (const [range, expectedBody, expectedContentRange] of [
+                ['bytes=0-3', 'abcd', 'bytes 0-3/26'],
+                ['bytes=10-', 'klmnopqrstuvwxyz', 'bytes 10-25/26'],
+                ['bytes=-4', 'wxyz', 'bytes 22-25/26'],
+                ['bytes=20-999', 'uvwxyz', 'bytes 20-25/26'], // clamped to EOF
+            ] as const) {
+                const res = await rangeRequest(previewId, range);
+                expect(res.status).toBe(206);
+                expect(await res.text()).toBe(expectedBody);
+                expect(res.headers.get('content-range')).toBe(expectedContentRange);
+                expect(res.headers.get('accept-ranges')).toBe('bytes');
+            }
+        });
+
+        it('answers 416 only for a valid-but-unsatisfiable range', async () => {
+            const { previewId } = await createSnapshot(ownerToken, rangedEntries);
+            for (const range of ['bytes=26-', 'bytes=99-200', 'bytes=-0']) {
+                const res = await rangeRequest(previewId, range);
+                expect(res.status).toBe(416);
+                expect(res.headers.get('content-range')).toBe('bytes */26');
+                expect(await res.text()).toBe('');
+            }
+        });
+
+        // RFC 9110: an invalid or unsupported Range is ignored, not rejected.
+        // Answering 416 here would break clients that probe with a malformed
+        // header and expect the full body back.
+        it('ignores an invalid or unsupported Range and serves the full body', async () => {
+            const { previewId } = await createSnapshot(ownerToken, rangedEntries);
+            for (const range of ['bytes=15-2', 'bytes=0-1,5-6', 'items=0-1', 'bytes=-', 'garbage']) {
+                const res = await rangeRequest(previewId, range);
+                expect(res.status).toBe(200);
+                expect(await res.text()).toBe(ALPHABET);
+                expect(res.headers.get('content-range')).toBeNull();
+            }
+        });
+
+        it('ignores a Range on a scriptable document', async () => {
+            const { previewId } = await createSnapshot();
+            const res = await app.handle(
+                new Request(`http://localhost/preview-snapshot/${previewId}/index.html`, {
+                    headers: { Range: 'bytes=0-3' },
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-range')).toBeNull();
+            expect(await res.text()).toContain('active');
+        });
+    });
+
+    describe('serving: content type', () => {
         it('maps Content-Type from the stored extension only (no sniffing)', async () => {
             const { previewId } = await createSnapshot(ownerToken, {
                 'index.html': '<p>doc</p>',

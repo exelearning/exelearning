@@ -1,0 +1,7 @@
+# Generated evidence: ~24 MB of PNG and PDF that any checkout can rebuild from the
+# harness next to this file (see README.md). Tracking it would put a binary blob in
+# every clone and a merge conflict in every regeneration.
+informe.html
+informe-migracion-external-media.pdf
+pages/
+shots/

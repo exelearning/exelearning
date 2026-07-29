@@ -17,6 +17,7 @@ import { getSession as getSessionDefault, type ProjectSession } from '../service
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import { hasRole, ROLES, requireAuth } from '../utils/guards';
+import type { JwtPayload } from './auth';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -629,10 +630,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
      */
     function authorizeExport(
         session: ProjectSession | undefined,
-        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+        jwtPayload: JwtPayload | null | undefined,
     ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
-        const authErr = requireAuth(jwtPayload as any);
+        const authErr = requireAuth(jwtPayload);
         if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
+        // Past this point requireAuth has established that the payload exists and carries a
+        // subject, which is what the non-null assertions below rest on.
         if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
         if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
             return { ok: false, status: 403, message: 'Access denied' };

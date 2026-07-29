@@ -1,7 +1,7 @@
 ---
 id: ADR-0016
 title: "OPFS plus a Service Worker does not create an opaque origin (static/PWA limit)"
-status: Proposed
+status: Accepted
 date: 2026-07-22
 deciders:
   - "@erseco"

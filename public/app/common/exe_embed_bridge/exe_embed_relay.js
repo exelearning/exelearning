@@ -25,10 +25,26 @@
  * Exposed two ways from a single body: window.exeEmbedRelay (browser bootstrap) and
  * module.exports (tests).
  *
- * CANONICAL SOURCE for the eXeLearning embedder family lives here in eXeLearning core
- * (public/app/common/exe_embed_bridge/exe_embed_relay.js). The host plugins
- * (mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun) mirror this logic
- * (only the export wrapper differs). Keep them in sync; changes flow from core outward.
+ * NO LONGER THE CANONICAL SOURCE, and no longer shipped. The canonical implementation
+ * is the TypeScript under src/shared/external-media/, which is what the distributed
+ * artifacts are built from. This file stays as the EQUIVALENCE REFERENCE: the parity
+ * specs execute it and compare both implementations vector by vector, which is what
+ * keeps "the rewrite behaves the same" a measured claim. Editing it changes nothing
+ * that ships -- change the TypeScript. Removed at Phase 8 (ADR-0020).
+ *
+ * Canonicity lives in eXeLearning core and flows outward to the host plugins
+ * (mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun, nextcloud); they
+ * mirror core, never the other way round.
+ *
+ * Copyright (C) 2026 eXeLearning Team
+ *
+ * Dual-licensed so this ONE file can ship inside eXeLearning (AGPL-3.0-or-later)
+ * and inside the GPL-3.0-or-later host plugins (mod_exelearning) without either
+ * project relicensing it. GPLv3 s13 and AGPLv3 s13 already permit COMBINING the
+ * two, but combining never relicenses a file: only the copyright holder can offer
+ * it under both, which is what this grant does. Keep this notice in every mirror.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-3.0-or-later
  */
 (function () {
     'use strict';
@@ -162,12 +178,21 @@
     // the template (e.g. '../../x' or 'a/b?c'). The reconstructed URL still runs through
     // validate() (structural invariant / strict whitelist), so this narrows the surface for
     // recognised providers; it is not, by itself, the trust gate.
+    // This table is GENERATED from the canonical registry
+    // (src/shared/external-media/providers/registry.ts), which is its single author.
+    // A classic script cannot import at runtime — that constraint is what lets this file
+    // ship inside a package and run from file:// — so the unification happens at build
+    // time and a drift spec fails if the block is hand-edited.
+    // <<< GENERATED: provider templates — do not edit by hand
+    // Source: src/shared/external-media/providers/registry.ts
+    // Regenerate: bun scripts/generate-external-media-providers.ts --write
     var PROVIDER_TEMPLATES = {
-        youtube: { re: /^[A-Za-z0-9_-]{6,}$/, build: function (id) { return 'https://www.youtube-nocookie.com/embed/' + id; } },
-        vimeo: { re: /^[0-9]+$/, build: function (id) { return 'https://player.vimeo.com/video/' + id; } },
-        dailymotion: { re: /^[A-Za-z0-9]{5,}$/, build: function (id) { return 'https://www.dailymotion.com/embed/video/' + id; } },
+        'youtube': { re: /^[A-Za-z0-9_-]{11}$/, build: function (id) { return 'https://www.youtube-nocookie.com/embed/' + id; } },
+        'vimeo': { re: /^[0-9]{6,12}$/, build: function (id) { return 'https://player.vimeo.com/video/' + id; } },
+        'dailymotion': { re: /^[A-Za-z0-9]{5,}$/, build: function (id) { return 'https://www.dailymotion.com/embed/video/' + id; } },
         'mediateca-madrid': { re: /^[A-Za-z0-9]{8,}$/, build: function (id) { return 'https://mediateca.educa.madrid.org/video/' + id + '/fs'; } }
     };
+    // >>> END GENERATED
 
     /**
      * Rebuild the canonical embed URL for a recognised provider from its object id, or null
@@ -479,7 +504,27 @@
 
         function onMessage(event) {
             var data = event.data;
-            if (!data || data.type !== 'exe-embed' || data.action !== 'sync' || !Array.isArray(data.embeds)) {
+            if (!data || data.type !== 'exe-embed') {
+                return;
+            }
+            // The shim never promotes an embed until a host proves it is listening,
+            // otherwise unhosted content (file://, a third-party LMS, an ePub reader)
+            // is left holding placeholders nobody will ever fill. This 'welcome' is
+            // that proof, and it is ADDRESSED: only a resolved CONTENT frame is
+            // answered, never a promoted player and never a window we do not host.
+            // (pingAll's 'request' is a broadcast and deliberately cannot unlock.)
+            if (data.action === 'hello') {
+                if (!frameForSource(event.source)) {
+                    return;
+                }
+                try {
+                    event.source.postMessage({ type: 'exe-embed', action: 'welcome' }, '*');
+                } catch (e) {
+                    // A frame that went away between the hello and this reply.
+                }
+                return;
+            }
+            if (data.action !== 'sync' || !Array.isArray(data.embeds)) {
                 return;
             }
             var iframe = frameForSource(event.source);

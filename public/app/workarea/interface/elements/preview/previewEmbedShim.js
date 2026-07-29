@@ -22,21 +22,29 @@
  * own scripts, because exe_media_bridge.js checks `window.exeEmbedShim` and
  * defers to it.
  */
-
-/** Preview entries that are HTML documents. */
-const HTML_PATH = /\.x?html?$/i;
+import { decodeEntry, isHtmlEntry } from './previewSnapshotEntries.js';
 
 /** Snapshot-root filename for the shared shim. */
 export const EMBED_SHIM_FILENAME = 'exe-embed-shim.js';
 
+/**
+ * Where the in-content runtime is fetched from, relative to the app base path.
+ *
+ * The built CHILD ARTIFACT, not a raw source file (ADR-0020 step 3). It is
+ * versioned, hash-verified by `check-external-media-artifacts`, and is the same
+ * thing host plugins vendor — so what an author sees in the preview is what runs
+ * inside the package they export. Produced by `bundle:external-media`, which
+ * `build:all` runs.
+ *
+ * It carries the shim plus the media half. The media half defers to the shim for
+ * declarative embeds, so it is inert here; the combination is what
+ * `external-media-artifacts.spec.ts` drives through both directions of the
+ * handshake in Chromium, Firefox and WebKit.
+ */
+export const EMBED_CHILD_SCRIPT_PATH = 'app/common/exe_external_media/dist/exe-external-media-child.min.js';
+
 /** Marker attribute, also the double-injection guard. */
 const SHIM_MARKER = 'data-exe-embed-shim';
-
-function decodeEntry(content) {
-    if (typeof content === 'string') return content;
-    const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
-    return new TextDecoder().decode(bytes);
-}
 
 /** `html/page.html` is one level deep, so it needs `../` to reach the root. */
 function relativePrefix(path) {
@@ -81,7 +89,7 @@ export function applyPreviewEmbedShim(files, shimSource) {
     const output = {};
     let injected = 0;
     for (const [path, content] of Object.entries(files)) {
-        if (!HTML_PATH.test(path)) {
+        if (!isHtmlEntry(path)) {
             output[path] = content;
             continue;
         }

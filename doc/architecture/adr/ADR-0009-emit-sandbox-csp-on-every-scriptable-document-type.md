@@ -1,7 +1,7 @@
 ---
 id: ADR-0009
 title: "Emit the sandbox CSP on every scriptable preview document type, not just HTML"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 deciders:
   - "@erseco"

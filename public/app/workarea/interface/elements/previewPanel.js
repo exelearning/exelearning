@@ -19,7 +19,7 @@ import {
     shouldRevokeOnYdocUpdate,
 } from '../../../utils/previewContentPolicy.js';
 import { EmbeddedPreviewSnapshot, selfHostedPreviewSnapshotConfig } from './preview/EmbeddedPreviewSnapshot.js';
-import { applyPreviewEmbedShim } from './preview/previewEmbedShim.js';
+import { applyPreviewEmbedShim, EMBED_CHILD_SCRIPT_PATH } from './preview/previewEmbedShim.js';
 import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
 import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
 
@@ -116,10 +116,7 @@ export default class PreviewPanelManager {
         workarea?.setAttribute('data-preview-pinned', 'false');
         disableActivePreviewContent(this._projectId());
         this._updateActiveContentIndicator(null);
-        if (this._embeddedPreviewSnapshot) {
-            this._embeddedPreviewSnapshot.dispose().catch(error => Logger.warn('[PreviewPanel] Cleanup failed:', error));
-            this._embeddedPreviewSnapshot = null;
-        }
+        this._disposeEmbeddedSnapshot();
         this._disposeSelfHostedSnapshot();
         this._clearOpaqueSandbox();
     }
@@ -866,6 +863,21 @@ export default class PreviewPanelManager {
             .catch(error => Logger.warn('[PreviewPanel] Opaque snapshot cleanup failed:', error));
     }
 
+    /**
+     * The same for the embedded snapshot, which had no disposer of its own.
+     *
+     * Its dispose-and-null block was copy-pasted at each teardown site and MISSING from the
+     * failure path, so an embedded preview that failed to load left its snapshot behind on
+     * the host until the server's TTL swept it.
+     */
+    _disposeEmbeddedSnapshot() {
+        if (!this._embeddedPreviewSnapshot) return;
+        this._embeddedPreviewSnapshot
+            .dispose()
+            .catch(error => Logger.warn('[PreviewPanel] Embedded snapshot cleanup failed:', error));
+        this._embeddedPreviewSnapshot = null;
+    }
+
     /** Remove the opaque sandbox attribute before a same-origin (SW/blob) load. */
     _clearOpaqueSandbox() {
         this.iframe?.removeAttribute('sandbox');
@@ -880,12 +892,30 @@ export default class PreviewPanelManager {
      * content.
      */
     async _refreshOpaqueOrStayFiltered() {
+        await this._refreshOpaqueOr(
+            () => this.refreshWithOpaqueSnapshot(),
+            () => this._disposeSelfHostedSnapshot(),
+            'Opaque',
+        );
+    }
+
+    /**
+     * The shared fail-closed body. Both transports must drop the grant, throw away the
+     * snapshot they were publishing into, and fall back to the filtered render — the
+     * embedded copy of this used to skip the disposal step, which is the kind of difference
+     * two near-identical methods hide.
+     *
+     * @param {() => Promise<void>} refresh The opaque refresh to attempt.
+     * @param {() => void} disposeSnapshot Throws away that transport's snapshot.
+     * @param {string} kind Names the transport in the log line.
+     */
+    async _refreshOpaqueOr(refresh, disposeSnapshot, kind) {
         try {
-            await this.refreshWithOpaqueSnapshot();
+            await refresh();
         } catch (error) {
-            Logger.error('[PreviewPanel] Opaque preview failed, staying filtered:', error);
+            Logger.error(`[PreviewPanel] ${kind} preview failed, staying filtered:`, error);
             disableActivePreviewContent(this._projectId());
-            this._disposeSelfHostedSnapshot();
+            disposeSnapshot();
             this._clearOpaqueSandbox();
             eXeLearning?.app?.modals?.alert?.show?.({
                 title: _('External scripts unavailable'),
@@ -921,21 +951,11 @@ export default class PreviewPanelManager {
      * content.
      */
     async _refreshEmbeddedOpaqueOrStayFiltered() {
-        try {
-            await this.refreshWithEmbeddedSnapshot();
-        } catch (error) {
-            Logger.error('[PreviewPanel] Embedded opaque preview failed, staying filtered:', error);
-            disableActivePreviewContent(this._projectId());
-            this._clearOpaqueSandbox();
-            eXeLearning?.app?.modals?.alert?.show?.({
-                title: _('External scripts unavailable'),
-                body: _(
-                    'The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.',
-                ),
-                contentId: 'error',
-            });
-            await this._refreshFiltered();
-        }
+        await this._refreshOpaqueOr(
+            () => this.refreshWithEmbeddedSnapshot(),
+            () => this._disposeEmbeddedSnapshot(),
+            'Embedded opaque',
+        );
     }
 
     /**
@@ -945,33 +965,33 @@ export default class PreviewPanelManager {
      * without allow-same-origin — at the capability URL.
      */
     async refreshWithOpaqueSnapshot() {
-        const result = await this._generatePreviewFiles({ forOpaqueSnapshot: true });
-        if (!result.success || !result.files) {
-            throw new Error(result.error || 'Failed to generate opaque preview');
-        }
-        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
-        const snapshot = this._getSelfHostedPreviewSnapshot();
-        const previewUrl = await snapshot.replace(files);
-        snapshot.applySandbox(this.iframe);
-        snapshot.applySandbox(this.pinnedIframe);
-        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
-        if (!targetIframe) throw new Error('Preview iframe is unavailable');
-        targetIframe.src = previewUrl;
-        if (shimmed) this._startEmbedHost(targetIframe);
+        await this._refreshWithSnapshot(() => this._getSelfHostedPreviewSnapshot(), 'opaque');
     }
 
     async refreshWithEmbeddedSnapshot() {
+        await this._refreshWithSnapshot(() => this._getEmbeddedPreviewSnapshot(), 'embedded');
+    }
+
+    /**
+     * The shared body of the two above, which differed only in which snapshot they asked
+     * for and in the wording of their errors — and so were a standing invitation for a fix
+     * to land in one host's path and not the other's.
+     *
+     * @param {() => object} getSnapshot The snapshot to publish into.
+     * @param {string} kind Names the transport in the errors this throws.
+     */
+    async _refreshWithSnapshot(getSnapshot, kind) {
         const result = await this._generatePreviewFiles({ forOpaqueSnapshot: true });
         if (!result.success || !result.files) {
-            throw new Error(result.error || 'Failed to generate embedded preview');
+            throw new Error(result.error || `Failed to generate ${kind} preview`);
         }
         const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
-        const snapshot = this._getEmbeddedPreviewSnapshot();
+        const snapshot = getSnapshot();
         const previewUrl = await snapshot.replace(files);
         snapshot.applySandbox(this.iframe);
         snapshot.applySandbox(this.pinnedIframe);
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
-        if (!targetIframe) throw new Error('Embedded preview iframe is unavailable');
+        if (!targetIframe) throw new Error(`The ${kind} preview iframe is unavailable`);
         targetIframe.src = previewUrl;
         if (shimmed) this._startEmbedHost(targetIframe);
     }
@@ -1008,7 +1028,7 @@ export default class PreviewPanelManager {
      */
     _loadEmbedShimSource() {
         if (!this._embedShimPromise) {
-            const url = `${this._basePath()}/app/common/exe_embed_bridge/exe_embed_shim.js`;
+            const url = `${this._basePath()}/${EMBED_CHILD_SCRIPT_PATH}`;
             this._embedShimPromise = fetch(url, { credentials: 'same-origin' })
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2007,10 +2027,7 @@ export default class PreviewPanelManager {
             this._pdfEmbedBlobUrls = null;
         }
 
-        if (this._embeddedPreviewSnapshot) {
-            this._embeddedPreviewSnapshot.dispose().catch(error => Logger.warn('[PreviewPanel] Cleanup failed:', error));
-            this._embeddedPreviewSnapshot = null;
-        }
+        this._disposeEmbeddedSnapshot();
 
         this._disposeSelfHostedSnapshot();
         this._selfHostedPreviewSnapshot = null;

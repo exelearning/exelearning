@@ -1,7 +1,7 @@
 ---
 id: ADR-0003
 title: "Preview active-content grant revocation under collaboration (D1)"
-status: Proposed
+status: Accepted
 date: 2026-07-22
 deciders:
   - "@erseco"

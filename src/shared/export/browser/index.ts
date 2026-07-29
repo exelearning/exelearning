@@ -56,6 +56,21 @@ import '../../../../public/app/common/LatexPreRenderer.js';
 import type { ExportOptions, PreviewContentPolicy, PreviewContentReport } from '../interfaces';
 
 /**
+ * Wrap a document in the preview policy, when there is one to apply.
+ *
+ * Every preview entry point below needs the same pair of decisions — wrap or not, then read
+ * the report back off whatever came out — and each had its own copy. That is three places to
+ * keep in step whenever the adapter's construction changes, with nothing to flag one missed.
+ */
+function withPreviewPolicy(sourceDocument: IDocumentSource, policy: PreviewContentPolicy | undefined): IDocumentSource {
+    return policy ? new PreviewDocumentAdapter(sourceDocument, policy) : sourceDocument;
+}
+
+/** The active-content report, if this document was the kind that produces one. */
+function activeContentReportOf(document: IDocumentSource): PreviewContentReport | undefined {
+    return document instanceof PreviewDocumentAdapter ? document.getReport() : undefined;
+}
+/**
  * Yjs Document Manager interface (browser class)
  */
 interface YjsDocumentManagerLike {
@@ -620,9 +635,7 @@ export async function generatePrintPreview(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const sourceDocument = new YjsDocumentAdapter(documentManager as any);
-    const document = options?.previewContentPolicy
-        ? new PreviewDocumentAdapter(sourceDocument, options.previewContentPolicy)
-        : sourceDocument;
+    const document = withPreviewPolicy(sourceDocument, options?.previewContentPolicy);
 
     let resources;
     if (resourceFetcher) {
@@ -664,9 +677,7 @@ export async function generatePrintPreview(
     };
 
     const result = await exporter.generatePreview(previewOptions);
-    if (document instanceof PreviewDocumentAdapter) {
-        result.activeContentReport = document.getReport();
-    }
+    result.activeContentReport = activeContentReportOf(document);
     return result;
 }
 
@@ -687,9 +698,7 @@ export function createPrintPreviewExporter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const sourceDocument = new YjsDocumentAdapter(documentManager as any);
-    const document = previewContentPolicy
-        ? new PreviewDocumentAdapter(sourceDocument, previewContentPolicy)
-        : sourceDocument;
+    const document = withPreviewPolicy(sourceDocument, previewContentPolicy);
 
     let resources;
     if (resourceFetcher) {
@@ -758,9 +767,7 @@ export async function generatePreviewForSW(
         // Create adapters with null-safe wrappers
         // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
         const sourceDocument = new YjsDocumentAdapter(documentManager as any);
-        const document = options?.previewContentPolicy
-            ? new PreviewDocumentAdapter(sourceDocument, options.previewContentPolicy)
-            : sourceDocument;
+        const document = withPreviewPolicy(sourceDocument, options?.previewContentPolicy);
 
         // Create resource provider with null-safe fallback
         // Create resource provider with null-safe fallback
@@ -809,7 +816,7 @@ export async function generatePreviewForSW(
         return {
             success: true,
             files,
-            activeContentReport: document instanceof PreviewDocumentAdapter ? document.getReport() : undefined,
+            activeContentReport: activeContentReportOf(document),
         };
     } catch (error) {
         console.error('[SharedExporters] generatePreviewForSW failed:', error);

@@ -2441,6 +2441,26 @@ describe('PreviewPanelManager', () => {
       expect(mockElements['preview-iframe'].hasAttribute('sandbox')).toBe(false);
     });
 
+    /**
+     * The embedded transport's failure path used to skip disposal entirely — the self-hosted
+     * one disposed, the embedded one did not — so a failed embedded preview left its snapshot
+     * on the host until the server's TTL swept it.
+     */
+    it('throws away the embedded snapshot when the embedded transport fails', async () => {
+      enableActivePreviewContent('project-a');
+      const dispose = vi.fn().mockResolvedValue(undefined);
+      manager._embeddedPreviewSnapshot = { dispose };
+      vi.spyOn(manager, 'refreshWithEmbeddedSnapshot').mockRejectedValue(new Error('routes unreachable'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+
+      await manager._refreshEmbeddedOpaqueOrStayFiltered();
+
+      expect(dispose).toHaveBeenCalled();
+      expect(manager._embeddedPreviewSnapshot).toBeNull();
+      expect(isActivePreviewContentEnabled('project-a')).toBe(false);
+    });
+
     it('clears the opaque sandbox attribute before a filtered same-origin refresh', async () => {
       mockElements['preview-iframe'].setAttribute('sandbox', 'allow-scripts');
       mockElements['preview-pinned-iframe'].setAttribute('sandbox', 'allow-scripts');

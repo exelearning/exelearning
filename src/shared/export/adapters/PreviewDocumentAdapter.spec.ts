@@ -53,6 +53,33 @@ const policy: PreviewContentPolicy = {
 };
 
 describe('PreviewDocumentAdapter', () => {
+    /**
+     * Block properties were the one property bag going through unfiltered — a shallow spread
+     * where the page's and the component's both went through the policy. Nothing covered it,
+     * which is exactly why an unexplained exception in a fail-closed adapter survived.
+     */
+    it('filters block properties, like the page and component ones', () => {
+        // Built here rather than in the shared fixture: adding active content there shifts
+        // the aggregate counts the categories test asserts.
+        const source = createDocument();
+        const withBlockProperties: ExportDocument = {
+            ...source,
+            getNavigation: () =>
+                source.getNavigation().map(page => ({
+                    ...page,
+                    blocks: page.blocks.map(block => ({
+                        ...block,
+                        properties: { caption: '<img src="x" onerror="block()">' },
+                    })),
+                })),
+        };
+        const adapter = new PreviewDocumentAdapter(withBlockProperties, policy);
+
+        const caption = adapter.getNavigation()[0].blocks[0].properties?.caption;
+
+        expect(caption).toStartWith('[component-property]');
+    });
+
     it('prepares author HTML in metadata, components, and nested properties without mutating the source', () => {
         const source = createDocument();
         const originalPages = source.getNavigation();

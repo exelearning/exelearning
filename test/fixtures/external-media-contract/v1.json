@@ -1,0 +1,428 @@
+{
+    "$comment": [
+        "Shared contract vectors for the external-media provider registry and protocol.",
+        "",
+        "This file is the executable agreement between eXeLearning core and every host",
+        "plugin. Each repository runs these same vectors against its own copy, so a",
+        "mirror that drifts fails on a shared expectation instead of on a diff nobody",
+        "reads. Add a vector when a behaviour is decided; never edit one to make a",
+        "failing implementation pass.",
+        "",
+        "url vectors: `expect: null` means the input must NOT be recognised as a",
+        "provider resource. Anything recognised must yield exactly the given",
+        "provider/resourceId, and rebuilding from that id must give canonicalUrl."
+    ],
+    "version": 1,
+    "url": [
+        {
+            "name": "youtube watch URL",
+            "input": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+            "expect": {
+                "provider": "youtube",
+                "resourceId": "aqz-KE-bpKQ",
+                "canonicalUrl": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+            }
+        },
+        {
+            "name": "youtube short link",
+            "input": "https://youtu.be/aqz-KE-bpKQ",
+            "expect": {
+                "provider": "youtube",
+                "resourceId": "aqz-KE-bpKQ",
+                "canonicalUrl": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+            }
+        },
+        {
+            "name": "youtube embed URL already on the no-cookie host",
+            "input": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ",
+            "expect": {
+                "provider": "youtube",
+                "resourceId": "aqz-KE-bpKQ",
+                "canonicalUrl": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+            }
+        },
+        {
+            "name": "vimeo canonical page",
+            "input": "https://vimeo.com/76979871",
+            "expect": {
+                "provider": "vimeo",
+                "resourceId": "76979871",
+                "canonicalUrl": "https://player.vimeo.com/video/76979871"
+            }
+        },
+        {
+            "name": "vimeo player URL",
+            "input": "https://player.vimeo.com/video/76979871",
+            "expect": {
+                "provider": "vimeo",
+                "resourceId": "76979871",
+                "canonicalUrl": "https://player.vimeo.com/video/76979871"
+            }
+        },
+        {
+            "name": "dailymotion embed URL",
+            "input": "https://www.dailymotion.com/embed/video/x8abc12",
+            "expect": {
+                "provider": "dailymotion",
+                "resourceId": "x8abc12",
+                "canonicalUrl": "https://www.dailymotion.com/embed/video/x8abc12"
+            }
+        },
+        {
+            "name": "mediateca madrid full-screen URL",
+            "input": "https://mediateca.educa.madrid.org/video/abcd1234/fs",
+            "expect": {
+                "provider": "mediateca-madrid",
+                "resourceId": "abcd1234",
+                "canonicalUrl": "https://mediateca.educa.madrid.org/video/abcd1234/fs"
+            }
+        },
+        {
+            "name": "malformed youtube id (too short)",
+            "input": "https://www.youtube.com/watch?v=abc",
+            "expect": null
+        },
+        {
+            "name": "malformed vimeo id (not numeric)",
+            "input": "https://vimeo.com/notanumber",
+            "expect": null
+        },
+        {
+            "name": "look-alike domain suffix",
+            "input": "https://youtube.com.evil.example/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "look-alike domain prefix",
+            "input": "https://evil-vimeo.com/video/76979871",
+            "expect": null
+        },
+        {
+            "name": "userinfo smuggling the real host",
+            "input": "https://evil.example@www.youtube.com/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "plain http",
+            "input": "http://www.youtube.com/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "ipv4 literal",
+            "input": "https://192.168.1.10/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "ipv6 literal",
+            "input": "https://[::1]/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "localhost",
+            "input": "https://localhost/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "mdns .local name",
+            "input": "https://box.local/watch?v=aqz-KE-bpKQ",
+            "expect": null
+        },
+        {
+            "name": "javascript scheme",
+            "input": "javascript:alert(1)",
+            "expect": null
+        },
+        {
+            "name": "data scheme",
+            "input": "data:text/html,<script>alert(1)</script>",
+            "expect": null
+        },
+        {
+            "name": "not a url at all",
+            "input": "not a url",
+            "expect": null
+        },
+        {
+            "name": "remote pdf is not a provider resource",
+            "input": "https://files.example.org/handout.pdf",
+            "expect": null
+        }
+    ],
+    "$commentMessages": [
+        "message vectors: `valid` is what the strict schema must answer for a message",
+        "arriving in the given direction. `direction` is one of embed-child (content \u2192",
+        "host), embed-host (host \u2192 content), media-command, media-event."
+    ],
+    "messages": [
+        {
+            "name": "embed hello",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "hello"
+            },
+            "valid": true
+        },
+        {
+            "name": "embed welcome",
+            "direction": "embed-host",
+            "message": {
+                "type": "exe-embed",
+                "action": "welcome"
+            },
+            "valid": true
+        },
+        {
+            "name": "embed request ping",
+            "direction": "embed-host",
+            "message": {
+                "type": "exe-embed",
+                "action": "request"
+            },
+            "valid": true
+        },
+        {
+            "name": "welcome must never be accepted from the content side",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "welcome"
+            },
+            "valid": false
+        },
+        {
+            "name": "hello must never be accepted from the host side",
+            "direction": "embed-host",
+            "message": {
+                "type": "exe-embed",
+                "action": "hello"
+            },
+            "valid": false
+        },
+        {
+            "name": "well-formed geometry sync",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "sync",
+                "embeds": [
+                    {
+                        "id": "exe-embed-1",
+                        "x": 10,
+                        "y": 20,
+                        "w": 480,
+                        "h": 270,
+                        "provider": "youtube",
+                        "objectId": "aqz-KE-bpKQ"
+                    }
+                ]
+            },
+            "valid": true
+        },
+        {
+            "name": "negative extent",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "sync",
+                "embeds": [
+                    {
+                        "id": "e",
+                        "x": 0,
+                        "y": 0,
+                        "w": -1,
+                        "h": 270
+                    }
+                ]
+            },
+            "valid": false
+        },
+        {
+            "name": "absurd extent",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "sync",
+                "embeds": [
+                    {
+                        "id": "e",
+                        "x": 0,
+                        "y": 0,
+                        "w": 1000000000,
+                        "h": 270
+                    }
+                ]
+            },
+            "valid": false
+        },
+        {
+            "name": "sync without an embeds array",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "sync"
+            },
+            "valid": false
+        },
+        {
+            "name": "unknown namespace",
+            "direction": "embed-child",
+            "message": {
+                "type": "something-else",
+                "action": "hello"
+            },
+            "valid": false
+        },
+        {
+            "name": "unknown action",
+            "direction": "embed-child",
+            "message": {
+                "type": "exe-embed",
+                "action": "evaluate"
+            },
+            "valid": false
+        },
+        {
+            "name": "media play",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "play"
+            },
+            "valid": true
+        },
+        {
+            "name": "media seek",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "seek",
+                "t": 12.5
+            },
+            "valid": true
+        },
+        {
+            "name": "media seek with a negative time",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "seek",
+                "t": -1
+            },
+            "valid": false
+        },
+        {
+            "name": "media command with a wrong version",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 2,
+                "action": "play"
+            },
+            "valid": false
+        },
+        {
+            "name": "media open without a video id",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "youtube"
+            },
+            "valid": false
+        },
+        {
+            "name": "media timeupdate",
+            "direction": "media-event",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "timeupdate",
+                "currentTime": 3,
+                "duration": 90
+            },
+            "valid": true
+        },
+        {
+            "name": "media timeupdate missing duration",
+            "direction": "media-event",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "timeupdate",
+                "currentTime": 3
+            },
+            "valid": false
+        },
+        {
+            "name": "media open with a known provider and a well-formed id",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "youtube",
+                "videoId": "aqz-KE-bpKQ"
+            },
+            "valid": true
+        },
+        {
+            "name": "media open for a provider outside the registry",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "evil.example",
+                "videoId": "aqz-KE-bpKQ"
+            },
+            "valid": false
+        },
+        {
+            "name": "media open with an id shaped to escape the URL template",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "youtube",
+                "videoId": "../../evil"
+            },
+            "valid": false
+        },
+        {
+            "name": "media open with an id valid for a different provider",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "youtube",
+                "videoId": "123456789"
+            },
+            "valid": false
+        },
+        {
+            "name": "media open with a well-formed mediateca id",
+            "direction": "media-command",
+            "message": {
+                "type": "exe-media",
+                "v": 1,
+                "action": "open",
+                "reqId": 1,
+                "provider": "mediateca-madrid",
+                "videoId": "abcd1234efgh"
+            },
+            "valid": true
+        }
+    ]
+}

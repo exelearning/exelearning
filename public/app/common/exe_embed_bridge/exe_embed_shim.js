@@ -18,10 +18,26 @@
  * Exposed two ways from a single body: window.exeEmbedShim (browser bootstrap) and
  * module.exports (tests).
  *
- * CANONICAL SOURCE for the eXeLearning embedder family lives here in eXeLearning core
- * (public/app/common/exe_embed_bridge/exe_embed_shim.js). The host plugins
- * (mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun) mirror this logic
- * (only the export wrapper differs). Keep them in sync; changes flow from core outward.
+ * NO LONGER THE CANONICAL SOURCE, and no longer shipped. The canonical implementation
+ * is the TypeScript under src/shared/external-media/, which is what the distributed
+ * artifacts are built from. This file stays as the EQUIVALENCE REFERENCE: the parity
+ * specs execute it and compare both implementations vector by vector, which is what
+ * keeps "the rewrite behaves the same" a measured claim. Editing it changes nothing
+ * that ships -- change the TypeScript. Removed at Phase 8 (ADR-0020).
+ *
+ * Canonicity lives in eXeLearning core and flows outward to the host plugins
+ * (mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun, nextcloud); they
+ * mirror core, never the other way round.
+ *
+ * Copyright (C) 2026 eXeLearning Team
+ *
+ * Dual-licensed so this ONE file can ship inside eXeLearning (AGPL-3.0-or-later)
+ * and inside the GPL-3.0-or-later host plugins (mod_exelearning) without either
+ * project relicensing it. GPLv3 s13 and AGPLv3 s13 already permit COMBINING the
+ * two, but combining never relicenses a file: only the copyright holder can offer
+ * it under both, which is what this grant does. Keep this notice in every mirror.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-3.0-or-later
  */
 (function () {
     'use strict';
@@ -30,26 +46,58 @@
      * Whether this document runs in an opaque origin (secure sandbox). In an opaque
      * origin document.cookie throws and window.origin is "null".
      *
+     * @param {Window} [win] Defaults to the global window (injectable for tests).
      * @returns {boolean}
      */
-    function isOpaqueOrigin() {
+    function isOpaqueOrigin(win) {
+        win = win || (typeof window !== 'undefined' ? window : undefined);
         try {
-            void document.cookie;
-            return window.origin === 'null';
+            void (win && win.document ? win.document : document).cookie;
+            return win.origin === 'null';
         } catch (e) {
             return true;
         }
     }
 
     /**
+     * Whether this window is nested in another browsing context.
+     *
+     * @param {Window} [win]
+     * @returns {boolean}
+     */
+    function isFramed(win) {
+        win = win || (typeof window !== 'undefined' ? window : undefined);
+        try {
+            return !!win && win.parent !== win;
+        } catch (e) {
+            return true; // Cross-origin parent access throws -> we are framed.
+        }
+    }
+
+    /**
+     * The content document's own location, used to resolve relative srcs and to
+     * decide what counts as same-host. Defaults to the global window's.
+     *
+     * @param {string} [baseHref]
+     * @returns {string|undefined}
+     */
+    function contentBase(baseHref) {
+        if (baseHref) {
+            return baseHref;
+        }
+        return typeof window !== 'undefined' && window.location ? window.location.href : undefined;
+    }
+
+    /**
      * Whether a URL path ends in .pdf (PDFs also fail under the opaque sandbox).
      *
      * @param {string} url
+     * @param {string} [baseHref] Content location (defaults to the global window's).
      * @returns {boolean}
      */
-    function isPdfUrl(url) {
+    function isPdfUrl(url, baseHref) {
         try {
-            return /\.pdf$/i.test(new URL(url, window.location.href).pathname);
+            return /\.pdf$/i.test(new URL(url, contentBase(baseHref)).pathname);
         } catch (e) {
             return false;
         }
@@ -58,20 +106,28 @@
     /**
      * Whether a src resolves to an https URL on a host other than this document's own
      * (served) host -- i.e. a cross-origin external embed. The opaque document is still
-     * served from the platform, so window.location.hostname is the platform host and the
-     * comparison is reliable. The parent relay re-validates authoritatively (DEC-0061);
-     * this is only a candidate filter so same-origin content iframes are left untouched.
+     * served from the platform, so the content location's hostname is the platform host
+     * and the comparison is reliable. The parent relay re-validates authoritatively
+     * (DEC-0061); this is only a candidate filter so same-origin content iframes are
+     * left untouched.
+     *
+     * The own-host side is derived by PARSING the base rather than reading
+     * `location.hostname`: a document can expose an href while leaving `hostname`
+     * unset, and reading it blind would throw and be swallowed as "not cross-origin",
+     * silently disabling promotion.
      *
      * @param {string} src
+     * @param {string} [baseHref] Content location (defaults to the global window's).
      * @returns {boolean}
      */
-    function isCrossOriginHttps(src) {
+    function isCrossOriginHttps(src, baseHref) {
         try {
-            var u = new URL(src, window.location.href);
+            var base = contentBase(baseHref);
+            var u = new URL(src, base);
             // Strip a single trailing dot so the LMS host in its FQDN-root form
             // ('host.') counts as same-host and is not reported as a candidate.
             var host = u.hostname.toLowerCase().replace(/\.$/, '');
-            var here = window.location.hostname.toLowerCase().replace(/\.$/, '');
+            var here = new URL(base).hostname.toLowerCase().replace(/\.$/, '');
             return u.protocol === 'https:' && host !== here;
         } catch (e) {
             return false;
@@ -84,10 +140,11 @@
      * parent relay decides what actually renders (open vs strict mode).
      *
      * @param {string} src
+     * @param {string} [baseHref] Content location (defaults to the global window's).
      * @returns {boolean}
      */
-    function isPromotable(src) {
-        return isCrossOriginHttps(src) || isPdfUrl(src);
+    function isPromotable(src, baseHref) {
+        return isCrossOriginHttps(src, baseHref) || isPdfUrl(src, baseHref);
     }
 
     /**
@@ -157,9 +214,11 @@
      *
      * @param {Document|Element} root A document or a container element to scan.
      * @param {Object} counter {n:int} mutable id counter (kept across calls).
+     * @param {string} [baseHref] Content location to resolve relative srcs against.
      * @returns {Element[]}
      */
-    function promote(root, counter) {
+    function promote(root, counter, baseHref) {
+        var base = contentBase(baseHref);
         var created = [];
         var maker = root.ownerDocument || root;
         var frames = root.querySelectorAll('iframe[src]');
@@ -169,7 +228,7 @@
                 continue;
             }
             var src = frame.getAttribute('src');
-            if (!isPromotable(src)) {
+            if (!isPromotable(src, base)) {
                 continue;
             }
             var rect = frame.getBoundingClientRect ? frame.getBoundingClientRect() : { width: 0, height: 0 };
@@ -181,7 +240,7 @@
             // cannot — it would resolve a relative url against the host page instead.
             var absoluteUrl = src;
             try {
-                absoluteUrl = new URL(src, window.location.href).href;
+                absoluteUrl = new URL(src, base).href;
             } catch (e) {
                 absoluteUrl = src;
             }
@@ -237,99 +296,205 @@
         return embeds;
     }
 
+    // Re-announcement schedule (ms after the previous attempt). The host relay is
+    // loaded LAZILY by its page (most previews embed nothing), so it may start
+    // listening after this document has already run. Announcing more than once
+    // closes that race without ever promoting on our own authority.
+    var ANNOUNCE_DELAYS = [250, 750, 1500, 3000];
+
     /**
-     * Bootstrap inside the package iframe (no-op outside the secure opaque origin).
-     * Browser-only glue (requires a framed, opaque-origin window); exercised by the
-     * Playwright/Firefox e2e (tests/e2e/embed.spec.cjs), not the happy-dom unit tests.
+     * Build the in-content runtime for one document.
+     *
+     * The shim NEVER promotes an embed on its own authority. It announces itself to
+     * the parent and waits for the host relay to answer; only then does it replace
+     * the author's iframes with placeholders. Without that answer the document is
+     * left exactly as authored — an unanswered placeholder is a permanent black box,
+     * strictly worse than an unprotected embed, and exported content routinely runs
+     * where no host exists at all (file://, a third-party LMS, an ePub reader).
+     *
+     * Note `file://` is itself an opaque origin in every engine, so "opaque" alone
+     * can never be the activation signal.
+     *
+     * @param {Window} win Injectable for tests.
+     * @param {Document} doc Injectable for tests.
+     * @returns {Object} {start, isActivated, handleHostMessage}
      */
-    /* v8 ignore start */
-    function init() {
-        if (window.parent === window || !isOpaqueOrigin()) {
-            return;
-        }
+    function createRuntime(win, doc) {
+        win = win || (typeof window !== 'undefined' ? window : undefined);
+        doc = doc || (typeof document !== 'undefined' ? document : undefined);
+
         var counter = { n: 0 };
         var scheduled = false;
         var lastReported = '';
+        var activated = false;
+        var baseHref = win && win.location ? win.location.href : undefined;
 
-        // force=true always posts (initial run, load, and parent 'request' pings —
+        function post(message) {
+            try {
+                win.parent.postMessage(message, '*');
+            } catch (e) {
+                // An unreachable parent is the no-host case; the watchdog handles it.
+            }
+        }
+
+        // force=true always posts (activation, load, and parent 'request' pings —
         // the parent may have just started listening or lost its state); observer
         // -driven reports skip when the geometry did not actually change, so an
         // attribute-noisy page (carousel animations, aria flips) cannot spam the
         // parent with identical syncs.
         function report(force) {
-            var embeds = collect(document);
+            var embeds = collect(doc);
             var serialized = JSON.stringify(embeds);
             if (!force && serialized === lastReported) {
                 return;
             }
             lastReported = serialized;
-            window.parent.postMessage({ type: 'exe-embed', action: 'sync', embeds: embeds }, '*');
+            post({ type: 'exe-embed', action: 'sync', embeds: embeds });
         }
+
         function schedule() {
             if (scheduled) {
                 return;
             }
             scheduled = true;
-            window.requestAnimationFrame(function () {
+            win.requestAnimationFrame(function () {
                 scheduled = false;
                 report(false);
             });
         }
+
         function run() {
-            promote(document, counter);
+            promote(doc, counter, baseHref);
             report(true);
         }
 
-        run();
-        if (window.MutationObserver) {
-            // attributes too, not just childList: layout-affecting UI (the exported
-            // page's nav toggle, accordions) usually flips a class/style on an
-            // existing node, which reflows the placeholders without adding or
-            // removing any element. The filter keeps the observer to the
-            // reflow-causing attributes.
-            new MutationObserver(function () {
-                promote(document, counter);
-                schedule();
-            }).observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class', 'style', 'hidden', 'open'],
+        /* v8 ignore start -- browser-only observer glue, covered by the e2e specs */
+        function observe() {
+            if (win.MutationObserver) {
+                // attributes too, not just childList: layout-affecting UI (the exported
+                // page's nav toggle, accordions) usually flips a class/style on an
+                // existing node, which reflows the placeholders without adding or
+                // removing any element. The filter keeps the observer to the
+                // reflow-causing attributes.
+                new win.MutationObserver(function () {
+                    promote(doc, counter, baseHref);
+                    schedule();
+                }).observe(doc.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class', 'style', 'hidden', 'open'],
+                });
+            }
+            win.addEventListener('scroll', schedule, true);
+            win.addEventListener('resize', schedule);
+            // A class-toggled layout change usually ANIMATES (CSS transition on the nav
+            // drawer): the mutation fires at the start, so re-measure again when the
+            // transition/animation lands to report the settled geometry.
+            win.addEventListener('transitionend', schedule, true);
+            win.addEventListener('animationend', schedule, true);
+            if (win.ResizeObserver) {
+                // Catches content-box changes that fire no window resize (the drawer
+                // pushing the content column, images loading late and growing the page).
+                var resizeObserver = new win.ResizeObserver(schedule);
+                resizeObserver.observe(doc.documentElement);
+                if (doc.body) {
+                    resizeObserver.observe(doc.body);
+                }
+            }
+            win.addEventListener('load', function () {
+                report(true);
             });
         }
-        window.addEventListener('scroll', schedule, true);
-        window.addEventListener('resize', schedule);
-        // A class-toggled layout change usually ANIMATES (CSS transition on the nav
-        // drawer): the mutation fires at the start, so re-measure again when the
-        // transition/animation lands to report the settled geometry.
-        window.addEventListener('transitionend', schedule, true);
-        window.addEventListener('animationend', schedule, true);
-        if (window.ResizeObserver) {
-            // Catches content-box changes that fire no window resize (the drawer
-            // pushing the content column, images loading late and growing the page).
-            var resizeObserver = new ResizeObserver(schedule);
-            resizeObserver.observe(document.documentElement);
-            if (document.body) {
-                resizeObserver.observe(document.body);
+        /* v8 ignore stop */
+
+        // Promote for the first time. Only ever reached from a host answer.
+        function activate() {
+            if (activated) {
+                return;
+            }
+            activated = true;
+            observe();
+            run();
+        }
+
+        function announce(index) {
+            if (activated) {
+                return;
+            }
+            post({ type: 'exe-embed', action: 'hello' });
+            if (index < ANNOUNCE_DELAYS.length) {
+                win.setTimeout(function () {
+                    announce(index + 1);
+                }, ANNOUNCE_DELAYS[index]);
             }
         }
-        window.addEventListener('load', function () {
-            report(true);
-        });
-        window.addEventListener('message', function (event) {
-            if (event.source !== window.parent) {
+
+        // Two inbound actions, deliberately distinct:
+        //
+        //   'welcome' — the relay's ANSWER to this document's hello. It is addressed:
+        //               the relay resolved this exact window before replying. This is
+        //               the only thing that may unlock promotion.
+        //   'request' — the relay's geometry re-sync ping, BROADCAST to every content
+        //               frame without resolving any of them. It must never unlock a
+        //               document; while dormant it only prompts another hello, which
+        //               recovers a relay that started after we stopped announcing.
+        function handleHostMessage(event) {
+            if (!event || event.source !== win.parent) {
                 return;
             }
             var data = event.data;
-            if (data && data.type === 'exe-embed' && data.action === 'request') {
-                run();
+            if (!data || data.type !== 'exe-embed') {
+                return;
             }
-        });
+            if (data.action === 'welcome') {
+                if (activated) {
+                    run();
+                    return;
+                }
+                activate();
+                return;
+            }
+            if (data.action === 'request') {
+                if (activated) {
+                    run();
+                } else {
+                    announce(0);
+                }
+            }
+        }
+
+        function start() {
+            if (!isFramed(win) || !isOpaqueOrigin(win)) {
+                return false;
+            }
+            win.addEventListener('message', handleHostMessage);
+            announce(0);
+            return true;
+        }
+
+        return {
+            start: start,
+            isActivated: function () {
+                return activated;
+            },
+            handleHostMessage: handleHostMessage,
+        };
     }
-    /* v8 ignore stop */
+
+    /**
+     * Bootstrap inside the package iframe (no-op outside a framed opaque origin, and
+     * dormant until a host relay answers the handshake).
+     */
+    /* v8 ignore next 3 */
+    function init() {
+        return createRuntime(window, document).start();
+    }
 
     var exp = {
         isOpaqueOrigin: isOpaqueOrigin,
+        isFramed: isFramed,
+        createRuntime: createRuntime,
         isPdfUrl: isPdfUrl,
         isCrossOriginHttps: isCrossOriginHttps,
         isPromotable: isPromotable,

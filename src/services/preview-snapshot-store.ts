@@ -31,11 +31,18 @@ export interface PreviewSnapshot {
     id: string;
     ownerUserId: number;
     files: Map<string, Uint8Array>;
-    totalBytes: number;
     /** Creation timestamp (ms) — anchors the absolute TTL cap. */
     createdAt: number;
     /** Last management write (ms) — anchors the sliding idle TTL. */
     touchedAt: number;
+    /**
+     * Publish counter, incremented on every in-place replace. A replacement
+     * keeps the capability id (the iframe URL must stay valid), so an ETag
+     * derived from the id alone would answer 304 with stale bytes after a
+     * refresh. Folding this counter in turns every ETag over on publish —
+     * including a same-size, same-path asset — without hashing any bytes.
+     */
+    publishSeq: number;
 }
 
 export interface PreviewSnapshotLimits {
@@ -218,8 +225,8 @@ export function createOrReplace(
         }
         // Atomic in-place replace: single synchronous field swap, no await.
         existing.files = files;
-        existing.totalBytes = totalBytes;
         existing.touchedAt = now;
+        existing.publishSeq += 1;
         return { snapshot: existing };
     }
 
@@ -236,9 +243,9 @@ export function createOrReplace(
         id: deps.randomId(),
         ownerUserId,
         files,
-        totalBytes,
         createdAt: now,
         touchedAt: now,
+        publishSeq: 1,
     };
     snapshots.set(snapshot.id, snapshot);
     return { snapshot };
@@ -273,6 +280,14 @@ export interface ServedFile {
     bytes: Uint8Array;
     contentType: string;
     isScriptable: boolean;
+    /**
+     * Entity tag for the revalidating cache tier. Derived from the capability
+     * id, the publish counter and the path — never from the bytes, so serving
+     * a 200 MB video costs no hashing. Only non-scriptable files are cached at
+     * all (scriptable documents are `no-store`), but the tag is computed for
+     * every file so callers need no second lookup.
+     */
+    etag: string;
 }
 
 /** Resolve a requested path inside a snapshot (traversal-safe, exact match). */
@@ -282,7 +297,12 @@ export function getFile(snapshot: PreviewSnapshot, relPath: string): ServedFile 
     const bytes = snapshot.files.get(normalized);
     if (!bytes) return null;
     const contentType = contentTypeFor(normalized);
-    return { bytes, contentType, isScriptable: isScriptableDocumentType(contentType) };
+    return {
+        bytes,
+        contentType,
+        isScriptable: isScriptableDocumentType(contentType),
+        etag: `${snapshot.id}-${snapshot.publishSeq}-${normalized}`,
+    };
 }
 
 /**

@@ -130,6 +130,22 @@ function isActiveDataUrl(value) {
  * allowlist. Such an iframe is cross-origin (the provider's own origin), so it
  * stays isolated from the editor and may render inline in the filtered preview.
  */
+/**
+ * A `<meta http-equiv="refresh">`, which navigates the document on its own.
+ *
+ * Detection and removal each had their own copy of this test. They must agree — a fragment
+ * reported as clean and then stripped, or flagged and then left in place, is worse than
+ * either outcome alone — so they read the same predicate, like the sibling checks below.
+ */
+function isMetaRefreshElement(element, tag) {
+    return tag === 'meta' && (element.getAttribute('http-equiv') || '').toLowerCase() === 'refresh';
+}
+
+/** A `<link rel="import">`, the deprecated HTML Imports loader. */
+function isHtmlImportLink(element, tag) {
+    return tag === 'link' && (element.getAttribute('rel') || '').toLowerCase().split(' ').includes('import');
+}
+
 function isTrustedEmbedIframe(element) {
     return (
         element.localName.toLowerCase() === 'iframe' &&
@@ -164,12 +180,8 @@ function inspectFragment(root) {
                 categories.add('iframe');
             }
         }
-        if (tag === 'meta' && (element.getAttribute('http-equiv') || '').toLowerCase() === 'refresh') {
-            categories.add('meta-refresh');
-        }
-        if (tag === 'link' && (element.getAttribute('rel') || '').toLowerCase().split(' ').includes('import')) {
-            categories.add('html-import');
-        }
+        if (isMetaRefreshElement(element, tag)) categories.add('meta-refresh');
+        if (isHtmlImportLink(element, tag)) categories.add('html-import');
         if (tag === 'form' && element.hasAttribute('action')) categories.add('form-action');
 
         for (const attribute of Array.from(element.attributes)) {
@@ -207,10 +219,8 @@ function inspectXml(html, categories) {
 function removeUnsafeNodes(root) {
     for (const element of Array.from(root.querySelectorAll('*'))) {
         const tag = element.localName.toLowerCase();
-        const isMetaRefresh =
-            tag === 'meta' && (element.getAttribute('http-equiv') || '').toLowerCase() === 'refresh';
-        const isHtmlImport =
-            tag === 'link' && (element.getAttribute('rel') || '').toLowerCase().split(' ').includes('import');
+        const isMetaRefresh = isMetaRefreshElement(element, tag);
+        const isHtmlImport = isHtmlImportLink(element, tag);
         const isDangerousPlugin =
             (tag === 'object' || tag === 'embed' || tag === 'applet') && isDangerousPluginElement(element);
         if (REMOVED_TAGS.has(tag) || isMetaRefresh || isHtmlImport || isDangerousPlugin) {

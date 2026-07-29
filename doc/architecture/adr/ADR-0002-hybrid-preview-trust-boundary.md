@@ -1,7 +1,7 @@
 ---
 id: ADR-0002
 title: "Hybrid preview trust boundary: source-filtered by default, opaque-on-enable"
-status: Proposed
+status: Accepted
 date: 2026-07-22
 deciders:
   - "@erseco"
