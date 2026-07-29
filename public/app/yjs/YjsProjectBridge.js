@@ -1616,36 +1616,41 @@ class YjsProjectBridge {
    */
   setupUndoRedoHandlers() {
     // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (!this.initialized) return;
+    document.addEventListener('keydown', (e) => this.handleUndoRedoKeydown(e));
+  }
 
-      // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
-      const activeEl = document.activeElement;
-      const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
-      const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
-      if (isContentEditable || isInTinyMCE) return;
+  /**
+   * Document-level handler for the project (Yjs) undo/redo shortcuts.
+   */
+  handleUndoRedoKeydown(e) {
+    if (!this.initialized) return;
 
-      // Ctrl+Z / Cmd+Z - Undo (without Shift)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        this.undo();
-        return;
-      }
+    // While an iDevice is open in edition mode its own editor owns the
+    // undo/redo shortcuts (e.g. the Slide editor's Fabric history). Yield
+    // silently: running the project-level undo here would pop the
+    // "unsaved changes" warning modal on every Ctrl+Z (#2218).
+    if (document.querySelector('div.idevice_node[mode="edition"]')) return;
 
+    // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
+    const activeEl = document.activeElement;
+    const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
+    const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
+    if (isContentEditable || isInTinyMCE) return;
+
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      // Ctrl+Z / Cmd+Z - Undo
+      e.preventDefault();
+      this.undo();
+    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'z') {
       // Ctrl+Shift+Z / Cmd+Shift+Z - Redo
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
-
+      e.preventDefault();
+      this.redo();
+    } else if (mod && e.key.toLowerCase() === 'y' && !e.shiftKey) {
       // Ctrl+Y / Cmd+Y - Redo (alternative)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !e.shiftKey) {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
-    });
+      e.preventDefault();
+      this.redo();
+    }
   }
 
   /**

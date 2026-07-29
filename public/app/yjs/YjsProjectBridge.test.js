@@ -1820,6 +1820,96 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('Undo/Redo keyboard shortcuts', () => {
+    const keyEvent = (props) => ({
+      key: '',
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      preventDefault: mock(() => {}),
+      ...props,
+    });
+
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.undo = mock(() => {});
+      bridge.redo = mock(() => {});
+      mockApp.project = { checkOpenIdevice: mock(() => true) };
+      global.document.querySelector = mock(() => null);
+    });
+
+    it('Ctrl+Z runs the project undo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Cmd+Shift+Z runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', metaKey: true, shiftKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Y runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'y', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Z yields silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      // Silent yield: no checkOpenIdevice() call, so no warning modal
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('redo shortcuts yield silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'z', metaKey: true, shiftKey: true }));
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'y', ctrlKey: true }));
+      expect(bridge.redo).not.toHaveBeenCalled();
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('does nothing before the bridge is initialized', () => {
+      bridge.initialized = false;
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('ignores shortcuts while typing in a contenteditable element', () => {
+      global.document.activeElement = {
+        getAttribute: (name) => (name === 'contenteditable' ? 'true' : null),
+        closest: () => null,
+      };
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      delete global.document.activeElement;
+    });
+
+    it('setupUndoRedoHandlers registers a document keydown listener that forwards to handleUndoRedoKeydown', () => {
+      const keydownCall = global.document.addEventListener.mock.calls.find(([type]) => type === 'keydown');
+      expect(keydownCall).toBeTruthy();
+      const handler = keydownCall[1];
+      bridge.handleUndoRedoKeydown = mock(() => {});
+      handler(keyEvent({ key: 'z', ctrlKey: true }));
+      expect(bridge.handleUndoRedoKeydown).toHaveBeenCalled();
+    });
+  });
+
   describe('Save Status', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
