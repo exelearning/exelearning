@@ -27,7 +27,7 @@ function attachment(overrides = {}) {
     };
 }
 
-describe('file-attachment exported link target', () => {
+describe('file-attachment exported links always stay in the same browsing context', () => {
     let $fileattachment;
 
     beforeEach(() => {
@@ -36,38 +36,26 @@ describe('file-attachment exported link target', () => {
         $fileattachment = loadExportIdevice(code);
     });
 
-    it('opens in the same browsing context by default (WCAG 3.2.5 Change on Request)', () => {
+    it('renders a plain download link without target or rel attributes', () => {
         const html = $fileattachment.renderItem(attachment(), true);
 
-        expect(html).not.toContain('target="_blank"');
-        expect(html).not.toContain('rel="noopener noreferrer"');
+        expect(html).toContain('download="worksheet.pdf"');
+        expect(html).not.toContain('target=');
+        expect(html).not.toContain('rel=');
     });
 
-    it('adds a secure blank target only when the option is explicitly enabled', () => {
+    it('ignores a stored openInNewWindow flag from older documents', () => {
         const html = $fileattachment.renderItem(attachment({ openInNewWindow: true }), true);
 
-        expect(html).toContain('target="_blank"');
-        expect(html).toContain('rel="noopener noreferrer"');
+        expect(html).toContain('download="worksheet.pdf"');
+        expect(html).not.toContain('target=');
+        expect(html).not.toContain('rel=');
     });
 
-    it('omits target and rel attributes when the option is disabled', () => {
-        const html = $fileattachment.renderItem(attachment({ openInNewWindow: false }), true);
-
-        expect(html).not.toContain('target="_blank"');
-        expect(html).not.toContain('rel="noopener noreferrer"');
-    });
-
-    it('does not add target attributes when the option is explicitly enabled but the file is missing', () => {
+    it('never emits target attributes for missing-file placeholders', () => {
         const html = $fileattachment.renderItem(attachment({ url: '', openInNewWindow: true }), true);
 
-        expect(html).not.toContain('target="_blank"');
-        expect(html).not.toContain('rel="noopener noreferrer"');
-    });
-
-    it('does not add target attributes to missing-file placeholders', () => {
-        const html = $fileattachment.renderItem(attachment({ url: '' }), true);
-
-        expect(html).not.toContain('target="_blank"');
-        expect(html).not.toContain('rel="noopener noreferrer"');
+        expect(html).not.toContain('target=');
+        expect(html).not.toContain('rel=');
     });
 });

@@ -55,8 +55,17 @@ authoring and export rendering provide?
 - **Accessibility (WCAG)**: keyboard operable controls, screen-reader labels,
   meaningful link text, non-decorative-icon handling, visible focus.
 - **No unrequested change of context**: a download link must not move the learner
-  to a new tab/window unless the author asked for it (WCAG 2.2 SC 3.2.5 *Change on
-  Request*, technique G200).
+  to a new tab/window (WCAG 2.2 SC 3.2.5 *Change on Request*, technique G200; a
+  new-tab link would additionally require an announced "(opens in a new tab)"
+  indicator per technique G201).
+- **Honest controls**: every attachment link carries the `download` attribute, and
+  per the HTML spec a downloading hyperlink never consults `target` — so a per-file
+  "open in a new tab" option cannot actually deliver a new tab for the same-origin
+  files this iDevice serves. The UI must not offer behavior the browser will not
+  perform.
+- **Constrained runtimes**: in sandboxed iframes (hardened preview/embedding),
+  `target="_blank"` fails silently without `allow-popups`; in the Electron app it
+  requests a new chromeless `BrowserWindow`. Plain downloads work in both.
 - **Runtime-safe strings**: the export code runs in the generated site, where the
   editor-only `c_()` / `_()` helpers do not exist — only the pre-resolved
   `$exe_i18n` bundle shipped as `libs/common_i18n.js`.
@@ -83,11 +92,14 @@ authoring and export rendering provide?
   `aria-hidden` on decorative icons; `aria-expanded` on the collapsible
   title/description panel; `download` attribute on links; `:focus`/`:focus-visible`
   styles in CSS.
-- **Link target**: per-file **Open in a new tab or window** option, **opt-in**
-  (unchecked by default, including for imported/legacy attachments that lack the
-  property). Enabling it emits `target="_blank" rel="noopener noreferrer"`;
-  otherwise no `target` is emitted and the link stays in the current browsing
-  context.
+- **Link target**: attachments are always plain download links — the renderer
+  never emits `target`/`rel`, and a stored `openInNewWindow` flag (written by
+  earlier revisions of this branch) is ignored. A per-file "Open in a new tab or
+  window" checkbox existed briefly during review but was removed: the always-on
+  `download` attribute makes `target` inert for same-origin files, so the option
+  promised behavior browsers do not deliver, while still costing the G201
+  indicator, sandbox `allow-popups` and Electron window-policy work. Authors who
+  want an in-browser viewing link can create a regular link in a Text iDevice.
 - **Export-runtime strings**: export rendering resolves its labels through a local
   `translate(key, englishFallback)` helper that reads the `$exe_i18n` bundle, never
   through `c_()`/`_()`. The English literal is used when the bundle or key is
@@ -135,10 +147,10 @@ All paths verified on the PR #2011 branch.
   `url` exists, and otherwise a non-clickable
   `<span class="fileAttachment-link fileAttachment-link--missing">` with
   `translate('fileUnavailable', 'File unavailable')`.
-- Link target (export): `renderItem()` emits the `target`/`rel` pair only when
-  `attachment.openInNewWindow === true`; edition `addAttachment()` mirrors the same
-  `=== true` test for the checkbox state, and newly added/uploaded files are stored
-  with `openInNewWindow: false`.
+- Link target (export): `renderItem()` never emits `target`/`rel` — links carry
+  only `href` and `download`; the edition UI has no per-file target control and
+  `collectAttachments()` does not persist `openInNewWindow`, so the flag is
+  dropped from documents that stored it.
 - Export-runtime strings: `translate(key, fallback)` reads `window.$exe_i18n`
   (shipped as `libs/common_i18n.js`, generated from
   `public/app/common/common_i18n.js` by `scripts/build-i18n-bundles.js`) and falls
@@ -172,8 +184,9 @@ All paths verified on the PR #2011 branch.
     asserting no `ReferenceError`, `$exe_i18n` use when present, and the English
     fallback when a key is missing or blank.
   - Target Vitest (`.../export/file-attachment-target.test.js`,
-    `.../edition/file-attachment-target.test.js`): default is no `target`, the
-    attributes appear only on explicit opt-in, and the checkbox state round-trips.
+    `.../edition/file-attachment-target.test.js`): links never carry `target`/`rel`
+    (even when older data stores `openInNewWindow: true`), the edition renders no
+    per-file target checkbox, and a stored flag is dropped on save.
   - Playwright (`test/e2e/playwright/specs/idevices/file-attachment.spec.ts`):
     "reflects renaming and deleting a referenced asset in the Media Library"
     asserts the row updates on rename and gains
@@ -196,10 +209,13 @@ rendered markup uses `exe-sr-only` link prefixes, `aria-*` labels, `download`
 attributes, visible focus styles, dependency-free inline SVG icons, and
 `escapeHtml`/`escapeAttr` on every author/legacy-controlled field.
 
-Download links open in the **current** browsing context by default; opening in a
-new tab/window is a per-file, opt-in author decision (WCAG 2.2 SC 3.2.5 *Change on
-Request* / technique G200), and the export renderer emits `target`/`rel` only on
-explicit opt-in. Export-side strings are resolved from the `$exe_i18n` bundle with
+Download links **always** stay in the current browsing context: the renderer emits
+`href` + `download` and never `target`/`rel` (WCAG 2.2 SC 3.2.5 *Change on
+Request* / technique G200), and a stored `openInNewWindow` flag is ignored and
+dropped on save. Since the `download` attribute makes `target` inert for the
+same-origin files this iDevice serves, a target option could not work as labelled;
+in-browser viewing links belong in a Text iDevice instead. Export-side strings are
+resolved from the `$exe_i18n` bundle with
 an English fallback — the editor-only `c_()`/`_()` helpers must never be called
 from export code.
 
@@ -215,8 +231,9 @@ from export code.
   all export targets.
 - Attachment titles/filenames/descriptions are escaped, closing the obvious
   injection vector on those fields.
-- No unrequested change of context: learners keep their place and the Back button
-  keeps working unless the author deliberately opted a file into a new tab.
+- No unrequested change of context, ever: learners keep their place and the Back
+  button keeps working; there is no per-file state to maintain, announce (G201)
+  or test across web, preview, desktop and sandboxed-embed runtimes.
 - Export rendering no longer depends on an editor-only global, so a missing
   translation helper can never abort the iDevice render in a generated site.
 
@@ -273,9 +290,19 @@ from export code.
 
 - Issue #1858, PR #2011, SDD-0009.
 - WCAG 2.2 SC 3.2.5 *Change on Request*
-  (<https://www.w3.org/WAI/WCAG22/Understanding/change-on-request.html>) and
+  (<https://www.w3.org/WAI/WCAG22/Understanding/change-on-request.html>),
   technique G200 *Opening new windows and tabs from a link only when necessary*
-  (<https://www.w3.org/WAI/WCAG22/Techniques/general/G200>).
+  (<https://www.w3.org/WAI/WCAG22/Techniques/general/G200>) and technique G201
+  *Giving users advanced warning when opening a new window*
+  (<https://www.w3.org/WAI/WCAG22/Techniques/general/G201>).
+- HTML Standard, *downloading resources* — following a hyperlink with a
+  `download` attribute downloads instead of navigating; `target` is not consulted
+  (<https://html.spec.whatwg.org/multipage/links.html#downloading-resources>).
+- MDN `<iframe>` `sandbox` — without `allow-popups`, `target="_blank"` fails
+  silently
+  (<https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#sandbox>).
+- Electron `window.open` — `target="_blank"` creates a new `BrowserWindow` subject
+  to `setWindowOpenHandler` (<https://www.electronjs.org/docs/latest/api/window-open>).
 - ADR-0035 (iDevice restoration), ADR-0036 (reference model), ADR-0037 (legacy
   remap).
 - `public/files/perm/idevices/base/file-attachment/edition/file-attachment.js`,

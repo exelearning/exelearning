@@ -328,7 +328,6 @@ var $exeDevice = {
                 size: typeof metadata.size === 'number' ? metadata.size : file.size || 0,
                 title: '',
                 description: '',
-                openInNewWindow: false,
             });
         } catch (e) {
             if (typeof eXe !== 'undefined' && eXe.app && eXe.app.alert) {
@@ -352,7 +351,6 @@ var $exeDevice = {
             size: typeof asset.size === 'number' ? asset.size : 0,
             title: '',
             description: '',
-            openInNewWindow: false,
         });
     },
 
@@ -372,9 +370,6 @@ var $exeDevice = {
         const category = this.getFileCategory(attachment.mimeType, filename);
         const icon = this.getFileIconSvg(attachment.mimeType, filename);
         const missing = !url;
-        // Opt-in: unchecked unless the author explicitly enabled it for this file
-        // (WCAG 2.2 SC 3.2.5 Change on Request / technique G200).
-        const openInNewWindow = attachment.openInNewWindow === true;
 
         const item = document.createElement('li');
         item.className = `fileAttachment-edit-item${missing ? ' fileAttachment-edit-item--missing' : ''}`;
@@ -386,7 +381,6 @@ var $exeDevice = {
 
         const titleId = `fileAttachmentTitle_${rowId}`;
         const descId = `fileAttachmentDesc_${rowId}`;
-        const targetId = `fileAttachmentOpenInNewWindow_${rowId}`;
         const displayName = filename || _('Unknown file');
 
         item.innerHTML = `
@@ -408,12 +402,6 @@ var $exeDevice = {
                         <div class="property-row">
                             <label for="${descId}">${_('Description')}:</label>
                             <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${this.escapeHtml(attachment.description || '')}</textarea>
-                        </div>
-                        <div class="property-row">
-                            <label class="fileAttachment-toggle" for="${targetId}">
-                                <input type="checkbox" id="${targetId}" class="fileAttachment-edit-open-new-window" style="width: auto; margin: 0;" ${openInNewWindow ? 'checked' : ''} />
-                                ${_('Open in a new tab or window')}
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -530,7 +518,6 @@ var $exeDevice = {
         rows.forEach((row) => {
             const titleEl = row.querySelector('.fileAttachment-edit-title');
             const descEl = row.querySelector('.fileAttachment-edit-description');
-            const openInNewWindowEl = row.querySelector('.fileAttachment-edit-open-new-window');
             const size = parseInt(row.getAttribute('data-size') || '0', 10);
             attachments.push({
                 url: row.getAttribute('data-url') || '',
@@ -539,7 +526,6 @@ var $exeDevice = {
                 size: isNaN(size) ? 0 : size,
                 title: titleEl ? titleEl.value.trim() : '',
                 description: descEl ? descEl.value.trim() : '',
-                openInNewWindow: openInNewWindowEl ? openInNewWindowEl.checked : false,
             });
         });
         return attachments;

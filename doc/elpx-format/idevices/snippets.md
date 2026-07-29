@@ -552,8 +552,7 @@ Source: skeleton based on `public/files/perm/idevices/base/file-attachment/`
     "attachments":[
       {"url":"asset://7f3a1c2e-1111-2222-3333-444455556666.pdf",
        "filename":"worksheet.pdf","mimeType":"application/pdf","size":123456,
-       "title":"Activity worksheet","description":"Print and complete before class.",
-       "openInNewWindow":true},
+       "title":"Activity worksheet","description":"Print and complete before class."},
       {"url":"asset://9a8b7c6d-aaaa-bbbb-cccc-ddddeeeeffff.txt",
        "filename":"notes.txt","mimeType":"text/plain","size":2048,
        "title":"","description":""}
@@ -568,7 +567,7 @@ Source: skeleton based on `public/files/perm/idevices/base/file-attachment/`
 </odeComponent>
 ```
 
-The file-attachment iDevice stores all of its state in `jsonProperties`: optional `intro` instructions (shown only when non-empty), a `showDescriptions` toggle, and an `attachments` array. Each attachment keeps a stable `asset://<uuid>.<ext>` reference (the Media Library asset is the source of truth) plus a metadata snapshot (`filename`, `mimeType`, `size`) used as a fallback when the live AssetManager is unavailable. The optional per-file `openInNewWindow` flag is opt-in: only `true` emits `target="_blank" rel="noopener noreferrer"`; when it is absent or `false` the link stays in the current browsing context (WCAG 2.2 SC 3.2.5). The `url` values are rewritten to packaged `content/resources/...` paths on export, and the iDevice renders one accessible download link per attachment from `jsonProperties` at view time (so `htmlView` is empty). Legacy `FileAttachIdevice` / `FileAttachIdeviceInc` / `AttachmentIdevice` import into this type.
+The file-attachment iDevice stores all of its state in `jsonProperties`: optional `intro` instructions (shown only when non-empty), a `showDescriptions` toggle, and an `attachments` array. Each attachment keeps a stable `asset://<uuid>.<ext>` reference (the Media Library asset is the source of truth) plus a metadata snapshot (`filename`, `mimeType`, `size`) used as a fallback when the live AssetManager is unavailable. Links are always plain download links (`download` attribute, no `target`), so they never change the browsing context (WCAG 2.2 SC 3.2.5 / technique G200); a stored `openInNewWindow` flag from older documents is ignored. The `url` values are rewritten to packaged `content/resources/...` paths on export, and the iDevice renders one accessible download link per attachment from `jsonProperties` at view time (so `htmlView` is empty). Legacy `FileAttachIdevice` / `FileAttachIdeviceInc` / `AttachmentIdevice` import into this type.
 
 ---
 

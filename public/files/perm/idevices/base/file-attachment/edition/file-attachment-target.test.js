@@ -27,7 +27,7 @@ function attachment(overrides = {}) {
     };
 }
 
-describe('file-attachment per-file target option', () => {
+describe('file-attachment edition has no per-file link-target option', () => {
     let $exeDevice;
     let body;
 
@@ -48,49 +48,33 @@ describe('file-attachment per-file target option', () => {
         document.body.innerHTML = '';
     });
 
-    it('defaults existing attachments without the property to the same browsing context', () => {
+    it('does not render an open-in-new-window checkbox', () => {
         init({ attachments: [attachment()] });
 
-        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        expect(checkbox).not.toBeNull();
-        expect(checkbox.checked).toBe(false);
-        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
+        expect(body.querySelector('.fileAttachment-edit-open-new-window')).toBeNull();
     });
 
-    it('restores and persists the enabled state', () => {
+    it('does not render the checkbox even when older data stored the flag', () => {
         init({ attachments: [attachment({ openInNewWindow: true })] });
 
-        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        expect(checkbox.checked).toBe(true);
-        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(true);
+        expect(body.querySelector('.fileAttachment-edit-open-new-window')).toBeNull();
     });
 
-    it('restores and persists the disabled state', () => {
-        init({ attachments: [attachment({ openInNewWindow: false })] });
+    it('drops a stored openInNewWindow flag on save', () => {
+        init({ attachments: [attachment({ openInNewWindow: true })] });
 
-        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        expect(checkbox.checked).toBe(false);
-        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
+        const saved = $exeDevice.save().attachments[0];
+        expect('openInNewWindow' in saved).toBe(false);
     });
 
-    it('uses the disabled state for newly selected Media Library files', () => {
+    it('does not persist the flag for newly selected Media Library files', () => {
         init();
         $exeDevice.addAttachmentFromAsset({
             assetUrl: 'asset://bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.pdf',
             asset: { filename: 'new.pdf', mime: 'application/pdf', size: 10 },
         });
 
-        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        expect(checkbox.checked).toBe(false);
-        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(false);
-    });
-
-    it('keeps the author choice when the checkbox is ticked before saving', () => {
-        init({ attachments: [attachment()] });
-
-        const checkbox = body.querySelector('.fileAttachment-edit-open-new-window');
-        checkbox.checked = true;
-
-        expect($exeDevice.save().attachments[0].openInNewWindow).toBe(true);
+        const saved = $exeDevice.save().attachments[0];
+        expect('openInNewWindow' in saved).toBe(false);
     });
 });

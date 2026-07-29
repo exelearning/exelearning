@@ -190,10 +190,6 @@ var $fileattachment = {
         const category = $fileattachment.getFileCategory(attachment.mimeType, filename);
         const icon = $fileattachment.getFileIconSvg(attachment.mimeType, filename);
         const size = $fileattachment.formatFileSize(attachment.size);
-        // Opt-in: links stay in the same browsing context unless the author asked
-        // for a new tab (WCAG 2.2 SC 3.2.5 Change on Request / technique G200).
-        const targetAttributes =
-            attachment.openInNewWindow === true ? ' target="_blank" rel="noopener noreferrer"' : '';
 
         const meta = [];
         if (filename && filename !== label) meta.push($fileattachment.escapeHtml(filename));
@@ -210,7 +206,7 @@ var $fileattachment = {
         let body;
         if (url) {
             // Accessible link text: "Download <label>" announced via the visually hidden span.
-            body = `<a class="fileAttachment-link" href="${$fileattachment.escapeAttr(url)}" download="${$fileattachment.escapeAttr(filename || label)}"${targetAttributes}>
+            body = `<a class="fileAttachment-link" href="${$fileattachment.escapeAttr(url)}" download="${$fileattachment.escapeAttr(filename || label)}">
                 <span class="fileAttachment-icon fileAttachment-icon--${category}" aria-hidden="true">${icon}</span>
                 <span class="fileAttachment-text">
                     <span class="exe-sr-only">${$fileattachment.translate('download', 'Download')} </span><span class="fileAttachment-title">${$fileattachment.escapeHtml(label)}</span>
