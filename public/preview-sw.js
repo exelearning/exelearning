@@ -4,7 +4,7 @@
  * Adapted from eXeViewer approach (https://github.com/exelearning/exeviewer)
  */
 
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.1.0';
 
 /**
  * MIME types for common file extensions
@@ -630,7 +630,101 @@ function createSuccessResponse(body, mimeType) {
         status: 200,
         headers: {
             'Content-Type': mimeType,
+            'Content-Length': String(body.byteLength != null ? body.byteLength : body.length),
+            // Media elements only expose a seekable range when the server
+            // advertises byte ranges. Without this, a preview <video>/<audio>
+            // reports `seekable = [0, 0]` and EVERY seek is clamped to 0 — the
+            // scrub bar does nothing and an interactive-video "jump" rewinds the
+            // activity to the start instead of jumping forward.
+            'Accept-Ranges': 'bytes',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'X-Served-By': 'eXeLearning-Preview-SW',
+        },
+    });
+}
+
+/**
+ * Parse a single-range `Range: bytes=…` header against a body length.
+ *
+ * Supports the three forms media elements actually send: `bytes=start-end`,
+ * `bytes=start-` (open ended) and `bytes=-suffix` (last N bytes). Multi-range
+ * requests are declined (null) so the caller falls back to a full 200 — that is
+ * a valid, spec-compliant answer and browsers never need it for media.
+ *
+ * @param {string|null} rangeHeader - The raw Range header value
+ * @param {number} size - Total length of the body in bytes
+ * @returns {{start: number, end: number}|null|false} Range (inclusive), null to
+ *          ignore, or false when the range is unsatisfiable (→ 416)
+ */
+function parseByteRange(rangeHeader, size) {
+    if (!rangeHeader || typeof rangeHeader !== 'string') {
+        return null;
+    }
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+    if (!match) {
+        return null;
+    }
+    const rawStart = match[1];
+    const rawEnd = match[2];
+    if (rawStart === '' && rawEnd === '') {
+        return null;
+    }
+    let start;
+    let end;
+    if (rawStart === '') {
+        // Suffix range: the last N bytes.
+        const suffix = parseInt(rawEnd, 10);
+        if (suffix <= 0) {
+            return false;
+        }
+        start = Math.max(0, size - suffix);
+        end = size - 1;
+    } else {
+        start = parseInt(rawStart, 10);
+        end = rawEnd === '' ? size - 1 : parseInt(rawEnd, 10);
+    }
+    if (!isFinite(start) || !isFinite(end) || start > end || start >= size) {
+        return false;
+    }
+    return { start, end: Math.min(end, size - 1) };
+}
+
+/**
+ * Create a 206 Partial Content response for a byte range of the body.
+ *
+ * @param {Uint8Array} body - The full body
+ * @param {string} mimeType - The content type
+ * @param {{start: number, end: number}} range - Inclusive byte range
+ * @returns {Response} 206 Partial Content response
+ */
+function createRangeResponse(body, mimeType, range) {
+    const size = body.byteLength != null ? body.byteLength : body.length;
+    const slice = body.slice(range.start, range.end + 1);
+    return new Response(slice, {
+        status: 206,
+        headers: {
+            'Content-Type': mimeType,
+            'Content-Length': String(slice.byteLength != null ? slice.byteLength : slice.length),
+            'Content-Range': `bytes ${range.start}-${range.end}/${size}`,
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'X-Served-By': 'eXeLearning-Preview-SW',
+        },
+    });
+}
+
+/**
+ * Create a 416 Range Not Satisfiable response.
+ *
+ * @param {number} size - Total length of the body in bytes
+ * @returns {Response} 416 response
+ */
+function createRangeNotSatisfiableResponse(size) {
+    return new Response(null, {
+        status: 416,
+        headers: {
+            'Content-Range': `bytes */${size}`,
+            'Accept-Ranges': 'bytes',
             'X-Served-By': 'eXeLearning-Preview-SW',
         },
     });
@@ -769,6 +863,9 @@ if (typeof module !== 'undefined' && module.exports) {
         createNotReadyResponse,
         createNotFoundResponse,
         createSuccessResponse,
+        parseByteRange,
+        createRangeResponse,
+        createRangeNotSatisfiableResponse,
         createPdfViewerResponse,
     };
 }
@@ -1054,6 +1151,19 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
             // For HTML files, inject helper scripts
             if (mimeType.startsWith('text/html')) {
                 body = injectScripts(body, contentOptions);
+            }
+
+            // Honour byte ranges (after any injection, so the offsets match the
+            // bytes we actually serve). Media elements need this to expose a
+            // seekable range at all.
+            const rangeHeader = request && request.headers ? request.headers.get('Range') : null;
+            const size = body.byteLength != null ? body.byteLength : body.length;
+            const range = parseByteRange(rangeHeader, size);
+            if (range === false) {
+                return createRangeNotSatisfiableResponse(size);
+            }
+            if (range) {
+                return createRangeResponse(body, mimeType, range);
             }
 
             return createSuccessResponse(body, mimeType);
