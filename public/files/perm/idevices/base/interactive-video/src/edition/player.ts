@@ -10,7 +10,7 @@ import type { AdapterSpec, ProviderFactory } from '../providers/types';
 import { escapeHtml } from '../shared/html';
 import { sortInteractions } from '../shared/scheduling';
 import { secondsToHms } from '../shared/time';
-import { normalizeVideoSource } from '../shared/video-source';
+import { isNativeProvider, normalizeVideoSource } from '../shared/video-source';
 import { typeLabel } from './form';
 import type { EditionState } from './state';
 import { tr } from './state';
@@ -69,7 +69,7 @@ export function currentProvider(): string | null {
  *  (library file, direct media URL, Mediateca) but not to iframe embeds. */
 export function toggleSource(): void {
     const provider = currentProvider();
-    $('.exe-iv-captions-section').toggle(provider === 'local' || provider === 'mediateca');
+    $('.exe-iv-captions-section').toggle(isNativeProvider(provider));
 }
 
 // ---------------------------------------------------------------------------

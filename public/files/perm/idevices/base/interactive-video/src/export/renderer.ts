@@ -8,6 +8,7 @@ import { dropdownOptions, dropdownWordsFromSegments, htmlPromptToSegments } from
 import { escapeHtml } from '../shared/html';
 import { sortInteractions } from '../shared/scheduling';
 import { secondsToHms } from '../shared/time';
+import { isNativeProvider } from '../shared/video-source';
 import type { Interaction, InteractiveVideoDocumentV2, PromptSegment, Question } from '../shared/types';
 import { embedUrl as bundledEmbedUrl, mediatecaStreamUrl as bundledMediatecaUrl } from '../providers/index';
 import type { ProviderFactory } from '../providers/types';
@@ -102,7 +103,7 @@ export function renderPlayerHtml(doc: InteractiveVideoDocumentV2, t: Translate):
     // Local files and Mediateca both play through a native <video> (Mediateca
     // over the derived legacy stream URL), so they share the same declarative
     // markup and the HTML5 adapter (native timeupdate -> scheduler).
-    if (provider === 'local' || provider === 'mediateca') {
+    if (isNativeProvider(provider)) {
         const src = provider === 'mediateca' && video.videoId ? resolveMediatecaStreamUrl(video.videoId) : video.url;
         const tracks = (video.captions || [])
             .map(
@@ -263,23 +264,8 @@ export function shuffle<T>(list: readonly T[]): T[] {
 
 /** Fisher-Yates index shuffle, guaranteed non-identity for length > 1. */
 export function shuffleIndices(n: number): number[] {
-    const order: number[] = [];
-    for (let i = 0; i < n; i++) {
-        order.push(i);
-    }
-    for (let i = n - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const tmp = order[i] as number;
-        order[i] = order[j] as number;
-        order[j] = tmp;
-    }
-    let isIdentity = true;
-    for (let i = 0; i < n; i++) {
-        if (order[i] !== i) {
-            isIdentity = false;
-            break;
-        }
-    }
+    const order = shuffle(Array.from({ length: n }, (_, i) => i));
+    const isIdentity = order.every((value, i) => value === i);
     if (isIdentity && n > 1) {
         const first = order[0] as number;
         order[0] = order[1] as number;

@@ -129,7 +129,7 @@ export interface UnsupportedQuestion extends QuestionBase {
 
 export type Question = KnownQuestion | UnsupportedQuestion;
 
-const QUESTION_KINDS: readonly QuestionKind[] = [
+export const QUESTION_KINDS: readonly QuestionKind[] = [
     'singleChoice',
     'multipleChoice',
     'trueFalse',

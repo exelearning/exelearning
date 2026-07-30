@@ -20,14 +20,12 @@ import { sortInteractions } from '../shared/scheduling';
 import type { InteractiveVideoDocumentV2 } from '../shared/types';
 import { newDocument } from '../shared/types';
 import { isSafeVideoUrl, normalizeVideoSource } from '../shared/video-source';
-import { commitBodyEditor, readEditor } from './body-editor';
+import { commitBodyEditor } from './body-editor';
 import type { Editor } from './editor';
 import { createEditor } from './editor';
 import { addCaption, descriptionHtml, renderCaptions, tabGeneralSettingsHtml, wireHelp } from './form';
 import { normalizeQuestionForKind, validateQuestions } from './interactions/question';
 import {
-    announce,
-    currentProvider,
     currentSourceValue,
     placeTimeFromTrack,
     renderInteractionsPlayer,
@@ -58,18 +56,14 @@ function buildCi18n(): Record<string, string> {
         seeAll: c('see all the slides and answer all the questions'),
         noSlides: c('This video has no interactive elements.'),
         goOn: c('Continue'),
-        error: c('Error'),
-        dataError: c('Incompatible code'),
         cover: c('Cover'),
         right: c('Right!'),
         wrong: c('Wrong'),
         sortableListInstructions: c('Use the Move up and Move down buttons to put the items in the correct order.'),
         up: c('Move up'),
         down: c('Move down'),
-        rightAnswer: c('Right answer:'),
         notAnswered: c('Please finish the activity'),
         check: c('Check'),
-        newWindow: c('New Window'),
         msgSaveAuto: c('Your score will be automatically saved after each question.'),
         msgYouScore: c('Your score'),
         msgYouLastScore: c('The last score saved is'),
@@ -79,7 +73,6 @@ function buildCi18n(): Record<string, string> {
         msgEndGameScore: c('Please start the game before saving your score.'),
         msgSeveralScore: c('You can save the score as many times as you want'),
         msgOnlySaveScore: c('You can only save the score once!'),
-        msgOnlySave: c('You can only save once'),
         msgOnlySaveAuto: c('Your score will be saved after each question. You can only play once.'),
         msgUncompletedActivity: c('Incomplete activity'),
         msgSuccessfulActivity: c('Activity: Passed. Score: %s'),
@@ -150,8 +143,18 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
         // (typed URL or media-library pick, which fills the field and triggers
         // change): both the subtitles visibility and the preview surface
         // depend on it.
+        // Rebuilding the preview surface tears down the adapter and mounts an
+        // iframe or <video>, so skip it when the source text has not actually
+        // changed — otherwise every input+blur pair rebuilds (and reloads the
+        // embed) twice for one edit.
+        let lastRenderedSource = String($('#ivVideoFile').val() ?? '');
         $('#ivVideoFile').on('change input', () => {
             toggleSource();
+            const value = String($('#ivVideoFile').val() ?? '');
+            if (value === lastRenderedSource) {
+                return;
+            }
+            lastRenderedSource = value;
             renderInteractionsPlayer(state, editor.refreshMarkers);
         });
         // Add a subtitle track: pick a .vtt/.srt asset from the media library.
@@ -271,9 +274,7 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
                 doc.video.url = normalized.url;
                 doc.video.videoId = normalized.videoId;
             } else {
-                const provider = currentProvider();
-                doc.video.provider =
-                    provider === null ? 'local' : (provider as InteractiveVideoDocumentV2['video']['provider']);
+                doc.video.provider = 'local';
                 doc.video.url = url;
             }
         }
@@ -382,4 +383,3 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
     };
 }
 
-export { announce };

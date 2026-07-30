@@ -22,7 +22,7 @@
 import { describe, it, expect } from 'bun:test';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { getIdeviceExportFiles } from './idevice-config-browser';
+import { getIdeviceConfig, getIdeviceExportFiles } from './idevice-config-browser';
 
 // Resolve from the repo root (bun test's cwd), matching src/routes/idevices.spec.ts.
 const IDEVICES_DIR = join(process.cwd(), 'public/files/perm/idevices/base');
@@ -81,6 +81,17 @@ describe('browser export-JS dependency contract', () => {
         expect(idevices.length).toBeGreaterThan(0);
         expect(idevices.map(d => d.cssClass)).toContain('interactive-video');
     });
+
+    // The browser cannot read config.xml, so the `jsonIdevices` list inside
+    // getIdeviceConfig() is a hand-maintained mirror of the
+    // `<component-type>json</component-type>` declarations. Lock the two
+    // together: forgetting the list entry makes the browser exporters render
+    // the iDevice as html and silently break it.
+    for (const idevice of idevices) {
+        it(`classifies "${idevice.cssClass}" as json like its config.xml does`, () => {
+            expect(getIdeviceConfig(idevice.cssClass).componentType).toBe('json');
+        });
+    }
 
     for (const idevice of idevices) {
         const extras = idevice.exportJs.filter(file => file !== `${idevice.cssClass}.js`);

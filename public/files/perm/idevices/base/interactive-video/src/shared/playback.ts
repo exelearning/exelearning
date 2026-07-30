@@ -88,9 +88,18 @@ export function addPlayedRange(
     if (end <= start) {
         return { segments: state.segments.slice(), totalWatchTime: state.totalWatchTime || 0 };
     }
+    const totalWatchTime = (state.totalWatchTime || 0) + (end - start);
+    // Fast path for the per-tick case: forward playback simply extends the
+    // last segment, so skip the full filter/sort/merge pass.
+    const last = state.segments[state.segments.length - 1];
+    if (last && start >= last[0] && start <= last[1] + SEGMENT_MERGE_EPSILON) {
+        const segments = state.segments.slice(0, -1) as PlayedSegment[];
+        segments.push([last[0], Math.max(last[1], end)]);
+        return { segments, totalWatchTime };
+    }
     return {
         segments: mergeSegments(state.segments.concat([[start, end]])),
-        totalWatchTime: (state.totalWatchTime || 0) + (end - start),
+        totalWatchTime,
     };
 }
 
@@ -102,13 +111,6 @@ export function uniqueWatchedTime(playback: PlaybackProgress | null | undefined)
         total += segment[1] - segment[0];
     }
     return total;
-}
-
-/** The furthest point reached, or 0 when nothing has been watched. */
-export function furthestPosition(playback: PlaybackProgress | null | undefined): number {
-    const segments = playback?.segments || [];
-    const last = segments[segments.length - 1];
-    return last ? last[1] : 0;
 }
 
 /**

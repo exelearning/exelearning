@@ -83,16 +83,3 @@ export function collectDropdownBlankNodes(root: ParentNode | null): Element[] {
     return out;
 }
 
-/** Correct word for each blank in legacy prompt HTML, in order (trimmed). [] on failure. */
-export function dropdownBlanks(promptHtml: unknown): string[] {
-    if (typeof promptHtml !== 'string' || promptHtml === '' || typeof DOMParser === 'undefined') {
-        return [];
-    }
-    try {
-        const doc = new DOMParser().parseFromString(promptHtml, 'text/html');
-        const nodes = collectDropdownBlankNodes(doc.body || doc);
-        return nodes.map(node => (node.textContent || '').replace(/^\s+|\s+$/g, ''));
-    } catch {
-        return [];
-    }
-}

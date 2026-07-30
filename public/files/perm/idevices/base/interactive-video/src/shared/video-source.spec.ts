@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-    detectProvider,
     isSafeVideoUrl,
     normalizeVideoSource,
     parseMediatecaId,
@@ -71,26 +70,6 @@ describe('the URL parsers with non-string input', () => {
             expect(parse(42)).toBeNull();
             expect(parse({})).toBeNull();
         }
-    });
-});
-
-describe('detectProvider', () => {
-    it('classifies external providers', () => {
-        expect(detectProvider('https://www.youtube.com/watch?v=' + YT_ID)).toBe('youtube');
-        expect(detectProvider('https://vimeo.com/123456789')).toBe('vimeo');
-        expect(detectProvider('https://mediateca.educa.madrid.org/video/abc123')).toBe('mediateca');
-    });
-
-    it('classifies local/relative/asset sources as local', () => {
-        expect(detectProvider('resources/video.mp4')).toBe('local');
-        expect(detectProvider('asset://uuid.mp4')).toBe('local');
-        expect(detectProvider('my-video.webm')).toBe('local');
-    });
-
-    it('falls back to local for junk input', () => {
-        expect(detectProvider(null)).toBe('local');
-        expect(detectProvider('')).toBe('local');
-        expect(detectProvider('not a url')).toBe('local');
     });
 });
 

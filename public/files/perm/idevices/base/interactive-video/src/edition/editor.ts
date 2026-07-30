@@ -324,14 +324,20 @@ export function createEditor(state: EditionState): Editor {
             bindDetailForType(interaction, editor);
             // Keep the row's "incomplete" warning (⚠) live: any edit inside
             // the open editor re-evaluates validity so the badge clears as
-            // soon as the fields are filled.
-            panel.on('input change', () => {
+            // soon as the fields are filled. Namespaced off/on: renderDetail
+            // re-runs in place (add answer, kind switch…) and `.html()` does
+            // not unbind the panel itself, so a plain `.on` would stack a
+            // handler per re-render.
+            panel.off('input.ivdetail change.ivdetail').on('input.ivdetail change.ivdetail', () => {
                 editor.refreshRowValidity(interaction);
                 editor.renderEditPreview();
                 editor.flashSavedStatus(interaction);
             });
             // Attach the shared lite TinyMCE to the body textarea.
             initBodyEditor(state, interaction, changed => {
+                // Always resync: SetContent changes content without dirtying
+                // the editor (programmatic writes), so `changed` cannot gate
+                // the preview/validity refresh — only the confirmation chip.
                 editor.refreshRowValidity(interaction);
                 editor.renderEditPreview();
                 // TinyMCE fires SetContent/NodeChange while merely
