@@ -2058,6 +2058,8 @@ export default class IdeviceNode {
      */
     async saveIdeviceProcess() {
         let saveOK;
+        // Each attempt starts clean: the flag only reports THIS save's outcome.
+        this.saveRefusedByDevice = false;
         let componentType =
             this.idevice && this.idevice.componentType
                 ? this.idevice.componentType
@@ -2201,6 +2203,9 @@ export default class IdeviceNode {
             this.htmlView = $exeDevice.save();
             // Add class error to idevice
             if (this.htmlView == false) {
+                // A validation refusal: the device already told the author and
+                // stays in edition — not a database failure.
+                this.saveRefusedByDevice = true;
                 this.ideviceBody.classList.add('save-error');
             }
         }
@@ -2230,6 +2235,9 @@ export default class IdeviceNode {
             this.jsonProperties = $exeDevice.save();
             // Add class error to idevice
             if (this.jsonProperties == false) {
+                // A validation refusal: the device already told the author and
+                // stays in edition — not a database failure.
+                this.saveRefusedByDevice = true;
                 this.ideviceBody.classList.add('save-error');
             }
         }
@@ -3178,18 +3186,26 @@ export default class IdeviceNode {
             this.goWindowToIdevice(0);
         } else {
             this.toogleIdeviceButtonsState(false);
-            setTimeout(() => {
-                if (
-                    !eXeLearning.app.modals.alert.modal._isShown &&
-                    !eXeLearning.app.modals.confirm.modal._isShown
-                ) {
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Error saving the iDevice'),
-                        body: _('Failed to save the iDevice to database'),
-                        contentId: 'error',
-                    });
-                }
-            }, 500);
+            // When the DEVICE refused to produce data ($exeDevice.save() ===
+            // false, a validation failure), it has already alerted the author
+            // with the actual reason and stays in edition. Raising the generic
+            // database error on top of it would be wrong twice over: nothing
+            // touched the database, and the deferred alert lands AFTER the
+            // author closes the validation message, blocking the page.
+            if (!this.saveRefusedByDevice) {
+                setTimeout(() => {
+                    if (
+                        !eXeLearning.app.modals.alert.modal._isShown &&
+                        !eXeLearning.app.modals.confirm.modal._isShown
+                    ) {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Error saving the iDevice'),
+                            body: _('Failed to save the iDevice to database'),
+                            contentId: 'error',
+                        });
+                    }
+                }, 500);
+            }
         }
 
         return saveOk;
