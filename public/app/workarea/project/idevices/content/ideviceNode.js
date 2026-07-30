@@ -194,9 +194,59 @@ export default class IdeviceNode {
         if (data.htmlView !== undefined) {
             console.debug(`[IdeviceNode] setParams: Component ${data.odeIdeviceId || data.id} htmlView length: ${this.htmlView?.length || 0}`);
         }
+        // Preserve the legacy interactive-video htmlView island as it arrives from
+        // the model, BEFORE any export render overwrites this.htmlView with the
+        // rendered player. The old model stored the video URL only inside that
+        // island (never in jsonProperties), so this snapshot is the only place the
+        // on-open migration can recover it. Ref #2147.
+        if (this._isLegacyJsonIslandHtml(this.htmlView)) {
+            this.legacyJsonIslandHtml = this.htmlView;
+        }
         if (data.odeComponentsSyncProperties) {
             this.setProperties(data.odeComponentsSyncProperties);
         }
+    }
+
+    /**
+     * A JSON iDevice that migrated from a legacy HTML iDevice may keep its
+     * pre-migration data only in the htmlView island. Detect the interactive-video
+     * legacy island (the `#exe-interactive-video-file` link that holds the video
+     * URL and/or the `#exe-interactive-video-contents` JSON script) so it can be
+     * preserved and handed to the iDevice's on-open migration. Ref #2147.
+     *
+     * @param {String} html
+     * @returns {Boolean}
+     */
+    _isLegacyJsonIslandHtml(html) {
+        return (
+            typeof html === 'string' &&
+            (html.indexOf('exe-interactive-video-file') !== -1 ||
+                html.indexOf('exe-interactive-video-contents') !== -1)
+        );
+    }
+
+    /**
+     * Return the stored JSON data for a JSON iDevice, augmented with the preserved
+     * legacy htmlView island when the data still looks pre-migration (no
+     * schemaVersion). This lets the iDevice's on-open migration recover data the
+     * old model kept only in the island (e.g. the interactive-video URL). Modern,
+     * already-migrated payloads (which carry a schemaVersion) are returned
+     * untouched, so no rendered HTML is ever carried back into a save. Ref #2147.
+     *
+     * @param {Object} jsonData
+     * @returns {Object}
+     */
+    augmentJsonWithLegacyIsland(jsonData) {
+        if (
+            this.legacyJsonIslandHtml &&
+            jsonData &&
+            typeof jsonData === 'object' &&
+            !Array.isArray(jsonData) &&
+            !jsonData.schemaVersion
+        ) {
+            return Object.assign({}, jsonData, { htmlView: this.legacyJsonIslandHtml });
+        }
+        return jsonData;
     }
 
     /**
@@ -1950,9 +2000,15 @@ export default class IdeviceNode {
         ) {
             // Get export html template
             let htmlTemplate = this.idevice.exportTemplateContent;
+            // Render/behaviour data: for a still-pre-migration JSON iDevice, carry
+            // the preserved legacy island so the runtime can recover data the old
+            // model kept only there (e.g. the interactive-video URL). Modern
+            // payloads are returned unchanged. Ref #2147.
+            const renderData = this.augmentJsonWithLegacyIsland(this.jsonProperties);
+            renderData.ideviceId = this.odeIdeviceId;
             // Idevice export function 1: renderView
             this.htmlView = this.exportObject.renderView(
-                this.jsonProperties,
+                renderData,
                 this.accesibility,
                 htmlTemplate,
                 this.odeIdeviceId
@@ -1962,12 +2018,12 @@ export default class IdeviceNode {
             this.jsonProperties.ideviceId = this.odeIdeviceId;
             // Idevice export function 2: renderBehaviour
             this.exportObject.renderBehaviour(
-                this.jsonProperties,
+                renderData,
                 this.accesibility,
                 this.odeIdeviceId
             );
             // Idevice export function 3: init
-            this.exportObject.init(this.jsonProperties, this.accesibility);
+            this.exportObject.init(renderData, this.accesibility);
             // In case the idevice is in edition we must save the viewHTML
             if (this.mode == 'edition') {
                 let saveIdeviceResponse = await this.apiSaveIdeviceViewHTML();
@@ -2965,7 +3021,10 @@ export default class IdeviceNode {
                 : null;
         switch (componentType) {
             case 'json':
-                data = this.getJsonProperties();
+                // Hand the on-open migration the preserved legacy island (when the
+                // stored JSON is still pre-migration) so it can recover data the old
+                // model kept only there, e.g. the interactive-video URL. Ref #2147.
+                data = this.augmentJsonWithLegacyIsland(this.getJsonProperties());
                 break;
             case 'html':
             default:

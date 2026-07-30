@@ -115,6 +115,16 @@ class ComponentImporter {
         }
       }
 
+      // Interactive Video: convert the retired contentBefore/contentAfter
+      // fields into sibling Text iDevices inside the imported block — the same
+      // transform the .elp/.elpx importer runs. The shared function ships in
+      // importers.bundle.js, which yjs-loader loads before this file;
+      // feature-detect anyway so a missing bundle degrades to a plain import.
+      const sharedImporters = window.SharedImporters;
+      if (sharedImporters && typeof sharedImporters.splitInteractiveVideoBlock === 'function') {
+        sharedImporters.splitInteractiveVideoBlock(blockData);
+      }
+
       // Insert block into target page
       const ydoc = this.manager.getDoc();
       const navigation = this.manager.getNavigation();
