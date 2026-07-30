@@ -19,6 +19,7 @@ import { parsePromptText } from './cloze';
 import {
     coerceAnswerRows,
     coerceMatchPairs,
+    coerceStringList,
     enforceSingleChoiceCorrect,
     isLegacyIslandHtml,
     migrateLegacyToV2,
@@ -123,13 +124,6 @@ function coerceSegments(value: unknown): PromptSegment[] {
         }
     }
     return out;
-}
-
-function coerceStringList(value: unknown): string[] {
-    if (!Array.isArray(value)) {
-        return [];
-    }
-    return value.map(item => (item == null ? '' : String(item)));
 }
 
 /**

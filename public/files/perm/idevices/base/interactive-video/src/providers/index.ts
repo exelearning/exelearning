@@ -6,6 +6,7 @@
  * can substitute a fake factory before the bundle binds.
  */
 
+import { isNativeProvider } from '../shared/video-source';
 import { createBaseAdapter } from './callbacks';
 import { createLocalAdapter } from './html5-adapter';
 import { mediatecaStreamUrl } from './mediateca';
@@ -56,7 +57,7 @@ export function createDegradedAdapter(): ProviderAdapter {
 export function createAdapter(spec?: AdapterSpec | null): ProviderAdapter {
     const options = spec || {};
     const provider = options.provider;
-    if ((provider === 'local' || provider === 'mediateca') && options.video) {
+    if (isNativeProvider(provider) && options.video) {
         return createLocalAdapter(options.video, options);
     }
     if (provider === 'youtube' && options.iframe) {

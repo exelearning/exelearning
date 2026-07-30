@@ -39,7 +39,10 @@ export default defineConfig({
             'public/app/**/*.test.js',
             'public/libs/**/*.test.js',
             'public/files/perm/idevices/**/*.test.js',
-            'public/files/perm/idevices/base/interactive-video/src/**/*.spec.ts',
+            // TypeScript iDevices (ADR-0006): any iDevice with a src/ tree
+            // keeps colocated .spec.ts files — discovered by convention so a
+            // new TypeScript iDevice needs no config edit.
+            'public/files/perm/idevices/**/src/**/*.spec.ts',
             'public/preview-sw.test.js',
         ],
 
@@ -120,9 +123,9 @@ export default defineConfig({
                 'public/app/common/edicuatex/**/*.css',
                 'public/app/common/edicuatex/**/*.html',
                 'public/app/common/edicuatex/**/*.json',
-                // Generated Interactive Video bundles (built from src/ by
-                // scripts/build-interactive-video.ts); coverage is measured on
-                // the TypeScript sources, not on their compiled output.
+                // Generated TypeScript-iDevice bundles (built from src/ by
+                // scripts/build-idevices.ts); coverage is measured on the
+                // TypeScript sources, not on their compiled output.
                 'public/files/perm/idevices/base/interactive-video/edition/interactive-video.js',
                 'public/files/perm/idevices/base/interactive-video/export/interactive-video.js',
             ],

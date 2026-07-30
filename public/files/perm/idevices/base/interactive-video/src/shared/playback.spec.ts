@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
     addPlayedRange,
     emptyPlayback,
-    furthestPosition,
     isVideoCompleted,
     mergeSegments,
     uniqueWatchedTime,
@@ -94,7 +93,6 @@ describe('played segments', () => {
         );
         expect(uniqueWatchedTime(state)).toBe(20);
         expect(watchedProgress(state, 60)).toBeCloseTo(0.333, 2);
-        expect(furthestPosition(state)).toBe(60);
     });
 
     it('accumulates non-linear viewing across several sessions of watching', () => {
@@ -121,7 +119,6 @@ describe('played segments', () => {
         const state = play([[0, 10]], 10);
         expect(watchedProgress(state, 10)).toBe(1);
         expect(watchedProgress(emptyPlayback(), 10)).toBe(0);
-        expect(furthestPosition(emptyPlayback())).toBe(0);
     });
 
     it('treats the video as watched only past the threshold', () => {

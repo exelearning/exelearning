@@ -699,7 +699,13 @@ function parseByteRange(rangeHeader, size) {
  */
 function createRangeResponse(body, mimeType, range) {
     const size = body.byteLength != null ? body.byteLength : body.length;
-    const slice = body.slice(range.start, range.end + 1);
+    // subarray is a zero-copy view — media elements mostly ask for open-ended
+    // `bytes=X-` ranges, so a copying slice would duplicate most of the file
+    // on every seek. Strings (no subarray) still fall back to slice.
+    const slice =
+        typeof body.subarray === 'function'
+            ? body.subarray(range.start, range.end + 1)
+            : body.slice(range.start, range.end + 1);
     return new Response(slice, {
         status: 206,
         headers: {

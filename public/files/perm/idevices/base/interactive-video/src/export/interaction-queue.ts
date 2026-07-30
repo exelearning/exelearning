@@ -10,7 +10,7 @@ import { escapeHtml } from '../shared/html';
 import type { Interaction } from '../shared/types';
 import type { RuntimeInstance } from './instance';
 import { panelPlaceholderHtml, renderInteractionBodyHtml } from './renderer';
-import { gradeInteraction, refreshResults, updateScore } from './scoring';
+import { gradeInteraction, refreshResults } from './scoring';
 
 /**
  * Longest span between two time signals still treated as continuous playback.
@@ -292,4 +292,3 @@ export function bindSortable(instance: RuntimeInstance, overlay: HTMLElement): v
     refresh();
 }
 
-export { updateScore };

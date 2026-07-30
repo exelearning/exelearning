@@ -126,7 +126,7 @@ export function coerceMatchPairs(value: unknown): MatchPair[] {
 }
 
 /** Coerce a legacy string list (sortable items, distractor words). */
-function coerceStringList(value: unknown): string[] {
+export function coerceStringList(value: unknown): string[] {
     if (!Array.isArray(value)) {
         return [];
     }

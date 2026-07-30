@@ -213,7 +213,7 @@ export function createInteractiveVideoRuntime(): InteractiveVideoRuntime {
      * Mediateca.
      */
     function bindAdapter(instance: RuntimeInstance): void {
-        const providers: ProviderFactory = resolveProviders(bundledProviders) ?? bundledProviders;
+        const providers: ProviderFactory = resolveProviders(bundledProviders) || bundledProviders;
         const videoMeta = instance.doc.video;
         const adapter = providers.createAdapter({
             provider: instance.provider,
