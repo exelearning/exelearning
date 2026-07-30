@@ -37,6 +37,7 @@ These apply to every skill below. If you cannot meet them, stop and ask the user
 | `src/**/*.ts` | Backend | `bun test` | `make fix` |
 | `public/app/**/*.js` | Frontend | `vitest` | `make fix` |
 | `public/files/perm/idevices/**` | iDevice | `vitest` | `make fix` |
+| `public/files/perm/idevices/*/src/**` | iDevice (TypeScript, see [ADR-0006](doc/architecture/adr/ADR-0006-typescript-idevices-build-convention.md)) | `vitest` (`*.spec.ts`) | `make fix` |
 | `src/shared/export/**` | Exporter | `bun test` | `make fix` |
 | `src/db/migrations/**` | Database | `bun test` | `make fix` |
 | `src/routes/api/v1/**` | API v1 | `bun test` | `make fix` |
@@ -91,6 +92,7 @@ make up                         # Docker dev environment
 | `public/app/**/*.test.js` | Frontend unit tests | `vitest` |
 | `public/libs/**/*.test.js` | Frontend lib tests | `vitest` |
 | `public/files/perm/idevices/**/*.test.js` | iDevice tests | `vitest` |
+| `public/files/perm/idevices/*/src/**/*.spec.ts` | TypeScript iDevice tests | `vitest` |
 | `test/e2e/playwright/specs/*.spec.ts` | E2E tests | `playwright` |
 
 ### 5.2 Running Individual Tests
@@ -352,6 +354,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | REST API v1 | [doc/development/rest-api.md](doc/development/rest-api.md) |
 | Embedding in LMS | [doc/development/embedding.md](doc/development/embedding.md) |
 | Profiling | [doc/development/profiling.md](doc/development/profiling.md) |
+| TypeScript iDevices | [doc/development/idevices-typescript.md](doc/development/idevices-typescript.md) |
 | Styles/Themes | [doc/development/styles.md](doc/development/styles.md) |
 | Conventions | [doc/conventions.md](doc/conventions.md) |
 | Architecture | [doc/architecture.md](doc/architecture.md) |
