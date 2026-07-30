@@ -9,6 +9,8 @@ import type { Interaction, JumpInteraction } from './types';
 /** A minimal forEach-able collection of ids (covers `Set` and arrays). */
 export interface IdCollection {
     forEach(callback: (id: string) => void): void;
+    /** Direct membership test (a `Set`); spares building a lookup per call. */
+    has?(id: string): boolean;
 }
 
 /** Build an id -> true lookup from an array or Set of ids (falsy => empty). */
@@ -67,7 +69,15 @@ export function interactionsInRange(
     if (!isFinite(to) || to < from) {
         return [];
     }
-    const consumed = toIdLookup(consumedIds);
+    // The runtime passes a Set on every time tick — test it directly instead
+    // of materializing a fresh lookup object per call.
+    let isConsumed: (id: string) => boolean;
+    if (consumedIds && typeof consumedIds.has === 'function') {
+        isConsumed = id => consumedIds.has?.(id) === true;
+    } else {
+        const lookup = toIdLookup(consumedIds);
+        isConsumed = id => lookup[id] === true;
+    }
     const list = Array.isArray(sorted) ? sorted : [];
     const out: Interaction[] = [];
     for (const interaction of list) {
@@ -75,7 +85,7 @@ export function interactionsInRange(
             continue;
         }
         const t = toSeconds(interaction.time);
-        if (t > from && t <= to && !consumed[interaction.id]) {
+        if (t > from && t <= to && !isConsumed(interaction.id)) {
             out.push(interaction);
         }
     }

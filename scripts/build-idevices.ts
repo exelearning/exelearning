@@ -243,20 +243,35 @@ async function buildIdevice(idevice: TsIdevice): Promise<boolean> {
     return results.every(ok => ok);
 }
 
-/** tsc -p for every discovered iDevice that ships a tsconfig. */
-function typecheck(idevices: TsIdevice[]): boolean {
-    let ok = true;
-    for (const idevice of idevices) {
-        if (!idevice.tsconfig) {
-            continue;
-        }
-        console.log(`Type-checking ${idevice.name}…`);
-        const run = Bun.spawnSync(['bun', 'x', 'tsc', '-p', idevice.tsconfig], { stdout: 'inherit', stderr: 'inherit' });
-        if (run.exitCode !== 0) {
-            ok = false;
-        }
-    }
-    return ok;
+/**
+ * tsc -p for every discovered iDevice that ships a tsconfig. The processes run
+ * concurrently (each cold tsc takes seconds and they are independent); output
+ * is buffered per iDevice so failures stay readable.
+ */
+async function typecheck(idevices: TsIdevice[]): Promise<boolean> {
+    const checked = idevices.filter(idevice => idevice.tsconfig);
+    const results = await Promise.all(
+        checked.map(async idevice => {
+            const run = Bun.spawn(['bun', 'x', 'tsc', '-p', idevice.tsconfig as string], {
+                stdout: 'pipe',
+                stderr: 'pipe',
+            });
+            const [stdout, stderr, exitCode] = await Promise.all([
+                new Response(run.stdout).text(),
+                new Response(run.stderr).text(),
+                run.exited,
+            ]);
+            console.log(`Type-checking ${idevice.name}…`);
+            if (stdout.trim()) {
+                console.log(stdout.trimEnd());
+            }
+            if (stderr.trim()) {
+                console.error(stderr.trimEnd());
+            }
+            return exitCode === 0;
+        }),
+    );
+    return results.every(ok => ok);
 }
 
 async function main(): Promise<void> {
@@ -273,7 +288,7 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
-    if (withTypecheck && !typecheck(idevices)) {
+    if (withTypecheck && !(await typecheck(idevices))) {
         process.exit(1);
     }
     if (typecheckOnly) {

@@ -9,18 +9,9 @@
 import { parsePromptText, segmentBlanks, dropdownOptions, dropdownWordsFromSegments } from '../../shared/cloze';
 import { escapeHtml } from '../../shared/html';
 import type { InteractiveVideoDocumentV2, Question, QuestionInteraction } from '../../shared/types';
+import { QUESTION_KINDS } from '../../shared/types';
 import { tr } from '../state';
 import type { DetailHost } from './types';
-
-const KNOWN_KINDS = [
-    'singleChoice',
-    'multipleChoice',
-    'trueFalse',
-    'dropdown',
-    'cloze',
-    'matchElements',
-    'sortableList',
-] as const;
 
 /**
  * Ensure a question carries the fields its kind needs and none it does not,
@@ -331,7 +322,7 @@ export function detailQuestion(interaction: QuestionInteraction): string {
     const t = tr;
     const question = interaction.question as Record<string, unknown> & Question;
     const answers = Array.isArray(question.answers) ? question.answers : [];
-    const kinds: string[] = KNOWN_KINDS.slice();
+    const kinds: string[] = QUESTION_KINDS.slice();
     if (kinds.indexOf(question.kind) === -1 && question.kind) {
         kinds.push(question.kind);
     }

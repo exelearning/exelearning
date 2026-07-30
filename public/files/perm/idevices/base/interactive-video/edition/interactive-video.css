@@ -266,7 +266,6 @@
     padding: 0.25rem;
 }
 
-.exe-iv-edit-edit,
 .exe-iv-edit-dup,
 .exe-iv-edit-del {
     min-width: 2.5rem;
@@ -302,9 +301,9 @@
     color: #555;
 }
 
-/* Timeline box joined under the player (edition-prefixed classes to avoid
-   clashing with the runtime .exe-iv-marker styles, since the workarea loads
-   both stylesheets). */
+/* Timeline box joined under the player (edition-prefixed classes so they
+   stay distinct from the runtime's styles, since the workarea loads both
+   stylesheets). */
 .exe-iv-timeline-box {
     border: 1px solid var(--gray-border, #dbdbdb);
     border-top: none;
@@ -521,22 +520,6 @@ iframe.exe-iv-edit-video {
 
 .exe-iv-source-row .exe-pick-any-file,
 .exe-iv-source-row .exe-pick-image {
-    white-space: nowrap;
-}
-
-/* Poster / image picker row (input + auto-injected "Select a file" button). */
-.exe-iv-file-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.exe-iv-file-row .form-control {
-    flex: 1;
-}
-
-.exe-iv-file-row .exe-pick-any-file,
-.exe-iv-file-row .exe-pick-image {
     white-space: nowrap;
 }
 

@@ -37,18 +37,12 @@ export function parseMediatecaId(url: unknown): string | null {
     return match?.[1] ?? null;
 }
 
-/** Classify a source URL as youtube | vimeo | mediateca | local. */
-export function detectProvider(url: unknown): ProviderId {
-    if (parseMediatecaId(url)) {
-        return 'mediateca';
-    }
-    if (parseYouTubeId(url)) {
-        return 'youtube';
-    }
-    if (parseVimeoId(url)) {
-        return 'vimeo';
-    }
-    return 'local';
+/**
+ * Providers whose video plays in a native `<video>` element (and can therefore
+ * carry `<track>` captions), as opposed to a cross-origin iframe embed.
+ */
+export function isNativeProvider(provider: string | null | undefined): boolean {
+    return provider === 'local' || provider === 'mediateca';
 }
 
 /**
