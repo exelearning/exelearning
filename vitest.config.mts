@@ -35,7 +35,13 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
+        include: [
+            'public/app/**/*.test.js',
+            'public/libs/**/*.test.js',
+            'public/files/perm/idevices/**/*.test.js',
+            'public/files/perm/idevices/base/interactive-video/src/**/*.spec.ts',
+            'public/preview-sw.test.js',
+        ],
 
         // Exclude legacy code
         exclude: [
@@ -78,11 +84,21 @@ export default defineConfig({
             provider: 'v8',
             reporter: ['text', 'lcov'],
             reportsDirectory: './coverage/vitest',
-            include: ['public/app/**/*.js'],
+            include: [
+                'public/app/**/*.js',
+                // The Interactive Video iDevice is maintained as TypeScript and
+                // unit-tested through real imports, so v8 can instrument it. The
+                // rest of public/files/perm is eval-loaded by the shared iDevice
+                // harness, which v8 cannot see, so including it would only report
+                // zeros for code that IS tested.
+                'public/files/perm/idevices/base/interactive-video/src/**/*.ts',
+            ],
             exclude: [
                 '**/node_modules/**',
                 '**/*.test.js',
                 '**/*.test-util.js',
+                '**/*.spec.ts',
+                '**/*.d.ts',
                 '**/vitest.setup.js',
                 '**/libs/**',
                 '**/*.min.js',
@@ -104,7 +120,11 @@ export default defineConfig({
                 'public/app/common/edicuatex/**/*.css',
                 'public/app/common/edicuatex/**/*.html',
                 'public/app/common/edicuatex/**/*.json',
-                'public/files/perm/**',
+                // Generated Interactive Video bundles (built from src/ by
+                // scripts/build-interactive-video.ts); coverage is measured on
+                // the TypeScript sources, not on their compiled output.
+                'public/files/perm/idevices/base/interactive-video/edition/interactive-video.js',
+                'public/files/perm/idevices/base/interactive-video/export/interactive-video.js',
             ],
         },
     },

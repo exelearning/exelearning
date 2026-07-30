@@ -367,6 +367,130 @@ describe('ComponentImporter', () => {
       expect(parsed.ideviceId).not.toBe('idevice-orig-1');
     });
 
+    it('splits interactive-video contentBefore/contentAfter into sibling Text iDevices', async () => {
+      // The same transform the .elp/.elpx importer runs; ComponentImporter
+      // resolves it through window.SharedImporters (importers.bundle.js). The
+      // test installs the REAL shared function, not a stub.
+      const { splitInteractiveVideoBlock } = await import(
+        '../../../src/shared/import/interactiveVideoContentSplit'
+      );
+      global.window.SharedImporters = { splitInteractiveVideoBlock };
+
+      const IV_WITH_SURROUNDING_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-iv</odeBlockId>
+    <blockName>Video</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-iv</odeIdeviceId>
+        <odeIdeviceTypeName>interactive-video</odeIdeviceTypeName>
+        <htmlView></htmlView>
+        <jsonProperties>{"schemaVersion":2,"contentBefore":"&amp;lt;p&amp;gt;Intro&amp;lt;/p&amp;gt;","contentAfter":"&amp;lt;p&amp;gt;Outro&amp;lt;/p&amp;gt;","interactions":[]}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      try {
+        const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+        const assetManager = createMockAssetManager();
+        global.window.fflate = createMockFflate(IV_WITH_SURROUNDING_CONTENT);
+        const importer = new ComponentImporter(docManager, assetManager);
+
+        const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+        const result = await importer.importComponent(file, 'page-1');
+        expect(result.success).toBe(true);
+
+        const navigation = docManager._navigation;
+        const blocks = navigation.get(0).get('blocks');
+        const blockMap = blocks.get(blocks.length - 1);
+        const components = blockMap.get('components');
+        expect(components.length).toBe(3);
+
+        const kinds = [];
+        const orders = [];
+        for (let i = 0; i < components.length; i++) {
+          kinds.push(components.get(i).get('ideviceType'));
+          orders.push(components.get(i).get('order'));
+        }
+        expect(kinds).toEqual(['text', 'interactive-video', 'text']);
+        expect(orders).toEqual([0, 1, 2]);
+
+        const beforeProps = JSON.parse(components.get(0).get('jsonProperties'));
+        const videoProps = JSON.parse(components.get(1).get('jsonProperties'));
+        const afterProps = JSON.parse(components.get(2).get('jsonProperties'));
+        expect(beforeProps.textTextarea).toBe('<p>Intro</p>');
+        expect(afterProps.textTextarea).toBe('<p>Outro</p>');
+        expect('contentBefore' in videoProps).toBe(false);
+        expect('contentAfter' in videoProps).toBe(false);
+        expect(components.get(0).get('htmlView')).toContain('exe-text-template');
+      } finally {
+        delete global.window.SharedImporters;
+      }
+    });
+
+    it('imports an interactive-video without surrounding content unchanged (no split helper needed)', async () => {
+      // Without window.SharedImporters (bundle absent), the import degrades to
+      // a plain single-component import instead of throwing.
+      const IV_PLAIN = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-iv2</odeBlockId>
+    <blockName>Video</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-iv2</odeIdeviceId>
+        <odeIdeviceTypeName>interactive-video</odeIdeviceTypeName>
+        <htmlView></htmlView>
+        <jsonProperties>{"schemaVersion":2,"interactions":[]}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(IV_PLAIN);
+      const importer = new ComponentImporter(docManager, assetManager);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      const navigation = docManager._navigation;
+      const blocks = navigation.get(0).get('blocks');
+      const components = blocks.get(blocks.length - 1).get('components');
+      expect(components.length).toBe(1);
+      expect(components.get(0).get('ideviceType')).toBe('interactive-video');
+    });
+
     it('should generate new IDs for imported block and components', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();

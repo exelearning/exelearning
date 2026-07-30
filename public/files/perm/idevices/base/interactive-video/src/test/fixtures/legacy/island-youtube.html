@@ -1,0 +1,29 @@
+<div class="exe-interactive-video">
+    <p id="exe-interactive-video-file" class="js-hidden"><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">v</a></p>
+    <script id="exe-interactive-video-contents" type="application/json">
+        {
+            "title": "Reporting campaign",
+            "description": "Watch the video and answer the questions.",
+            "coverType": "text",
+            "scoreNIA": false,
+            "evaluation": false,
+            "evaluationID": "",
+            "i18n": { "start": "Start" },
+            "scorm": { "isScorm": 0, "weighted": 100, "repeatActivity": true, "textButtonScorm": "Save score" },
+            "slides": [
+                { "type": "text", "text": "<p>Pay attention to the next part.</p>", "startTime": 4 },
+                {
+                    "type": "singleChoice",
+                    "question": "<p>What is the video about?</p>",
+                    "answers": [["A campaign", 1], ["A recipe", 0]],
+                    "startTime": 10
+                },
+                {
+                    "type": "cloze",
+                    "text": "<p>The campaign asks you to <span style=\"text-decoration: line-through;\">report</span> problems.</p>",
+                    "startTime": 20
+                }
+            ]
+        }
+    </script>
+</div>

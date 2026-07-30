@@ -296,6 +296,20 @@ describe('IdeviceNode', () => {
             expect(idevice.getJsonProperties(true)).toBe(malformedJson);
             expect(idevice.htmlView).toBe('<p>Previously rendered activity</p>');
         });
+
+        it('preserves a legacy interactive-video htmlView island (#2147)', () => {
+            const island =
+                '<div class="exe-interactive-video"><p id="exe-interactive-video-file">' +
+                '<a href="https://www.youtube.com/watch?v=uGNFMMn-U8M">v</a></p></div>';
+            idevice.setParams({ htmlView: island });
+            // Captured before any export render can overwrite this.htmlView.
+            expect(idevice.legacyJsonIslandHtml).toBe(island);
+        });
+
+        it('does not preserve a non-island htmlView (#2147)', () => {
+            idevice.setParams({ htmlView: '<p>Plain rendered content</p>' });
+            expect(idevice.legacyJsonIslandHtml).toBeUndefined();
+        });
     });
 
     describe('setProperties', () => {
@@ -1295,6 +1309,35 @@ describe('IdeviceNode', () => {
 
             const result = idevice.getSavedData();
             expect(result).toBe('<p>Default</p>');
+        });
+
+        it('augments pre-migration json with the preserved legacy island so the URL can be recovered (#2147)', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { slides: [{ type: 'text', startTime: 5 }] };
+            idevice.legacyJsonIslandHtml =
+                '<div class="exe-interactive-video"><p id="exe-interactive-video-file">' +
+                '<a href="https://www.youtube.com/watch?v=uGNFMMn-U8M">v</a></p></div>';
+
+            const result = idevice.getSavedData();
+
+            // Slides preserved AND the island carried alongside for URL recovery.
+            expect(result.slides).toBeDefined();
+            expect(result.htmlView).toContain('exe-interactive-video-file');
+            // The stored jsonProperties object itself is not mutated.
+            expect(idevice.jsonProperties.htmlView).toBeUndefined();
+        });
+
+        it('does not augment an already-migrated (schemaVersion) json doc (#2147)', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { schemaVersion: 2, video: { url: 'resources/clip.mp4' } };
+            idevice.legacyJsonIslandHtml =
+                '<div id="exe-interactive-video-file"><a href="https://youtu.be/STALE">stale</a></div>';
+
+            const result = idevice.getSavedData();
+
+            // Modern payloads are returned untouched — no rendered/legacy HTML leaks in.
+            expect(result.htmlView).toBeUndefined();
+            expect(result).toEqual({ schemaVersion: 2, video: { url: 'resources/clip.mp4' } });
         });
     });
 

@@ -1,102 +1,707 @@
 /**
- * Interactive Video iDevice (edition CSS)
+ * Interactive Video iDevice — integrated editor styles.
  *
- * Released under Attribution-ShareAlike 4.0 International License.
- * Author: Ignacio Gros (http://gros.es/) for http://exelearning.net/
- *
- * License: http://creativecommons.org/licenses/by-sa/4.0/
+ * Inline, responsive, accessible. No detached-editor chrome. Follows the eXe
+ * form conventions; the Interactions fieldset is a single column: inline player
+ * with a proportional timeline joined underneath (progress + playhead + one
+ * colour-coded marker per interaction, hint + colour legend) → add bar → a
+ * single-editor accordion list (the selected row expands and hosts the editor
+ * inside its own <li>).
  */
-#node-content #interactiveVideoIdeviceFormTabs {
+.exe-idevice-form .exe-form-group {
+    margin-bottom: 0.75rem;
+}
+
+/* Custom texts tab: restore the pre-refactor two-column grid with teal labels,
+   matching the sibling iDevices. After the tab reorder (General settings →
+   SCORM → Custom texts) the custom-texts tab is index 2. */
+#interactiveVideoIdeviceFormTabs {
     margin-bottom: 0;
 }
-
-#interactiveVideoEditor_header_hd-textEl {
-    padding: 10px;
-}
-
-#interactiveVideoEditorOpener,
-#interactiveVideo-youtube,
-#interactiveVideo-mediateca {
-    display: none;
-}
-
-input[name="interactiveVideoType"] {
-    margin-left: 2em;
-    vertical-align: top;
-}
-
-.interactiveVideoType {
-    margin: 1.5em 0;
-}
-
-.interactiveVideoType input[type="text"] {
-    width: 350px;
-}
-
-.interactiveVideoType .info {
-    display: block;
-    margin-top: 0.7em;
-    color: #666;
-}
-
-.interactiveVideoType a {
-    color: #888;
-}
-
-.interactiveVideoType a:hover,
-.interactiveVideoType a:focus {
-    color: #666;
-}
-
-
-#interactiveVideoIdeviceFormTab1 p:first-child {
+#interactiveVideoIdeviceFormTab2 p:first-child {
     margin-top: 0;
 }
-
-#interactiveVideoIdeviceFormTab1 {
+#interactiveVideoIdeviceFormTab2 {
     display: flex;
     flex-wrap: wrap;
     gap: 2%;
 }
-
-#interactiveVideoIdeviceFormTab1>* {
+#interactiveVideoIdeviceFormTab2 > * {
     flex: 0 0 48%;
 }
-
-#interactiveVideoIdeviceFormTab1> :first-child {
+#interactiveVideoIdeviceFormTab2 > :first-child {
     flex: 0 0 100%;
 }
-
-
-@media screen and (max-width:720px) {
-    #interactiveVideoIdeviceFormTab1>* {
+#interactiveVideoIdeviceFormTab2 label {
+    display: block;
+    margin-bottom: 0.2em;
+    color: var(--brand-primary, #0ba1a1);
+    font-weight: 500;
+}
+#interactiveVideoIdeviceFormTab2 input {
+    width: 100%;
+}
+@media screen and (max-width: 720px) {
+    #interactiveVideoIdeviceFormTab2 > * {
         flex: 0 0 100%;
     }
 }
 
-#interactiveVideoIdeviceFormTab1 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
+/* Kind colours (design 1a): note teal (brand), question orange, pause purple,
+   jump blue — shared by the timeline markers, the row badges, the legend and
+   the selected-row accent via the inherited --exe-iv-kind-color. */
+.exe-iv-interactions {
+    --exe-iv-cover: #b5179e;
+    --exe-iv-note: var(--brand-primary, #078e8e);
+    --exe-iv-question: #d76b4a;
+    --exe-iv-pause: #a25ac4;
+    --exe-iv-jump: #0065ab;
 }
 
-#interactiveVideoIdeviceFormTab1 input {
+.exe-iv-kind--cover {
+    --exe-iv-kind-color: var(--exe-iv-cover);
+}
+
+.exe-iv-kind--note {
+    --exe-iv-kind-color: var(--exe-iv-note);
+}
+
+.exe-iv-kind--question {
+    --exe-iv-kind-color: var(--exe-iv-question);
+}
+
+.exe-iv-kind--pause {
+    --exe-iv-kind-color: var(--exe-iv-pause);
+}
+
+.exe-iv-kind--jump {
+    --exe-iv-kind-color: var(--exe-iv-jump);
+}
+
+.exe-idevice-form .exe-form-check {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.exe-iv-add-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.exe-iv-add-bar .btn {
+    min-height: 2.5rem;
+}
+
+/* The "Add cover" button uses the distinct cover kind colour (magenta), not the
+   primary/note teal, so the singleton opener stands apart. AA contrast on white. */
+.exe-iv-add-cover {
+    background-color: var(--exe-iv-cover, #b5179e);
+    border-color: var(--exe-iv-cover, #b5179e);
+    color: #fff;
+}
+
+.exe-iv-add-cover:hover,
+.exe-iv-add-cover:focus {
+    background-color: #99117f;
+    border-color: #99117f;
+    color: #fff;
+}
+
+/* Pushes the add buttons to the right edge of the add bar. */
+.exe-iv-add-spacer {
+    flex: 1 1 auto;
+}
+
+/* The cover's pinned (non-editable) time indicator in the detail editor. */
+.exe-iv-detail-fixed-time {
+    font-style: italic;
+    color: var(--icon-gray, #777);
+}
+
+/* Two-column edit stage (#7): player + timeline on the left, a live preview of
+   the selected interaction on the right; stacks on narrow screens. */
+.exe-iv-edit-stage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.exe-iv-edit-stage-main {
+    flex: 1 1 58%;
+    min-width: 0;
+}
+
+.exe-iv-edit-preview {
+    flex: 1 1 38%;
+    min-width: 14rem;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: 0.5rem;
+    background: var(--bg-light-gray, #f7f7f7);
+}
+
+.exe-iv-edit-preview-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--exe-iv-kind-color, inherit);
+}
+
+@media (max-width: 768px) {
+    .exe-iv-edit-stage-main,
+    .exe-iv-edit-preview {
+        flex: 1 1 100%;
+    }
+}
+
+/* Interactions sub-heading inside the merged Video fieldset: separates the
+   source combo from the interactions authoring surface within the same
+   section (review #1), with a light top rule for visual grouping. */
+.exe-iv-interactions-section {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.exe-iv-section-head {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+}
+
+.exe-iv-section-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Interaction count next to the Interactions sub-heading. */
+.exe-iv-fieldset-count {
+    margin-left: 0.5rem;
+    font-size: 0.85em;
+    font-weight: 400;
+    color: #777;
+}
+
+.exe-iv-time-input {
+    width: 6rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Single-editor accordion list */
+.exe-iv-edit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.exe-iv-edit-item {
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* The selected row carries a kind-coloured accent on its left edge. */
+.exe-iv-edit-item.is-selected {
+    border-color: var(--brand-primary-300, #5fe9d9);
+    border-left: 3px solid var(--exe-iv-kind-color, var(--brand-primary, #078e8e));
+}
+
+/* Type badge, coloured by the row's inherited kind colour. */
+.exe-iv-edit-badge {
+    color: #fff;
+    background-color: var(--exe-iv-kind-color, var(--exe-iv-note));
+}
+
+.exe-iv-edit-row {
+    display: flex;
+    gap: 0.25rem;
+    align-items: stretch;
+}
+
+.exe-iv-edit-select {
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    text-align: left;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.exe-iv-edit-item.is-selected .exe-iv-edit-select {
+    font-weight: 600;
+}
+
+.exe-iv-edit-time {
+    font-variant-numeric: tabular-nums;
+    color: #555;
+}
+
+.exe-iv-edit-summary {
+    flex: 1;
+    min-width: 6rem;
+}
+
+.exe-iv-edit-validity {
+    color: #b3261e;
+}
+
+.exe-iv-edit-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.25rem;
+}
+
+.exe-iv-edit-edit,
+.exe-iv-edit-dup,
+.exe-iv-edit-del {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    background: #fff;
+    cursor: pointer;
+}
+
+/* The expanded editor hosted inside the selected row */
+.exe-iv-edit-detail {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #eee;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.exe-iv-detail-heading {
+    margin: 0 0 0.5rem;
+}
+
+.exe-iv-detail-time {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.exe-iv-empty {
+    padding: 0.75rem 1rem;
+    border: 1px dashed #ccc;
+    border-radius: 0.5rem;
+    color: #555;
+}
+
+/* Timeline box joined under the player (edition-prefixed classes to avoid
+   clashing with the runtime .exe-iv-marker styles, since the workarea loads
+   both stylesheets). */
+.exe-iv-timeline-box {
+    border: 1px solid var(--gray-border, #dbdbdb);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    background: #fff;
+    padding: 0.9rem 1rem 0.65rem;
+    margin-bottom: 0.9rem;
+}
+
+.exe-iv-timeline-track {
+    position: relative;
+    height: 6px;
+    background: var(--gray-border-light, #ececec);
+    border-radius: 3px;
+    margin: 0.6rem 2px 0.35rem;
+    cursor: pointer;
+}
+
+.exe-iv-timeline-progress {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: var(--brand-primary, #078e8e);
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.exe-iv-timeline-playhead {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--brand-primary, #078e8e);
+    border: 2px solid #fff;
+    box-sizing: border-box;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+}
+
+/* The markers layer fills the track; each marker anchors at its inline left:% */
+.exe-iv-edit-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    inset: 0;
+}
+
+.exe-iv-edit-marker-item {
+    position: absolute;
+    top: 50%;
+    width: 0;
+}
+
+.exe-iv-edit-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.exe-iv-edit-marker::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 20px;
+    margin: 0 auto;
+    border-radius: 2px;
+    background: var(--exe-iv-kind-color, var(--exe-iv-note));
+}
+
+.exe-iv-edit-marker.is-selected::before {
+    width: 5px;
+    box-shadow: 0 0 0 2px #fff;
+}
+
+/* Hint + colour legend under the track */
+.exe-iv-timeline-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.exe-iv-legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    font-size: 0.8em;
+    color: #555;
+}
+
+.exe-iv-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.exe-iv-legend-swatch {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--exe-iv-kind-color, var(--exe-iv-note));
+}
+
+.exe-iv-answer-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.exe-iv-field-error:empty {
+    display: none;
+}
+
+.exe-iv-field-error {
+    color: #b3261e;
+}
+
+.exe-idevice-form :focus-visible {
+    outline: 2px solid var(--brand-primary-300, #1a73e8);
+    outline-offset: 2px;
+}
+
+/* Interactions inline player: full width, joined to the timeline box below
+   (rounded top corners on the surface, the box closes the bottom corners). */
+.exe-iv-edit-player {
     width: 100%;
 }
 
-.flexDisplay {
+.exe-iv-edit-video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+iframe.exe-iv-edit-video {
+    border: 0;
+}
+
+.exe-iv-match-edit-row {
     display: flex;
-    justify-content: flex-start;
+    gap: 0.5rem;
     align-items: center;
-    gap: 0.3em
+    margin-bottom: 0.4rem;
 }
 
-/* To review */
-.idevice_node.interactive-video[mode="edition"] label {
-    margin-right: 0.15em !important;
+.exe-iv-match-del,
+.exe-iv-sort-item-up,
+.exe-iv-sort-item-down,
+.exe-iv-sort-item-del {
+    min-width: 2rem;
+    min-height: 2rem;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    background: #fff;
+    cursor: pointer;
 }
 
-.idevice_node.interactive-video[mode="edition"] input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
+.exe-iv-sort-edit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.exe-iv-sort-item-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.exe-iv-sort-item-text {
+    flex: 1;
+}
+
+/* Source row: mode combo (URL / Local file) + the switching field (design 1a) */
+/* Single source control (input-group): the text input grows and the
+   auto-injected "Select a file" button (.exe-pick-any-file) sits attached to
+   its right. Accepts a URL or a media-library path. */
+.exe-iv-source-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.exe-iv-source-row .form-control {
+    flex: 1;
+    min-width: 12rem;
+}
+
+.exe-iv-source-row .exe-pick-any-file,
+.exe-iv-source-row .exe-pick-image {
+    white-space: nowrap;
+}
+
+/* Poster / image picker row (input + auto-injected "Select a file" button). */
+.exe-iv-file-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.exe-iv-file-row .form-control {
+    flex: 1;
+}
+
+.exe-iv-file-row .exe-pick-any-file,
+.exe-iv-file-row .exe-pick-image {
+    white-space: nowrap;
+}
+
+/* Help hints (info icon + revealable text), wired by wireHelp() */
+.exe-idevice-form .exe-form-help {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.exe-idevice-form .form-help-exe-icon {
+    cursor: pointer;
+}
+
+.exe-idevice-form .help-content {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.exe-idevice-form .help-content.help-hidden {
+    display: none;
+}
+
+/* Subtitle / caption authoring rows */
+.exe-iv-caption-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.exe-iv-caption-file {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.exe-iv-caption-lang {
+    max-width: 5rem;
+}
+
+.exe-iv-caption-default {
+    white-space: nowrap;
+}
+
+.exe-iv-caption-del {
+    min-width: 2rem;
+    min-height: 2rem;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    background: #fff;
+    cursor: pointer;
+}
+
+/* Interaction row: standard icon buttons */
+.exe-iv-edit-actions .btn .small-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Inline delete confirmation banner — matches the Open-project modal's row
+   confirm (light-red banner + explicit danger button; the base .btn-danger is
+   not styled on its own in this app). */
+.exe-iv-edit-item.is-confirming {
+    padding: 0.75rem 1rem;
+    background: var(--red-50, #fef2f2);
+    border: 1px solid var(--red-200, #fecaca);
+    border-radius: var(--radius, 8px);
+}
+
+.exe-iv-delete-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.exe-iv-delete-confirm-text {
+    font-weight: 500;
+    color: var(--red-700, #b91c1c);
+    font-size: 14px;
+}
+
+.exe-iv-delete-confirm-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.exe-iv-delete-confirm-actions .btn {
+    font-size: 13px;
+    padding: 4px 12px;
+}
+
+.exe-iv-delete-confirm-actions .btn-danger,
+.exe-iv-delete-confirm-actions .btn-danger:hover {
+    color: #fff;
+    background: var(--red-600, #dc2626);
+    border-color: var(--red-600, #dc2626);
+}
+
+.exe-iv-delete-confirm-actions .btn-danger:hover {
+    background: var(--red-700, #b91c1c);
+    border-color: var(--red-700, #b91c1c);
+}
+
+/* Quext-style help link: an icon that toggles an explanatory block paragraph
+   (same affordance the game iDevices use, e.g. GameModeHelpLink). */
+.exe-iv-help-link {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-inline-start: 0.25rem;
+}
+
+.exe-iv-help-text {
+    display: none;
+}
+
+.exe-iv-help-text.is-open {
+    display: block;
+}
+
+/* Transient per-row "Saved" confirmation, next to the Duplicate action
+   (mirrors the file manager's metadata autosave indicator, PR #1868).
+   State is conveyed by icon + text, never colour alone. */
+.exe-iv-saved-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--success-color, #2e7d32);
+    opacity: 0;
+    align-self: center;
+    margin-inline-end: 0.5rem;
+}
+
+.exe-iv-saved-status {
+    transition: opacity 0.4s ease-out;
+}
+
+.exe-iv-saved-status.is-saved {
+    opacity: 1;
+    transition: opacity 0.2s ease-in;
+}
+
+.exe-iv-edit-done .exe-icon {
+    font-family: var(--icons-ff, 'Material Icons Round');
+    font-size: 16px;
+    line-height: 1;
+    color: var(--success-color, #2e7d32);
+}
+
+.exe-iv-saved-status .exe-icon {
+    font-family: var(--icons-ff, 'Material Icons Round');
+    font-size: 15px;
+    line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .exe-iv-saved-status.is-saved {
+        transition: none;
+    }
 }

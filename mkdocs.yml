@@ -49,6 +49,7 @@ nav:
       - Real Time: development/real-time.md
       - Embedding: development/embedding.md
       - Profiling: development/profiling.md
+      - TypeScript iDevices: development/idevices-typescript.md
       - Customization: development/customization.md
       - Styles: development/styles.md
       - Installers: development/installers.md
