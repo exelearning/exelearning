@@ -1,10 +1,14 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import type { Locator, Page, TestInfo } from '@playwright/test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { unzipSync } from 'fflate';
-import { gotoWorkarea, saveIdevice, saveProject, waitForAppReady } from '../../helpers/workarea-helpers';
+import {
+    extractZipToTempDir,
+    gotoWorkarea,
+    saveIdevice,
+    saveProject,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
 import {
     IV_IDEVICE,
     IV_LOCAL_VIDEO_FIXTURE,
@@ -71,20 +75,6 @@ async function shot(target: Page | Locator, name: string, testInfo: TestInfo): P
     const file = path.join(REPORT_DIR, `${name}.png`);
     await target.screenshot({ path: file });
     await testInfo.attach(name, { path: file, contentType: 'image/png' });
-}
-
-/** Unpack an exported ZIP into a fresh temp dir and return its path. */
-function extractZip(zipPath: string): string {
-    // fflate is the same unzip the workarea helpers use for downloaded projects.
-    const dir = mkdtempSync(path.join(tmpdir(), 'iv-export-'));
-    const files = unzipSync(new Uint8Array(readFileSync(zipPath)));
-    for (const [name, bytes] of Object.entries(files)) {
-        if (name.endsWith('/')) continue;
-        const out = path.join(dir, name);
-        mkdirSync(path.dirname(out), { recursive: true });
-        writeFileSync(out, Buffer.from(bytes));
-    }
-    return dir;
 }
 
 /** Every question kind, authored in timeline order. */
@@ -157,7 +147,7 @@ async function exportAndRead(page: Page): Promise<{ indexPath: string; indexHtml
     const download = await exportHtml5(page);
     const zipPath = await download.path();
     expect(zipPath).toBeTruthy();
-    const indexPath = path.join(extractZip(zipPath as string), 'index.html');
+    const indexPath = path.join(await extractZipToTempDir(zipPath as string, 'iv-export-'), 'index.html');
     const indexHtml = readFileSync(indexPath, 'utf8');
     // The runtime ships as ONE self-contained bundle (core + providers compiled in).
     expect(indexHtml).toContain('interactive-video.js');

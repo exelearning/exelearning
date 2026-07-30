@@ -47,6 +47,9 @@ jobs:
       - name: Build all assets once
         run: bun run build:static
 
+      # The path list must include every GENERATED (gitignored) file the
+      # workarea serves — the test runners get a fresh checkout, so anything
+      # missing here 404s at runtime (e.g. TypeScript-iDevice bundles, ADR-0006).
       - name: Upload dynamic bundles (chromium/firefox)
         uses: actions/upload-artifact@v7
         with:
@@ -65,6 +68,8 @@ jobs:
             public/bundles/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/files/perm/idevices/base/interactive-video/edition/interactive-video.js
+            public/files/perm/idevices/base/interactive-video/export/interactive-video.js
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

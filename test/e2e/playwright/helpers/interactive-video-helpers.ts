@@ -1,5 +1,11 @@
 import type { Download, Frame, FrameLocator, Locator, Page } from '@playwright/test';
-import { addIdevice, dismissBlockingAlertModal, getPreviewFrame, selectFirstPage } from './workarea-helpers';
+import {
+    addIdevice,
+    dismissBlockingAlertModal,
+    downloadViaFileMenu,
+    getPreviewFrame,
+    selectFirstPage,
+} from './workarea-helpers';
 
 /**
  * Shared helpers for the Interactive Video iDevice E2E specs.
@@ -249,8 +255,8 @@ export async function setBodyHtml(page: Page, html: string): Promise<void> {
  * the same dialog every other iDevice uses and the image lands as an `asset://`
  * reference.
  *
- * Everything is scoped to `#ivDetailPanel`: the iDevice form also carries the
- * before/after text editors, whose toolbars would otherwise match too.
+ * Everything is scoped to `#ivDetailPanel` so only the open detail editor's
+ * toolbar can match, whatever other TinyMCE instances the page carries.
  */
 export async function insertImageIntoBody(page: Page, fixturePath: string, alt: string): Promise<void> {
     const imageButton = page
@@ -670,37 +676,13 @@ export async function isVideoPaused(surface: IvSurface): Promise<boolean> {
 
 /**
  * Run the real "File ▸ Download as ▸ Website" HTML5 export and return the
- * download. Mirrors `downloadProject()`'s menu walk, targeting the HTML5 item.
+ * download. The online and static navbars use different ids for the same
+ * submenu and item, so both are targeted.
  */
 export async function exportHtml5(page: Page): Promise<Download> {
     await dismissBlockingAlertModal(page);
-    await page.evaluate(() => {
-        document.querySelector('body')?.setAttribute('mode', 'advanced');
+    return downloadViaFileMenu(page, {
+        submenu: '#dropdownExportAs:visible, #dropdownExportAsOffline:visible',
+        item: '#navbar-button-export-html5:visible, #navbar-button-exportas-html5:visible',
     });
-
-    const trigger = async (): Promise<void> => {
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                await dismissBlockingAlertModal(page);
-                await page.locator('#dropdownFile').click({ timeout: 5000 });
-                await page
-                    .locator('#dropdownFile[aria-expanded="true"], .dropdown-menu.show')
-                    .first()
-                    .waitFor({ state: 'visible', timeout: 3000 });
-                break;
-            } catch (error) {
-                if (attempt === 2) throw error;
-                await dismissBlockingAlertModal(page);
-            }
-        }
-        const submenu = page.locator('#dropdownExportAs').first();
-        await submenu.waitFor({ state: 'visible', timeout: 5000 });
-        await submenu.click();
-        const html5 = page.locator('#navbar-button-export-html5').first();
-        await html5.waitFor({ state: 'visible', timeout: 5000 });
-        await html5.click();
-    };
-
-    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 120000 }), trigger()]);
-    return download;
 }
