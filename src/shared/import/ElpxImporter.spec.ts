@@ -341,6 +341,53 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
 
+        /**
+         * #2223. `missing-asset-refs.elpx` is a Classify activity whose package
+         * carries no `content/resources/` at all, so its eight references have
+         * nothing to resolve against and reach the editor as raw placeholders.
+         */
+        it('should report the activities whose asset references the package cannot satisfy', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/missing-asset-refs.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.assets).toBe(0);
+            expect(result.missingAssets).toHaveLength(1);
+            expect(result.missingAssets![0].ideviceType).toBe('classify');
+            expect(result.missingAssets![0].paths.sort()).toEqual([
+                'ardilla.svg',
+                'chipmunk_name.mp3',
+                'leon.svg',
+                'lion_name.mp3',
+                'rabbit.svg',
+                'rabbit_name.mp3',
+                'tiger_name.mp3',
+                'tigre.svg',
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('should leave the report empty when every asset reference resolves', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.missingAssets).toEqual([]);
+
+            ydoc.destroy();
+        });
+
         it('should preserve escaped script-like text in text iDevice JSON properties', async () => {
             const textTextarea =
                 'Text with the word &lt;script&gt; as plain text. Content after the marker must remain visible.';
