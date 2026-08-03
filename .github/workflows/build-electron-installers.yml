@@ -6,7 +6,30 @@ on:
   push:
     branches:
       - main
+  # Until now this workflow only ran after a merge, so nothing that breaks the
+  # desktop build could be caught while it was still reviewable — which is how
+  # the crash fixed in #2204 reached a reviewer, and the same structural gap
+  # #2225 hit on the database matrix. Dependency bumps are the main risk: the
+  # deps that ship inside the asar (electron, electron-builder, and app/'s own
+  # electron-updater / electron-log / electron-context-menu / fflate) are only
+  # exercised by this workflow. Restricted to the paths that actually affect
+  # packaging so ordinary PRs do not pay for a 3-OS build.
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'packaging/**'
+      - 'scripts/assert-app-booted.ts'
+      - '.github/workflows/build-electron-installers.yml'
   workflow_dispatch: # Allows manually triggering
+
+# One installer build per pull request: a rebase or a follow-up push supersedes
+# the run already in flight instead of queueing another 3-OS build. Release and
+# main builds are never cancelled — those publish artifacts.
+concurrency:
+  group: installers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
