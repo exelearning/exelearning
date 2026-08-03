@@ -347,6 +347,28 @@ The editor preview works in two modes:
 
 The fallback is automatic and requires no configuration.
 
+## YouTube "Error 153" and `referrerpolicy`
+
+Separate from iframe sandboxing, YouTube's embedded player returns **Error 153**
+(`embedder.identity.missing.referrer`) when it cannot read the HTTP `Referer` header — e.g. when
+the host page's `Referrer-Policy` is `no-referrer`/`same-origin`, or the iframe has no
+`referrerpolicy` attribute. Common sanitizers (and WordPress **Jetpack**'s embed handling) strip
+the attribute, which triggers this.
+
+eXeLearning therefore ensures every YouTube/Vimeo iframe it produces carries
+`referrerpolicy="strict-origin-when-cross-origin"` (the per-iframe attribute **overrides** the
+page policy):
+
+- The collaborative sanitizer (`public/app/utils/sanitizeHtml.js`) **preserves** `referrerpolicy`
+  (it is in `ADD_ATTR`).
+- The export/preview renderer (`IdeviceRenderer.addReferrerPolicyToEmbeds`) **adds** it to
+  YouTube/Vimeo iframes that lack it — covering existing content and every export format.
+
+**Host integrators (WordPress/Moodle/Drupal/Omeka-S):** for full robustness also set the response
+header `Referrer-Policy: strict-origin-when-cross-origin` on pages that embed eXe content, and —
+on WordPress — make sure Jetpack's embed/shortcode handling does not rewrite eXe iframes (it
+strips `referrerpolicy`).
+
 ## Teacher Mode
 
 Content that an author marks as **Teacher only** (the `teacher-only` CSS class on blocks and

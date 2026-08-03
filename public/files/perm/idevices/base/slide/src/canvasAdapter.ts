@@ -29,6 +29,7 @@ import {
     DEFAULT_TEXT_COLOR,
     ROTATION_SNAP_DEGREES,
 } from './constants.js';
+import { shouldForceMarquee } from './keyboardActions.js';
 import { sanitizeSvg } from './sanitizer.js';
 import {
     descriptorFromBBox,
@@ -461,6 +462,11 @@ export class SlideCanvasAdapter {
             backgroundColor: '',
             preserveObjectStacking: true,
             selection: true,
+            // Only objects fully enclosed by the marquee are selected
+            // (PowerPoint semantics). Combined with the Ctrl/Cmd forced
+            // marquee below, this keeps a full-bleed background shape out
+            // of the selection unless the marquee covers the whole slide.
+            selectionFullyContained: true,
         });
         this.canvas = canvas;
         // Expose the active canvas globally so Playwright specs can probe
@@ -501,6 +507,38 @@ export class SlideCanvasAdapter {
         canvas.on('selection:created', fireSelection);
         canvas.on('selection:updated', fireSelection);
         canvas.on('selection:cleared', fireSelection);
+
+        // Rubber-band selection normally needs an empty pixel to start
+        // from; a full-bleed background shape leaves none. Holding
+        // Ctrl/Cmd while pressing down skips target detection, which
+        // keeps area selection working (Fabric: `skipTargetFind`), so
+        // the marquee can start on top of any object (#2218).
+        //
+        // The flag must be set before Fabric's own pointerdown handler
+        // runs — Fabric caches the hit target before it emits
+        // `mouse:down:before` — so this hooks the DOM capture phase on
+        // the canvas wrapper instead of a Fabric event.
+        const wrapper = (canvas as unknown as { wrapperEl?: HTMLElement }).wrapperEl;
+        if (wrapper) {
+            const onDownCapture = (e: Event) => {
+                const m = e as Partial<MouseEvent>;
+                canvas.skipTargetFind = shouldForceMarquee({ metaKey: !!m.metaKey, ctrlKey: !!m.ctrlKey });
+            };
+            const onUpCapture = () => {
+                canvas.skipTargetFind = false;
+            };
+            wrapper.addEventListener('pointerdown', onDownCapture, true);
+            wrapper.addEventListener('mousedown', onDownCapture, true);
+            // Restore on document so releasing outside the canvas still resets.
+            document.addEventListener('pointerup', onUpCapture, true);
+            document.addEventListener('mouseup', onUpCapture, true);
+            this.cleanupFns.push(() => {
+                wrapper.removeEventListener('pointerdown', onDownCapture, true);
+                wrapper.removeEventListener('mousedown', onDownCapture, true);
+                document.removeEventListener('pointerup', onUpCapture, true);
+                document.removeEventListener('mouseup', onUpCapture, true);
+            });
+        }
     }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
@@ -1120,6 +1158,21 @@ export class SlideCanvasAdapter {
         objs.forEach(o => this.canvas.remove(o));
         this.canvas.discardActiveObject();
         this.canvas.requestRenderAll();
+        return true;
+    }
+
+    /**
+     * Move the active selection by (dx, dy) design-pixels — the arrow-key
+     * nudge. Changes report as non-immediate so a burst of key presses
+     * coalesces into a single history entry, like a drag gesture.
+     */
+    nudgeSelection(dx: number, dy: number): boolean {
+        const active = this.canvas.getActiveObject();
+        if (!active) return false;
+        active.set({ left: (active.left ?? 0) + dx, top: (active.top ?? 0) + dy });
+        active.setCoords();
+        this.canvas.requestRenderAll();
+        this.opts.onChange?.(false);
         return true;
     }
 
