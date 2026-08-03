@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <idevice>
     <name>file-attachment</name>
-    <title>File attachment</title>
+    <title>File attachments</title>
     <css-class>file-attachment</css-class>
     <category>Information and presentation</category>
     <icon>

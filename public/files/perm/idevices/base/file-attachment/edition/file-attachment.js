@@ -10,7 +10,7 @@
  */
 var $exeDevice = {
     i18n: {
-        name: _('File attachment'),
+        name: _('File attachments'),
     },
 
     ideviceBody: null,
@@ -42,7 +42,7 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = `
             <div class="fileAttachmentForm">
                 <div class="exe-parent">
-                    <fieldset id="fileAttachmentIntroFieldset" class="exe-advanced exe-fieldset exe-fieldset-closed">
+                    <fieldset id="fileAttachmentIntroFieldset" class="exe-fieldset exe-fieldset-closed">
                         <legend class="exe-text-legend">
                             <a href="#">${_('Instructions')}</a>
                         </legend>
@@ -52,19 +52,17 @@ var $exeDevice = {
                     </fieldset>
                 </div>
 
-                <fieldset class="exe-fieldset fileAttachment-optionsField">
-                    <legend class="exe-text-legend">${_('Options')}</legend>
-                    <label class="fileAttachment-toggle">
+                <div>
+                    <label class="fileAttachment-toggle" for="fileAttachmentShowDescriptions">
                         <input type="checkbox" id="fileAttachmentShowDescriptions" checked />
-                        ${_('Show file descriptions to learners')}
+                        ${_('Show file descriptions')}
                     </label>
-                </fieldset>
+                </div>
 
                 <div class="fileAttachment-actions">
                     <button type="button" id="fileAttachmentAddButton" class="btn btn-primary">
-                        ${_('Add file')}
+                        ${_('Add files')}
                     </button>
-                    <span class="small text-muted">${_('Select or upload files from the Media Library.')}</span>
                     <input type="file" id="fileAttachmentNativeInput" multiple style="display:none;" />
                 </div>
 

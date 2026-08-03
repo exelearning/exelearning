@@ -7,7 +7,6 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
-    font-weight: 600;
     cursor: pointer;
 }
 
@@ -154,7 +153,6 @@
     border-radius: var(--radius, 6px);
     background: transparent;
     color: inherit;
-    font-weight: 600;
     cursor: pointer;
     padding: 0.4em 2.4em 0.4em 0.8em;
     text-align: left;
