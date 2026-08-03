@@ -25,6 +25,7 @@ changes status, update the table and the per-status lists below.
 | [ADR-0022](ADR-0022-control-external-players-with-raw-postmessage.md) | Control external players with raw postMessage, keeping provider SDKs off the critical path | Accepted | 2026-07-26 |
 | [ADR-0023](ADR-0023-promote-every-provider-because-none-survives-an-opaque-origin.md) | Promote every provider, because none of them survives an opaque origin | Accepted | 2026-07-27 |
 | [ADR-0024](ADR-0024-idevices-ask-the-host-for-external-video.md) | iDevices ask the host for external video; they never mount a provider player | Accepted | 2026-07-28 |
+| [ADR-0042](ADR-0042-no-generic-open-response-assessment-idevice.md) | Do not implement a generic open-response assessment iDevice | Proposed | 2026-07-16 |
 
 ## Proposed ADRs
 
@@ -39,6 +40,7 @@ changes status, update the table and the per-status lists below.
 - [ADR-0022](ADR-0022-control-external-players-with-raw-postmessage.md) — Control external players with raw postMessage, keeping provider SDKs off the critical path
 - [ADR-0023](ADR-0023-promote-every-provider-because-none-survives-an-opaque-origin.md) — Promote every provider, because none of them survives an opaque origin
 - [ADR-0024](ADR-0024-idevices-ask-the-host-for-external-video.md) — iDevices ask the host for external video; they never mount a provider player
+- [ADR-0042: Do not implement a generic open-response assessment iDevice](ADR-0042-no-generic-open-response-assessment-idevice.md)
 
 ## Carried ADRs (historical, from PR #1968)
 
