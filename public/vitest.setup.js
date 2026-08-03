@@ -1127,6 +1127,14 @@ const mockGamificationCommon = {
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
+  // Mirrors public/app/common/common_edition.js: fills the custom-texts tab
+  // inputs from a msgs object, ignoring anything that is not an object.
+  setLanguageTabValues: vi.fn((obj) => {
+    if (typeof obj !== 'object' || obj === null) return;
+    for (const key in obj) {
+      if (obj[key] !== '') $(`#ci18n_${key}`).val(obj[key]);
+    }
+  }),
 };
 
 // Shared progress-report component used by every migrated gamified iDevice.
@@ -1167,6 +1175,17 @@ const mockGamificationHelpers = {
   // empty array, and a full selection is returned untouched. The percentage /
   // random subsetting is not reproduced; tests that need it should stub this.
   getQuestions: vi.fn((questions) => (Array.isArray(questions) ? questions : [])),
+};
+
+/**
+ * Question import/export helpers for gamified iDevices
+ * (public/app/common/common_edition.js). The real methods only render and wire
+ * up DOM controls that the unit harness does not build, so no-ops are faithful.
+ */
+const mockGamificationShare = {
+  getTab: vi.fn(() => ''),
+  addEvents: vi.fn(),
+  downloadBlob: vi.fn(() => true),
 };
 
 const mockGamificationMath = {
@@ -1241,6 +1260,7 @@ global.$exeDevicesEdition = {
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       progressBar: mockGamificationProgressBar,
+      share: mockGamificationShare,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,
