@@ -144,6 +144,24 @@ class MockZipProvider implements ZipProvider {
     }
 }
 
+/**
+ * Parse the embedded `window.__ELPX_MANIFEST__` JSON from the generated
+ * `libs/elpx-manifest.js`. The download-source-file iDevice rebuilds the
+ * package client-side from this manifest, so its `files` list must faithfully
+ * reflect the ZIP contents.
+ */
+function parseElpxManifest(zip: MockZipProvider): { version: number; files: string[]; projectTitle: string } {
+    const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+    if (!manifestJs) {
+        throw new Error('libs/elpx-manifest.js not found in ZIP');
+    }
+    const match = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+    if (!match) {
+        throw new Error('Could not parse __ELPX_MANIFEST__ from manifest file');
+    }
+    return JSON.parse(match[1]);
+}
+
 // Sample pages for testing
 const samplePages: ExportPage[] = [
     {
@@ -1157,6 +1175,54 @@ describe('ElpxExporter', () => {
 
             const manifest = JSON.parse(manifestMatch![1]);
             expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
+        // Regression: the download-source-file iDevice rebuilds the .elpx from the
+        // manifest. The ODE re-import files (content.xml, content.dtd, screenshot.png)
+        // are added AFTER the HTML5 section, so they were silently omitted from the
+        // manifest — producing a re-download without content.xml that cannot be reopened.
+        it('should list content.xml and content.dtd in the manifest so the re-download is re-importable', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // content.xml + content.dtd are always written to the .elpx for re-import.
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+
+            const manifest = parseElpxManifest(zip);
+            expect(manifest.files).toContain('content.xml');
+            expect(manifest.files).toContain('content.dtd');
+        });
+
+        it('should list screenshot.png in the manifest when the project has a screenshot', async () => {
+            // Minimal valid 1x1 red PNG data URL.
+            const pngDataUrl =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            document = new MockDocument({ screenshot: pngDataUrl }, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+
+            const manifest = parseElpxManifest(zip);
+            expect(manifest.files).toContain('screenshot.png');
+        });
+
+        it('should list every file in the ZIP in the manifest so the re-download is a faithful copy', async () => {
+            const pngDataUrl =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            document = new MockDocument({ screenshot: pngDataUrl }, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = parseElpxManifest(zip);
+            const listed = new Set(manifest.files);
+            const missing = Array.from(zip.files.keys()).filter(path => !listed.has(path));
+            expect(missing).toEqual([]);
         });
 
         it('should use correct base path for manifest script on index page', async () => {

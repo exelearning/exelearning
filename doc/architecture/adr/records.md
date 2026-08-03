@@ -10,10 +10,12 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| [ADR-0042](ADR-0042-no-generic-open-response-assessment-idevice.md) | Do not implement a generic open-response assessment iDevice | Proposed | 2026-07-16 |
 | [ADR-0043](ADR-0043-centralized-attribution-ownership.md) | Assets own attribution: iDevices drop per-media author/license fields in favor of a show-attribution toggle | Proposed | 2026-07-22 |
 
 ## Proposed ADRs
 
+- [ADR-0042: Do not implement a generic open-response assessment iDevice](ADR-0042-no-generic-open-response-assessment-idevice.md)
 - [ADR-0043](ADR-0043-centralized-attribution-ownership.md) — Assets own attribution: iDevices drop per-media author/license fields in favor of a show-attribution toggle
 
 ## Accepted ADRs
