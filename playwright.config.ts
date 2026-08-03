@@ -98,12 +98,39 @@ export default defineConfig({
     /* Retry on CI only */
     retries: process.env.CI ? 2 : 0,
 
-    // Number of workers:
-    // undefined = Let Playwright decide (usually CPU cores / 2).
-    // 1 = No parallelism (tests run sequentially).
-    // 4 = Force 4 processes.
-    // '100%' = Use all available CPU cores.
-    workers: process.env.CI ? '100%' : '80%',
+    // Number of workers.
+    //
+    // Each worker drives a full editor: Chromium (several processes), the Yjs document, a
+    // Service Worker and the preview iframe. Past roughly four of those in parallel the
+    // machine stops keeping up and pages start dying mid-test — the symptom is
+    // `page.reload: Target page, context or browser has been closed`, or a downstream
+    // `locator.click: Timeout` against a page that is already gone. It reads as flaky
+    // tests and is really oversubscription.
+    //
+    // Measured on a 10-core / 24 GB machine.
+    //
+    //   `specs/idevices/` (189 tests) — the heaviest cluster:
+    //     8 workers (the old 80% of cores) → 6 failed, 10.1 min
+    //     4 workers                        → 0 failed, 6.3 / 6.6 min on two runs
+    //
+    //   full suite (492 tests):
+    //     8 workers → 1, 3 and 4 failed across three runs, 10.0–13.1 min
+    //     4 workers → 0 failed, 17.5 min
+    //
+    // On the heavy cluster fewer workers were faster as well as greener — the machine was
+    // thrashing. Across the whole suite the trade is real: about six minutes slower, and
+    // reliable. Six minutes is worth paying for a suite whose failures currently cannot be
+    // told apart from real regressions.
+    //
+    // Hence a hard ceiling of 4 on top of the previous 80% rule: machines with four cores
+    // or fewer behave exactly as before, larger ones simply stop over-committing.
+    //
+    // Deliberately NOT a timeout increase: the pages were dead, so no amount of waiting
+    // would have helped — it would only have hidden the failure for longer.
+    //
+    // CI is untouched. `ubuntu-latest` has 4 cores, so '100%' there already resolves to 4,
+    // which is why this never reproduced in CI and only bit developer machines.
+    workers: process.env.CI ? '100%' : Math.min(4, Math.max(1, Math.floor(os.cpus().length * 0.8))),
 
     /* Reporter to use */
     reporter: [['html', { outputFolder: 'playwright-report' }], ['github'], ['list']],
