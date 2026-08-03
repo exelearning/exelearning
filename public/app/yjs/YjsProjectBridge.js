@@ -3518,6 +3518,12 @@ class YjsProjectBridge {
       this.documentManager.markDirty();
     }
 
+    // Every import funnels through here — the online menu goes via
+    // projectManager.importFromElpxViaYjs, but the static build and the
+    // embedding bridge call this method directly — so this is the only place
+    // that reports references the package could not satisfy (#2223).
+    window.eXeLearning?.app?.project?.showMissingAssetsNotice?.(stats);
+
     return stats;
   }
 

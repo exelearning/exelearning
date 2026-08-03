@@ -1138,30 +1138,6 @@ describe('YjsProjectManagerMixin', () => {
       expect(mockBridge.importFromElpx).toHaveBeenCalledWith(file, { clearExisting: true });
       expect(result).toBe(stats);
     });
-
-    // #2223: this is the single funnel every browser import path goes through,
-    // so the missing-asset report has to be handed over here.
-    it('hands the import result to the missing-assets notice', async () => {
-      const stats = { pages: 1, missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['a.svg'] }] };
-      mockBridge.importFromElpx = mock(() => undefined).mockResolvedValue(stats);
-      projectManager.showMissingAssetsNotice = mock(() => undefined);
-      await projectManager.enableYjsMode(123, 'token');
-
-      await projectManager.importFromElpxViaYjs(new File(['test'], 'test.elpx'));
-
-      expect(projectManager.showMissingAssetsNotice).toHaveBeenCalledWith(stats);
-    });
-
-    it('imports fine when the projectManager has no notice method', async () => {
-      const stats = { pages: 1 };
-      mockBridge.importFromElpx = mock(() => undefined).mockResolvedValue(stats);
-      projectManager.showMissingAssetsNotice = undefined;
-      await projectManager.enableYjsMode(123, 'token');
-
-      const result = await projectManager.importFromElpxViaYjs(new File(['test'], 'test.elpx'));
-
-      expect(result).toBe(stats);
-    });
   });
 
   describe('importConvertedStructure', () => {

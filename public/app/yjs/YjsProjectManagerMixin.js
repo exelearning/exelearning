@@ -543,11 +543,7 @@ const YjsProjectManagerMixin = {
      */
     projectManager.importFromElpxViaYjs = async function (file, options = {}) {
       if (this._yjsEnabled && this._yjsBridge) {
-        const stats = await this._yjsBridge.importFromElpx(file, options);
-        // Every browser import path funnels through here, so this is the one
-        // place that has to report references the package could not satisfy.
-        this.showMissingAssetsNotice?.(stats);
-        return stats;
+        return await this._yjsBridge.importFromElpx(file, options);
       }
       return null;
     };
