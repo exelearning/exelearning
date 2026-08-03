@@ -232,11 +232,8 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
-                const contentXml = this.generateContentXml(pages);
-                addFile('content.xml', contentXml);
-            }
+            // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
+            this.addEditableContentXml(pages, meta, addFile);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -547,6 +544,28 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
+     * Add the re-editable ODE `content.xml` to the package, unless the author
+     * opted out of shipping the source (`exportSource === false`).
+     *
+     * Single source of truth shared by the HTML5 ZIP export and the Service
+     * Worker preview so both decide identically whether the output stays
+     * re-importable. During preview the file is registered through `addFile`,
+     * so it is automatically listed in `libs/elpx-manifest.js` when a
+     * download-source-file iDevice is present.
+     */
+    protected addEditableContentXml(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        addFile: (path: string, content: string) => void,
+    ): void {
+        if (meta.exportSource === false) {
+            return;
+        }
+
+        addFile('content.xml', this.generateContentXml(pages));
+    }
+
+    /**
      * Generate preview files map (for Service Worker-based preview)
      * Returns a map of file paths to transferable ArrayBuffers
      * Same structure as ZIP export but without creating the archive
@@ -654,8 +673,9 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Skip content.xml for preview (not needed for viewing)
-            // This saves space and prevents unnecessary file generation
+            // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
+            // Registered via addFile, so it is automatically listed in the ELPX manifest below.
+            this.addEditableContentXml(pages, meta, addFile);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();

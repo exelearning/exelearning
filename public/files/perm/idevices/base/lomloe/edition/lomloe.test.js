@@ -11,6 +11,7 @@
  * Run with:  npx vitest run public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import esPvDataset from '../data/lomloe-ES-PV.json';
 
 // ── Mock eXeLearning globals ─────────────────────────────────────
 globalThis._ = (str) => str;  // i18n passthrough
@@ -1124,6 +1125,22 @@ describe('LOMLOE stage (etapa) ordering', () => {
             'Batxillerat',
         ]);
     });
+
+    it('orders Basque (Euskadi-style) stage names Haur → Lehen → DBH', async () => {
+        // The Euskadi dataset uses Basque stage names with no Castilian token, so
+        // ETAPA_ORDER must recognise 'haur'/'lehen'/'bigarren'. Insertion order is
+        // scrambled to prove it is the sort, not the object order, that fixes this.
+        const order = await renderedEtapaOrder({
+            'Derrigorrezko Bigarren Hezkuntza': { 'DBHko 1. maila': { MAT: area('Matematika') } },
+            'Haur Hezkuntza': { 'Lehen zikloa (0-3 urte)': { HH: area('Harmonian hazten') } },
+            'Lehen Hezkuntza': { 'Lehen Hezkuntzako 1. maila': { MAT: area('Matematika') } },
+        });
+        expect(order).toEqual([
+            'Haur Hezkuntza',
+            'Lehen Hezkuntza',
+            'Derrigorrezko Bigarren Hezkuntza',
+        ]);
+    });
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -1929,9 +1946,115 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-VC.json'");
     });
 
+    it('declares ES-PV (Euskadi) with available:true and the lomloe-ES-PV.json file', () => {
+        const m = entryFor('ES-PV');
+        expect(m, "ES-PV entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-PV.json'");
+        expect(lomloeSrc).toContain('LOMLOE — Euskadi / País Vasco');
+        expect(lomloeSrc).toContain('showDescriptorsAtCompetency: true');
+    });
+
     it('leaves ES-CN unchanged (available:true)', () => {
         const m = entryFor('ES-CN');
         expect(m, "ES-CN entry missing").not.toBeNull();
         expect(m[1]).toBe('true');
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Real-dataset render test: load the actual lomloe-ES-PV.json through the
+// editor and walk Infantil → Primaria → ESO, asserting the Basque stage tree
+// renders and a selected materia shows its competencias/criterios/saberes.
+describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
+    let el, dev;
+
+    beforeEach(async () => {
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
+            globalThis, globalThis._, globalThis.CSS
+        );
+    });
+    afterEach(() => {
+        el && el.remove();
+        vi.restoreAllMocks();
+    });
+
+    async function initEsPv(saved) {
+        el = buildMockElement();
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({ ok: true, json: () => Promise.resolve(esPvDataset) })
+        );
+        dev.init(el, Object.assign({ lomloeDataset: 'ES-PV', lomloeSelections: [] }, saved || {}));
+        await new Promise(r => setTimeout(r, 80));
+        return el;
+    }
+
+    it('renders the three Basque etapas in canonical order', async () => {
+        await initEsPv();
+        const order = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.dataset.etapa);
+        expect(order).toEqual([
+            'Haur Hezkuntza', 'Lehen Hezkuntza', 'Derrigorrezko Bigarren Hezkuntza',
+        ]);
+    });
+
+    it('renders niveles when each etapa is opened', async () => {
+        await initEsPv();
+        const open = (etapa) => {
+            const btn = Array.from(el.querySelectorAll('.lomloe-etapa-btn'))
+                .find(b => b.dataset.etapa === etapa);
+            btn.click();
+            return Array.from(el.querySelectorAll('.lomloe-nivel-btn')).map(b => b.dataset.nivel);
+        };
+        expect(open('Haur Hezkuntza')).toEqual(['Lehen zikloa (0-3 urte)', 'Bigarren zikloa (3-6 urte)']);
+        expect(open('Lehen Hezkuntza')).toContain('Lehen Hezkuntzako 1. maila');
+        expect(open('Derrigorrezko Bigarren Hezkuntza')).toContain('DBHko 1. maila');
+    });
+
+    async function materiasAfter(etapa, nivel) {
+        const eb = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).find(b => b.dataset.etapa === etapa);
+        eb.click();
+        await new Promise(r => setTimeout(r, 30));
+        const nb = Array.from(el.querySelectorAll('.lomloe-nivel-btn')).find(b => b.dataset.nivel === nivel);
+        nb.click();
+        await new Promise(r => setTimeout(r, 30));
+        return Array.from(el.querySelectorAll('.lomloe-materia-item')).map(li => li.dataset.codarea);
+    }
+
+    it('lists the expected materias when navigating to a nivel in each etapa', async () => {
+        await initEsPv();
+        expect(await materiasAfter('Haur Hezkuntza', 'Lehen zikloa (0-3 urte)'))
+            .toEqual(['HH', 'IEE', 'KEA']);
+        expect(await materiasAfter('Lehen Hezkuntza', 'Lehen Hezkuntzako 1. maila'))
+            .toContain('MAT');
+        const eso1 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 1. maila');
+        expect(eso1).toEqual(expect.arrayContaining(['EL', 'GL', 'AHIZ', 'MAT', 'GH', 'HF']));
+    });
+
+    it('lists the corrected ESO subjects in their official courses', async () => {
+        await initEsPv();
+        const eso1 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 1. maila');
+        const eso2 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 2. maila');
+        const eso3 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 3. maila');
+        const eso4 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 4. maila');
+
+        expect(eso1).toContain('MUS');
+        expect(eso2).toContain('MUS');
+        expect(eso3).toEqual(expect.arrayContaining(['MUS', 'KZ']));
+        expect(eso4).toEqual(expect.arrayContaining(['MUS', 'LAT', 'AA', 'KZ', 'ML']));
+        expect(eso1).not.toContain('AA');
+        expect(eso2).not.toContain('AA');
+        expect(eso3).not.toContain('AA');
+    });
+
+    it('renders a selected Primaria materia curriculum and competencia descriptors', async () => {
+        await initEsPv();
+        await materiasAfter('Lehen Hezkuntza', 'Lehen Hezkuntzako 1. maila');
+        const mat = Array.from(el.querySelectorAll('.lomloe-materia-item')).find(li => li.dataset.codarea === 'MAT');
+        mat.click();
+        await new Promise(r => setTimeout(r, 40));
+        expect(el.querySelector('.lomloe-materia-item.active')).toBeTruthy();
+        expect(el.innerHTML).toContain('ES-PV-PRI1-MAT-');
+        expect(el.querySelector('.lomloe-comp-cc-tags .lomloe-cc-tag')).toBeTruthy();
     });
 });
