@@ -116,6 +116,29 @@ $exeFX = {
     // Wrong HTML (no H2, etc.): No effects or special presentation
     e.attr("class", "").css("padding", "1em");
   },
+  // Build a navigation label from a heading, preserving its inner markup.
+  // Tabs copy the heading into a separate navigation entry; using the raw
+  // HTML (instead of .text()) keeps rendered content such as pre-rendered
+  // LaTeX (<span class="exe-math-rendered"> with SVG + MathML) visible in the
+  // label. See #2191: .text() collapsed the equation to its MathML characters
+  // (e.g. "sumn=110n") and dropped the SVG.
+  // The heading stays in the panel too, so any element ids in the copy are
+  // suffixed with `salt` to keep them unique (a self-referential MathJax SVG
+  // uses <use xlink:href="#id"> internally; duplicated ids would be invalid).
+  labelHtml: function (h2, salt) {
+    var html = h2.html();
+    if (!html) return "";
+    if (html.indexOf('id="') === -1) return html;
+    var ids = [];
+    html.replace(/\bid="([^"]+)"/g, function (m, id) { ids.push(id); return m; });
+    ids.forEach(function (id) {
+      var esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html
+        .replace(new RegExp('id="' + esc + '"', 'g'), 'id="' + id + '-' + salt + '"')
+        .replace(new RegExp('href="#' + esc + '"', 'g'), 'href="#' + id + '-' + salt + '"');
+    });
+    return html;
+  },
   accordion: {
     closeBlock: function (aID) {
       var k = $exeFX.baseClass;
@@ -383,8 +406,9 @@ $exeFX = {
           if (tit.length > 1) tit = tit[0];
           if (tit.length > 0) t = tit;
         } else {
-          // Normal behavior
-          t = h2.text();
+          // Preserve the heading markup (e.g. pre-rendered LaTeX) in the tab
+          // label instead of flattening it to text (#2191).
+          t = $exeFX.labelHtml(h2, k + "-tabs-" + i + "-" + y);
         }
 
         var hT = $("SPAN", h2);
