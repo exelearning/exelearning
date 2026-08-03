@@ -154,6 +154,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
+      # Needed by the boot assertion below, which lives in scripts/.
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Download installers
         uses: actions/download-artifact@v8
         with:
@@ -511,7 +520,30 @@ jobs:
           } catch {}
 
 
+      # A visible window is NOT proof of a healthy boot. When the main process
+      # throws before app.whenReady() Electron shows a native error dialog: the
+      # process stays alive and owns a window, so `xdotool search`, `pgrep` and
+      # `MainWindowHandle -ne 0` all report success. That is exactly how the
+      # asar packaging crash fixed in #2204 shipped green on all three
+      # platforms while its own screenshots showed the error dialog.
+      # The app serves its UI over app:// rather than HTTP, so the main-process
+      # log is the only signal that tells a real boot from a crash.
+      - name: Assert the app booted cleanly
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.os }}" in
+            ubuntu-latest)  log=ubuntu-app.log ;;
+            macos-latest)   log=mac-app.log ;;
+            windows-latest) log=windows-app.log ;;
+            *) echo "::error::Unknown runner '${{ matrix.os }}'"; exit 1 ;;
+          esac
+          bun run scripts/assert-app-booted.ts "$log"
+
+      # Runs even when the assertion above fails, so the screenshots and logs
+      # needed to diagnose the failure are still published.
       - name: Upload screenshots and logs (per OS)
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: screenshots-and-logs-${{ matrix.os }}
