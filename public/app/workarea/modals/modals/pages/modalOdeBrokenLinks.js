@@ -65,6 +65,7 @@ export default class ModalOdeBrokenLinks extends Modal {
     createLinkRow(link) {
         const tr = document.createElement('tr');
         tr.dataset.linkId = link.id;
+        tr.dataset.status = link.status || 'pending';
 
         // Status cell with spinner
         const statusTd = document.createElement('td');
@@ -72,15 +73,15 @@ export default class ModalOdeBrokenLinks extends Modal {
         statusTd.innerHTML = this.getStatusHtml(link.status, link.error);
         tr.appendChild(statusTd);
 
-        // URL cell
+        // URL cell (clickable when the URL is safe to open in a new tab)
         const urlTd = document.createElement('td');
         urlTd.className = 'link-url';
-        urlTd.textContent = link.url;
         urlTd.title = link.url;
         urlTd.style.maxWidth = '300px';
         urlTd.style.overflow = 'hidden';
         urlTd.style.textOverflow = 'ellipsis';
         urlTd.style.whiteSpace = 'nowrap';
+        urlTd.appendChild(this.createUrlContent(link.url));
         tr.appendChild(urlTd);
 
         // Error cell
@@ -118,9 +119,33 @@ export default class ModalOdeBrokenLinks extends Modal {
     }
 
     /**
+     * Build the content of the URL cell.
+     * Only http(s) URLs become anchors, so a crafted `javascript:` or `data:`
+     * href can never end up in the report.
+     *
+     * @param {string} url
+     * @returns {HTMLElement|Text}
+     */
+    createUrlContent(url) {
+        const safeUrl = typeof url === 'string' ? url.trim() : '';
+        const isHttpUrl = /^https?:\/\//i.test(safeUrl) || safeUrl.startsWith('//');
+
+        if (!isHttpUrl) {
+            return document.createTextNode(safeUrl);
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = safeUrl.startsWith('//') ? `https:${safeUrl}` : safeUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.textContent = safeUrl;
+        return anchor;
+    }
+
+    /**
      * Get HTML for status indicator
-     * @param {string} status - pending, valid, or broken
-     * @param {string|null} error - Error message if broken
+     * @param {string} status - pending, valid, broken or unknown
+     * @param {string|null} error - Error message if broken, reason if unknown
      * @returns {string}
      */
     getStatusHtml(status, error) {
@@ -132,6 +157,26 @@ export default class ModalOdeBrokenLinks extends Modal {
                 return `<span class="text-success" title="${_('Valid')}">&#10003;</span>`;
             case 'broken':
                 return `<span class="text-danger" title="${error || _('Error')}">&#10007;</span>`;
+            case 'unknown':
+                return `<span class="text-warning-emphasis" title="${error || _('Requires manual review')}">&#9888;</span>`;
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Human-readable label for a status, used in the exported CSV
+     * @param {string} status
+     * @returns {string}
+     */
+    getStatusLabel(status) {
+        switch (status) {
+            case 'valid':
+                return _('Valid');
+            case 'broken':
+                return _('Broken');
+            case 'unknown':
+                return _('Requires manual review');
             default:
                 return '';
         }
@@ -152,6 +197,23 @@ export default class ModalOdeBrokenLinks extends Modal {
                     <div class="progress-bar" role="progressbar" style="width: 0%"></div>
                 </div>
             </div>
+        `;
+    }
+
+    /**
+     * Legend explaining the three possible outcomes.
+     * The amber one matters: a browser cannot read the HTTP status of a
+     * cross-origin response, so many links can only be confirmed by opening them.
+     * @returns {string}
+     */
+    createLegendHtml() {
+        return `
+            <p class="validation-legend small text-muted mb-2">
+                <span class="text-success">&#10003;</span> ${_('Valid')} &middot;
+                <span class="text-danger">&#10007;</span> ${_('Broken')} &middot;
+                <span class="text-warning-emphasis">&#9888;</span> ${_('Requires manual review')}
+                &mdash; ${_('the status of these links could not be checked automatically; open them to confirm.')}
+            </p>
         `;
     }
 
@@ -177,12 +239,22 @@ export default class ModalOdeBrokenLinks extends Modal {
         }
 
         if (progressText && stats.validated === stats.total) {
-            const brokenText = stats.broken > 0
-                ? `${stats.broken} ${_('broken')}`
-                : _('No broken links');
-            progressText.textContent = `${_('Complete')}: ${brokenText}`;
-            progressText.classList.remove('text-muted');
-            progressText.classList.add(stats.broken > 0 ? 'text-danger' : 'text-success');
+            const unknown = stats.unknown || 0;
+            const summary = [
+                stats.broken > 0 ? `${stats.broken} ${_('broken')}` : _('No broken links'),
+                unknown > 0 ? `${unknown} ${_('to review')}` : '',
+            ]
+                .filter(Boolean)
+                .join(', ');
+            progressText.textContent = `${_('Complete')}: ${summary}`;
+            progressText.classList.remove('text-muted', 'text-danger', 'text-warning-emphasis', 'text-success');
+            if (stats.broken > 0) {
+                progressText.classList.add('text-danger');
+            } else if (unknown > 0) {
+                progressText.classList.add('text-warning-emphasis');
+            } else {
+                progressText.classList.add('text-success');
+            }
         }
     }
 
@@ -196,6 +268,8 @@ export default class ModalOdeBrokenLinks extends Modal {
         const row = this.rowElements.get(linkId);
         if (!row) return;
 
+        row.dataset.status = status;
+
         // Update status cell
         const statusCell = row.querySelector('.link-status');
         if (statusCell) {
@@ -208,9 +282,12 @@ export default class ModalOdeBrokenLinks extends Modal {
             errorCell.textContent = error || '';
         }
 
-        // Add visual indicator for broken links
+        // Visual indicator: red for broken links, amber for inconclusive checks
+        row.classList.remove('table-danger', 'table-warning');
         if (status === 'broken') {
             row.classList.add('table-danger');
+        } else if (status === 'unknown') {
+            row.classList.add('table-warning');
         }
     }
 
@@ -226,6 +303,11 @@ export default class ModalOdeBrokenLinks extends Modal {
         this.progressContainer = document.createElement('div');
         this.progressContainer.innerHTML = this.createProgressHtml();
         container.appendChild(this.progressContainer);
+
+        // Legend explaining the status icons
+        const legend = document.createElement('div');
+        legend.innerHTML = this.createLegendHtml();
+        container.appendChild(legend);
 
         // Table
         const table = document.createElement('table');
@@ -361,7 +443,9 @@ export default class ModalOdeBrokenLinks extends Modal {
     }
 
     /**
-     * Download broken links as CSV by parsing the visible table
+     * Download the links that need attention as CSV by parsing the visible table.
+     * Includes both broken links and links that could not be checked automatically,
+     * with the status spelled out instead of the icon.
      */
     downloadCsv() {
         this.preventCloseModal = true;
@@ -373,12 +457,13 @@ export default class ModalOdeBrokenLinks extends Modal {
             return;
         }
 
-        // Check if there are any broken links (rows with table-danger class)
-        const brokenRows = table.querySelectorAll('tbody tr.table-danger');
-        if (brokenRows.length === 0) {
+        const rowsToExport = table.querySelectorAll(
+            'tbody tr[data-status="broken"], tbody tr[data-status="unknown"]'
+        );
+        if (rowsToExport.length === 0) {
             eXeLearning.app.toasts.createToast({
                 title: _('Link Validation'),
-                body: _('No broken links to export'),
+                body: _('No links to export'),
                 icon: 'info',
                 modal: true,
                 remove: 5000,
@@ -386,7 +471,7 @@ export default class ModalOdeBrokenLinks extends Modal {
             return;
         }
 
-        // Create a filtered table with only broken links for CSV export
+        // Create a filtered table with the exportable rows
         const filteredTable = document.createElement('table');
         const thead = table.querySelector('thead');
         if (thead) {
@@ -394,13 +479,18 @@ export default class ModalOdeBrokenLinks extends Modal {
         }
 
         const tbody = document.createElement('tbody');
-        brokenRows.forEach((row) => {
-            tbody.appendChild(row.cloneNode(true));
+        rowsToExport.forEach((row) => {
+            const clone = row.cloneNode(true);
+            // Replace the status icon with its text label so the CSV is readable
+            const statusCell = clone.querySelector('.link-status');
+            if (statusCell) {
+                statusCell.textContent = this.getStatusLabel(row.dataset.status);
+            }
+            tbody.appendChild(clone);
         });
         filteredTable.appendChild(tbody);
 
-        // Convert to CSV, skipping the first column (Status icon)
-        const csv = this.tableToCSV(filteredTable, { skipColumns: [0] });
+        const csv = this.tableToCSV(filteredTable);
 
         // Download the CSV file
         this.downloadCSVFile(csv, 'BrokenLinks.csv');

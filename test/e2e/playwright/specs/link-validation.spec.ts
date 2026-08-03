@@ -2,12 +2,21 @@
  * E2E Tests for Progressive Link Validation
  *
  * Tests the link validation modal that shows all links immediately with spinners,
- * then updates each to show valid (checkmark) or broken (X) status as validation completes.
+ * then updates each to show valid (checkmark), broken (X) or "requires manual
+ * review" (warning sign) as validation completes.
  */
 
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
 import { Page } from '@playwright/test';
+
+/**
+ * In static mode the check runs in the browser, where a cross-origin response is
+ * opaque: a reachable URL can only be reported as "requires manual review".
+ * The server-side validator reads the real HTTP status and can confirm it.
+ */
+const isStaticMode = process.env.STATIC_MODE === 'true';
+const reachableLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-success';
 
 /**
  * Helper to open the link validation modal
@@ -104,11 +113,12 @@ test.describe('Link Validation', () => {
             { timeout: 60000 },
         );
 
-        // Verify google.com is valid (checkmark)
+        // Verify google.com is reported as reachable: a checkmark when the server
+        // read its status, a manual-review warning when only the browser could look
         const googleRow = modal.locator('tr', {
             has: page.locator('td.link-url:has-text("google.com")'),
         });
-        await expect(googleRow.locator('.text-success')).toBeVisible();
+        await expect(googleRow.locator(reachableLinkIcon)).toBeVisible();
 
         // Verify broken domain shows error (X mark)
         const brokenRow = modal.locator('tr', {
@@ -119,6 +129,16 @@ test.describe('Link Validation', () => {
         // Verify exe-node links are NOT shown (they should be skipped)
         const exeNodeLinks = modal.locator('td.link-url:has-text("exe-node")');
         await expect(exeNodeLinks).toHaveCount(0);
+
+        // Every reported URL is clickable so it can be reviewed in a new tab
+        // (review of PR #2208 by @ignaciogros)
+        const googleLink = googleRow.locator('td.link-url a');
+        await expect(googleLink).toHaveAttribute('href', /google\.com/);
+        await expect(googleLink).toHaveAttribute('target', '_blank');
+        await expect(googleLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+        // The legend explains the three possible outcomes
+        await expect(modal.locator('.validation-legend')).toContainText('Requires manual review');
 
         // Verify CSV button is enabled after validation completes
         const csvButton = modal.locator('button.confirm');

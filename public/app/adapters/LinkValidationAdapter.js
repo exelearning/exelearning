@@ -73,7 +73,7 @@ export default class LinkValidationAdapter {
      * Validate a single link (called by LinkValidationManager for client-side validation)
      *
      * @param {string} url - The URL to validate
-     * @returns {Promise<{status: 'valid'|'broken', error: string|null}>}
+     * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
      */
     async validateLink(url) {
         // Skip non-validatable URLs (internal links like exe-node:, asset://, files/)
@@ -223,9 +223,17 @@ export default class LinkValidationAdapter {
 
     /**
      * Validate an external HTTP(S) URL
-     * Note: CORS restrictions may prevent validation of many external URLs
+     *
+     * A browser cannot read the HTTP status of a cross-origin response: `no-cors`
+     * requests resolve with an opaque response (`status === 0`) for 200 and 404
+     * alike, and hosts behind a consent/redirect wall reject the request the same
+     * way a dead host does. So this adapter can only prove that a link is *dead*
+     * (the host does not resolve, mixed content is blocked, the request times out);
+     * it can never prove that a link is *alive*. Anything reachable is therefore
+     * reported as 'unknown' — needs a human to open it — instead of a false 'valid'.
+     *
      * @param {string} url
-     * @returns {Promise<{status: 'valid'|'broken', error: string|null}>}
+     * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
      * @private
      */
     async _validateExternalUrl(url) {
@@ -246,7 +254,7 @@ export default class LinkValidationAdapter {
                 window.location.protocol === 'https:'
             ) {
                 return {
-                    status: 'broken',
+                    status: 'unknown',
                     error: _('Could not be checked: HTTP content is blocked on HTTPS pages.'),
                 };
             }
@@ -256,7 +264,7 @@ export default class LinkValidationAdapter {
             // a browser security policy failure is not reported as a broken link.
             try {
                 await this._probeUrl(normalizedUrl, 'HEAD');
-                return { status: 'valid', error: null };
+                return { status: 'unknown', error: _('Reachable, but its status could not be checked') };
             } catch (headError) {
                 if (headError?.name === 'AbortError') {
                     return { status: 'broken', error: _('Timeout') };
@@ -265,7 +273,7 @@ export default class LinkValidationAdapter {
 
             try {
                 await this._probeUrl(normalizedUrl, 'GET');
-                return { status: 'valid', error: null };
+                return { status: 'unknown', error: _('Reachable, but its status could not be checked') };
             } catch (getError) {
                 if (getError?.name === 'AbortError') {
                     return { status: 'broken', error: _('Timeout') };
@@ -274,11 +282,14 @@ export default class LinkValidationAdapter {
                 // Browser fetch often throws TypeError "Failed to fetch" both for
                 // truly dead hosts and for reachable hosts whose redirect/CORS policy
                 // the page cannot follow (e.g. youtube.com → consent.youtube.com).
-                // Distinguish those cases with a DNS-over-HTTPS lookup: if the host
-                // resolves, the link is reachable from a real browser navigation.
+                // Distinguish those cases with a DNS-over-HTTPS lookup: only a host
+                // that does not resolve is provably broken.
                 const hostResolves = await this._hostResolves(normalizedUrl);
                 if (hostResolves === true) {
-                    return { status: 'valid', error: null };
+                    return {
+                        status: 'unknown',
+                        error: _('Blocked by the browser: the host exists but the page could not be checked'),
+                    };
                 }
                 if (hostResolves === false) {
                     return { status: 'broken', error: _('Could not resolve host') };

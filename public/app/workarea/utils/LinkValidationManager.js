@@ -8,7 +8,10 @@
 import SSEClient from '../../rest/SSEClient.js';
 
 /**
- * @typedef {'pending' | 'validating' | 'valid' | 'broken'} LinkStatus
+ * @typedef {'pending' | 'validating' | 'valid' | 'broken' | 'unknown'} LinkStatus
+ *
+ * 'unknown' means the check was inconclusive (typically client-side validation,
+ * where cross-origin responses are opaque) and the link needs a manual review.
  */
 
 /**
@@ -30,6 +33,7 @@ import SSEClient from '../../rest/SSEClient.js';
  * @property {number} validated - Number of validated links
  * @property {number} valid - Number of valid links
  * @property {number} broken - Number of broken links
+ * @property {number} unknown - Number of links needing a manual review
  * @property {number} pending - Number of pending links
  */
 
@@ -293,6 +297,7 @@ export default class LinkValidationManager {
     getStats() {
         let valid = 0;
         let broken = 0;
+        let unknown = 0;
         let pending = 0;
 
         for (const link of this.links.values()) {
@@ -303,6 +308,9 @@ export default class LinkValidationManager {
                 case 'broken':
                     broken++;
                     break;
+                case 'unknown':
+                    unknown++;
+                    break;
                 case 'pending':
                 case 'validating':
                     pending++;
@@ -311,9 +319,9 @@ export default class LinkValidationManager {
         }
 
         const total = this.links.size;
-        const validated = valid + broken;
+        const validated = valid + broken + unknown;
 
-        return { total, validated, valid, broken, pending };
+        return { total, validated, valid, broken, unknown, pending };
     }
 
     /**
@@ -341,6 +349,15 @@ export default class LinkValidationManager {
      */
     getValidLinks() {
         return this.getAllLinks().filter((link) => link.status === 'valid');
+    }
+
+    /**
+     * Get only links whose check was inconclusive (need a manual review)
+     *
+     * @returns {Array<LinkState>}
+     */
+    getUnknownLinks() {
+        return this.getAllLinks().filter((link) => link.status === 'unknown');
     }
 
     /**

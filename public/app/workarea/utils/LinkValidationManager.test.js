@@ -49,6 +49,7 @@ describe('LinkValidationManager', () => {
                 validated: 0,
                 valid: 0,
                 broken: 0,
+                unknown: 0,
                 pending: 0,
             });
         });
@@ -67,6 +68,24 @@ describe('LinkValidationManager', () => {
             expect(stats.broken).toBe(1);
             expect(stats.pending).toBe(1);
             expect(stats.validated).toBe(3); // valid + broken
+        });
+
+        it('should count links needing a manual review as validated', () => {
+            const manager = new LinkValidationManager();
+            manager.links.set('1', { id: '1', status: 'unknown' });
+            manager.links.set('2', { id: '2', status: 'unknown' });
+            manager.links.set('3', { id: '3', status: 'broken' });
+            manager.links.set('4', { id: '4', status: 'validating' });
+
+            const stats = manager.getStats();
+
+            expect(stats.total).toBe(4);
+            expect(stats.unknown).toBe(2);
+            expect(stats.broken).toBe(1);
+            expect(stats.valid).toBe(0);
+            expect(stats.pending).toBe(1);
+            // Inconclusive checks are finished checks: the progress bar must reach 100%
+            expect(stats.validated).toBe(3);
         });
     });
 
@@ -113,6 +132,25 @@ describe('LinkValidationManager', () => {
 
             expect(valid).toHaveLength(1);
             expect(valid[0].url).toBe('https://valid.com');
+        });
+    });
+
+    describe('getUnknownLinks', () => {
+        it('should return only links needing a manual review', () => {
+            const manager = new LinkValidationManager();
+            manager.links.set('1', { id: '1', url: 'https://valid.com', status: 'valid' });
+            manager.links.set('2', { id: '2', url: 'https://broken.com', status: 'broken' });
+            manager.links.set('3', {
+                id: '3',
+                url: 'https://www.youtube.com/@example',
+                status: 'unknown',
+                error: 'Blocked by the browser: the host exists but the page could not be checked',
+            });
+
+            const unknown = manager.getUnknownLinks();
+
+            expect(unknown).toHaveLength(1);
+            expect(unknown[0].url).toBe('https://www.youtube.com/@example');
         });
     });
 
@@ -274,7 +312,7 @@ describe('LinkValidationManager', () => {
             await manager.startValidation([]);
 
             expect(onComplete).toHaveBeenCalledWith(
-                { total: 0, validated: 0, valid: 0, broken: 0, pending: 0 },
+                { total: 0, validated: 0, valid: 0, broken: 0, unknown: 0, pending: 0 },
                 false
             );
         });
@@ -351,6 +389,7 @@ describe('LinkValidationManager', () => {
                 validated: 1,
                 valid: 1,
                 broken: 0,
+                unknown: 0,
                 pending: 0,
             });
         });
