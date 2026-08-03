@@ -171,12 +171,52 @@ export class IdeviceRenderer {
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
 
-        const contentHtml = escapedContent;
+        // Ensure YouTube/Vimeo iframes carry referrerpolicy so they play when the package
+        // is embedded in a host with a restrictive Referrer-Policy (YouTube Error 153).
+        const contentHtml = this.addReferrerPolicyToEmbeds(escapedContent);
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>
 ${contentHtml}
 </div>`;
+    }
+
+    /**
+     * Add `referrerpolicy="strict-origin-when-cross-origin"` to YouTube/Vimeo `<iframe>`
+     * elements that lack it. Those providers need the HTTP Referer header to identify the
+     * embedding page; without the attribute, a host page with a restrictive Referrer-Policy
+     * makes YouTube return "Error 153". Only provider iframes are touched, and an existing
+     * `referrerpolicy` is left as-is.
+     */
+    addReferrerPolicyToEmbeds(html: string): string {
+        if (!html || !/<iframe/i.test(html)) return html;
+        const POLICY = ' referrerpolicy="strict-origin-when-cross-origin"';
+        // Quoted attribute values are consumed whole, so a ">" inside one does not end the tag.
+        const IFRAME_TAG = /<iframe\b(?:"[^"]*"|'[^']*'|[^"'>])*>/gi;
+        return html.replace(IFRAME_TAG, tag => {
+            if (/\breferrerpolicy\s*=/i.test(tag)) return tag;
+            const srcMatch = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+            if (!srcMatch || !this.isReferrerSensitiveEmbed(srcMatch[1])) return tag;
+            return tag.endsWith('/>') ? `${tag.slice(0, -2)}${POLICY} />` : `${tag.slice(0, -1)}${POLICY}>`;
+        });
+    }
+
+    /**
+     * Whether an iframe `src` points at a provider that needs the Referer header. Compared on the
+     * parsed hostname — exact match or a subdomain — rather than a substring, so a lookalike host
+     * such as `vimeo.com.example.org` is not mistaken for the provider.
+     */
+    private isReferrerSensitiveEmbed(src: string): boolean {
+        const PROVIDER_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com'];
+        let hostname: string;
+        try {
+            // The base resolves protocol-relative URLs; genuinely relative ones land on the
+            // placeholder host and are correctly rejected.
+            hostname = new URL(src, 'https://exe-local.invalid').hostname.toLowerCase();
+        } catch {
+            return false;
+        }
+        return PROVIDER_HOSTS.some(host => hostname === host || hostname.endsWith(`.${host}`));
     }
 
     /**
