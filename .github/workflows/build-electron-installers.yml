@@ -91,8 +91,10 @@ jobs:
         run: choco install make --yes
         shell: pwsh
 
+      # Skipped on pull requests: those build unsigned, so writing the
+      # certificate to disk would serve no purpose.
       - name: Decode Windows certificate
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
         run: |
           if [ -n "${{ secrets.CERT_P12 }}" ]; then
             echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
@@ -113,7 +115,14 @@ jobs:
           # GitHub Releases API token for electron-builder
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-          if [ "${{ github.repository_owner }}" = "exelearning" ]; then
+          # Pull requests take the unsigned path on purpose. electron-builder
+          # refuses to code sign a PR build ("Current build is a part of pull
+          # request, code signing will be skipped"), so the app comes out
+          # ad-hoc signed; running the notarization hook on top of that fails
+          # with "code object is not signed at all". A PR only needs to prove
+          # that packaging and startup work, and keeping signing material out
+          # of PR builds is the safer default anyway.
+          if [ "${{ github.repository_owner }}" = "exelearning" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "Official repo detected. Enabling signing/notarization only when secrets are available."
 
             if [ -n "${{ secrets.MAC_CERT_P12 }}" ]; then
@@ -138,7 +147,7 @@ jobs:
               export WIN_CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
             fi
           else
-            echo "Fork detected. Building unsigned installers (no macOS signing/notarization)."
+            echo "Fork or pull request. Building unsigned installers (no macOS signing/notarization)."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             export SKIP_NOTARIZE=1
             unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
