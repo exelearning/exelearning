@@ -26,7 +26,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          # `bun x playwright` honours the CLI's `#!/usr/bin/env node` shebang,
+          # so the specs (and everything they import from src/) run under this
+          # Node. jsdom >= 30 pulls undici 8, which needs Node >= 22.19 for
+          # worker_threads.markAsUncloneable. 22 also matches the Node the
+          # ubuntu-latest image ships, which every other workflow already uses.
+          node-version: '22'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
