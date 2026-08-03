@@ -41,7 +41,11 @@
  */
 export const COLLABORATIVE_HTML_CONFIG = {
     ADD_TAGS: ['iframe'],
-    ADD_ATTR: ['target', 'allow', 'allowfullscreen', 'frameborder', 'scrolling'],
+    // `referrerpolicy` must be preserved: YouTube's embedded player needs the HTTP
+    // Referer header to identify the page; stripping it causes "Error 153"
+    // (embedder.identity.missing.referrer) when the host page's Referrer-Policy is
+    // restrictive. See doc/development/embedding.md.
+    ADD_ATTR: ['target', 'allow', 'allowfullscreen', 'frameborder', 'scrolling', 'referrerpolicy'],
 };
 
 let fallbackWarningShown = false;
