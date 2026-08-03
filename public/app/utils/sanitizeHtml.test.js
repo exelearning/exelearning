@@ -59,12 +59,14 @@ describe('sanitizeHtml', () => {
         it('preserves educational iframe embeds and embed attributes', () => {
             const html =
                 '<iframe src="https://www.youtube.com/embed/abc" allow="fullscreen" ' +
-                'allowfullscreen frameborder="0"></iframe>';
+                'allowfullscreen frameborder="0" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
             const out = sanitizeCollaborativeHtml(html);
             expect(out).toMatch(/<iframe/i);
             expect(out).toMatch(/src="https:\/\/www\.youtube\.com\/embed\/abc"/);
             expect(out).toMatch(/allowfullscreen/);
             expect(out).toMatch(/frameborder="0"/);
+            // referrerpolicy must survive — stripping it causes YouTube Error 153.
+            expect(out).toMatch(/referrerpolicy="strict-origin-when-cross-origin"/);
         });
 
         it('returns empty string for null/undefined', () => {
@@ -75,7 +77,14 @@ describe('sanitizeHtml', () => {
         it('exports a config that allows iframes and embed attributes', () => {
             expect(COLLABORATIVE_HTML_CONFIG.ADD_TAGS).toContain('iframe');
             expect(COLLABORATIVE_HTML_CONFIG.ADD_ATTR).toEqual(
-                expect.arrayContaining(['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target']),
+                expect.arrayContaining([
+                    'allow',
+                    'allowfullscreen',
+                    'frameborder',
+                    'scrolling',
+                    'target',
+                    'referrerpolicy',
+                ]),
             );
         });
     });
