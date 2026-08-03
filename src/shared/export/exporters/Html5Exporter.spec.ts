@@ -28,6 +28,21 @@ function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefine
     return new TextDecoder().decode(bytes);
 }
 
+// Parse the JSON payload embedded in libs/elpx-manifest.js. Accepts both the raw
+// string stored in the ZIP mock and the ArrayBuffer returned by generateForPreview.
+function parseElpxManifest(content: ArrayBuffer | Uint8Array | string | undefined): {
+    version: number;
+    files: string[];
+    projectTitle: string;
+} {
+    const manifestJs = decodePreviewFile(content);
+    const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+    if (!manifestMatch) {
+        throw new Error('ELPX manifest payload not found');
+    }
+    return JSON.parse(manifestMatch[1]);
+}
+
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
@@ -2032,10 +2047,33 @@ describe('Html5Exporter', () => {
             expect(htmlFiles.length).toBe(1);
         });
 
-        it('should NOT include content.xml (not needed for preview)', async () => {
+        it('should include content.xml when exportSource is true', async () => {
+            document = new MockDocument({ exportSource: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
             const files = await exporter.generateForPreview();
 
-            // Preview should not include content.xml to save space
+            // Editable source is requested, so the re-importable ODE file must ship.
+            expect(files.has('content.xml')).toBe(true);
+            const contentXml = decodePreviewFile(files.get('content.xml'));
+            expect(contentXml).toContain('<?xml');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should include content.xml when exportSource is undefined (editable by default)', async () => {
+            // Default metadata leaves exportSource undefined; editable content is on by default.
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content.xml')).toBe(true);
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Author opted out of shipping the source, so preview omits it too.
             expect(files.has('content.xml')).toBe(false);
         });
 
@@ -2384,6 +2422,83 @@ describe('Html5Exporter', () => {
 
             const manifest = JSON.parse(manifestMatch![1]);
             expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should list content.xml in the preview ELPX manifest when editable source is enabled', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ exportSource: true }, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Editable source is on, so the preview file map ships content.xml...
+            expect(files.has('content.xml')).toBe(true);
+
+            // ...and the manifest that drives the download-source-file iDevice lists it.
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = parseElpxManifest(files.get('libs/elpx-manifest.js'));
+            expect(manifest.files).toContain('content.xml');
+            expect(manifest.files).toContain('index.html');
+        });
+
+        it('should NOT list content.xml in the preview ELPX manifest when exportSource is false', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ exportSource: false }, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Source shipping is disabled: no content.xml file and none in the manifest.
+            expect(files.has('content.xml')).toBe(false);
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = parseElpxManifest(files.get('libs/elpx-manifest.js'));
+            expect(manifest.files).not.toContain('content.xml');
         });
 
         it('should create ELPX manifest when exe-package:elp class is in content', async () => {
