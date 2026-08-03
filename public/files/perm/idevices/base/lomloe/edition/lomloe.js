@@ -141,6 +141,23 @@ var $exeDevice = (function () {
             community: 'Comunitat Valenciana',
             file: '../data/lomloe-ES-VC.json',
             available: true
+        },
+        {
+            id: 'ES-PV',
+            isoCode: 'ES-PV',
+            label: 'LOMLOE — Euskadi / País Vasco',
+            labelEn: 'LOMLOE — Euskadi / Basque Country',
+            framework: 'LOMLOE',
+            community: 'Euskadi / País Vasco',
+            file: '../data/lomloe-ES-PV.json',
+            available: true,
+            showDescriptorsAtCompetency: true,
+            // Keep canonical dataset keys stable while using inclusive age labels
+            // in the editor for the two Euskadi Infantil cycles.
+            nivelLabels: {
+                'Lehen zikloa (0-3 urte)': 'Lehen zikloa (0-2 urte)',
+                'Bigarren zikloa (3-6 urte)': 'Bigarren zikloa (3-5 urte)'
+            }
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
@@ -344,6 +361,16 @@ var $exeDevice = (function () {
     }
 
     /**
+     * Whether competencia-level descriptor links should be visible while
+     * browsing the curriculum. The selection panel still lets the teacher
+     * choose the descriptors that apply to each selected criterio.
+     */
+    function datasetShowsCompetencyDescriptors(id) {
+        var ds = getDataset(id);
+        return !!(ds && ds.showDescriptorsAtCompetency);
+    }
+
+    /**
      * Resolves a path like '../data/lomloe-canarias.json' relative to the
      * iDevice edition script URL, handling eXeLearning API, HTTP and file:// cases.
      */
@@ -471,16 +498,17 @@ var $exeDevice = (function () {
     // stage. Matching is lower-cased and accent-insensitive (see foldEtapa), so
     // the Castilian abbreviation ("ESO"), the full official Castilian name
     // ("Educación Secundaria Obligatoria") and the co-official-language spelling
-    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària") all resolve
-    // to the same rank. Without the full-name/co-official synonyms a regional
-    // dataset that uses official stage names (e.g. Navarra, Comunitat Valenciana)
-    // would mis-sort — "Educación Secundaria Obligatoria" matched no token and
-    // fell behind "Bachillerato" in the stage selector.
+    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària",
+    // "Haur Hezkuntza", "Lehen Hezkuntza", "Derrigorrezko Bigarren Hezkuntza")
+    // all resolve to the same rank. Without the full-name/co-official synonyms a
+    // regional dataset that uses official stage names (e.g. Navarra, Comunitat
+    // Valenciana, Euskadi) would mis-sort — "Educación Secundaria Obligatoria"
+    // matched no token and fell behind "Bachillerato" in the stage selector.
     var ETAPA_ORDER = [
-        ['infantil'],
-        ['primaria'],
-        ['eso', 'secundaria'],
-        ['bachillerato', 'batxillerat'],
+        ['infantil', 'haur'],
+        ['primaria', 'lehen'],
+        ['eso', 'secundaria', 'bigarren'],
+        ['bachillerato', 'batxillerat', 'batxilergo'],
     ];
 
     // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
@@ -516,6 +544,16 @@ var $exeDevice = (function () {
 
     function getNiveles(etapa) {
         return (rawData && rawData[etapa]) ? Object.keys(rawData[etapa]) : [];
+    }
+
+    /**
+     * Return the user-facing level label while preserving the canonical key used
+     * for data access and persisted selection identifiers.
+     */
+    function getNivelLabel(nivel) {
+        var dataset = getDataset(currentDataset);
+        var labels = dataset && dataset.nivelLabels;
+        return (labels && labels[nivel]) || nivel;
     }
 
     function getMaterias(etapa, nivel) {
@@ -1183,7 +1221,7 @@ var $exeDevice = (function () {
         var niveles = getNiveles(selectedEtapa);
         bar.innerHTML = niveles.map(function (n) {
             var active = (n === selectedNivel) ? ' active' : '';
-            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(n) + '</button>';
+            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(getNivelLabel(n)) + '</button>';
         }).join('');
     }
 
@@ -1306,14 +1344,29 @@ var $exeDevice = (function () {
         if (!compKeys.length) {
             return '<div class="lomloe-no-materia">' + _('No specific competencies for this subject.') + '</div>';
         }
-        // Only Canarias has an authoritative per-criterio descriptor mapping;
-        // for the other datasets the descriptors are competencia-level, so we
-        // don't render them as if they were tied to each criterio here — the
-        // teacher selects the applicable ones in the right-hand panel instead.
+        // Canarias has an authoritative per-criterio descriptor mapping. Euskadi
+        // publishes descriptor links at competencia level, so those are shown
+        // once per competencia while the selected-criterio panel keeps checkbox
+        // mode for choosing the applicable subset.
         var showCritDescriptors = datasetHasPerCriterionDescriptors(currentDataset);
+        var showCompDescriptors = datasetShowsCompetencyDescriptors(currentDataset);
         return compKeys.map(function (codComp) {
             var comp = comps[codComp];
             var criterios = comp.criterios_evaluacion || [];
+            var compDescriptorCodes = [];
+            if (showCompDescriptors) {
+                criterios.forEach(function (crit) {
+                    (crit.competencias_clave || []).forEach(function (cc) {
+                        if (compDescriptorCodes.indexOf(cc) === -1) {
+                            compDescriptorCodes.push(cc);
+                        }
+                    });
+                });
+            }
+            var compDescriptorTags = compDescriptorCodes.map(function (cc) {
+                return '<span class="lomloe-cc-tag" title="' +
+                    esc(descriptorText(cc)) + '">' + esc(cc) + '</span>';
+            }).join('');
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
                 var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
@@ -1339,6 +1392,9 @@ var $exeDevice = (function () {
                 '    <span class="lomloe-comp-code">' + esc(codComp) + '</span>',
                 '    <span class="lomloe-comp-desc">' + esc(comp.descripcion) + '</span>',
                 '  </div>',
+                compDescriptorTags
+                    ? '  <div class="lomloe-cc-tags lomloe-comp-cc-tags">' + compDescriptorTags + '</div>'
+                    : '',
                 '  <div class="lomloe-criterios">' + criteriosHtml + '</div>',
                 '</div>'
             ].join('');
@@ -1371,7 +1427,9 @@ var $exeDevice = (function () {
             var key = matGroupKey(sel.etapa, sel.nivel, sel.codArea);
             if (!groups.has(key)) {
                 groups.set(key, {
-                    label: sel.etapa + ' · ' + sel.nivel + ' · ' + sel.denominacion,
+                    // Display the remapped (inclusive) level label; the raw
+                    // sel.nivel remains the canonical grouping key above.
+                    label: sel.etapa + ' · ' + getNivelLabel(sel.nivel) + ' · ' + sel.denominacion,
                     items: []
                 });
             }
@@ -1475,7 +1533,10 @@ var $exeDevice = (function () {
      * Infantil uses "Comp. Clave", Primaria/ESO/Bachillerato use "Descriptores operativos".
      */
     function isInfantil(etapa) {
-        return etapa && etapa.toLowerCase().indexOf('infantil') !== -1;
+        // 'infantil' covers Castilian/Valencian stage names; 'haur' covers the
+        // Basque "Haur Hezkuntza" (Euskadi dataset).
+        var f = etapa ? etapa.toLowerCase() : '';
+        return f.indexOf('infantil') !== -1 || f.indexOf('haur') !== -1;
     }
 
     function getCompClaveHeader(etapa) {
@@ -1548,7 +1609,7 @@ var $exeDevice = (function () {
                 group.items.forEach(function (sel) {
                     html += '<tr>';
                     if (isFirstInGroup) {
-                        var compTip = [sel.etapa, sel.nivel, sel.denominacion]
+                        var compTip = [sel.etapa, getNivelLabel(sel.nivel), sel.denominacion]
                             .filter(Boolean).join(' · ');
                         if (group.descripcionComp) {
                             compTip += (compTip ? '\n\n' : '') + group.descripcionComp;
