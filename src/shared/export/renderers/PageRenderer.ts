@@ -26,6 +26,7 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 
 /**
  * Precomputed lookups shared across a single navigation render so each nav node
@@ -48,7 +49,6 @@ interface NavRenderContext {
 // every page is merged into one document.
 const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
 const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
-const JSON_PROPERTY_LIBRARY_EXCLUSIONS = new Set(['exe_math', 'exe_math_datagame', 'exe_math_mathml']);
 
 /**
  * PageRenderer class
@@ -870,30 +870,12 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const parts: string[] = [];
         for (const block of page.blocks || []) {
             for (const component of block.components || []) {
-                this.collectPropertyStringValues(component.properties, parts);
+                for (const value of iterateJsonPropertyStrings(component.properties)) {
+                    parts.push(value);
+                }
             }
         }
         return parts.join('\n');
-    }
-
-    private collectPropertyStringValues(value: unknown, parts: string[]): void {
-        if (typeof value === 'string') {
-            parts.push(value);
-            return;
-        }
-
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                this.collectPropertyStringValues(item, parts);
-            }
-            return;
-        }
-
-        if (value && typeof value === 'object') {
-            for (const item of Object.values(value as Record<string, unknown>)) {
-                this.collectPropertyStringValues(item, parts);
-            }
-        }
     }
 
     /**

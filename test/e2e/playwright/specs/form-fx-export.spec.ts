@@ -118,6 +118,41 @@ async function addFormWithFxAndInspectExports(page: Page): Promise<Record<string
     }, FX_MARKUP);
 }
 
+async function addMagnifierWithFx(page: Page): Promise<void> {
+    await page.evaluate(async fxMarkup => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge?.documentManager || !bridge?.structureBinding) {
+            throw new Error('Browser export dependencies are not available');
+        }
+
+        const navigation = bridge.documentManager.getNavigation();
+        const pageId = navigation.get(0)?.get('id');
+        if (!pageId) throw new Error('The project has no page');
+
+        let blockId = bridge.structureBinding.getBlocks(pageId)?.[0]?.id;
+        if (!blockId) {
+            blockId = bridge.structureBinding.createBlock(pageId, 'Content');
+        }
+        if (!blockId) throw new Error('Could not create a content block');
+
+        bridge.structureBinding.createComponent(pageId, blockId, 'magnifier', {
+            htmlContent: '',
+            jsonProperties: {
+                textTextarea: fxMarkup,
+                isDefaultImage: '1',
+                imageResource: '',
+                width: 600,
+                height: '',
+                align: 'none',
+                glassSize: 1,
+                initialZSize: 100,
+                author: '',
+                alt: '',
+            },
+        });
+    }, FX_MARKUP);
+}
+
 test.describe('Form iDevice FX export', () => {
     test('bundles and initializes FX content stored in question properties', async ({
         authenticatedPage,
@@ -142,6 +177,28 @@ test.describe('Form iDevice FX export', () => {
         if (!preview) throw new Error('Preview frame is not available');
 
         const effect = preview.locator('.form-IDevice .exe-fx.exe-tabs').first();
+        const tabs = effect.locator('.fx-tabs').first();
+        const panels = effect.locator('.fx-tab-content');
+        await expect(tabs).toBeVisible({ timeout: 15_000 });
+        await expect(panels).toHaveCount(2);
+
+        await tabs.locator('a').nth(1).click();
+        await expect(panels.nth(1)).toHaveClass(/fx-current/);
+    });
+
+    test('initializes FX content stored in magnifier properties', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Magnifier FX export');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await addMagnifierWithFx(page);
+
+        await page.locator('#head-bottom-preview').click();
+        const preview = await getPreviewFrame(page);
+        if (!preview) throw new Error('Preview frame is not available');
+
+        const effect = preview.locator('.exe-magnifier-container .exe-fx.exe-tabs').first();
         const tabs = effect.locator('.fx-tabs').first();
         const panels = effect.locator('.fx-tab-content');
         await expect(tabs).toBeVisible({ timeout: 15_000 });

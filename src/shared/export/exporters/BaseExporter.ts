@@ -21,6 +21,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
@@ -975,30 +976,6 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Yield every nested string value from JSON iDevice properties.
-     * Rich text fields can live at any depth depending on the iDevice.
-     */
-    private *iteratePropertyStringFragments(value: unknown): Generator<string> {
-        if (typeof value === 'string') {
-            yield value;
-            return;
-        }
-
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                yield* this.iteratePropertyStringFragments(item);
-            }
-            return;
-        }
-
-        if (value && typeof value === 'object') {
-            for (const item of Object.values(value as Record<string, unknown>)) {
-                yield* this.iteratePropertyStringFragments(item);
-            }
-        }
-    }
-
-    /**
      * Yield component HTML fragments lazily so callers can detect libraries
      * without building one giant intermediate string.
      */
@@ -1021,7 +998,7 @@ export abstract class BaseExporter {
         for (const page of pages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
-                    yield* this.iteratePropertyStringFragments(component.properties);
+                    yield* iterateJsonPropertyStrings(component.properties);
                 }
             }
         }
@@ -1039,10 +1016,7 @@ export abstract class BaseExporter {
                 { fragments: this.iteratePageContentFragments(pages) },
                 {
                     fragments: this.iteratePagePropertyFragments(pages),
-                    // JSON iDevice math is handled by the selective pre-rendering pipeline.
-                    // Scanning raw properties for these patterns would force MathJax for
-                    // unsupported iDevices and undo the pre-rendering optimization.
-                    excludedLibraries: ['exe_math', 'exe_math_datagame', 'exe_math_mathml'],
+                    excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
                 },
             ],
             options,
