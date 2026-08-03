@@ -149,10 +149,9 @@
     "asar": true,
     "disableDefaultIgnoredFiles": true,
     "files": [
-      "main.js",
-      "preload.js",
-      "save-utils.js",
-      "update-manager.js",
+      "*.js",
+      "!*.spec.js",
+      "!*.test.js",
       "package.json",
       "node_modules/**/*",
       "dist/static/**/*",
