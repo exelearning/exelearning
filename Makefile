@@ -509,7 +509,6 @@ test-scripts: check-bun ## Run scripts/ unit tests (build & vendor helpers)
 .PHONY: test-unit
 test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
-	$(TEST_ENV) bun test:scripts
 	@FORCE_COLOR=1 $(TEST_ENV) bun test:unit > /tmp/exe-coverage.txt 2>&1; \
 	test_exit=$$?; \
 	cat /tmp/exe-coverage.txt; \
@@ -528,7 +527,6 @@ test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + h
 test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov coverage for CI/Codecov
 	@echo "Running unit tests with lcov coverage..."
 	@mkdir -p coverage/bun
-	$(TEST_ENV) bun test:scripts
 	$(TEST_ENV) bun test:unit:ci
 	@bun run scripts/check-coverage.ts < coverage/bun/lcov.info || true
 
