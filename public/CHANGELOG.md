@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Unreleased
+
+### Added
+
+- LOMLOE iDevice: added the official Euskadi / País Vasco (ES-PV) curriculum dataset in Basque (Decreto 75/2023 — Educación Infantil; Decreto 77/2023 — Educación Básica)
+
+### Fixed
+
+- LOMLOE iDevice: completed the Euskadi ESO subject distribution, restored competencia-level operational descriptors in the curriculum browser, and prevented adjacent PDF sections from bleeding into each other
+- LOMLOE iDevice: corrected the visible Euskadi Infantil cycle age labels to 0-2 and 3-5 while preserving the canonical stored level keys
+
 ## v4.0.2 – 2026-07-07
 
 ### Added
