@@ -16,6 +16,18 @@ const projectRoot = path.resolve(__dirname, '..');
 // Bundles are stored without version in path (version is virtual cache buster in URLs only)
 const bundlesPath = path.join(projectRoot, 'public/bundles');
 
+/**
+ * Budget for the beforeAll hook below. It shells out to the real resource-bundle build, which is
+ * a deterministic synchronous job measured at ~1.5s warm and ~3s from a cold cache — not a unit
+ * test, and nothing Bun's 5s default hook budget was calibrated for. CI hits the slowest case:
+ * `make test-unit-ci` runs before `make bundle` (ci.yml) and, unlike `make test-unit`, does not
+ * take `bundle` as a prerequisite, so public/bundles is always cold there. With the default
+ * budget the hook fails on a loaded runner purely because the build outran an arbitrary cliff
+ * (observed locally at 5012ms). The generous explicit value keeps a genuine hang detectable
+ * while removing that cliff.
+ */
+const BUILD_HOOK_TIMEOUT_MS = 120_000;
+
 describe('build-resource-bundles', () => {
     beforeAll(() => {
         // Build bundles before tests
@@ -24,7 +36,7 @@ describe('build-resource-bundles', () => {
             cwd: projectRoot,
             stdio: 'pipe',
         });
-    });
+    }, BUILD_HOOK_TIMEOUT_MS);
 
     describe('content-css.zip', () => {
         it('should exist after build', () => {

@@ -10,10 +10,11 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| [ADR-0042](ADR-0042-no-generic-open-response-assessment-idevice.md) | Do not implement a generic open-response assessment iDevice | Proposed | 2026-07-16 |
 
 ## Proposed ADRs
 
-_No proposed ADRs yet._
+- [ADR-0042: Do not implement a generic open-response assessment iDevice](ADR-0042-no-generic-open-response-assessment-idevice.md)
 
 ## Accepted ADRs
 
