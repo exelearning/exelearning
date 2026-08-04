@@ -1,18 +1,19 @@
 ---
-id: ADR-0002
+id: ADR-2236-02
 title: "Store Interactive Video data as versioned JSON properties"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2236
+legacy_id: ADR-0002
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0001, ADR-0003]
+  changes: ["2236-interactive-video-refactor"]
+  adrs: [ADR-2236-01, ADR-2236-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0002: Store Interactive Video data as versioned JSON properties
-
-## Status
-
-Proposed
+# ADR-2236-02: Store Interactive Video data as versioned JSON properties
 
 ## Context
 
@@ -120,7 +117,7 @@ explicitly rather than falling back silently.
 ### Neutral
 
 - The rendered export still embeds a declarative JSON payload for the shipped
-  runtime to read (see ADR-0003).
+  runtime to read (see ADR-2236-03).
 
 ## Risks
 
@@ -170,6 +167,6 @@ opener's title in that field instead of inlining it in the body.
 
 ## References
 
-- SDD-0001 — Interactive Video iDevice refactor.
+- the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
-- Related: ADR-0001, ADR-0003.
+- Related: ADR-2236-01, ADR-2236-03.

@@ -1,18 +1,19 @@
 ---
-id: ADR-0001
+id: ADR-2236-01
 title: "Native inline editor for the Interactive Video iDevice"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2236
+legacy_id: ADR-0001
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0002, ADR-0003, ADR-0005]
+  changes: ["2236-interactive-video-refactor"]
+  adrs: [ADR-2236-02, ADR-2236-03, ADR-2236-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0001: Native inline editor for the Interactive Video iDevice
-
-## Status
-
-Proposed
+# ADR-2236-01: Native inline editor for the Interactive Video iDevice
 
 ## Context
 
@@ -86,7 +83,7 @@ of the editor and its tests.
 We will author the Interactive Video iDevice with a **native inline editor**
 rendered inside the iDevice body using native tabs that follow the standard
 sibling layout (**General settings** first; the exact tab composition and field
-order are defined by SDD-0001), replacing the detached full-screen editor. State
+order are defined by the change design), replacing the detached full-screen editor. State
 is scoped to the iDevice element and `save()` returns the authored object; the
 legacy iframe editor is removed.
 
@@ -110,7 +107,7 @@ legacy iframe editor is removed.
 
 - Feature-parity gaps with the old editor. One such gap materialized in review:
   "Use current time" worked only for local video, regressing the legacy YouTube
-  behavior. It is resolved by the provider adapter (ADR-0004), which exposes
+  behavior. It is resolved by the provider adapter (ADR-2236-04), which exposes
   `getCurrentTime` for every provider, so the editor reads the live playhead for
   external video too. Parity is otherwise held by re-implementing all legacy
   options (video sources, custom texts, SCORM, all 8 interaction kinds) and
@@ -145,7 +142,7 @@ Two refinements within the native-inline decision (the decision itself stands):
 - **Body-editor widget** — the note/pause/cover body uses the **shared lite
   TinyMCE** (`$exeTinyMCE`, `.exe-html-editor`) rather than a plain textarea,
   degrading gracefully when TinyMCE is absent. The runtime stays declarative and
-  script-free (ADR-0003 unaffected): TinyMCE is an **edit-time** widget only.
+  script-free (ADR-2236-03 unaffected): TinyMCE is an **edit-time** widget only.
 
 ## Amendment — the body field is eXe's own editor, not a bespoke one
 
@@ -171,6 +168,6 @@ the hook — the same pattern `udl-content` uses.
 
 ## References
 
-- SDD-0001 — Interactive Video iDevice refactor.
+- the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
-- Related: ADR-0002, ADR-0003, ADR-0005.
+- Related: ADR-2236-02, ADR-2236-03, ADR-2236-05.
