@@ -66,7 +66,7 @@ var $exeDevice = (function () {
     // ─────────────────────────────────────────────────────────────────────
     // Interaction schema (mirror export/three-d-viewer.js and consumed by
     // the shared runtime). These pure helpers must stay byte-identical with
-    // the export copy — see doc/architecture/sdd/SDD-0001. Kept as plain
+    // the export copy — see doc/architecture/sdd/the #2153 change design. Kept as plain
     // functions so migration is defensive and idempotent.
     // ─────────────────────────────────────────────────────────────────────
     var STATE_VERSION = 2;

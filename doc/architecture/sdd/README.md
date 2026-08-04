@@ -72,7 +72,7 @@ A durable decision that needs no full design can go straight to an
 
 - SDDs live in `doc/architecture/sdd/`.
 - Filenames follow: `SDD-NNNN-short-kebab-case-title.md` — for example
-  `SDD-0001-interactive-video-refactor.md`.
+  `the #2153 change design-interactive-video-refactor.md`.
 - IDs are zero-padded, monotonic and never reused. The next ID is
   `max(existing) + 1`.
 - [`SDD-0000-template.md`](SDD-0000-template.md) is the canonical template.
@@ -136,9 +136,9 @@ reference one or more SDDs.
 
 Refer to SDDs by their ID so links stay stable:
 
-- **From a PR or issue:** mention `SDD-0001` and link the file.
+- **From a PR or issue:** mention `the #2153 change design` and link the file.
 - **From an ADR:** list the SDD under `related.sdds` and in the References.
-- **From docs / code:** `[SDD-0001](sdd/SDD-0001-....md)` (adjust the relative path).
+- **From docs / code:** `[the #2153 change design](sdd/the #2153 change design-....md)` (adjust the relative path).
 
 ## Workflow
 

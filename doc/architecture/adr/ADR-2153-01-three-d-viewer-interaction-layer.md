@@ -1,16 +1,17 @@
 ---
-id: ADR-0001
+id: ADR-2153-01
 title: "3D Viewer interaction layer: renderer adapters over a shared runtime controller"
 status: Proposed
 date: 2026-07-10
+tracking_issue: 2153
+legacy_id: ADR-0001
 deciders:
   - "@erseco"
 reviewers:
   - "@erseco"
 related:
-  issues: [2153]
   prs: []
-  sdds: [1]
+  changes: ["2153-three-d-viewer-interactions"]
   adrs: []
 supersedes: []
 superseded_by: []
@@ -19,18 +20,14 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0001: 3D Viewer interaction layer: renderer adapters over a shared runtime controller
-
-## Status
-
-Proposed
+# ADR-2153-01: 3D Viewer interaction layer: renderer adapters over a shared runtime controller
 
 ## Context
 
 The `three-d-viewer` iDevice supports two independent render paths: GLB/GLTF via the
 `<model-viewer>` web component and STL via a bespoke Three.js scene in the shared
 `window.eXe3DViewer` runtime (`public/files/perm/idevices/base/three-d-viewer/export/three-d-viewer-runtime.js`
-@ f3a32e774). SDD-0001 adds hotspots, guided navigation and single-choice questions to this
+@ f3a32e774). the change design adds hotspots, guided navigation and single-choice questions to this
 iDevice (issue #2153). The two render paths expose completely different placement, projection and
 occlusion mechanics: `<model-viewer>` offers a declarative hotspot API with native projection and
 occlusion (`slot="hotspot-*"`, `positionAndNormalFromPoint()`), while the STL path exposes raw
@@ -179,14 +176,14 @@ in `edition/` and `export/`; interaction state is serialized as an escaped JSON 
 
 ## Follow-up work
 
-- Implement per SDD-0001 checklist on branch `2153-3d-viewer-edevice`.
+- Implement per the change design checklist on branch `2153-3d-viewer-edevice`.
 - Consider extracting the mirrored `normalize*` into a shared runtime helper in a later iteration if
   the load-order constraint is lifted.
 - Revisit animated-surface anchoring once a reliable `model-viewer` surface API is validated.
 
 ## References
 
-- SDD-0001 (`doc/architecture/sdd/SDD-0001-three-d-viewer-interactions.md`).
+- the change design (`doc/architecture/sdd/the change design-three-d-viewer-interactions.md`).
 - Issue: https://github.com/exelearning/exelearning/issues/2153
 - `three-d-viewer` and `three-sixty-viewer` sources @ f3a32e774 (paths cited above).
 - model-viewer Annotations/hotspots documentation: https://modelviewer.dev/docs/index.html

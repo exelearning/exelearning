@@ -572,7 +572,7 @@
     // A single renderer-agnostic controller drives both render paths through
     // a thin adapter (model-viewer native hotspots vs. STL DOM overlay). It
     // is shared by the editor preview and the exported page — see
-    // doc/architecture/adr/ADR-0001.
+    // doc/architecture/adr/ADR-2153-01.
     // ------------------------------------------------------------------
 
     /** HTML-escape a string for safe text/attribute interpolation. */

@@ -2,7 +2,7 @@
  * Unit tests for the 3D Viewer interaction schema (export side).
  *
  * These MUST mirror edition/three-d-viewer.interaction.test.js — the two
- * normalization copies are kept byte-identical (see SDD-0001). Export-specific
+ * normalization copies are kept byte-identical (see the #2153 change design). Export-specific
  * markup/serialization tests live in three-d-viewer.test.js.
  */
 

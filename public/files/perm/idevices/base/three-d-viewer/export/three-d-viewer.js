@@ -36,7 +36,7 @@
     // ─────────────────────────────────────────────────────────────────────
     // Interaction schema (mirror edition/three-d-viewer.js). These pure
     // helpers must stay byte-identical with the edition copy — see
-    // doc/architecture/sdd/SDD-0001. Used by renderView/renderBehaviour and
+    // doc/architecture/sdd/the #2153 change design. Used by renderView/renderBehaviour and
     // consumed by the shared runtime (three-d-viewer-runtime.js).
     // ─────────────────────────────────────────────────────────────────────
     var STATE_VERSION = 2;

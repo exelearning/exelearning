@@ -1,17 +1,15 @@
 ---
-id: SDD-0001
+tracking_issue: 2153
 title: "3D Viewer interactions: hotspots, guided navigation and questions"
-status: Draft
+status: draft
 date: 2026-07-10
+legacy_id: SDD-0001
 authors:
   - "@erseco"
 reviewers:
   - "@erseco"
-related:
-  issues: [2153]
-  prs: []
-  adrs: [1]
-  sdds: []
+implementation_prs: []
+related_adrs: [1]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +17,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0001: 3D Viewer interactions: hotspots, guided navigation and questions
-
-## Status
-
-Draft
+# 3D Viewer interactions: hotspots, guided navigation and questions — design
 
 ## Summary
 
@@ -204,7 +198,7 @@ registration edits are required** — confirmed by directory-recursion packaging
 - Colocated `*.test.js` for edition/export/runtime; a new Playwright spec.
 - `config.xml` — bump `<version>` 1.0 → 1.1 (hygiene only; not a compatibility gate).
 
-**Renderer adapter contract** (see ADR-0001):
+**Renderer adapter contract** (see ADR-2153-01):
 
 ```js
 {
@@ -384,9 +378,9 @@ until an author enables it.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Renderer-adapter abstraction + shared-runtime interaction layer vs per-path duplication | ADR-0001 | Proposed |
-| Mirror `normalize*` in edition/export (follow 360 convention) rather than a new shared lib | ADR-0001 | Proposed |
-| Serialize interaction state as a JSON `<script>` block, not flat `data-*` | ADR-0001 | Proposed |
+| Renderer-adapter abstraction + shared-runtime interaction layer vs per-path duplication | ADR-2153-01 | Proposed |
+| Mirror `normalize*` in edition/export (follow 360 convention) rather than a new shared lib | ADR-2153-01 | Proposed |
+| Serialize interaction state as a JSON `<script>` block, not flat `data-*` | ADR-2153-01 | Proposed |
 
 ## Evidence
 
@@ -423,11 +417,11 @@ until an author enables it.
 - [ ] Export markup (JSON block, fallback list, nav controls) + tests.
 - [ ] CSS (edition + export).
 - [ ] Playwright spec + `make test-e2e` / `make test-e2e-static`.
-- [ ] `config.xml` version bump; ADR-0001; records index updates.
+- [ ] `config.xml` version bump; ADR-2153-01; records index updates.
 
 ## References
 
 - Issue: https://github.com/exelearning/exelearning/issues/2153
-- ADR-0001 (this feature's durable decisions).
+- ADR-2153-01 (this feature's durable decisions).
 - `doc/elpx-format/idevices/patterns.md` (Pattern 1: JSON iDevice), `config-xml.md`.
 - Repo memory: `E2E preview-open gotcha`, `sanitizeHtml DOM fallback`, `Export lib registration sites`.
