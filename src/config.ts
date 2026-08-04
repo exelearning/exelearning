@@ -30,6 +30,8 @@ export const ALLOWED_EXTENSIONS: string[] = [
     'woff',
     'woff2',
     'eot',
+    'srt',
+    'vtt',
 ];
 
 /**

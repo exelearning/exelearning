@@ -1007,6 +1007,14 @@ describe('YjsProjectBridge', () => {
       expect(bridge.documentManager).toBeNull();
       expect(bridge.structureBinding).toBeNull();
     });
+
+    it('tears down the edition-mode observer', async () => {
+      const observerDisconnect = mock(() => {});
+      bridge.editionModeObserver = { disconnect: observerDisconnect };
+      await bridge.disconnect();
+      expect(observerDisconnect).toHaveBeenCalled();
+      expect(bridge.editionModeObserver).toBeNull();
+    });
   });
 
   describe('onSaveStatus', () => {
@@ -1795,6 +1803,54 @@ describe('YjsProjectBridge', () => {
       expect(bridge.undoButton.disabled).toBe(false);
     });
 
+    it('updateUndoRedoButtons disables both buttons while an iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(true);
+      expect(bridge.redoButton.disabled).toBe(true);
+    });
+
+    it('updateUndoRedoButtons re-enables the buttons once no iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock(() => null);
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(false);
+      expect(bridge.redoButton.disabled).toBe(false);
+    });
+
+    it('observeIdeviceEditionState is a safe no-op without an observable DOM root', () => {
+      expect(() => bridge.observeIdeviceEditionState()).not.toThrow();
+      expect(bridge.editionModeObserver).toBeFalsy();
+    });
+
+    it('observeIdeviceEditionState refreshes the buttons when the DOM mutates', async () => {
+      // Borrow the real (happy-dom) body — the stubbed document has none.
+      global.document.body = originalDocument.body;
+      bridge.updateUndoRedoButtons = mock(() => {});
+
+      bridge.observeIdeviceEditionState();
+      expect(bridge.editionModeObserver).toBeTruthy();
+
+      const el = originalDocument.createElement('div');
+      originalDocument.body.appendChild(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+
+      bridge.editionModeObserver.disconnect();
+      el.remove();
+      delete global.document.body;
+    });
+
     it('onPendingMetadataChange sets flag and updates buttons', () => {
       bridge.updateUndoRedoButtons = mock(() => {});
 
@@ -1817,6 +1873,96 @@ describe('YjsProjectBridge', () => {
       callback();
 
       expect(bridge.onPendingMetadataChange).toHaveBeenCalled();
+    });
+  });
+
+  describe('Undo/Redo keyboard shortcuts', () => {
+    const keyEvent = (props) => ({
+      key: '',
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      preventDefault: mock(() => {}),
+      ...props,
+    });
+
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.undo = mock(() => {});
+      bridge.redo = mock(() => {});
+      mockApp.project = { checkOpenIdevice: mock(() => true) };
+      global.document.querySelector = mock(() => null);
+    });
+
+    it('Ctrl+Z runs the project undo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Cmd+Shift+Z runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', metaKey: true, shiftKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Y runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'y', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Z yields silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      // Silent yield: no checkOpenIdevice() call, so no warning modal
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('redo shortcuts yield silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'z', metaKey: true, shiftKey: true }));
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'y', ctrlKey: true }));
+      expect(bridge.redo).not.toHaveBeenCalled();
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('does nothing before the bridge is initialized', () => {
+      bridge.initialized = false;
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('ignores shortcuts while typing in a contenteditable element', () => {
+      global.document.activeElement = {
+        getAttribute: (name) => (name === 'contenteditable' ? 'true' : null),
+        closest: () => null,
+      };
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      delete global.document.activeElement;
+    });
+
+    it('setupUndoRedoHandlers registers a document keydown listener that forwards to handleUndoRedoKeydown', () => {
+      const keydownCall = global.document.addEventListener.mock.calls.find(([type]) => type === 'keydown');
+      expect(keydownCall).toBeTruthy();
+      const handler = keydownCall[1];
+      bridge.handleUndoRedoKeydown = mock(() => {});
+      handler(keyEvent({ key: 'z', ctrlKey: true }));
+      expect(bridge.handleUndoRedoKeydown).toHaveBeenCalled();
     });
   });
 
@@ -7602,56 +7748,57 @@ describe('YjsProjectBridge', () => {
       bridge.collaborativeAutosave.options.onStatusChange('saving');
       expect(renderSpy).toHaveBeenCalledWith('saving');
     });
+
+    it('destroys the collaborative status view on disconnect', async () => {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+
+      bridge._updateCollaborativeSaveStatus('failed'); // lazily creates the view
+      await bridge.disconnect();
+
+      expect(instances[0].destroy).toHaveBeenCalled();
+      expect(bridge._collabStatusView).toBeNull();
+    });
   });
 
   describe('_updateCollaborativeSaveStatus (issue #1592)', () => {
-    function makeFakeStatusEl() {
-      const classes = new Set(['d-none']);
-      const span = { textContent: '' };
-      return {
-        classList: {
-          add: (...c) => c.forEach((x) => classes.add(x)),
-          remove: (...c) => c.forEach((x) => classes.delete(x)),
-          contains: (x) => classes.has(x),
-        },
-        querySelector: () => span,
-        setAttribute: mock(() => undefined),
-        _classes: classes,
-        _span: span,
-      };
+    // The rendering itself lives in CollaborativeSaveStatusView (covered by its
+    // own colocated test); the bridge only wires phases through to it.
+    function installMockView() {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+      return instances;
     }
 
-    it('does nothing when the notice element is absent', () => {
-      global.document.getElementById = mock(() => null);
-      expect(() => bridge._updateCollaborativeSaveStatus('pending')).not.toThrow();
+    it('does nothing when the CollaborativeSaveStatusView global is unavailable', () => {
+      delete global.window.CollaborativeSaveStatusView;
+      expect(() => bridge._updateCollaborativeSaveStatus('failed')).not.toThrow();
+      expect(bridge._collabStatusView).toBeFalsy();
     });
 
-    it('renders the failed message and reveals the notice', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('failed');
-      expect(el._span.textContent).toBe('Autosave failed. Please click Save before leaving.');
-      expect(el._classes.has('collab-save-status--failed')).toBe(true);
-      expect(el._classes.has('d-none')).toBe(false);
-      expect(el.setAttribute).toHaveBeenCalledWith(
-        'title',
-        'Autosave failed. Please click Save before leaving.'
-      );
-    });
+    it('lazily constructs a single view and forwards each phase to it', () => {
+      const instances = installMockView();
 
-    it('renders the clean message', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('clean');
-      expect(el._span.textContent).toBe('All collaborative changes are saved.');
-      expect(el._classes.has('collab-save-status--clean')).toBe(true);
-    });
+      bridge._updateCollaborativeSaveStatus('pending');
+      bridge._updateCollaborativeSaveStatus('saving');
 
-    it('ignores unknown phases without revealing the notice', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('bogus');
-      expect(el._classes.has('d-none')).toBe(true);
+      expect(instances.length).toBe(1); // constructed once, then reused
+      expect(instances[0].setPhase).toHaveBeenCalledWith('pending');
+      expect(instances[0].setPhase).toHaveBeenCalledWith('saving');
     });
   });
 });

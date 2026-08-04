@@ -7,6 +7,23 @@ import { parseCssClassList } from './cssClassHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+export function parseIdeviceJsonProperties(value) {
+    if (value === undefined || value === null || value === '') {
+        return { value: {}, error: null };
+    }
+
+    if (typeof value !== 'string') {
+        return { value, error: null };
+    }
+
+    try {
+        return { value: JSON.parse(value), error: null };
+    } catch (error) {
+        return { value: {}, error };
+    }
+}
+
 /**
  * eXeLearning
  *
@@ -160,7 +177,19 @@ export default class IdeviceNode {
                 this.default[param] != undefined ? this.default[param] : null;
             let value = data[param] ? data[param] : defaultValue;
             if (this.parseParams.includes(param)) {
-                this[param] = this.parseParamValue(param, value, data);
+                const parsed = parseIdeviceJsonProperties(value);
+                this.jsonPropertiesParseError = parsed.error;
+                this.malformedJsonPropertiesRaw = parsed.error ? value : null;
+                if (parsed.error) {
+                    Logger.warn(
+                        `[IdeviceNode] Ignoring malformed jsonProperties for ${data.odeIdeviceId || data.id || 'unknown component'}: ${parsed.error.message}`
+                    );
+                    this[param] = {};
+                } else {
+                    // Additional shape normalisation (arrays / non-object JSON → {})
+                    // from the WebMCP branch's parseParamValue hardening.
+                    this[param] = this.parseParamValue(param, value, data);
+                }
             } else {
                 this[param] = value;
             }
@@ -965,6 +994,19 @@ export default class IdeviceNode {
         });
     }
 
+    preventEditingMalformedJsonProperties() {
+        if (!this.jsonPropertiesParseError) return false;
+
+        eXeLearning.app.modals.alert.show({
+            title: _('iDevice error'),
+            body: _(
+                'This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.'
+            ),
+            contentId: 'error',
+        });
+        return true;
+    }
+
     /**
      *
      */
@@ -1013,6 +1055,7 @@ export default class IdeviceNode {
             .addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (e.target.disabled) return;
+                if (this.preventEditingMalformedJsonProperties()) return;
                 // Check if locked by another user - don't allow editing
                 if (this.isLockedByOtherUser()) {
                     const lockInfo = this.getLockInfo();
@@ -1086,6 +1129,7 @@ export default class IdeviceNode {
         this.timeIdeviceEditing = new Date().getTime();
         this.ideviceBody.addEventListener('dblclick', (element) => {
             if (this.mode == 'export') {
+                if (this.preventEditingMalformedJsonProperties()) return;
                 // Check if locked by another user - don't allow editing
                 if (this.isLockedByOtherUser()) {
                     const lockInfo = this.getLockInfo();
@@ -2173,6 +2217,8 @@ export default class IdeviceNode {
      * @returns {Array}
      */
     async apiSaveIdeviceJson(saveIdevice) {
+        if (this.preventEditingMalformedJsonProperties()) return false;
+
         let params = ['odeComponentsSyncId', 'jsonProperties'];
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
             this.jsonProperties = $exeDevice.save();
@@ -3001,6 +3047,14 @@ export default class IdeviceNode {
      * @returns {Array}
      */
     getJsonProperties(json) {
+        if (
+            json &&
+            this.jsonPropertiesParseError &&
+            typeof this.malformedJsonPropertiesRaw === 'string'
+        ) {
+            return this.malformedJsonPropertiesRaw;
+        }
+
         let data = {};
         if (this.jsonProperties) {
             data = this.jsonProperties;
@@ -3137,6 +3191,8 @@ export default class IdeviceNode {
      */
     edition() {
         clearInterval(this.checkDeviceLoadInterval);
+        if (this.preventEditingMalformedJsonProperties()) return;
+
         // Stop any playing audio when entering edition mode
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice?.gamification?.media?.stopSound) {
             $exeDevices.iDevice.gamification.media.stopSound();

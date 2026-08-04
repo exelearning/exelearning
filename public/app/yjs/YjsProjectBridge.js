@@ -29,6 +29,7 @@ class YjsProjectBridge {
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
     this.collaborativeAutosave = null; // CollaborativeAutosaveManager (issue #1592), only in online collaborative sessions
+    this._collabStatusView = null; // CollaborativeSaveStatusView (issue #1592), renders the compact autosave status
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
@@ -1616,36 +1617,69 @@ class YjsProjectBridge {
    */
   setupUndoRedoHandlers() {
     // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (!this.initialized) return;
+    document.addEventListener('keydown', (e) => this.handleUndoRedoKeydown(e));
+    this.observeIdeviceEditionState();
+  }
 
-      // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
-      const activeEl = document.activeElement;
-      const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
-      const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
-      if (isContentEditable || isInTinyMCE) return;
+  /**
+   * True while any iDevice is open in edition mode. While editing, the
+   * iDevice's own editor owns the undo/redo history (#2218).
+   */
+  isIdeviceEditionOpen() {
+    return !!document.querySelector('div.idevice_node[mode="edition"]');
+  }
 
-      // Ctrl+Z / Cmd+Z - Undo (without Shift)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        this.undo();
-        return;
-      }
-
-      // Ctrl+Shift+Z / Cmd+Shift+Z - Redo
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
-
-      // Ctrl+Y / Cmd+Y - Redo (alternative)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !e.shiftKey) {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
+  /**
+   * Keep the navbar undo/redo buttons in sync with iDevice edition mode:
+   * they act on the project history, so they are disabled while an
+   * iDevice editor owns the shortcuts (#2218). Watches the `mode`
+   * attribute flips and node swaps anywhere under the body.
+   */
+  observeIdeviceEditionState() {
+    if (typeof MutationObserver !== 'function') return;
+    const root = document.body;
+    if (!root || typeof root !== 'object' || !root.nodeType) return;
+    this.editionModeObserver = new MutationObserver(() => this.updateUndoRedoButtons());
+    this.editionModeObserver.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['mode'],
     });
+  }
+
+  /**
+   * Document-level handler for the project (Yjs) undo/redo shortcuts.
+   */
+  handleUndoRedoKeydown(e) {
+    if (!this.initialized) return;
+
+    // While an iDevice is open in edition mode its own editor owns the
+    // undo/redo shortcuts (e.g. the Slide editor's Fabric history). Yield
+    // silently: running the project-level undo here would pop the
+    // "unsaved changes" warning modal on every Ctrl+Z (#2218).
+    if (this.isIdeviceEditionOpen()) return;
+
+    // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
+    const activeEl = document.activeElement;
+    const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
+    const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
+    if (isContentEditable || isInTinyMCE) return;
+
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      // Ctrl+Z / Cmd+Z - Undo
+      e.preventDefault();
+      this.undo();
+    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'z') {
+      // Ctrl+Shift+Z / Cmd+Shift+Z - Redo
+      e.preventDefault();
+      this.redo();
+    } else if (mod && e.key.toLowerCase() === 'y' && !e.shiftKey) {
+      // Ctrl+Y / Cmd+Y - Redo (alternative)
+      e.preventDefault();
+      this.redo();
+    }
   }
 
   /**
@@ -1784,6 +1818,15 @@ class YjsProjectBridge {
    */
   updateUndoRedoButtons() {
     if (!this.documentManager || !this.undoButton || !this.redoButton) return;
+
+    // The buttons act on the PROJECT history; while an iDevice editor is
+    // open its own history owns undo/redo, so disable them instead of
+    // popping the "unsaved changes" warning on click (#2218).
+    if (this.isIdeviceEditionOpen()) {
+      this.undoButton.disabled = true;
+      this.redoButton.disabled = true;
+      return;
+    }
 
     const undoManager = this.documentManager.undoManager;
     if (undoManager) {
@@ -2432,51 +2475,25 @@ class YjsProjectBridge {
   }
 
   /**
-   * Render the collaborative save-status notice (issue #1592).
+   * Render the collaborative save-status (issue #1592).
    *
-   * Updates the persistent toolbar notice (#exe-collab-save-status) so users in
-   * a collaborative session understand that live shared changes still need to be
-   * persisted, and are warned clearly if autosave fails. This complements — and
-   * does not replace — the red/green save button.
+   * Delegates to CollaborativeSaveStatusView, a focused presentation helper that
+   * shows the phase as a compact badge on the Save button, announces it through
+   * a visually-hidden live region, and raises a single error toast on failure.
+   * The presentation helper is loaded as a sibling Yjs module; if it is
+   * unavailable the autosave itself is unaffected — we simply skip the (purely
+   * cosmetic) status update rather than throw.
    *
    * @param {('clean'|'pending'|'saving'|'failed')} phase
    */
   _updateCollaborativeSaveStatus(phase) {
-    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+    if (typeof window === 'undefined' || !window.CollaborativeSaveStatusView) {
       return;
     }
-    const el = document.getElementById('exe-collab-save-status');
-    if (!el) return;
-
-    const messages = {
-      clean: _('All collaborative changes are saved.'),
-      pending: _('Collaborative changes are shared live and will be saved automatically.'),
-      saving: _('Saving collaborative changes...'),
-      failed: _('Autosave failed. Please click Save before leaving.'),
-    };
-
-    el.classList.remove(
-      'collab-save-status--clean',
-      'collab-save-status--pending',
-      'collab-save-status--saving',
-      'collab-save-status--failed'
-    );
-
-    const message = messages[phase];
-    if (!message) {
-      // Unknown phase: keep the notice hidden rather than showing an empty pill.
-      return;
+    if (!this._collabStatusView) {
+      this._collabStatusView = new window.CollaborativeSaveStatusView();
     }
-
-    el.classList.add('collab-save-status--' + phase);
-    el.classList.remove('d-none');
-
-    const textEl = typeof el.querySelector === 'function' ? el.querySelector('.content') : null;
-    const target = textEl || el;
-    target.textContent = message;
-    if (typeof el.setAttribute === 'function') {
-      el.setAttribute('title', message);
-    }
+    this._collabStatusView.setPhase(phase);
   }
 
   /**
@@ -2806,6 +2823,9 @@ class YjsProjectBridge {
    * @param {string} ideviceType - iDevice type
    * @param {Object} initialData - Initial properties (optional)
    * @returns {string} Created component ID
+   * @throws {Error} InvalidJsonPropertiesError when `initialData.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   addComponent(pageId, blockId, ideviceType, initialData = {}) {
     const componentId = this.structureBinding.createComponent(pageId, blockId, ideviceType, initialData);
@@ -2823,6 +2843,9 @@ class YjsProjectBridge {
    * Update component properties
    * @param {string} componentId - Component ID
    * @param {Object} props - Properties to update
+   * @throws {Error} InvalidJsonPropertiesError when `props.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   updateComponent(componentId, props) {
     this.structureBinding.updateComponent(componentId, props);
@@ -4244,6 +4267,11 @@ class YjsProjectBridge {
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
 
+    if (this.editionModeObserver) {
+      this.editionModeObserver.disconnect();
+      this.editionModeObserver = null;
+    }
+
     if (this._assetsMap && this._onAssetsMapChange && typeof this._assetsMap.unobserve === 'function') {
       this._assetsMap.unobserve(this._onAssetsMapChange);
     }
@@ -4263,6 +4291,15 @@ class YjsProjectBridge {
     if (this.collaborativeAutosave) {
       this.collaborativeAutosave.destroy();
       this.collaborativeAutosave = null;
+    }
+
+    // Clear the collaborative save-status UI (badge, live region and any
+    // lingering failure toast) so a destroyed session leaves nothing behind.
+    if (this._collabStatusView) {
+      if (typeof this._collabStatusView.destroy === 'function') {
+        this._collabStatusView.destroy();
+      }
+      this._collabStatusView = null;
     }
 
     if (this.documentManager) {
