@@ -28,16 +28,27 @@ $exeFX = {
   baseClass: "exe",
   h2: "h2",
   isOldBrowser: false,
-  init: function () {
+  // Monotonic counter feeding the ids each effect generates (exe-tabs-N, exe-tab-N-M...).
+  // Effects are initialized in more than one pass: JSON iDevices (form, magnifier...)
+  // inject their content after the page-wide init has already run, so deriving the id
+  // from the element position would hand a newly injected effect an id already given to
+  // an earlier one. The counter never reuses a value. See #2170.
+  counter: 0,
+  // `root` restricts initialization to the effects inside (or equal to) that element,
+  // leaving effects already initialized elsewhere on the page untouched.
+  init: function (root) {
     var ie = $exeFX.checkIE();
     if ((!isNaN(parseFloat(ie)) && isFinite(ie)) && ie < 9) {
       $exeFX.isOldBrowser = true;
       $exeFX.h2 = "H2";
     }
     var k = $exeFX.baseClass;
-    var f = $("." + k + "-fx");
+    var scope = root ? $(root) : $(document);
+    var effects = scope.find("." + k + "-fx");
+    if (scope.hasClass(k + "-fx")) effects = effects.add(scope);
     var hasTimeLines = false;
-    $("." + k + "-fx").each(function (i) {
+    effects.each(function () {
+      var i = $exeFX.counter++;
       var c = this.className;
       if (c.indexOf(" " + k + "-accordion") != -1) $exeFX.accordion.init(this, i);
       else if (c.indexOf(" " + k + "-tabs") != -1) $exeFX.tabs.init(this, i);
