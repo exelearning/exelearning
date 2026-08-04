@@ -66,6 +66,7 @@ const MIME_TYPES: Record<string, string> = {
     '.ogg': 'audio/ogg',
     '.ogv': 'video/ogg',
     '.webm': 'video/webm',
+    '.vtt': 'text/vtt',
     '.woff': 'font/woff',
     '.woff2': 'font/woff2',
     '.ttf': 'font/ttf',
@@ -889,7 +890,10 @@ export class Epub3Exporter extends BaseExporter {
                 // Store in EPUB/content/resources/{exportPath} (matching HTML references)
                 const zipPath = `content/resources/${exportPath}`;
 
-                this.zip.addFile(`EPUB/${zipPath}`, asset.data);
+                // Route through the shared writer so .srt subtitle assets are
+                // converted to WebVTT (buildAssetExportPathMap already renamed the
+                // path .srt -> .vtt) -- see issue #2034.
+                await this.writeAssetToZip(`EPUB/${zipPath}`, asset);
 
                 // Add to manifest
                 const ext = this.getFileExtensionFromPath(exportPath);
