@@ -2,6 +2,7 @@ import ProjectProperties from './properties/projectProperties.js';
 import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import ImportProgress from '../interface/importProgress.js';
+import { isImportCancelled } from '../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -466,11 +467,17 @@ export default class projectManager {
                         const stats = await this.importFromElpxViaYjs(file);
                         Logger.log('[ProjectManager] Platform ELP import complete:', stats);
 
-                        try {
-                            await this._yjsBridge.documentManager.saveToServer();
-                            Logger.log('[ProjectManager] Document saved to server after platform import');
-                        } catch (saveError) {
-                            console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                        // Import cancelled/rejected (over-limit archive or declined
+                        // confirmation): the project is unchanged, so do not save. #2198
+                        if (isImportCancelled(stats)) {
+                            Logger.log('[ProjectManager] Platform ELP import cancelled/rejected; project left unchanged');
+                        } else {
+                            try {
+                                await this._yjsBridge.documentManager.saveToServer();
+                                Logger.log('[ProjectManager] Document saved to server after platform import');
+                            } catch (saveError) {
+                                console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                            }
                         }
 
                     } else {
@@ -557,13 +564,19 @@ export default class projectManager {
 
             Logger.log('[ProjectManager] ELP import complete:', stats);
 
+            // Import cancelled/rejected (over-limit archive or declined
+            // confirmation): the project is unchanged, so skip the save. #2198
+            const importCancelled = isImportCancelled(stats);
+
             // Save to server so other users can access the document
-            try {
-                await this._yjsBridge.documentManager.saveToServer();
-                Logger.log('[ProjectManager] Document saved to server after import');
-            } catch (saveError) {
-                console.warn('[ProjectManager] Failed to save to server after import:', saveError);
-                // Continue anyway - data is at least saved locally
+            if (!importCancelled) {
+                try {
+                    await this._yjsBridge.documentManager.saveToServer();
+                    Logger.log('[ProjectManager] Document saved to server after import');
+                } catch (saveError) {
+                    console.warn('[ProjectManager] Failed to save to server after import:', saveError);
+                    // Continue anyway - data is at least saved locally
+                }
             }
 
             if (fromUrlParam) {

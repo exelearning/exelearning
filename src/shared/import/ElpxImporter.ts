@@ -23,7 +23,7 @@
  */
 
 import * as Y from 'yjs';
-import { DEFAULT_ZIP_LIMITS, ZipLimitError, safeUnzipSync, type ZipDecompressionLimits } from '../../utils/safe-unzip';
+import * as fflate from 'fflate';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import type {
@@ -46,6 +46,15 @@ import {
     defaultLogger,
 } from './interfaces';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+    validateZipLimits,
+    entrySizeError,
+    totalSizeError,
+    entryCountError,
+} from './importPolicy';
+import type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import { generateId } from '../ids';
@@ -65,17 +74,53 @@ import { generateOdeId } from '../export/utils/odeId';
  * *before* the entry is decompressed. We use it to enforce three independent
  * caps and abort by throwing — guaranteeing we never inflate beyond the cap.
  *
- * Defaults are conservative but comfortably above real .elp files: the largest
- * shipped fixtures (`todos-los-idevices.elp`, `Manual de eXeLearning 3.0.elpx`)
- * decompress to ~42 MB across ~1440 entries, with a largest single entry of
- * ~3.4 MB. The limits below leave ample headroom for legitimate packages.
+ * The limits, their default (conservative) values, the structured
+ * {@link ZipLimitError}, and the runtime-specific policies live in
+ * `./importPolicy` — the single source of truth shared with the browser import
+ * adapter and the ELPX export warning. They are re-exported here for backwards
+ * compatibility with existing importers of `./ElpxImporter`.
  */
-// ZIP-bomb protection now lives in the shared single source of truth at
-// src/utils/safe-unzip.ts. Re-export the symbols for backward compatibility so
-// existing importers (and ElpxImporter.spec.ts) keep their import paths and there
-// is exactly one ZipLimitError class / one set of default limits.
-export { DEFAULT_ZIP_LIMITS, ZipLimitError };
-export type { ZipDecompressionLimits };
+export {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+} from './importPolicy';
+export type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
+
+/**
+ * Inspect a ZIP archive's central directory WITHOUT inflating any entry.
+ *
+ * fflate's `filter` callback receives each entry's declared `originalSize` and
+ * runs before decompression; returning `false` for every entry visits all the
+ * central-directory metadata while inflating nothing. This is the preflight
+ * used to decide whether an import is within the applicable limits (and whether
+ * a desktop confirmation is required) before any bytes are materialised or any
+ * project state is mutated.
+ *
+ * @param buffer - Raw ZIP bytes
+ * @param _label - Human-readable archive label (accepted for symmetry)
+ * @returns Declared entry metadata, cumulative size, count and largest entry
+ */
+export function inspectZipArchive(buffer: Uint8Array, _label = 'ELP/ELPX archive'): ArchiveInspection {
+    const entries: ArchiveEntryInfo[] = [];
+    let totalBytes = 0;
+    let largestEntry: ArchiveEntryInfo | null = null;
+
+    fflate.unzipSync(buffer, {
+        filter: (file: { name: string; originalSize: number }) => {
+            const size = file.originalSize;
+            const entry: ArchiveEntryInfo = { name: file.name, size };
+            entries.push(entry);
+            totalBytes += size;
+            if (largestEntry === null || size > largestEntry.size) {
+                largestEntry = entry;
+            }
+            // Never inflate — metadata only.
+            return false;
+        },
+    });
+
+    return { entries, totalBytes, entryCount: entries.length, largestEntry };
+}
 
 /**
  * ElpxImporter class
@@ -105,7 +150,9 @@ export class ElpxImporter {
         this.ydoc = ydoc;
         this.assetHandler = assetHandler;
         this.logger = logger;
-        this.zipLimits = { ...DEFAULT_ZIP_LIMITS, ...zipLimits };
+        // Validate the merged limits at this single boundary so an invalid
+        // runtime override can never silently disable the ZIP-bomb protection.
+        this.zipLimits = validateZipLimits({ ...DEFAULT_ZIP_LIMITS, ...zipLimits });
     }
 
     /**
@@ -137,8 +184,34 @@ export class ElpxImporter {
      * @returns Map of entry path -> decompressed bytes
      */
     private safeUnzip(buffer: Uint8Array, label: string): Record<string, Uint8Array> {
-        // Delegate to the shared bounded inflate (single source of truth).
-        return safeUnzipSync(buffer, { label, limits: this.zipLimits });
+        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
+        let cumulativeBytes = 0;
+        let entryCount = 0;
+
+        return fflate.unzipSync(buffer, {
+            filter: (file: { name: string; originalSize: number }) => {
+                entryCount++;
+                if (entryCount > maxEntries) {
+                    throw entryCountError(label, entryCount, maxEntries);
+                }
+
+                // NOTE: `originalSize` is the attacker-declared uncompressed
+                // size from the central directory, not a measured value (see the
+                // KNOWN LIMITATION in this method's doc comment). It is checked
+                // before inflation as a cheap zip-bomb guard.
+                const entrySize = file.originalSize;
+                if (entrySize > maxEntryBytes) {
+                    throw entrySizeError(label, file.name, entrySize, maxEntryBytes);
+                }
+
+                cumulativeBytes += entrySize;
+                if (cumulativeBytes > maxTotalBytes) {
+                    throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
+                }
+
+                return true;
+            },
+        });
     }
 
     /**
@@ -157,24 +230,18 @@ export class ElpxImporter {
         const entries = Object.entries(zipContents);
 
         if (entries.length > maxEntries) {
-            throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+            throw entryCountError(label, entries.length, maxEntries);
         }
 
         let cumulativeBytes = 0;
         for (const [name, data] of entries) {
             const entrySize = data.length;
             if (entrySize > maxEntryBytes) {
-                throw new ZipLimitError(
-                    `Entry '${name}' in ${label} is too large when decompressed ` +
-                        `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
-                );
+                throw entrySizeError(label, name, entrySize, maxEntryBytes);
             }
             cumulativeBytes += entrySize;
             if (cumulativeBytes > maxTotalBytes) {
-                throw new ZipLimitError(
-                    `${label} exceeds the maximum total decompressed size ` +
-                        `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
-                );
+                throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
             }
         }
     }
